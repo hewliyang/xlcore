@@ -108,8 +108,19 @@ fn extract_dxf(d: &XDxf) -> crate::schema::Dxf {
         if let Some(s) = f.strike.as_ref() {
             out.strike = Some(s.val.unwrap_or(true));
         }
-        if f.underline.is_some() {
-            out.underline = Some(true);
+        if let Some(u) = f.underline.as_ref() {
+            match crate::underline_variant(u.val) {
+                Some("none") => {}
+                Some(v) => {
+                    out.underline = Some(true);
+                    if v != "single" {
+                        out.underline_style = Some(v.to_string());
+                    }
+                }
+                None => {
+                    out.underline = Some(true);
+                }
+            }
         }
         if let Some(c) = f.color.as_ref() {
             out.font_color = extract_color_x(c);
@@ -166,7 +177,16 @@ fn extract_font(f: &XFont) -> Font {
             .as_ref()
             .map(|i| i.val.unwrap_or(true))
             .unwrap_or(false),
-        underline: f.underline.is_some(),
+        underline: match f.underline.as_ref() {
+            Some(u) => !matches!(crate::underline_variant(u.val), Some("none")),
+            None => false,
+        },
+        underline_style: f.underline.as_ref().and_then(|u| {
+            match crate::underline_variant(u.val) {
+                Some(v) if v != "single" && v != "none" => Some(v.to_string()),
+                _ => None,
+            }
+        }),
         strike: f
             .strike
             .as_ref()

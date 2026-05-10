@@ -99,6 +99,16 @@ pub struct TextRun {
     pub italic: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     pub underline: bool,
+    /// OOXML `<u val="..."/>` variant when not the default `single`.
+    /// One of `"single"` / `"double"` / `"singleAccounting"` /
+    /// `"doubleAccounting"`. Absent = `single` (matches the OOXML default).
+    /// Renderer paints `double*` as two parallel strokes; the
+    /// accounting variants currently fall through to single/double
+    /// (the "line extends across the full cell width" semantics are
+    /// not honored yet — tracked in PARITY.md).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub underline_style: Option<String>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub strike: bool,
     /// Font size in points (matches `Font.size`).
@@ -730,6 +740,10 @@ pub struct Dxf {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub underline: Option<bool>,
+    /// OOXML `<u val="..."/>` variant; see `Font.underline_style`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub underline_style: Option<String>,
     /// Fill foreground color (solid pattern). Background is rare in dxfs.
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1010,6 +1024,11 @@ pub struct Font {
     pub italic: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     pub underline: bool,
+    /// OOXML `<u val="..."/>` variant when not the default `single`.
+    /// See `TextRun.underline_style` for values + renderer behavior.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub underline_style: Option<String>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub strike: bool,
     #[cfg_attr(feature = "typescript", ts(optional))]

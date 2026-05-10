@@ -354,8 +354,23 @@ pub(crate) fn text_run_from(r: &xspread::Run, text: String) -> TextRun {
     if let Some(i) = rpr.x_i.first() {
         tr.italic = i.val.unwrap_or(true);
     }
-    if !rpr.x_u.is_empty() {
-        tr.underline = true;
+    if let Some(u) = rpr.x_u.first() {
+        // OOXML CT_UnderlineProperty: element present, no `val` => `single`
+        // (default). `val="none"` explicitly disables underline; all other
+        // values turn it on, with the variant captured in `underline_style`.
+        let variant = underline_variant(u.val);
+        match variant {
+            Some("none") => {}
+            Some(v) => {
+                tr.underline = true;
+                if v != "single" {
+                    tr.underline_style = Some(v.to_string());
+                }
+            }
+            None => {
+                tr.underline = true;
+            }
+        }
     }
     if let Some(s) = rpr.x_strike.first() {
         tr.strike = s.val.unwrap_or(true);
@@ -378,6 +393,23 @@ pub(crate) fn text_run_from(r: &xspread::Run, text: String) -> TextRun {
         }
     }
     tr
+}
+
+/// Map an `Option<UnderlineValues>` from ooxmlsdk to one of the OOXML
+/// `<u val="..."/>` strings. `None` (no `val` attr) returns `None` and
+/// the caller treats it as the default `single`.
+pub(crate) fn underline_variant(
+    v: Option<xspread::UnderlineValues>,
+) -> Option<&'static str> {
+    use xspread::UnderlineValues as U;
+    let v = v?;
+    Some(match v {
+        U::Single => "single",
+        U::Double => "double",
+        U::SingleAccounting => "singleAccounting",
+        U::DoubleAccounting => "doubleAccounting",
+        U::None => "none",
+    })
 }
 
 fn is_unstyled_run(r: &TextRun) -> bool {

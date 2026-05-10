@@ -400,6 +400,7 @@ function mergeDxf(base: Dxf, overlay: Dxf): Dxf {
     italic: base.italic ?? overlay.italic,
     strike: base.strike ?? overlay.strike,
     underline: base.underline ?? overlay.underline,
+    underlineStyle: base.underlineStyle ?? overlay.underlineStyle,
     fillColor: base.fillColor ?? overlay.fillColor,
     numFmt: base.numFmt ?? overlay.numFmt,
   };

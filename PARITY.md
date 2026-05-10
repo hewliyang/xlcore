@@ -35,7 +35,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | Text rotation                   | ✅      | ✅     | OOXML `textRotation` 1–180 (CCW + CW) and 255 (stacked) all painted. CCW anchors at cell bottom-left + extends up-right; CW anchors top-left + extends down-right; stacked draws each char upright on its own line, horizontally centered. `halign=center`/`right` shifts the baseline anchor along the cell width. No overflow into neighbors and no wrap support for rotated text (matches Excel — author-time row height already accounts for the rotated extent). Fixture: `tests/fixtures/text/rotation.xlsx`. Open: vertical placement on slanted angles is bottom-anchored where hsx keeps the rotated bounding-box vertically centered (cosmetic). |
 | Strikethrough                   | ✅      | ✅     | painted as a 1px stroke through the visual middle (baseline − 30% font-size).                                                           |
 | Underline (single)              | ✅      | ✅     | painted as a 1px stroke at baseline+12% font-size; honors per-run, dxf-overlay, and hyperlink underlines.                                                                                                 |
-| Underline (double / accounting) | 🟡      | ❌     | only "is underlined" bit, not the variant.                                                      |
+| Underline (double / accounting) | ✅      | 🟡     | All 4 OOXML `ST_UnderlineValues` (`single` / `double` / `singleAccounting` / `doubleAccounting`) extracted into a new `underlineStyle` field on `Font` / `TextRun` / `Dxf` (absent = `single`, the OOXML default). Renderer paints `double` / `doubleAccounting` as two parallel strokes (gap = `max(2, fontSizePx * 0.1)`); accounting variants currently render exactly like their non-accounting siblings — Excel's "line extends across the full cell width" semantics aren't honored yet (`paintTextDecorations` only knows the text segment's measured width, not the cell rect). Fixture: `tests/fixtures/text/underline.xlsx`. Hsx divergence: SpreadJS paints all four variants as identical single thin underlines; we match Excel desktop on the double-line variants. |
 | `<i val="0"/>` boolean unset    | ✅      | ✅     | (bug fix: was treated as `true`).                                                               |
 | Theme XML colors                | ✅      | ✅     | parsed from `xl/theme/theme1.xml`. Spreadsheet `theme="N"` indexing (lt1/dk1/lt2/dk2 swap) is correct. Cell + chart-series accents resolve against the workbook palette. All five OOXML color-choice variants resolved: `srgbClr`, `sysClr.lastClr`, `scrgbClr` (RGB percentages → 0..255 bytes), `hslClr` (HSL → sRGB), and `prstClr` (190-entry preset table covering CSS3/X11 names + `dk*`/`lt*`/`med*` abbreviations + 2010 aliases). Office defaults remain only as a last-resort fallback when the theme part is missing entirely. Unit tests in `crates/xlcore-export/src/theme.rs`. |
 | Indexed-color palette           | ✅      | ✅     | Full ECMA-376 §18.8.27 default `indexedColors` table baked into `INDEXED_PALETTE` (`render.ts`) and the parallel 1-based `COLOR_BY_INDEX` (`numfmt.ts`, used by `[ColorN]` format codes). Covers all 56 legacy slots + 64/65 specials. Open: workbook-level palette override via `<colors><indexedColors>` in styles.xml (vanishingly rare — Excel only writes that block when the user customizes the palette through Office 2003-era dialogs). |
@@ -672,6 +672,19 @@ surrounding workbook noise.
       OOXML; hsx's public API doesn't expose `slantDashDot`. Documented
       hsx divergence: SpreadJS draws all `*DashDot*` variants as solid
       lines, ours match Excel desktop. See PARITY row.
+- [x] Underline variants (double / singleAccounting / doubleAccounting):
+      `tests/fixtures/text/underline.xlsx` puts all 4 ST_UnderlineValues +
+      a "no underline" control in a row of 5 cells. Schema gains
+      `underlineStyle: Option<String>` on `Font` / `TextRun` / `Dxf`;
+      extractor reads `<u val="..."/>` via a shared `underline_variant`
+      helper. Renderer paints `double` / `doubleAccounting` as two
+      parallel strokes (`gap = max(2, fontSizePx * 0.1)`); accounting
+      variants currently render like their non-accounting siblings
+      (the across-cell-width semantics need cell-rect plumbing into
+      `paintTextDecorations`). Hsx draws all 4 variants as identical
+      single thin lines so this fixture is built via Python zip-patch
+      (hsx's public JS API only exposes a boolean `underline()`
+      toggle anyway).
 - [ ] Land the next batch of per-feature fixtures (the four marked above
       as "would have caught X bug").
 - [ ] CI guard: `cargo test … export_bindings && git diff --exit-code

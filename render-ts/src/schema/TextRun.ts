@@ -6,7 +6,17 @@ import type { Color } from "./Color.js";
  * OOXML. Properties left as `None`/`false` mean "inherit from the cell's
  * own font".
  */
-export type TextRun = { text: string, bold: boolean, italic: boolean, underline: boolean, strike: boolean, 
+export type TextRun = { text: string, bold: boolean, italic: boolean, underline: boolean, 
+/**
+ * OOXML `<u val="..."/>` variant when not the default `single`.
+ * One of `"single"` / `"double"` / `"singleAccounting"` /
+ * `"doubleAccounting"`. Absent = `single` (matches the OOXML default).
+ * Renderer paints `double*` as two parallel strokes; the
+ * accounting variants currently fall through to single/double
+ * (the "line extends across the full cell width" semantics are
+ * not honored yet — tracked in PARITY.md).
+ */
+underlineStyle?: string, strike: boolean, 
 /**
  * Font size in points (matches `Font.size`).
  */

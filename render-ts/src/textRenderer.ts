@@ -20,6 +20,10 @@ interface Span {
   color: string;
   bold: boolean; // kept for re-`measureText` shortcuts
   underline: boolean;
+  /// OOXML `<u val="..."/>` variant when not the default `single`.
+  /// One of `"double"` / `"singleAccounting"` / `"doubleAccounting"`.
+  /// Painted by `paintTextDecorations`.
+  underlineStyle?: string;
   strike: boolean;
 }
 
@@ -40,6 +44,7 @@ function resolveCellSpans(
   const baseBold = baseFont?.bold ?? false;
   const baseItalic = baseFont?.italic ?? false;
   const baseUnderline = baseFont?.underline ?? false;
+  const baseUnderlineStyle = baseFont?.underlineStyle;
   const baseStrike = baseFont?.strike ?? false;
 
   // Pull the run list. Inline cells carry it directly; shared-string cells
@@ -62,6 +67,7 @@ function resolveCellSpans(
         color: baseColor,
         bold: baseBold,
         underline: baseUnderline,
+        underlineStyle: baseUnderlineStyle,
         strike: baseStrike,
       },
     ];
@@ -77,6 +83,8 @@ function resolveCellSpans(
     // OR the cell's base flags so e.g. a hyperlink dxf underline still
     // wins on a run with no rPr underline of its own.
     const underline = r.underline || baseUnderline;
+    // Per-run variant wins; falls through to the cell-base font's variant.
+    const underlineStyle = r.underlineStyle ?? baseUnderlineStyle;
     const strike = r.strike || baseStrike;
     return {
       text: r.text,
@@ -85,6 +93,7 @@ function resolveCellSpans(
       color,
       bold,
       underline,
+      underlineStyle,
       strike,
     };
   });
@@ -113,6 +122,20 @@ function paintTextDecorations(
     ctx.moveTo(x, y);
     ctx.lineTo(x + width, y);
     ctx.stroke();
+    // OOXML `<u val="double">` / `"doubleAccounting"`: paint a second
+    // parallel stroke ~2px below the first. Accounting variants in
+    // Excel extend across the full cell width (currency/numbers); we
+    // currently render them like their non-accounting siblings
+    // (tracked in PARITY.md).
+    const v = span.underlineStyle;
+    if (v === "double" || v === "doubleAccounting") {
+      const gap = Math.max(2, span.fontSizePx * 0.1);
+      const y2 = y + gap;
+      ctx.beginPath();
+      ctx.moveTo(x, y2);
+      ctx.lineTo(x + width, y2);
+      ctx.stroke();
+    }
   }
   if (span.strike) {
     const y = baseline - span.fontSizePx * 0.3;
@@ -277,6 +300,7 @@ export function drawCellText(
           bold: dxf.bold ?? baseFontEntry?.bold ?? false,
           italic: dxf.italic ?? baseFontEntry?.italic ?? false,
           underline: dxf.underline ?? baseFontEntry?.underline ?? false,
+          underlineStyle: dxf.underlineStyle ?? baseFontEntry?.underlineStyle,
           strike: dxf.strike ?? baseFontEntry?.strike ?? false,
           color: dxf.fontColor ?? baseFontEntry?.color,
         };

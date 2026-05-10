@@ -9,6 +9,10 @@ import type { Color } from "./Color.js";
  */
 export type Dxf = { fontColor?: Color, bold?: boolean, italic?: boolean, strike?: boolean, underline?: boolean, 
 /**
+ * OOXML `<u val="..."/>` variant; see `Font.underline_style`.
+ */
+underlineStyle?: string, 
+/**
  * Fill foreground color (solid pattern). Background is rare in dxfs.
  */
 fillColor?: Color, 
