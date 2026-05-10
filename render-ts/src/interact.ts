@@ -12,7 +12,6 @@ import type { Sheet, WorkbookLayout, Comment, Hyperlink } from "./types.js";
 import { buildGrid, frozenDims } from "./render.js";
 import {
   computeOutlineRuns,
-  isOutlineRunCollapsed,
   outlineButtonHits,
   outlineCornerHits,
   type OutlineRun,
