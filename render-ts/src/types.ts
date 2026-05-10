@@ -43,6 +43,7 @@ export type {
   Dxf,
   Fill,
   Font,
+  GradientStop,
   Freeze,
   Hyperlink,
   Image,

@@ -25,6 +25,7 @@ export type { Drawing } from "./Drawing.js";
 export type { Dxf } from "./Dxf.js";
 export type { DrawingAnchor } from "./DrawingAnchor.js";
 export type { Fill } from "./Fill.js";
+export type { GradientStop } from "./GradientStop.js";
 export type { Font } from "./Font.js";
 export type { Freeze } from "./Freeze.js";
 export type { Hyperlink } from "./Hyperlink.js";

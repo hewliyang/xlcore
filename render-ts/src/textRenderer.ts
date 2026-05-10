@@ -250,6 +250,21 @@ function layoutSpans(
   return lines;
 }
 
+const OCCUPIED_CACHE = new WeakMap<Sheet, { layout: WorkbookLayout; occupied: Set<string> }>();
+
+function occupiedCells(sheet: Sheet, layout: WorkbookLayout): Set<string> {
+  const cached = OCCUPIED_CACHE.get(sheet);
+  if (cached?.layout === layout) return cached.occupied;
+  const occupied = new Set<string>();
+  iterAllCells(sheet, (cell) => {
+    // A cell is "occupied" iff it has visible content. Empty styled cells
+    // can still be overflowed into.
+    if (hasContent(cell, layout)) occupied.add(`${cell.r}:${cell.c}`);
+  });
+  OCCUPIED_CACHE.set(sheet, { layout, occupied });
+  return occupied;
+}
+
 export function drawCellText(
   ctx: CanvasRenderingContext2D,
   sheet: Sheet,
@@ -265,12 +280,7 @@ export function drawCellText(
 
   // Build a fast "this position is occupied" lookup so we can grant overflow
   // into truly empty neighbors only — exactly Excel's rule.
-  const occupied = new Set<string>();
-  iterAllCells(sheet, (cell) => {
-    // A cell is "occupied" iff it has visible content. Empty styled cells
-    // can still be overflowed into.
-    if (hasContent(cell, layout)) occupied.add(`${cell.r}:${cell.c}`);
-  });
+  const occupied = occupiedCells(sheet, layout);
   for (const k of covered) occupied.add(k);
 
   // Allow text to overflow horizontally into the visible column band; we

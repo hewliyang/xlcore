@@ -225,20 +225,44 @@ fn extract_fill(f: &XFill) -> Fill {
                 pattern_type,
                 fg_color,
                 bg_color,
-                gradient_stops: Vec::new(),
+                ..Fill::default()
             }
         }
         Some(x::FillChoice::XGradientFill(gf)) => {
-            let gradient_stops: Vec<Color> = gf
+            use crate::schema::GradientStop as Gs;
+            let gradient_stops: Vec<Gs> = gf
                 .x_stop
                 .iter()
-                .filter_map(|stop| extract_color_x(&stop.color))
+                .filter_map(|stop| {
+                    extract_color_x(&stop.color).map(|color| Gs {
+                        position: stop.position,
+                        color,
+                    })
+                })
                 .collect();
+            let gradient_type = match gf.r#type {
+                Some(x::GradientValues::Path) => Some("path".to_string()),
+                _ => Some("linear".to_string()),
+            };
+            // OOXML `degree` is required by the schema but optional in our
+            // model; we omit it (defaults to 0 = left→right) when missing.
+            let gradient_degree = gf.degree;
+            let conv = |v: &Option<ooxmlsdk::simple_type::DoubleValue>| *v;
+            // The path-convergence attrs (left/right/top/bottom) only make
+            // sense for `path` gradients; suppress them otherwise so the
+            // JSON stays clean.
+            let is_path = matches!(gf.r#type, Some(x::GradientValues::Path));
             Fill {
                 pattern_type: Some("gradient".to_string()),
-                fg_color: gradient_stops.first().cloned(),
-                bg_color: gradient_stops.last().cloned(),
+                fg_color: gradient_stops.first().map(|s| s.color.clone()),
+                bg_color: gradient_stops.last().map(|s| s.color.clone()),
                 gradient_stops,
+                gradient_type,
+                gradient_degree: if is_path { None } else { gradient_degree },
+                gradient_left: if is_path { conv(&gf.left) } else { None },
+                gradient_right: if is_path { conv(&gf.right) } else { None },
+                gradient_top: if is_path { conv(&gf.top) } else { None },
+                gradient_bottom: if is_path { conv(&gf.bottom) } else { None },
             }
         }
         None => Fill::default(),

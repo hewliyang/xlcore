@@ -29,6 +29,8 @@ export interface FormatResult {
   color?: string;
 }
 
+const FORMAT_CACHE = new Map<string, Section[]>();
+
 /** Format a numeric value through an OOXML format code.
  *
  *  `fmt` is the raw format code as it appears in `<numFmt formatCode="…"/>`
@@ -41,7 +43,8 @@ export function formatValue(value: number, fmt: string | undefined): FormatResul
   if (!f || f.toLowerCase() === "general") return { text: formatGeneral(value) };
   let sections: Section[];
   try {
-    sections = parseFormat(f);
+    sections = FORMAT_CACHE.get(f) ?? parseFormat(f);
+    FORMAT_CACHE.set(f, sections);
   } catch {
     return { text: formatGeneral(value) };
   }

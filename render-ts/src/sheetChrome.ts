@@ -62,7 +62,10 @@ function mixHex(hex: string, other: string, t: number): string {
   return "#" + toHex(r) + toHex(g) + toHex(b);
 }
 
-export function computeTableState(sheet: Sheet): {
+export function computeTableState(
+  sheet: Sheet,
+  vis?: Visible,
+): {
   tableDxfs: Map<string, Dxf>;
   filterArrows: Set<string>;
 } {
@@ -96,13 +99,17 @@ export function computeTableState(sheet: Sheet): {
     // Header row: accent fill + bold white text; filter arrows on
     // each header cell when autoFilter is on.
     if (headerR >= 0) {
-      for (let c = c1; c <= c2; c++) {
+      const hc1 = Math.max(c1, vis?.firstCol ?? c1);
+      const hc2 = Math.min(c2, vis?.lastCol ?? c2);
+      for (let c = hc1; c <= hc2; c++) {
         const k = `${headerR}:${c}`;
-        tableDxfs.set(k, {
-          fillColor: accentColor,
-          fontColor: whiteColor,
-          bold: true,
-        });
+        if (!vis || (headerR >= vis.firstRow && headerR <= vis.lastRow)) {
+          tableDxfs.set(k, {
+            fillColor: accentColor,
+            fontColor: whiteColor,
+            bold: true,
+          });
+        }
         if (t.hasAutoFilter) filterArrows.add(k);
       }
     }
@@ -110,10 +117,14 @@ export function computeTableState(sheet: Sheet): {
     // Banded data rows: every other data row (1-indexed from data
     // start) gets the band tint. Skip when stripes are off.
     if (t.style?.showRowStripes !== false) {
-      for (let r = dataStart; r <= dataEnd; r++) {
+      const rr1 = Math.max(dataStart, vis?.firstRow ?? dataStart);
+      const rr2 = Math.min(dataEnd, vis?.lastRow ?? dataEnd);
+      const cc1 = Math.max(c1, vis?.firstCol ?? c1);
+      const cc2 = Math.min(c2, vis?.lastCol ?? c2);
+      for (let r = rr1; r <= rr2; r++) {
         const isOdd = ((r - dataStart) & 1) === 1;
         if (!isOdd) continue;
-        for (let c = c1; c <= c2; c++) {
+        for (let c = cc1; c <= cc2; c++) {
           const k = `${r}:${c}`;
           if (tableDxfs.has(k)) continue;
           tableDxfs.set(k, { fillColor: bandColor });
@@ -126,7 +137,10 @@ export function computeTableState(sheet: Sheet): {
     // bold the text + give it the band tint.
     if (totalsRows > 0) {
       const totalsR = r2;
-      for (let c = c1; c <= c2; c++) {
+      if (vis && (totalsR < vis.firstRow || totalsR > vis.lastRow)) continue;
+      const tc1 = Math.max(c1, vis?.firstCol ?? c1);
+      const tc2 = Math.min(c2, vis?.lastCol ?? c2);
+      for (let c = tc1; c <= tc2; c++) {
         const k = `${totalsR}:${c}`;
         if (tableDxfs.has(k)) continue;
         tableDxfs.set(k, { fillColor: bandColor, bold: true });

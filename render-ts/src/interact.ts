@@ -88,6 +88,33 @@ export function attachInteractivity(
 ): InteractHandle {
   let drag: { hit: HitCol | HitRow; startPx: number; original: number } | null = null;
   const savedCursor = canvas.style.cursor;
+  let cachedGrid:
+    | {
+        sheet: Sheet;
+        colOverrides: Map<number, number>;
+        rowOverrides: Map<number, number>;
+        grid: ReturnType<typeof buildGrid>;
+      }
+    | null = null;
+
+  function invalidateGrid() {
+    cachedGrid = null;
+  }
+
+  function getGrid(): ReturnType<typeof buildGrid> {
+    const sheet = opts.getSheet();
+    if (
+      cachedGrid &&
+      cachedGrid.sheet === sheet &&
+      cachedGrid.colOverrides === opts.colOverrides &&
+      cachedGrid.rowOverrides === opts.rowOverrides
+    ) {
+      return cachedGrid.grid;
+    }
+    const grid = buildGrid(sheet, opts.colOverrides, opts.rowOverrides);
+    cachedGrid = { sheet, colOverrides: opts.colOverrides, rowOverrides: opts.rowOverrides, grid };
+    return grid;
+  }
 
   // ---- annotations: hyperlink click + comment hover popover ----
   //
@@ -190,7 +217,7 @@ export function attachInteractivity(
   // outside the grid. Used by hyperlink + comment hit-testing.
   function cellAtLogical(p: { x: number; y: number }): { r: number; c: number } | null {
     if (p.x < HEADER_W || p.y < HEADER_H) return null;
-    const grid = buildGrid(opts.getSheet(), opts.colOverrides, opts.rowOverrides);
+    const grid = getGrid();
     return cellAt(grid, p.x, p.y);
   }
 
@@ -213,7 +240,7 @@ export function attachInteractivity(
     const p = toCanvasLocal(ev);
     const vp = opts.getViewport?.() ?? null;
     const sheet = opts.getSheet();
-    const grid = buildGrid(sheet, opts.colOverrides, opts.rowOverrides);
+    const grid = getGrid();
     const { pcw, prh } = frozenDims(sheet, grid);
     // Per-axis: only the scrolling segment past the freeze split picks up
     // the viewport offset. Pinned col-header / row-header clicks and
@@ -232,36 +259,46 @@ export function attachInteractivity(
     const sx = vp?.x ?? 0;
     const sy = vp?.y ?? 0;
     const sheet = opts.getSheet();
-    const grid = buildGrid(sheet, opts.colOverrides, opts.rowOverrides);
+    const grid = getGrid();
     const { splitX, splitY, pcw, prh } = frozenDims(sheet, grid);
 
     if (cy >= 0 && cy <= HEADER_H && cx > HEADER_W) {
       // Pinned col-header segment: canvas x maps directly to absolute grid x.
       if (cx <= HEADER_W + pcw) {
-        for (let c = 1; c < splitX; c++) {
-          const edge = grid.colX[c + 1] ?? 0;
-          if (Math.abs(cx - edge) <= RESIZE_TOL) return { kind: "col", index: c, edgeX: edge };
+        const edgeIndex = nearestEdgeIndex(grid.colX, cx, 2, splitX);
+        if (edgeIndex !== null) {
+          return { kind: "col", index: edgeIndex - 1, edgeX: grid.colX[edgeIndex] ?? 0 };
         }
       } else {
         // Scrolling segment: cx + sx → absolute grid x.
         const x = cx + sx;
-        for (let c = Math.max(splitX, 1); c <= grid.maxCol; c++) {
-          const edge = grid.colX[c + 1] ?? 0;
-          if (Math.abs(x - edge) <= RESIZE_TOL) return { kind: "col", index: c, edgeX: edge };
+        const edgeIndex = nearestEdgeIndex(
+          grid.colX,
+          x,
+          Math.max(splitX + 1, 2),
+          grid.maxCol + 1,
+        );
+        if (edgeIndex !== null) {
+          return { kind: "col", index: edgeIndex - 1, edgeX: grid.colX[edgeIndex] ?? 0 };
         }
       }
     }
     if (cx >= 0 && cx <= HEADER_W && cy > HEADER_H) {
       if (cy <= HEADER_H + prh) {
-        for (let r = 1; r < splitY; r++) {
-          const edge = grid.rowY[r + 1] ?? 0;
-          if (Math.abs(cy - edge) <= RESIZE_TOL) return { kind: "row", index: r, edgeY: edge };
+        const edgeIndex = nearestEdgeIndex(grid.rowY, cy, 2, splitY);
+        if (edgeIndex !== null) {
+          return { kind: "row", index: edgeIndex - 1, edgeY: grid.rowY[edgeIndex] ?? 0 };
         }
       } else {
         const y = cy + sy;
-        for (let r = Math.max(splitY, 1); r <= grid.maxRow; r++) {
-          const edge = grid.rowY[r + 1] ?? 0;
-          if (Math.abs(y - edge) <= RESIZE_TOL) return { kind: "row", index: r, edgeY: edge };
+        const edgeIndex = nearestEdgeIndex(
+          grid.rowY,
+          y,
+          Math.max(splitY + 1, 2),
+          grid.maxRow + 1,
+        );
+        if (edgeIndex !== null) {
+          return { kind: "row", index: edgeIndex - 1, edgeY: grid.rowY[edgeIndex] ?? 0 };
         }
       }
     }
@@ -280,6 +317,7 @@ export function attachInteractivity(
         const next = Math.max(MIN_ROW_H, drag.original + delta);
         opts.rowOverrides.set(drag.hit.index, next);
       }
+      invalidateGrid();
       opts.redraw();
       return;
     }
@@ -311,7 +349,7 @@ export function attachInteractivity(
       // Position the popover relative to the cell's on-screen rect.
       // Map sheet logical coords → client coords through the same
       // pinned/scrolled split that `toLogical` uses in reverse.
-      const grid = buildGrid(opts.getSheet(), opts.colOverrides, opts.rowOverrides);
+      const grid = getGrid();
       const z = opts.zoom.get();
       const r = canvas.getBoundingClientRect();
       const vp = opts.getViewport?.() ?? null;
@@ -349,7 +387,7 @@ export function attachInteractivity(
     if (hit) {
       ev.preventDefault();
       canvas.setPointerCapture(ev.pointerId);
-      const grid = buildGrid(opts.getSheet(), opts.colOverrides, opts.rowOverrides);
+      const grid = getGrid();
       if (hit.kind === "col") {
         drag = { hit, startPx: p.x, original: grid.colW[hit.index] ?? 0 };
       } else {
@@ -358,7 +396,7 @@ export function attachInteractivity(
       return;
     }
 
-    const grid = buildGrid(opts.getSheet(), opts.colOverrides, opts.rowOverrides);
+    const grid = getGrid();
     // Header hit-test uses canvas-local because the header strips don't pan
     // on their pinned axis.
     const inColHeader = cp.y >= 0 && cp.y < HEADER_H;
@@ -457,31 +495,63 @@ export function attachInteractivity(
     x: number,
     y: number,
   ): { r: number; c: number } | null {
-    let c = 0;
-    for (let i = 1; i <= grid.maxCol; i++) {
-      const right = grid.colX[i + 1] ?? 0;
-      if (x < right) {
-        c = i;
-        break;
-      }
-    }
-    let r = 0;
-    for (let i = 1; i <= grid.maxRow; i++) {
-      const bot = grid.rowY[i + 1] ?? 0;
-      if (y < bot) {
-        r = i;
-        break;
-      }
-    }
-    if (r === 0 || c === 0) return null;
+    const c = edgeOwnerIndex(grid.colX, x, 1, grid.maxCol);
+    const r = edgeOwnerIndex(grid.rowY, y, 1, grid.maxRow);
+    if (r === null || c === null) return null;
     return { r, c };
+  }
+
+  function edgeOwnerIndex(
+    edges: number[],
+    px: number,
+    minIndex: number,
+    maxIndex: number,
+  ): number | null {
+    if (maxIndex < minIndex) return null;
+    if (px < (edges[minIndex] ?? 0) || px >= (edges[maxIndex + 1] ?? 0)) return null;
+    let lo = minIndex + 1;
+    let hi = maxIndex + 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if ((edges[mid] ?? 0) <= px) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo - 1;
+  }
+
+  function nearestEdgeIndex(
+    edges: number[],
+    px: number,
+    minEdgeIndex: number,
+    maxEdgeIndex: number,
+  ): number | null {
+    if (maxEdgeIndex < minEdgeIndex) return null;
+    let lo = minEdgeIndex;
+    let hi = maxEdgeIndex + 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if ((edges[mid] ?? 0) < px) lo = mid + 1;
+      else hi = mid;
+    }
+
+    let best: number | null = null;
+    let bestDist = Infinity;
+    for (const i of [lo - 1, lo]) {
+      if (i < minEdgeIndex || i > maxEdgeIndex) continue;
+      const dist = Math.abs(px - (edges[i] ?? 0));
+      if (dist < bestDist) {
+        best = i;
+        bestDist = dist;
+      }
+    }
+    return bestDist <= RESIZE_TOL ? best : null;
   }
 
   function ensureVisible(cell: { r: number; c: number }) {
     const sc = opts.scrollContainer;
     if (!sc) return;
     const sheet = opts.getSheet();
-    const grid = buildGrid(sheet, opts.colOverrides, opts.rowOverrides);
+    const grid = getGrid();
     const z = opts.zoom.get();
     const { splitX, splitY, pcw, prh } = frozenDims(sheet, grid);
     const x = (grid.colX[cell.c] ?? 0) * z;
@@ -531,7 +601,7 @@ export function attachInteractivity(
         return;
     }
     ev.preventDefault();
-    const grid = buildGrid(opts.getSheet(), opts.colOverrides, opts.rowOverrides);
+    const grid = getGrid();
     const next = {
       r: clamp(cur.r + dr, 1, grid.maxRow),
       c: clamp(cur.c + dc, 1, grid.maxCol),

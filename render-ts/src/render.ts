@@ -29,7 +29,7 @@ import {
   drawFilterArrows,
   drawHeaders,
 } from "./sheetChrome.js";
-import type { RenderOptions } from "./renderTypes.js";
+import type { Pane, RenderOptions, Visible } from "./renderTypes.js";
 export type { RenderOptions, Viewport } from "./renderTypes.js";
 
 export function render(
@@ -62,8 +62,10 @@ export function render(
   const W = vp ? vp.w : grid.totalW;
   const H = vp ? vp.h : grid.totalH;
   const total = zoom * dpr;
-  canvas.width = Math.ceil(W * total);
-  canvas.height = Math.ceil(H * total);
+  const pixelW = Math.ceil(W * total);
+  const pixelH = Math.ceil(H * total);
+  if (canvas.width !== pixelW) canvas.width = pixelW;
+  if (canvas.height !== pixelH) canvas.height = pixelH;
   if ("style" in canvas && (canvas as HTMLCanvasElement).style) {
     (canvas as HTMLCanvasElement).style.width = `${W * zoom}px`;
     (canvas as HTMLCanvasElement).style.height = `${H * zoom}px`;
@@ -86,7 +88,7 @@ export function render(
   const { cfIconReserve, cfIconDraw, cfIconSuppress } = computeCfIconState(sheet, cfLocks);
   for (const k of cfIconSuppress) cfTextSuppress.add(k);
 
-  const { tableDxfs, filterArrows } = computeTableState(sheet);
+  const { tableDxfs, filterArrows } = computeTableState(sheet, visibleEnvelope(panes));
   for (const [k, dxf] of tableDxfs) {
     if (!cfDxfs.has(k)) cfDxfs.set(k, dxf);
   }
@@ -119,4 +121,23 @@ export function render(
 
   drawFreezeIndicators(ctx, sheet, grid, W, H);
   if (renderHeaders) drawHeaders(ctx, sheet, grid, sel, vp ?? null, W, H, panes);
+}
+
+function visibleEnvelope(panes: Pane[]): Visible {
+  let firstRow = Infinity;
+  let lastRow = 0;
+  let firstCol = Infinity;
+  let lastCol = 0;
+  for (const pane of panes) {
+    firstRow = Math.min(firstRow, pane.vis.firstRow);
+    lastRow = Math.max(lastRow, pane.vis.lastRow);
+    firstCol = Math.min(firstCol, pane.vis.firstCol);
+    lastCol = Math.max(lastCol, pane.vis.lastCol);
+  }
+  return {
+    firstRow: Number.isFinite(firstRow) ? firstRow : 1,
+    lastRow: Math.max(lastRow, 1),
+    firstCol: Number.isFinite(firstCol) ? firstCol : 1,
+    lastCol: Math.max(lastCol, 1),
+  };
 }

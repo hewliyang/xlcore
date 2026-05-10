@@ -55,8 +55,8 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | Borders around merged ranges | ✅      | ✅     | (bug fix: perimeter cells of merge now paint their border segments). |
 | Pattern fills (solid)        | ✅      | ✅     |                                                                      |
 | Pattern fills (gray, hatch)  | ✅      | ✅     | All 18 OOXML `PatternValues` types extracted via a real `match` (was a Debug-string scan). Renderer paints each via an 8x8 binary tile (`PATTERN_TILES_8X8` in `render.ts`) drawn into an offscreen canvas + fed to `ctx.createPattern(_, "repeat")`; bg paints first, fg paints the marks on top. Pattern cache keyed by `(type|fg|bg)`. Fixture: `tests/fixtures/fills/patterns.xlsx` (built via Python zip-patch — SpreadJS doesn't surface hatches on its public style API). |
-| Gradient fills (linear)      | ✅      | ✅     | left→right only.                                                     |
-| Gradient fills (radial)      | ❌      | ❌     |                                                                      |
+| Gradient fills (linear)      | ✅      | ✅     | Multi-stop linear with arbitrary `degree` (0° = L→R, 90° = T→B, 180° = R→L, 270° = B→T) and intermediate angles via the rotated-axis projection of the cell rect onto `(cosθ, sinθ)`. Stop positions and colors round-trip through the new `GradientStop { position, color }` schema (was `Vec<Color>` discarding positions). Fixture: `tests/fixtures/fills/gradients.xlsx`. |
+| Gradient fills (radial/path) | ✅      | ✅     | OOXML `<gradientFill type="path">` with `left`/`right`/`top`/`bottom` inner-convergence rect (each a fraction of cell size). Renderer fills the cell with the innermost stop, then overlays a `createRadialGradient` from the inner rect's bounding circle out to the farthest cell corner. Schema: `gradientType` + `gradientLeft|Right|Top|Bottom`. Fixture: `tests/fixtures/fills/gradients.xlsx`. Hsx divergence: SpreadJS paints path gradients as a much smaller / washed-out radial blob; we match Excel desktop's stronger inner-rect-out-to-corners behavior. |
 
 ### Layout
 
@@ -685,6 +685,21 @@ surrounding workbook noise.
       single thin lines so this fixture is built via Python zip-patch
       (hsx's public JS API only exposes a boolean `underline()`
       toggle anyway).
+- [x] Gradient fills (linear multi-stop + path/radial):
+      `tests/fixtures/fills/gradients.xlsx` lays out 6 cells covering
+      linear `degree=0/45/90/270`, a 3-stop linear, and a path gradient
+      with a centered inner-convergence rect. Schema gains `GradientStop
+      { position, color }` (replaces `Vec<Color>` that silently dropped
+      stop positions) plus `gradientType` / `gradientDegree` /
+      `gradientLeft|Right|Top|Bottom`. Renderer in `cellPaint.ts` paints
+      multi-stop linear via rotated-axis projection of the cell rect onto
+      `(cosθ, sinθ)` (so position 0 hits the leading corner along the
+      gradient axis and position 1 hits the trailing corner), and path
+      gradients via `createRadialGradient` from the inner rect's bounding
+      circle out to the farthest cell corner with the innermost stop
+      pre-filled across the full cell. SpreadJS doesn't expose gradient
+      fills on its public style API so the fixture is built via Python
+      zip-patch (`_patch_gradients.py`).
 - [ ] Land the next batch of per-feature fixtures (the four marked above
       as "would have caught X bug").
 - [ ] CI guard: `cargo test … export_bindings && git diff --exit-code

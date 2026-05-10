@@ -69,6 +69,122 @@ function buildPattern(
   return pat;
 }
 
+// Build the linear/path gradient for a `<gradientFill>` element. Spec:
+// ECMA-376 §18.8.24. Two flavors:
+//   linear: gradient runs along an axis rotated `degree` degrees clockwise
+//           from the cell's left→right vector. Stops at fractional positions
+//           along that axis (clamped to the cell). 0° = L→R, 90° = T→B.
+//   path:   stops radiate from a rectangular `inner` region (defined by
+//           `left`/`right`/`top`/`bottom` insets, each a fraction of the
+//           cell's width/height) outward to the cell rect. Position 0 paints
+//           inside the inner rect; position 1 paints at the cell edge.
+function collectStops(fill: Fill): Array<{ pos: number; css: string }> {
+  const stops = (fill.gradientStops ?? []).map((s) => ({
+    pos: Math.max(0, Math.min(1, s.position ?? 0)),
+    css: colorToCss(s.color, "#ffffff"),
+  }));
+  if (stops.length >= 2) return stops;
+  // Pre-schema gradients only carried fg/bg; preserve that fallback.
+  const c1 = fill.fgColor ? colorToCss(fill.fgColor, "#ffffff") : null;
+  const c2 = fill.bgColor ? colorToCss(fill.bgColor, "#ffffff") : c1;
+  if (!c1 || !c2) return [];
+  if (stops.length === 1) {
+    const s = stops[0]!;
+    return s.pos < 0.5 ? [s, { pos: 1, css: c2 }] : [{ pos: 0, css: c1 }, s];
+  }
+  return [
+    { pos: 0, css: c1 },
+    { pos: 1, css: c2 },
+  ];
+}
+
+function paintGradientFill(
+  ctx: CanvasRenderingContext2D,
+  rect: CellRect,
+  fill: Fill,
+): void {
+  const stops = collectStops(fill);
+  if (stops.length === 0) return;
+  const type = fill.gradientType ?? "linear";
+  if (type === "path") {
+    // Inner convergence rect (clamped + ordered).
+    const li = Math.max(0, Math.min(1, fill.gradientLeft ?? 0));
+    const ri = Math.max(0, Math.min(1, fill.gradientRight ?? 0));
+    const ti = Math.max(0, Math.min(1, fill.gradientTop ?? 0));
+    const bi = Math.max(0, Math.min(1, fill.gradientBottom ?? 0));
+    const ix = rect.x + li * rect.w;
+    const iy = rect.y + ti * rect.h;
+    const iw = Math.max(0, rect.w * Math.max(0, 1 - li - ri));
+    const ih = Math.max(0, rect.h * Math.max(0, 1 - ti - bi));
+    // Excel paints the innermost color uniformly across the inner rect,
+    // then radiates outward. Canvas only gives us an elliptical radial
+    // gradient so we approximate: fill the cell with the innermost stop
+    // first, then overlay the radial transition from the inner rect's
+    // bounding circle out to a circle that covers the farthest cell
+    // corner. This matches Excel for non-degenerate insets and degrades
+    // gracefully when one or more sides are 0 (collapses to the matching
+    // cell corner / edge midpoint).
+    ctx.fillStyle = stops[0]!.css;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    const cx = ix + iw / 2;
+    const cy = iy + ih / 2;
+    // Inner radius: half of the inner rect's diagonal (so the inner
+    // color reaches every corner of the inner rect).
+    const r0 = Math.hypot(iw, ih) / 2;
+    // Outer radius: distance from inner-rect center to the farthest
+    // cell corner.
+    const corners = [
+      [rect.x, rect.y],
+      [rect.x + rect.w, rect.y],
+      [rect.x, rect.y + rect.h],
+      [rect.x + rect.w, rect.y + rect.h],
+    ] as const;
+    const r1 = Math.max(...corners.map(([x, y]) => Math.hypot(x - cx, y - cy)));
+    if (r1 <= r0 + 0.5) return; // degenerate; inner fill is enough
+    const grad = ctx.createRadialGradient(cx, cy, r0, cx, cy, r1);
+    for (const s of stops) grad.addColorStop(s.pos, s.css);
+    ctx.fillStyle = grad;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    return;
+  }
+  // Linear. `degree` rotates the L→R axis clockwise (in screen space).
+  // We compute the projection of the cell rect onto the rotated axis,
+  // then place start/end at the rect's projected extents so that
+  // position 0 = first "hit" pixel and position 1 = last. This matches
+  // CSS `linear-gradient(<degree>+90deg, ...)` style intuition while
+  // staying in canvas's two-point gradient API.
+  const deg = fill.gradientDegree ?? 0;
+  const theta = (deg * Math.PI) / 180;
+  const dx = Math.cos(theta);
+  const dy = Math.sin(theta);
+  // Project the four corners onto the unit axis (relative to rect origin).
+  const projs = [
+    0,
+    rect.w * dx,
+    rect.h * dy,
+    rect.w * dx + rect.h * dy,
+  ];
+  const pmin = Math.min(...projs);
+  const pmax = Math.max(...projs);
+  // Starting point is the corner whose projection equals pmin; end is the
+  // pmax corner. Computed by stepping from rect origin along (dx, dy).
+  const x0 = rect.x + pmin * dx;
+  const y0 = rect.y + pmin * dy;
+  const x1 = rect.x + pmax * dx;
+  const y1 = rect.y + pmax * dy;
+  const grad =
+    Math.hypot(x1 - x0, y1 - y0) < 0.5
+      ? null
+      : ctx.createLinearGradient(x0, y0, x1, y1);
+  if (grad) {
+    for (const s of stops) grad.addColorStop(s.pos, s.css);
+    ctx.fillStyle = grad;
+  } else {
+    ctx.fillStyle = stops[0]!.css;
+  }
+  ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+}
+
 export function paintFill(ctx: CanvasRenderingContext2D, rect: CellRect, fill: Fill): void {
   const pt = fill.patternType;
   if (!pt || pt === "none") return;
@@ -78,15 +194,7 @@ export function paintFill(ctx: CanvasRenderingContext2D, rect: CellRect, fill: F
     return;
   }
   if (pt === "gradient") {
-    const stops = fill.gradientStops ?? [];
-    const c1 = stops[0] ?? fill.fgColor;
-    const c2 = stops[stops.length - 1] ?? fill.bgColor ?? c1;
-    if (!c1 || !c2) return;
-    const grad = ctx.createLinearGradient(rect.x, rect.y, rect.x + rect.w, rect.y);
-    grad.addColorStop(0, colorToCss(c1, "#ffffff"));
-    grad.addColorStop(1, colorToCss(c2, "#ffffff"));
-    ctx.fillStyle = grad;
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    paintGradientFill(ctx, rect, fill);
     return;
   }
   if (PATTERN_TILES_8X8[pt]) {

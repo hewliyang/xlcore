@@ -1053,10 +1053,52 @@ pub struct Fill {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bg_color: Option<Color>,
-    /// Gradient stop colors in source order. v0 renderer uses the first and
-    /// last stop for a linear left→right fill.
+    /// Gradient stops in source order. Each stop carries its OOXML
+    /// `position` (0..1 along the gradient axis for `linear`, or 0..1
+    /// from the inner convergence rect outward for `path`/radial).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub gradient_stops: Vec<Color>,
+    pub gradient_stops: Vec<GradientStop>,
+    /// `"linear"` (default) or `"path"` (radial-ish, with a rectangular
+    /// inner-convergence region). Only meaningful when
+    /// `pattern_type == "gradient"`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient_type: Option<String>,
+    /// Linear gradient angle in degrees (OOXML `degree`). 0 = left→right,
+    /// 90 = top→bottom, 180 = right→left, 270 = bottom→top. Ignored when
+    /// `gradient_type == "path"`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient_degree: Option<f64>,
+    /// Path-gradient inner-convergence rectangle, expressed as fractions
+    /// of cell width/height inset from each side (0..1). Defaults to 0
+    /// when missing (rect collapses to a point at the relevant corner).
+    /// Ignored unless `gradient_type == "path"`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient_left: Option<f64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient_right: Option<f64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient_top: Option<f64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient_bottom: Option<f64>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct GradientStop {
+    /// Position along the gradient axis. 0..1.
+    pub position: f64,
+    pub color: Color,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]

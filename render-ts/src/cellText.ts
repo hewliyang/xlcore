@@ -46,6 +46,18 @@ export interface ResolvedText {
   formatColor?: string;
 }
 
+const NUMFMT_CODE_CACHE = new WeakMap<WorkbookLayout, Map<number, string>>();
+
+function numFmtCode(layout: WorkbookLayout, id: number): string | undefined {
+  let cache = NUMFMT_CODE_CACHE.get(layout);
+  if (!cache) {
+    cache = new Map<number, string>();
+    for (const nf of layout.styles.numFmts) cache.set(nf.id, nf.formatCode);
+    NUMFMT_CODE_CACHE.set(layout, cache);
+  }
+  return cache.get(id) ?? BUILTIN_NUMFMT[id];
+}
+
 export function resolveCellText(
   cell: Cell,
   layout: WorkbookLayout,
@@ -73,9 +85,7 @@ export function resolveCellText(
       const numFmtId = xf?.numFmtId;
       let code: string | undefined;
       if (numFmtId !== undefined) {
-        code =
-          layout.styles.numFmts.find((nf) => nf.id === numFmtId)?.formatCode ??
-          BUILTIN_NUMFMT[numFmtId];
+        code = numFmtCode(layout, numFmtId);
       }
       const r = formatValue(n, code);
       return { text: r.text, defaultAlign: "right", formatColor: r.color };
