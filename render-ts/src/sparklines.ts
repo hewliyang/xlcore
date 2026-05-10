@@ -10,7 +10,7 @@
 // scale.
 
 import type { Sheet, SparklineGroup, Sparkline } from "./types.js";
-import { HEADER_H, HEADER_W } from "./grid.js";
+
 import type { Grid } from "./grid.js";
 import { cellRect } from "./geometry.js";
 import type { CellRect } from "./geometry.js";
@@ -49,7 +49,7 @@ export function drawSparklines(
       const rect = cellRect(g, sp.r, sp.c);
       if (rect.w < MIN_CELL_W || rect.h < MIN_CELL_H) continue;
       // Header strips never host sparklines, but defend anyway.
-      if (rect.y < HEADER_H || rect.x < HEADER_W) continue;
+      if (rect.y < g.originY || rect.x < g.originX) continue;
 
       const inner: CellRect = {
         x: rect.x + PAD,

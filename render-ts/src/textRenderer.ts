@@ -2,7 +2,7 @@ import type { Cell, Dxf, Font, Sheet, TextRun, WorkbookLayout } from "./types.js
 import { resolveCellText, resolveCellXf } from "./cellText.js";
 import { colorToCss } from "./color.js";
 import { iterCellsInRange } from "./columnar.js";
-import { HEADER_H, HEADER_W } from "./grid.js";
+
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, rectFor } from "./geometry.js";
 import { frozenDims } from "./panes.js";
@@ -736,12 +736,12 @@ export function drawFreezeIndicators(
   ctx.lineWidth = 1;
   ctx.beginPath();
   if (sheet.freeze.leftCol > 1) {
-    const x = Math.round(HEADER_W + pcw) + 0.5;
+    const x = Math.round(g.originX + pcw) + 0.5;
     ctx.moveTo(x, 0);
     ctx.lineTo(x, canvasH);
   }
   if (sheet.freeze.topRow > 1) {
-    const y = Math.round(HEADER_H + prh) + 0.5;
+    const y = Math.round(g.originY + prh) + 0.5;
     ctx.moveTo(0, y);
     ctx.lineTo(canvasW, y);
   }

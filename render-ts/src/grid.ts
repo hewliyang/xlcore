@@ -3,6 +3,12 @@ import { iterRows } from "./columnar.js";
 
 export const HEADER_H = 22;
 export const HEADER_W = 44;
+// Width per outline level when an outline gutter strip is shown next to
+// the row/col header strips. Excel's gutter is ~12px wide per level; we
+// match that. Includes 4px outer padding on each side of the bracket
+// column so the +/- button glyph isn't flush against the edges.
+export const OUTLINE_GUTTER_STEP = 12;
+export const OUTLINE_GUTTER_PAD = 4;
 
 export interface Grid {
   colX: number[];
@@ -13,6 +19,20 @@ export interface Grid {
   totalH: number;
   maxCol: number;
   maxRow: number;
+  /// Width of the row-grouping gutter strip painted to the left of the
+  /// row-number column. 0 when the sheet has no row groupings.
+  rowGutterW: number;
+  /// Height of the column-grouping gutter strip painted above the
+  /// column-letter row. 0 when the sheet has no column groupings.
+  colGutterH: number;
+  /// Left edge of column A on canvas = HEADER_W + rowGutterW.
+  originX: number;
+  /// Top edge of row 1 on canvas = HEADER_H + colGutterH.
+  originY: number;
+  /// Deepest row-outline level seen on the sheet (0 when none).
+  rowOutlineDepth: number;
+  /// Deepest col-outline level seen on the sheet (0 when none).
+  colOutlineDepth: number;
 }
 
 const SHEET_MAX_COL = 16384;
@@ -57,40 +77,74 @@ export function buildGrid(
   if (rowOverrides) for (const [r, h] of rowOverrides) rowSpecH.set(r, Math.max(0, h));
   const heightOf = (r: number) => rowSpecH.get(r) ?? sheet.defaultRowHeightPx;
 
+  // Outline gutter widths. We compute these up front from sheet meta
+  // and then shift the grid origin so every downstream coordinate
+  // (panes, geometry, hit-testing) lands on the right pixel without
+  // each call site having to know the gutter exists.
+  let rowOutlineDepth = 0;
+  if (sheet.decodedRowMeta && sheet.decodedRowMeta.outlineLevel.length > 0) {
+    for (let i = 0; i < sheet.decodedRowMeta.outlineLevel.length; i++) {
+      const v = sheet.decodedRowMeta.outlineLevel[i] ?? 0;
+      if (v > rowOutlineDepth) rowOutlineDepth = v;
+    }
+  }
+  let colOutlineDepth = 0;
+  for (const c of sheet.cols) {
+    const v = c.outlineLevel ?? 0;
+    if (v > colOutlineDepth) colOutlineDepth = v;
+  }
+  // Either axis having groups also reserves the perpendicular gutter so
+  // the level-numeral buttons at the corner have somewhere to live.
+  // Excel renders the corner box (with 1/2/.../N buttons) only when at
+  // least one axis is grouped; we follow suit by sizing each gutter
+  // strip from its own axis depth and showing both numerals in the
+  // shared corner when either is set.
+  // We reserve `depth + 1` tracks: one per bracket level plus a final
+  // track at the inner edge for the level-(N+1) corner numeral (which
+  // Excel uses for "expand all"). Outline depth 1 → 2 tracks → 28px.
+  const rowGutterW = rowOutlineDepth > 0
+    ? OUTLINE_GUTTER_PAD * 2 + (rowOutlineDepth + 1) * OUTLINE_GUTTER_STEP
+    : 0;
+  const colGutterH = colOutlineDepth > 0
+    ? OUTLINE_GUTTER_PAD * 2 + (colOutlineDepth + 1) * OUTLINE_GUTTER_STEP
+    : 0;
+  const originX = HEADER_W + rowGutterW;
+  const originY = HEADER_H + colGutterH;
+
   const colW: number[] = [0];
-  const colX: number[] = [0, HEADER_W];
+  const colX: number[] = [0, originX];
   for (let c = 1; c <= maxCol; c++) {
     const w = widthOf(c);
     colW[c] = w;
-    colX[c + 1] = (colX[c] ?? HEADER_W) + w;
+    colX[c + 1] = (colX[c] ?? originX) + w;
   }
   while (
     requiredFarX !== undefined &&
     maxCol < SHEET_MAX_COL &&
-    (colX[maxCol + 1] ?? HEADER_W) < requiredFarX
+    (colX[maxCol + 1] ?? originX) < requiredFarX
   ) {
     maxCol++;
     const w = widthOf(maxCol);
     colW[maxCol] = w;
-    colX[maxCol + 1] = (colX[maxCol] ?? HEADER_W) + w;
+    colX[maxCol + 1] = (colX[maxCol] ?? originX) + w;
   }
 
   const rowH: number[] = [0];
-  const rowY: number[] = [0, HEADER_H];
+  const rowY: number[] = [0, originY];
   for (let r = 1; r <= maxRow; r++) {
     const h = heightOf(r);
     rowH[r] = h;
-    rowY[r + 1] = (rowY[r] ?? HEADER_H) + h;
+    rowY[r + 1] = (rowY[r] ?? originY) + h;
   }
   while (
     requiredFarY !== undefined &&
     maxRow < SHEET_MAX_ROW &&
-    (rowY[maxRow + 1] ?? HEADER_H) < requiredFarY
+    (rowY[maxRow + 1] ?? originY) < requiredFarY
   ) {
     maxRow++;
     const h = heightOf(maxRow);
     rowH[maxRow] = h;
-    rowY[maxRow + 1] = (rowY[maxRow] ?? HEADER_H) + h;
+    rowY[maxRow + 1] = (rowY[maxRow] ?? originY) + h;
   }
 
   return {
@@ -98,10 +152,16 @@ export function buildGrid(
     colW,
     rowY,
     rowH,
-    totalW: colX[maxCol + 1] ?? HEADER_W,
-    totalH: rowY[maxRow + 1] ?? HEADER_H,
+    totalW: colX[maxCol + 1] ?? originX,
+    totalH: rowY[maxRow + 1] ?? originY,
     maxCol,
     maxRow,
+    rowGutterW,
+    colGutterH,
+    originX,
+    originY,
+    rowOutlineDepth,
+    colOutlineDepth,
   };
 }
 
@@ -133,19 +193,19 @@ export function anchorToRect(
 }
 
 function colEdge(g: Grid, c: number): number {
-  if (c >= 1 && c < g.colX.length) return g.colX[c] ?? HEADER_W;
+  if (c >= 1 && c < g.colX.length) return g.colX[c] ?? g.originX;
   const lastIdx = g.colX.length - 1;
-  const last = g.colX[lastIdx] ?? HEADER_W;
-  const prev = g.colX[lastIdx - 1] ?? HEADER_W;
+  const last = g.colX[lastIdx] ?? g.originX;
+  const prev = g.colX[lastIdx - 1] ?? g.originX;
   const w = Math.max(40, last - prev);
   return last + (c - lastIdx) * w;
 }
 
 function rowEdge(g: Grid, r: number): number {
-  if (r >= 1 && r < g.rowY.length) return g.rowY[r] ?? HEADER_H;
+  if (r >= 1 && r < g.rowY.length) return g.rowY[r] ?? g.originY;
   const lastIdx = g.rowY.length - 1;
-  const last = g.rowY[lastIdx] ?? HEADER_H;
-  const prev = g.rowY[lastIdx - 1] ?? HEADER_H;
+  const last = g.rowY[lastIdx] ?? g.originY;
+  const prev = g.rowY[lastIdx - 1] ?? g.originY;
   const h = Math.max(20, last - prev);
   return last + (r - lastIdx) * h;
 }

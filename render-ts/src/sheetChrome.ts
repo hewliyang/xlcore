@@ -226,10 +226,21 @@ export function drawHeaders(
   const colScrollVis = (topPinPane ?? scrollPane).vis;
   const rowScrollVis = (leftPinPane ?? scrollPane).vis;
 
+  // Header strips run from the gutter band edge to the canvas edge;
+  // the gutter strips (when present) get their own background.
+  const headerLeft = g.rowGutterW; // left edge of row-number column
+  const headerTop = g.colGutterH; // top edge of column-letter row
+  const originX = g.originX; // = HEADER_W + rowGutterW; right edge of row headers
+  const originY = g.originY; // = HEADER_H + colGutterH; bottom edge of col headers
+
   ctx.save();
   ctx.fillStyle = HEADER_BG;
-  ctx.fillRect(0, 0, canvasW, HEADER_H);
-  ctx.fillRect(0, 0, HEADER_W, canvasH);
+  // Column-header band (everything in the top originY px) + row-header
+  // band (everything in the left originX px). Painting both as one
+  // L-shape would overlap the corner; doing it in two rects is cheaper
+  // than masking.
+  ctx.fillRect(0, 0, canvasW, originY);
+  ctx.fillRect(0, 0, originX, canvasH);
 
   // Faint inter-tab rules. Pinned segments don't translate; scrolling
   // segments pan with the BR viewport.
@@ -239,22 +250,22 @@ export function drawHeaders(
   // --- column-header rules ---
   ctx.save();
   ctx.beginPath();
-  ctx.rect(HEADER_W, 0, canvasW - HEADER_W, HEADER_H);
+  ctx.rect(originX, headerTop, canvasW - originX, HEADER_H);
   ctx.clip();
   ctx.beginPath();
   // Pinned col rules.
   for (let c = 2; c < splitX; c++) {
     const x = Math.round(g.colX[c] ?? 0) + 0.5;
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, HEADER_H);
+    ctx.moveTo(x, headerTop);
+    ctx.lineTo(x, originY);
   }
   // Scrolling col rules.
   const firstScrollCol = Math.max(splitX, colScrollVis.firstCol);
   for (let c = Math.max(2, firstScrollCol); c <= colScrollVis.lastCol + 1; c++) {
     const x = Math.round((g.colX[c] ?? 0) - sx) + 0.5;
-    if (x < HEADER_W + pcw) continue;
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, HEADER_H);
+    if (x < originX + pcw) continue;
+    ctx.moveTo(x, headerTop);
+    ctx.lineTo(x, originY);
   }
   ctx.stroke();
   ctx.restore();
@@ -262,20 +273,20 @@ export function drawHeaders(
   // --- row-header rules ---
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, HEADER_H, HEADER_W, canvasH - HEADER_H);
+  ctx.rect(headerLeft, originY, HEADER_W, canvasH - originY);
   ctx.clip();
   ctx.beginPath();
   for (let r = 2; r < splitY; r++) {
     const y = Math.round(g.rowY[r] ?? 0) + 0.5;
-    ctx.moveTo(0, y);
-    ctx.lineTo(HEADER_W, y);
+    ctx.moveTo(headerLeft, y);
+    ctx.lineTo(originX, y);
   }
   const firstScrollRow = Math.max(splitY, rowScrollVis.firstRow);
   for (let r = Math.max(2, firstScrollRow); r <= rowScrollVis.lastRow + 1; r++) {
     const y = Math.round((g.rowY[r] ?? 0) - sy) + 0.5;
-    if (y < HEADER_H + prh) continue;
-    ctx.moveTo(0, y);
-    ctx.lineTo(HEADER_W, y);
+    if (y < originY + prh) continue;
+    ctx.moveTo(headerLeft, y);
+    ctx.lineTo(originX, y);
   }
   ctx.stroke();
   ctx.restore();
@@ -285,25 +296,24 @@ export function drawHeaders(
     ctx.fillStyle = HEADER_HIGHLIGHT;
     // Column-header tint: split into pinned segment (cols < splitX) and
     // scrolling segment (cols >= splitX) so the tint stays glued to the
-    // correct cells regardless of scroll.
+    // correct cells regardless of scroll. Tint covers only the label
+    // band [headerTop..originY], not the gutter strip above it.
     const cAbsX1 = g.colX[sel.c1] ?? 0;
     const cAbsX2 = g.colX[sel.c2 + 1] ?? cAbsX1;
     if (cAbsX2 > cAbsX1) {
-      // Pinned slice [c1..min(c2, splitX-1)] -> canvas x = colX[c]
       if (sel.c1 < splitX) {
         const x1 = cAbsX1;
         const x2 = Math.min(cAbsX2, g.colX[splitX] ?? cAbsX2);
-        const cx1 = Math.max(HEADER_W, x1);
-        const cx2 = Math.min(HEADER_W + pcw, x2);
-        if (cx2 > cx1) ctx.fillRect(cx1, 0, cx2 - cx1, HEADER_H);
+        const cx1 = Math.max(originX, x1);
+        const cx2 = Math.min(originX + pcw, x2);
+        if (cx2 > cx1) ctx.fillRect(cx1, headerTop, cx2 - cx1, HEADER_H);
       }
-      // Scrolling slice [max(c1, splitX)..c2] -> canvas x = colX[c] - sx
       if (sel.c2 >= splitX) {
         const x1 = Math.max(cAbsX1, g.colX[splitX] ?? cAbsX1) - sx;
         const x2 = cAbsX2 - sx;
-        const cx1 = Math.max(HEADER_W + pcw, x1);
+        const cx1 = Math.max(originX + pcw, x1);
         const cx2 = Math.min(canvasW, x2);
-        if (cx2 > cx1) ctx.fillRect(cx1, 0, cx2 - cx1, HEADER_H);
+        if (cx2 > cx1) ctx.fillRect(cx1, headerTop, cx2 - cx1, HEADER_H);
       }
     }
 
@@ -313,29 +323,48 @@ export function drawHeaders(
       if (sel.r1 < splitY) {
         const y1 = rAbsY1;
         const y2 = Math.min(rAbsY2, g.rowY[splitY] ?? rAbsY2);
-        const cy1 = Math.max(HEADER_H, y1);
-        const cy2 = Math.min(HEADER_H + prh, y2);
-        if (cy2 > cy1) ctx.fillRect(0, cy1, HEADER_W, cy2 - cy1);
+        const cy1 = Math.max(originY, y1);
+        const cy2 = Math.min(originY + prh, y2);
+        if (cy2 > cy1) ctx.fillRect(headerLeft, cy1, HEADER_W, cy2 - cy1);
       }
       if (sel.r2 >= splitY) {
         const y1 = Math.max(rAbsY1, g.rowY[splitY] ?? rAbsY1) - sy;
         const y2 = rAbsY2 - sy;
-        const cy1 = Math.max(HEADER_H + prh, y1);
+        const cy1 = Math.max(originY + prh, y1);
         const cy2 = Math.min(canvasH, y2);
-        if (cy2 > cy1) ctx.fillRect(0, cy1, HEADER_W, cy2 - cy1);
+        if (cy2 > cy1) ctx.fillRect(headerLeft, cy1, HEADER_W, cy2 - cy1);
       }
     }
   }
 
-  // Gutter line.
+  // Gutter line. Draws the bottom edge of the column-header strip and
+  // the right edge of the row-header strip, both in the darker GUTTER_LINE.
   ctx.strokeStyle = GUTTER_LINE;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(0, HEADER_H);
-  ctx.lineTo(canvasW, HEADER_H);
-  ctx.moveTo(HEADER_W, 0);
-  ctx.lineTo(HEADER_W, canvasH);
+  ctx.moveTo(0, originY);
+  ctx.lineTo(canvasW, originY);
+  ctx.moveTo(originX, 0);
+  ctx.lineTo(originX, canvasH);
   ctx.stroke();
+  // Faint inner separators between gutter strip and header label strip
+  // when a gutter is present.
+  if (g.rowGutterW > 0 || g.colGutterH > 0) {
+    ctx.strokeStyle = HEADER_BORDER;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (g.rowGutterW > 0) {
+      const x = headerLeft + 0.5;
+      ctx.moveTo(x, originY);
+      ctx.lineTo(x, canvasH);
+    }
+    if (g.colGutterH > 0) {
+      const y = headerTop + 0.5;
+      ctx.moveTo(originX, y);
+      ctx.lineTo(canvasW, y);
+    }
+    ctx.stroke();
+  }
 
   ctx.fillStyle = HEADER_FG;
   ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
@@ -343,285 +372,112 @@ export function drawHeaders(
   ctx.textAlign = "center";
 
   // --- column labels (pinned + scrolling) ---
+  const colLabelMidY = headerTop + HEADER_H / 2;
   if (splitX > 1) {
     ctx.save();
     ctx.beginPath();
-    ctx.rect(HEADER_W, 0, pcw, HEADER_H);
+    ctx.rect(originX, headerTop, pcw, HEADER_H);
     ctx.clip();
     for (let c = 1; c < splitX; c++) {
-      const x = (g.colX[c] ?? 0) + (g.colW[c] ?? 0) / 2;
-      ctx.fillText(colLabel(c), x, HEADER_H / 2);
+      const w = g.colW[c] ?? 0;
+      if (w <= 0) continue;
+      const x = (g.colX[c] ?? 0) + w / 2;
+      ctx.fillText(colLabel(c), x, colLabelMidY);
     }
     ctx.restore();
   }
   ctx.save();
   ctx.beginPath();
-  ctx.rect(HEADER_W + pcw, 0, canvasW - HEADER_W - pcw, HEADER_H);
+  ctx.rect(originX + pcw, headerTop, canvasW - originX - pcw, HEADER_H);
   ctx.clip();
   for (let c = Math.max(splitX, colScrollVis.firstCol); c <= colScrollVis.lastCol; c++) {
-    const x = (g.colX[c] ?? 0) + (g.colW[c] ?? 0) / 2 - sx;
-    ctx.fillText(colLabel(c), x, HEADER_H / 2);
+    const w = g.colW[c] ?? 0;
+    if (w <= 0) continue;
+    const x = (g.colX[c] ?? 0) + w / 2 - sx;
+    ctx.fillText(colLabel(c), x, colLabelMidY);
   }
   ctx.restore();
 
   // --- row labels ---
+  const rowLabelMidX = headerLeft + HEADER_W / 2;
   if (splitY > 1) {
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, HEADER_H, HEADER_W, prh);
+    ctx.rect(headerLeft, originY, HEADER_W, prh);
     ctx.clip();
     for (let r = 1; r < splitY; r++) {
-      const y = (g.rowY[r] ?? 0) + (g.rowH[r] ?? 0) / 2;
-      ctx.fillText(String(r), HEADER_W / 2, y);
+      const h = g.rowH[r] ?? 0;
+      if (h <= 0) continue;
+      const y = (g.rowY[r] ?? 0) + h / 2;
+      ctx.fillText(String(r), rowLabelMidX, y);
     }
     ctx.restore();
   }
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, HEADER_H + prh, HEADER_W, canvasH - HEADER_H - prh);
+  ctx.rect(headerLeft, originY + prh, HEADER_W, canvasH - originY - prh);
   ctx.clip();
   for (let r = Math.max(splitY, rowScrollVis.firstRow); r <= rowScrollVis.lastRow; r++) {
-    const y = (g.rowY[r] ?? 0) + (g.rowH[r] ?? 0) / 2 - sy;
-    ctx.fillText(String(r), HEADER_W / 2, y);
+    const h = g.rowH[r] ?? 0;
+    if (h <= 0) continue;
+    const y = (g.rowY[r] ?? 0) + h / 2 - sy;
+    ctx.fillText(String(r), rowLabelMidX, y);
   }
   ctx.restore();
 
-  // --- outline brackets (row + column groupings) ---
-  // Painted last (over labels) so the bracket strokes are not clipped
-  // by the label clip-rects. Indent per outline level is tight enough
-  // (~7px) to fit inside HEADER_W=44 / HEADER_H=22 without restructuring
-  // the grid coordinate system. See PARITY.md “Outline / group levels”
-  // row for the planned follow-up that adds a separate gutter strip.
-  drawRowOutlineBrackets(ctx, sheet, g, sy, splitY, prh, canvasH);
-  drawColOutlineBrackets(ctx, sheet, g, sx, splitX, pcw, canvasW);
+  // --- collapsed-group boundary ticks ---
+  // When a contiguous run of rows (or columns) is hidden, Excel paints a
+  // short green bar on the header of the *next visible* row/column to
+  // signal "click here to expand the hidden range". We approximate that
+  // with a 2px stroke on the leading edge (top edge for rows, left edge
+  // for columns) of the first visible row/col after any hidden run.
+  drawCollapsedRowTicks(ctx, g, sy, splitY, prh, canvasH, rowScrollVis);
+  drawCollapsedColTicks(ctx, g, sx, splitX, pcw, canvasW, colScrollVis);
+
+  // --- outline gutter strips ---
+  // Excel paints group brackets in dedicated strips outside the row/col
+  // header bands: a horizontal strip above the col letters for column
+  // groupings, and a vertical strip left of the row numbers for row
+  // groupings. The shared top-left corner shows level-numeral buttons
+  // (1, 2, 3, ...) so you can collapse to a given depth.
+  if (g.rowGutterW > 0 || g.colGutterH > 0) {
+    drawOutlineCornerButtons(ctx, g);
+  }
+  if (g.rowGutterW > 0) {
+    drawRowOutlineGutter(ctx, sheet, g, sy, splitY, prh, canvasH);
+  }
+  if (g.colGutterH > 0) {
+    drawColOutlineGutter(ctx, sheet, g, sx, splitX, pcw, canvasW);
+  }
+  // Buttons paint last so they sit on top of any bracket strokes that
+  // would otherwise occlude them. Single pass over both axes; collapsed
+  // runs (zero bracket extent) still get their + glyph here.
+  if (g.rowGutterW > 0 || g.colGutterH > 0) {
+    drawOutlineButtons(ctx, sheet, g, {
+      sx,
+      sy,
+      splitX,
+      splitY,
+      pcw,
+      prh,
+      canvasW,
+      canvasH,
+    });
+  }
 
   ctx.textAlign = "start";
   ctx.textBaseline = "alphabetic";
   ctx.restore();
 }
 
-// Pixels of indent per outline level. Excel uses ~12px in its own
-// outline gutter strip; we squeeze into HEADER_W=44 next to the row
-// label, so we use a smaller step. With max OOXML depth 7 this still
-// leaves ~26px for the label text (which usually shows at most 4
-// digits anyway).
-const OUTLINE_STEP_PX = 7;
-// Inset from the start of HEADER so the bracket doesn't graze the
-// canvas edge. Brackets stack inward from there.
-const OUTLINE_INSET_PX = 4;
-const OUTLINE_STROKE = "#9aa0a6"; // mid-gray, matches Excel’s gutter color
-
-/// Paint vertical outline brackets in the row header strip for every
-/// contiguous run of rows whose `outlineLevel >= L` (for L = 1..maxLvl).
-/// Brackets stack from canvas-x = OUTLINE_INSET_PX outward, one column
-/// per level. No expand/collapse buttons, no summary-row glyphs.
-function drawRowOutlineBrackets(
-  ctx: CanvasRenderingContext2D,
-  sheet: Sheet,
-  g: Grid,
-  sy: number,
-  splitY: number,
-  prh: number,
-  canvasH: number,
-): void {
-  const meta = sheet.decodedRowMeta;
-  if (meta.outlineLevel.length === 0) return;
-  let maxLvl = 0;
-  for (let i = 0; i < meta.outlineLevel.length; i++) {
-    const v = meta.outlineLevel[i] ?? 0;
-    if (v > maxLvl) maxLvl = v;
-  }
-  if (maxLvl === 0) return;
-
-  // index → outlineLevel for fast row lookup.
-  const lvlByRow = new Map<number, number>();
-  for (let i = 0; i < meta.count; i++) {
-    const v = meta.outlineLevel[i] ?? 0;
-    if (v > 0) lvlByRow.set(meta.index[i] ?? 0, v);
-  }
-
-  ctx.save();
-  ctx.strokeStyle = OUTLINE_STROKE;
-  ctx.lineWidth = 1;
-
-  // Walk all visible rows in [1..g.maxRow] split into pinned + scrolling
-  // segments. We compute runs separately for each level so a level-2
-  // group (rows 5..10) sits inside its level-1 parent (rows 4..11).
-  for (let lvl = 1; lvl <= maxLvl; lvl++) {
-    const xLine = OUTLINE_INSET_PX + (lvl - 1) * OUTLINE_STEP_PX + 0.5;
-    paintRowRunsForLevel(
-      ctx,
-      lvlByRow,
-      lvl,
-      xLine,
-      g,
-      /*rowFrom*/ 1,
-      /*rowTo*/ Math.max(0, splitY - 1),
-      /*offsetY*/ 0,
-      /*clipY1*/ HEADER_H,
-      /*clipY2*/ HEADER_H + prh,
-    );
-    paintRowRunsForLevel(
-      ctx,
-      lvlByRow,
-      lvl,
-      xLine,
-      g,
-      /*rowFrom*/ Math.max(1, splitY),
-      /*rowTo*/ g.maxRow,
-      /*offsetY*/ -sy,
-      /*clipY1*/ HEADER_H + prh,
-      /*clipY2*/ canvasH,
-    );
-  }
-  ctx.restore();
-}
-
-function paintRowRunsForLevel(
-  ctx: CanvasRenderingContext2D,
-  lvlByRow: Map<number, number>,
-  lvl: number,
-  xLine: number,
-  g: Grid,
-  rowFrom: number,
-  rowTo: number,
-  offsetY: number,
-  clipY1: number,
-  clipY2: number,
-): void {
-  if (rowTo < rowFrom) return;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, clipY1, HEADER_W, clipY2 - clipY1);
-  ctx.clip();
-
-  // Find every contiguous run of rows in [rowFrom..rowTo] with level >= lvl.
-  let runStart = -1;
-  for (let r = rowFrom; r <= rowTo + 1; r++) {
-    const inRun = r <= rowTo && (lvlByRow.get(r) ?? 0) >= lvl;
-    if (inRun && runStart < 0) runStart = r;
-    if (!inRun && runStart >= 0) {
-      const runEnd = r - 1;
-      const y1 = (g.rowY[runStart] ?? HEADER_H) + offsetY;
-      const y2 = (g.rowY[runEnd + 1] ?? HEADER_H) + offsetY;
-      if (y2 > clipY1 && y1 < clipY2) {
-        // Vertical line + 4px tick caps on top + bottom (Excel-style).
-        ctx.beginPath();
-        ctx.moveTo(xLine, y1);
-        ctx.lineTo(xLine, y2);
-        ctx.moveTo(xLine, y1 + 0.5);
-        ctx.lineTo(xLine + 4, y1 + 0.5);
-        ctx.moveTo(xLine, y2 - 0.5);
-        ctx.lineTo(xLine + 4, y2 - 0.5);
-        ctx.stroke();
-      }
-      runStart = -1;
-    }
-  }
-  ctx.restore();
-}
-
-/// Same shape as the row-bracket painter but for column groupings.
-function drawColOutlineBrackets(
-  ctx: CanvasRenderingContext2D,
-  sheet: Sheet,
-  g: Grid,
-  sx: number,
-  splitX: number,
-  pcw: number,
-  canvasW: number,
-): void {
-  let maxLvl = 0;
-  for (const c of sheet.cols) {
-    if ((c.outlineLevel ?? 0) > maxLvl) maxLvl = c.outlineLevel ?? 0;
-  }
-  if (maxLvl === 0) return;
-
-  // Build a column → outlineLevel lookup. The wire stores Col entries
-  // as (min..max) ranges; expand them so the per-col paint can do an
-  // O(1) test.
-  const lvlByCol = new Map<number, number>();
-  for (const c of sheet.cols) {
-    const lvl = c.outlineLevel ?? 0;
-    if (lvl === 0) continue;
-    for (let i = c.min; i <= c.max; i++) lvlByCol.set(i, lvl);
-  }
-
-  ctx.save();
-  ctx.strokeStyle = OUTLINE_STROKE;
-  ctx.lineWidth = 1;
-
-  for (let lvl = 1; lvl <= maxLvl; lvl++) {
-    const yLine = OUTLINE_INSET_PX + (lvl - 1) * OUTLINE_STEP_PX + 0.5;
-    paintColRunsForLevel(
-      ctx,
-      lvlByCol,
-      lvl,
-      yLine,
-      g,
-      /*colFrom*/ 1,
-      /*colTo*/ Math.max(0, splitX - 1),
-      /*offsetX*/ 0,
-      /*clipX1*/ HEADER_W,
-      /*clipX2*/ HEADER_W + pcw,
-    );
-    paintColRunsForLevel(
-      ctx,
-      lvlByCol,
-      lvl,
-      yLine,
-      g,
-      /*colFrom*/ Math.max(1, splitX),
-      /*colTo*/ g.maxCol,
-      /*offsetX*/ -sx,
-      /*clipX1*/ HEADER_W + pcw,
-      /*clipX2*/ canvasW,
-    );
-  }
-  ctx.restore();
-}
-
-function paintColRunsForLevel(
-  ctx: CanvasRenderingContext2D,
-  lvlByCol: Map<number, number>,
-  lvl: number,
-  yLine: number,
-  g: Grid,
-  colFrom: number,
-  colTo: number,
-  offsetX: number,
-  clipX1: number,
-  clipX2: number,
-): void {
-  if (colTo < colFrom) return;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(clipX1, 0, clipX2 - clipX1, HEADER_H);
-  ctx.clip();
-
-  let runStart = -1;
-  for (let c = colFrom; c <= colTo + 1; c++) {
-    const inRun = c <= colTo && (lvlByCol.get(c) ?? 0) >= lvl;
-    if (inRun && runStart < 0) runStart = c;
-    if (!inRun && runStart >= 0) {
-      const runEnd = c - 1;
-      const x1 = (g.colX[runStart] ?? HEADER_W) + offsetX;
-      const x2 = (g.colX[runEnd + 1] ?? HEADER_W) + offsetX;
-      if (x2 > clipX1 && x1 < clipX2) {
-        ctx.beginPath();
-        ctx.moveTo(x1, yLine);
-        ctx.lineTo(x2, yLine);
-        ctx.moveTo(x1 + 0.5, yLine);
-        ctx.lineTo(x1 + 0.5, yLine + 4);
-        ctx.moveTo(x2 - 0.5, yLine);
-        ctx.lineTo(x2 - 0.5, yLine + 4);
-        ctx.stroke();
-      }
-      runStart = -1;
-    }
-  }
-  ctx.restore();
-}
+import {
+  drawCollapsedColTicks,
+  drawCollapsedRowTicks,
+  drawColOutlineGutter,
+  drawOutlineButtons,
+  drawOutlineCornerButtons,
+  drawRowOutlineGutter,
+} from "./outlineGutter.js";
 
 /// Hyperlinks: cells covered by any `<hyperlink>` range get a `Dxf`
 /// overlay — `theme[10]` (hlink color, default Office blue `#0563C1`)

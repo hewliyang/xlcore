@@ -1,5 +1,7 @@
 import type { Sheet } from "./types.js";
-import { HEADER_H, HEADER_W } from "./grid.js";
+import { HEADER_H as _HEADER_H, HEADER_W as _HEADER_W } from "./grid.js";
+void _HEADER_H;
+void _HEADER_W;
 import type { Grid } from "./grid.js";
 import { GRID_COLOR } from "./renderConstants.js";
 import type { Visible } from "./renderTypes.js";
@@ -12,9 +14,9 @@ export function drawGridLines(
   vis: Visible,
 ): void {
   if (!sheet.showGridLines) return;
-  const top = g.rowY[vis.firstRow] ?? HEADER_H;
+  const top = g.rowY[vis.firstRow] ?? g.originY;
   const bot = g.rowY[vis.lastRow + 1] ?? g.totalH;
-  const left = g.colX[vis.firstCol] ?? HEADER_W;
+  const left = g.colX[vis.firstCol] ?? g.originX;
   const right = g.colX[vis.lastCol + 1] ?? g.totalW;
   ctx.strokeStyle = GRID_COLOR;
   ctx.lineWidth = 1;

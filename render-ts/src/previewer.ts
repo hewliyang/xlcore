@@ -257,8 +257,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     const y = (grid.rowY[rr] ?? 0) * z;
     const w = (grid.colW[cc] ?? 0) * z;
     const h = (grid.rowH[rr] ?? 0) * z;
-    const padX = HEADER_W * z;
-    const padY = HEADER_H * z;
+    const padX = grid.originX * z;
+    const padY = grid.originY * z;
     if (x < this.stage.scrollLeft + padX) this.stage.scrollLeft = Math.max(0, x - padX);
     else if (x + w > this.stage.scrollLeft + this.stage.clientWidth) {
       this.stage.scrollLeft = x + w - this.stage.clientWidth;
