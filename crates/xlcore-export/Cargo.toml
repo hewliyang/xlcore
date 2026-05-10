@@ -1,0 +1,20 @@
+[package]
+name = "xlcore-export"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Extract a structured WorkbookLayout (cells, styles, layout) from an xlsx, suitable for canvas-based rendering."
+
+[features]
+default = []
+# Enable when regenerating TypeScript schema files under render-ts/src/schema.
+typescript = ["dep:ts-rs"]
+
+[dependencies]
+xlcore-io = { path = "../xlcore-io" }
+ooxmlsdk = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+base64 = "0.22"
+ts-rs = { workspace = true, optional = true }

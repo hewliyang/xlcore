@@ -1,0 +1,1396 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Sheet1",
+      "maxRow": 21,
+      "maxCol": 9,
+      "defaultColWidthPx": 66.96094,
+      "defaultRowHeightPx": 20.0,
+      "cols": [
+        {
+          "min": 1,
+          "max": 1,
+          "widthPx": 224.95312
+        },
+        {
+          "min": 2,
+          "max": 9,
+          "widthPx": 84.953125
+        }
+      ],
+      "rows": [
+        {
+          "index": 1,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 1,
+              "c": 1,
+              "type": "s",
+              "value": "0",
+              "styleIndex": 1
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 2,
+              "c": 1,
+              "type": "s",
+              "value": "1"
+            },
+            {
+              "r": 2,
+              "c": 2,
+              "type": "n",
+              "value": "3"
+            },
+            {
+              "r": 2,
+              "c": 3,
+              "type": "n",
+              "value": "7"
+            },
+            {
+              "r": 2,
+              "c": 4,
+              "type": "n",
+              "value": "12"
+            },
+            {
+              "r": 2,
+              "c": 5,
+              "type": "n",
+              "value": "18"
+            },
+            {
+              "r": 2,
+              "c": 6,
+              "type": "n",
+              "value": "25"
+            },
+            {
+              "r": 2,
+              "c": 7,
+              "type": "n",
+              "value": "33"
+            },
+            {
+              "r": 2,
+              "c": 8,
+              "type": "n",
+              "value": "42"
+            },
+            {
+              "r": 2,
+              "c": 9,
+              "type": "n",
+              "value": "60"
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 3,
+              "c": 1,
+              "type": "s",
+              "value": "2"
+            },
+            {
+              "r": 3,
+              "c": 2,
+              "type": "n",
+              "value": "3"
+            },
+            {
+              "r": 3,
+              "c": 3,
+              "type": "n",
+              "value": "7"
+            },
+            {
+              "r": 3,
+              "c": 4,
+              "type": "n",
+              "value": "12"
+            },
+            {
+              "r": 3,
+              "c": 5,
+              "type": "n",
+              "value": "18"
+            },
+            {
+              "r": 3,
+              "c": 6,
+              "type": "n",
+              "value": "25"
+            },
+            {
+              "r": 3,
+              "c": 7,
+              "type": "n",
+              "value": "33"
+            },
+            {
+              "r": 3,
+              "c": 8,
+              "type": "n",
+              "value": "42"
+            },
+            {
+              "r": 3,
+              "c": 9,
+              "type": "n",
+              "value": "60"
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 4,
+              "c": 1,
+              "type": "s",
+              "value": "3"
+            },
+            {
+              "r": 4,
+              "c": 2,
+              "type": "n",
+              "value": "3"
+            },
+            {
+              "r": 4,
+              "c": 3,
+              "type": "n",
+              "value": "7"
+            },
+            {
+              "r": 4,
+              "c": 4,
+              "type": "n",
+              "value": "12"
+            },
+            {
+              "r": 4,
+              "c": 5,
+              "type": "n",
+              "value": "18"
+            },
+            {
+              "r": 4,
+              "c": 6,
+              "type": "n",
+              "value": "25"
+            },
+            {
+              "r": 4,
+              "c": 7,
+              "type": "n",
+              "value": "33"
+            },
+            {
+              "r": 4,
+              "c": 8,
+              "type": "n",
+              "value": "42"
+            },
+            {
+              "r": 4,
+              "c": 9,
+              "type": "n",
+              "value": "60"
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 5,
+              "c": 1,
+              "type": "s",
+              "value": "4"
+            },
+            {
+              "r": 5,
+              "c": 2,
+              "type": "n",
+              "value": "3"
+            },
+            {
+              "r": 5,
+              "c": 3,
+              "type": "n",
+              "value": "7"
+            },
+            {
+              "r": 5,
+              "c": 4,
+              "type": "n",
+              "value": "12"
+            },
+            {
+              "r": 5,
+              "c": 5,
+              "type": "n",
+              "value": "18"
+            },
+            {
+              "r": 5,
+              "c": 6,
+              "type": "n",
+              "value": "25"
+            },
+            {
+              "r": 5,
+              "c": 7,
+              "type": "n",
+              "value": "33"
+            },
+            {
+              "r": 5,
+              "c": 8,
+              "type": "n",
+              "value": "42"
+            },
+            {
+              "r": 5,
+              "c": 9,
+              "type": "n",
+              "value": "60"
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 7,
+              "c": 1,
+              "type": "s",
+              "value": "5",
+              "styleIndex": 1
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 8,
+              "c": 1,
+              "type": "s",
+              "value": "6"
+            },
+            {
+              "r": 8,
+              "c": 2,
+              "type": "n",
+              "value": "3"
+            },
+            {
+              "r": 8,
+              "c": 3,
+              "type": "n",
+              "value": "7"
+            },
+            {
+              "r": 8,
+              "c": 4,
+              "type": "n",
+              "value": "12"
+            },
+            {
+              "r": 8,
+              "c": 5,
+              "type": "n",
+              "value": "18"
+            },
+            {
+              "r": 8,
+              "c": 6,
+              "type": "n",
+              "value": "25"
+            },
+            {
+              "r": 8,
+              "c": 7,
+              "type": "n",
+              "value": "33"
+            },
+            {
+              "r": 8,
+              "c": 8,
+              "type": "n",
+              "value": "42"
+            },
+            {
+              "r": 8,
+              "c": 9,
+              "type": "n",
+              "value": "60"
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 9,
+              "c": 1,
+              "type": "s",
+              "value": "7"
+            },
+            {
+              "r": 9,
+              "c": 2,
+              "type": "n",
+              "value": "3"
+            },
+            {
+              "r": 9,
+              "c": 3,
+              "type": "n",
+              "value": "7"
+            },
+            {
+              "r": 9,
+              "c": 4,
+              "type": "n",
+              "value": "12"
+            },
+            {
+              "r": 9,
+              "c": 5,
+              "type": "n",
+              "value": "18"
+            },
+            {
+              "r": 9,
+              "c": 6,
+              "type": "n",
+              "value": "25"
+            },
+            {
+              "r": 9,
+              "c": 7,
+              "type": "n",
+              "value": "33"
+            },
+            {
+              "r": 9,
+              "c": 8,
+              "type": "n",
+              "value": "42"
+            },
+            {
+              "r": 9,
+              "c": 9,
+              "type": "n",
+              "value": "60"
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 10,
+              "c": 1,
+              "type": "s",
+              "value": "8"
+            },
+            {
+              "r": 10,
+              "c": 2,
+              "type": "n",
+              "value": "3"
+            },
+            {
+              "r": 10,
+              "c": 3,
+              "type": "n",
+              "value": "7"
+            },
+            {
+              "r": 10,
+              "c": 4,
+              "type": "n",
+              "value": "12"
+            },
+            {
+              "r": 10,
+              "c": 5,
+              "type": "n",
+              "value": "18"
+            },
+            {
+              "r": 10,
+              "c": 6,
+              "type": "n",
+              "value": "25"
+            },
+            {
+              "r": 10,
+              "c": 7,
+              "type": "n",
+              "value": "33"
+            },
+            {
+              "r": 10,
+              "c": 8,
+              "type": "n",
+              "value": "42"
+            },
+            {
+              "r": 10,
+              "c": 9,
+              "type": "n",
+              "value": "60"
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 11,
+              "c": 1,
+              "type": "s",
+              "value": "9"
+            },
+            {
+              "r": 11,
+              "c": 2,
+              "type": "n",
+              "value": "3"
+            },
+            {
+              "r": 11,
+              "c": 3,
+              "type": "n",
+              "value": "7"
+            },
+            {
+              "r": 11,
+              "c": 4,
+              "type": "n",
+              "value": "12"
+            },
+            {
+              "r": 11,
+              "c": 5,
+              "type": "n",
+              "value": "18"
+            },
+            {
+              "r": 11,
+              "c": 6,
+              "type": "n",
+              "value": "25"
+            },
+            {
+              "r": 11,
+              "c": 7,
+              "type": "n",
+              "value": "33"
+            },
+            {
+              "r": 11,
+              "c": 8,
+              "type": "n",
+              "value": "42"
+            },
+            {
+              "r": 11,
+              "c": 9,
+              "type": "n",
+              "value": "60"
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 13,
+              "c": 1,
+              "type": "s",
+              "value": "10",
+              "styleIndex": 1
+            }
+          ]
+        },
+        {
+          "index": 14,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 14,
+              "c": 1,
+              "type": "s",
+              "value": "11"
+            },
+            {
+              "r": 14,
+              "c": 2,
+              "type": "s",
+              "value": "12"
+            },
+            {
+              "r": 14,
+              "c": 3,
+              "type": "s",
+              "value": "13"
+            },
+            {
+              "r": 14,
+              "c": 4,
+              "type": "s",
+              "value": "12"
+            },
+            {
+              "r": 14,
+              "c": 5,
+              "type": "s",
+              "value": "14"
+            },
+            {
+              "r": 14,
+              "c": 6,
+              "type": "s",
+              "value": "13"
+            },
+            {
+              "r": 14,
+              "c": 7,
+              "type": "s",
+              "value": "12"
+            },
+            {
+              "r": 14,
+              "c": 8,
+              "type": "s",
+              "value": "15"
+            },
+            {
+              "r": 14,
+              "c": 9,
+              "type": "s",
+              "value": "16"
+            }
+          ]
+        },
+        {
+          "index": 15,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 15,
+              "c": 1,
+              "type": "s",
+              "value": "17"
+            },
+            {
+              "r": 15,
+              "c": 2,
+              "type": "s",
+              "value": "12"
+            },
+            {
+              "r": 15,
+              "c": 3,
+              "type": "s",
+              "value": "13"
+            },
+            {
+              "r": 15,
+              "c": 4,
+              "type": "s",
+              "value": "12"
+            },
+            {
+              "r": 15,
+              "c": 5,
+              "type": "s",
+              "value": "14"
+            },
+            {
+              "r": 15,
+              "c": 6,
+              "type": "s",
+              "value": "13"
+            },
+            {
+              "r": 15,
+              "c": 7,
+              "type": "s",
+              "value": "12"
+            },
+            {
+              "r": 15,
+              "c": 8,
+              "type": "s",
+              "value": "15"
+            },
+            {
+              "r": 15,
+              "c": 9,
+              "type": "s",
+              "value": "16"
+            }
+          ]
+        },
+        {
+          "index": 17,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 17,
+              "c": 1,
+              "type": "s",
+              "value": "18",
+              "styleIndex": 1
+            }
+          ]
+        },
+        {
+          "index": 18,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 18,
+              "c": 1,
+              "type": "s",
+              "value": "19"
+            },
+            {
+              "r": 18,
+              "c": 2,
+              "type": "s",
+              "value": "20"
+            },
+            {
+              "r": 18,
+              "c": 3,
+              "type": "s",
+              "value": "21"
+            },
+            {
+              "r": 18,
+              "c": 4,
+              "type": "s",
+              "value": "22"
+            },
+            {
+              "r": 18,
+              "c": 5,
+              "type": "s",
+              "value": "23"
+            },
+            {
+              "r": 18,
+              "c": 6,
+              "type": "s",
+              "value": "24"
+            },
+            {
+              "r": 18,
+              "c": 7,
+              "type": "s",
+              "value": "25"
+            },
+            {
+              "r": 18,
+              "c": 8,
+              "type": "s",
+              "value": "26"
+            },
+            {
+              "r": 18,
+              "c": 9,
+              "type": "s",
+              "value": "27"
+            }
+          ]
+        },
+        {
+          "index": 19,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 19,
+              "c": 1,
+              "type": "s",
+              "value": "28"
+            },
+            {
+              "r": 19,
+              "c": 2,
+              "type": "s",
+              "value": "20"
+            },
+            {
+              "r": 19,
+              "c": 3,
+              "type": "s",
+              "value": "21"
+            },
+            {
+              "r": 19,
+              "c": 4,
+              "type": "s",
+              "value": "22"
+            },
+            {
+              "r": 19,
+              "c": 5,
+              "type": "s",
+              "value": "23"
+            },
+            {
+              "r": 19,
+              "c": 6,
+              "type": "s",
+              "value": "24"
+            },
+            {
+              "r": 19,
+              "c": 7,
+              "type": "s",
+              "value": "25"
+            },
+            {
+              "r": 19,
+              "c": 8,
+              "type": "s",
+              "value": "26"
+            },
+            {
+              "r": 19,
+              "c": 9,
+              "type": "s",
+              "value": "27"
+            }
+          ]
+        },
+        {
+          "index": 20,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 20,
+              "c": 1,
+              "type": "s",
+              "value": "29"
+            },
+            {
+              "r": 20,
+              "c": 2,
+              "type": "s",
+              "value": "20"
+            },
+            {
+              "r": 20,
+              "c": 3,
+              "type": "s",
+              "value": "21"
+            },
+            {
+              "r": 20,
+              "c": 4,
+              "type": "s",
+              "value": "22"
+            },
+            {
+              "r": 20,
+              "c": 5,
+              "type": "s",
+              "value": "23"
+            },
+            {
+              "r": 20,
+              "c": 6,
+              "type": "s",
+              "value": "24"
+            },
+            {
+              "r": 20,
+              "c": 7,
+              "type": "s",
+              "value": "25"
+            },
+            {
+              "r": 20,
+              "c": 8,
+              "type": "s",
+              "value": "26"
+            },
+            {
+              "r": 20,
+              "c": 9,
+              "type": "s",
+              "value": "27"
+            }
+          ]
+        },
+        {
+          "index": 21,
+          "heightPx": 20.0,
+          "cells": [
+            {
+              "r": 21,
+              "c": 1,
+              "type": "s",
+              "value": "30"
+            },
+            {
+              "r": 21,
+              "c": 2,
+              "type": "s",
+              "value": "20"
+            },
+            {
+              "r": 21,
+              "c": 3,
+              "type": "s",
+              "value": "21"
+            },
+            {
+              "r": 21,
+              "c": 4,
+              "type": "s",
+              "value": "22"
+            },
+            {
+              "r": 21,
+              "c": 5,
+              "type": "s",
+              "value": "23"
+            },
+            {
+              "r": 21,
+              "c": 6,
+              "type": "s",
+              "value": "24"
+            },
+            {
+              "r": 21,
+              "c": 7,
+              "type": "s",
+              "value": "25"
+            },
+            {
+              "r": 21,
+              "c": 8,
+              "type": "s",
+              "value": "26"
+            },
+            {
+              "r": 21,
+              "c": 9,
+              "type": "s",
+              "value": "27"
+            }
+          ]
+        }
+      ],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "conditionalFormats": [
+        {
+          "ranges": [
+            {
+              "r1": 2,
+              "c1": 2,
+              "r2": 2,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 14,
+              "kind": "top10",
+              "operands": [
+                "LARGE(($B$2:$I$2),MIN(3,COUNT($B$2:$I$2)))<=B2"
+              ],
+              "dxfId": 0,
+              "rank": 3
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 3,
+              "c1": 2,
+              "r2": 3,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 13,
+              "kind": "top10",
+              "operands": [
+                "SMALL(($B$3:$I$3),MIN(3,COUNT($B$3:$I$3)))>=B3"
+              ],
+              "dxfId": 1,
+              "rank": 3,
+              "bottom": true
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 4,
+              "c1": 2,
+              "r2": 4,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 12,
+              "kind": "top10",
+              "operands": [
+                "LARGE(($B$4:$I$4),MIN(25,COUNT($B$4:$I$4)))<=B4"
+              ],
+              "dxfId": 2,
+              "rank": 25,
+              "percent": true
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 5,
+              "c1": 2,
+              "r2": 5,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 11,
+              "kind": "top10",
+              "operands": [
+                "SMALL(($B$5:$I$5),MIN(50,COUNT($B$5:$I$5)))>=B5"
+              ],
+              "dxfId": 3,
+              "rank": 50,
+              "bottom": true,
+              "percent": true
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 8,
+              "c1": 2,
+              "r2": 8,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 10,
+              "kind": "aboveAverage",
+              "operands": [
+                "(B8-AVERAGE($B$8:$I$8))>=STDEVP($B$8:$I$8)*(0)"
+              ],
+              "dxfId": 0,
+              "stdDev": 0
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 9,
+              "c1": 2,
+              "r2": 9,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 9,
+              "kind": "aboveAverage",
+              "operands": [
+                "(B9-AVERAGE($B$9:$I$9))<=STDEVP($B$9:$I$9)*(-0)"
+              ],
+              "dxfId": 1,
+              "bottom": true,
+              "aboveAverage": false,
+              "stdDev": 0
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 10,
+              "c1": 2,
+              "r2": 10,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 8,
+              "kind": "aboveAverage",
+              "operands": [
+                "(B10-AVERAGE($B$10:$I$10))>=STDEVP($B$10:$I$10)*(1)"
+              ],
+              "dxfId": 2,
+              "stdDev": 1
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 11,
+              "c1": 2,
+              "r2": 11,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 7,
+              "kind": "aboveAverage",
+              "operands": [
+                "(B11-AVERAGE($B$11:$I$11))>=STDEVP($B$11:$I$11)*(0)"
+              ],
+              "dxfId": 3,
+              "equalAverage": true,
+              "stdDev": 0
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 14,
+              "c1": 2,
+              "r2": 14,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 6,
+              "kind": "duplicateValues",
+              "operands": [
+                "AND(COUNTIF($B$14:$I$14,B14)>1,NOT(ISBLANK(B14)))"
+              ],
+              "dxfId": 0
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 15,
+              "c1": 2,
+              "r2": 15,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 5,
+              "kind": "uniqueValues",
+              "operands": [
+                "AND(COUNTIF($B$15:$I$15,B15)=1,NOT(ISBLANK(B15)))"
+              ],
+              "dxfId": 1
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 18,
+              "c1": 2,
+              "r2": 18,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 4,
+              "kind": "containsText",
+              "operator": "containsText",
+              "operands": [
+                "NOT(ISERROR(SEARCH(\"ta\",B18)))"
+              ],
+              "dxfId": 0,
+              "text": "ta"
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 19,
+              "c1": 2,
+              "r2": 19,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 3,
+              "kind": "notContainsText",
+              "operator": "notContains",
+              "operands": [
+                "NOT(ISERROR(SEARCH(\"a\",B19)))"
+              ],
+              "dxfId": 1,
+              "text": "a"
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 20,
+              "c1": 2,
+              "r2": 20,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 2,
+              "kind": "beginsWith",
+              "operator": "beginsWith",
+              "operands": [
+                "LEFT(B20,1) = \"B\""
+              ],
+              "dxfId": 2,
+              "text": "B"
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 21,
+              "c1": 2,
+              "r2": 21,
+              "c2": 9
+            }
+          ],
+          "rules": [
+            {
+              "priority": 1,
+              "kind": "endsWith",
+              "operator": "endsWith",
+              "operands": [
+                "NOT(ISERROR(SEARCH(\"a\",B21)))"
+              ],
+              "dxfId": 3,
+              "text": "a"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "color": {
+          "theme": 1
+        }
+      },
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "bold": true
+      }
+    ],
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {},
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 1,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      },
+      {
+        "fontId": 1,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0
+  },
+  "sharedStrings": [
+    "top10 / bottom / percent",
+    "top 3",
+    "bottom 3",
+    "top 25%",
+    "bottom 50%",
+    "aboveAverage / belowAverage / stdDev",
+    "above avg",
+    "below avg",
+    "above 1 stddev",
+    "equalOrAbove avg",
+    "duplicateValues / uniqueValues",
+    "duplicates",
+    "apple",
+    "banana",
+    "cherry",
+    "date",
+    "elderberry",
+    "uniques",
+    "containsText / notContainsText / beginsWith / endsWith",
+    "contains \"ta\"",
+    "Alpha",
+    "Beta",
+    "GAMMA",
+    "delta",
+    "Alpha-2",
+    "epsilon",
+    "BetaX",
+    "zeta",
+    "not contains \"a\"",
+    "begins with \"B\"",
+    "ends with \"a\""
+  ],
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "dxfs": [
+    {
+      "fontColor": {
+        "rgb": "FFFFFFFF"
+      },
+      "bold": true,
+      "fillColor": {
+        "rgb": "FFFF4444"
+      }
+    },
+    {
+      "fontColor": {
+        "rgb": "FFFFFFFF"
+      },
+      "bold": true,
+      "fillColor": {
+        "rgb": "FF3366CC"
+      }
+    },
+    {
+      "fontColor": {
+        "rgb": "FFFFFFFF"
+      },
+      "bold": true,
+      "fillColor": {
+        "rgb": "FF44AA44"
+      }
+    },
+    {
+      "fontColor": {
+        "rgb": "FF000000"
+      },
+      "bold": true,
+      "fillColor": {
+        "rgb": "FFFFD54A"
+      }
+    }
+  ],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  },
+  "activeSheetIndex": 0
+}

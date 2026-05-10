@@ -1,0 +1,11 @@
+[package]
+name = "xlcore-io"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "OOXML xlsx I/O facade over ooxmlsdk; preserves charts/CF/comments/tables/theme verbatim."
+
+[dependencies]
+ooxmlsdk = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }

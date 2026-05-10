@@ -1,0 +1,823 @@
+{
+  "dxfs": [
+    {
+      "bold": true,
+      "fillColor": {
+        "rgb": "FFFF4444"
+      },
+      "fontColor": {
+        "rgb": "FFFFFFFF"
+      }
+    }
+  ],
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "sharedStrings": [
+    "operator",
+    "1",
+    "10",
+    "50",
+    "100",
+    "200",
+    "\"foo\"",
+    "greaterThan 50",
+    "foo",
+    "greaterThanOrEqual 100",
+    "lessThan 50",
+    "lessThanOrEqual 10",
+    "equal 10",
+    "equal \"foo\"",
+    "notEqual 50",
+    "between 10 100",
+    "notBetween 10 100"
+  ],
+  "sheets": [
+    {
+      "cols": [
+        {
+          "max": 1,
+          "min": 1,
+          "widthPx": 205.01953
+        },
+        {
+          "max": 7,
+          "min": 2,
+          "widthPx": 65.01953
+        }
+      ],
+      "conditionalFormats": [
+        {
+          "ranges": [
+            {
+              "c1": 2,
+              "c2": 7,
+              "r1": 2,
+              "r2": 2
+            }
+          ],
+          "rules": [
+            {
+              "dxfId": 0,
+              "kind": "cellIs",
+              "operands": [
+                "50"
+              ],
+              "operator": "greaterThan",
+              "priority": 9
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "c1": 2,
+              "c2": 7,
+              "r1": 3,
+              "r2": 3
+            }
+          ],
+          "rules": [
+            {
+              "dxfId": 0,
+              "kind": "cellIs",
+              "operands": [
+                "100"
+              ],
+              "operator": "greaterThanOrEqual",
+              "priority": 8
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "c1": 2,
+              "c2": 7,
+              "r1": 4,
+              "r2": 4
+            }
+          ],
+          "rules": [
+            {
+              "dxfId": 0,
+              "kind": "cellIs",
+              "operands": [
+                "50"
+              ],
+              "operator": "lessThan",
+              "priority": 7
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "c1": 2,
+              "c2": 7,
+              "r1": 5,
+              "r2": 5
+            }
+          ],
+          "rules": [
+            {
+              "dxfId": 0,
+              "kind": "cellIs",
+              "operands": [
+                "10"
+              ],
+              "operator": "lessThanOrEqual",
+              "priority": 6
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "c1": 2,
+              "c2": 7,
+              "r1": 6,
+              "r2": 6
+            }
+          ],
+          "rules": [
+            {
+              "dxfId": 0,
+              "kind": "cellIs",
+              "operands": [
+                "10"
+              ],
+              "operator": "equal",
+              "priority": 5
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "c1": 2,
+              "c2": 7,
+              "r1": 7,
+              "r2": 7
+            }
+          ],
+          "rules": [
+            {
+              "dxfId": 0,
+              "kind": "cellIs",
+              "operands": [
+                "\"foo\""
+              ],
+              "operator": "equal",
+              "priority": 4
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "c1": 2,
+              "c2": 7,
+              "r1": 8,
+              "r2": 8
+            }
+          ],
+          "rules": [
+            {
+              "dxfId": 0,
+              "kind": "cellIs",
+              "operands": [
+                "50"
+              ],
+              "operator": "notEqual",
+              "priority": 3
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "c1": 2,
+              "c2": 7,
+              "r1": 9,
+              "r2": 9
+            }
+          ],
+          "rules": [
+            {
+              "dxfId": 0,
+              "kind": "cellIs",
+              "operands": [
+                "10",
+                "100"
+              ],
+              "operator": "between",
+              "priority": 2
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "c1": 2,
+              "c2": 7,
+              "r1": 10,
+              "r2": 10
+            }
+          ],
+          "rules": [
+            {
+              "dxfId": 0,
+              "kind": "cellIs",
+              "operands": [
+                "10",
+                "100"
+              ],
+              "operator": "notBetween",
+              "priority": 1
+            }
+          ]
+        }
+      ],
+      "defaultColWidthPx": 66.96094,
+      "defaultRowHeightPx": 20.0,
+      "freeze": null,
+      "index": 0,
+      "maxCol": 7,
+      "maxRow": 10,
+      "merges": [],
+      "name": "Sheet1",
+      "rows": [
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "0"
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "1"
+            },
+            {
+              "c": 3,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "2"
+            },
+            {
+              "c": 4,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "3"
+            },
+            {
+              "c": 5,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "4"
+            },
+            {
+              "c": 6,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "5"
+            },
+            {
+              "c": 7,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "6"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 1
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 2,
+              "type": "s",
+              "value": "7"
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "type": "n",
+              "value": "1"
+            },
+            {
+              "c": 3,
+              "r": 2,
+              "type": "n",
+              "value": "10"
+            },
+            {
+              "c": 4,
+              "r": 2,
+              "type": "n",
+              "value": "50"
+            },
+            {
+              "c": 5,
+              "r": 2,
+              "type": "n",
+              "value": "100"
+            },
+            {
+              "c": 6,
+              "r": 2,
+              "type": "n",
+              "value": "200"
+            },
+            {
+              "c": 7,
+              "r": 2,
+              "type": "s",
+              "value": "8"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 2
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 3,
+              "type": "s",
+              "value": "9"
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "type": "n",
+              "value": "1"
+            },
+            {
+              "c": 3,
+              "r": 3,
+              "type": "n",
+              "value": "10"
+            },
+            {
+              "c": 4,
+              "r": 3,
+              "type": "n",
+              "value": "50"
+            },
+            {
+              "c": 5,
+              "r": 3,
+              "type": "n",
+              "value": "100"
+            },
+            {
+              "c": 6,
+              "r": 3,
+              "type": "n",
+              "value": "200"
+            },
+            {
+              "c": 7,
+              "r": 3,
+              "type": "s",
+              "value": "8"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 3
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 4,
+              "type": "s",
+              "value": "10"
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "type": "n",
+              "value": "1"
+            },
+            {
+              "c": 3,
+              "r": 4,
+              "type": "n",
+              "value": "10"
+            },
+            {
+              "c": 4,
+              "r": 4,
+              "type": "n",
+              "value": "50"
+            },
+            {
+              "c": 5,
+              "r": 4,
+              "type": "n",
+              "value": "100"
+            },
+            {
+              "c": 6,
+              "r": 4,
+              "type": "n",
+              "value": "200"
+            },
+            {
+              "c": 7,
+              "r": 4,
+              "type": "s",
+              "value": "8"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 4
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 5,
+              "type": "s",
+              "value": "11"
+            },
+            {
+              "c": 2,
+              "r": 5,
+              "type": "n",
+              "value": "1"
+            },
+            {
+              "c": 3,
+              "r": 5,
+              "type": "n",
+              "value": "10"
+            },
+            {
+              "c": 4,
+              "r": 5,
+              "type": "n",
+              "value": "50"
+            },
+            {
+              "c": 5,
+              "r": 5,
+              "type": "n",
+              "value": "100"
+            },
+            {
+              "c": 6,
+              "r": 5,
+              "type": "n",
+              "value": "200"
+            },
+            {
+              "c": 7,
+              "r": 5,
+              "type": "s",
+              "value": "8"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 5
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 6,
+              "type": "s",
+              "value": "12"
+            },
+            {
+              "c": 2,
+              "r": 6,
+              "type": "n",
+              "value": "1"
+            },
+            {
+              "c": 3,
+              "r": 6,
+              "type": "n",
+              "value": "10"
+            },
+            {
+              "c": 4,
+              "r": 6,
+              "type": "n",
+              "value": "50"
+            },
+            {
+              "c": 5,
+              "r": 6,
+              "type": "n",
+              "value": "100"
+            },
+            {
+              "c": 6,
+              "r": 6,
+              "type": "n",
+              "value": "200"
+            },
+            {
+              "c": 7,
+              "r": 6,
+              "type": "s",
+              "value": "8"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 6
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 7,
+              "type": "s",
+              "value": "13"
+            },
+            {
+              "c": 2,
+              "r": 7,
+              "type": "n",
+              "value": "1"
+            },
+            {
+              "c": 3,
+              "r": 7,
+              "type": "n",
+              "value": "10"
+            },
+            {
+              "c": 4,
+              "r": 7,
+              "type": "n",
+              "value": "50"
+            },
+            {
+              "c": 5,
+              "r": 7,
+              "type": "n",
+              "value": "100"
+            },
+            {
+              "c": 6,
+              "r": 7,
+              "type": "n",
+              "value": "200"
+            },
+            {
+              "c": 7,
+              "r": 7,
+              "type": "s",
+              "value": "8"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 7
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 8,
+              "type": "s",
+              "value": "14"
+            },
+            {
+              "c": 2,
+              "r": 8,
+              "type": "n",
+              "value": "1"
+            },
+            {
+              "c": 3,
+              "r": 8,
+              "type": "n",
+              "value": "10"
+            },
+            {
+              "c": 4,
+              "r": 8,
+              "type": "n",
+              "value": "50"
+            },
+            {
+              "c": 5,
+              "r": 8,
+              "type": "n",
+              "value": "100"
+            },
+            {
+              "c": 6,
+              "r": 8,
+              "type": "n",
+              "value": "200"
+            },
+            {
+              "c": 7,
+              "r": 8,
+              "type": "s",
+              "value": "8"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 8
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 9,
+              "type": "s",
+              "value": "15"
+            },
+            {
+              "c": 2,
+              "r": 9,
+              "type": "n",
+              "value": "1"
+            },
+            {
+              "c": 3,
+              "r": 9,
+              "type": "n",
+              "value": "10"
+            },
+            {
+              "c": 4,
+              "r": 9,
+              "type": "n",
+              "value": "50"
+            },
+            {
+              "c": 5,
+              "r": 9,
+              "type": "n",
+              "value": "100"
+            },
+            {
+              "c": 6,
+              "r": 9,
+              "type": "n",
+              "value": "200"
+            },
+            {
+              "c": 7,
+              "r": 9,
+              "type": "s",
+              "value": "8"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 9
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 10,
+              "type": "s",
+              "value": "16"
+            },
+            {
+              "c": 2,
+              "r": 10,
+              "type": "n",
+              "value": "1"
+            },
+            {
+              "c": 3,
+              "r": 10,
+              "type": "n",
+              "value": "10"
+            },
+            {
+              "c": 4,
+              "r": 10,
+              "type": "n",
+              "value": "50"
+            },
+            {
+              "c": 5,
+              "r": 10,
+              "type": "n",
+              "value": "100"
+            },
+            {
+              "c": 6,
+              "r": 10,
+              "type": "n",
+              "value": "200"
+            },
+            {
+              "c": 7,
+              "r": 10,
+              "type": "s",
+              "value": "8"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 10
+        }
+      ],
+      "showGridLines": true
+    }
+  ],
+  "styles": {
+    "borders": [
+      {},
+      {}
+    ],
+    "cellXfs": [
+      {
+        "borderId": 1,
+        "fillId": 0,
+        "fontId": 0,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      },
+      {
+        "borderId": 0,
+        "fillId": 0,
+        "fontId": 1,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      }
+    ],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0,
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "fonts": [
+      {
+        "color": {
+          "theme": 1
+        },
+        "name": "Calibri",
+        "size": 11.0
+      },
+      {
+        "bold": true,
+        "name": "Calibri",
+        "size": 11.0
+      }
+    ],
+    "numFmts": []
+  },
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  }
+}

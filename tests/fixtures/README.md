@@ -1,0 +1,67 @@
+# tests/fixtures
+
+Per-feature fixtures used by the visual-diff workflow in
+[`TESTING.md`](../../TESTING.md). Each subdirectory holds:
+
+- `<name>.xlsx` — the fixture workbook (committed binary).
+- `build-<name>.sh` — reproducible builder. Either `hsx`-driven, or a
+  Python zip-patcher when we need exact control of the OOXML.
+- `_*.py` — internal helpers used by the build scripts (not directly
+  invoked).
+
+Today's fixtures (more land as features ship):
+
+| Path                              | What it covers                                  |
+|-----------------------------------|-------------------------------------------------|
+| `kitchensink/kitchensink.xlsx`    | Big mixed workbook: shared strings, custom widths/heights, fonts/fills/borders, alignment, merges, freeze, CF color scale, built-in number formats, dynamic-array spills (SORT/FILTER/UNIQUE/SEQUENCE), LET/SUMPRODUCT, a `<table>` ListObject, a clustered column chart. |
+| `themes/custom-theme-accent.xlsx` | 12 cells, one per `theme="0"`..`theme="11"` slot, against a non-default ("Cyber") theme palette. Catches regressions in (a) `xl/theme/theme1.xml` parsing, (b) the lt1/dk1, lt2/dk2 spreadsheet-index swap, (c) chart-series accent resolution. |
+| `numfmt/date-time-formats.xlsx` | 13 date/time format codes (built-in + custom), one sample each. **All currently fail** — see [`numfmt/TRIAGE.md`](numfmt/TRIAGE.md). |
+| `numfmt/currency-locale.xlsx` | 10 currency / accounting / locale-tagged formats. Loses `[$€-407]` / `[$¥-411]` symbols and accounting padding. |
+| `numfmt/custom-section-conditions.xlsx` | Multi-section formats (`pos;neg;zero`) and `[Red][>0]…` conditional gates over three sign cases each. Sign-based section selection + condition gating both NYI. |
+| `numfmt/fraction-and-scientific.xlsx` | `# ?/?`, `# ??/??`, fixed-denom fractions, and `0.00E+00` / `##0.0E+0` scientific. All fall through to `formatGeneral`. |
+| `cf/cell-is.xlsx` | All 8 `cellIs` operators (eq/ne/gt/ge/lt/le/between/notBetween) against a 6-cell value strip per row, including a string `"foo"` operand and a string-vs-number row to exercise Excel's text > number ordering rule. Pixel-matches `hsx`. |
+| `freeze-pane/freeze-merge.xlsx` | Three bordered merges (1×5, 1×4, 2×3) crossing both the vertical and horizontal freeze split (frozen 2×2). Locks in the `drawCellBackgrounds` / `drawCellBorders` fix where merges spanning a freeze boundary used to drop fill/border on the panes that didn't contain the merge's top-left cell. Pixel-matches `hsx`. |
+| `cf/data-bar.xlsx` | `dataBar` rule: auto / numeric / mixed-sign / showBarOnly / gradient. Renderer paints solid for gradient (tracked in `cf/TRIAGE.md`). |
+| `cf/icon-set.xlsx` | `iconSet` rule: 3-stop traffic-lights / arrows / symbols, 4-stop ratings, 5-stop arrows / quarters, plus `reverse=true` and `showIconOnly=true`. Glyphs are canvas paths so curve detail differs from `hsx`; bucket math + colors match. |
+| `charts/line-pie-area-scatter.xlsx` | One workbook with four charts (line, stacked area, pie, xy scatter) all sourced from the same 4-quarter × 4-region grid (scatter pulls a separate xy block). Catches regressions in (a) the new `common_series` extractor for line/area/pie, (b) the parallel scatter `c:xVal` / `c:yVal` path, (c) `ChartSeries.xValues` / `xValuesRef` schema fields, (d) the four new drawer functions in `render-ts/src/chart.ts`. Visually pixel-close to `hsx`; pie legend differs (we show series name, hsx shows category indices) and per-slice colors come from a fixed palette — see PARITY.md. |
+| `charts/pie-explicit-points.xlsx` | A single 5-slice pie whose `<c:pieChart><c:ser>` block carries five `<c:dPt>` children — each with its own `spPr/solidFill/srgbClr` (deep red / teal / gold / indigo / mint). Catches regressions in (a) `ChartSeries.pointColors` extraction from `<c:dPt>` `c_d_pt` slots, (b) the renderer's preference for `pointColors[i]` over the default 6-color palette, (c) the latent `series_color_via_debug` bug where the Debug-string scan was using XML qnames (`srgbClr`, `schemeClr`) instead of the Rust struct names (`RgbColorModelHex`, `SchemeColor`) ooxmlsdk emits — fix lifts series-level fills out of `ASolidFill(SolidFill { … })` while explicitly skipping fills inside `a_ln:` (line-color blocks). The fixture is post-patched by Python because `hsx` doesn't expose a writer for per-slice colors; injection point is right before `<c:cat>` (the schema position dPt expects). Pixel-matches `hsx` for slice colors and rotation; legend remains the cross-cutting series-vs-category gap noted on the previous row. |
+| `annotations/hyperlinks-comments.xlsx` | Four hyperlink cells (https / mailto / file:// + an in-workbook location) and three commented cells with distinct authors. Catches regressions in (a) `<hyperlinks>` block parsing + `r:id` rel resolution, (b) `WorksheetCommentsPart` extraction + author-table lookup, (c) the synthetic-dxf hyperlink overlay, (d) the red-triangle comment marker, (e) the new canvas underline / strike pass that hyperlinks rely on. Pixel-matches `hsx` modulo subpixel font hinting. |
+| `tables/table-medium.xlsx` | One `TableStyleMedium2` ListObject (header + 5 data rows + totals row) with `autoFilter` on. Catches regressions in (a) `<tablePart>` rel → `xl/tables/tableN.xml` extraction, (b) header band / banded row / totals row chrome, (c) filter-arrow glyph placement, (d) accent color resolution from the trailing integer in the style name. Pixel-close to `hsx`; renderer skips per-row borders inside the table (tracked in PARITY.md). |
+| `text/rotation.xlsx` | One row of 8 column-header cells exercising OOXML `textRotation`: 180 / 135 / 120 (clockwise), 0 (horizontal), 30 / 45 / 90 (counter-clockwise), and 255 (stacked) plus a row of numeric "data" so the headers look real. Catches regressions in (a) the rotated-text fast-path in `drawCellText` (single-line, no overflow, no wrap), (b) the CCW-bottom-left / CW-top-left anchor convention with `halign=center`/`right` baseline shift, (c) the stacked branch (chars drawn upright, vertically arranged, horizontally centered, valign-aware). Visually matches `hsx` in tilt direction + character visibility; cosmetic vertical-anchor difference on slanted angles tracked in PARITY.md. |
+| `borders/every-style.xlsx` | All 14 OOXML `ST_BorderStyle` values (everything except `none`) on a 2×7 grid: thin / medium / thick / dashed / dotted / double / hair / mediumDashed / dashDot / mediumDashDot / dashDotDot / mediumDashDotDot / slantDashDot. Each cell carries the style on all four sides + the style name as inline-str text. Catches regressions in (a) extractor's `border_style_str` ordered substring match — the original cascade returned `"dashDot"` for `slantDashDot` because the substring match for `dashdot` fired first; (b) renderer's `borderWidth` + `drawBorderLine` dash-pattern table — originally `mediumDashDot`, `mediumDashDotDot`, and `slantDashDot` had no special dash entries and rendered as solid medium lines. Built via Python zip-patch (`_patch_every_style.py`); hsx's public API doesn't expose `slantDashDot` cleanly and we want byte-exact OOXML for deterministic snapshots. **Divergence with `hsx`:** SpreadJS paints every `*DashDot*` variant as a solid line; we paint the Excel-desktop dash cadences (more-correct side per PARITY's hsx-vs-Excel rule). |
+| `borders/diagonal.xlsx` | Five cells in row 2 exercising OOXML `<border diagonalUp/diagonalDown><diagonal style color>`: down-only `\`, up-only `/`, X (thin), X-thick, X-dashed-red. Catches regressions in (a) extractor reading the `diagonalUp`/`diagonalDown` boolean attrs + the `<diagonal>` child's style+color, (b) renderer's `drawDiagonalBorders` clipping (strokes never bleed into neighbors). SpreadJS silently drops `borderDiagonalUp`/`borderDiagonalDown` on xlsx export, so the fixture is built via a Python zip-patch (`_patch_diagonal.py`). Pixel-matches `hsx`. |
+| `pivot/pivot-simple.xlsx` | A 4-region × 2-product pivot on its own sheet, with `Sum of Amount` values + grand totals, fed from a 12-row source table on Sheet1. The pivot tab is set as `activeTab`. Catches regressions in (a) the **cheap path** — we render the materialized result cells (header band, banded rows, bold totals) straight from `<sheetData>` with their explicit cell xfs, (b) `xl/pivotTables/pivotTableN.xml` `<location>` parsing for filter-arrow placement on the row-field (B3 "Region") and col-field (C2 "Product") axis-label cells, (c) `WorkbookLayout.activeSheetIndex` from `<bookViews><workbookView activeTab="N"/></bookViews>` so the preview opens on the right tab. No filtering / refresh / expand-collapse interactivity — that needs an aggregation engine (months). |
+
+## Running a fixture build
+
+```bash
+bash tests/fixtures/themes/build-custom-theme-accent.sh
+bash tests/fixtures/kitchensink/build.sh
+```
+
+The committed `.xlsx` and the script's output should agree byte-for-byte
+modulo timestamps; CI on `git diff --stat` would catch script drift.
+
+## Why some builders patch the zip directly
+
+`hsx` is async w.r.t. its CLI return — `hsx set` prints the JSON
+response before the xlsx is fully flushed to disk, so chaining
+`hsx set` → `python3 patch.py` from a single bash script races and the
+patch sees a partially-written `xl/styles.xml`. The themes fixture
+sidesteps this by having `hsx create` produce the skeleton (synchronous,
+just writes the empty workbook) and then a single Python pass rewrite
+`xl/theme/theme1.xml`, `xl/styles.xml`, and `xl/worksheets/sheet1.xml`
+in one go. That's also the right shape when we need exact control over
+which styles end up in the final file (e.g. `<fgColor theme="N"/>`
+instead of `<fgColor rgb="..."/>`).
+
+## Adding a fixture
+
+1. Pick a feature on the PARITY.md scoreboard that's labelled "❌ extract"
+   or where a bug almost slipped through unit tests.
+2. Make a subdirectory + a `build-<name>.sh` — go through `hsx` when
+   possible (small, easy to read), through a zip patch when not.
+3. Run it, commit `<name>.xlsx`, screenshot ours and HSX side-by-side
+   per the [`TESTING.md`](../../TESTING.md) workflow.
+4. Update the table above and link the fixture from the relevant
+   PARITY.md row.

@@ -1,0 +1,242 @@
+{
+  "activeSheetIndex": 0,
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "sharedStrings": [
+    "Quarter",
+    "North",
+    "South",
+    "East",
+    "West",
+    "Central",
+    "Q3"
+  ],
+  "sheets": [
+    {
+      "cols": [],
+      "defaultColWidthPx": 66.96094,
+      "defaultRowHeightPx": 20.0,
+      "drawings": [
+        {
+          "anchor": {
+            "fromCol": 0,
+            "fromColOffEmu": 0,
+            "fromRow": 4,
+            "fromRowOffEmu": 0,
+            "toCol": 7,
+            "toColOffEmu": 438150,
+            "toRow": 20,
+            "toRowOffEmu": 0
+          },
+          "chart": {
+            "categories": [
+              "North",
+              "South",
+              "East",
+              "West",
+              "Central"
+            ],
+            "categoriesRef": "Sheet1!$B$1:$F$1",
+            "legendPos": "b",
+            "series": [
+              {
+                "color": "#4F81BD",
+                "name": "Q3",
+                "nameRef": "Sheet1!$A$2",
+                "pointColors": [
+                  "#B22222",
+                  "#008080",
+                  "#DAA520",
+                  "#4B0082",
+                  "#20B2AA"
+                ],
+                "values": [
+                  151.0,
+                  121.0,
+                  172.0,
+                  102.0,
+                  88.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$F$2"
+              }
+            ],
+            "title": "Q3 share — explicit slice colors",
+            "type": "pie",
+            "valueFormat": "General"
+          },
+          "kind": "chart"
+        }
+      ],
+      "freeze": null,
+      "index": 0,
+      "maxCol": 6,
+      "maxRow": 2,
+      "merges": [],
+      "name": "Sheet1",
+      "rows": [
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "0"
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "1"
+            },
+            {
+              "c": 3,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "2"
+            },
+            {
+              "c": 4,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "3"
+            },
+            {
+              "c": 5,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "4"
+            },
+            {
+              "c": 6,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "5"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 1
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 2,
+              "type": "s",
+              "value": "6"
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "type": "n",
+              "value": "151"
+            },
+            {
+              "c": 3,
+              "r": 2,
+              "type": "n",
+              "value": "121"
+            },
+            {
+              "c": 4,
+              "r": 2,
+              "type": "n",
+              "value": "172"
+            },
+            {
+              "c": 5,
+              "r": 2,
+              "type": "n",
+              "value": "102"
+            },
+            {
+              "c": 6,
+              "r": 2,
+              "type": "n",
+              "value": "88"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 2
+        }
+      ],
+      "showGridLines": true
+    }
+  ],
+  "styles": {
+    "borders": [
+      {},
+      {}
+    ],
+    "cellXfs": [
+      {
+        "borderId": 1,
+        "fillId": 0,
+        "fontId": 0,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      },
+      {
+        "borderId": 0,
+        "fillId": 0,
+        "fontId": 1,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      }
+    ],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0,
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "fonts": [
+      {
+        "color": {
+          "theme": 1
+        },
+        "name": "Calibri",
+        "size": 11.0
+      },
+      {
+        "bold": true,
+        "name": "Calibri"
+      }
+    ],
+    "numFmts": []
+  },
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  }
+}

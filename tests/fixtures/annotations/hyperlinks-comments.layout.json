@@ -1,0 +1,349 @@
+{
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "sharedStrings": [
+    "link kind",
+    "cell",
+    "commented",
+    "external https",
+    "OpenAI",
+    "external mailto",
+    "email",
+    "WIP",
+    "in-workbook",
+    "to D7",
+    "external file",
+    "share"
+  ],
+  "sheets": [
+    {
+      "cols": [
+        {
+          "max": 2,
+          "min": 1,
+          "widthPx": 135.01953
+        },
+        {
+          "max": 4,
+          "min": 4,
+          "widthPx": 114.97656
+        }
+      ],
+      "comments": [
+        {
+          "author": "Author",
+          "c": 4,
+          "r": 2,
+          "runs": [
+            {
+              "color": {
+                "rgb": "FF000000"
+              },
+              "fontName": "Arial",
+              "size": 9.0,
+              "text": "needs review"
+            }
+          ],
+          "text": "needs review"
+        },
+        {
+          "author": "Author",
+          "c": 4,
+          "r": 3,
+          "runs": [
+            {
+              "color": {
+                "rgb": "FF000000"
+              },
+              "fontName": "Arial",
+              "size": 9.0,
+              "text": "blocked on data"
+            }
+          ],
+          "text": "blocked on data"
+        },
+        {
+          "author": "Author",
+          "c": 4,
+          "r": 4,
+          "runs": [
+            {
+              "color": {
+                "rgb": "FF000000"
+              },
+              "fontName": "Arial",
+              "size": 9.0,
+              "text": "rounding ok"
+            }
+          ],
+          "text": "rounding ok"
+        }
+      ],
+      "defaultColWidthPx": 66.96094,
+      "defaultRowHeightPx": 20.0,
+      "freeze": null,
+      "hyperlinks": [
+        {
+          "display": "OpenAI",
+          "range": {
+            "c1": 2,
+            "c2": 2,
+            "r1": 2,
+            "r2": 2
+          },
+          "target": "https://openai.com/"
+        },
+        {
+          "display": "email",
+          "range": {
+            "c1": 2,
+            "c2": 2,
+            "r1": 3,
+            "r2": 3
+          },
+          "target": "mailto:hi@example.com"
+        },
+        {
+          "display": "to D7",
+          "range": {
+            "c1": 2,
+            "c2": 2,
+            "r1": 4,
+            "r2": 4
+          },
+          "target": "#Sheet1!D7"
+        },
+        {
+          "display": "share",
+          "range": {
+            "c1": 2,
+            "c2": 2,
+            "r1": 5,
+            "r2": 5
+          },
+          "target": "file://server/share/doc.xlsx"
+        }
+      ],
+      "index": 0,
+      "maxCol": 4,
+      "maxRow": 5,
+      "merges": [],
+      "name": "Sheet1",
+      "rows": [
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "0"
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "1"
+            },
+            {
+              "c": 4,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "2"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 1
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 2,
+              "type": "s",
+              "value": "3"
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "styleIndex": 2,
+              "type": "s",
+              "value": "4"
+            },
+            {
+              "c": 4,
+              "r": 2,
+              "type": "n",
+              "value": "42"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 2
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 3,
+              "type": "s",
+              "value": "5"
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "styleIndex": 2,
+              "type": "s",
+              "value": "6"
+            },
+            {
+              "c": 4,
+              "r": 3,
+              "type": "s",
+              "value": "7"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 3
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 4,
+              "type": "s",
+              "value": "8"
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "styleIndex": 2,
+              "type": "s",
+              "value": "9"
+            },
+            {
+              "c": 4,
+              "r": 4,
+              "type": "n",
+              "value": "3.14"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 4
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 5,
+              "type": "s",
+              "value": "10"
+            },
+            {
+              "c": 2,
+              "r": 5,
+              "styleIndex": 2,
+              "type": "s",
+              "value": "11"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 5
+        }
+      ],
+      "showGridLines": true
+    }
+  ],
+  "styles": {
+    "borders": [
+      {},
+      {}
+    ],
+    "cellXfs": [
+      {
+        "borderId": 1,
+        "fillId": 0,
+        "fontId": 0,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      },
+      {
+        "borderId": 0,
+        "fillId": 0,
+        "fontId": 1,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      },
+      {
+        "borderId": 0,
+        "fillId": 0,
+        "fontId": 2,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      }
+    ],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0,
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "fonts": [
+      {
+        "color": {
+          "theme": 1
+        },
+        "name": "Calibri",
+        "size": 11.0
+      },
+      {
+        "bold": true,
+        "name": "Calibri",
+        "size": 11.0
+      },
+      {
+        "color": {
+          "theme": 10
+        },
+        "name": "Calibri",
+        "underline": true
+      }
+    ],
+    "numFmts": []
+  },
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  }
+}

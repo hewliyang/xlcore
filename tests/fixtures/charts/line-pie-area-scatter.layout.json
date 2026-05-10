@@ -1,0 +1,667 @@
+{
+  "activeSheetIndex": 0,
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "sharedStrings": [
+    "Quarter",
+    "North",
+    "South",
+    "East",
+    "West",
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4",
+    "X",
+    "Y"
+  ],
+  "sheets": [
+    {
+      "cols": [],
+      "defaultColWidthPx": 66.96094,
+      "defaultRowHeightPx": 20.0,
+      "drawings": [
+        {
+          "anchor": {
+            "fromCol": 5,
+            "fromColOffEmu": 381000,
+            "fromRow": 0,
+            "fromRowOffEmu": 0,
+            "toCol": 11,
+            "toColOffEmu": 457200,
+            "toRow": 12,
+            "toRowOffEmu": 0
+          },
+          "chart": {
+            "categories": [
+              "North",
+              "South",
+              "East",
+              "West"
+            ],
+            "categoriesRef": "Sheet1!$B$1:$E$1",
+            "grouping": "standard",
+            "legendPos": "b",
+            "series": [
+              {
+                "color": "#4F81BD",
+                "name": "Q1",
+                "nameRef": "Sheet1!$A$2",
+                "values": [
+                  120.0,
+                  98.0,
+                  145.0,
+                  88.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$E$2"
+              },
+              {
+                "color": "#C0504D",
+                "name": "Q2",
+                "nameRef": "Sheet1!$A$3",
+                "values": [
+                  138.0,
+                  110.0,
+                  158.0,
+                  94.0
+                ],
+                "valuesRef": "Sheet1!$B$3:$E$3"
+              },
+              {
+                "color": "#9BBB59",
+                "name": "Q3",
+                "nameRef": "Sheet1!$A$4",
+                "values": [
+                  151.0,
+                  121.0,
+                  172.0,
+                  102.0
+                ],
+                "valuesRef": "Sheet1!$B$4:$E$4"
+              },
+              {
+                "color": "#8064A2",
+                "name": "Q4",
+                "nameRef": "Sheet1!$A$5",
+                "values": [
+                  169.0,
+                  135.0,
+                  189.0,
+                  119.0
+                ],
+                "valuesRef": "Sheet1!$B$5:$E$5"
+              }
+            ],
+            "title": "Sales — line",
+            "type": "line",
+            "valueFormat": "General"
+          },
+          "kind": "chart"
+        },
+        {
+          "anchor": {
+            "fromCol": 5,
+            "fromColOffEmu": 381000,
+            "fromRow": 12,
+            "fromRowOffEmu": 95250,
+            "toCol": 11,
+            "toColOffEmu": 457200,
+            "toRow": 24,
+            "toRowOffEmu": 95250
+          },
+          "chart": {
+            "categories": [
+              "North",
+              "South",
+              "East",
+              "West"
+            ],
+            "categoriesRef": "Sheet1!$B$1:$E$1",
+            "grouping": "stacked",
+            "legendPos": "b",
+            "series": [
+              {
+                "color": "#4F81BD",
+                "name": "Q1",
+                "nameRef": "Sheet1!$A$2",
+                "values": [
+                  120.0,
+                  98.0,
+                  145.0,
+                  88.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$E$2"
+              },
+              {
+                "color": "#C0504D",
+                "name": "Q2",
+                "nameRef": "Sheet1!$A$3",
+                "values": [
+                  138.0,
+                  110.0,
+                  158.0,
+                  94.0
+                ],
+                "valuesRef": "Sheet1!$B$3:$E$3"
+              },
+              {
+                "color": "#9BBB59",
+                "name": "Q3",
+                "nameRef": "Sheet1!$A$4",
+                "values": [
+                  151.0,
+                  121.0,
+                  172.0,
+                  102.0
+                ],
+                "valuesRef": "Sheet1!$B$4:$E$4"
+              },
+              {
+                "color": "#8064A2",
+                "name": "Q4",
+                "nameRef": "Sheet1!$A$5",
+                "values": [
+                  169.0,
+                  135.0,
+                  189.0,
+                  119.0
+                ],
+                "valuesRef": "Sheet1!$B$5:$E$5"
+              }
+            ],
+            "title": "Sales — area (stacked)",
+            "type": "area",
+            "valueFormat": "General"
+          },
+          "kind": "chart"
+        },
+        {
+          "anchor": {
+            "fromCol": 11,
+            "fromColOffEmu": 552450,
+            "fromRow": 0,
+            "fromRowOffEmu": 0,
+            "toCol": 18,
+            "toColOffEmu": 38100,
+            "toRow": 12,
+            "toRowOffEmu": 0
+          },
+          "chart": {
+            "legendPos": "b",
+            "series": [
+              {
+                "color": "#4F81BD",
+                "name": "Q3",
+                "nameRef": "Sheet1!$A$4",
+                "values": [
+                  151.0,
+                  121.0,
+                  172.0,
+                  102.0
+                ],
+                "valuesRef": "Sheet1!$B$4:$E$4"
+              }
+            ],
+            "title": "Q3 share",
+            "type": "pie",
+            "valueFormat": "General"
+          },
+          "kind": "chart"
+        },
+        {
+          "anchor": {
+            "fromCol": 11,
+            "fromColOffEmu": 552450,
+            "fromRow": 12,
+            "fromRowOffEmu": 95250,
+            "toCol": 18,
+            "toColOffEmu": 38100,
+            "toRow": 24,
+            "toRowOffEmu": 95250
+          },
+          "chart": {
+            "categories": [
+              "1.2",
+              "2.8",
+              "3.5",
+              "4.7",
+              "5.1",
+              "6.4"
+            ],
+            "categoriesRef": "Sheet1!$A$9:$A$14",
+            "legendPos": "b",
+            "series": [
+              {
+                "color": "#4F81BD",
+                "name": "Y",
+                "nameRef": "Sheet1!$B$8",
+                "values": [
+                  3.5,
+                  4.1,
+                  2.9,
+                  5.6,
+                  6.2,
+                  5.0
+                ],
+                "valuesRef": "Sheet1!$B$9:$B$14",
+                "xValues": [
+                  1.2,
+                  2.8,
+                  3.5,
+                  4.7,
+                  5.1,
+                  6.4
+                ],
+                "xValuesRef": "Sheet1!$A$9:$A$14"
+              }
+            ],
+            "title": "Scatter",
+            "type": "scatter",
+            "valueFormat": "General"
+          },
+          "kind": "chart"
+        }
+      ],
+      "freeze": {
+        "leftCol": 1,
+        "topRow": 2
+      },
+      "index": 0,
+      "maxCol": 5,
+      "maxRow": 14,
+      "merges": [],
+      "name": "Sheet1",
+      "rows": [
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "0"
+            },
+            {
+              "c": 2,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "1"
+            },
+            {
+              "c": 3,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "2"
+            },
+            {
+              "c": 4,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "3"
+            },
+            {
+              "c": 5,
+              "r": 1,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "4"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 1
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 2,
+              "type": "s",
+              "value": "5"
+            },
+            {
+              "c": 2,
+              "r": 2,
+              "type": "n",
+              "value": "120"
+            },
+            {
+              "c": 3,
+              "r": 2,
+              "type": "n",
+              "value": "98"
+            },
+            {
+              "c": 4,
+              "r": 2,
+              "type": "n",
+              "value": "145"
+            },
+            {
+              "c": 5,
+              "r": 2,
+              "type": "n",
+              "value": "88"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 2
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 3,
+              "type": "s",
+              "value": "6"
+            },
+            {
+              "c": 2,
+              "r": 3,
+              "type": "n",
+              "value": "138"
+            },
+            {
+              "c": 3,
+              "r": 3,
+              "type": "n",
+              "value": "110"
+            },
+            {
+              "c": 4,
+              "r": 3,
+              "type": "n",
+              "value": "158"
+            },
+            {
+              "c": 5,
+              "r": 3,
+              "type": "n",
+              "value": "94"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 3
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 4,
+              "type": "s",
+              "value": "7"
+            },
+            {
+              "c": 2,
+              "r": 4,
+              "type": "n",
+              "value": "151"
+            },
+            {
+              "c": 3,
+              "r": 4,
+              "type": "n",
+              "value": "121"
+            },
+            {
+              "c": 4,
+              "r": 4,
+              "type": "n",
+              "value": "172"
+            },
+            {
+              "c": 5,
+              "r": 4,
+              "type": "n",
+              "value": "102"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 4
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 5,
+              "type": "s",
+              "value": "8"
+            },
+            {
+              "c": 2,
+              "r": 5,
+              "type": "n",
+              "value": "169"
+            },
+            {
+              "c": 3,
+              "r": 5,
+              "type": "n",
+              "value": "135"
+            },
+            {
+              "c": 4,
+              "r": 5,
+              "type": "n",
+              "value": "189"
+            },
+            {
+              "c": 5,
+              "r": 5,
+              "type": "n",
+              "value": "119"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 5
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 8,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "9"
+            },
+            {
+              "c": 2,
+              "r": 8,
+              "styleIndex": 1,
+              "type": "s",
+              "value": "10"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 8
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 9,
+              "type": "n",
+              "value": "1.2"
+            },
+            {
+              "c": 2,
+              "r": 9,
+              "type": "n",
+              "value": "3.5"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 9
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 10,
+              "type": "n",
+              "value": "2.8"
+            },
+            {
+              "c": 2,
+              "r": 10,
+              "type": "n",
+              "value": "4.1"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 10
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 11,
+              "type": "n",
+              "value": "3.5"
+            },
+            {
+              "c": 2,
+              "r": 11,
+              "type": "n",
+              "value": "2.9"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 11
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 12,
+              "type": "n",
+              "value": "4.7"
+            },
+            {
+              "c": 2,
+              "r": 12,
+              "type": "n",
+              "value": "5.6"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 12
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 13,
+              "type": "n",
+              "value": "5.1"
+            },
+            {
+              "c": 2,
+              "r": 13,
+              "type": "n",
+              "value": "6.2"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 13
+        },
+        {
+          "cells": [
+            {
+              "c": 1,
+              "r": 14,
+              "type": "n",
+              "value": "6.4"
+            },
+            {
+              "c": 2,
+              "r": 14,
+              "type": "n",
+              "value": "5"
+            }
+          ],
+          "heightPx": 20.0,
+          "index": 14
+        }
+      ],
+      "showGridLines": true
+    }
+  ],
+  "styles": {
+    "borders": [
+      {},
+      {}
+    ],
+    "cellXfs": [
+      {
+        "borderId": 1,
+        "fillId": 0,
+        "fontId": 0,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      },
+      {
+        "borderId": 0,
+        "fillId": 0,
+        "fontId": 1,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      }
+    ],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0,
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "fonts": [
+      {
+        "color": {
+          "theme": 1
+        },
+        "name": "Calibri",
+        "size": 11.0
+      },
+      {
+        "bold": true,
+        "name": "Calibri"
+      }
+    ],
+    "numFmts": []
+  },
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  }
+}

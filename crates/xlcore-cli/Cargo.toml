@@ -1,0 +1,18 @@
+[package]
+name = "xlcore-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CLI: xlsx -> WorkbookLayout JSON + standalone preview.html"
+
+[[bin]]
+name = "xlcore"
+path = "src/main.rs"
+
+[dependencies]
+xlcore-io = { path = "../xlcore-io" }
+xlcore-export = { path = "../xlcore-export" }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+flate2 = "1"
+base64 = "0.22"

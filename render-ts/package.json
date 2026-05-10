@@ -1,0 +1,32 @@
+{
+  "name": "@xlcore/render-ts",
+  "version": "0.0.1",
+  "description": "Canvas renderer for xlcore WorkbookLayout. Browser + Node.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "bun build src/browser.ts --outfile dist/browser.js --target browser --format iife && bun build src/index.ts --outfile dist/index.js --target node --format esm",
+    "check": "bun run typecheck && bun run lint && bun run check:loc && bun run knip",
+    "check:loc": "bun scripts/check-loc.ts",
+    "dev": "bun build src/browser.ts --outfile dist/browser.js --target browser --format iife --watch",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "knip": "knip",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.15",
+    "@types/bun": "^1.3.13",
+    "knip": "^6.12.2",
+    "typescript": "^5.5.0"
+  }
+}
