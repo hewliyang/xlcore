@@ -18,65 +18,144 @@ import type { Visible } from "./renderTypes.js";
 
 // ---------- conditional formatting ----------
 
+// Kinds whose match set is value-driven (the rule only "applies" to
+// cells whose value satisfies the predicate). All other kinds
+// (colorScale / dataBar / iconSet / expression) either always apply
+// across their full sqref (the visual passes paint a no-op for cells
+// whose value isn't numeric) or need a formula engine.
+const PREDICATE_KINDS = new Set([
+  "cellIs",
+  "top10",
+  "aboveAverage",
+  "duplicateValues",
+  "uniqueValues",
+  "containsText",
+  "notContainsText",
+  "beginsWith",
+  "endsWith",
+  "timePeriod",
+]);
+
+/// Walk every CF rule across the whole sheet in priority order and
+/// collect the cells "locked" by a `stopIfTrue` rule. Returns a map
+/// from cellKey (`"r:c"`) to the priority value at which that cell is
+/// locked — any subsequent rule with priority strictly greater than
+/// the recorded value must be masked.
+///
+/// Cross-kind masking is the whole point: in Excel, a higher-priority
+/// `cellIs` rule with stopIfTrue=true will suppress a lower-priority
+/// colorScale on the same cell, and vice-versa. We treat colorScale /
+/// dataBar / iconSet rules as matching every cell in their `sqref`
+/// (Excel's UI doesn't let you set stopIfTrue on these, but the OOXML
+/// schema allows it and writers in the wild do produce it).
+/// `expression` rules need recalc to evaluate so they don't lock
+/// anything today (better to under-mask than over-mask).
+export function computeCfStopLocks(
+  sheet: Sheet,
+  layout: WorkbookLayout,
+): Map<string, number> {
+  const locks = new Map<string, number>();
+  const cfs = sheet.conditionalFormats;
+  if (!cfs || cfs.length === 0) return locks;
+
+  const cellByKey = new Map<string, Cell>();
+  iterAllCells(sheet, (cell) => {
+    cellByKey.set(`${cell.r}:${cell.c}`, cell);
+  });
+
+  // Flatten rules across all CF blocks with their parent ranges, then
+  // sort globally by priority (low = high precedence).
+  const entries: { rule: CfRule; ranges: Merge[] }[] = [];
+  for (const cf of cfs) for (const rule of cf.rules) entries.push({ rule, ranges: cf.ranges });
+  entries.sort((a, b) => a.rule.priority - b.rule.priority);
+
+  for (const { rule, ranges } of entries) {
+    if (!rule.stopIfTrue) continue;
+    let matched: Iterable<string>;
+    if (PREDICATE_KINDS.has(rule.kind)) {
+      matched = computeRuleMatchSet(rule, ranges, cellByKey, layout);
+    } else if (
+      rule.kind === "colorScale" ||
+      rule.kind === "dataBar" ||
+      rule.kind === "iconSet"
+    ) {
+      const all: string[] = [];
+      for (const range of ranges) {
+        for (let r = range.r1; r <= range.r2; r++) {
+          for (let c = range.c1; c <= range.c2; c++) all.push(`${r}:${c}`);
+        }
+      }
+      matched = all;
+    } else {
+      // expression / unknown: skip without locking.
+      continue;
+    }
+    for (const k of matched) {
+      const cur = locks.get(k);
+      if (cur === undefined || rule.priority < cur) locks.set(k, rule.priority);
+    }
+  }
+  return locks;
+}
+
+/// `true` if `rulePriority` should be masked at `cellKey` by some
+/// higher-priority stopIfTrue rule.
+export function isCfLocked(
+  locks: Map<string, number> | undefined,
+  cellKey: string,
+  rulePriority: number,
+): boolean {
+  if (!locks) return false;
+  const at = locks.get(cellKey);
+  return at !== undefined && at < rulePriority;
+}
+
 /// Walk every CF rule once and build the merged dxf overlay per cell.
 /// Today: only `cellIs` (with literal-numeric/literal-string operands) is
 /// evaluated; `expression` and friends need a formula engine and are
-/// skipped. Honors rule priority (lower number wins) and `stopIfTrue`.
-export function computeCfDxfMap(sheet: Sheet, layout: WorkbookLayout): Map<string, Dxf> {
+/// skipped. Honors rule priority (lower number wins) and `stopIfTrue`,
+/// including cross-kind masking via `locks` (e.g. a higher-priority
+/// stopIfTrue colorScale will suppress a lower-priority dxf overlay).
+export function computeCfDxfMap(
+  sheet: Sheet,
+  layout: WorkbookLayout,
+  locks?: Map<string, number>,
+): Map<string, Dxf> {
   const out = new Map<string, Dxf>();
   const dxfs = layout.dxfs ?? [];
   if (dxfs.length === 0) return out;
   const cfs = sheet.conditionalFormats;
   if (!cfs || cfs.length === 0) return out;
 
-  // Index cell values for fast lookup. We materialize one POJO per
-  // non-empty cell here — still cheaper than iterating rows-of-cells
-  // every rule, since downstream evaluators need the full `Cell` shape.
   const cellByKey = new Map<string, Cell>();
   iterAllCells(sheet, (cell) => {
     cellByKey.set(`${cell.r}:${cell.c}`, cell);
   });
 
-  // Per cell, track "stopIfTrue locked" so a higher-priority match short-
-  // circuits remaining rules.
-  const locked = new Set<string>();
-
-  // Kinds we can evaluate without a formula engine.
-  const SUPPORTED = new Set([
-    "cellIs",
-    "top10",
-    "aboveAverage",
-    "duplicateValues",
-    "uniqueValues",
-    "containsText",
-    "notContainsText",
-    "beginsWith",
-    "endsWith",
-    "timePeriod",
-  ]);
+  // In-pass dxf-overlay locks layered on top of the cross-kind locks.
+  // The cross-kind `locks` only contains stopIfTrue rules; an in-pass
+  // match by a non-stopping higher-priority rule still wins per-field
+  // against same-cell overlaps via mergeDxf.
+  const locallyLocked = new Set<string>();
 
   for (const cf of cfs) {
     // Walk this block's rules in priority order (low number = high prio).
     const sortedRules = [...cf.rules].sort((a, b) => a.priority - b.priority);
     for (const rule of sortedRules) {
-      if (!SUPPORTED.has(rule.kind)) continue;
+      if (!PREDICATE_KINDS.has(rule.kind)) continue;
       if (rule.dxfId === undefined) continue;
       const dxf = dxfs[rule.dxfId];
       if (!dxf) continue;
 
-      // Precompute the set of cell keys this rule matches across all of
-      // its ranges. For most kinds the predicate is per-cell, but top10
-      // and aboveAverage need a population pass first.
       const matched = computeRuleMatchSet(rule, cf.ranges, cellByKey, layout);
       if (matched.size === 0) continue;
 
       for (const k of matched) {
-        if (locked.has(k)) continue;
-        // Merge with anything already there (lower priority): existing
-        // wins per-field because we iterate highest-priority first.
+        if (locallyLocked.has(k)) continue;
+        if (isCfLocked(locks, k, rule.priority)) continue;
         const prev = out.get(k);
         out.set(k, prev ? mergeDxf(prev, dxf) : dxf);
-        if (rule.stopIfTrue) locked.add(k);
+        if (rule.stopIfTrue) locallyLocked.add(k);
       }
     }
   }
@@ -462,6 +541,7 @@ export function drawConditionalFormats(
   g: Grid,
   vis: Visible,
   cfDxfs: Map<string, Dxf>,
+  locks?: Map<string, number>,
 ): void {
   // First pass: paint dxf fill rects for cellIs / expression matches.
   // (Color-scale fills paint below from their own min/max plumbing.)
@@ -527,6 +607,7 @@ export function drawConditionalFormats(
         for (let c = c1; c <= c2; c++) {
           const k = `${r}:${c}`;
           if (covered.has(k)) continue;
+          if (isCfLocked(locks, k, rule.priority)) continue;
           const v = cellNumeric.get(k);
           if (v === undefined) continue;
           const css = interpolateStops(stops, v);
@@ -589,6 +670,7 @@ export function drawConditionalFormats(
         for (let c = c1; c <= c2; c++) {
           const k = `${r}:${c}`;
           if (covered.has(k)) continue;
+          if (isCfLocked(locks, k, rule.priority)) continue;
           const v = cellNumeric.get(k);
           if (v === undefined) continue;
           const rect = topLeftOf.has(k) ? mergedRect(g, topLeftOf.get(k)!) : cellRect(g, r, c);
@@ -686,7 +768,10 @@ export function resolveCfvoValue(
 
 export { computeCfIconState } from "./cfIconState.js";
 
-export function computeCfTextSuppress(sheet: Sheet): Set<string> {
+export function computeCfTextSuppress(
+  sheet: Sheet,
+  locks?: Map<string, number>,
+): Set<string> {
   const out = new Set<string>();
   const cfs = sheet.conditionalFormats;
   if (!cfs || cfs.length === 0) return out;
@@ -698,7 +783,9 @@ export function computeCfTextSuppress(sheet: Sheet): Set<string> {
     for (const range of cf.ranges) {
       for (let r = range.r1; r <= range.r2; r++) {
         for (let c = range.c1; c <= range.c2; c++) {
-          out.add(`${r}:${c}`);
+          const k = `${r}:${c}`;
+          if (isCfLocked(locks, k, rule.priority)) continue;
+          out.add(k);
         }
       }
     }

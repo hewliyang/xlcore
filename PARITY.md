@@ -86,7 +86,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | `containsText` / friends           | ✅      | ✅     | All four kinds — `containsText` / `notContainsText` / `beginsWith` / `endsWith` — case-insensitive against the displayed text. `notContainsText` matches empty cells (Excel parity). Fixture: `tests/fixtures/cf/cf-non-recalc.xlsx`. |
 | `duplicateValues` / `uniqueValues` | ✅      | ✅     | Count-by-value over the rule's combined ranges; numbers and text-of-the-same-digits stay in distinct buckets (`1` ≠ `"1"`, mirrors Excel). Empty cells excluded. Fixture: `tests/fixtures/cf/cf-non-recalc.xlsx`. |
 | `timePeriod`                       | ✅      | ✅     | All 10 named periods (yesterday / today / tomorrow / last7Days / lastWeek / thisWeek / nextWeek / lastMonth / thisMonth / nextMonth) evaluated against the wall-clock at render time. Excel weeks are Sunday–Saturday. **Not in the fixture corpus** because the matching set rotates daily and would invalidate the snapshot. |
-| Stop-if-true semantics             | ❌      | ❌     | rule priority + masking not modelled.           |
+| Stop-if-true semantics             | ✅      | ✅     | Cross-kind masking: a higher-priority rule with `stopIfTrue=true` suppresses every lower-priority rule on the same cell, regardless of kind (cellIs / colorScale / dataBar / iconSet all participate). Implemented via a single `computeCfStopLocks(sheet, layout)` upfront pass that flattens all CF blocks, sorts by priority globally, and emits `Map<cellKey, lockedAtPriority>`; each visual pass (`computeCfDxfMap`, color-scale paint, data-bar paint, `computeCfIconState`, `computeCfTextSuppress`) calls `isCfLocked(locks, k, rule.priority)` and skips. Predicate kinds (`cellIs`, `top10`, etc.) lock only the cells whose value matches; visual kinds (`colorScale`/`dataBar`/`iconSet`) lock every cell in their `sqref` (Excel's UI doesn't allow stopIfTrue here, but the OOXML schema does and we honor it). `expression` doesn't lock without recalc — better to under-mask than over-mask. Fixture: `tests/fixtures/cf/stop-if-true.xlsx` (4 columns: control + cellIs masking colorScale / dataBar / iconSet). Pixel-matches hsx. |
 
 ### Tables, validation, charts, drawings
 
@@ -315,6 +315,12 @@ Bigger lifts (own milestones):
     HSL primaries (red/green/blue/black/white/gray), and hex format.
 - **Formula recalc.** Forking IronCalc + filling its function gaps is
   milestone 1 in `plan-excel-rust-lib.md`.
+- ~~**node-canvas backend.**~~ **DONE.** `@xlcore/render-ts` now exports
+  `renderToCanvas()` / `renderToPng()` from `render-ts/src/node.ts`, backed by
+  `@napi-rs/canvas` and the exact same `render()` pass used by the browser
+  preview. Pattern-fill offscreen canvases route through a shared factory so
+  hatch fills keep working outside `document`. Open follow-up: wire this into
+  fixture pixel-diff CI.
 - **Filtered-row hiding (autoFilter).** Needs the engine OR a "hidden row"
   fast-path keyed off `<row hidden="1">` markers some writers emit.
 - **Sparklines.** Stored under `extLst`; chart-class effort.
@@ -640,6 +646,16 @@ surrounding workbook noise.
       proper Excel-style outline gutter strip outside the header strips
       (with +/- buttons + level numerals at the corner) is the planned
       follow-up.
+- [x] CF stopIfTrue cross-kind masking: `tests/fixtures/cf/stop-if-true.xlsx`
+      — four side-by-side columns each with values 1..10 and a
+      `cellIs(>7)` yellow-fill dxf rule layered against (a) no stop,
+      (b) a colorScale, (c) a dataBar, (d) an iconSet; the stopping
+      cellIs rule has higher priority and `stopIfTrue=true`. Without
+      the fix, lower-priority colorScale / dataBar / iconSet rules
+      paint over the stopped cells; with the fix, rows 8–10 in cols
+      B–D show only the yellow dxf, matching Excel + hsx. SpreadJS
+      drops `stopIfTrue` on its public xlsx-emit path so the fixture
+      is built via Python zip-patch (`_patch_stop_if_true.py`).
 - [x] Every-border-style fixture: `tests/fixtures/borders/every-style.xlsx`
       lays out all 14 OOXML `ST_BorderStyle` values in a 2×7 grid,
       each on all four sides of its cell. Caught two latent bugs:
@@ -657,8 +673,7 @@ surrounding workbook noise.
     render-ts/src/schema/`.
 - [ ] `cargo-insta` snapshot test on `WorkbookLayout` JSON for every
       fixture.
-- [ ] Pixel-diff snapshot test once `node-canvas` lands — render via
-      node-canvas, imagehash against the stored `*.hsx.png`, fail CI on
-      regression.
+- [ ] Pixel-diff snapshot test — render via the new node-canvas adapter,
+      imagehash against the stored `*.hsx.png`, fail CI on regression.
 - [ ] `bun test` on pure-helper TS (`niceTicks`, `formatNumber`, A1
       helpers, `layoutSpans`).

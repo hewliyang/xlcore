@@ -17,6 +17,7 @@ import { drawCellText, drawFreezeIndicators } from "./textRenderer.js";
 import {
   computeCfDxfMap,
   computeCfIconState,
+  computeCfStopLocks,
   computeCfTextSuppress,
   drawConditionalFormats,
 } from "./conditionalFormatting.js";
@@ -75,9 +76,14 @@ export function render(
   const sel = resolveSelection(opts, grid);
   const panes = splitPanes(sheet, grid, vp ?? null, W, H);
 
-  const cfDxfs = computeCfDxfMap(sheet, layout);
-  const cfTextSuppress = computeCfTextSuppress(sheet);
-  const { cfIconReserve, cfIconDraw, cfIconSuppress } = computeCfIconState(sheet);
+  // Cross-kind stopIfTrue locks: a higher-priority rule with
+  // stopIfTrue=true masks every lower-priority CF rule on the same
+  // cell, regardless of kind (cellIs vs colorScale vs dataBar vs
+  // iconSet). Compute once and thread through every CF pass.
+  const cfLocks = computeCfStopLocks(sheet, layout);
+  const cfDxfs = computeCfDxfMap(sheet, layout, cfLocks);
+  const cfTextSuppress = computeCfTextSuppress(sheet, cfLocks);
+  const { cfIconReserve, cfIconDraw, cfIconSuppress } = computeCfIconState(sheet, cfLocks);
   for (const k of cfIconSuppress) cfTextSuppress.add(k);
 
   const { tableDxfs, filterArrows } = computeTableState(sheet);
@@ -99,7 +105,7 @@ export function render(
 
     drawGridLines(ctx, sheet, grid, pane.vis);
     drawCellBackgrounds(ctx, sheet, layout.styles, grid, pane.vis);
-    drawConditionalFormats(ctx, sheet, layout, grid, pane.vis, cfDxfs);
+    drawConditionalFormats(ctx, sheet, layout, grid, pane.vis, cfDxfs, cfLocks);
     drawCellBorders(ctx, sheet, layout.styles, grid, pane.vis);
     drawCellText(ctx, sheet, layout, grid, pane.vis, cfDxfs, cfTextSuppress, cfIconReserve);
     drawCfIcons(ctx, sheet, grid, pane.vis, cfIconDraw);

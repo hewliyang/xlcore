@@ -1,10 +1,13 @@
 import type { Sheet } from "./types.js";
 import { iterAllCells } from "./columnar.js";
-import { resolveCfvoValue } from "./conditionalFormatting.js";
+import { isCfLocked, resolveCfvoValue } from "./conditionalFormatting.js";
 
 const ICON_RESERVE_PX = 18;
 
-export function computeCfIconState(sheet: Sheet): {
+export function computeCfIconState(
+  sheet: Sheet,
+  locks?: Map<string, number>,
+): {
   cfIconReserve: Map<string, number>;
   cfIconDraw: Map<string, { iconSet: string; idx: number; n: number }>;
   cfIconSuppress: Set<string>;
@@ -62,6 +65,7 @@ export function computeCfIconState(sheet: Sheet): {
       for (let r = range.r1; r <= range.r2; r++) {
         for (let c = range.c1; c <= range.c2; c++) {
           const k = `${r}:${c}`;
+          if (isCfLocked(locks, k, rule.priority)) continue;
           const v = cellNumeric.get(k);
           if (v === undefined) continue;
           // Largest k such that v >= thresholds[k]; default 0 (low icon).
