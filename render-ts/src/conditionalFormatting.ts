@@ -11,6 +11,7 @@ import type {
 } from "./types.js";
 import { cellNumericValue, cellTextValue } from "./cellText.js";
 import { colorToCss } from "./color.js";
+import { withAlpha } from "./chartUtils.js";
 import { iterAllCells } from "./columnar.js";
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, cellRect, mergedRect } from "./geometry.js";
@@ -682,22 +683,47 @@ export function drawConditionalFormats(
           const bh = Math.max(0, rect.h - inset * 2);
           if (bw <= 0 || bh <= 0) continue;
 
+          // `gradient` (Excel 2010+ default) paints a `linear-gradient(
+          // color, color->transparent)` from the bar's anchor edge to
+          // its outer tip; solid mode paints a flat fill of the same
+          // color across the whole bar. Excel's gradient stops aren't
+          // documented; visually-matched approximation: full-opacity at
+          // the anchor end, ~5% opacity at the tip, with the curve held
+          // mostly flat (~80% opacity at 70% of the bar) so the bar
+          // still reads as solid color from a distance.
+          const fillBar = (
+            x: number,
+            y: number,
+            w: number,
+            h: number,
+            css: string,
+            anchor: "left" | "right",
+          ) => {
+            if (w <= 0 || h <= 0) return;
+            if (db.gradient !== false) {
+              const x0 = anchor === "left" ? x : x + w;
+              const x1 = anchor === "left" ? x + w : x;
+              const grad = ctx.createLinearGradient(x0, y, x1, y);
+              grad.addColorStop(0, withAlpha(css, 1.0));
+              grad.addColorStop(0.7, withAlpha(css, 0.8));
+              grad.addColorStop(1, withAlpha(css, 0.05));
+              ctx.fillStyle = grad;
+            } else {
+              ctx.fillStyle = css;
+            }
+            ctx.fillRect(x, y, w, h);
+          };
+
           if (straddles) {
             const axisX = bx + bw * axisFrac;
             if (v >= 0) {
               const t = Math.min(1, v / maxVal);
               const len = bw * (1 - axisFrac) * (minPct + t * (maxPct - minPct));
-              if (len > 0) {
-                ctx.fillStyle = posCss;
-                ctx.fillRect(axisX, by, len, bh);
-              }
+              fillBar(axisX, by, len, bh, posCss, "left");
             } else {
               const t = Math.min(1, -v / -minVal);
               const len = bw * axisFrac * (minPct + t * (maxPct - minPct));
-              if (len > 0) {
-                ctx.fillStyle = negCss;
-                ctx.fillRect(axisX - len, by, len, bh);
-              }
+              fillBar(axisX - len, by, len, bh, negCss, "right");
             }
             // Thin axis tick (Excel paints a 1px black line at zero).
             ctx.fillStyle = "#000000";
@@ -706,10 +732,7 @@ export function drawConditionalFormats(
             // Single-direction bar from the left edge.
             const t = Math.max(0, Math.min(1, (v - minVal) / (maxVal - minVal)));
             const len = bw * (minPct + t * (maxPct - minPct));
-            if (len > 0) {
-              ctx.fillStyle = posCss;
-              ctx.fillRect(bx, by, len, bh);
-            }
+            fillBar(bx, by, len, bh, posCss, "left");
           }
         }
       }

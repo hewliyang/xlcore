@@ -441,6 +441,10 @@ fn extract_data_bar(db: &x::DataBar) -> Option<CfDataBar> {
         min_length_pct: db.min_length.unwrap_or(0),
         max_length_pct: db.max_length.unwrap_or(100),
         show_value: db.show_value.unwrap_or(true),
+        // `gradient` lives only in the x14 extension; until we parse
+        // that, default to true — every modern writer (Excel,
+        // SpreadJS, LibreOffice) authors gradient bars by default.
+        gradient: true,
     })
 }
 

@@ -19,303 +19,6 @@
           "widthPx": 84.953125
         }
       ],
-      "rows": [
-        {
-          "index": 1,
-          "heightPx": 20.0,
-          "cells": [
-            {
-              "r": 1,
-              "c": 1,
-              "type": "s",
-              "value": "0",
-              "styleIndex": 1
-            },
-            {
-              "r": 1,
-              "c": 2,
-              "type": "s",
-              "value": "1",
-              "styleIndex": 1
-            },
-            {
-              "r": 1,
-              "c": 3,
-              "type": "s",
-              "value": "2",
-              "styleIndex": 1
-            },
-            {
-              "r": 1,
-              "c": 4,
-              "type": "s",
-              "value": "3",
-              "styleIndex": 1
-            },
-            {
-              "r": 1,
-              "c": 5,
-              "type": "s",
-              "value": "4",
-              "styleIndex": 1
-            },
-            {
-              "r": 1,
-              "c": 6,
-              "type": "s",
-              "value": "5",
-              "styleIndex": 1
-            },
-            {
-              "r": 1,
-              "c": 7,
-              "type": "s",
-              "value": "6",
-              "styleIndex": 1
-            }
-          ]
-        },
-        {
-          "index": 2,
-          "heightPx": 20.0,
-          "cells": [
-            {
-              "r": 2,
-              "c": 1,
-              "type": "s",
-              "value": "7"
-            },
-            {
-              "r": 2,
-              "c": 2,
-              "type": "n",
-              "value": "10"
-            },
-            {
-              "r": 2,
-              "c": 3,
-              "type": "n",
-              "value": "25"
-            },
-            {
-              "r": 2,
-              "c": 4,
-              "type": "n",
-              "value": "50"
-            },
-            {
-              "r": 2,
-              "c": 5,
-              "type": "n",
-              "value": "75"
-            },
-            {
-              "r": 2,
-              "c": 6,
-              "type": "n",
-              "value": "100"
-            },
-            {
-              "r": 2,
-              "c": 7,
-              "type": "n",
-              "value": "5"
-            }
-          ]
-        },
-        {
-          "index": 3,
-          "heightPx": 20.0,
-          "cells": [
-            {
-              "r": 3,
-              "c": 1,
-              "type": "s",
-              "value": "8"
-            },
-            {
-              "r": 3,
-              "c": 2,
-              "type": "n",
-              "value": "10"
-            },
-            {
-              "r": 3,
-              "c": 3,
-              "type": "n",
-              "value": "25"
-            },
-            {
-              "r": 3,
-              "c": 4,
-              "type": "n",
-              "value": "50"
-            },
-            {
-              "r": 3,
-              "c": 5,
-              "type": "n",
-              "value": "75"
-            },
-            {
-              "r": 3,
-              "c": 6,
-              "type": "n",
-              "value": "100"
-            },
-            {
-              "r": 3,
-              "c": 7,
-              "type": "n",
-              "value": "5"
-            }
-          ]
-        },
-        {
-          "index": 4,
-          "heightPx": 20.0,
-          "cells": [
-            {
-              "r": 4,
-              "c": 1,
-              "type": "s",
-              "value": "9"
-            },
-            {
-              "r": 4,
-              "c": 2,
-              "type": "n",
-              "value": "-50"
-            },
-            {
-              "r": 4,
-              "c": 3,
-              "type": "n",
-              "value": "-10"
-            },
-            {
-              "r": 4,
-              "c": 4,
-              "type": "n",
-              "value": "0"
-            },
-            {
-              "r": 4,
-              "c": 5,
-              "type": "n",
-              "value": "25"
-            },
-            {
-              "r": 4,
-              "c": 6,
-              "type": "n",
-              "value": "60"
-            },
-            {
-              "r": 4,
-              "c": 7,
-              "type": "n",
-              "value": "100"
-            }
-          ]
-        },
-        {
-          "index": 5,
-          "heightPx": 20.0,
-          "cells": [
-            {
-              "r": 5,
-              "c": 1,
-              "type": "s",
-              "value": "10"
-            },
-            {
-              "r": 5,
-              "c": 2,
-              "type": "n",
-              "value": "10"
-            },
-            {
-              "r": 5,
-              "c": 3,
-              "type": "n",
-              "value": "25"
-            },
-            {
-              "r": 5,
-              "c": 4,
-              "type": "n",
-              "value": "50"
-            },
-            {
-              "r": 5,
-              "c": 5,
-              "type": "n",
-              "value": "75"
-            },
-            {
-              "r": 5,
-              "c": 6,
-              "type": "n",
-              "value": "100"
-            },
-            {
-              "r": 5,
-              "c": 7,
-              "type": "n",
-              "value": "5"
-            }
-          ]
-        },
-        {
-          "index": 6,
-          "heightPx": 20.0,
-          "cells": [
-            {
-              "r": 6,
-              "c": 1,
-              "type": "s",
-              "value": "11"
-            },
-            {
-              "r": 6,
-              "c": 2,
-              "type": "n",
-              "value": "10"
-            },
-            {
-              "r": 6,
-              "c": 3,
-              "type": "n",
-              "value": "25"
-            },
-            {
-              "r": 6,
-              "c": 4,
-              "type": "n",
-              "value": "50"
-            },
-            {
-              "r": 6,
-              "c": 5,
-              "type": "n",
-              "value": "75"
-            },
-            {
-              "r": 6,
-              "c": 6,
-              "type": "n",
-              "value": "100"
-            },
-            {
-              "r": 6,
-              "c": 7,
-              "type": "n",
-              "value": "5"
-            }
-          ]
-        }
-      ],
       "merges": [],
       "freeze": null,
       "showGridLines": true,
@@ -345,7 +48,8 @@
                 },
                 "minLengthPct": 0,
                 "maxLengthPct": 100,
-                "showValue": true
+                "showValue": true,
+                "gradient": true
               }
             }
           ]
@@ -377,7 +81,8 @@
                 },
                 "minLengthPct": 0,
                 "maxLengthPct": 100,
-                "showValue": true
+                "showValue": true,
+                "gradient": true
               }
             }
           ]
@@ -407,7 +112,8 @@
                 },
                 "minLengthPct": 0,
                 "maxLengthPct": 100,
-                "showValue": true
+                "showValue": true,
+                "gradient": true
               }
             }
           ]
@@ -437,7 +143,8 @@
                 },
                 "minLengthPct": 0,
                 "maxLengthPct": 100,
-                "showValue": false
+                "showValue": false,
+                "gradient": true
               }
             }
           ]
@@ -467,11 +174,51 @@
                 },
                 "minLengthPct": 0,
                 "maxLengthPct": 100,
-                "showValue": true
+                "showValue": true,
+                "gradient": true
               }
             }
           ]
         }
+      ],
+      "cells": {
+        "count": 42,
+        "r": "AQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAIAAAACAAAAAgAAAAIAAAACAAAAAgAAAAIAAAADAAAAAwAAAAMAAAADAAAAAwAAAAMAAAADAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAUAAAAFAAAABQAAAAUAAAAFAAAABQAAAAUAAAAGAAAABgAAAAYAAAAGAAAABgAAAAYAAAAGAAAA",
+        "c": "AQAAAAIAAAADAAAABAAAAAUAAAAGAAAABwAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAABAAAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAABwAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAABAAAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA",
+        "kind": "AQEBAQEBAQEAAAAAAAABAAAAAAAAAQAAAAAAAAEAAAAAAAABAAAAAAAA",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAAUAAAANAAAACAAAAAkAAAAKAAAACwAAAAwAAAAFAAAADgAAAA8AAAAQAAAAAAAAAAkAAAARAAAADAAAAAgAAAAIAAAACQAAAAoAAAALAAAADAAAAAUAAAASAAAACAAAAAkAAAAKAAAACwAAAAwAAAAFAAAA",
+        "formulaIdx": "////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////",
+        "styleIdx": "AQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAP//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////",
+        "runsIdx": "////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////",
+        "rowPtr": "AAAAAAcAAAAOAAAAFQAAABwAAAAjAAAAKgAAAA=="
+      },
+      "rowMeta": {
+        "count": 6,
+        "index": "AQAAAAIAAAADAAAABAAAAAUAAAAGAAAA",
+        "heightPx": "AACgQQAAoEEAAKBBAACgQQAAoEEAAKBB",
+        "styleIdx": "////////////////////////////////",
+        "hidden": "AAAAAAAA"
+      },
+      "valuePool": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "10",
+        "25",
+        "50",
+        "75",
+        "100",
+        "8",
+        "9",
+        "-50",
+        "-10",
+        "60",
+        "11"
       ]
     }
   ],
@@ -567,5 +314,6 @@
     ],
     "majorFont": "Cambria",
     "minorFont": "Calibri"
-  }
+  },
+  "activeSheetIndex": 0
 }

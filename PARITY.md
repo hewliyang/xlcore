@@ -77,7 +77,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | Feature                            | Extract | Render | Notes                                           |
 | ---------------------------------- | ------- | ------ | ----------------------------------------------- |
 | `colorScale` (2-stop / 3-stop)     | ✅      | ✅     | min/max/percent/percentile/num.                 |
-| `dataBar`                          | 🟡      | 🟡     | Legacy `<dataBar>` parsed; renderer paints proportional fill, splits at zero for mixed-sign ranges, suppresses text on `showValue=false`. Open: gradient fill (renders solid), x14 extension (canonical color / negative color / axis color / `automin`-`automax` cfvos / `minLength`-`maxLength`). Fixture + workarounds: `tests/fixtures/cf/{data-bar.xlsx,TRIAGE.md}`. |
+| `dataBar`                          | 🟡      | 🟡     | Legacy `<dataBar>` parsed; renderer paints proportional fill (gradient by default — `createLinearGradient` from anchor to tip with stops `color@1.0 → color@0.8 at 70% → color@0.05`), splits at zero for mixed-sign ranges, suppresses text on `showValue=false`. New schema field `CfDataBar.gradient: bool` defaults true (matches Excel 2010+, SpreadJS, LibreOffice); when x14 parsing lands the extractor will read the actual flag from `<x14:dataBar gradient="..."/>`. Open: x14 extension (canonical color / negative color / axis color / `automin`-`automax` cfvos / `minLength`-`maxLength`). Fixture + workarounds: `tests/fixtures/cf/{data-bar.xlsx,TRIAGE.md}`. |
 | `iconSet`                          | ✅      | ✅     | All 17 OOXML preset IDs parsed; renderer paints hand-coded canvas paths for arrows / traffic-lights / signs / flags / symbols / ratings / quarters / boxes / triangles / stars (red→yellow→green ramps for color sets, gray ramp for `*Gray`). Bucket assignment is `largest k where v >= cfvo[k]`; `reverse` swaps. `showValue=false` suppresses cell text. Open: x14 extension (custom thresholds + per-icon mixing), curved arrow shapes, row-height–aware sizing. Fixture: `tests/fixtures/cf/icon-set.xlsx`. |
 | `cellIs` (>, <, between, …)        | ✅      | ✅     | All 8 operators (eq/ne/gt/ge/lt/le/between/notBetween) with literal-number / quoted-string operands; cell-ref / formula operands need recalc and are skipped (false). Excel text-vs-number ordering quirk (text > any number) is honored. Fixture: `tests/fixtures/cf/cell-is.xlsx`. |
 | `expression` (formula)             | 🟡      | ❌     | needs IronCalc to evaluate formula per cell.    |
@@ -153,8 +153,13 @@ of real-world workbooks looking wrong.
      paints red); `showValue=false` suppresses cell text. Hsx writes
      incomplete `<dataBar>` XML (no `<color>` child, defaults wrong)
      so the fixture build-script post-patches with a zip rewrite.
-     Open sub-items: gradient fill, x14 extension parsing. See
-     `tests/fixtures/cf/TRIAGE.md`.
+     ~~Gradient fill~~ **DONE** — `CfDataBar.gradient: bool` defaults
+     true and the renderer uses `createLinearGradient` (anchor→tip:
+     `color@1.0 → color@0.8 at 70% → color@0.05`) instead of a flat
+     fill. Pixel-matches hsx on `tests/fixtures/cf/data-bar.xlsx`
+     across the auto / num-num / mixed-sign / barOnly / explicit-gradient
+     rows. Open sub-item: x14 extension parsing (would let users
+     turn gradient off). See `tests/fixtures/cf/TRIAGE.md`.
    - ~~`iconSet`~~ **DONE.** Schema: `CfIconSet { iconSet, cfvos[],
      showValue, reverse }` extracted from legacy `<x:iconSet>`.
      Renderer: per-cell glyph drawn as canvas paths (arrows / traffic
