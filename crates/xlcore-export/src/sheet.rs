@@ -164,6 +164,13 @@ pub fn extract(
         pivots: Vec::new(),      // populated by lib.rs after sheet extract
         hyperlinks: Vec::new(),  // populated by lib.rs after sheet extract
         comments: Vec::new(),    // populated by lib.rs after sheet extract
+        // Columnar blobs are filled by `columnar::compactify` after every
+        // other pass has run; until then they're empty defaults.
+        cells: Default::default(),
+        row_meta: Default::default(),
+        value_pool: Vec::new(),
+        formula_pool: Vec::new(),
+        inline_runs: Vec::new(),
     }
 }
 

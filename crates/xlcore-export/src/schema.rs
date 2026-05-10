@@ -122,6 +122,11 @@ pub struct Sheet {
     pub default_row_height_px: f32,
     /// Custom column widths (sparse). Each entry covers cols `min..=max`.
     pub cols: Vec<Col>,
+    /// **Wire-invisible**: the extractor populates this Vec, then a
+    /// post-pass collapses it into the columnar blobs below and clears
+    /// it. Always empty in serialized JSON. Hidden from TS bindings.
+    #[cfg_attr(feature = "typescript", ts(skip))]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub rows: Vec<Row>,
     pub merges: Vec<Merge>,
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -140,6 +145,38 @@ pub struct Sheet {
     /// rows, filter-arrow glyphs); no filtering interactivity.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tables: Vec<Table>,
+
+    // ---------------------------------------------------------------
+    // Columnar cell storage. The extractor still builds `rows` (above)
+    // for ergonomic post-processing (chart-ref resolution, etc.); a
+    // post-pass in `lib.rs::compactify_sheets` converts that into the
+    // typed-array blobs below and clears `rows`. The wire format only
+    // ships the columnar form. See `crates/xlcore-export/src/columnar.rs`.
+    // ---------------------------------------------------------------
+    /// Non-empty cell records, sorted (row asc, col asc within row).
+    /// All inner blobs are base64-encoded little-endian typed arrays
+    /// of length `count`. The renderer decodes these once at load time
+    /// into Uint32Array/Int32Array/Uint8Array views.
+    #[serde(default)]
+    pub cells: ColumnarCells,
+    /// Per-row metadata for rows that carry custom height/style/hidden
+    /// flags or simply have any cells. Sorted by `index` ascending.
+    #[serde(default)]
+    pub row_meta: RowMetaBlob,
+    /// Deduplicated string pool for `cells.valueIdx`. `valueIdx[i] >= 0`
+    /// means "look up `value_pool[valueIdx[i]]`"; `-1` means the cell
+    /// has no cached value (rare; mostly empty formula cells).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub value_pool: Vec<String>,
+    /// Deduplicated formula pool for `cells.formulaIdx`. Most cells
+    /// have no formula (`formulaIdx[i] == -1`); pool is small.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub formula_pool: Vec<String>,
+    /// Inline rich-text run lists for cells that carry `<r>` children
+    /// directly (i.e. `kind == "inline"` with explicit runs). Indexed
+    /// by `cells.runsIdx`; `-1` means "no inline runs on this cell".
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub inline_runs: Vec<Vec<TextRun>>,
     /// `<hyperlink>` entries from the worksheet's `<hyperlinks>` block.
     /// External `r:id` rels are resolved to absolute URLs at extract
     /// time; `location` carries internal in-workbook jumps (e.g.
@@ -995,3 +1032,73 @@ pub struct Color {
     pub tint: Option<f64>,
 }
 fn is_false(b: &bool) -> bool { !*b }
+
+// ============================================================
+// Columnar storage
+// ============================================================
+//
+// All blobs are base64-encoded little-endian typed-array bytes. The
+// browser decodes them once via `atob` + a typed-array view (zero copy
+// past the b64 step). Skipping per-cell JSON objects shrinks the wire
+// (~2× after gzip on big sheets) AND collapses millions of small JS
+// allocations into a handful of typed arrays — the latter is the
+// bigger runtime win.
+//
+// Layout invariants:
+//   * `cells.{r,c,kind,valueIdx,formulaIdx,styleIdx,runsIdx}` all have
+//     length == `cells.count`.
+//   * Records are sorted by (r asc, c asc within r).
+//   * `cells.rowPtr` has length == `rowMeta.count + 1`. Cells for
+//     `rowMeta.index[i]` live in `[rowPtr[i], rowPtr[i+1])`.
+//   * `kind` is the small enum below; ASCII values match for grep'ability
+//     but the wire is numeric.
+//
+// Cell-kind enum (matches `Cell.kind` strings):
+//   0 = `n`     numeric
+//   1 = `s`     shared string (value = SST index as decimal string)
+//   2 = `inline` inline string
+//   3 = `b`     boolean ("0"/"1")
+//   4 = `e`     error
+//   5 = `str`   plain string from a formula
+//   6 = `f`     formula (cached value lives in `value`)
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[serde(rename_all = "camelCase")]
+pub struct ColumnarCells {
+    pub count: u32,
+    /// 1-based row indices, u32 LE.
+    pub r: String,
+    /// 1-based col indices, u32 LE.
+    pub c: String,
+    /// Kind enum, u8.
+    pub kind: String,
+    /// Index into `Sheet.value_pool`, i32 LE; -1 = no value.
+    pub value_idx: String,
+    /// Index into `Sheet.formula_pool`, i32 LE; -1 = no formula.
+    pub formula_idx: String,
+    /// `Cell.styleIndex`, i32 LE; -1 = no explicit style.
+    pub style_idx: String,
+    /// Index into `Sheet.inline_runs`, i32 LE; -1 = no inline runs.
+    pub runs_idx: String,
+    /// Row-pointer array: cells for `row_meta.index[i]` live in
+    /// `[row_ptr[i], row_ptr[i+1])`. u32 LE, length == `row_meta.count + 1`.
+    pub row_ptr: String,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[serde(rename_all = "camelCase")]
+pub struct RowMetaBlob {
+    pub count: u32,
+    /// 1-based row indices, u32 LE. Sorted ascending.
+    pub index: String,
+    /// f32 LE; NaN means "use sheet's default row height".
+    pub height_px: String,
+    /// i32 LE; -1 = no row-level style override.
+    pub style_idx: String,
+    /// u8: 0/1.
+    pub hidden: String,
+}

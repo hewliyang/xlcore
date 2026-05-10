@@ -2,6 +2,7 @@ import type { Border, BorderLine, Fill, Sheet, Styles } from "./types.js";
 import { colorToCss } from "./color.js";
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, cellRect, findCell, mergedRect } from "./geometry.js";
+import { iterCellsInRange } from "./columnar.js";
 import type { CellRect } from "./geometry.js";
 import type { Visible } from "./renderTypes.js";
 
@@ -132,20 +133,16 @@ export function drawCellBackgrounds(
     paintFill(ctx, mergedRect(g, m), fill);
   }
   // Pass 2: regular (non-merge) cells.
-  for (const row of sheet.rows) {
-    if (row.index < vis.firstRow || row.index > vis.lastRow) continue;
-    for (const cell of row.cells) {
-      if (cell.c < vis.firstCol || cell.c > vis.lastCol) continue;
-      const k = `${cell.r}:${cell.c}`;
-      if (covered.has(k)) continue;
-      if (topLeftOf.has(k)) continue; // handled by pass 1
-      const xf = cell.styleIndex !== undefined ? styles.cellXfs[cell.styleIndex] : undefined;
-      if (!xf) continue;
-      const fill = xf.fillId !== undefined ? styles.fills[xf.fillId] : undefined;
-      if (!fill) continue;
-      paintFill(ctx, cellRect(g, cell.r, cell.c), fill);
-    }
-  }
+  iterCellsInRange(sheet, vis.firstRow, vis.lastRow, vis.firstCol, vis.lastCol, (cell) => {
+    const k = `${cell.r}:${cell.c}`;
+    if (covered.has(k)) return;
+    if (topLeftOf.has(k)) return; // handled by pass 1
+    const xf = cell.styleIndex !== undefined ? styles.cellXfs[cell.styleIndex] : undefined;
+    if (!xf) return;
+    const fill = xf.fillId !== undefined ? styles.fills[xf.fillId] : undefined;
+    if (!fill) return;
+    paintFill(ctx, cellRect(g, cell.r, cell.c), fill);
+  });
 }
 
 function borderWidth(line: BorderLine): number {
@@ -286,50 +283,46 @@ export function drawCellBorders(
     drawDiagonalBorders(ctx, x, y, w, h, b);
   }
   // Pass 2: per-cell borders.
-  for (const row of sheet.rows) {
-    if (row.index < vis.firstRow || row.index > vis.lastRow) continue;
-    for (const cell of row.cells) {
-      if (cell.c < vis.firstCol || cell.c > vis.lastCol) continue;
-      const k = `${cell.r}:${cell.c}`;
-      const xf = cell.styleIndex !== undefined ? styles.cellXfs[cell.styleIndex] : undefined;
-      if (!xf || xf.borderId === undefined) continue;
-      const b = styles.borders[xf.borderId];
-      if (!b) continue;
+  iterCellsInRange(sheet, vis.firstRow, vis.lastRow, vis.firstCol, vis.lastCol, (cell) => {
+    const k = `${cell.r}:${cell.c}`;
+    const xf = cell.styleIndex !== undefined ? styles.cellXfs[cell.styleIndex] : undefined;
+    if (!xf || xf.borderId === undefined) return;
+    const b = styles.borders[xf.borderId];
+    if (!b) return;
 
-      // Excel/SpreadJS quirk: when a range has a border applied around it,
-      // the right/bottom edges of a *merged* region are stored on the cells
-      // along the merge perimeter, not on the merge's top-left cell. Those
-      // perimeter cells are "covered" by the merge and thus normally hidden
-      // from the renderer — but their border definitions still need to
-      // paint, otherwise the merged box looks open on the right/bottom.
-      const merge = topLeftOf.get(k);
-      const isCovered = covered.has(k);
-      if (isCovered && merge) {
-        // Draw only the side(s) that lie on the merge boundary, using this
-        // cell's *own* (small) rect so each cell paints just its segment of
-        // the long edge. Adjacent cells stitch into a continuous line.
-        const cr = cellRect(g, cell.r, cell.c);
-        const { x, y, w, h } = cr;
-        const onTop = cell.r === merge.r1;
-        const onBottom = cell.r === merge.r2;
-        const onLeft = cell.c === merge.c1;
-        const onRight = cell.c === merge.c2;
-        if (onTop && b.top) drawBorderLine(ctx, x, y, x + w, y, b.top);
-        if (onBottom && b.bottom) drawBorderLine(ctx, x, y + h, x + w, y + h, b.bottom);
-        if (onLeft && b.left) drawBorderLine(ctx, x, y, x, y + h, b.left);
-        if (onRight && b.right) drawBorderLine(ctx, x + w, y, x + w, y + h, b.right);
-        continue;
-      }
-
-      // Regular (non-merged) cell. Merge top-lefts are handled by pass 1.
-      if (merge) continue;
-      const rect = cellRect(g, cell.r, cell.c);
-      const { x, y, w, h } = rect;
-      if (b.top) drawBorderLine(ctx, x, y, x + w, y, b.top);
-      if (b.bottom) drawBorderLine(ctx, x, y + h, x + w, y + h, b.bottom);
-      if (b.left) drawBorderLine(ctx, x, y, x, y + h, b.left);
-      if (b.right) drawBorderLine(ctx, x + w, y, x + w, y + h, b.right);
-      drawDiagonalBorders(ctx, x, y, w, h, b);
+    // Excel/SpreadJS quirk: when a range has a border applied around it,
+    // the right/bottom edges of a *merged* region are stored on the cells
+    // along the merge perimeter, not on the merge's top-left cell. Those
+    // perimeter cells are "covered" by the merge and thus normally hidden
+    // from the renderer — but their border definitions still need to
+    // paint, otherwise the merged box looks open on the right/bottom.
+    const merge = topLeftOf.get(k);
+    const isCovered = covered.has(k);
+    if (isCovered && merge) {
+      // Draw only the side(s) that lie on the merge boundary, using this
+      // cell's *own* (small) rect so each cell paints just its segment of
+      // the long edge. Adjacent cells stitch into a continuous line.
+      const cr = cellRect(g, cell.r, cell.c);
+      const { x, y, w, h } = cr;
+      const onTop = cell.r === merge.r1;
+      const onBottom = cell.r === merge.r2;
+      const onLeft = cell.c === merge.c1;
+      const onRight = cell.c === merge.c2;
+      if (onTop && b.top) drawBorderLine(ctx, x, y, x + w, y, b.top);
+      if (onBottom && b.bottom) drawBorderLine(ctx, x, y + h, x + w, y + h, b.bottom);
+      if (onLeft && b.left) drawBorderLine(ctx, x, y, x, y + h, b.left);
+      if (onRight && b.right) drawBorderLine(ctx, x + w, y, x + w, y + h, b.right);
+      return;
     }
-  }
+
+    // Regular (non-merged) cell. Merge top-lefts are handled by pass 1.
+    if (merge) return;
+    const rect = cellRect(g, cell.r, cell.c);
+    const { x, y, w, h } = rect;
+    if (b.top) drawBorderLine(ctx, x, y, x + w, y, b.top);
+    if (b.bottom) drawBorderLine(ctx, x, y + h, x + w, y + h, b.bottom);
+    if (b.left) drawBorderLine(ctx, x, y, x, y + h, b.left);
+    if (b.right) drawBorderLine(ctx, x + w, y, x + w, y + h, b.right);
+    drawDiagonalBorders(ctx, x, y, w, h, b);
+  });
 }

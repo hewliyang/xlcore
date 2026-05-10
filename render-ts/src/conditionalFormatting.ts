@@ -11,6 +11,7 @@ import type {
 } from "./types.js";
 import { cellNumericValue, cellTextValue } from "./cellText.js";
 import { colorToCss } from "./color.js";
+import { iterAllCells } from "./columnar.js";
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, cellRect, mergedRect } from "./geometry.js";
 import type { Visible } from "./renderTypes.js";
@@ -28,11 +29,13 @@ export function computeCfDxfMap(sheet: Sheet, layout: WorkbookLayout): Map<strin
   const cfs = sheet.conditionalFormats;
   if (!cfs || cfs.length === 0) return out;
 
-  // Index cell values for fast lookup.
+  // Index cell values for fast lookup. We materialize one POJO per
+  // non-empty cell here — still cheaper than iterating rows-of-cells
+  // every rule, since downstream evaluators need the full `Cell` shape.
   const cellByKey = new Map<string, Cell>();
-  for (const row of sheet.rows) {
-    for (const cell of row.cells) cellByKey.set(`${cell.r}:${cell.c}`, cell);
-  }
+  iterAllCells(sheet, (cell) => {
+    cellByKey.set(`${cell.r}:${cell.c}`, cell);
+  });
 
   // Per cell, track "stopIfTrue locked" so a higher-priority match short-
   // circuits remaining rules.
@@ -485,15 +488,13 @@ export function drawConditionalFormats(
   // Index numeric values so each color-scale rule only computes its range
   // bounds once.
   const cellNumeric = new Map<string, number>();
-  for (const row of sheet.rows) {
-    for (const cell of row.cells) {
-      if (cell.value === undefined) continue;
-      if (cell.type === "n" || cell.type === "f") {
-        const n = parseFloat(cell.value);
-        if (!Number.isNaN(n)) cellNumeric.set(`${cell.r}:${cell.c}`, n);
-      }
+  iterAllCells(sheet, (cell) => {
+    if (cell.value === undefined) return;
+    if (cell.type === "n" || cell.type === "f") {
+      const n = parseFloat(cell.value);
+      if (!Number.isNaN(n)) cellNumeric.set(`${cell.r}:${cell.c}`, n);
     }
-  }
+  });
 
   for (const cf of cfs) {
     // Highest-priority color-scale rule wins (lower number = higher priority).

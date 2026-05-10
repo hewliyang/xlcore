@@ -202,6 +202,11 @@ fn build_preview_html(layout_b64: &str, renderer_js: &str, source: &Path) -> Str
     return JSON.parse(text);
   }}
   const layout = await loadLayout();
+  // Inflate the per-sheet columnar blobs (b64 → Uint32/Int32/Float32
+  // typed-array views, plus a row-index lookup map). After this call
+  // the wire `cells` / `rowMeta` strings are dropped and the renderer
+  // reads from `sheet.decodedCells` / `sheet.decodedRowMeta`.
+  window.xlcoreDecodeLayout(layout);
   const canvas = document.getElementById('sheet');
   const stage = document.getElementById('stage');
   const spacer = document.getElementById('spacer');
@@ -270,13 +275,15 @@ fn build_preview_html(layout_b64: &str, renderer_js: &str, source: &Path) -> Str
     }}
     if (ov && ov.col) for (const [c, v] of ov.col) colWidths.set(c, Math.max(0, v));
     for (let c = 1; c <= maxCol; c++) w += colWidths.get(c) ?? dw;
-    // Height.
+    // Height. Iterate the columnar row-meta blob — sheet.rows no
+    // longer exists in the wire format; row metadata lives in typed
+    // arrays decoded by xlcoreDecodeLayout.
     let h = HEADER_H;
     const rowHeights = new Map();
-    for (const row of sheet.rows) {{
+    window.xlcoreIterRows(sheet, (row) => {{
       if (row.hidden) rowHeights.set(row.index, 0);
       else if (row.heightPx !== undefined) rowHeights.set(row.index, row.heightPx);
-    }}
+    }});
     if (ov && ov.row) for (const [r, v] of ov.row) rowHeights.set(r, Math.max(0, v));
     for (let r = 1; r <= maxRow; r++) h += rowHeights.get(r) ?? dh;
     return {{ w, h }};

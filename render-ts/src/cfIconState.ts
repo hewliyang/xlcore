@@ -1,4 +1,5 @@
 import type { Sheet } from "./types.js";
+import { iterAllCells } from "./columnar.js";
 import { resolveCfvoValue } from "./conditionalFormatting.js";
 
 const ICON_RESERVE_PX = 18;
@@ -17,15 +18,13 @@ export function computeCfIconState(sheet: Sheet): {
   // Numeric values for cfvo resolution. Same plumbing as data-bar /
   // color-scale paths.
   const cellNumeric = new Map<string, number>();
-  for (const row of sheet.rows) {
-    for (const cell of row.cells) {
-      if (cell.value === undefined) continue;
-      if (cell.type === "n" || cell.type === "f") {
-        const n = parseFloat(cell.value);
-        if (!Number.isNaN(n)) cellNumeric.set(`${cell.r}:${cell.c}`, n);
-      }
+  iterAllCells(sheet, (cell) => {
+    if (cell.value === undefined) return;
+    if (cell.type === "n" || cell.type === "f") {
+      const n = parseFloat(cell.value);
+      if (!Number.isNaN(n)) cellNumeric.set(`${cell.r}:${cell.c}`, n);
     }
-  }
+  });
 
   for (const cf of cfs) {
     const rule = cf.rules

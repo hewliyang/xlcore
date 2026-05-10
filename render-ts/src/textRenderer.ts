@@ -1,6 +1,7 @@
 import type { Cell, Dxf, Font, Sheet, TextRun, WorkbookLayout } from "./types.js";
 import { resolveCellText } from "./cellText.js";
 import { colorToCss } from "./color.js";
+import { iterAllCells, iterCellsInRange } from "./columnar.js";
 import { HEADER_H, HEADER_W } from "./grid.js";
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, rectFor } from "./geometry.js";
@@ -242,13 +243,11 @@ export function drawCellText(
   // Build a fast "this position is occupied" lookup so we can grant overflow
   // into truly empty neighbors only — exactly Excel's rule.
   const occupied = new Set<string>();
-  for (const row of sheet.rows) {
-    for (const cell of row.cells) {
-      // A cell is "occupied" iff it has visible content. Empty styled cells
-      // can still be overflowed into.
-      if (hasContent(cell, layout)) occupied.add(`${cell.r}:${cell.c}`);
-    }
-  }
+  iterAllCells(sheet, (cell) => {
+    // A cell is "occupied" iff it has visible content. Empty styled cells
+    // can still be overflowed into.
+    if (hasContent(cell, layout)) occupied.add(`${cell.r}:${cell.c}`);
+  });
   for (const k of covered) occupied.add(k);
 
   // Allow text to overflow horizontally into the visible column band; we
@@ -257,16 +256,13 @@ export function drawCellText(
   const overflowFirstCol = Math.max(1, vis.firstCol - 8);
   const overflowLastCol = Math.min(g.maxCol, vis.lastCol + 8);
 
-  for (const row of sheet.rows) {
-    if (row.index < vis.firstRow || row.index > vis.lastRow) continue;
-    for (const cell of row.cells) {
-      if (cell.c < overflowFirstCol || cell.c > overflowLastCol) continue;
+  iterCellsInRange(sheet, vis.firstRow, vis.lastRow, overflowFirstCol, overflowLastCol, (cell) => {
       const k = `${cell.r}:${cell.c}`;
-      if (covered.has(k)) continue;
-      if (cfTextSuppress.has(k)) continue;
+      if (covered.has(k)) return;
+      if (cfTextSuppress.has(k)) return;
       const xf = cell.styleIndex !== undefined ? styles.cellXfs[cell.styleIndex] : undefined;
       const { text, defaultAlign, formatColor } = resolveCellText(cell, layout, xf);
-      if (!text) continue;
+      if (!text) return;
 
       const baseFontEntry = xf?.fontId !== undefined ? styles.fonts[xf.fontId] : undefined;
       // Apply CF dxf overrides (cellIs / expression). Bold/italic/underline/
@@ -361,7 +357,7 @@ export function drawCellText(
           }
           ctx.textAlign = prevAlign;
           ctx.restore();
-          continue;
+          return;
         }
 
         // Rotated text. Convert OOXML angle to canvas rotation (positive =
@@ -403,7 +399,7 @@ export function drawCellText(
         ctx.fillText(text, 0, 0);
         paintTextDecorations(ctx, span, 0, 0, tw);
         ctx.restore();
-        continue;
+        return;
       }
       // CF iconSet reserves the leftmost N pixels of the cell for the
       // glyph; text positioning shifts right by that amount.
@@ -558,7 +554,7 @@ export function drawCellText(
         ctx.fillText(display, tx, ty);
         paintTextDecorations(ctx, span, tx, ty, ctx.measureText(display).width);
         ctx.restore();
-        continue;
+        return;
       }
 
       // Multi-line / multi-run layout. Wrap to `innerW` when wrap=true;
@@ -608,8 +604,7 @@ export function drawCellText(
       }
 
       ctx.restore();
-    }
-  }
+    });
 }
 
 // Has any visible content (text, number, or formula result)?

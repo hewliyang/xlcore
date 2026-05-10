@@ -20,6 +20,7 @@ mod tables;
 mod theme;
 mod annotations;
 mod pivots;
+mod columnar;
 
 pub use schema::*;
 
@@ -125,6 +126,11 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
         active_sheet_index,
     };
     resolve_chart_refs(&mut layout);
+    // Final pass: collapse `Sheet.rows: Vec<Row>` (the ergonomic shape
+    // every other extractor pass uses) into the columnar typed-array
+    // blobs that actually ship in the JSON. After this point the
+    // `rows` field is empty and must not be read.
+    columnar::compactify(&mut layout);
     Ok(layout)
 }
 

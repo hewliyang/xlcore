@@ -1,4 +1,5 @@
 import type { Drawing, Sheet } from "./types.js";
+import { iterRows } from "./columnar.js";
 
 export const HEADER_H = 22;
 export const HEADER_W = 44;
@@ -44,10 +45,10 @@ export function buildGrid(
   const widthOf = (c: number) => colSpecW.get(c) ?? sheet.defaultColWidthPx;
 
   const rowSpecH = new Map<number, number>();
-  for (const row of sheet.rows) {
+  iterRows(sheet, (row) => {
     if (row.hidden) rowSpecH.set(row.index, 0);
     else if (row.heightPx !== undefined) rowSpecH.set(row.index, row.heightPx);
-  }
+  });
   if (rowOverrides) for (const [r, h] of rowOverrides) rowSpecH.set(r, Math.max(0, h));
   const heightOf = (r: number) => rowSpecH.get(r) ?? sheet.defaultRowHeightPx;
 

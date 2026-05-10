@@ -6,6 +6,19 @@
 // We keep this barrel because most renderer code already imports from
 // `./types.js` and we don't want a churning rename across the codebase
 // every time a schema type is added or removed.
+
+// `Sheet` is special: the wire shape comes from ts-rs, but the runtime
+// instance carries decoded typed-array fields (see `./columnar.ts`).
+// We can't `interface`-merge a ts-rs `type` alias, so we extend it
+// with a runtime-only interface here. Renderer code that imports
+// `Sheet` from `./types.js` picks up the augmented shape automatically.
+import type { Sheet as WireSheet } from "./schema/Sheet.js";
+import type { DecodedCells, DecodedRowMeta } from "./columnar.js";
+export interface Sheet extends WireSheet {
+  decodedCells: DecodedCells;
+  decodedRowMeta: DecodedRowMeta;
+}
+
 export type {
   Border,
   BorderLine,
@@ -36,8 +49,7 @@ export type {
   Merge,
   NumberFormat,
   Pivot,
-  Row,
-  Sheet,
+
   Styles,
   Table,
   TableColumn,
