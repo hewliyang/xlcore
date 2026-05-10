@@ -217,6 +217,111 @@ export function paintFill(ctx: CanvasRenderingContext2D, rect: CellRect, fill: F
   }
 }
 
+/// Per-sheet column-style lookup (1-based, like `Col.min`/`Col.max`).
+/// Mirror of the map in `cellText.ts` but keyed 1-based so the paint
+/// loops below can use Excel-style col indices directly. Cached on
+/// the sheet so we build it once.
+const COL_STYLE_1BASED = new WeakMap<Sheet, Map<number, number>>();
+function colStyleMap1Based(sheet: Sheet): Map<number, number> {
+  let m = COL_STYLE_1BASED.get(sheet);
+  if (m) return m;
+  m = new Map<number, number>();
+  for (const col of sheet.cols) {
+    if (col.styleIndex === undefined) continue;
+    for (let i = col.min; i <= col.max; i++) m.set(i, col.styleIndex);
+  }
+  COL_STYLE_1BASED.set(sheet, m);
+  return m;
+}
+
+/// Paint row-level and column-level default fills across the visible
+/// viewport, *before* per-cell backgrounds. OOXML §18.3.1.4 says a
+/// cell without its own xf inherits `row.s → col.style → xf 0`; the
+/// rest of the renderer applies this fallback for text/border via
+/// `resolveCellXf`, but the fill path used to silently skip cells
+/// that simply didn't exist in `sheetData` — leaving empty rows like
+/// Cover!7 (which carries a solid-blue `<row s=N>` with no children)
+/// completely unpainted.
+///
+/// Strategy:
+///   * Column fills first (lowest priority of the two), per column
+///     `c` in `[1, maxCol]` ∩ visible, painted across all visible rows.
+///   * Row fills second (higher priority), per styled `rowMeta` row
+///     `r` in vis, painted across cols `[1, sheet.maxCol]`.
+///
+/// Per-cell xf fills paint on top in `drawCellBackgrounds`, so this
+/// only fills the truly-empty cells. The horizontal extent of row
+/// fills is clipped to `sheet.maxCol` so the gray "sheet-area" of a
+/// cover page stops at the last styled column instead of bleeding
+/// out to infinity (matches hsx/Excel).
+export function drawDefaultFills(
+  ctx: CanvasRenderingContext2D,
+  sheet: Sheet,
+  layout: WorkbookLayout,
+  g: Grid,
+  vis: Visible,
+): void {
+  const styles = layout.styles;
+  const xfs = styles.cellXfs;
+  const fillFor = (xfId: number) => {
+    const xf = xfs[xfId];
+    if (!xf) return undefined;
+    return xf.fillId !== undefined ? styles.fills[xf.fillId] : undefined;
+  };
+
+  // Column fills (lowest priority of the two).
+  const colMap = colStyleMap1Based(sheet);
+  if (colMap.size > 0) {
+    const colFirst = Math.max(1, vis.firstCol);
+    const colLast = Math.min(sheet.maxCol, vis.lastCol);
+    const rowFirst = Math.max(1, vis.firstRow);
+    const rowLast = Math.min(sheet.maxRow, vis.lastRow);
+    if (colFirst <= colLast && rowFirst <= rowLast) {
+      const yTop = g.rowY[rowFirst] ?? 0;
+      const yBot = g.rowY[rowLast + 1] ?? yTop;
+      const h = yBot - yTop;
+      if (h > 0) {
+        for (let c = colFirst; c <= colLast; c++) {
+          const xfId = colMap.get(c);
+          if (xfId === undefined) continue;
+          const fill = fillFor(xfId);
+          if (!fill) continue;
+          const x = g.colX[c] ?? 0;
+          const w = (g.colX[c + 1] ?? x) - x;
+          if (w <= 0) continue;
+          paintFill(ctx, { x, y: yTop, w, h }, fill);
+        }
+      }
+    }
+  }
+
+  // Row fills (higher priority — paint over col fills).
+  const meta = sheet.decodedRowMeta;
+  if (meta.count > 0 && sheet.maxCol >= 1) {
+    const colFirst = Math.max(1, vis.firstCol);
+    const colLast = Math.min(sheet.maxCol, vis.lastCol);
+    if (colFirst <= colLast) {
+      const xLeft = g.colX[colFirst] ?? 0;
+      const xRight = g.colX[colLast + 1] ?? xLeft;
+      const w = xRight - xLeft;
+      if (w > 0) {
+        for (let i = 0; i < meta.count; i++) {
+          const r = meta.index[i] ?? 0;
+          if (r < vis.firstRow || r > vis.lastRow) continue;
+          const sIdx = meta.styleIdx[i] ?? -1;
+          if (sIdx < 0) continue;
+          const fill = fillFor(sIdx);
+          if (!fill) continue;
+          const y = g.rowY[r] ?? 0;
+          const h = (g.rowY[r + 1] ?? y) - y;
+          if (h <= 0) continue;
+          paintFill(ctx, { x: xLeft, y, w, h }, fill);
+        }
+      }
+    }
+  }
+}
+
 export function drawCellBackgrounds(
   ctx: CanvasRenderingContext2D,
   sheet: Sheet,

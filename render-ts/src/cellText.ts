@@ -129,7 +129,17 @@ export function resolveCellText(
     case "f":
     case "n": {
       if (!v) return { text: "", defaultAlign: "right" };
-      const n = parseFloat(v);
+      // Use `Number(v)` (strict) instead of `parseFloat(v)` — the latter
+      // happily parses `"1Q24"` as `1` and silently strips the suffix,
+      // which breaks formula cells whose cached `<v>` is a string
+      // result (e.g. `=TEXT(...)` producing `"1Q24"`). Excel writes
+      // those as `<c t="str">` but plenty of authoring tools —
+      // including SpreadJS round-trips of analyst models like
+      // `e-007_input-3.xlsx` — leave the original `<c t="f">` tag
+      // intact with a non-numeric `<v>`. `Number("1Q24")` returns
+      // `NaN`, falling through to the left-aligned string branch
+      // below, which then renders the cached text verbatim.
+      const n = Number(v);
       if (Number.isNaN(n)) return { text: v, defaultAlign: "left" };
       const numFmtId = xf?.numFmtId;
       let code: string | undefined;

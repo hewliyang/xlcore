@@ -12,7 +12,7 @@ import { splitPanes } from "./panes.js";
 export { paneAtPoint, frozenDims } from "./panes.js";
 import { resolveSelection, drawSelection } from "./selection.js";
 import { drawDrawings } from "./drawings.js";
-import { drawCellBackgrounds, drawCellBorders } from "./cellPaint.js";
+import { drawCellBackgrounds, drawCellBorders, drawDefaultFills } from "./cellPaint.js";
 import { drawCellText, drawFreezeIndicators } from "./textRenderer.js";
 import {
   computeCfDxfMap,
@@ -94,7 +94,7 @@ export function render(
     if (!cfDxfs.has(k)) cfDxfs.set(k, dxf);
   }
 
-  const hyperlinkDxfs = computeHyperlinkDxfs(sheet);
+  const hyperlinkDxfs = computeHyperlinkDxfs(sheet, layout);
   for (const [k, dxf] of hyperlinkDxfs) {
     if (!cfDxfs.has(k)) cfDxfs.set(k, dxf);
   }
@@ -107,6 +107,7 @@ export function render(
     ctx.translate(pane.tx, pane.ty);
 
     drawGridLines(ctx, sheet, grid, pane.vis);
+    drawDefaultFills(ctx, sheet, layout, grid, pane.vis);
     drawCellBackgrounds(ctx, sheet, layout, grid, pane.vis);
     drawConditionalFormats(ctx, sheet, layout, grid, pane.vis, cfDxfs, cfLocks);
     drawCellBorders(ctx, sheet, layout, grid, pane.vis);

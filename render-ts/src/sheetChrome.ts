@@ -1,5 +1,7 @@
-import type { Color, Dxf, Sheet } from "./types.js";
+import type { Color, Dxf, Sheet, WorkbookLayout } from "./types.js";
 import { activeThemeColor } from "./color.js";
+import { findCell } from "./geometry.js";
+import { resolveCellXf } from "./cellText.js";
 import { HEADER_H, HEADER_W, colLabel } from "./grid.js";
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, cellRect, mergedRect } from "./geometry.js";
@@ -627,7 +629,19 @@ function paintColRunsForLevel(
 /// + `underline: true`. Same plumbing as table chrome, just emitted
 /// from the sheet's `hyperlinks` array. We don't try to override an
 /// already-present CF or table dxf — caller checks that.
-export function computeHyperlinkDxfs(sheet: Sheet): Map<string, Dxf> {
+///
+/// **Yields to explicit cell formatting.** When the cell's resolved
+/// xf points to a non-default fontId, that author chose a font
+/// deliberately and Excel/hsx honors it (e.g. `e-007_input-3.xlsx`
+/// has a stale `mailto:` rel pointing at a cell whose displayed text
+/// was later edited to a plain phone number formatted in Arial 9
+/// black — hsx renders that plain, not as a blue+underlined link).
+/// We mirror the same rule: skip emitting the overlay when the
+/// cell carries its own non-default fontId.
+export function computeHyperlinkDxfs(
+  sheet: Sheet,
+  layout: WorkbookLayout,
+): Map<string, Dxf> {
   const out = new Map<string, Dxf>();
   const hyperlinks = sheet.hyperlinks ?? [];
   if (hyperlinks.length === 0) return out;
@@ -641,6 +655,17 @@ export function computeHyperlinkDxfs(sheet: Sheet): Map<string, Dxf> {
       for (let c = c1; c <= c2; c++) {
         const k = `${r}:${c}`;
         if (out.has(k)) continue;
+        // Check the cell's explicit xf.fontId. The default font is
+        // index 0 in `styles.fonts`; anything else means the author
+        // chose a specific font and the hyperlink overlay should
+        // yield. We only check `cell.styleIndex` (not the row/col
+        // fallback) because OOXML's hyperlink-style overlay applies
+        // when the cell hasn't been re-styled away from the default.
+        const cell = findCell(sheet, r, c);
+        if (cell && cell.styleIndex !== undefined) {
+          const xf = layout.styles.cellXfs[cell.styleIndex];
+          if (xf && xf.fontId !== undefined && xf.fontId !== 0) continue;
+        }
         out.set(k, { fontColor: hlinkColor, underline: true });
       }
     }
