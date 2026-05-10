@@ -1,0 +1,195 @@
+{
+  "activeSheetIndex": 0,
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "sharedStrings": [
+    "Region/Quarter",
+    "Q1",
+    "Q2",
+    "Q3",
+    "Total",
+    "Notes",
+    "Region A: Q1",
+    "",
+    "  detail row 1",
+    "breakdown",
+    "  detail row 2",
+    "Region A total",
+    "Region B: Q1",
+    "Region B total"
+  ],
+  "sheets": [
+    {
+      "cells": {
+        "c": "AQAAAAIAAAADAAAABAAAAAUAAAAGAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAA",
+        "count": 54,
+        "formulaIdx": "////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////",
+        "kind": "AQEBAQEBAQAAAAABAQAAAAABAQAAAAABAQAAAAABAQAAAAABAQAAAAABAQAAAAABAQAAAAAB",
+        "r": "AQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAgAAAAIAAAACAAAAAgAAAAIAAAACAAAAAwAAAAMAAAADAAAAAwAAAAMAAAADAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABQAAAAUAAAAFAAAABQAAAAUAAAAFAAAABgAAAAYAAAAGAAAABgAAAAYAAAAGAAAABwAAAAcAAAAHAAAABwAAAAcAAAAHAAAACAAAAAgAAAAIAAAACAAAAAgAAAAIAAAACQAAAAkAAAAJAAAACQAAAAkAAAAJAAAA",
+        "rowPtr": "AAAAAAYAAAAMAAAAEgAAABgAAAAeAAAAJAAAACoAAAAwAAAANgAAAA==",
+        "runsIdx": "////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////",
+        "styleIdx": "AQAAAAEAAAABAAAAAQAAAAEAAAABAAAA////////////////////////////////////////////////////////////////////////////////////////////////AQAAAAEAAAABAAAAAQAAAAEAAAABAAAA////////////////////////////////////////////////////////////////////////////////////////////////AQAAAAEAAAABAAAAAQAAAAEAAAABAAAA",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAADwAAABAAAAARAAAAEgAAABMAAAAUAAAAFQAAABYAAAARAAAAFwAAABgAAAAZAAAAGgAAABsAAAALAAAAHAAAAB0AAAAeAAAAHwAAACAAAAALAAAADAAAACEAAAAiAAAAIwAAACQAAAALAAAAEgAAAA8AAAAlAAAAJgAAACcAAAALAAAAKAAAACkAAAAqAAAAKwAAACwAAAALAAAA"
+      },
+      "cols": [
+        {
+          "max": 1,
+          "min": 1,
+          "widthPx": 135.01953
+        },
+        {
+          "max": 4,
+          "min": 2,
+          "outlineLevel": 1,
+          "widthPx": 75.02734
+        },
+        {
+          "max": 6,
+          "min": 5,
+          "widthPx": 75.02734
+        }
+      ],
+      "defaultColWidthPx": 66.96094,
+      "defaultRowHeightPx": 20.0,
+      "freeze": null,
+      "index": 0,
+      "maxCol": 6,
+      "maxRow": 9,
+      "merges": [],
+      "name": "Sheet1",
+      "rowMeta": {
+        "count": 9,
+        "heightPx": "AACwQQAAsEEAALBBAACwQQAAsEEAALBBAACwQQAAsEEAALBB",
+        "hidden": "AAAAAAAAAAAA",
+        "index": "AQAAAAIAAAADAAAABAAAAAUAAAAGAAAABwAAAAgAAAAJAAAA",
+        "outlineLevel": "AAABAQAAAQEA",
+        "styleIdx": "////////////////////////////////////////////////"
+      },
+      "showGridLines": true,
+      "valuePool": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "100",
+        "110",
+        "120",
+        "330",
+        "7",
+        "8",
+        "40",
+        "45",
+        "50",
+        "135",
+        "9",
+        "10",
+        "60",
+        "65",
+        "70",
+        "195",
+        "11",
+        "200",
+        "220",
+        "240",
+        "660",
+        "12",
+        "80",
+        "85",
+        "90",
+        "255",
+        "30",
+        "32",
+        "35",
+        "97",
+        "53",
+        "55",
+        "158",
+        "13",
+        "160",
+        "170",
+        "180",
+        "510"
+      ]
+    }
+  ],
+  "styles": {
+    "borders": [
+      {},
+      {}
+    ],
+    "cellXfs": [
+      {
+        "borderId": 1,
+        "fillId": 0,
+        "fontId": 0,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      },
+      {
+        "borderId": 0,
+        "fillId": 0,
+        "fontId": 1,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      }
+    ],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0,
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "fonts": [
+      {
+        "color": {
+          "theme": 1
+        },
+        "name": "Calibri",
+        "size": 11.0
+      },
+      {
+        "name": "Calibri"
+      }
+    ],
+    "numFmts": []
+  },
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  }
+}

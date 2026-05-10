@@ -45,6 +45,10 @@ export interface DecodedRowMeta {
   heightPx: Float32Array; // NaN ⇒ default height
   styleIdx: Int32Array;   // -1 ⇒ no row-level style
   hidden: Uint8Array;
+  /// OOXML `<row outlineLevel="N">`, 0..=7. Length == count when any
+  /// row is grouped, otherwise length 0 (treat as all-zeros). Cheap
+  /// to test before the per-row paint loop bothers to look.
+  outlineLevel: Uint8Array;
   /// rowIndex (1-based) → position in the meta arrays. Built once at
   /// decode time so `findCell` doesn't have to binary-search rowMeta
   /// repeatedly. Sheets with millions of rows still fit comfortably
@@ -96,12 +100,19 @@ function decodeSheet(sheet: Sheet): void {
   const index = decodeU32(m.index);
   const byIndex = new Map<number, number>();
   for (let i = 0; i < m.count; i++) byIndex.set(index[i] ?? 0, i);
+  // outlineLevel is omitted from the wire when every row is at level 0.
+  // We synthesize an empty Uint8Array in that case so callers don't need
+  // a length check (zero-length view returns `undefined` on indexed access,
+  // which our `?? 0` fallbacks below already handle).
+  const outlineLevelB64 = (m as unknown as { outlineLevel?: string }).outlineLevel ?? "";
+  const outlineLevel = outlineLevelB64 ? decodeU8(outlineLevelB64) : new Uint8Array(0);
   sheet.decodedRowMeta = {
     count: m.count,
     index,
     heightPx: decodeF32(m.heightPx),
     styleIdx: decodeI32(m.styleIdx),
     hidden: decodeU8(m.hidden),
+    outlineLevel,
     byIndex,
   };
   // Free the b64 strings — keeping them around doubles per-sheet

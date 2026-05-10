@@ -198,6 +198,24 @@ pub struct Sheet {
     /// expand-collapse interactivity. ("Cheap path" in PARITY.md.)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub pivots: Vec<Pivot>,
+    /// OOXML `<sheetPr><outlinePr summaryBelow="..."
+    /// summaryRight="..."/></sheetPr>`. Tells the renderer where the
+    /// summary row/col sits relative to a group (default: below + right,
+    /// matching Excel's UI default). `None` = use those defaults.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub outline_pr: Option<OutlinePr>,
+}
+
+/// `<outlinePr>` defaults from `<sheetPr>`. Both fields default to true
+/// when `<outlinePr>` is absent (matches Excel/OOXML spec).
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[serde(rename_all = "camelCase")]
+pub struct OutlinePr {
+    pub summary_below: bool,
+    pub summary_right: bool,
 }
 
 /// One `<pivotTableDefinition>` — just enough to paint the cosmetic
@@ -787,6 +805,11 @@ pub struct Col {
     pub style_index: Option<u32>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub hidden: bool,
+    /// OOXML `<col outlineLevel="N">` (0..=7). 0 = no grouping; the
+    /// renderer paints a bracket above the column header(s) covering
+    /// each contiguous run at level >= 1. Spec caps at 7.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub outline_level: u8,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -804,6 +827,12 @@ pub struct Row {
     pub style_index: Option<u32>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub hidden: bool,
+    /// OOXML `<row outlineLevel="N">` (0..=7). Wire-only on this
+    /// transient struct; gets folded into `RowMetaBlob.outline_level`
+    /// during `compactify_sheet`. Always 0 in serialized JSON
+    /// (Sheet.rows is `ts(skip)`-hidden).
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub outline_level: u8,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -1032,6 +1061,7 @@ pub struct Color {
     pub tint: Option<f64>,
 }
 fn is_false(b: &bool) -> bool { !*b }
+fn is_zero_u8(n: &u8) -> bool { *n == 0 }
 
 // ============================================================
 // Columnar storage
@@ -1101,4 +1131,9 @@ pub struct RowMetaBlob {
     pub style_idx: String,
     /// u8: 0/1.
     pub hidden: String,
+    /// u8: OOXML `<row outlineLevel="N">`, 0..=7. 0 = no grouping.
+    /// Empty string when every row is at level 0 (the common case);
+    /// renderer treats absent blob as all-zeros.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub outline_level: String,
 }

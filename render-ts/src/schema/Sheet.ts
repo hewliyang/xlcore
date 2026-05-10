@@ -7,6 +7,7 @@ import type { Drawing } from "./Drawing.js";
 import type { Freeze } from "./Freeze.js";
 import type { Hyperlink } from "./Hyperlink.js";
 import type { Merge } from "./Merge.js";
+import type { OutlinePr } from "./OutlinePr.js";
 import type { Pivot } from "./Pivot.js";
 import type { RowMetaBlob } from "./RowMetaBlob.js";
 import type { Table } from "./Table.js";
@@ -97,4 +98,11 @@ comments: Array<Comment>,
  * the row/column field-header cells. No filtering / refresh /
  * expand-collapse interactivity. ("Cheap path" in PARITY.md.)
  */
-pivots: Array<Pivot>, };
+pivots: Array<Pivot>, 
+/**
+ * OOXML `<sheetPr><outlinePr summaryBelow="..."
+ * summaryRight="..."/></sheetPr>`. Tells the renderer where the
+ * summary row/col sits relative to a group (default: below + right,
+ * matching Excel's UI default). `None` = use those defaults.
+ */
+outlinePr?: OutlinePr, };

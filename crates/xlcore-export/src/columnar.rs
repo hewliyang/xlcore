@@ -51,6 +51,10 @@ fn compactify_sheet(sheet: &mut Sheet) {
     let mut row_height: Vec<f32> = Vec::with_capacity(row_count);
     let mut row_style: Vec<i32> = Vec::with_capacity(row_count);
     let mut row_hidden: Vec<u8> = Vec::with_capacity(row_count);
+    // OOXML caps `outlineLevel` at 7; almost every workbook is all-zeros.
+    // We track whether ANY row is non-zero and only emit the blob when so.
+    let mut row_outline: Vec<u8> = Vec::with_capacity(row_count);
+    let mut any_outline = false;
     let mut row_ptr: Vec<u32> = Vec::with_capacity(row_count + 1);
     row_ptr.push(0);
 
@@ -65,6 +69,8 @@ fn compactify_sheet(sheet: &mut Sheet) {
         row_height.push(row.height_px.unwrap_or(f32::NAN));
         row_style.push(row.style_index.map(|x| x as i32).unwrap_or(-1));
         row_hidden.push(if row.hidden { 1 } else { 0 });
+        if row.outline_level != 0 { any_outline = true; }
+        row_outline.push(row.outline_level);
 
         let mut cells = row.cells;
         cells.sort_by_key(|c| c.c);
@@ -111,6 +117,11 @@ fn compactify_sheet(sheet: &mut Sheet) {
         height_px: encode_f32(&row_height),
         style_idx: encode_i32(&row_style),
         hidden: encode_u8(&row_hidden),
+        // Skip the blob entirely when every row is at level 0 (the
+        // common case). The wire-format tag `skip_serializing_if =
+        // "String::is_empty"` then drops the field, and the TS
+        // decoder's `?? ""` fallback yields a zero-length view.
+        outline_level: if any_outline { encode_u8(&row_outline) } else { String::new() },
     };
     sheet.value_pool = value_pool;
     sheet.formula_pool = formula_pool;

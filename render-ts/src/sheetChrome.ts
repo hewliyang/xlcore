@@ -371,8 +371,240 @@ export function drawHeaders(
   }
   ctx.restore();
 
+  // --- outline brackets (row + column groupings) ---
+  // Painted last (over labels) so the bracket strokes are not clipped
+  // by the label clip-rects. Indent per outline level is tight enough
+  // (~7px) to fit inside HEADER_W=44 / HEADER_H=22 without restructuring
+  // the grid coordinate system. See PARITY.md “Outline / group levels”
+  // row for the planned follow-up that adds a separate gutter strip.
+  drawRowOutlineBrackets(ctx, sheet, g, sy, splitY, prh, canvasH);
+  drawColOutlineBrackets(ctx, sheet, g, sx, splitX, pcw, canvasW);
+
   ctx.textAlign = "start";
   ctx.textBaseline = "alphabetic";
+  ctx.restore();
+}
+
+// Pixels of indent per outline level. Excel uses ~12px in its own
+// outline gutter strip; we squeeze into HEADER_W=44 next to the row
+// label, so we use a smaller step. With max OOXML depth 7 this still
+// leaves ~26px for the label text (which usually shows at most 4
+// digits anyway).
+const OUTLINE_STEP_PX = 7;
+// Inset from the start of HEADER so the bracket doesn't graze the
+// canvas edge. Brackets stack inward from there.
+const OUTLINE_INSET_PX = 4;
+const OUTLINE_STROKE = "#9aa0a6"; // mid-gray, matches Excel’s gutter color
+
+/// Paint vertical outline brackets in the row header strip for every
+/// contiguous run of rows whose `outlineLevel >= L` (for L = 1..maxLvl).
+/// Brackets stack from canvas-x = OUTLINE_INSET_PX outward, one column
+/// per level. No expand/collapse buttons, no summary-row glyphs.
+function drawRowOutlineBrackets(
+  ctx: CanvasRenderingContext2D,
+  sheet: Sheet,
+  g: Grid,
+  sy: number,
+  splitY: number,
+  prh: number,
+  canvasH: number,
+): void {
+  const meta = sheet.decodedRowMeta;
+  if (meta.outlineLevel.length === 0) return;
+  let maxLvl = 0;
+  for (let i = 0; i < meta.outlineLevel.length; i++) {
+    const v = meta.outlineLevel[i] ?? 0;
+    if (v > maxLvl) maxLvl = v;
+  }
+  if (maxLvl === 0) return;
+
+  // index → outlineLevel for fast row lookup.
+  const lvlByRow = new Map<number, number>();
+  for (let i = 0; i < meta.count; i++) {
+    const v = meta.outlineLevel[i] ?? 0;
+    if (v > 0) lvlByRow.set(meta.index[i] ?? 0, v);
+  }
+
+  ctx.save();
+  ctx.strokeStyle = OUTLINE_STROKE;
+  ctx.lineWidth = 1;
+
+  // Walk all visible rows in [1..g.maxRow] split into pinned + scrolling
+  // segments. We compute runs separately for each level so a level-2
+  // group (rows 5..10) sits inside its level-1 parent (rows 4..11).
+  for (let lvl = 1; lvl <= maxLvl; lvl++) {
+    const xLine = OUTLINE_INSET_PX + (lvl - 1) * OUTLINE_STEP_PX + 0.5;
+    paintRowRunsForLevel(
+      ctx,
+      lvlByRow,
+      lvl,
+      xLine,
+      g,
+      /*rowFrom*/ 1,
+      /*rowTo*/ Math.max(0, splitY - 1),
+      /*offsetY*/ 0,
+      /*clipY1*/ HEADER_H,
+      /*clipY2*/ HEADER_H + prh,
+    );
+    paintRowRunsForLevel(
+      ctx,
+      lvlByRow,
+      lvl,
+      xLine,
+      g,
+      /*rowFrom*/ Math.max(1, splitY),
+      /*rowTo*/ g.maxRow,
+      /*offsetY*/ -sy,
+      /*clipY1*/ HEADER_H + prh,
+      /*clipY2*/ canvasH,
+    );
+  }
+  ctx.restore();
+}
+
+function paintRowRunsForLevel(
+  ctx: CanvasRenderingContext2D,
+  lvlByRow: Map<number, number>,
+  lvl: number,
+  xLine: number,
+  g: Grid,
+  rowFrom: number,
+  rowTo: number,
+  offsetY: number,
+  clipY1: number,
+  clipY2: number,
+): void {
+  if (rowTo < rowFrom) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, clipY1, HEADER_W, clipY2 - clipY1);
+  ctx.clip();
+
+  // Find every contiguous run of rows in [rowFrom..rowTo] with level >= lvl.
+  let runStart = -1;
+  for (let r = rowFrom; r <= rowTo + 1; r++) {
+    const inRun = r <= rowTo && (lvlByRow.get(r) ?? 0) >= lvl;
+    if (inRun && runStart < 0) runStart = r;
+    if (!inRun && runStart >= 0) {
+      const runEnd = r - 1;
+      const y1 = (g.rowY[runStart] ?? HEADER_H) + offsetY;
+      const y2 = (g.rowY[runEnd + 1] ?? HEADER_H) + offsetY;
+      if (y2 > clipY1 && y1 < clipY2) {
+        // Vertical line + 4px tick caps on top + bottom (Excel-style).
+        ctx.beginPath();
+        ctx.moveTo(xLine, y1);
+        ctx.lineTo(xLine, y2);
+        ctx.moveTo(xLine, y1 + 0.5);
+        ctx.lineTo(xLine + 4, y1 + 0.5);
+        ctx.moveTo(xLine, y2 - 0.5);
+        ctx.lineTo(xLine + 4, y2 - 0.5);
+        ctx.stroke();
+      }
+      runStart = -1;
+    }
+  }
+  ctx.restore();
+}
+
+/// Same shape as the row-bracket painter but for column groupings.
+function drawColOutlineBrackets(
+  ctx: CanvasRenderingContext2D,
+  sheet: Sheet,
+  g: Grid,
+  sx: number,
+  splitX: number,
+  pcw: number,
+  canvasW: number,
+): void {
+  let maxLvl = 0;
+  for (const c of sheet.cols) {
+    if ((c.outlineLevel ?? 0) > maxLvl) maxLvl = c.outlineLevel ?? 0;
+  }
+  if (maxLvl === 0) return;
+
+  // Build a column → outlineLevel lookup. The wire stores Col entries
+  // as (min..max) ranges; expand them so the per-col paint can do an
+  // O(1) test.
+  const lvlByCol = new Map<number, number>();
+  for (const c of sheet.cols) {
+    const lvl = c.outlineLevel ?? 0;
+    if (lvl === 0) continue;
+    for (let i = c.min; i <= c.max; i++) lvlByCol.set(i, lvl);
+  }
+
+  ctx.save();
+  ctx.strokeStyle = OUTLINE_STROKE;
+  ctx.lineWidth = 1;
+
+  for (let lvl = 1; lvl <= maxLvl; lvl++) {
+    const yLine = OUTLINE_INSET_PX + (lvl - 1) * OUTLINE_STEP_PX + 0.5;
+    paintColRunsForLevel(
+      ctx,
+      lvlByCol,
+      lvl,
+      yLine,
+      g,
+      /*colFrom*/ 1,
+      /*colTo*/ Math.max(0, splitX - 1),
+      /*offsetX*/ 0,
+      /*clipX1*/ HEADER_W,
+      /*clipX2*/ HEADER_W + pcw,
+    );
+    paintColRunsForLevel(
+      ctx,
+      lvlByCol,
+      lvl,
+      yLine,
+      g,
+      /*colFrom*/ Math.max(1, splitX),
+      /*colTo*/ g.maxCol,
+      /*offsetX*/ -sx,
+      /*clipX1*/ HEADER_W + pcw,
+      /*clipX2*/ canvasW,
+    );
+  }
+  ctx.restore();
+}
+
+function paintColRunsForLevel(
+  ctx: CanvasRenderingContext2D,
+  lvlByCol: Map<number, number>,
+  lvl: number,
+  yLine: number,
+  g: Grid,
+  colFrom: number,
+  colTo: number,
+  offsetX: number,
+  clipX1: number,
+  clipX2: number,
+): void {
+  if (colTo < colFrom) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(clipX1, 0, clipX2 - clipX1, HEADER_H);
+  ctx.clip();
+
+  let runStart = -1;
+  for (let c = colFrom; c <= colTo + 1; c++) {
+    const inRun = c <= colTo && (lvlByCol.get(c) ?? 0) >= lvl;
+    if (inRun && runStart < 0) runStart = c;
+    if (!inRun && runStart >= 0) {
+      const runEnd = c - 1;
+      const x1 = (g.colX[runStart] ?? HEADER_W) + offsetX;
+      const x2 = (g.colX[runEnd + 1] ?? HEADER_W) + offsetX;
+      if (x2 > clipX1 && x1 < clipX2) {
+        ctx.beginPath();
+        ctx.moveTo(x1, yLine);
+        ctx.lineTo(x2, yLine);
+        ctx.moveTo(x1 + 0.5, yLine);
+        ctx.lineTo(x1 + 0.5, yLine + 4);
+        ctx.moveTo(x2 - 0.5, yLine);
+        ctx.lineTo(x2 - 0.5, yLine + 4);
+        ctx.stroke();
+      }
+      runStart = -1;
+    }
+  }
   ctx.restore();
 }
 

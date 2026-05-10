@@ -48,6 +48,7 @@ export type {
   Image,
   Merge,
   NumberFormat,
+  OutlinePr,
   Pivot,
 
   Styles,

@@ -86,6 +86,7 @@ pub fn extract(
                 width_px,
                 style_index: c.style,
                 hidden: c.hidden.unwrap_or(false),
+                outline_level: c.outline_level.unwrap_or(0).min(7),
             });
         }
     }
@@ -107,6 +108,7 @@ pub fn extract(
             cells,
             style_index: r.style_index,
             hidden: r.hidden.unwrap_or(false),
+            outline_level: r.outline_level.unwrap_or(0).min(7),
         });
     }
 
@@ -146,6 +148,20 @@ pub fn extract(
 
     let conditional_formats = extract_conditional_formats(ws);
 
+    // <sheetPr><outlinePr summaryBelow=... summaryRight=.../></sheetPr>.
+    // Default-true matches Excel and the OOXML spec; we only emit the
+    // struct when at least one default is overridden so the wire stays
+    // small (and the renderer can short-circuit on `outlinePr === undefined`).
+    let outline_pr = ws
+        .sheet_properties
+        .as_ref()
+        .and_then(|sp| sp.outline_properties.as_ref())
+        .and_then(|op| {
+            let sb = op.summary_below.unwrap_or(true);
+            let sr = op.summary_right.unwrap_or(true);
+            if sb && sr { None } else { Some(OutlinePr { summary_below: sb, summary_right: sr }) }
+        });
+
     Sheet {
         index: index as u32,
         name,
@@ -159,6 +175,7 @@ pub fn extract(
         freeze,
         show_grid_lines,
         conditional_formats,
+        outline_pr,
         drawings: Vec::new(),    // populated by lib.rs after sheet extract
         tables: Vec::new(),      // populated by lib.rs after sheet extract
         pivots: Vec::new(),      // populated by lib.rs after sheet extract

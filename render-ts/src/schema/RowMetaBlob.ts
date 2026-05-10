@@ -16,4 +16,10 @@ styleIdx: string,
 /**
  * u8: 0/1.
  */
-hidden: string, };
+hidden: string, 
+/**
+ * u8: OOXML `<row outlineLevel="N">`, 0..=7. 0 = no grouping.
+ * Empty string when every row is at level 0 (the common case);
+ * renderer treats absent blob as all-zeros.
+ */
+outlineLevel: string, };

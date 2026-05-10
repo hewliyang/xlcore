@@ -31,6 +31,7 @@ export type { Hyperlink } from "./Hyperlink.js";
 export type { Image } from "./Image.js";
 export type { Merge } from "./Merge.js";
 export type { NumberFormat } from "./NumberFormat.js";
+export type { OutlinePr } from "./OutlinePr.js";
 export type { Pivot } from "./Pivot.js";
 export type { RowMetaBlob } from "./RowMetaBlob.js";
 export type { Sheet } from "./Sheet.js";

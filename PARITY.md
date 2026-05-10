@@ -65,7 +65,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | Custom column widths      | ✅      | ✅     |                                           |
 | Custom row heights        | ✅      | ✅     |                                           |
 | Hidden rows / cols        | ✅      | ✅     | (zero-sized in grid).                     |
-| Outline / group levels    | ❌      | ❌     | no `outlineLevel`; no expand-collapse UI. |
+| Outline / group levels    | ✅      | 🟡     | OOXML `<row outlineLevel="N">` and `<col outlineLevel="N">` extracted (capped at the spec limit of 7). Wire: `Col.outlineLevel: u8` + a new `RowMetaBlob.outlineLevel` u8 blob, omitted entirely from JSON when every row is at level 0. `<sheetPr><outlinePr summaryBelow summaryRight/>` lands on `Sheet.outlinePr` (defaults true/true match Excel). Renderer paints level brackets inside the existing row + column header strips: vertical `[` on the left edge of HEADER_W per row run, horizontal `⌐...¬` on the top edge of HEADER_H per col run, one slot per level (7px step), tick caps at the run endpoints, scoped to pinned + scrolling pane segments. No expand/collapse buttons, no summary-row glyphs, no separate gutter strip (squeezing the bracket inside the existing 44/22 px strips avoided a 91-call-site refactor of `HEADER_W` / `HEADER_H`). Fixture: `tests/fixtures/outline/outline-groups.xlsx`. **Open:** proper Excel-style outline gutter strip outside the row/col header strips (with summary +/- buttons + level numerals at the corner) is the planned follow-up. Hsx divergence: SpreadJS doesn't render outline gutters in screenshot mode at all; Excel desktop does and we match it. |
 | Freeze panes              | ✅      | ✅     | 4-pane split.                             |
 | Split panes (non-frozen)  | ❌      | ❌     |                                           |
 | Merged cells              | ✅      | ✅     |                                           |
@@ -625,6 +625,21 @@ surrounding workbook noise.
       plain Calibri 11 (default xf ids); now Title / Heading 1 /
       Highlighted / Centered all pick up their named-style
       formatting. Hsx divergence noted in the fixture README.
+- [x] Outline / group levels: `tests/fixtures/outline/outline-groups.xlsx`
+      lays out two row groups (rows 3-4, 7-8 at `outlineLevel=1`) and
+      one column group (cols B-D at `outlineLevel=1`). Schema additions:
+      `Col.outlineLevel: u8`, `RowMetaBlob.outlineLevel` u8 blob (skipped
+      from JSON when all-zero), `Sheet.outlinePr: Option<{summaryBelow,
+      summaryRight}>`. Renderer paints the brackets inside the existing
+      header strips (no layout shift, no `HEADER_W` / `HEADER_H`
+      refactor); scrolling + freeze panes both honored via separate
+      pinned/scrolling run passes per level. SpreadJS drops
+      `outlineLevel` on xlsx export so the fixture is built via Python
+      zip-patch (also splits the existing `<col min="2" max="6">` block
+      into B-D / E-F so only the grouped columns get the attr). **Open:**
+      proper Excel-style outline gutter strip outside the header strips
+      (with +/- buttons + level numerals at the corner) is the planned
+      follow-up.
 - [x] Every-border-style fixture: `tests/fixtures/borders/every-style.xlsx`
       lays out all 14 OOXML `ST_BorderStyle` values in a 2×7 grid,
       each on all four sides of its cell. Caught two latent bugs:
