@@ -44,6 +44,10 @@ export interface ResolvedText {
   text: string;
   defaultAlign: "left" | "right" | "center";
   formatColor?: string;
+  /** Accounting `*x` fill chars (see `FormatResult.fills`). Each `\u0001`
+   *  in `text` is a placeholder the caller must expand against the cell
+   *  width. Undefined when the format had no `*x` token. */
+  fills?: string[];
 }
 
 const NUMFMT_CODE_CACHE = new WeakMap<WorkbookLayout, Map<number, string>>();
@@ -147,7 +151,12 @@ export function resolveCellText(
         code = numFmtCode(layout, numFmtId);
       }
       const r = formatValue(n, code);
-      return { text: r.text, defaultAlign: "right", formatColor: r.color };
+      return {
+        text: r.text,
+        defaultAlign: "right",
+        formatColor: r.color,
+        fills: r.fills,
+      };
     }
     default:
       return { text: v, defaultAlign: "left" };

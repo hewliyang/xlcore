@@ -209,9 +209,23 @@ of real-world workbooks looking wrong.
    spans. Verified against four fixtures in `tests/fixtures/numfmt/`
    (date/time, currency-locale, multi-section conditions, fractions +
    scientific). All 45 sample rows match hsx to the character. Open
-   sub-items: `_x`/`*x` width-aware padding (needs cell-width plumbing),
-   per-format memoization, locale separator, parser-on-Rust-side
-   refactor — see `tests/fixtures/numfmt/TRIAGE.md`.
+   sub-items: per-format memoization, locale separator, parser-on-
+   Rust-side refactor — see `tests/fixtures/numfmt/TRIAGE.md`.
+   ~~`_x`/`*x` width-aware padding~~ **DONE** — `*x` fill tokens now
+   lower to a `FILL_SENTINEL` (`\u0001`) in `FormatResult.text` plus a
+   parallel `fills: string[]` carrying each fill char; the textRenderer
+   loop in `drawCellText` measures the cell's primary span at
+   `ownRect.w - padX*2`, computes the available slack, and substitutes
+   N copies of the matching fill char per sentinel (split evenly when
+   a section has multiple `*` tokens). Accounting format
+   `_("$"* #,##0_)` for `80539` now packs as `$    80,539 ` flush
+   against both cell edges, matching hsx's `$  80,539 ` look on the
+   `tests/fixtures/numfmt/currency-locale.xlsx` fixture (exact
+   gap depends on cell width). `_x` continues to emit a single space
+   — width-aware `_x` padding (which would measure the width of `x`
+   in the cell font and pad by that many px instead of one space)
+   stays open; visually undistinguishable from a literal space in
+   every fixture today.
 
 5. ~~**Charts: line / pie / scatter / area.**~~ **DONE.** Four new
    drawers in `render-ts/src/chart.ts`:

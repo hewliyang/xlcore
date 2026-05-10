@@ -314,7 +314,9 @@ export function drawCellText(
       if (covered.has(k)) return;
       if (cfTextSuppress.has(k)) return;
       const xf = resolveCellXf(cell, sheet, layout);
-      const { text, defaultAlign, formatColor } = resolveCellText(cell, layout, xf);
+      const resolved = resolveCellText(cell, layout, xf);
+      let { text } = resolved;
+      const { defaultAlign, formatColor, fills } = resolved;
       if (!text) return;
 
       const baseFontEntry = xf?.fontId !== undefined ? styles.fonts[xf.fontId] : undefined;
@@ -358,6 +360,48 @@ export function drawCellText(
       const merge = topLeftOf.get(k);
       const isMerged = !!merge;
       const padX = 4;
+
+      // Accounting `*x` fill expansion: numfmt left FILL_SENTINEL chars
+      // in `text`; we measure the rest at the primary span's font and
+      // pad each sentinel with N copies of its fill char so the whole
+      // string fills the cell's inner width. Excel accounting renders
+      // `_($* #,##0_)` as `$    80,539 ` — the `*` is what produces the
+      // gap between the currency symbol and the right-justified number.
+      // We force the text rectangle to span the full inner width (no
+      // overflow / no extra alignment shift) because the format already
+      // encodes the horizontal placement.
+      if (fills && fills.length > 0 && text.includes("\u0001")) {
+        const primary = spans[0]!;
+        const prevFont = ctx.font;
+        ctx.font = primary.font;
+        // Measure the text with every sentinel stripped — that's the
+        // fixed-width content. The remaining width goes to fill chars.
+        const stripped = text.replace(/\u0001/g, "");
+        const baseW = ctx.measureText(stripped).width;
+        const innerW = Math.max(0, ownRect.w - padX * 2);
+        let avail = innerW - baseW;
+        const parts = text.split("\u0001");
+        const fillCount = parts.length - 1;
+        if (fillCount > 0) {
+          let assembled = parts[0]!;
+          for (let fi = 0; fi < fillCount; fi++) {
+            const ch = fills[fi] ?? fills[fills.length - 1] ?? " ";
+            const chW = Math.max(0.5, ctx.measureText(ch).width);
+            // Spread the remaining slack evenly across the remaining
+            // sentinels so multiple `*` fills (rare) share the gap.
+            const slice = avail / (fillCount - fi);
+            const n = Math.max(0, Math.floor(slice / chW));
+            avail -= n * chW;
+            assembled += ch.repeat(n) + parts[fi + 1]!;
+          }
+          text = assembled;
+          // Numbers never carry rich-text runs — spans is always length 1
+          // on this path. Rebuild the span so downstream layout / measure
+          // walks see the padded string.
+          if (spans.length === 1) spans[0] = { ...spans[0]!, text };
+        }
+        ctx.font = prevFont;
+      }
 
       // Text rotation fast path. OOXML `textRotation`:
       //   0       horizontal (fall through to standard pipeline)
