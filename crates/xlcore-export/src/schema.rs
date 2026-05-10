@@ -6,9 +6,11 @@
 use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct WorkbookLayout {
     pub sheets: Vec<Sheet>,
     pub styles: Styles,
@@ -60,7 +62,10 @@ pub struct WorkbookLayout {
 /// handle yet) we fall back to the Office default for that slot.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Theme {
     /// 12 hex colors, indexed by `Color.theme`.
@@ -81,9 +86,11 @@ pub struct Theme {
 /// own font".
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct TextRun {
     pub text: String,
     #[serde(default, skip_serializing_if = "is_false")]
@@ -107,9 +114,11 @@ pub struct TextRun {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Sheet {
     pub index: u32,
     pub name: String,
@@ -211,7 +220,10 @@ pub struct Sheet {
 /// when `<outlinePr>` is absent (matches Excel/OOXML spec).
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct OutlinePr {
     pub summary_below: bool,
@@ -224,7 +236,10 @@ pub struct OutlinePr {
 /// with explicit cell xfs).
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Pivot {
     /// Internal name (`name=` attr on `<pivotTableDefinition>`).
@@ -242,7 +257,10 @@ pub struct Pivot {
 /// 1-based cell address. Used by `Pivot.filter_arrow_cells`.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct CellRef {
     pub r: u32,
@@ -253,7 +271,10 @@ pub struct CellRef {
 /// At least one of `target` / `location` is set.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Hyperlink {
     /// Range covered by this hyperlink (often a single cell, but the
@@ -283,7 +304,10 @@ pub struct Hyperlink {
 /// One `<comment>` entry from the worksheet's comments part.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Comment {
     /// 1-based row.
@@ -308,7 +332,10 @@ pub struct Comment {
 /// pure cosmetic chrome; the cell values themselves stay in `Sheet.rows`.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Table {
     /// Internal name (`name` attr; falls back to `displayName`).
@@ -336,7 +363,10 @@ pub struct Table {
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct TableColumn {
     pub name: String,
@@ -358,7 +388,10 @@ pub struct TableColumn {
 /// when it doesn't recognize the style name.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct TableStyle {
     /// Built-in style name, e.g. `TableStyleMedium2`. The trailing
@@ -377,9 +410,11 @@ pub struct TableStyle {
 /// One drawing object placed on the sheet, with its xlsx cell-anchor.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Drawing {
     /// `chart`, `image`, `shape` (only `chart` and `image` are rendered).
     pub kind: String,
@@ -394,9 +429,11 @@ pub struct Drawing {
 /// Inline-encoded raster image extracted from `xl/media/*`.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Image {
     /// `data:image/png;base64,...` style URI, ready to feed to <img>.
     pub data_uri: String,
@@ -405,28 +442,32 @@ pub struct Image {
 /// 1 EMU = 1/9525 px at 96 DPI.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct DrawingAnchor {
-     pub from_col: u32,
-     #[cfg_attr(feature = "typescript", ts(type = "number"))]
-     pub from_col_off_emu: i64,
-     pub from_row: u32,
-     #[cfg_attr(feature = "typescript", ts(type = "number"))]
-     pub from_row_off_emu: i64,
-     pub to_col: u32,
-     #[cfg_attr(feature = "typescript", ts(type = "number"))]
-     pub to_col_off_emu: i64,
-     pub to_row: u32,
-     #[cfg_attr(feature = "typescript", ts(type = "number"))]
-     pub to_row_off_emu: i64,
+    pub from_col: u32,
+    #[cfg_attr(feature = "typescript", ts(type = "number"))]
+    pub from_col_off_emu: i64,
+    pub from_row: u32,
+    #[cfg_attr(feature = "typescript", ts(type = "number"))]
+    pub from_row_off_emu: i64,
+    pub to_col: u32,
+    #[cfg_attr(feature = "typescript", ts(type = "number"))]
+    pub to_col_off_emu: i64,
+    pub to_row: u32,
+    #[cfg_attr(feature = "typescript", ts(type = "number"))]
+    pub to_row_off_emu: i64,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Chart {
     /// `column`, `bar`, `line`, `pie`, `area`, `scatter`, `unknown`.
     /// `column` and `bar` collapse into one `BarChart` schema entry; the
@@ -488,7 +529,10 @@ pub struct Chart {
 /// Empty when extracted from `<c:delete val="1"/>` (suppression marker).
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct DataLabels {
     #[serde(default, skip_serializing_if = "is_false")]
@@ -520,9 +564,11 @@ pub struct DataLabels {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct ChartSeries {
     pub name: String,
     /// Formula for the series name (e.g. `Sheet1!$A$2`). Resolved after
@@ -565,9 +611,11 @@ pub struct ChartSeries {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct ConditionalFormat {
     /// One or more rectangular ranges (from the sqref attribute).
     pub ranges: Vec<Merge>,
@@ -575,9 +623,11 @@ pub struct ConditionalFormat {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct CfRule {
     pub priority: i32,
     /// `colorScale`, `dataBar`, `iconSet`, `cellIs`, `expression`, `top10`,
@@ -659,7 +709,10 @@ pub struct CfRule {
 /// "inherit from base".
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Dxf {
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -688,9 +741,11 @@ pub struct Dxf {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct CfColorScale {
     pub stops: Vec<CfColorScaleStop>,
 }
@@ -704,7 +759,10 @@ pub struct CfColorScale {
 /// match ECMA-376 §18.3.1.28.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct CfDataBar {
     pub min: CfvoStop,
@@ -740,7 +798,10 @@ pub struct CfDataBar {
 /// every threshold as `>=`.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct CfIconSet {
     /// One of the OOXML preset IDs: `3Arrows`, `3ArrowsGray`,
@@ -766,7 +827,10 @@ pub struct CfIconSet {
 /// shape between the min and max stop.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct CfvoStop {
     /// `min`, `max`, `num`, `percent`, `percentile`, `formula`,
@@ -779,9 +843,11 @@ pub struct CfvoStop {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct CfColorScaleStop {
     /// `min`, `max`, `num`, `percent`, `percentile`, `formula`.
     #[serde(rename = "type")]
@@ -793,9 +859,11 @@ pub struct CfColorScaleStop {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Col {
     pub min: u32,
     pub max: u32,
@@ -813,9 +881,11 @@ pub struct Col {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Row {
     pub index: u32,
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -836,9 +906,11 @@ pub struct Row {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Cell {
     /// Row, 1-based.
     pub r: u32,
@@ -867,9 +939,11 @@ pub struct Cell {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Merge {
     pub r1: u32,
     pub c1: u32,
@@ -878,9 +952,11 @@ pub struct Merge {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Freeze {
     /// 1-based: rows above this index are frozen.
     pub top_row: u32,
@@ -892,9 +968,11 @@ pub struct Freeze {
 // ============================================================
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Styles {
     pub fonts: Vec<Font>,
     pub fills: Vec<Fill>,
@@ -907,9 +985,11 @@ pub struct Styles {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Font {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -931,9 +1011,11 @@ pub struct Font {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Fill {
     /// "solid", "none", "pattern", "gradient".
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -952,9 +1034,11 @@ pub struct Fill {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Border {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -984,9 +1068,11 @@ pub struct Border {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct BorderLine {
     /// "thin","medium","thick","double","dotted","dashed","hair", etc.
     pub style: String,
@@ -996,9 +1082,11 @@ pub struct BorderLine {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct CellFormat {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1031,9 +1119,11 @@ pub struct CellFormat {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct NumberFormat {
     pub id: u32,
     pub format_code: String,
@@ -1041,9 +1131,11 @@ pub struct NumberFormat {
 /// Color: at least one of `rgb`, `theme`, or `indexed` is set.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Color {
     /// 8-char "AARRGGBB" or 6-char "RRGGBB".
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -1060,8 +1152,12 @@ pub struct Color {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tint: Option<f64>,
 }
-fn is_false(b: &bool) -> bool { !*b }
-fn is_zero_u8(n: &u8) -> bool { *n == 0 }
+fn is_false(b: &bool) -> bool {
+    !*b
+}
+fn is_zero_u8(n: &u8) -> bool {
+    *n == 0
+}
 
 // ============================================================
 // Columnar storage
@@ -1094,7 +1190,10 @@ fn is_zero_u8(n: &u8) -> bool { *n == 0 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct ColumnarCells {
     pub count: u32,
@@ -1119,7 +1218,10 @@ pub struct ColumnarCells {
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct RowMetaBlob {
     pub count: u32,

@@ -22,8 +22,15 @@ fn main() -> Result<()> {
     match args[1].as_str() {
         "extract" => cmd_extract(&args[2..]),
         "preview" => cmd_preview(&args[2..]),
-        "-h" | "--help" | "help" => { print_help(); Ok(()) }
-        cmd => { eprintln!("unknown command: {cmd}\n"); print_help(); std::process::exit(2); }
+        "-h" | "--help" | "help" => {
+            print_help();
+            Ok(())
+        }
+        cmd => {
+            eprintln!("unknown command: {cmd}\n");
+            print_help();
+            std::process::exit(2);
+        }
     }
 }
 
@@ -58,7 +65,9 @@ fn cmd_preview(args: &[String]) -> Result<()> {
         match args[i].as_str() {
             "--renderer" => {
                 i += 1;
-                renderer_path = Some(PathBuf::from(args.get(i).context("--renderer needs a path")?));
+                renderer_path = Some(PathBuf::from(
+                    args.get(i).context("--renderer needs a path")?,
+                ));
             }
             _ => positional.push(args[i].clone()),
         }
@@ -70,12 +79,10 @@ fn cmd_preview(args: &[String]) -> Result<()> {
     let layout_json = serde_json::to_string(&layout)?;
 
     // Find the renderer bundle.
-    let renderer_path = renderer_path
-        .or_else(|| default_renderer_path())
-        .context(
-            "could not locate render-ts bundle; pass --renderer path/to/dist/browser.js \
-             or build it first (cd render-ts && bun run build)"
-        )?;
+    let renderer_path = renderer_path.or_else(default_renderer_path).context(
+        "could not locate render-ts bundle; pass --renderer path/to/dist/browser.js \
+             or build it first (cd render-ts && bun run build)",
+    )?;
     let renderer_js = fs::read_to_string(&renderer_path)
         .with_context(|| format!("reading renderer bundle: {}", renderer_path.display()))?;
 
@@ -121,15 +128,19 @@ fn parse_io_args(args: &[String], default_ext: &str) -> Result<(PathBuf, PathBuf
                 output = Some(PathBuf::from(args.get(i).context("-o needs a path")?));
             }
             s if !s.starts_with('-') => {
-                if input.is_none() { input = Some(PathBuf::from(s)); }
-                else { bail!("unexpected positional argument: {s}"); }
+                if input.is_none() {
+                    input = Some(PathBuf::from(s));
+                } else {
+                    bail!("unexpected positional argument: {s}");
+                }
             }
             other => bail!("unknown flag: {other}"),
         }
         i += 1;
     }
     let input = input.context("missing <in.xlsx>")?;
-    let output = output.unwrap_or_else(|| input.with_extension(default_ext.trim_start_matches('.')));
+    let output =
+        output.unwrap_or_else(|| input.with_extension(default_ext.trim_start_matches('.')));
     Ok((input, output))
 }
 
@@ -138,8 +149,12 @@ fn default_renderer_path() -> Option<PathBuf> {
     let mut cur = std::env::current_dir().ok()?;
     for _ in 0..6 {
         let candidate = cur.join("render-ts/dist/browser.js");
-        if candidate.exists() { return Some(candidate); }
-        if !cur.pop() { break; }
+        if candidate.exists() {
+            return Some(candidate);
+        }
+        if !cur.pop() {
+            break;
+        }
     }
     None
 }

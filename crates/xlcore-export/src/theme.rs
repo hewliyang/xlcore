@@ -328,7 +328,11 @@ pub fn extract(theme: &a::Theme) -> Theme {
         .map(|t| t.as_str().to_string())
         .filter(|s| !s.is_empty());
 
-    Theme { colors, major_font, minor_font }
+    Theme {
+        colors,
+        major_font,
+        minor_font,
+    }
 }
 
 /// Office 2007+ default theme color for spreadsheet-index slot N. Mirrors
@@ -371,18 +375,78 @@ macro_rules! resolve_slot {
     };
 }
 
-resolve_slot!(resolve_light1,   a::Light1Color,   light1_color_choice,   a::Light1ColorChoice);
-resolve_slot!(resolve_dark1,    a::Dark1Color,    dark1_color_choice,    a::Dark1ColorChoice);
-resolve_slot!(resolve_light2,   a::Light2Color,   light2_color_choice,   a::Light2ColorChoice);
-resolve_slot!(resolve_dark2,    a::Dark2Color,    dark2_color_choice,    a::Dark2ColorChoice);
-resolve_slot!(resolve_accent1,  a::Accent1Color,  accent1_color_choice,  a::Accent1ColorChoice);
-resolve_slot!(resolve_accent2,  a::Accent2Color,  accent2_color_choice,  a::Accent2ColorChoice);
-resolve_slot!(resolve_accent3,  a::Accent3Color,  accent3_color_choice,  a::Accent3ColorChoice);
-resolve_slot!(resolve_accent4,  a::Accent4Color,  accent4_color_choice,  a::Accent4ColorChoice);
-resolve_slot!(resolve_accent5,  a::Accent5Color,  accent5_color_choice,  a::Accent5ColorChoice);
-resolve_slot!(resolve_accent6,  a::Accent6Color,  accent6_color_choice,  a::Accent6ColorChoice);
-resolve_slot!(resolve_hyperlink,a::Hyperlink,     hyperlink_choice,      a::HyperlinkChoice);
-resolve_slot!(resolve_followed, a::FollowedHyperlinkColor, followed_hyperlink_color_choice, a::FollowedHyperlinkColorChoice);
+resolve_slot!(
+    resolve_light1,
+    a::Light1Color,
+    light1_color_choice,
+    a::Light1ColorChoice
+);
+resolve_slot!(
+    resolve_dark1,
+    a::Dark1Color,
+    dark1_color_choice,
+    a::Dark1ColorChoice
+);
+resolve_slot!(
+    resolve_light2,
+    a::Light2Color,
+    light2_color_choice,
+    a::Light2ColorChoice
+);
+resolve_slot!(
+    resolve_dark2,
+    a::Dark2Color,
+    dark2_color_choice,
+    a::Dark2ColorChoice
+);
+resolve_slot!(
+    resolve_accent1,
+    a::Accent1Color,
+    accent1_color_choice,
+    a::Accent1ColorChoice
+);
+resolve_slot!(
+    resolve_accent2,
+    a::Accent2Color,
+    accent2_color_choice,
+    a::Accent2ColorChoice
+);
+resolve_slot!(
+    resolve_accent3,
+    a::Accent3Color,
+    accent3_color_choice,
+    a::Accent3ColorChoice
+);
+resolve_slot!(
+    resolve_accent4,
+    a::Accent4Color,
+    accent4_color_choice,
+    a::Accent4ColorChoice
+);
+resolve_slot!(
+    resolve_accent5,
+    a::Accent5Color,
+    accent5_color_choice,
+    a::Accent5ColorChoice
+);
+resolve_slot!(
+    resolve_accent6,
+    a::Accent6Color,
+    accent6_color_choice,
+    a::Accent6ColorChoice
+);
+resolve_slot!(
+    resolve_hyperlink,
+    a::Hyperlink,
+    hyperlink_choice,
+    a::HyperlinkChoice
+);
+resolve_slot!(
+    resolve_followed,
+    a::FollowedHyperlinkColor,
+    followed_hyperlink_color_choice,
+    a::FollowedHyperlinkColorChoice
+);
 
 #[cfg(test)]
 mod tests {

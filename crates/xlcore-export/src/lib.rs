@@ -12,15 +12,15 @@
 //! No formulas are recomputed here — we emit the source-cached `<v>`. Recalc is
 //! `xlcore-bridge`'s job (future).
 
-mod schema;
-mod styles;
-mod sheet;
+mod annotations;
 mod charts;
+mod columnar;
+mod pivots;
+mod schema;
+mod sheet;
+mod styles;
 mod tables;
 mod theme;
-mod annotations;
-mod pivots;
-mod columnar;
 
 pub use schema::*;
 
@@ -58,7 +58,7 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
             // Theme XML can fail to parse (rare — corrupt drawingml); fall
             // back to the default palette rather than failing the whole
             // extract.
-            tp.root_element(doc).ok().map(|t| theme::extract(t))
+            tp.root_element(doc).ok().map(theme::extract)
         } else {
             None
         }
@@ -77,7 +77,7 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
         .and_then(|wv| wv.active_tab);
 
     let wb_part = doc.workbook_part()?;
-    let ws_parts: Vec<_> = wb_part.worksheet_parts(doc).map(|p| p.clone()).collect();
+    let ws_parts: Vec<_> = wb_part.worksheet_parts(doc).collect();
     let ws_parts_by_rel_id: HashMap<String, _> = ws_parts
         .iter()
         .filter_map(|p| p.relationship_id().map(|id| (id.to_string(), p.clone())))
@@ -92,7 +92,9 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
             // dropping a sheet.
             .or_else(|| ws_parts.get(idx))
             .cloned();
-        let Some(ws_part) = ws_part else { continue; };
+        let Some(ws_part) = ws_part else {
+            continue;
+        };
 
         let drawings = charts::extract(doc, &ws_part, theme.as_ref());
         let tables = tables::extract(doc, &ws_part);
@@ -149,7 +151,9 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
 
     let read_string = |sheets: &[Sheet], target: &Cell, sst: &[String]| -> Option<String> {
         match target.kind.as_str() {
-            "s" => target.value.as_ref()
+            "s" => target
+                .value
+                .as_ref()
                 .and_then(|v| v.parse::<usize>().ok())
                 .and_then(|idx| sst.get(idx).cloned()),
             "inline" | "str" => target.value.clone(),
@@ -168,14 +172,23 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
     };
 
     // Helpers: resolve range -> Vec of cells in row-major order.
-    let collect_cells = |sheets: &[Sheet], sheet_name: &str, r1: u32, c1: u32, r2: u32, c2: u32|
-        -> Vec<Option<Cell>> {
-        let Some(&idx) = name_to_idx.get(sheet_name) else { return Vec::new(); };
+    let collect_cells = |sheets: &[Sheet],
+                         sheet_name: &str,
+                         r1: u32,
+                         c1: u32,
+                         r2: u32,
+                         c2: u32|
+     -> Vec<Option<Cell>> {
+        let Some(&idx) = name_to_idx.get(sheet_name) else {
+            return Vec::new();
+        };
         let sheet = &sheets[idx];
         let mut out = Vec::with_capacity(((r2 - r1 + 1) * (c2 - c1 + 1)) as usize);
         for r in r1..=r2 {
             for c in c1..=c2 {
-                let cell = sheet.rows.iter()
+                let cell = sheet
+                    .rows
+                    .iter()
                     .find(|row| row.index == r)
                     .and_then(|row| row.cells.iter().find(|cc| cc.r == r && cc.c == c))
                     .cloned();
@@ -190,18 +203,22 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
 
     for sheet in layout.sheets.iter_mut() {
         for drawing in sheet.drawings.iter_mut() {
-            let Some(chart) = drawing.chart.as_mut() else { continue; };
+            let Some(chart) = drawing.chart.as_mut() else {
+                continue;
+            };
 
             // categories
             if chart.categories.is_empty() {
                 if let Some(formula) = &chart.categories_ref {
                     if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
                         let cells = collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
-                        chart.categories = cells.into_iter()
-                            .map(|cell| cell
-                                .as_ref()
-                                .and_then(|cc| read_string(&snapshot_sheets, cc, &sst))
-                                .unwrap_or_default())
+                        chart.categories = cells
+                            .into_iter()
+                            .map(|cell| {
+                                cell.as_ref()
+                                    .and_then(|cc| read_string(&snapshot_sheets, cc, &sst))
+                                    .unwrap_or_default()
+                            })
                             .collect();
                     }
                 }
@@ -213,7 +230,8 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
                     if let Some(formula) = &ser.name_ref {
                         if let Some((sheet_name, r1, c1, _, _)) = parse_chart_ref(formula) {
                             // Series name is a single-cell ref; just read (r1,c1).
-                            let cells = collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r1, c1);
+                            let cells =
+                                collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r1, c1);
                             if let Some(Some(cell)) = cells.first() {
                                 if let Some(s) = read_string(&snapshot_sheets, cell, &sst) {
                                     ser.name = s;
@@ -225,8 +243,10 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
                 if ser.values.is_empty() {
                     if let Some(formula) = &ser.values_ref {
                         if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
-                            let cells = collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
-                            ser.values = cells.into_iter()
+                            let cells =
+                                collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
+                            ser.values = cells
+                                .into_iter()
                                 .map(|cell| cell.as_ref().and_then(read_number).unwrap_or(0.0))
                                 .collect();
                         }
@@ -235,8 +255,10 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
                 if ser.x_values.is_empty() {
                     if let Some(formula) = &ser.x_values_ref {
                         if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
-                            let cells = collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
-                            ser.x_values = cells.into_iter()
+                            let cells =
+                                collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
+                            ser.x_values = cells
+                                .into_iter()
                                 .map(|cell| cell.as_ref().and_then(read_number).unwrap_or(0.0))
                                 .collect();
                         }
@@ -254,7 +276,9 @@ fn parse_chart_ref(formula: &str) -> Option<(String, u32, u32, u32, u32)> {
     // Strip surrounding quotes if present.
     let sheet = sheet_part.trim_matches('\'').to_string();
     let cleaned: String = range_part.chars().filter(|c| *c != '$').collect();
-    let (a, b) = cleaned.split_once(':').unwrap_or((cleaned.as_str(), cleaned.as_str()));
+    let (a, b) = cleaned
+        .split_once(':')
+        .unwrap_or((cleaned.as_str(), cleaned.as_str()));
     let (r1, c1) = xlcore_io::parse_a1(a)?;
     let (r2, c2) = xlcore_io::parse_a1(b)?;
     let (r1, r2) = (r1.min(r2), r1.max(r2));
@@ -269,7 +293,6 @@ fn parse_chart_ref(formula: &str) -> Option<(String, u32, u32, u32, u32)> {
 fn preload_shared_strings(
     doc: &mut xlcore_io::SpreadsheetDocument,
 ) -> (Vec<String>, Vec<Vec<TextRun>>) {
-    use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as x;
     let wb_part = match doc.workbook_part() {
         Ok(p) => p,
         Err(_) => return (Vec::new(), Vec::new()),
@@ -316,14 +339,27 @@ use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as xsp
 /// aren't set leave the field as `None`/`false` so the renderer can
 /// inherit from the cell's own font.
 pub(crate) fn text_run_from(r: &xspread::Run, text: String) -> TextRun {
-    let mut tr = TextRun { text, ..Default::default() };
-    let Some(rpr) = &r.run_properties else { return tr; };
+    let mut tr = TextRun {
+        text,
+        ..Default::default()
+    };
+    let Some(rpr) = &r.run_properties else {
+        return tr;
+    };
     // CT_BooleanProperty: element present + no `val` attr defaults to true,
     // but `val="0"` explicitly unsets the property. Same pattern as Font.
-    if let Some(b) = rpr.x_b.first() { tr.bold = b.val.unwrap_or(true); }
-    if let Some(i) = rpr.x_i.first() { tr.italic = i.val.unwrap_or(true); }
-    if !rpr.x_u.is_empty() { tr.underline = true; }
-    if let Some(s) = rpr.x_strike.first() { tr.strike = s.val.unwrap_or(true); }
+    if let Some(b) = rpr.x_b.first() {
+        tr.bold = b.val.unwrap_or(true);
+    }
+    if let Some(i) = rpr.x_i.first() {
+        tr.italic = i.val.unwrap_or(true);
+    }
+    if !rpr.x_u.is_empty() {
+        tr.underline = true;
+    }
+    if let Some(s) = rpr.x_strike.first() {
+        tr.strike = s.val.unwrap_or(true);
+    }
     if let Some(sz) = rpr.x_sz.first() {
         tr.size = Some(sz.val as f32);
     }
@@ -345,6 +381,11 @@ pub(crate) fn text_run_from(r: &xspread::Run, text: String) -> TextRun {
 }
 
 fn is_unstyled_run(r: &TextRun) -> bool {
-    !r.bold && !r.italic && !r.underline && !r.strike
-        && r.size.is_none() && r.font_name.is_none() && r.color.is_none()
+    !r.bold
+        && !r.italic
+        && !r.underline
+        && !r.strike
+        && r.size.is_none()
+        && r.font_name.is_none()
+        && r.color.is_none()
 }

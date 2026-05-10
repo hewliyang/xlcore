@@ -69,7 +69,9 @@ fn compactify_sheet(sheet: &mut Sheet) {
         row_height.push(row.height_px.unwrap_or(f32::NAN));
         row_style.push(row.style_index.map(|x| x as i32).unwrap_or(-1));
         row_hidden.push(if row.hidden { 1 } else { 0 });
-        if row.outline_level != 0 { any_outline = true; }
+        if row.outline_level != 0 {
+            any_outline = true;
+        }
         row_outline.push(row.outline_level);
 
         let mut cells = row.cells;
@@ -121,7 +123,11 @@ fn compactify_sheet(sheet: &mut Sheet) {
         // common case). The wire-format tag `skip_serializing_if =
         // "String::is_empty"` then drops the field, and the TS
         // decoder's `?? ""` fallback yields a zero-length view.
-        outline_level: if any_outline { encode_u8(&row_outline) } else { String::new() },
+        outline_level: if any_outline {
+            encode_u8(&row_outline)
+        } else {
+            String::new()
+        },
     };
     sheet.value_pool = value_pool;
     sheet.formula_pool = formula_pool;
@@ -155,19 +161,27 @@ fn kind_to_u8(k: &str) -> u8 {
 fn b64(bytes: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(bytes)
 }
-fn encode_u8(v: &[u8]) -> String { b64(v) }
+fn encode_u8(v: &[u8]) -> String {
+    b64(v)
+}
 fn encode_u32(v: &[u32]) -> String {
     let mut bytes = Vec::with_capacity(v.len() * 4);
-    for x in v { bytes.extend_from_slice(&x.to_le_bytes()); }
+    for x in v {
+        bytes.extend_from_slice(&x.to_le_bytes());
+    }
     b64(&bytes)
 }
 fn encode_i32(v: &[i32]) -> String {
     let mut bytes = Vec::with_capacity(v.len() * 4);
-    for x in v { bytes.extend_from_slice(&x.to_le_bytes()); }
+    for x in v {
+        bytes.extend_from_slice(&x.to_le_bytes());
+    }
     b64(&bytes)
 }
 fn encode_f32(v: &[f32]) -> String {
     let mut bytes = Vec::with_capacity(v.len() * 4);
-    for x in v { bytes.extend_from_slice(&x.to_le_bytes()); }
+    for x in v {
+        bytes.extend_from_slice(&x.to_le_bytes());
+    }
     b64(&bytes)
 }

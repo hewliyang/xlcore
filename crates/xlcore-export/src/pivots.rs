@@ -13,10 +13,12 @@ use xlcore_io::{parse_range, SpreadsheetDocument};
 
 pub fn extract(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) -> Vec<Pivot> {
     let mut out = Vec::new();
-    let pivot_parts: Vec<_> = ws_part.pivot_table_parts(doc).map(|p| p.clone()).collect();
+    let pivot_parts: Vec<_> = ws_part.pivot_table_parts(doc).collect();
 
     for pp in &pivot_parts {
-        let Ok(pt) = pp.root_element(doc) else { continue; };
+        let Ok(pt) = pp.root_element(doc) else {
+            continue;
+        };
         let Some(((r1, c1), (r2, c2))) = parse_range(pt.location.reference.as_str()) else {
             continue;
         };

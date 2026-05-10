@@ -73,7 +73,6 @@ export function decodeWorkbookLayout(layout: WorkbookLayout): WorkbookLayout {
     // mutates `wire` in place to add them, after which it satisfies the
     // augmented `Sheet` interface from `./types.js`.
     const sheet = wire as unknown as Sheet;
-    // biome-ignore lint/suspicious/noExplicitAny: symbol-keyed cache flag
     const tagged = sheet as any;
     if (tagged[DECODED]) continue;
     decodeSheet(sheet);
@@ -117,9 +116,7 @@ function decodeSheet(sheet: Sheet): void {
   };
   // Free the b64 strings — keeping them around doubles per-sheet
   // memory for nothing. The wire fields are unused after decode.
-  // biome-ignore lint/suspicious/noExplicitAny: dropping wire bytes
   (sheet as any).cells = undefined;
-  // biome-ignore lint/suspicious/noExplicitAny: dropping wire bytes
   (sheet as any).rowMeta = undefined;
 }
 

@@ -39,7 +39,11 @@ pub fn parse_a1(r: &str) -> Option<(u32, u32)> {
             return None;
         }
     }
-    if row > 0 && col > 0 { Some((row, col)) } else { None }
+    if row > 0 && col > 0 {
+        Some((row, col))
+    } else {
+        None
+    }
 }
 
 /// Convert a column number (1-based) to its label, e.g. 1->"A", 27->"AA".

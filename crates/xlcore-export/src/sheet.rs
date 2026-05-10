@@ -35,7 +35,8 @@ pub fn extract(
     styles: &Styles,
 ) -> Sheet {
     let px_per_char = px_per_char(styles.default_font_size);
-    let default_col_width_px_const: f32 = (DEFAULT_COL_WIDTH_CHARS * px_per_char + COL_PADDING_PX) as f32;
+    let default_col_width_px_const: f32 =
+        (DEFAULT_COL_WIDTH_CHARS * px_per_char + COL_PADDING_PX) as f32;
     // Compute used range
     let mut max_row = 0u32;
     let mut max_col = 0u32;
@@ -95,7 +96,9 @@ pub fn extract(
     let mut rows: Vec<Row> = Vec::with_capacity(ws.x_sheet_data.x_row.len());
     for r in &ws.x_sheet_data.x_row {
         let row_index = r.row_index.unwrap_or(0);
-        if row_index == 0 { continue; }
+        if row_index == 0 {
+            continue;
+        }
         let mut cells = Vec::with_capacity(r.x_c.len());
         for cell in &r.x_c {
             if let Some(c) = extract_cell(cell) {
@@ -132,7 +135,9 @@ pub fn extract(
     let mut show_grid_lines = true;
     if let Some(sv) = &ws.sheet_views {
         for view in &sv.x_sheet_view {
-            if let Some(g) = view.show_grid_lines { show_grid_lines = g; }
+            if let Some(g) = view.show_grid_lines {
+                show_grid_lines = g;
+            }
             if let Some(p) = &view.pane {
                 let split_col = p.horizontal_split.unwrap_or(0.0) as u32;
                 let split_row = p.vertical_split.unwrap_or(0.0) as u32;
@@ -159,7 +164,14 @@ pub fn extract(
         .and_then(|op| {
             let sb = op.summary_below.unwrap_or(true);
             let sr = op.summary_right.unwrap_or(true);
-            if sb && sr { None } else { Some(OutlinePr { summary_below: sb, summary_right: sr }) }
+            if sb && sr {
+                None
+            } else {
+                Some(OutlinePr {
+                    summary_below: sb,
+                    summary_right: sr,
+                })
+            }
         });
 
     Sheet {
@@ -176,11 +188,11 @@ pub fn extract(
         show_grid_lines,
         conditional_formats,
         outline_pr,
-        drawings: Vec::new(),    // populated by lib.rs after sheet extract
-        tables: Vec::new(),      // populated by lib.rs after sheet extract
-        pivots: Vec::new(),      // populated by lib.rs after sheet extract
-        hyperlinks: Vec::new(),  // populated by lib.rs after sheet extract
-        comments: Vec::new(),    // populated by lib.rs after sheet extract
+        drawings: Vec::new(),   // populated by lib.rs after sheet extract
+        tables: Vec::new(),     // populated by lib.rs after sheet extract
+        pivots: Vec::new(),     // populated by lib.rs after sheet extract
+        hyperlinks: Vec::new(), // populated by lib.rs after sheet extract
+        comments: Vec::new(),   // populated by lib.rs after sheet extract
         // Columnar blobs are filled by `columnar::compactify` after every
         // other pass has run; until then they're empty defaults.
         cells: Default::default(),
@@ -205,11 +217,18 @@ fn extract_conditional_formats(ws: &x::Worksheet) -> Vec<ConditionalFormat> {
                 if let Some(((r1, c1), (r2, c2))) = xlcore_io::parse_range(part) {
                     ranges.push(Merge { r1, c1, r2, c2 });
                 } else if let Some((r, c)) = xlcore_io::parse_a1(part) {
-                    ranges.push(Merge { r1: r, c1: c, r2: r, c2: c });
+                    ranges.push(Merge {
+                        r1: r,
+                        c1: c,
+                        r2: r,
+                        c2: c,
+                    });
                 }
             }
         }
-        if ranges.is_empty() { continue; }
+        if ranges.is_empty() {
+            continue;
+        }
 
         let mut rules = Vec::new();
         for rule in &cf.x_cf_rule {
@@ -218,12 +237,18 @@ fn extract_conditional_formats(ws: &x::Worksheet) -> Vec<ConditionalFormat> {
             let color_scale = rule.x_color_scale.as_ref().and_then(extract_color_scale);
             let data_bar = rule.x_data_bar.as_ref().and_then(|db| extract_data_bar(db));
             let icon_set = rule.x_icon_set.as_ref().and_then(extract_icon_set);
-            let operator = rule.operator.as_ref()
+            let operator = rule
+                .operator
+                .as_ref()
                 .map(|o| normalize_cf_operator(&format!("{o:?}")));
-            let operands: Vec<String> = rule.x_formula.iter()
+            let operands: Vec<String> = rule
+                .x_formula
+                .iter()
                 .filter_map(|f| f.xml_content.as_deref().map(str::to_string))
                 .collect();
-            let time_period = rule.time_period.as_ref()
+            let time_period = rule
+                .time_period
+                .as_ref()
                 .map(|tp| normalize_time_period(&format!("{tp:?}")));
             rules.push(CfRule {
                 priority: rule.priority,
@@ -235,7 +260,7 @@ fn extract_conditional_formats(ws: &x::Worksheet) -> Vec<ConditionalFormat> {
                 operands,
                 dxf_id: rule.format_id,
                 stop_if_true: rule.stop_if_true.unwrap_or(false),
-                rank: rule.rank.map(|v| v as u32),
+                rank: rule.rank,
                 bottom: rule.bottom.unwrap_or(false),
                 percent: rule.percent.unwrap_or(false),
                 above_average: rule.above_average,
@@ -254,69 +279,126 @@ fn normalize_cf_operator(dbg: &str) -> String {
     // ooxmlsdk's enum Debug repr is e.g. `GreaterThan` / `LessThanOrEqual`.
     // Lowercase first letter to match the ECMA-376 attribute spelling.
     let lower = dbg.to_ascii_lowercase();
-    if lower.contains("greaterthanorequal") { "greaterThanOrEqual" }
-    else if lower.contains("lessthanorequal") { "lessThanOrEqual" }
-    else if lower.contains("greaterthan") { "greaterThan" }
-    else if lower.contains("lessthan") { "lessThan" }
-    else if lower.contains("notbetween") { "notBetween" }
-    else if lower.contains("between") { "between" }
-    else if lower.contains("notequal") { "notEqual" }
-    else if lower.contains("equal") { "equal" }
-    else if lower.contains("beginswith") { "beginsWith" }
-    else if lower.contains("endswith") { "endsWith" }
-    else if lower.contains("containing") || lower.contains("containstext") { "containsText" }
-    else if lower.contains("notcontains") { "notContains" }
-    else { "unknown" }.to_string()
+    if lower.contains("greaterthanorequal") {
+        "greaterThanOrEqual"
+    } else if lower.contains("lessthanorequal") {
+        "lessThanOrEqual"
+    } else if lower.contains("greaterthan") {
+        "greaterThan"
+    } else if lower.contains("lessthan") {
+        "lessThan"
+    } else if lower.contains("notbetween") {
+        "notBetween"
+    } else if lower.contains("between") {
+        "between"
+    } else if lower.contains("notequal") {
+        "notEqual"
+    } else if lower.contains("equal") {
+        "equal"
+    } else if lower.contains("beginswith") {
+        "beginsWith"
+    } else if lower.contains("endswith") {
+        "endsWith"
+    } else if lower.contains("containing") || lower.contains("containstext") {
+        "containsText"
+    } else if lower.contains("notcontains") {
+        "notContains"
+    } else {
+        "unknown"
+    }
+    .to_string()
 }
 
 fn normalize_cf_kind(dbg: &str) -> String {
     let lower = dbg.to_ascii_lowercase();
-    if lower.contains("colorscale") { "colorScale" }
-    else if lower.contains("databar") { "dataBar" }
-    else if lower.contains("iconset") { "iconSet" }
-    else if lower.contains("cellis") { "cellIs" }
-    else if lower.contains("expression") { "expression" }
-    else if lower.contains("top10") { "top10" }
-    else if lower.contains("aboveaverage") { "aboveAverage" }
+    if lower.contains("colorscale") {
+        "colorScale"
+    } else if lower.contains("databar") {
+        "dataBar"
+    } else if lower.contains("iconset") {
+        "iconSet"
+    } else if lower.contains("cellis") {
+        "cellIs"
+    } else if lower.contains("expression") {
+        "expression"
+    } else if lower.contains("top10") {
+        "top10"
+    } else if lower.contains("aboveaverage") {
+        "aboveAverage"
+    }
     // Order matters: `notContainsText` must precede `containsText`.
-    else if lower.contains("notcontainstext") { "notContainsText" }
-    else if lower.contains("containstext") { "containsText" }
-    else if lower.contains("beginswith") { "beginsWith" }
-    else if lower.contains("endswith") { "endsWith" }
-    else if lower.contains("duplicatevalues") { "duplicateValues" }
-    else if lower.contains("uniquevalues") { "uniqueValues" }
-    else if lower.contains("timeperiod") { "timePeriod" }
-    else { "unknown" }.to_string()
+    else if lower.contains("notcontainstext") {
+        "notContainsText"
+    } else if lower.contains("containstext") {
+        "containsText"
+    } else if lower.contains("beginswith") {
+        "beginsWith"
+    } else if lower.contains("endswith") {
+        "endsWith"
+    } else if lower.contains("duplicatevalues") {
+        "duplicateValues"
+    } else if lower.contains("uniquevalues") {
+        "uniqueValues"
+    } else if lower.contains("timeperiod") {
+        "timePeriod"
+    } else {
+        "unknown"
+    }
+    .to_string()
 }
 
 fn normalize_time_period(dbg: &str) -> String {
     let lower = dbg.to_ascii_lowercase();
-    if lower.contains("yesterday") { "yesterday" }
-    else if lower.contains("tomorrow") { "tomorrow" }
-    else if lower.contains("last7days") { "last7Days" }
-    else if lower.contains("thisweek") { "thisWeek" }
-    else if lower.contains("lastweek") { "lastWeek" }
-    else if lower.contains("nextweek") { "nextWeek" }
-    else if lower.contains("thismonth") { "thisMonth" }
-    else if lower.contains("lastmonth") { "lastMonth" }
-    else if lower.contains("nextmonth") { "nextMonth" }
-    else { "today" }.to_string()
+    if lower.contains("yesterday") {
+        "yesterday"
+    } else if lower.contains("tomorrow") {
+        "tomorrow"
+    } else if lower.contains("last7days") {
+        "last7Days"
+    } else if lower.contains("thisweek") {
+        "thisWeek"
+    } else if lower.contains("lastweek") {
+        "lastWeek"
+    } else if lower.contains("nextweek") {
+        "nextWeek"
+    } else if lower.contains("thismonth") {
+        "thisMonth"
+    } else if lower.contains("lastmonth") {
+        "lastMonth"
+    } else if lower.contains("nextmonth") {
+        "nextMonth"
+    } else {
+        "today"
+    }
+    .to_string()
 }
 
 fn cfvo_type_norm(dbg: &str) -> String {
     let lower = dbg.to_ascii_lowercase();
-    if lower.contains("automin") { "automin" }
-    else if lower.contains("automax") { "automax" }
-    else if lower.contains("min") { "min" }
-    else if lower.contains("max") { "max" }
-    else if lower.contains("percentile") { "percentile" }
-    else if lower.contains("percent") { "percent" }
-    else if lower.contains("formula") { "formula" }
-    else { "num" }.to_string()
+    if lower.contains("automin") {
+        "automin"
+    } else if lower.contains("automax") {
+        "automax"
+    } else if lower.contains("min") {
+        "min"
+    } else if lower.contains("max") {
+        "max"
+    } else if lower.contains("percentile") {
+        "percentile"
+    } else if lower.contains("percent") {
+        "percent"
+    } else if lower.contains("formula") {
+        "formula"
+    } else {
+        "num"
+    }
+    .to_string()
 }
 
 fn extract_data_bar(db: &x::DataBar) -> Option<CfDataBar> {
-    if db.x_cfvo.len() < 2 { return None; }
+    if db.x_cfvo.len() < 2 {
+        return None;
+    }
     let mk_stop = |cfvo: &x::ConditionalFormatValueObject| CfvoStop {
         cfvo_type: cfvo_type_norm(&format!("{:?}", cfvo.r#type)),
         val: cfvo.val.as_ref().map(|s| s.as_str().to_string()),
@@ -331,7 +413,12 @@ fn extract_data_bar(db: &x::DataBar) -> Option<CfDataBar> {
     let color = {
         let c = &db.x_color;
         if c.rgb.is_none() && c.theme.is_none() && c.indexed.is_none() {
-            Color { rgb: Some("FF638EC6".to_string()), theme: None, indexed: None, tint: None }
+            Color {
+                rgb: Some("FF638EC6".to_string()),
+                theme: None,
+                indexed: None,
+                tint: None,
+            }
         } else {
             Color {
                 rgb: c.rgb.as_ref().map(|s| s.as_str().to_string()),
@@ -342,7 +429,9 @@ fn extract_data_bar(db: &x::DataBar) -> Option<CfDataBar> {
         }
     };
     Some(CfDataBar {
-        min, max, color,
+        min,
+        max,
+        color,
         negative_color: None,
         // The OOXML legacy schema defaults are `minLength=10` / `maxLength=90`,
         // but every real-world writer (Excel, SpreadJS, LibreOffice) emits an
@@ -362,11 +451,17 @@ fn extract_icon_set(is: &x::IconSet) -> Option<CfIconSet> {
         Some(v) => normalize_icon_set_name(&format!("{v:?}")),
         None => "3Arrows".to_string(),
     };
-    let cfvos: Vec<CfvoStop> = is.x_cfvo.iter().map(|cfvo| CfvoStop {
-        cfvo_type: cfvo_type_norm(&format!("{:?}", cfvo.r#type)),
-        val: cfvo.val.as_ref().map(|s| s.as_str().to_string()),
-    }).collect();
-    if cfvos.len() < 3 { return None; }
+    let cfvos: Vec<CfvoStop> = is
+        .x_cfvo
+        .iter()
+        .map(|cfvo| CfvoStop {
+            cfvo_type: cfvo_type_norm(&format!("{:?}", cfvo.r#type)),
+            val: cfvo.val.as_ref().map(|s| s.as_str().to_string()),
+        })
+        .collect();
+    if cfvos.len() < 3 {
+        return None;
+    }
     Some(CfIconSet {
         icon_set: icon_set_name,
         cfvos,
@@ -380,11 +475,21 @@ fn extract_icon_set(is: &x::IconSet) -> Option<CfIconSet> {
 /// (`3TrafficLights1`, `4ArrowsGray`).
 fn normalize_icon_set_name(dbg: &str) -> String {
     let lower = dbg.to_ascii_lowercase();
-    let prefix = if lower.starts_with("three") { "3" }
-        else if lower.starts_with("four") { "4" }
-        else if lower.starts_with("five") { "5" }
-        else { return dbg.to_string(); };
-    let rest = &dbg[match prefix { "3" => 5, "4" => 4, "5" => 4, _ => 0 }..];
+    let prefix = if lower.starts_with("three") {
+        "3"
+    } else if lower.starts_with("four") {
+        "4"
+    } else if lower.starts_with("five") {
+        "5"
+    } else {
+        return dbg.to_string();
+    };
+    let rest = &dbg[match prefix {
+        "3" => 5,
+        "4" => 4,
+        "5" => 4,
+        _ => 0,
+    }..];
     format!("{prefix}{rest}")
 }
 
@@ -395,12 +500,20 @@ fn extract_color_scale(cs: &x::ColorScale) -> Option<CfColorScale> {
     let mut stops = Vec::with_capacity(cs.x_cfvo.len());
     for (cfvo, color) in cs.x_cfvo.iter().zip(cs.x_color.iter()) {
         let cfvo_type = format!("{:?}", cfvo.r#type).to_ascii_lowercase();
-        let cfvo_type = if cfvo_type.contains("min") { "min" }
-            else if cfvo_type.contains("max") { "max" }
-            else if cfvo_type.contains("percentile") { "percentile" }
-            else if cfvo_type.contains("percent") { "percent" }
-            else if cfvo_type.contains("formula") { "formula" }
-            else { "num" }.to_string();
+        let cfvo_type = if cfvo_type.contains("min") {
+            "min"
+        } else if cfvo_type.contains("max") {
+            "max"
+        } else if cfvo_type.contains("percentile") {
+            "percentile"
+        } else if cfvo_type.contains("percent") {
+            "percent"
+        } else if cfvo_type.contains("formula") {
+            "formula"
+        } else {
+            "num"
+        }
+        .to_string();
         let val = cfvo.val.as_ref().map(|s| s.as_str().to_string());
         let col = Color {
             rgb: color.rgb.as_ref().map(|s| s.as_str().to_string()),
@@ -412,9 +525,17 @@ fn extract_color_scale(cs: &x::ColorScale) -> Option<CfColorScale> {
         if col.rgb.is_none() && col.theme.is_none() && col.indexed.is_none() {
             continue;
         }
-        stops.push(CfColorScaleStop { cfvo_type, val, color: col });
+        stops.push(CfColorScaleStop {
+            cfvo_type,
+            val,
+            color: col,
+        });
     }
-    if stops.is_empty() { None } else { Some(CfColorScale { stops }) }
+    if stops.is_empty() {
+        None
+    } else {
+        Some(CfColorScale { stops })
+    }
 }
 
 fn extract_cell(cell: &XCell) -> Option<Cell> {
@@ -461,7 +582,9 @@ fn extract_cell(cell: &XCell) -> Option<Cell> {
                     }
                     (s, rs)
                 } else {
-                    let s = is.text.as_ref()
+                    let s = is
+                        .text
+                        .as_ref()
                         .and_then(|t| t.xml_content.as_deref())
                         .unwrap_or("")
                         .to_string();
