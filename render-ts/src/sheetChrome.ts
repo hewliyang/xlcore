@@ -1,7 +1,6 @@
 import type { Color, Dxf, Sheet, WorkbookLayout } from "./types.js";
 import { activeThemeColor } from "./color.js";
 import { findCell } from "./geometry.js";
-import { resolveCellXf } from "./cellText.js";
 import { HEADER_H, HEADER_W, colLabel } from "./grid.js";
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, cellRect, mergedRect } from "./geometry.js";

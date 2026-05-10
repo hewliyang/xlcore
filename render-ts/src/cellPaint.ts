@@ -1,4 +1,5 @@
-import type { Border, BorderLine, Fill, Sheet, Styles, WorkbookLayout } from "./types.js";
+import type { Border, BorderLine, Fill, WorkbookLayout } from "./types.js";
+import type { Sheet } from "./types.js";
 import { colorToCss } from "./color.js";
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, cellRect, findCell, mergedRect } from "./geometry.js";
