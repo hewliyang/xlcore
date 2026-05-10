@@ -3,6 +3,7 @@ import { colorToCss } from "./color.js";
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, cellRect, findCell, mergedRect } from "./geometry.js";
 import { iterCellsInRange } from "./columnar.js";
+import { makeOffscreenCanvas } from "./canvasFactory.js";
 import type { CellRect } from "./geometry.js";
 import type { Visible } from "./renderTypes.js";
 
@@ -50,9 +51,7 @@ function buildPattern(
   // Use a small offscreen canvas. Don't scale to DPR — letting the
   // browser nearest-neighbor a 1:1 tile keeps the look crisp and matches
   // Excel's pixel-quantized hatch.
-  const off = document.createElement("canvas");
-  off.width = 8;
-  off.height = 8;
+  const off = makeOffscreenCanvas(8, 8);
   const octx = off.getContext("2d")!;
   if (bgCss) {
     octx.fillStyle = bgCss;
@@ -65,7 +64,7 @@ function buildPattern(
       if (row & (1 << x)) octx.fillRect(x, y, 1, 1);
     }
   }
-  const pat = ctx.createPattern(off, "repeat");
+  const pat = ctx.createPattern(off as unknown as CanvasImageSource, "repeat");
   patternCache.set(key, pat);
   return pat;
 }

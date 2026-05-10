@@ -80,7 +80,12 @@ feature-by-feature scoreboard.
 2. ~~Define `WorkbookLayout` schema based on `walnut-spreadsheet-proto.d.ts`.~~ **DONE** — `crates/xlcore-export/src/schema.rs` + mirrored `render-ts/src/types.ts`.
 3. ~~Port a slim `simple-workbook-canvas.mjs` (cells/styles/borders/merges/basic CF, no charts).~~ **DONE** — `render-ts/src/render.ts` (~700 LOC). Includes CF color scales, text overflow into empty neighbors, vector-crisp zoom (re-renders on DPR + app-zoom changes), subtle freeze indicators, basic number formats.
 4. Wire `xlcore` → wasm → JSON → browser canvas end-to-end. **PARTIAL** — JSON pipeline + standalone HTML preview shipped (`xlcore preview` inlines renderer + data). Wasm entry not done; preview currently re-runs the Rust extractor server-side.
-5. ~~Add `node-canvas` backend running same TS for server PNG.~~ **TODO** — `render-ts` is target-agnostic but the node-canvas adapter isn't wired yet.
+5. ~~Add `node-canvas` backend running same TS for server PNG.~~ **DONE** —
+   `render-ts/src/node.ts` wires `@napi-rs/canvas` into the same `render()`
+   entrypoint and exports `renderToCanvas()` / `renderToPng()`. Pattern-fill
+   hatches now get their offscreen canvas through a tiny factory so browser
+   and Node share the paint path. Smoke-tested against
+   `tests/fixtures/tables/table-medium.xlsx` → `/tmp/xlcore-table-node.png`.
 
 Bonus shipped (was "v1+"):
 
@@ -96,4 +101,6 @@ Bonus shipped (was "v1+"):
   `tests/fixtures/`, with reproducible build scripts. See
   `tests/fixtures/README.md`.
 
-After milestone 1 (recalc) + 4 (wasm) + 5 (node-canvas): usable v0 for agent edits + HITL preview. The long tail (line/pie/scatter charts, pivot tables, selection UI, virtualized scrolling, CF beyond color scales) comes next — see `PARITY.md` for the ranked list.
+After milestone 1 (recalc) + 4 (wasm): usable v0 for agent edits + HITL preview.
+The long tail (combo charts, slicers, validation UI, selection polish, formula
+CF) comes next — see `PARITY.md` for the ranked list.
