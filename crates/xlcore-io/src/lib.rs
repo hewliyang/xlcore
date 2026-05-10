@@ -5,7 +5,7 @@
 //! narrowing the generated schema (~70% size cut) — comes later.
 
 use std::fs::File;
-use std::io::{BufReader, BufWriter};
+use std::io::{BufReader, BufWriter, Read, Seek};
 use std::path::Path;
 
 pub use ooxmlsdk::parts::spreadsheet_document::SpreadsheetDocument;
@@ -14,7 +14,17 @@ pub use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as
 /// Open an xlsx file from disk.
 pub fn open<P: AsRef<Path>>(path: P) -> anyhow::Result<SpreadsheetDocument> {
     let f = File::open(path.as_ref())?;
-    Ok(SpreadsheetDocument::new(BufReader::new(f))?)
+    open_reader(BufReader::new(f))
+}
+
+/// Open an xlsx document from any seekable byte stream.
+pub fn open_reader<R: Read + Seek>(reader: R) -> anyhow::Result<SpreadsheetDocument> {
+    Ok(SpreadsheetDocument::new(reader)?)
+}
+
+/// Open an xlsx document from in-memory bytes.
+pub fn open_bytes(bytes: Vec<u8>) -> anyhow::Result<SpreadsheetDocument> {
+    open_reader(std::io::Cursor::new(bytes))
 }
 
 /// Save an xlsx document to disk.

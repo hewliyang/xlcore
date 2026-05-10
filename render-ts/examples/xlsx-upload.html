@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>xlcore browser XLSX preview</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  body { display: grid; grid-template-rows: auto 1fr; }
+  header { padding: 8px 16px; background: #1f2937; color: #f9fafb; font-size: 13px; display: flex; gap: 12px; align-items: center; }
+  header b { color: #fff; }
+  input[type=file] { color: #f9fafb; font: inherit; font-size: 12px; }
+  #status { color: #d1d5db; margin-left: auto; white-space: nowrap; }
+  #preview { min-height: 0; position: relative; }
+  #loading { position: fixed; inset: 38px 0 0; z-index: 10; display: grid; place-items: center; background: rgba(244,244,245,0.92); color: #111827; }
+  #loading[hidden] { display: none; }
+  .loading-box { min-width: 280px; padding: 20px 24px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; box-shadow: 0 12px 28px rgba(15,23,42,0.12); }
+  .loading-title { margin: 0 0 10px; font-size: 14px; font-weight: 650; }
+  .loading-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #4b5563; }
+  .spinner { width: 16px; height: 16px; border: 2px solid #d1d5db; border-top-color: #2563eb; border-radius: 999px; animation: spin 0.8s linear infinite; flex: none; }
+  #loading-elapsed { margin-top: 8px; font-size: 11px; color: #6b7280; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <b>xlcore browser preview</b>
+  <input type="file" id="picker" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+  <span id="status">Load an .xlsx file</span>
+</header>
+<div id="preview"></div>
+<div id="loading" role="status" aria-live="polite" hidden>
+  <div class="loading-box">
+    <p class="loading-title">Loading workbook...</p>
+    <div class="loading-row"><span class="spinner" aria-hidden="true"></span><span id="loading-stage">Loading preview</span></div>
+    <div id="loading-elapsed">0.0s elapsed</div>
+  </div>
+</div>
+
+<script type="module">
+import { createWorkbookPreviewerFromFile } from "https://pub-5694368c6d1d48138a9b3c2a0829b544.r2.dev/xlcore-preview/v0.0.1/browser-loader.js";
+
+const WASM_URL = "https://pub-5694368c6d1d48138a9b3c2a0829b544.r2.dev/xlcore-preview/v0.0.1/xlcore_wasm.js";
+const WORKER_URL = "https://pub-5694368c6d1d48138a9b3c2a0829b544.r2.dev/xlcore-preview/v0.0.1/xlsxWorker.js";
+const picker = document.getElementById("picker");
+const status = document.getElementById("status");
+const previewRoot = document.getElementById("preview");
+const loading = document.getElementById("loading");
+const loadingStage = document.getElementById("loading-stage");
+const loadingElapsed = document.getElementById("loading-elapsed");
+let previewer = null;
+let elapsedTimer = null;
+
+function setStatus(text) {
+  status.textContent = text;
+}
+
+function setLoadingStage(text) {
+  loadingStage.textContent = text;
+  setStatus(text);
+  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+}
+
+function startLoading() {
+  const started = performance.now();
+  loading.hidden = false;
+  loadingElapsed.textContent = "0.0s elapsed";
+  clearInterval(elapsedTimer);
+  elapsedTimer = setInterval(() => {
+    loadingElapsed.textContent = `${((performance.now() - started) / 1000).toFixed(1)}s elapsed`;
+  }, 100);
+  return started;
+}
+
+function finishLoading() {
+  clearInterval(elapsedTimer);
+  elapsedTimer = null;
+  loading.hidden = true;
+}
+
+picker.addEventListener("change", async () => {
+  const file = picker.files && picker.files[0];
+  if (!file) return;
+  try {
+    const started = startLoading();
+    previewer?.destroy();
+    previewer = await createWorkbookPreviewerFromFile(previewRoot, file, {
+      wasmUrl: WASM_URL,
+      workerUrl: WORKER_URL,
+      onProgress: ({ label }) => setLoadingStage(label),
+    });
+    previewer.on("selectionchange", (event) => {
+      console.log("xlcore selection", event.detail);
+    });
+    window.xlcorePreviewer = previewer;
+    requestAnimationFrame(finishLoading);
+    setStatus(`${file.name} · ${previewer.layout.sheets.length} sheet(s) · ${((performance.now() - started) / 1000).toFixed(1)}s`);
+  } catch (error) {
+    console.error(error);
+    finishLoading();
+    setStatus(error && error.message ? error.message : String(error));
+  }
+});
+</script>
+</body>
+</html>
