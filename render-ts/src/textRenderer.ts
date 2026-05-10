@@ -103,12 +103,20 @@ function resolveCellSpans(
 /// (`x`, `baseline`). Underline sits ~2px below the baseline; strike
 /// runs through the visual middle (~30% above the baseline). Width is
 /// the segment's measured pixel width.
+///
+/// `accountingExtent` (optional): when the span uses an OOXML
+/// `singleAccounting` / `doubleAccounting` underline variant, the
+/// underline extends across the full cell width (Excel's accounting
+/// convention) instead of just the text segment. Caller passes the
+/// cell's inner-rect `{x, w}` here. Non-accounting underlines ignore
+/// it. Strike is unaffected by this option.
 function paintTextDecorations(
   ctx: CanvasRenderingContext2D,
   span: Span,
   x: number,
   baseline: number,
   width: number,
+  accountingExtent?: { x: number; w: number },
 ): void {
   if (!span.underline && !span.strike) return;
   ctx.save();
@@ -118,22 +126,24 @@ function paintTextDecorations(
   ctx.lineWidth = Math.max(1, span.fontSizePx / 16);
   if (span.underline) {
     const y = baseline + Math.max(1, span.fontSizePx * 0.12);
+    const v = span.underlineStyle;
+    const isAccounting = v === "singleAccounting" || v === "doubleAccounting";
+    // Accounting variants span the full cell width; otherwise the line
+    // matches the text segment.
+    const ux = isAccounting && accountingExtent ? accountingExtent.x : x;
+    const uw = isAccounting && accountingExtent ? accountingExtent.w : width;
     ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + width, y);
+    ctx.moveTo(ux, y);
+    ctx.lineTo(ux + uw, y);
     ctx.stroke();
     // OOXML `<u val="double">` / `"doubleAccounting"`: paint a second
-    // parallel stroke ~2px below the first. Accounting variants in
-    // Excel extend across the full cell width (currency/numbers); we
-    // currently render them like their non-accounting siblings
-    // (tracked in PARITY.md).
-    const v = span.underlineStyle;
+    // parallel stroke ~2px below the first.
     if (v === "double" || v === "doubleAccounting") {
       const gap = Math.max(2, span.fontSizePx * 0.1);
       const y2 = y + gap;
       ctx.beginPath();
-      ctx.moveTo(x, y2);
-      ctx.lineTo(x + width, y2);
+      ctx.moveTo(ux, y2);
+      ctx.lineTo(ux + uw, y2);
       ctx.stroke();
     }
   }
@@ -586,7 +596,10 @@ export function drawCellText(
             ty = ownRect.y + ownRect.h - 4;
         }
         ctx.fillText(display, tx, ty);
-        paintTextDecorations(ctx, span, tx, ty, ctx.measureText(display).width);
+        paintTextDecorations(ctx, span, tx, ty, ctx.measureText(display).width, {
+          x: clip.x + 1,
+          w: Math.max(0, clip.w - 2),
+        });
         ctx.restore();
         return;
       }
@@ -631,7 +644,10 @@ export function drawCellText(
           ctx.font = piece.span.font;
           ctx.fillStyle = piece.span.color;
           ctx.fillText(piece.text, cursorX, baseline);
-          paintTextDecorations(ctx, piece.span, cursorX, baseline, piece.width);
+          paintTextDecorations(ctx, piece.span, cursorX, baseline, piece.width, {
+            x: clip.x + 1,
+            w: Math.max(0, clip.w - 2),
+          });
           cursorX += piece.width;
         }
         lineTop += line.height;
