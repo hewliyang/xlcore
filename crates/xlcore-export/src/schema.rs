@@ -224,6 +224,114 @@ pub struct Sheet {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub outline_pr: Option<OutlinePr>,
+    /// Sparkline groups from the worksheet's `<extLst>` (x14 ext URI
+    /// `{05C60535-1F16-4fd2-B633-F4F36F0B64E0}`). Each group shares
+    /// type/colors/axis settings across N anchored sparklines.
+    /// Renderer paints one mini-chart per anchor cell.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sparkline_groups: Vec<SparklineGroup>,
+}
+
+/// One `<x14:sparklineGroup>` — shared chrome across N `<x14:sparkline>`
+/// children. All booleans default false unless noted (matches OOXML).
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct SparklineGroup {
+    /// `"line"` (default), `"column"`, or `"stacked"` (win/loss).
+    pub spark_type: String,
+    /// Default 0.75pt — matches Excel's UI default for new sparklines.
+    pub line_weight: f32,
+    pub markers: bool,
+    pub high: bool,
+    pub low: bool,
+    pub first: bool,
+    pub last: bool,
+    pub negative: bool,
+    /// `displayXAxis=1` paints a horizontal axis line at zero when the
+    /// data crosses zero. (Excel calls this "Show Axis".)
+    pub display_x_axis: bool,
+    pub right_to_left: bool,
+    /// `"gap"` (default), `"zero"`, or `"span"` — controls how empty
+    /// cells in the data range are treated.
+    pub display_empty_cells_as: String,
+    /// `"individual"` (default), `"group"`, or `"custom"`.
+    pub min_axis_type: String,
+    pub max_axis_type: String,
+    /// Set when `min_axis_type == "custom"`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manual_min: Option<f64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manual_max: Option<f64>,
+    /// Resolved when `min_axis_type == "group"` — the renderer should
+    /// use this as both the per-cell min and max so the entire group
+    /// shares one y-scale. `None` when not in group mode (or no data).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group_min: Option<f64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group_max: Option<f64>,
+    /// Series fill / line color (hex `RRGGBB`). `None` ⇒ renderer
+    /// falls back to a sensible default (theme accent1).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_series: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_negative: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_axis: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_markers: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_first: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_last: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_high: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_low: Option<String>,
+    /// Anchored sparklines that share this group's chrome.
+    pub sparklines: Vec<Sparkline>,
+}
+
+/// One `<x14:sparkline>` — anchored at one cell, drawing values from
+/// `formula`. Values are resolved post-extract (see
+/// `lib.rs::resolve_sparkline_refs`); preserve `None` for empty/text
+/// cells so the renderer can honor `displayEmptyCellsAs`.
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct Sparkline {
+    /// 1-based anchor cell row.
+    pub r: u32,
+    /// 1-based anchor cell column.
+    pub c: u32,
+    /// Source-data formula, e.g. `"Sheet1!B2:G2"`. Kept for debugging.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub formula: Option<String>,
+    /// Resolved data values in source order. `None` entries indicate
+    /// empty / non-numeric source cells; the renderer interprets them
+    /// according to the group's `displayEmptyCellsAs`.
+    pub values: Vec<Option<f64>>,
 }
 
 /// `<outlinePr>` defaults from `<sheetPr>`. Both fields default to true

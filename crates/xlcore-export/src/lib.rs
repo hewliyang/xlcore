@@ -18,6 +18,7 @@ mod columnar;
 mod pivots;
 mod schema;
 mod sheet;
+mod sparklines;
 mod styles;
 mod tables;
 mod theme;
@@ -100,6 +101,8 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
         let tables = tables::extract(doc, &ws_part);
         let pivots = pivots::extract(doc, &ws_part);
         let comments = annotations::extract_comments(doc, &ws_part);
+        let ws_for_sparks = ws_part.root_element(doc)?.clone();
+        let sparkline_groups = sparklines::extract(&ws_for_sparks);
         // Hyperlinks need both the worksheet XML (for the `<hyperlinks>`
         // block) and the worksheet part (to resolve `r:id` rels). Borrow
         // the XML once, then drop before annotations::extract_comments
@@ -115,6 +118,7 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
         sheet.pivots = pivots;
         sheet.hyperlinks = hyperlinks;
         sheet.comments = comments;
+        sheet.sparkline_groups = sparkline_groups;
         sheets.push(sheet);
     }
 
@@ -128,6 +132,7 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
         active_sheet_index,
     };
     resolve_chart_refs(&mut layout);
+    resolve_sparkline_refs(&mut layout);
     // Final pass: collapse `Sheet.rows: Vec<Row>` (the ergonomic shape
     // every other extractor pass uses) into the columnar typed-array
     // blobs that actually ship in the JSON. After this point the
@@ -267,6 +272,98 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
             }
         }
     }
+}
+
+/// Walk every sparkline group, resolve `formula` -> numeric value
+/// vector against the (already-extracted) sheet data, and compute the
+/// shared `group_min`/`group_max` when `min/maxAxisType == "group"`.
+/// Falls back to using the host sheet's name when the formula has no
+/// explicit sheet prefix (Excel's UI defaults to the anchor sheet).
+fn resolve_sparkline_refs(layout: &mut WorkbookLayout) {
+    let name_to_idx: std::collections::HashMap<String, usize> = layout
+        .sheets
+        .iter()
+        .enumerate()
+        .map(|(i, s)| (s.name.clone(), i))
+        .collect();
+    let snapshot = layout.sheets.clone();
+
+    let read_number = |sheets: &[Sheet], sheet_name: &str, r: u32, c: u32| -> Option<f64> {
+        let &idx = name_to_idx.get(sheet_name)?;
+        let sheet = sheets.get(idx)?;
+        let row = sheet.rows.iter().find(|row| row.index == r)?;
+        let cell = row.cells.iter().find(|cc| cc.r == r && cc.c == c)?;
+        // Only numeric kinds count for sparkline plotting; text / errors
+        // / booleans become None ("empty") so the renderer can honor
+        // displayEmptyCellsAs.
+        match cell.kind.as_str() {
+            "n" | "f" => cell.value.as_ref().and_then(|v| v.parse::<f64>().ok()),
+            _ => None,
+        }
+    };
+
+    for sheet_idx in 0..layout.sheets.len() {
+        let host_name = layout.sheets[sheet_idx].name.clone();
+        let groups_len = layout.sheets[sheet_idx].sparkline_groups.len();
+        for gi in 0..groups_len {
+            let mut all_values: Vec<f64> = Vec::new();
+            let spark_count = layout.sheets[sheet_idx].sparkline_groups[gi].sparklines.len();
+            for si in 0..spark_count {
+                let formula = layout.sheets[sheet_idx].sparkline_groups[gi].sparklines[si]
+                    .formula
+                    .clone();
+                let Some(formula) = formula else { continue };
+                let Some((sheet_name, r1, c1, r2, c2)) =
+                    parse_sparkline_ref(&formula, &host_name)
+                else {
+                    continue;
+                };
+                let mut vals: Vec<Option<f64>> = Vec::new();
+                // Walk row-major (rows then cols). For typical 1xN or Nx1
+                // ranges this is just the source order.
+                for r in r1..=r2 {
+                    for c in c1..=c2 {
+                        let v = read_number(&snapshot, &sheet_name, r, c);
+                        if let Some(v) = v {
+                            all_values.push(v);
+                        }
+                        vals.push(v);
+                    }
+                }
+                layout.sheets[sheet_idx].sparkline_groups[gi].sparklines[si].values = vals;
+            }
+            // Group-axis resolution.
+            let g = &mut layout.sheets[sheet_idx].sparkline_groups[gi];
+            if !all_values.is_empty() {
+                if g.min_axis_type == "group" {
+                    g.group_min = Some(all_values.iter().cloned().fold(f64::INFINITY, f64::min));
+                }
+                if g.max_axis_type == "group" {
+                    g.group_max = Some(all_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
+                }
+            }
+        }
+    }
+}
+
+/// Parse a sparkline data ref. Accepts:
+///   - `Sheet1!B2:G2`
+///   - `'My Sheet'!$A$1:$F$1`
+///   - `B2:G2` (no sheet prefix ⇒ use the anchor sheet)
+///   - `B2` (single cell)
+fn parse_sparkline_ref(formula: &str, host_sheet: &str) -> Option<(String, u32, u32, u32, u32)> {
+    let (sheet, range_part) = if let Some((s, r)) = formula.split_once('!') {
+        (s.trim_matches('\'').to_string(), r)
+    } else {
+        (host_sheet.to_string(), formula)
+    };
+    let cleaned: String = range_part.chars().filter(|c| *c != '$').collect();
+    let (a, b) = cleaned
+        .split_once(':')
+        .unwrap_or((cleaned.as_str(), cleaned.as_str()));
+    let (r1, c1) = xlcore_io::parse_a1(a)?;
+    let (r2, c2) = xlcore_io::parse_a1(b)?;
+    Some((sheet, r1.min(r2), c1.min(c2), r1.max(r2), c1.max(c2)))
 }
 
 /// Parse a chart-style reference like `Sheet1!$B$2:$E$2` or

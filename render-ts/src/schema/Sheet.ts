@@ -10,6 +10,7 @@ import type { Merge } from "./Merge.js";
 import type { OutlinePr } from "./OutlinePr.js";
 import type { Pivot } from "./Pivot.js";
 import type { RowMetaBlob } from "./RowMetaBlob.js";
+import type { SparklineGroup } from "./SparklineGroup.js";
 import type { Table } from "./Table.js";
 import type { TextRun } from "./TextRun.js";
 
@@ -105,4 +106,11 @@ pivots: Array<Pivot>,
  * summary row/col sits relative to a group (default: below + right,
  * matching Excel's UI default). `None` = use those defaults.
  */
-outlinePr?: OutlinePr, };
+outlinePr?: OutlinePr, 
+/**
+ * Sparkline groups from the worksheet's `<extLst>` (x14 ext URI
+ * `{05C60535-1F16-4fd2-B633-F4F36F0B64E0}`). Each group shares
+ * type/colors/axis settings across N anchored sparklines.
+ * Renderer paints one mini-chart per anchor cell.
+ */
+sparklineGroups: Array<SparklineGroup>, };

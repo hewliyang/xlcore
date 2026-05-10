@@ -36,6 +36,8 @@ export type { OutlinePr } from "./OutlinePr.js";
 export type { Pivot } from "./Pivot.js";
 export type { RowMetaBlob } from "./RowMetaBlob.js";
 export type { Sheet } from "./Sheet.js";
+export type { Sparkline } from "./Sparkline.js";
+export type { SparklineGroup } from "./SparklineGroup.js";
 export type { Styles } from "./Styles.js";
 export type { Table } from "./Table.js";
 export type { TableColumn } from "./TableColumn.js";

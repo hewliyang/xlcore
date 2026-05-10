@@ -22,6 +22,7 @@ import {
   drawConditionalFormats,
 } from "./conditionalFormatting.js";
 import { drawCfIcons } from "./cfIcons.js";
+import { drawSparklines } from "./sparklines.js";
 import {
   computeHyperlinkDxfs,
   computeTableState,
@@ -111,6 +112,7 @@ export function render(
     drawCellBorders(ctx, sheet, layout.styles, grid, pane.vis);
     drawCellText(ctx, sheet, layout, grid, pane.vis, cfDxfs, cfTextSuppress, cfIconReserve);
     drawCfIcons(ctx, sheet, grid, pane.vis, cfIconDraw);
+    drawSparklines(ctx, sheet, grid, pane.vis);
     drawFilterArrows(ctx, sheet, grid, pane.vis, filterArrows);
     drawDrawings(ctx, sheet, grid);
     drawCommentMarkers(ctx, sheet, grid, pane.vis);

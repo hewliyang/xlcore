@@ -104,7 +104,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | Chart: area (stacked / 100%)              | ✅      | ✅     | Default stacked behavior matches Excel; `standard` (overlapping) and `percentStacked` also handled. Translucent fill + outlined top edge. |
 | Chart: combo / secondary axis             | ❌      | ❌     |                                                                                                                   |
 | Chart: data labels                        | ✅      | ✅     | `<c:dLbls>` extracted at chart-group + per-series level. New `DataLabels { showValue, showCategory, showSeriesName, showPercent, position, separator, numFmt }` schema; series-level overrides chart-level. Renderer paints labels for column/bar (outEnd/inEnd/inBase/ctr), line (t/b/l/r/ctr above markers), area (top edge of each segment), pie/doughnut (outEnd/ctr/inEnd, percent computed against series total), scatter (right of each xy point). White halo behind each label for legibility on filled bars. Open: leader-line drawing for pie outside labels (cosmetic; Excel draws thin gray lines from the slice edge to outside labels when they would collide with the pie); per-point `<c:dLbl idx=N>` overrides; `<c:dLbls>` ext-list `dispBlanksAs` propagation. ooxmlsdk parse quirk: SpreadJS-emitted pies write `<c:leaderLines>` AFTER `<c:extLst>` inside `<c:dLbls>`, which trips the SDK's strict-sequence parser and silently zeros the show* fields — the fixture build script post-patches the offending block via Python zip-edit. Real Excel-emitted pies put leaderLines before extLst and parse cleanly. Fixture: `tests/fixtures/charts/data-labels.xlsx` (column/bar/line/area/pie/scatter, six configurations). |
-| Sparklines                                | ❌      | ❌     | stored under `extLst`.                                                                                            |
+| Sparklines                                | ✅      | ✅     | OOXML `<x14:sparklineGroup>` parsed from the worksheet's `<extLst>`. All three types painted: `line` (with optional plain markers + per-extremum colored markers for `high`/`low`/`first`/`last`/`negative`), `column` (baseline-anchored bars with per-extremum / negative recoloring), and `stacked` (Excel's win/loss — fixed-height up/down bars centered vertically, gap on zero/empty). Group-axis resolution (`minAxisType="group"`/`maxAxisType="group"`) is precomputed in `lib.rs::resolve_sparkline_refs` and stored as `groupMin`/`groupMax` on the wire so the renderer doesn't re-walk the data. `displayEmptyCellsAs` (`gap`/`zero`/`span`) honored for line; `displayXAxis` paints a horizontal axis line at zero when the data crosses zero. Per-element color overrides (`colorSeries`/`colorNegative`/`colorAxis`/`colorMarkers`/`colorFirst`/`colorLast`/`colorHigh`/`colorLow`) all wired through. Fixture: `tests/fixtures/sparklines/sparklines.xlsx`. **Open / known issue:** ooxmlsdk's parser keys element matching by literal prefix string (see `is_foreign_prefixed_child` in `ooxmlsdk-0.6.1/src/common.rs`), so the inner `<f>` / `<sqref>` elements must be written with the `xne:` prefix that ooxmlsdk's qname strings expect. Excel desktop typically writes them with the `xm:` prefix, which would silently parse as 0 sparklines per group; a robust fix needs an XML-level prefix-rewrite preprocess of the worksheet ext blob, or upstreaming a URI-keyed parser into ooxmlsdk. **Open (cosmetic):** marker glyphs are currently filled circles — Excel's default marker is a small filled square; per-marker shape (square/diamond/triangle) and per-marker size are not yet honored. |
 | Images (raster)                           | ✅      | ✅     | base64 inline.                                                                                                    |
 | Images: cropped / rotated                 | 🟡      | 🟡     | crop/rotation transforms ignored.                                                                                 |
 | Shapes                                    | ❌      | ❌     | placeholder grey box.                                                                                             |
@@ -700,6 +700,40 @@ surrounding workbook noise.
       pre-filled across the full cell. SpreadJS doesn't expose gradient
       fills on its public style API so the fixture is built via Python
       zip-patch (`_patch_gradients.py`).
+- [x] Sparklines (x14): `tests/fixtures/sparklines/sparklines.xlsx`
+      lays out 7 row sparklines anchored in column H across 6
+      `<x14:sparklineGroup>` blocks — plain line, line with markers +
+      extrema toggles, line with axis + negative coloring, column
+      with high/low overrides, two-sparkline group sharing a
+      `minAxisType="group"` / `maxAxisType="group"` y-scale across
+      small-magnitude vs large-magnitude data rows, and a `type=
+      "stacked"` win/loss row. New schema: `Sheet.sparkline_groups:
+      Vec<SparklineGroup>`, where each group carries shared chrome
+      (type, line weight, marker toggles, color overrides, axis
+      types, manual/group min-max, RTL, displayEmptyCellsAs,
+      displayXAxis) and `Vec<Sparkline>` of `(r, c, formula,
+      values: Vec<Option<f64>>)`. Values resolve in a new
+      `lib.rs::resolve_sparkline_refs` post-pass that mirrors the
+      chart-ref resolver — walks each formula range against the
+      already-extracted sheet rows, preserves `None` for empty / non-
+      numeric source cells (so `displayEmptyCellsAs` can do its job),
+      and reduces over the group when in group-axis mode. Renderer:
+      new `render-ts/src/sparklines.ts` (~330 LOC) wired into the
+      per-pane render loop right after `drawCfIcons`, with three
+      drawer paths matching the OOXML types and a shared
+      `resolveRange` helper for axis math. Hsx-divergence: minimal
+      — win/loss bar positioning slightly differs in vertical anchor
+      (we center on midpoint vs hsx's gap-and-stack arrangement), and
+      our line markers are filled circles vs Excel's default square;
+      tracked in PARITY row. Built via Python zip-patch
+      (`_patch_sparklines.py`) because hsx's public JS API doesn't
+      expose the x14 sparkline schema at all. **Caught a latent
+      ooxmlsdk parsing quirk:** the SDK keys element matching by
+      literal prefix (not URI), so the `<xne:f>` / `<xne:sqref>`
+      inner elements must use the `xne:` prefix the qname strings
+      hard-code; the more idiomatic `<xm:f>` Excel writes would
+      parse as 0 sparklines per group. PARITY row notes this as the
+      next robustness lift.
 - [ ] Land the next batch of per-feature fixtures (the four marked above
       as "would have caught X bug").
 - [ ] CI guard: `cargo test … export_bindings && git diff --exit-code

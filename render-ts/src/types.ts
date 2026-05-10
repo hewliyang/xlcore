@@ -52,6 +52,8 @@ export type {
   OutlinePr,
   Pivot,
 
+  Sparkline,
+  SparklineGroup,
   Styles,
   Table,
   TableColumn,
