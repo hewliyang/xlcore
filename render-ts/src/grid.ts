@@ -27,6 +27,11 @@ export function buildGrid(
 ): Grid {
   let minCols = Math.max(sheet.maxCol, 1);
   let minRows = Math.max(sheet.maxRow, 1);
+  const viewportOnly = requiredFarX !== undefined || requiredFarY !== undefined;
+  if (viewportOnly) {
+    minCols = 1;
+    minRows = 1;
+  }
   if (sheet.drawings) {
     for (const d of sheet.drawings) {
       minCols = Math.max(minCols, d.anchor.toCol + 2);

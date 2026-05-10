@@ -1,7 +1,7 @@
 import type { Cell, Dxf, Font, Sheet, TextRun, WorkbookLayout } from "./types.js";
 import { resolveCellText } from "./cellText.js";
 import { colorToCss } from "./color.js";
-import { iterAllCells, iterCellsInRange } from "./columnar.js";
+import { iterCellsInRange } from "./columnar.js";
 import { HEADER_H, HEADER_W } from "./grid.js";
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, rectFor } from "./geometry.js";
@@ -260,18 +260,20 @@ function layoutSpans(
   return lines;
 }
 
-const OCCUPIED_CACHE = new WeakMap<Sheet, { layout: WorkbookLayout; occupied: Set<string> }>();
-
-function occupiedCells(sheet: Sheet, layout: WorkbookLayout): Set<string> {
-  const cached = OCCUPIED_CACHE.get(sheet);
-  if (cached?.layout === layout) return cached.occupied;
+function occupiedCellsInRange(
+  sheet: Sheet,
+  layout: WorkbookLayout,
+  firstRow: number,
+  lastRow: number,
+  firstCol: number,
+  lastCol: number,
+): Set<string> {
   const occupied = new Set<string>();
-  iterAllCells(sheet, (cell) => {
+  iterCellsInRange(sheet, firstRow, lastRow, firstCol, lastCol, (cell) => {
     // A cell is "occupied" iff it has visible content. Empty styled cells
     // can still be overflowed into.
     if (hasContent(cell, layout)) occupied.add(`${cell.r}:${cell.c}`);
   });
-  OCCUPIED_CACHE.set(sheet, { layout, occupied });
   return occupied;
 }
 
@@ -288,16 +290,24 @@ export function drawCellText(
   const { covered, topLeftOf } = buildMergeMaps(sheet);
   const styles = layout.styles;
 
-  // Build a fast "this position is occupied" lookup so we can grant overflow
-  // into truly empty neighbors only — exactly Excel's rule.
-  const occupied = occupiedCells(sheet, layout);
-  for (const k of covered) occupied.add(k);
-
   // Allow text to overflow horizontally into the visible column band; we
   // also pad by a few columns on the left so a long string anchored just
   // off-screen still bleeds in.
   const overflowFirstCol = Math.max(1, vis.firstCol - 8);
   const overflowLastCol = Math.min(g.maxCol, vis.lastCol + 8);
+  // Build a fast "this position is occupied" lookup only for the rows and
+  // columns this paint can actually consult. A whole-sheet occupancy map is
+  // pathological for large flat data exports where first paint only needs a
+  // small viewport.
+  const occupied = occupiedCellsInRange(
+    sheet,
+    layout,
+    vis.firstRow,
+    vis.lastRow,
+    overflowFirstCol,
+    overflowLastCol,
+  );
+  for (const k of covered) occupied.add(k);
 
   iterCellsInRange(sheet, vis.firstRow, vis.lastRow, overflowFirstCol, overflowLastCol, (cell) => {
       const k = `${cell.r}:${cell.c}`;
