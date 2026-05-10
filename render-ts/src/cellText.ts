@@ -1,4 +1,4 @@
-import type { Cell, CellFormat, WorkbookLayout } from "./types.js";
+import type { Cell, CellFormat, Sheet, WorkbookLayout } from "./types.js";
 import { formatValue } from "./numfmt.js";
 
 const BUILTIN_NUMFMT: Record<number, string> = {
@@ -47,6 +47,55 @@ export interface ResolvedText {
 }
 
 const NUMFMT_CODE_CACHE = new WeakMap<WorkbookLayout, Map<number, string>>();
+
+// Per-sheet column-style lookup. Built lazily once per sheet from
+// `sheet.cols[].styleIndex`, since column-level styles rarely overlap and
+// most workbooks have <100 col specs. Map<colIndex 0-based, xfId>.
+const COL_STYLE_CACHE = new WeakMap<Sheet, Map<number, number>>();
+
+function colStyleMap(sheet: Sheet): Map<number, number> {
+  let m = COL_STYLE_CACHE.get(sheet);
+  if (m) return m;
+  m = new Map<number, number>();
+  for (const col of sheet.cols) {
+    if (col.styleIndex === undefined) continue;
+    // OOXML `<col min/max>` are 1-based, inclusive. Cell.c is 0-based.
+    for (let i = col.min - 1; i <= col.max - 1; i++) m.set(i, col.styleIndex);
+  }
+  COL_STYLE_CACHE.set(sheet, m);
+  return m;
+}
+
+/** Resolve the effective `CellFormat` (xf) for a cell, applying the
+ *  OOXML §18.3.1.4 fallback chain:
+ *
+ *    cell.s → row.s → col.style → xf 0
+ *
+ *  Excel writes formula cells (`<c><f/><v/></c>`) without an `s`
+ *  attribute when their style matches xf 0; we used to fall through
+ *  to `undefined` and then render with the `formatGeneral()` default,
+ *  which dropped thousands separators / accounting parens / decimal
+ *  precision on every formula cell whose author left the format on
+ *  the default xf. Walking the row/col fallbacks first matches what
+ *  Excel and SpreadJS do. */
+export function resolveCellXf(
+  cell: Cell,
+  sheet: Sheet,
+  layout: WorkbookLayout,
+): CellFormat | undefined {
+  const xfs = layout.styles.cellXfs;
+  if (cell.styleIndex !== undefined) return xfs[cell.styleIndex];
+  const meta = sheet.decodedRowMeta;
+  const rowSlot = meta.byIndex.get(cell.r);
+  if (rowSlot !== undefined) {
+    const sIdx = meta.styleIdx[rowSlot] ?? -1;
+    if (sIdx >= 0) return xfs[sIdx];
+  }
+  const colXf = colStyleMap(sheet).get(cell.c);
+  if (colXf !== undefined) return xfs[colXf];
+  // Spec default: every cell without explicit/inherited style uses xf 0.
+  return xfs[0];
+}
 
 function numFmtCode(layout: WorkbookLayout, id: number): string | undefined {
   let cache = NUMFMT_CODE_CACHE.get(layout);

@@ -107,9 +107,9 @@ export function render(
     ctx.translate(pane.tx, pane.ty);
 
     drawGridLines(ctx, sheet, grid, pane.vis);
-    drawCellBackgrounds(ctx, sheet, layout.styles, grid, pane.vis);
+    drawCellBackgrounds(ctx, sheet, layout, grid, pane.vis);
     drawConditionalFormats(ctx, sheet, layout, grid, pane.vis, cfDxfs, cfLocks);
-    drawCellBorders(ctx, sheet, layout.styles, grid, pane.vis);
+    drawCellBorders(ctx, sheet, layout, grid, pane.vis);
     drawCellText(ctx, sheet, layout, grid, pane.vis, cfDxfs, cfTextSuppress, cfIconReserve);
     drawCfIcons(ctx, sheet, grid, pane.vis, cfIconDraw);
     drawSparklines(ctx, sheet, grid, pane.vis);

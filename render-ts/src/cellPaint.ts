@@ -1,8 +1,9 @@
-import type { Border, BorderLine, Fill, Sheet, Styles } from "./types.js";
+import type { Border, BorderLine, Fill, Sheet, Styles, WorkbookLayout } from "./types.js";
 import { colorToCss } from "./color.js";
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, cellRect, findCell, mergedRect } from "./geometry.js";
 import { iterCellsInRange } from "./columnar.js";
+import { resolveCellXf } from "./cellText.js";
 import { makeOffscreenCanvas } from "./canvasFactory.js";
 import type { CellRect } from "./geometry.js";
 import type { Visible } from "./renderTypes.js";
@@ -219,10 +220,11 @@ export function paintFill(ctx: CanvasRenderingContext2D, rect: CellRect, fill: F
 export function drawCellBackgrounds(
   ctx: CanvasRenderingContext2D,
   sheet: Sheet,
-  styles: Styles,
+  layout: WorkbookLayout,
   g: Grid,
   vis: Visible,
 ): void {
+  const styles = layout.styles;
   const { covered, topLeftOf } = buildMergeMaps(sheet);
   // Pass 1: paint merges whose extent overlaps `vis`. This handles merges
   // crossing a freeze split, where the merge's top-left cell may live in a
@@ -233,7 +235,7 @@ export function drawCellBackgrounds(
     if (m.c2 < vis.firstCol || m.c1 > vis.lastCol) continue;
     const tl = findCell(sheet, m.r1, m.c1);
     if (!tl) continue;
-    const xf = tl.styleIndex !== undefined ? styles.cellXfs[tl.styleIndex] : undefined;
+    const xf = resolveCellXf(tl, sheet, layout);
     if (!xf) continue;
     const fill = xf.fillId !== undefined ? styles.fills[xf.fillId] : undefined;
     if (!fill) continue;
@@ -244,7 +246,7 @@ export function drawCellBackgrounds(
     const k = `${cell.r}:${cell.c}`;
     if (covered.has(k)) return;
     if (topLeftOf.has(k)) return; // handled by pass 1
-    const xf = cell.styleIndex !== undefined ? styles.cellXfs[cell.styleIndex] : undefined;
+    const xf = resolveCellXf(cell, sheet, layout);
     if (!xf) return;
     const fill = xf.fillId !== undefined ? styles.fills[xf.fillId] : undefined;
     if (!fill) return;
@@ -360,10 +362,11 @@ function drawDiagonalBorders(
 export function drawCellBorders(
   ctx: CanvasRenderingContext2D,
   sheet: Sheet,
-  styles: Styles,
+  layout: WorkbookLayout,
   g: Grid,
   vis: Visible,
 ): void {
+  const styles = layout.styles;
   const { covered, topLeftOf } = buildMergeMaps(sheet);
   // Pass 1: paint merged-rect borders for any merge whose extent overlaps
   // `vis`. This handles merges that cross a freeze split — the top-left
@@ -378,7 +381,7 @@ export function drawCellBorders(
     if (m.c2 < vis.firstCol || m.c1 > vis.lastCol) continue;
     const tl = findCell(sheet, m.r1, m.c1);
     if (!tl) continue;
-    const xf = tl.styleIndex !== undefined ? styles.cellXfs[tl.styleIndex] : undefined;
+    const xf = resolveCellXf(tl, sheet, layout);
     if (!xf || xf.borderId === undefined) continue;
     const b = styles.borders[xf.borderId];
     if (!b) continue;
@@ -392,7 +395,7 @@ export function drawCellBorders(
   // Pass 2: per-cell borders.
   iterCellsInRange(sheet, vis.firstRow, vis.lastRow, vis.firstCol, vis.lastCol, (cell) => {
     const k = `${cell.r}:${cell.c}`;
-    const xf = cell.styleIndex !== undefined ? styles.cellXfs[cell.styleIndex] : undefined;
+    const xf = resolveCellXf(cell, sheet, layout);
     if (!xf || xf.borderId === undefined) return;
     const b = styles.borders[xf.borderId];
     if (!b) return;

@@ -1,5 +1,5 @@
 import type { Cell, Dxf, Font, Sheet, TextRun, WorkbookLayout } from "./types.js";
-import { resolveCellText } from "./cellText.js";
+import { resolveCellText, resolveCellXf } from "./cellText.js";
 import { colorToCss } from "./color.js";
 import { iterCellsInRange } from "./columnar.js";
 import { HEADER_H, HEADER_W } from "./grid.js";
@@ -272,7 +272,7 @@ function occupiedCellsInRange(
   iterCellsInRange(sheet, firstRow, lastRow, firstCol, lastCol, (cell) => {
     // A cell is "occupied" iff it has visible content. Empty styled cells
     // can still be overflowed into.
-    if (hasContent(cell, layout)) occupied.add(`${cell.r}:${cell.c}`);
+    if (hasContent(cell, sheet, layout)) occupied.add(`${cell.r}:${cell.c}`);
   });
   return occupied;
 }
@@ -313,7 +313,7 @@ export function drawCellText(
       const k = `${cell.r}:${cell.c}`;
       if (covered.has(k)) return;
       if (cfTextSuppress.has(k)) return;
-      const xf = cell.styleIndex !== undefined ? styles.cellXfs[cell.styleIndex] : undefined;
+      const xf = resolveCellXf(cell, sheet, layout);
       const { text, defaultAlign, formatColor } = resolveCellText(cell, layout, xf);
       if (!text) return;
 
@@ -668,8 +668,8 @@ export function drawCellText(
 }
 
 // Has any visible content (text, number, or formula result)?
-function hasContent(cell: Cell, layout: WorkbookLayout): boolean {
-  const xf = cell.styleIndex !== undefined ? layout.styles.cellXfs[cell.styleIndex] : undefined;
+function hasContent(cell: Cell, sheet: Sheet, layout: WorkbookLayout): boolean {
+  const xf = resolveCellXf(cell, sheet, layout);
   const { text } = resolveCellText(cell, layout, xf);
   return text.length > 0;
 }
