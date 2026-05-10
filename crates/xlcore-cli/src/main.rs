@@ -193,35 +193,132 @@ fn build_preview_html(layout_b64: &str, renderer_js: &str, source: &Path) -> Str
   #stage {{ overflow: auto; height: calc(100vh - 70px); position: relative; background: #f4f4f5; }}
   #spacer {{ position: relative; }}
   #sheet {{ position: sticky; top: 0; left: 0; background: #fff; display: block; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
+  #loading {{ position: fixed; inset: 70px 0 0; z-index: 10; display: grid; place-items: center; background: #f4f4f5; color: #111827; }}
+  #loading[hidden] {{ display: none; }}
+  .loading-box {{ min-width: 260px; padding: 20px 24px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; box-shadow: 0 12px 28px rgba(15,23,42,0.12); }}
+  .loading-title {{ margin: 0 0 10px; font-size: 14px; font-weight: 650; }}
+  .loading-row {{ display: flex; align-items: center; gap: 10px; font-size: 12px; color: #4b5563; }}
+  .spinner {{ width: 16px; height: 16px; border: 2px solid #d1d5db; border-top-color: #2563eb; border-radius: 999px; animation: spin 0.8s linear infinite; flex: none; }}
+  #loading-elapsed {{ margin-top: 8px; font-size: 11px; color: #6b7280; }}
+  @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
 </style>
 </head>
 <body>
 <header><b>xlcore preview</b><span>{title}</span></header>
 <div id="tabs"><div id="zoom"><div id="namebox">A1</div><button id="zo">−</button><span id="zl">100%</span><button id="zi">+</button></div></div>
 <div id="stage"><div id="spacer"><canvas id="sheet"></canvas></div></div>
+<div id="loading" role="status" aria-live="polite">
+  <div class="loading-box">
+    <p class="loading-title">Loading workbook...</p>
+    <div class="loading-row"><span class="spinner" aria-hidden="true"></span><span id="loading-stage">Loading preview</span></div>
+    <div id="loading-elapsed">0.0s elapsed</div>
+  </div>
+</div>
 
 <script id="layout" type="application/octet-stream;base64,gzip">{safe_layout}</script>
-<script>
+<script id="renderer">
 {renderer_js}
 </script>
 <script>
 (async function () {{
-  // Decode the gzip+base64-embedded layout. `DecompressionStream` is
-  // native in all modern browsers; we avoid bundling pako/zlib in JS.
-  async function loadLayout() {{
-    const b64 = document.getElementById('layout').textContent.trim();
+  const loading = document.getElementById('loading');
+  const loadingStage = document.getElementById('loading-stage');
+  const loadingElapsed = document.getElementById('loading-elapsed');
+  const loadingStart = performance.now();
+  const elapsedTimer = setInterval(() => {{
+    loadingElapsed.textContent = ((performance.now() - loadingStart) / 1000).toFixed(1) + 's elapsed';
+  }}, 100);
+  function setLoadingStage(stage) {{
+    loadingStage.textContent = stage;
+    return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  }}
+  function finishLoading() {{
+    clearInterval(elapsedTimer);
+    loading.hidden = true;
+  }}
+  function createLayoutWorker() {{
+    const rendererSource = document.getElementById('renderer').textContent;
+    const workerSource = `
+function collectTransferables(layout) {{
+  const seen = new Set();
+  const transfers = [];
+  const add = (view) => {{
+    if (!view || !view.buffer || seen.has(view.buffer)) return;
+    seen.add(view.buffer);
+    transfers.push(view.buffer);
+  }};
+  for (const sheet of layout.sheets || []) {{
+    const cells = sheet.decodedCells;
+    if (cells) {{
+      add(cells.r);
+      add(cells.c);
+      add(cells.kind);
+      add(cells.valueIdx);
+      add(cells.formulaIdx);
+      add(cells.styleIdx);
+      add(cells.runsIdx);
+      add(cells.rowPtr);
+    }}
+    const rows = sheet.decodedRowMeta;
+    if (rows) {{
+      add(rows.index);
+      add(rows.heightPx);
+      add(rows.styleIdx);
+      add(rows.hidden);
+      add(rows.outlineLevel);
+    }}
+  }}
+  return transfers;
+}}
+self.onmessage = async (event) => {{
+  const b64 = event.data.b64;
+  const stage = (label) => self.postMessage({{ type: 'stage', label }});
+  try {{
+    stage('Loading preview');
     const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    stage('Decompressing workbook');
     const ds = new DecompressionStream('gzip');
     const stream = new Blob([bin]).stream().pipeThrough(ds);
     const text = await new Response(stream).text();
-    return JSON.parse(text);
+    stage('Parsing workbook');
+    const layout = JSON.parse(text);
+    stage('Decoding workbook');
+    self.xlcoreDecodeLayout(layout);
+    self.postMessage({{ type: 'layout', layout }}, collectTransferables(layout));
+  }} catch (err) {{
+    self.postMessage({{ type: 'error', message: err && err.stack ? err.stack : String(err) }});
+  }}
+}};
+`;
+    return new Worker(URL.createObjectURL(new Blob([rendererSource, '\n', workerSource], {{ type: 'text/javascript' }})));
+  }}
+  async function loadLayout() {{
+    await setLoadingStage('Loading preview');
+    const b64 = document.getElementById('layout').textContent.trim();
+    const worker = createLayoutWorker();
+    return await new Promise((resolve, reject) => {{
+      worker.onmessage = async (event) => {{
+        const msg = event.data;
+        if (msg.type === 'stage') {{
+          await setLoadingStage(msg.label);
+        }} else if (msg.type === 'layout') {{
+          worker.terminate();
+          resolve(msg.layout);
+        }} else if (msg.type === 'error') {{
+          worker.terminate();
+          reject(new Error(msg.message));
+        }}
+      }};
+      worker.onerror = (event) => {{
+        worker.terminate();
+        reject(new Error(event.message || 'Layout worker failed'));
+      }};
+      worker.postMessage({{ b64 }});
+    }});
   }}
   const layout = await loadLayout();
-  // Inflate the per-sheet columnar blobs (b64 → Uint32/Int32/Float32
-  // typed-array views, plus a row-index lookup map). After this call
-  // the wire `cells` / `rowMeta` strings are dropped and the renderer
-  // reads from `sheet.decodedCells` / `sheet.decodedRowMeta`.
-  window.xlcoreDecodeLayout(layout);
+  // The layout worker has already inflated the per-sheet columnar blobs
+  // into typed arrays, so the main thread can go straight to rendering.
   const canvas = document.getElementById('sheet');
   const stage = document.getElementById('stage');
   const spacer = document.getElementById('spacer');
@@ -282,25 +379,28 @@ fn build_preview_html(layout_b64: &str, renderer_js: &str, source: &Path) -> Str
     const HEADER_W = 44, HEADER_H = 22;
     const maxCol = Math.min(16384, Math.max(sheet.maxCol + 2, sheet.maxCol + VIRTUAL_EXTRA_COLS));
     const maxRow = Math.min(1048576, Math.max(sheet.maxRow + 5, sheet.maxRow + VIRTUAL_EXTRA_ROWS));
-    // Width: sum of col widths.
-    let w = HEADER_W;
+    let w = HEADER_W + maxCol * dw;
     const colWidths = new Map();
     for (const c of sheet.cols) {{
       for (let i = c.min; i <= c.max; i++) colWidths.set(i, c.hidden ? 0 : c.widthPx);
     }}
     if (ov && ov.col) for (const [c, v] of ov.col) colWidths.set(c, Math.max(0, v));
-    for (let c = 1; c <= maxCol; c++) w += colWidths.get(c) ?? dw;
+    for (const [c, v] of colWidths) {{
+      if (c >= 1 && c <= maxCol) w += v - dw;
+    }}
     // Height. Iterate the columnar row-meta blob — sheet.rows no
     // longer exists in the wire format; row metadata lives in typed
     // arrays decoded by xlcoreDecodeLayout.
-    let h = HEADER_H;
+    let h = HEADER_H + maxRow * dh;
     const rowHeights = new Map();
     window.xlcoreIterRows(sheet, (row) => {{
       if (row.hidden) rowHeights.set(row.index, 0);
       else if (row.heightPx !== undefined) rowHeights.set(row.index, row.heightPx);
     }});
     if (ov && ov.row) for (const [r, v] of ov.row) rowHeights.set(r, Math.max(0, v));
-    for (let r = 1; r <= maxRow; r++) h += rowHeights.get(r) ?? dh;
+    for (const [r, v] of rowHeights) {{
+      if (r >= 1 && r <= maxRow) h += v - dh;
+    }}
     return {{ w, h }};
   }}
 
@@ -416,8 +516,11 @@ fn build_preview_html(layout_b64: &str, renderer_js: &str, source: &Path) -> Str
   }}
   watchDpr();
 
+  await setLoadingStage('Preparing sheet');
   attachForActive();
+  await setLoadingStage('Rendering canvas');
   rerender();
+  requestAnimationFrame(finishLoading);
 }})();
 </script>
 </body>
