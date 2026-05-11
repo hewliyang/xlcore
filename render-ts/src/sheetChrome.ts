@@ -493,10 +493,7 @@ import {
 /// black — hsx renders that plain, not as a blue+underlined link).
 /// We mirror the same rule: skip emitting the overlay when the
 /// cell carries its own non-default fontId.
-export function computeHyperlinkDxfs(
-  sheet: Sheet,
-  layout: WorkbookLayout,
-): Map<string, Dxf> {
+export function computeHyperlinkDxfs(sheet: Sheet, layout: WorkbookLayout): Map<string, Dxf> {
   const out = new Map<string, Dxf>();
   const hyperlinks = sheet.hyperlinks ?? [];
   if (hyperlinks.length === 0) return out;

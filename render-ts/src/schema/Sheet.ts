@@ -14,103 +14,110 @@ import type { SparklineGroup } from "./SparklineGroup.js";
 import type { Table } from "./Table.js";
 import type { TextRun } from "./TextRun.js";
 
-export type Sheet = { index: number, name: string, 
-/**
- * 1-based, inclusive. (0,0) when sheet is empty.
- */
-maxRow: number, maxCol: number, 
-/**
- * Default column width in px.
- */
-defaultColWidthPx: number, 
-/**
- * Default row height in px.
- */
-defaultRowHeightPx: number, 
-/**
- * Custom column widths (sparse). Each entry covers cols `min..=max`.
- */
-cols: Array<Col>, merges: Array<Merge>, freeze?: Freeze, showGridLines: boolean, 
-/**
- * Conditional formatting blocks, in source order. Renderer applies
- * highest-`priority` rule per cell.
- */
-conditionalFormats: Array<ConditionalFormat>, 
-/**
- * Drawings (charts, images) anchored on this sheet.
- */
-drawings: Array<Drawing>, 
-/**
- * `<table>` ListObjects on this sheet (one entry per
- * `xl/tables/tableN.xml` part referenced by the worksheet).
- * Renderer paints the table's visual chrome (header band, banded
- * rows, filter-arrow glyphs); no filtering interactivity.
- */
-tables: Array<Table>, 
-/**
- * Non-empty cell records, sorted (row asc, col asc within row).
- * All inner blobs are base64-encoded little-endian typed arrays
- * of length `count`. The renderer decodes these once at load time
- * into Uint32Array/Int32Array/Uint8Array views.
- */
-cells: ColumnarCells, 
-/**
- * Per-row metadata for rows that carry custom height/style/hidden
- * flags or simply have any cells. Sorted by `index` ascending.
- */
-rowMeta: RowMetaBlob, 
-/**
- * Deduplicated string pool for `cells.valueIdx`. `valueIdx[i] >= 0`
- * means "look up `value_pool[valueIdx[i]]`"; `-1` means the cell
- * has no cached value (rare; mostly empty formula cells).
- */
-valuePool: Array<string>, 
-/**
- * Deduplicated formula pool for `cells.formulaIdx`. Most cells
- * have no formula (`formulaIdx[i] == -1`); pool is small.
- */
-formulaPool: Array<string>, 
-/**
- * Inline rich-text run lists for cells that carry `<r>` children
- * directly (i.e. `kind == "inline"` with explicit runs). Indexed
- * by `cells.runsIdx`; `-1` means "no inline runs on this cell".
- */
-inlineRuns: Array<Array<TextRun>>, 
-/**
- * `<hyperlink>` entries from the worksheet's `<hyperlinks>` block.
- * External `r:id` rels are resolved to absolute URLs at extract
- * time; `location` carries internal in-workbook jumps (e.g.
- * `'Sheet 2'!A1`). Renderer paints blue+underline over the cells
- * in `range` and (in the browser) wires a click handler.
- */
-hyperlinks: Array<Hyperlink>, 
-/**
- * Cell comments from the worksheet's comments part. Renderer
- * paints a small red triangle in the top-right of `r,c` and
- * (in the browser) shows the body in a hover popover.
- */
-comments: Array<Comment>, 
-/**
- * Pivot tables anchored on this sheet (one entry per
- * `xl/pivotTables/pivotTableN.xml` referenced by the worksheet).
- * We treat pivots as cosmetic chrome only — the materialized
- * result cells already live in `Sheet.rows` with explicit
- * styling, so the renderer just paints filter-arrow chevrons on
- * the row/column field-header cells. No filtering / refresh /
- * expand-collapse interactivity. ("Cheap path" in PARITY.md.)
- */
-pivots: Array<Pivot>, 
-/**
- * OOXML `<sheetPr><outlinePr summaryBelow="..."
- * summaryRight="..."/></sheetPr>`. Tells the renderer where the
- * summary row/col sits relative to a group (default: below + right,
- * matching Excel's UI default). `None` = use those defaults.
- */
-outlinePr?: OutlinePr, 
-/**
- * Sparkline groups from the worksheet's `<extLst>` (x14 ext URI
- * `{05C60535-1F16-4fd2-B633-F4F36F0B64E0}`). Each group shares
- * type/colors/axis settings across N anchored sparklines.
- * Renderer paints one mini-chart per anchor cell.
- */
-sparklineGroups: Array<SparklineGroup>, };
+export type Sheet = {
+  index: number;
+  name: string;
+  /**
+   * 1-based, inclusive. (0,0) when sheet is empty.
+   */
+  maxRow: number;
+  maxCol: number;
+  /**
+   * Default column width in px.
+   */
+  defaultColWidthPx: number;
+  /**
+   * Default row height in px.
+   */
+  defaultRowHeightPx: number;
+  /**
+   * Custom column widths (sparse). Each entry covers cols `min..=max`.
+   */
+  cols: Array<Col>;
+  merges: Array<Merge>;
+  freeze?: Freeze;
+  showGridLines: boolean;
+  /**
+   * Conditional formatting blocks, in source order. Renderer applies
+   * highest-`priority` rule per cell.
+   */
+  conditionalFormats: Array<ConditionalFormat>;
+  /**
+   * Drawings (charts, images) anchored on this sheet.
+   */
+  drawings: Array<Drawing>;
+  /**
+   * `<table>` ListObjects on this sheet (one entry per
+   * `xl/tables/tableN.xml` part referenced by the worksheet).
+   * Renderer paints the table's visual chrome (header band, banded
+   * rows, filter-arrow glyphs); no filtering interactivity.
+   */
+  tables: Array<Table>;
+  /**
+   * Non-empty cell records, sorted (row asc, col asc within row).
+   * All inner blobs are base64-encoded little-endian typed arrays
+   * of length `count`. The renderer decodes these once at load time
+   * into Uint32Array/Int32Array/Uint8Array views.
+   */
+  cells: ColumnarCells;
+  /**
+   * Per-row metadata for rows that carry custom height/style/hidden
+   * flags or simply have any cells. Sorted by `index` ascending.
+   */
+  rowMeta: RowMetaBlob;
+  /**
+   * Deduplicated string pool for `cells.valueIdx`. `valueIdx[i] >= 0`
+   * means "look up `value_pool[valueIdx[i]]`"; `-1` means the cell
+   * has no cached value (rare; mostly empty formula cells).
+   */
+  valuePool: Array<string>;
+  /**
+   * Deduplicated formula pool for `cells.formulaIdx`. Most cells
+   * have no formula (`formulaIdx[i] == -1`); pool is small.
+   */
+  formulaPool: Array<string>;
+  /**
+   * Inline rich-text run lists for cells that carry `<r>` children
+   * directly (i.e. `kind == "inline"` with explicit runs). Indexed
+   * by `cells.runsIdx`; `-1` means "no inline runs on this cell".
+   */
+  inlineRuns: Array<Array<TextRun>>;
+  /**
+   * `<hyperlink>` entries from the worksheet's `<hyperlinks>` block.
+   * External `r:id` rels are resolved to absolute URLs at extract
+   * time; `location` carries internal in-workbook jumps (e.g.
+   * `'Sheet 2'!A1`). Renderer paints blue+underline over the cells
+   * in `range` and (in the browser) wires a click handler.
+   */
+  hyperlinks: Array<Hyperlink>;
+  /**
+   * Cell comments from the worksheet's comments part. Renderer
+   * paints a small red triangle in the top-right of `r,c` and
+   * (in the browser) shows the body in a hover popover.
+   */
+  comments: Array<Comment>;
+  /**
+   * Pivot tables anchored on this sheet (one entry per
+   * `xl/pivotTables/pivotTableN.xml` referenced by the worksheet).
+   * We treat pivots as cosmetic chrome only — the materialized
+   * result cells already live in `Sheet.rows` with explicit
+   * styling, so the renderer just paints filter-arrow chevrons on
+   * the row/column field-header cells. No filtering / refresh /
+   * expand-collapse interactivity. ("Cheap path" in PARITY.md.)
+   */
+  pivots: Array<Pivot>;
+  /**
+   * OOXML `<sheetPr><outlinePr summaryBelow="..."
+   * summaryRight="..."/></sheetPr>`. Tells the renderer where the
+   * summary row/col sits relative to a group (default: below + right,
+   * matching Excel's UI default). `None` = use those defaults.
+   */
+  outlinePr?: OutlinePr;
+  /**
+   * Sparkline groups from the worksheet's `<extLst>` (x14 ext URI
+   * `{05C60535-1F16-4fd2-B633-F4F36F0B64E0}`). Each group shares
+   * type/colors/axis settings across N anchored sparklines.
+   * Renderer paints one mini-chart per anchor cell.
+   */
+  sparklineGroups: Array<SparklineGroup>;
+};

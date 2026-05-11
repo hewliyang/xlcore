@@ -7,10 +7,15 @@
  * NOT resolved; the renderer falls back to the default Medium2 look
  * when it doesn't recognize the style name.
  */
-export type TableStyle = { 
-/**
- * Built-in style name, e.g. `TableStyleMedium2`. The trailing
- * integer indexes into the workbook's accent colors
- * (`(N-1) % 6 → accent{1..6}`).
- */
-name: string, showFirstColumn: boolean, showLastColumn: boolean, showRowStripes: boolean, showColumnStripes: boolean, };
+export type TableStyle = {
+  /**
+   * Built-in style name, e.g. `TableStyleMedium2`. The trailing
+   * integer indexes into the workbook's accent colors
+   * (`(N-1) % 6 → accent{1..6}`).
+   */
+  name: string;
+  showFirstColumn: boolean;
+  showLastColumn: boolean;
+  showRowStripes: boolean;
+  showColumnStripes: boolean;
+};

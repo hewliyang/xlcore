@@ -46,7 +46,10 @@ export async function loadWorkbookFromXlsx(
   return extract_xlsx(bytes, extractionOptions(options)) as WorkbookLayout;
 }
 
-export async function renderXlsxToCanvas(input: string | ArrayBuffer | Uint8Array, opts: RenderPngOptions = {}): Promise<Canvas> {
+export async function renderXlsxToCanvas(
+  input: string | ArrayBuffer | Uint8Array,
+  opts: RenderPngOptions = {},
+): Promise<Canvas> {
   return renderToCanvas(await loadWorkbookFromXlsx(input, loadOptionsFromRenderOptions(opts)), {
     ...opts,
     sheetIndex: undefined,
@@ -54,7 +57,10 @@ export async function renderXlsxToCanvas(input: string | ArrayBuffer | Uint8Arra
   });
 }
 
-export async function renderXlsxToPng(input: string | ArrayBuffer | Uint8Array, opts: RenderPngOptions = {}): Promise<Buffer> {
+export async function renderXlsxToPng(
+  input: string | ArrayBuffer | Uint8Array,
+  opts: RenderPngOptions = {},
+): Promise<Buffer> {
   return renderToCanvas(await loadWorkbookFromXlsx(input, loadOptionsFromRenderOptions(opts)), {
     ...opts,
     sheetIndex: undefined,
@@ -66,7 +72,8 @@ export function renderToCanvas(layout: WorkbookLayout, opts: RenderPngOptions = 
   decodeWorkbookLayout(layout);
   const range = opts.range ? parseRangeRef(opts.range) : null;
   const sheet = pickSheet(layout, opts.sheetIndex, opts.sheetName ?? range?.sheetName);
-  const viewport = opts.viewport ?? (range ? viewportForRange(sheet, range) : defaultViewport(sheet, opts));
+  const viewport =
+    opts.viewport ?? (range ? viewportForRange(sheet, range) : defaultViewport(sheet, opts));
   const canvas = new Canvas(
     Math.ceil(viewport.w * (opts.zoom ?? 1) * (opts.scale ?? 1)),
     Math.ceil(viewport.h * (opts.zoom ?? 1) * (opts.scale ?? 1)),
@@ -78,12 +85,17 @@ export function renderToCanvas(layout: WorkbookLayout, opts: RenderPngOptions = 
   return canvas;
 }
 
-export async function renderToPng(layout: WorkbookLayout, opts: RenderPngOptions = {}): Promise<Buffer> {
+export async function renderToPng(
+  layout: WorkbookLayout,
+  opts: RenderPngOptions = {},
+): Promise<Buffer> {
   return renderToCanvas(layout, opts).toBuffer("png");
 }
 
 async function ensureWasm(): Promise<void> {
-  wasmReady ??= initWasm({ module_or_path: readFileSync(new URL("./xlcore_wasm_bg.wasm", import.meta.url)) });
+  wasmReady ??= initWasm({
+    module_or_path: readFileSync(new URL("./xlcore_wasm_bg.wasm", import.meta.url)),
+  });
   await wasmReady;
 }
 
@@ -95,7 +107,10 @@ function loadOptionsFromRenderOptions(options: RenderPngOptions): LoadWorkbookFr
   };
 }
 
-function extractionOptions(options: LoadWorkbookFromXlsxOptions): { sheetIndex?: number; sheetName?: string } {
+function extractionOptions(options: LoadWorkbookFromXlsxOptions): {
+  sheetIndex?: number;
+  sheetName?: string;
+} {
   return {
     sheetIndex: options.sheetIndex,
     sheetName: options.sheetName,
@@ -108,8 +123,14 @@ async function bytesFromInput(input: string | ArrayBuffer | Uint8Array): Promise
   return new Uint8Array(input);
 }
 
-function pickSheet(layout: WorkbookLayout, sheetIndex: number | undefined, sheetName: string | undefined): RuntimeSheet {
-  const index = sheetName ? layout.sheets.findIndex((s) => s.name === sheetName) : (sheetIndex ?? layout.activeSheetIndex ?? 0);
+function pickSheet(
+  layout: WorkbookLayout,
+  sheetIndex: number | undefined,
+  sheetName: string | undefined,
+): RuntimeSheet {
+  const index = sheetName
+    ? layout.sheets.findIndex((s) => s.name === sheetName)
+    : (sheetIndex ?? layout.activeSheetIndex ?? 0);
   if (index < 0) throw new Error(`sheet not found: ${sheetName}`);
   const sheet = layout.sheets[index];
   if (!sheet) throw new Error(`sheetIndex out of range: ${index}`);
@@ -180,7 +201,8 @@ function splitSheetRef(input: string): { sheetName?: string; ref: string } {
 
 function unquoteSheetName(name: string): string {
   const trimmed = name.trim();
-  if (trimmed.startsWith("'") && trimmed.endsWith("'")) return trimmed.slice(1, -1).replaceAll("''", "'");
+  if (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    return trimmed.slice(1, -1).replaceAll("''", "'");
   return trimmed;
 }
 

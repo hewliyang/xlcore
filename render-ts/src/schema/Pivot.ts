@@ -8,20 +8,21 @@ import type { Merge } from "./Merge.js";
  * always materialize pivot output cells into the sheet's `<sheetData>`
  * with explicit cell xfs).
  */
-export type Pivot = { 
-/**
- * Internal name (`name=` attr on `<pivotTableDefinition>`).
- */
-name: string, 
-/**
- * Bounding range covered by the pivot, including header strip
- * and grand-total row/column. Mirrors `<location ref=".">`.
- */
-range: Merge, 
-/**
- * Cells (1-based r,c) that should get a filter-dropdown chevron.
- * Computed by the extractor from the pivot's `<location>` +
- * `<rowFields>` / `<colFields>` so the renderer doesn't need to
- * re-derive them. Empty for pivots with no axis fields.
- */
-filterArrowCells: Array<CellRef>, };
+export type Pivot = {
+  /**
+   * Internal name (`name=` attr on `<pivotTableDefinition>`).
+   */
+  name: string;
+  /**
+   * Bounding range covered by the pivot, including header strip
+   * and grand-total row/column. Mirrors `<location ref=".">`.
+   */
+  range: Merge;
+  /**
+   * Cells (1-based r,c) that should get a filter-dropdown chevron.
+   * Computed by the extractor from the pivot's `<location>` +
+   * `<rowFields>` / `<colFields>` so the renderer doesn't need to
+   * re-derive them. Empty for pivots with no axis fields.
+   */
+  filterArrowCells: Array<CellRef>;
+};

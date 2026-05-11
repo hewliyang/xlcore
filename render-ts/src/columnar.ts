@@ -43,7 +43,7 @@ export interface DecodedRowMeta {
   count: number;
   index: Uint32Array;
   heightPx: Float32Array; // NaN ⇒ default height
-  styleIdx: Int32Array;   // -1 ⇒ no row-level style
+  styleIdx: Int32Array; // -1 ⇒ no row-level style
   hidden: Uint8Array;
   /// OOXML `<row outlineLevel="N">`, 0..=7. Length == count when any
   /// row is grouped, otherwise length 0 (treat as all-zeros). Cheap
@@ -227,10 +227,7 @@ export function iterCellsInRange(
 
 /// Iterate every cell on the sheet (row-major). Used by code paths
 /// that build whole-sheet indexes (e.g. CF data-bar min/max scan).
-export function iterAllCells(
-  sheet: Sheet,
-  fn: (cell: Cell, i: number) => void,
-): void {
+export function iterAllCells(sheet: Sheet, fn: (cell: Cell, i: number) => void): void {
   const cells = sheet.decodedCells;
   for (let i = 0; i < cells.count; i++) fn(materializeCell(sheet, i), i);
 }
@@ -240,7 +237,12 @@ export function iterAllCells(
 /// sheet.rows)` in places that don't read cell contents.
 export function iterRows(
   sheet: Sheet,
-  fn: (row: { index: number; heightPx: number | undefined; styleIndex: number | undefined; hidden: boolean }) => void,
+  fn: (row: {
+    index: number;
+    heightPx: number | undefined;
+    styleIndex: number | undefined;
+    hidden: boolean;
+  }) => void,
 ): void {
   const meta = sheet.decodedRowMeta;
   for (let i = 0; i < meta.count; i++) {

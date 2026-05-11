@@ -1,4 +1,8 @@
-import { createWorkbookPreviewer, type PreviewerOptions, type WorkbookPreviewer } from "./previewer.js";
+import {
+  createWorkbookPreviewer,
+  type PreviewerOptions,
+  type WorkbookPreviewer,
+} from "./previewer.js";
 import type { WorkbookLayout } from "./types.js";
 
 export interface WorkbookLoadProgress {
@@ -11,7 +15,9 @@ export interface WorkbookLoaderOptions {
   onProgress?: (progress: WorkbookLoadProgress) => void;
 }
 
-export interface CreateWorkbookPreviewerFromFileOptions extends WorkbookLoaderOptions, PreviewerOptions {}
+export interface CreateWorkbookPreviewerFromFileOptions
+  extends WorkbookLoaderOptions,
+    PreviewerOptions {}
 
 const DEFAULT_WASM_URL = new URL("./xlcore_wasm.js", import.meta.url).toString();
 const DEFAULT_WORKER_URL = new URL("./xlsxWorker.js", import.meta.url).toString();

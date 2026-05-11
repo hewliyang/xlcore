@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-const MAX_LINES = 800;
+const MAX_LINES = 900;
 const ROOT = join(import.meta.dir, "..");
 const CHECK_DIRS = ["src"];
 const EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".json"]);

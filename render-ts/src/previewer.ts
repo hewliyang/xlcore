@@ -16,11 +16,7 @@ export interface PreviewerState {
   zoom: number;
 }
 
-export type PreviewerEventName =
-  | "selectionchange"
-  | "sheetchange"
-  | "zoomchange"
-  | "layoutchange";
+export type PreviewerEventName = "selectionchange" | "sheetchange" | "zoomchange" | "layoutchange";
 
 export interface WorkbookPreviewer {
   readonly root: HTMLElement;
@@ -35,7 +31,10 @@ export interface WorkbookPreviewer {
   getActiveCell(): { r: number; c: number };
   getSelection(): Selection;
   selectCell(r: number, c: number, options?: { scroll?: boolean }): void;
-  selectRange(selection: Selection, options?: { scroll?: boolean; activeCell?: { r: number; c: number } }): void;
+  selectRange(
+    selection: Selection,
+    options?: { scroll?: boolean; activeCell?: { r: number; c: number } },
+  ): void;
   scrollToCell(r: number, c: number): void;
   getZoom(): number;
   setZoom(zoom: number): void;
@@ -141,7 +140,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
 
     this.stage = document.createElement("div");
     this.stage.className = "xlcore-stage";
-    this.stage.style.cssText = "overflow:auto;position:relative;background:#f4f4f5;min-width:0;min-height:0;width:100%;";
+    this.stage.style.cssText =
+      "overflow:auto;position:relative;background:#f4f4f5;min-width:0;min-height:0;width:100%;";
     this.spacer = document.createElement("div");
     this.spacer.style.position = "relative";
     this.canvas = document.createElement("canvas");
@@ -223,14 +223,21 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   }
 
   selectCell(r: number, c: number, options: { scroll?: boolean } = {}): void {
-    this.selectRange({ r1: r, c1: c, r2: r, c2: c }, { scroll: options.scroll, activeCell: { r, c } });
+    this.selectRange(
+      { r1: r, c1: c, r2: r, c2: c },
+      { scroll: options.scroll, activeCell: { r, c } },
+    );
   }
 
   selectRange(
     selection: Selection,
     options: { scroll?: boolean; activeCell?: { r: number; c: number } } = {},
   ): void {
-    const grid = buildGrid(this.getActiveSheet(), this.currentState().colOverrides, this.currentState().rowOverrides);
+    const grid = buildGrid(
+      this.getActiveSheet(),
+      this.currentState().colOverrides,
+      this.currentState().rowOverrides,
+    );
     const range = normalizeSelection(selection, grid.maxRow, grid.maxCol);
     const active = options.activeCell
       ? {
@@ -405,13 +412,16 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private resolveInitialSheet(sheet: number | string | undefined): number {
     if (sheet !== undefined) return this.resolveSheet(sheet);
     const active = this.layout.activeSheetIndex;
-    return typeof active === "number" && active >= 0 && active < this.layout.sheets.length ? active : 0;
+    return typeof active === "number" && active >= 0 && active < this.layout.sheets.length
+      ? active
+      : 0;
   }
 
   private resolveSheet(sheet: number | string): number {
     if (typeof sheet === "number") {
       const i = Math.floor(sheet);
-      if (i < 0 || i >= this.layout.sheets.length) throw new RangeError(`sheet index out of range: ${sheet}`);
+      if (i < 0 || i >= this.layout.sheets.length)
+        throw new RangeError(`sheet index out of range: ${sheet}`);
       return i;
     }
     const i = this.layout.sheets.findIndex((s) => s.name === sheet);

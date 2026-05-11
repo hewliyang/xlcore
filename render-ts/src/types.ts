@@ -51,7 +51,6 @@ export type {
   NumberFormat,
   OutlinePr,
   Pivot,
-
   Sparkline,
   SparklineGroup,
   Styles,

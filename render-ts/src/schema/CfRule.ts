@@ -3,71 +3,76 @@ import type { CfColorScale } from "./CfColorScale.js";
 import type { CfDataBar } from "./CfDataBar.js";
 import type { CfIconSet } from "./CfIconSet.js";
 
-export type CfRule = { priority: number, 
-/**
- * `colorScale`, `dataBar`, `iconSet`, `cellIs`, `expression`, `top10`,
- * `aboveAverage`, `containsText`, `notContainsText`, `beginsWith`,
- * `endsWith`, `duplicateValues`, `uniqueValues`, `timePeriod`.
- * `expression` still requires a formula engine; everything else
- * is evaluated by the renderer using cell values + workbook stats.
- */
-kind: string, colorScale?: CfColorScale, dataBar?: CfDataBar, iconSet?: CfIconSet, 
-/**
- * Comparison operator for `cellIs` rules: `equal`, `notEqual`,
- * `greaterThan`, `greaterThanOrEqual`, `lessThan`,
- * `lessThanOrEqual`, `between`, `notBetween`. None for non-cellIs.
- */
-operator?: string, 
-/**
- * Operand formulas/literals. `cellIs` has 1 (most operators) or 2
- * (between/notBetween); `expression` has the rule formula here.
- */
-operands: Array<string>, 
-/**
- * Index into `WorkbookLayout.dxfs` for the differential format to
- * apply when this rule matches.
- */
-dxfId?: number, 
-/**
- * If true, do not evaluate lower-priority rules on the same cell
- * once this rule matches.
- */
-stopIfTrue: boolean, 
-/**
- * `top10`: number of items (or percent) to highlight. Default 10.
- */
-rank?: number, 
-/**
- * `top10`: when true, take the bottom-N instead of the top-N.
- */
-bottom: boolean, 
-/**
- * `top10`: when true, `rank` is a percentage (0–100), not a count.
- */
-percent: boolean, 
-/**
- * `aboveAverage`: when false, the rule means *below* average.
- * Default true. Only meaningful for `kind="aboveAverage"`.
- */
-aboveAverage?: boolean, 
-/**
- * `aboveAverage`: include cells equal to the average (default false).
- */
-equalAverage: boolean, 
-/**
- * `aboveAverage`: when set, highlight cells whose distance from the
- * average exceeds N standard deviations (positive N for above,
- * negative for below).
- */
-stdDev?: number, 
-/**
- * `containsText` / `notContainsText` / `beginsWith` / `endsWith`:
- * the literal text to match.
- */
-text?: string, 
-/**
- * `timePeriod`: one of `yesterday`, `today`, `tomorrow`,
- * `last7Days`, `lastWeek`, `thisWeek`, `nextWeek`, `lastMonth`,
- * `thisMonth`, `nextMonth`.
- */
-timePeriod?: string, };
+export type CfRule = {
+  priority: number;
+  /**
+   * `colorScale`, `dataBar`, `iconSet`, `cellIs`, `expression`, `top10`,
+   * `aboveAverage`, `containsText`, `notContainsText`, `beginsWith`,
+   * `endsWith`, `duplicateValues`, `uniqueValues`, `timePeriod`.
+   * `expression` still requires a formula engine; everything else
+   * is evaluated by the renderer using cell values + workbook stats.
+   */
+  kind: string;
+  colorScale?: CfColorScale;
+  dataBar?: CfDataBar;
+  iconSet?: CfIconSet;
+  /**
+   * Comparison operator for `cellIs` rules: `equal`, `notEqual`,
+   * `greaterThan`, `greaterThanOrEqual`, `lessThan`,
+   * `lessThanOrEqual`, `between`, `notBetween`. None for non-cellIs.
+   */
+  operator?: string;
+  /**
+   * Operand formulas/literals. `cellIs` has 1 (most operators) or 2
+   * (between/notBetween); `expression` has the rule formula here.
+   */
+  operands: Array<string>;
+  /**
+   * Index into `WorkbookLayout.dxfs` for the differential format to
+   * apply when this rule matches.
+   */
+  dxfId?: number;
+  /**
+   * If true, do not evaluate lower-priority rules on the same cell
+   * once this rule matches.
+   */
+  stopIfTrue: boolean;
+  /**
+   * `top10`: number of items (or percent) to highlight. Default 10.
+   */
+  rank?: number;
+  /**
+   * `top10`: when true, take the bottom-N instead of the top-N.
+   */
+  bottom: boolean;
+  /**
+   * `top10`: when true, `rank` is a percentage (0–100), not a count.
+   */
+  percent: boolean;
+  /**
+   * `aboveAverage`: when false, the rule means *below* average.
+   * Default true. Only meaningful for `kind="aboveAverage"`.
+   */
+  aboveAverage?: boolean;
+  /**
+   * `aboveAverage`: include cells equal to the average (default false).
+   */
+  equalAverage: boolean;
+  /**
+   * `aboveAverage`: when set, highlight cells whose distance from the
+   * average exceeds N standard deviations (positive N for above,
+   * negative for below).
+   */
+  stdDev?: number;
+  /**
+   * `containsText` / `notContainsText` / `beginsWith` / `endsWith`:
+   * the literal text to match.
+   */
+  text?: string;
+  /**
+   * `timePeriod`: one of `yesterday`, `today`, `tomorrow`,
+   * `last7Days`, `lastWeek`, `thisWeek`, `nextWeek`, `lastMonth`,
+   * `thisMonth`, `nextMonth`.
+   */
+  timePeriod?: string;
+};

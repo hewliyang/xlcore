@@ -201,7 +201,14 @@ function drawLineSparkline(
   // colored markers overpaint cleanly.
   const markerR = Math.max(1.25, Math.min(rect.w, rect.h) * 0.08);
   if (group.markers) {
-    paintLineMarkers(ctx, values, xOf, yOf, markerR, group.colorMarkers ? `#${group.colorMarkers}` : DEFAULT_MARKERS);
+    paintLineMarkers(
+      ctx,
+      values,
+      xOf,
+      yOf,
+      markerR,
+      group.colorMarkers ? `#${group.colorMarkers}` : DEFAULT_MARKERS,
+    );
   }
   paintExtremaMarkers(ctx, group, values, xOf, yOf, markerR);
 }
@@ -307,8 +314,8 @@ function drawColumnSparkline(
     if (v == null) continue;
     if (firstIdx === -1) firstIdx = i;
     lastIdx = i;
-    if (hiIdx === -1 || (values[hiIdx]! < v)) hiIdx = i;
-    if (loIdx === -1 || (values[loIdx]! > v)) loIdx = i;
+    if (hiIdx === -1 || values[hiIdx]! < v) hiIdx = i;
+    if (loIdx === -1 || values[loIdx]! > v) loIdx = i;
   }
 
   for (let i = 0; i < values.length; i++) {
@@ -324,8 +331,7 @@ function drawColumnSparkline(
     if (group.low && i === loIdx) color = group.colorLow ? `#${group.colorLow}` : DEFAULT_LOW;
     if (group.first && i === firstIdx)
       color = group.colorFirst ? `#${group.colorFirst}` : DEFAULT_FIRST;
-    if (group.last && i === lastIdx)
-      color = group.colorLast ? `#${group.colorLast}` : DEFAULT_LAST;
+    if (group.last && i === lastIdx) color = group.colorLast ? `#${group.colorLast}` : DEFAULT_LAST;
     ctx.fillStyle = color;
     ctx.fillRect(Math.round(x), Math.round(top), barW, Math.round(h));
   }
@@ -380,8 +386,7 @@ function drawWinLossSparkline(
     let color = v > 0 ? seriesColor : negColor;
     if (group.first && i === firstIdx)
       color = group.colorFirst ? `#${group.colorFirst}` : DEFAULT_FIRST;
-    if (group.last && i === lastIdx)
-      color = group.colorLast ? `#${group.colorLast}` : DEFAULT_LAST;
+    if (group.last && i === lastIdx) color = group.colorLast ? `#${group.colorLast}` : DEFAULT_LAST;
     ctx.fillStyle = color;
     if (v > 0) {
       ctx.fillRect(x, Math.round(midY - halfH), barW, halfH);

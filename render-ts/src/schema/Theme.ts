@@ -23,18 +23,19 @@
  * color can't be resolved (preset names, scrgb percentages we don't
  * handle yet) we fall back to the Office default for that slot.
  */
-export type Theme = { 
-/**
- * 12 hex colors, indexed by `Color.theme`.
- */
-colors: Array<string>, 
-/**
- * `<a:majorFont>` Latin typeface (e.g. "Calibri Light"). Used for
- * chart titles when the chart references the major theme font.
- */
-majorFont?: string, 
-/**
- * `<a:minorFont>` Latin typeface (e.g. "Calibri"). The default body
- * font; cells with no explicit `<rFont>` inherit this.
- */
-minorFont?: string, };
+export type Theme = {
+  /**
+   * 12 hex colors, indexed by `Color.theme`.
+   */
+  colors: Array<string>;
+  /**
+   * `<a:majorFont>` Latin typeface (e.g. "Calibri Light"). Used for
+   * chart titles when the chart references the major theme font.
+   */
+  majorFont?: string;
+  /**
+   * `<a:minorFont>` Latin typeface (e.g. "Calibri"). The default body
+   * font; cells with no explicit `<rFont>` inherit this.
+   */
+  minorFont?: string;
+};

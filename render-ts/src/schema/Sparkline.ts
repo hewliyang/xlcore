@@ -6,22 +6,23 @@
  * `lib.rs::resolve_sparkline_refs`); preserve `None` for empty/text
  * cells so the renderer can honor `displayEmptyCellsAs`.
  */
-export type Sparkline = { 
-/**
- * 1-based anchor cell row.
- */
-r: number, 
-/**
- * 1-based anchor cell column.
- */
-c: number, 
-/**
- * Source-data formula, e.g. `"Sheet1!B2:G2"`. Kept for debugging.
- */
-formula?: string, 
-/**
- * Resolved data values in source order. `None` entries indicate
- * empty / non-numeric source cells; the renderer interprets them
- * according to the group's `displayEmptyCellsAs`.
- */
-values: Array<number | null>, };
+export type Sparkline = {
+  /**
+   * 1-based anchor cell row.
+   */
+  r: number;
+  /**
+   * 1-based anchor cell column.
+   */
+  c: number;
+  /**
+   * Source-data formula, e.g. `"Sheet1!B2:G2"`. Kept for debugging.
+   */
+  formula?: string;
+  /**
+   * Resolved data values in source order. `None` entries indicate
+   * empty / non-numeric source cells; the renderer interprets them
+   * according to the group's `displayEmptyCellsAs`.
+   */
+  values: Array<number | null>;
+};

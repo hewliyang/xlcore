@@ -89,7 +89,12 @@ function makeSheet0(rowOutline: Uint8Array, cols: Sheet["cols"]): Sheet {
 }
 
 test("computeOutlineRuns finds row groups (summaryBelow=true default)", () => {
-  const sheet = makeSheet({ rowGroups: [{ start: 3, end: 4 }, { start: 7, end: 8 }] });
+  const sheet = makeSheet({
+    rowGroups: [
+      { start: 3, end: 4 },
+      { start: 7, end: 8 },
+    ],
+  });
   const grid = makeGrid({ rowOutlineDepth: 1, colOutlineDepth: 0 });
   const runs = computeOutlineRuns(sheet, grid);
   expect(runs.length).toBe(2);

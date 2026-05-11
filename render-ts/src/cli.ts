@@ -43,7 +43,8 @@ function parseArgs(argv: string[]): CliOptions {
   }
   if (!options.input) throw new Error("Missing --input");
   if (!options.output) throw new Error("Missing --output");
-  if (!Number.isFinite(options.scale) || options.scale <= 0) throw new Error(`Invalid --scale: ${options.scale}`);
+  if (!Number.isFinite(options.scale) || options.scale <= 0)
+    throw new Error(`Invalid --scale: ${options.scale}`);
   return options;
 }
 
@@ -59,7 +60,16 @@ async function main(): Promise<void> {
 
   await mkdir(dirname(output), { recursive: true });
   await writeFile(output, png);
-  console.log(JSON.stringify({ input, output, range: options.range, sheet: options.sheet, scale: options.scale, bytes: png.length }));
+  console.log(
+    JSON.stringify({
+      input,
+      output,
+      range: options.range,
+      sheet: options.sheet,
+      scale: options.scale,
+      bytes: png.length,
+    }),
+  );
 }
 
 main().catch((error) => {

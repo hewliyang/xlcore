@@ -14,27 +14,28 @@ import type { CfvoStop } from "./CfvoStop.js";
  * stop, but legacy `<x:iconSet>` doesn't expose `gte` so we treat
  * every threshold as `>=`.
  */
-export type CfIconSet = { 
-/**
- * One of the OOXML preset IDs: `3Arrows`, `3ArrowsGray`,
- * `3Flags`, `3TrafficLights1`, `3TrafficLights2`, `3Signs`,
- * `3Symbols`, `3Symbols2`, `4Arrows`, `4ArrowsGray`,
- * `4RedToBlack`, `4Rating`, `4TrafficLights`, `5Arrows`,
- * `5ArrowsGray`, `5Rating`, `5Quarters`.
- */
-iconSet: string, 
-/**
- * N stops (3, 4, or 5). `cfvos[0]` is the low-icon anchor
- * (typically `percent 0`); subsequent stops define the
- * thresholds for the higher icons.
- */
-cfvos: Array<CfvoStop>, 
-/**
- * When false, the cell value is hidden and only the icon paints.
- */
-showValue: boolean, 
-/**
- * When true, the icon order is reversed (high values get the
- * first icon in the set).
- */
-reverse: boolean, };
+export type CfIconSet = {
+  /**
+   * One of the OOXML preset IDs: `3Arrows`, `3ArrowsGray`,
+   * `3Flags`, `3TrafficLights1`, `3TrafficLights2`, `3Signs`,
+   * `3Symbols`, `3Symbols2`, `4Arrows`, `4ArrowsGray`,
+   * `4RedToBlack`, `4Rating`, `4TrafficLights`, `5Arrows`,
+   * `5ArrowsGray`, `5Rating`, `5Quarters`.
+   */
+  iconSet: string;
+  /**
+   * N stops (3, 4, or 5). `cfvos[0]` is the low-icon anchor
+   * (typically `percent 0`); subsequent stops define the
+   * thresholds for the higher icons.
+   */
+  cfvos: Array<CfvoStop>;
+  /**
+   * When false, the cell value is hidden and only the icon paints.
+   */
+  showValue: boolean;
+  /**
+   * When true, the icon order is reversed (high values get the
+   * first icon in the set).
+   */
+  reverse: boolean;
+};

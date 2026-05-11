@@ -95,14 +95,12 @@ export function attachInteractivity(
 ): InteractHandle {
   let drag: { hit: HitCol | HitRow; startPx: number; original: number } | null = null;
   const savedCursor = canvas.style.cursor;
-  let cachedGrid:
-    | {
-        sheet: Sheet;
-        colOverrides: Map<number, number>;
-        rowOverrides: Map<number, number>;
-        grid: ReturnType<typeof buildGrid>;
-      }
-    | null = null;
+  let cachedGrid: {
+    sheet: Sheet;
+    colOverrides: Map<number, number>;
+    rowOverrides: Map<number, number>;
+    grid: ReturnType<typeof buildGrid>;
+  } | null = null;
 
   function invalidateGrid() {
     cachedGrid = null;
@@ -279,12 +277,7 @@ export function attachInteractivity(
       } else {
         // Scrolling segment: cx + sx → absolute grid x.
         const x = cx + sx;
-        const edgeIndex = nearestEdgeIndex(
-          grid.colX,
-          x,
-          Math.max(splitX + 1, 2),
-          grid.maxCol + 1,
-        );
+        const edgeIndex = nearestEdgeIndex(grid.colX, x, Math.max(splitX + 1, 2), grid.maxCol + 1);
         if (edgeIndex !== null) {
           return { kind: "col", index: edgeIndex - 1, edgeX: grid.colX[edgeIndex] ?? 0 };
         }
@@ -298,12 +291,7 @@ export function attachInteractivity(
         }
       } else {
         const y = cy + sy;
-        const edgeIndex = nearestEdgeIndex(
-          grid.rowY,
-          y,
-          Math.max(splitY + 1, 2),
-          grid.maxRow + 1,
-        );
+        const edgeIndex = nearestEdgeIndex(grid.rowY, y, Math.max(splitY + 1, 2), grid.maxRow + 1);
         if (edgeIndex !== null) {
           return { kind: "row", index: edgeIndex - 1, edgeY: grid.rowY[edgeIndex] ?? 0 };
         }
@@ -440,7 +428,10 @@ export function attachInteractivity(
     return best ? { run: best.run, collapsed: best.collapsed } : null;
   }
 
-  function outlineCornerAt(cp: { x: number; y: number }): { axis: "row" | "col"; level: number } | null {
+  function outlineCornerAt(cp: {
+    x: number;
+    y: number;
+  }): { axis: "row" | "col"; level: number } | null {
     const grid = getGrid();
     if (grid.rowGutterW === 0 && grid.colGutterH === 0) return null;
     // Corner is the top-left intersection of both gutters.

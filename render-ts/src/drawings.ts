@@ -47,14 +47,18 @@ function getOrLoadImage(uri: string): DrawableImage | null {
 
 function imageHasSize(img: DrawableImage): boolean {
   const measured = img as DrawableImage & { width?: number; height?: number };
-  return (img.naturalWidth ?? measured.width ?? 0) > 0 && (img.naturalHeight ?? measured.height ?? 0) > 0;
+  return (
+    (img.naturalWidth ?? measured.width ?? 0) > 0 && (img.naturalHeight ?? measured.height ?? 0) > 0
+  );
 }
 
 function dataUriBytes(uri: string): Uint8Array | null {
   if (!uri.startsWith("data:")) return null;
   const comma = uri.indexOf(",");
   if (comma < 0 || !uri.slice(0, comma).includes(";base64")) return null;
-  const BufferCtor = (globalThis as unknown as { Buffer?: { from(data: string, encoding: "base64"): Uint8Array } }).Buffer;
+  const BufferCtor = (
+    globalThis as unknown as { Buffer?: { from(data: string, encoding: "base64"): Uint8Array } }
+  ).Buffer;
   return BufferCtor?.from(uri.slice(comma + 1), "base64") ?? null;
 }
 

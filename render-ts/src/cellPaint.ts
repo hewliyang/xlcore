@@ -100,11 +100,7 @@ function collectStops(fill: Fill): Array<{ pos: number; css: string }> {
   ];
 }
 
-function paintGradientFill(
-  ctx: CanvasRenderingContext2D,
-  rect: CellRect,
-  fill: Fill,
-): void {
+function paintGradientFill(ctx: CanvasRenderingContext2D, rect: CellRect, fill: Fill): void {
   const stops = collectStops(fill);
   if (stops.length === 0) return;
   const type = fill.gradientType ?? "linear";
@@ -160,12 +156,7 @@ function paintGradientFill(
   const dx = Math.cos(theta);
   const dy = Math.sin(theta);
   // Project the four corners onto the unit axis (relative to rect origin).
-  const projs = [
-    0,
-    rect.w * dx,
-    rect.h * dy,
-    rect.w * dx + rect.h * dy,
-  ];
+  const projs = [0, rect.w * dx, rect.h * dy, rect.w * dx + rect.h * dy];
   const pmin = Math.min(...projs);
   const pmax = Math.max(...projs);
   // Starting point is the corner whose projection equals pmin; end is the
@@ -174,10 +165,7 @@ function paintGradientFill(
   const y0 = rect.y + pmin * dy;
   const x1 = rect.x + pmax * dx;
   const y1 = rect.y + pmax * dy;
-  const grad =
-    Math.hypot(x1 - x0, y1 - y0) < 0.5
-      ? null
-      : ctx.createLinearGradient(x0, y0, x1, y1);
+  const grad = Math.hypot(x1 - x0, y1 - y0) < 0.5 ? null : ctx.createLinearGradient(x0, y0, x1, y1);
   if (grad) {
     for (const s of stops) grad.addColorStop(s.pos, s.css);
     ctx.fillStyle = grad;

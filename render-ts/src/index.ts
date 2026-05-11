@@ -6,7 +6,13 @@ export {
   loadWorkbookFromArrayBuffer,
   loadWorkbookFromFile,
 } from "./browserLoader.js";
-export { loadWorkbookFromXlsx, renderToCanvas, renderToPng, renderXlsxToCanvas, renderXlsxToPng } from "./node.js";
+export {
+  loadWorkbookFromXlsx,
+  renderToCanvas,
+  renderToPng,
+  renderXlsxToCanvas,
+  renderXlsxToPng,
+} from "./node.js";
 export type { InteractHandle, InteractOptions } from "./interact.js";
 export type {
   CreateWorkbookPreviewerFromFileOptions,

@@ -723,8 +723,8 @@ function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
   const style = chart.scatterStyle;
   const drawLines = style === "line" || style === "lineMarker";
   const drawSmooth = style === "smooth" || style === "smoothMarker";
-  const drawMarkers = style == null || style === "marker" ||
-    style === "lineMarker" || style === "smoothMarker";
+  const drawMarkers =
+    style == null || style === "marker" || style === "lineMarker" || style === "smoothMarker";
 
   // Plot points (and optional connecting lines).
   for (let si = 0; si < series.length; si++) {

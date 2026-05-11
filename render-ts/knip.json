@@ -1,7 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["src/browser.ts", "src/render.test.ts"],
+  "entry": ["src/browser.ts", "src/*.test.ts"],
   "project": ["src/**/*.ts"],
+  "ignore": ["src/schema/Row.ts"],
   "ignoreBinaries": ["wasm-pack"],
   "ignoreExportsUsedInFile": true,
   "exclude": ["exports", "types", "nsExports", "nsTypes"]

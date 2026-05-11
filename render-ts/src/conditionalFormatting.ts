@@ -51,10 +51,7 @@ const PREDICATE_KINDS = new Set([
 /// schema allows it and writers in the wild do produce it).
 /// `expression` rules need recalc to evaluate so they don't lock
 /// anything today (better to under-mask than over-mask).
-export function computeCfStopLocks(
-  sheet: Sheet,
-  layout: WorkbookLayout,
-): Map<string, number> {
+export function computeCfStopLocks(sheet: Sheet, layout: WorkbookLayout): Map<string, number> {
   const locks = new Map<string, number>();
   const cfs = sheet.conditionalFormats;
   if (!cfs || cfs.length === 0) return locks;
@@ -75,11 +72,7 @@ export function computeCfStopLocks(
     let matched: Iterable<string>;
     if (PREDICATE_KINDS.has(rule.kind)) {
       matched = computeRuleMatchSet(rule, ranges, cellByKey, layout);
-    } else if (
-      rule.kind === "colorScale" ||
-      rule.kind === "dataBar" ||
-      rule.kind === "iconSet"
-    ) {
+    } else if (rule.kind === "colorScale" || rule.kind === "dataBar" || rule.kind === "iconSet") {
       const all: string[] = [];
       for (const range of ranges) {
         for (let r = range.r1; r <= range.r2; r++) {
@@ -792,10 +785,7 @@ export function resolveCfvoValue(
 
 export { computeCfIconState } from "./cfIconState.js";
 
-export function computeCfTextSuppress(
-  sheet: Sheet,
-  locks?: Map<string, number>,
-): Set<string> {
+export function computeCfTextSuppress(sheet: Sheet, locks?: Map<string, number>): Set<string> {
   const out = new Set<string>();
   const cfs = sheet.conditionalFormats;
   if (!cfs || cfs.length === 0) return out;

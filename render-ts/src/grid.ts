@@ -102,12 +102,10 @@ export function buildGrid(
   // We reserve `depth + 1` tracks: one per bracket level plus a final
   // track at the inner edge for the level-(N+1) corner numeral (which
   // Excel uses for "expand all"). Outline depth 1 → 2 tracks → 28px.
-  const rowGutterW = rowOutlineDepth > 0
-    ? OUTLINE_GUTTER_PAD * 2 + (rowOutlineDepth + 1) * OUTLINE_GUTTER_STEP
-    : 0;
-  const colGutterH = colOutlineDepth > 0
-    ? OUTLINE_GUTTER_PAD * 2 + (colOutlineDepth + 1) * OUTLINE_GUTTER_STEP
-    : 0;
+  const rowGutterW =
+    rowOutlineDepth > 0 ? OUTLINE_GUTTER_PAD * 2 + (rowOutlineDepth + 1) * OUTLINE_GUTTER_STEP : 0;
+  const colGutterH =
+    colOutlineDepth > 0 ? OUTLINE_GUTTER_PAD * 2 + (colOutlineDepth + 1) * OUTLINE_GUTTER_STEP : 0;
   const originX = HEADER_W + rowGutterW;
   const originY = HEADER_H + colGutterH;
 
