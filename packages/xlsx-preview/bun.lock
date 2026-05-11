@@ -2,10 +2,9 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "@xlcore/render-ts",
+      "name": "@hewliyang/xlsx-preview",
       "dependencies": {
         "skia-canvas": "^3.0.6",
-        "xlcore-wasm": "file:../crates/xlcore-wasm/pkg",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.4.15",
@@ -14,6 +13,7 @@
         "knip": "^6.12.2",
         "react": "^19.2.6",
         "typescript": "^5.5.0",
+        "xlcore-wasm": "file:../../crates/xlcore-wasm/pkg",
       },
       "peerDependencies": {
         "react": ">=18",
@@ -202,7 +202,7 @@
 
     "walk-up-path": ["walk-up-path@4.0.0", "", {}, "sha512-3hu+tD8YzSLGuFYtPRb48vdhKMi0KQV5sn+uWr8+7dMEq/2G/dtLrdDinkLjqq5TIbIBjYJ4Ax/n3YiaW7QM8A=="],
 
-    "xlcore-wasm": ["xlcore-wasm@file:../crates/xlcore-wasm/pkg", {}],
+    "xlcore-wasm": ["xlcore-wasm@file:../../crates/xlcore-wasm/pkg", {}],
 
     "yaml": ["yaml@2.8.4", "", { "bin": { "yaml": "bin.mjs" } }, "sha512-ml/JPOj9fOQK8RNnWojA67GbZ0ApXAUlN2UQclwv2eVgTgn7O9gg9o7paZWKMp4g0H3nTLtS9LVzhkpOFIKzog=="],
 

@@ -1,0 +1,10 @@
+import type { CfvoStop, Dxf, Sheet, WorkbookLayout } from "./types.js";
+import type { Grid } from "./grid.js";
+import type { Visible } from "./renderTypes.js";
+export declare function computeCfStopLocks(sheet: Sheet, layout: WorkbookLayout): Map<string, number>;
+export declare function isCfLocked(locks: Map<string, number> | undefined, cellKey: string, rulePriority: number): boolean;
+export declare function computeCfDxfMap(sheet: Sheet, layout: WorkbookLayout, locks?: Map<string, number>): Map<string, Dxf>;
+export declare function drawConditionalFormats(ctx: CanvasRenderingContext2D, sheet: Sheet, layout: WorkbookLayout, g: Grid, vis: Visible, cfDxfs: Map<string, Dxf>, locks?: Map<string, number>): void;
+export declare function resolveCfvoValue(s: CfvoStop, dataMin: number, dataMax: number, sorted: number[], isMin: boolean): number;
+export { computeCfIconState } from "./cfIconState.js";
+export declare function computeCfTextSuppress(sheet: Sheet, locks?: Map<string, number>): Set<string>;

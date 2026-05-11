@@ -42,7 +42,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | `<i val="0"/>` boolean unset    | ✅      | ✅     | (bug fix: was treated as `true`).                                                               |
 | Theme XML colors                | ✅      | ✅     | parsed from `xl/theme/theme1.xml`. Spreadsheet `theme="N"` indexing (lt1/dk1/lt2/dk2 swap) is correct. Cell + chart-series accents resolve against the workbook palette. All five OOXML color-choice variants resolved: `srgbClr`, `sysClr.lastClr`, `scrgbClr` (RGB percentages → 0..255 bytes), `hslClr` (HSL → sRGB), and `prstClr` (190-entry preset table covering CSS3/X11 names + `dk*`/`lt*`/`med*` abbreviations + 2010 aliases). Office defaults remain only as a last-resort fallback when the theme part is missing entirely. Unit tests in `crates/xlcore-export/src/theme.rs`. |
 | Indexed-color palette           | ✅      | ✅     | Full ECMA-376 §18.8.27 default `indexedColors` table baked into `INDEXED_PALETTE` (`render.ts`) and the parallel 1-based `COLOR_BY_INDEX` (`numfmt.ts`, used by `[ColorN]` format codes). Covers all 56 legacy slots + 64/65 specials. Open: workbook-level palette override via `<colors><indexedColors>` in styles.xml (vanishingly rare — Excel only writes that block when the user customizes the palette through Office 2003-era dialogs). |
-| Tint                            | ✅      | ✅     | proper OOXML HLS-space tint (`L' = L*(1+t)` for `t<0`, `L' = L*(1-t)+t` for `t>0`); preserves hue + saturation. Verified against Excel "Accent1, Lighter/Darker N%" reference values. Unit tests in `render-ts/src/render.test.ts`. |
+| Tint                            | ✅      | ✅     | proper OOXML HLS-space tint (`L' = L*(1+t)` for `t<0`, `L' = L*(1-t)+t` for `t>0`); preserves hue + saturation. Verified against Excel "Accent1, Lighter/Darker N%" reference values. Unit tests in `packages/xlsx-preview/src/render.test.ts`. |
 | Number formats: built-ins       | ✅      | ✅     | All ECMA-376 §18.8.30 built-ins (IDs 0–49) wired through the new `numfmt.ts` evaluator. Verified against `tests/fixtures/numfmt/date-time-formats.xlsx`. |
 | Number formats: custom code     | ✅      | ✅     | Multi-section `pos;neg;zero;text` + `[Red][>0]` conditional gates + `[$€-407]` currency tags + trailing-comma scaling all handled. Color from `[Red]` propagates to the cell's text. Triage: `tests/fixtures/numfmt/custom-section-conditions.xlsx`. |
 | Number formats: fractions       | ✅      | ✅     | Variable-denom (`# ?/?`, `# ??/??`) via Stern–Brocot, fixed-denom (`?/8`, `?/16`). Fixture: `tests/fixtures/numfmt/fraction-and-scientific.xlsx`. |
@@ -68,7 +68,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | Custom column widths      | ✅      | ✅     |                                           |
 | Custom row heights        | ✅      | ✅     |                                           |
 | Hidden rows / cols        | ✅      | ✅     | Zero-sized in the grid. Row/col header labels suppressed for any band with `rowH <= 0` / `colW <= 0` (was: numerals stacked into an unreadable smear when an outline group was collapsed). Collapsed-group boundary: a 2px Office-green (`#137333`) tick paints on the leading edge of the row/col header of the first visible band after every hidden run — matches Excel desktop's "click here to expand" affordance. Outline bracket painter (`paintRowRunsForLevel` / `paintColRunsForLevel`) now skips runs whose visible extent is `< 3px` so the 4px tick caps don't smear into a stray grey notch next to the green tick. Fixture: `../excel-fixtures/e-007_input-4.xlsx` (Alphabet IS sheet — dense collapsed groups on both axes). |
-| Outline / group levels    | ✅      | ✅     | OOXML `<row outlineLevel="N">` and `<col outlineLevel="N">` extracted (capped at the spec limit of 7); `Col.outlineLevel: u8` + a `RowMetaBlob.outlineLevel` u8 blob (omitted from JSON when every row is at level 0). `<sheetPr><outlinePr summaryBelow summaryRight/>` lands on `Sheet.outlinePr` (defaults true/true match Excel). Renderer paints dedicated Excel-style **outline gutter strips** outside the row/col header bands: vertical row-gutter strip at `x ∈ [0, rowGutterW]` (left of the row-number column) containing `[`-shaped vertical brackets per row group, and horizontal col-gutter strip at `y ∈ [0, colGutterH]` (above the column-letter row) containing `⌐`-shaped horizontal brackets per column group. Each level reserves one `OUTLINE_GUTTER_STEP=12px` track; total track count = `depth + 1` (the inner-most track holds the level-`N+1` corner numeral = Excel's "expand all"). A small white `[-]` button paints at every group's summary row/column, positioned by `outlinePr.summaryBelow`/`summaryRight` (default true → below/right of detail). Level-numeral corner buttons ("1", "2", …, `depth+1`) paint in the shared top-left corner box, stacked vertically along the row-gutter tracks and horizontally along the col-gutter tracks. **Refactor:** the grid coordinate system now carries `originX = HEADER_W + rowGutterW` and `originY = HEADER_H + colGutterH` on `Grid`; every downstream module (panes, geometry, interact hit-testing, header drawing, sparkline clip) reads `g.originX` / `g.originY` instead of the raw `HEADER_W` / `HEADER_H` constants, so the gutter just shifts the grid origin without per-call-site math. Outline painters live in `render-ts/src/outlineGutter.ts`. Fixture: `tests/fixtures/outline/outline-groups.xlsx`. Hsx divergence: SpreadJS doesn't render outline gutters in screenshot mode at all; Excel desktop does and we match it. **Interactivity (NEW):** clicking a [-] / [+] button toggles its run — collapse sets every detail row/col override to 0 in the existing `rowOverrides` / `colOverrides` mailboxes the previewer already feeds into `buildGrid`; expand removes those entries so the schema height/width takes over. Painter and hit-tester share one `outlineButtonHits(sheet, g, view)` source of truth so a click lands exactly on the rendered glyph; collapsed runs (zero bracket extent) still get their `+` button via a dedicated `drawOutlineButtons` pass that runs after the bracket pass. Cursor turns to `pointer` over any outline button. Corner level-numeral buttons (`1`, `2`, …, `depth+1`) drive a "collapse to depth N" sweep across both axes (level `depth + 1` therefore expands everything — Excel's *show all*). Glyph picks `+` when `isOutlineRunCollapsed` is true, `-` otherwise. Unit tests in `render-ts/src/outlineGutter.test.ts`. |
+| Outline / group levels    | ✅      | ✅     | OOXML `<row outlineLevel="N">` and `<col outlineLevel="N">` extracted (capped at the spec limit of 7); `Col.outlineLevel: u8` + a `RowMetaBlob.outlineLevel` u8 blob (omitted from JSON when every row is at level 0). `<sheetPr><outlinePr summaryBelow summaryRight/>` lands on `Sheet.outlinePr` (defaults true/true match Excel). Renderer paints dedicated Excel-style **outline gutter strips** outside the row/col header bands: vertical row-gutter strip at `x ∈ [0, rowGutterW]` (left of the row-number column) containing `[`-shaped vertical brackets per row group, and horizontal col-gutter strip at `y ∈ [0, colGutterH]` (above the column-letter row) containing `⌐`-shaped horizontal brackets per column group. Each level reserves one `OUTLINE_GUTTER_STEP=12px` track; total track count = `depth + 1` (the inner-most track holds the level-`N+1` corner numeral = Excel's "expand all"). A small white `[-]` button paints at every group's summary row/column, positioned by `outlinePr.summaryBelow`/`summaryRight` (default true → below/right of detail). Level-numeral corner buttons ("1", "2", …, `depth+1`) paint in the shared top-left corner box, stacked vertically along the row-gutter tracks and horizontally along the col-gutter tracks. **Refactor:** the grid coordinate system now carries `originX = HEADER_W + rowGutterW` and `originY = HEADER_H + colGutterH` on `Grid`; every downstream module (panes, geometry, interact hit-testing, header drawing, sparkline clip) reads `g.originX` / `g.originY` instead of the raw `HEADER_W` / `HEADER_H` constants, so the gutter just shifts the grid origin without per-call-site math. Outline painters live in `packages/xlsx-preview/src/outlineGutter.ts`. Fixture: `tests/fixtures/outline/outline-groups.xlsx`. Hsx divergence: SpreadJS doesn't render outline gutters in screenshot mode at all; Excel desktop does and we match it. **Interactivity (NEW):** clicking a [-] / [+] button toggles its run — collapse sets every detail row/col override to 0 in the existing `rowOverrides` / `colOverrides` mailboxes the previewer already feeds into `buildGrid`; expand removes those entries so the schema height/width takes over. Painter and hit-tester share one `outlineButtonHits(sheet, g, view)` source of truth so a click lands exactly on the rendered glyph; collapsed runs (zero bracket extent) still get their `+` button via a dedicated `drawOutlineButtons` pass that runs after the bracket pass. Cursor turns to `pointer` over any outline button. Corner level-numeral buttons (`1`, `2`, …, `depth+1`) drive a "collapse to depth N" sweep across both axes (level `depth + 1` therefore expands everything — Excel's *show all*). Glyph picks `+` when `isOutlineRunCollapsed` is true, `-` otherwise. Unit tests in `packages/xlsx-preview/src/outlineGutter.test.ts`. |
 | Freeze panes              | ✅      | ✅     | 4-pane split.                             |
 | Split panes (non-frozen)  | ❌      | ❌     |                                           |
 | Merged cells              | ✅      | ✅     |                                           |
@@ -205,7 +205,7 @@ of real-world workbooks looking wrong.
    under the header and above the totals), Light/Dark style intensity
    variants, user-defined `<customTableStyles>` from `styles.xml`.
 
-4. ~~**Number-format compiler.**~~ **DONE.** `render-ts/src/numfmt.ts`
+4. ~~**Number-format compiler.**~~ **DONE.** `packages/xlsx-preview/src/numfmt.ts`
    ships a real format-section evaluator: tokenize → split sections →
    pick by sign/condition → dispatch to number/date/fraction/scientific
    renderer. Color (`[Red]`, `[Color12]`) propagates to the cell's text
@@ -231,7 +231,7 @@ of real-world workbooks looking wrong.
    every fixture today.
 
 5. ~~**Charts: line / pie / scatter / area.**~~ **DONE.** Four new
-   drawers in `render-ts/src/chart.ts`:
+   drawers in `packages/xlsx-preview/src/chart.ts`:
    - `drawLineChart` — path strokes per series + circle markers; honors
      `grouping=stacked`/`percentStacked` (uses `buildStackedRows` helper).
    - `drawAreaChart` — filled polygon per series with translucent fill
@@ -311,12 +311,12 @@ Bigger lifts (own milestones):
   the theme accent for as long as the function existed). Fixture:
   `tests/fixtures/charts/pie-explicit-points.xlsx`.
 - ~~**Theme color tints (proper HLS).**~~ **DONE.** `applyTint` in
-  `render-ts/src/render.ts` now does RGB → HSL → scale-luminance → RGB
+  `packages/xlsx-preview/src/render.ts` now does RGB → HSL → scale-luminance → RGB
   per ECMA-376 §18.8.19. Lightening Accent1 (#4472C4) by +0.8 / +0.6
   / +0.4 and darkening by -0.25 / -0.5 all match Excel's color picker
   to within ±2/255 per channel (rounding wobble; Excel uses 240-step
   HLSMAX, we work in [0,1]). Unit tests live in
-  `render-ts/src/render.test.ts`. Visually verified on the
+  `packages/xlsx-preview/src/render.test.ts`. Visually verified on the
   `tables/table-medium.xlsx` fixture (12% accent banded rows).
 - ~~**Theme color: non-srgb resolvers.**~~ **DONE.**
   `<a:scrgbClr>`, `<a:hslClr>`, and `<a:prstClr>` now all resolve in
@@ -337,8 +337,8 @@ Bigger lifts (own milestones):
     HSL primaries (red/green/blue/black/white/gray), and hex format.
 - **Formula recalc.** Forking IronCalc + filling its function gaps is
   milestone 1 in `plan-excel-rust-lib.md`.
-- ~~**node-canvas backend.**~~ **DONE.** `@xlcore/render-ts` now exports
-  `renderToCanvas()` / `renderToPng()` from `render-ts/src/node.ts`, backed by
+- ~~**node-canvas backend.**~~ **DONE.** `@hewliyang/xlsx-preview` now exports
+  `renderToCanvas()` / `renderToPng()` from `packages/xlsx-preview/src/node.ts`, backed by
   `@napi-rs/canvas` and the exact same `render()` pass used by the browser
   preview. Pattern-fill offscreen canvases route through a shared factory so
   hatch fills keep working outside `document`. Open follow-up: wire this into
@@ -354,16 +354,16 @@ Bigger lifts (own milestones):
 The Rust extractor and the TS renderer are kept in lock-step by
 [`ts-rs`](https://github.com/Aleph-Alpha/ts-rs). Every `WorkbookLayout`
 type in `crates/xlcore-export/src/schema.rs` derives `TS` and emits a
-generated TS file under `render-ts/src/schema/<TypeName>.ts`.
-`render-ts/src/types.ts` is a tiny barrel that re-exports them so the rest
+generated TS file under `packages/xlsx-preview/src/schema/<TypeName>.ts`.
+`packages/xlsx-preview/src/types.ts` is a tiny barrel that re-exports them so the rest
 of the renderer doesn't notice.
 
 Regenerate after any schema change:
 
 ```bash
 cargo test --release -p xlcore-export export_bindings
-# rebuilds render-ts/src/schema/*.ts; if new types were added, also update
-# the barrel `render-ts/src/schema/index.ts` and `render-ts/src/types.ts`.
+# rebuilds packages/xlsx-preview/src/schema/*.ts; if new types were added, also update
+# the barrel `packages/xlsx-preview/src/schema/index.ts` and `packages/xlsx-preview/src/types.ts`.
 ```
 
 This would have caught the `wrap_text` / `wrapText` mismatch we shipped in
@@ -372,7 +372,7 @@ where the renderer reads the right field but interprets it wrong; those
 need a visual diff (below).
 
 CI guard (planned, see [Open work](#open-work)): run the export, then
-`git diff --exit-code render-ts/src/schema/`.
+`git diff --exit-code packages/xlsx-preview/src/schema/`.
 
 Conventions enforced by attributes on the Rust types:
 
@@ -387,8 +387,8 @@ Conventions enforced by attributes on the Rust types:
 Add new types to **all of**:
 
 1. `crates/xlcore-export/src/schema.rs` with the three attributes above.
-2. `render-ts/src/schema/index.ts` (barrel).
-3. `render-ts/src/types.ts` (re-export list).
+2. `packages/xlsx-preview/src/schema/index.ts` (barrel).
+3. `packages/xlsx-preview/src/types.ts` (re-export list).
 
 ## Fixture corpus (in progress)
 
@@ -526,7 +526,7 @@ Until the CI loop above lands, use this for spot-checks:
 
 ```bash
 # 1. build
-cd render-ts && bun run build && cd ..
+cd packages/xlsx-preview && bun run build && cd ..
 cargo build --release
 
 # 2. our render
@@ -761,7 +761,7 @@ surrounding workbook noise.
       already-extracted sheet rows, preserves `None` for empty / non-
       numeric source cells (so `displayEmptyCellsAs` can do its job),
       and reduces over the group when in group-axis mode. Renderer:
-      new `render-ts/src/sparklines.ts` (~330 LOC) wired into the
+      new `packages/xlsx-preview/src/sparklines.ts` (~330 LOC) wired into the
       per-pane render loop right after `drawCfIcons`, with three
       drawer paths matching the OOXML types and a shared
       `resolveRange` helper for axis math. Hsx-divergence: minimal
@@ -780,7 +780,7 @@ surrounding workbook noise.
 - [ ] Land the next batch of per-feature fixtures (the four marked above
       as "would have caught X bug").
 - [ ] CI guard: `cargo test … export_bindings && git diff --exit-code
-    render-ts/src/schema/`.
+    packages/xlsx-preview/src/schema/`.
 - [ ] `cargo-insta` snapshot test on `WorkbookLayout` JSON for every
       fixture.
 - [ ] Pixel-diff snapshot test — render via the new node-canvas adapter,

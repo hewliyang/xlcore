@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct WorkbookLayout {
@@ -64,7 +64,7 @@ pub struct WorkbookLayout {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Theme {
@@ -88,7 +88,7 @@ pub struct Theme {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct TextRun {
@@ -150,7 +150,7 @@ pub struct TextRun {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Sheet {
@@ -262,7 +262,7 @@ pub struct Sheet {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct SparklineGroup {
@@ -340,7 +340,7 @@ pub struct SparklineGroup {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Sparkline {
@@ -364,7 +364,7 @@ pub struct Sparkline {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct OutlinePr {
@@ -380,7 +380,7 @@ pub struct OutlinePr {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Pivot {
@@ -401,7 +401,7 @@ pub struct Pivot {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct CellRef {
@@ -415,7 +415,7 @@ pub struct CellRef {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Hyperlink {
@@ -448,7 +448,7 @@ pub struct Hyperlink {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Comment {
@@ -476,7 +476,7 @@ pub struct Comment {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Table {
@@ -507,7 +507,7 @@ pub struct Table {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct TableColumn {
@@ -532,7 +532,7 @@ pub struct TableColumn {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct TableStyle {
@@ -554,7 +554,7 @@ pub struct TableStyle {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Drawing {
@@ -573,7 +573,7 @@ pub struct Drawing {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Image {
@@ -586,7 +586,7 @@ pub struct Image {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct DrawingAnchor {
@@ -607,7 +607,7 @@ pub struct DrawingAnchor {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Chart {
@@ -673,7 +673,7 @@ pub struct Chart {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct DataLabels {
@@ -708,7 +708,7 @@ pub struct DataLabels {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ChartSeries {
@@ -755,7 +755,7 @@ pub struct ChartSeries {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ConditionalFormat {
@@ -767,7 +767,7 @@ pub struct ConditionalFormat {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct CfRule {
@@ -853,7 +853,7 @@ pub struct CfRule {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Dxf {
@@ -894,7 +894,7 @@ pub struct Dxf {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct CfColorScale {
@@ -912,7 +912,7 @@ pub struct CfColorScale {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct CfDataBar {
@@ -958,7 +958,7 @@ pub struct CfDataBar {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct CfIconSet {
@@ -987,7 +987,7 @@ pub struct CfIconSet {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct CfvoStop {
@@ -1003,7 +1003,7 @@ pub struct CfvoStop {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct CfColorScaleStop {
@@ -1019,7 +1019,7 @@ pub struct CfColorScaleStop {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Col {
@@ -1041,7 +1041,7 @@ pub struct Col {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Row {
@@ -1066,7 +1066,7 @@ pub struct Row {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Cell {
@@ -1099,7 +1099,7 @@ pub struct Cell {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Merge {
@@ -1112,7 +1112,7 @@ pub struct Merge {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Freeze {
@@ -1128,7 +1128,7 @@ pub struct Freeze {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Styles {
@@ -1145,7 +1145,7 @@ pub struct Styles {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Font {
@@ -1193,7 +1193,7 @@ pub struct Font {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Fill {
@@ -1246,7 +1246,7 @@ pub struct Fill {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct GradientStop {
@@ -1258,7 +1258,7 @@ pub struct GradientStop {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Border {
@@ -1292,7 +1292,7 @@ pub struct Border {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct BorderLine {
@@ -1306,7 +1306,7 @@ pub struct BorderLine {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct CellFormat {
@@ -1343,7 +1343,7 @@ pub struct CellFormat {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct NumberFormat {
@@ -1355,7 +1355,7 @@ pub struct NumberFormat {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Color {
@@ -1414,7 +1414,7 @@ fn is_zero_u8(n: &u8) -> bool {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ColumnarCells {
@@ -1442,7 +1442,7 @@ pub struct ColumnarCells {
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
     feature = "typescript",
-    ts(export, export_to = "../../../render-ts/src/schema/")
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
 )]
 #[serde(rename_all = "camelCase")]
 pub struct RowMetaBlob {

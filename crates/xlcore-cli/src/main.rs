@@ -80,8 +80,8 @@ fn cmd_preview(args: &[String]) -> Result<()> {
 
     // Find the renderer bundle.
     let renderer_path = renderer_path.or_else(default_renderer_path).context(
-        "could not locate render-ts bundle; pass --renderer path/to/dist/browser.js \
-             or build it first (cd render-ts && bun run build)",
+        "could not locate packages/xlsx-preview bundle; pass --renderer path/to/dist/browser.js \
+             or build it first (cd packages/xlsx-preview && bun run build)",
     )?;
     let renderer_js = fs::read_to_string(&renderer_path)
         .with_context(|| format!("reading renderer bundle: {}", renderer_path.display()))?;
@@ -145,10 +145,10 @@ fn parse_io_args(args: &[String], default_ext: &str) -> Result<(PathBuf, PathBuf
 }
 
 fn default_renderer_path() -> Option<PathBuf> {
-    // Walk up from CWD looking for render-ts/dist/browser.js.
+    // Walk up from CWD looking for packages/xlsx-preview/dist/browser.js.
     let mut cur = std::env::current_dir().ok()?;
     for _ in 0..6 {
-        let candidate = cur.join("render-ts/dist/browser.js");
+        let candidate = cur.join("packages/xlsx-preview/dist/browser.js");
         if candidate.exists() {
             return Some(candidate);
         }

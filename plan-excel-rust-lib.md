@@ -49,7 +49,7 @@ xlcore/
   xlcore-bridge/   # harvest/replay/write-back; agent batch-mutation API
   xlcore-export/   # WorkbookLayout serializer (JSON + Postcard)
   xlcore-wasm/     # wasm-bindgen entry for browser
-xlcore-render-ts/  # separate npm pkg, runs in browser + Node
+xlcore-packages/xlsx-preview/  # separate npm pkg, runs in browser + Node
 ```
 
 ## validation
@@ -77,11 +77,11 @@ feature-by-feature scoreboard.
 ## first milestones
 
 1. ~~Fork IronCalc, port `SUMPRODUCT`~~ **TODO** — still the headline blocker for live recalc.
-2. ~~Define `WorkbookLayout` schema based on `walnut-spreadsheet-proto.d.ts`.~~ **DONE** — `crates/xlcore-export/src/schema.rs` + mirrored `render-ts/src/types.ts`.
-3. ~~Port a slim `simple-workbook-canvas.mjs` (cells/styles/borders/merges/basic CF, no charts).~~ **DONE** — `render-ts/src/render.ts` (~700 LOC). Includes CF color scales, text overflow into empty neighbors, vector-crisp zoom (re-renders on DPR + app-zoom changes), subtle freeze indicators, basic number formats.
+2. ~~Define `WorkbookLayout` schema based on `walnut-spreadsheet-proto.d.ts`.~~ **DONE** — `crates/xlcore-export/src/schema.rs` + mirrored `packages/xlsx-preview/src/types.ts`.
+3. ~~Port a slim `simple-workbook-canvas.mjs` (cells/styles/borders/merges/basic CF, no charts).~~ **DONE** — `packages/xlsx-preview/src/render.ts` (~700 LOC). Includes CF color scales, text overflow into empty neighbors, vector-crisp zoom (re-renders on DPR + app-zoom changes), subtle freeze indicators, basic number formats.
 4. Wire `xlcore` → wasm → JSON → browser canvas end-to-end. **PARTIAL** — JSON pipeline + standalone HTML preview shipped (`xlcore preview` inlines renderer + data). Wasm entry not done; preview currently re-runs the Rust extractor server-side.
 5. ~~Add `node-canvas` backend running same TS for server PNG.~~ **DONE** —
-   `render-ts/src/node.ts` wires `@napi-rs/canvas` into the same `render()`
+   `packages/xlsx-preview/src/node.ts` wires `@napi-rs/canvas` into the same `render()`
    entrypoint and exports `renderToCanvas()` / `renderToPng()`. Pattern-fill
    hatches now get their offscreen canvas through a tiny factory so browser
    and Node share the paint path. Smoke-tested against
@@ -89,7 +89,7 @@ feature-by-feature scoreboard.
 
 Bonus shipped (was "v1+"):
 
-- ~~Charts beyond placeholders.~~ **DONE** for column + bar (clustered + stacked) plus line / area (standard/stacked/percentStacked) / pie+doughnut / xy scatter, all with axis number formats, theme colors, and shared legend. See `crates/xlcore-export/src/charts.rs` and `render-ts/src/chart.ts`.
+- ~~Charts beyond placeholders.~~ **DONE** for column + bar (clustered + stacked) plus line / area (standard/stacked/percentStacked) / pie+doughnut / xy scatter, all with axis number formats, theme colors, and shared legend. See `crates/xlcore-export/src/charts.rs` and `packages/xlsx-preview/src/chart.ts`.
 - ~~Theme XML parsing.~~ **DONE.** `xl/theme/theme1.xml` parsed by
   `crates/xlcore-export/src/theme.rs`; emitted as
   `WorkbookLayout.theme` (12-entry palette in spreadsheet-index order +

@@ -1,7 +1,7 @@
 # numfmt triage (2026-05-09)
 
 Built four narrow fixtures to map exactly which number-format families
-break in `render-ts/src/render.ts::formatNumber`. Each `.xlsx` ships
+break in `packages/xlsx-preview/src/render.ts::formatNumber`. Each `.xlsx` ships
 with both its `*.hsx.png` ground-truth screenshot and a current
 `*.ours.png` for side-by-side review. Rerun the visual diff with the
 workflow in [`TESTING.md`](../../../TESTING.md).
@@ -20,8 +20,8 @@ verified non-regressed.
 
 ## What changed
 
-Replaced the regex-based stub in `render-ts/src/render.ts::formatNumber`
-with a real evaluator in `render-ts/src/numfmt.ts` (~700 LOC). Pipeline:
+Replaced the regex-based stub in `packages/xlsx-preview/src/render.ts::formatNumber`
+with a real evaluator in `packages/xlsx-preview/src/numfmt.ts` (~700 LOC). Pipeline:
 
 ```
 formatValue(value, fmt)

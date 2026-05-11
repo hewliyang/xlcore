@@ -1,0 +1,21 @@
+import type { Chart, ChartSeries, DataLabels } from "./types.js";
+import type { Rect } from "./chart.js";
+export declare function valueRange(rows: number[][]): {
+    minV: number;
+    maxV: number;
+};
+export declare function buildStackedRows(series: ChartSeries[], categoryCount: number, percent: boolean): number[][];
+export declare function drawAxisFrame(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect, ticks: number[], minV: number, maxV: number, horizontal: boolean, percent: boolean): Rect;
+export declare function drawCategoryAxis(ctx: CanvasRenderingContext2D, chart: Chart, inner: Rect, categoryCount: number, horizontal: boolean): void;
+export declare function withAlpha(color: string, alpha: number): string;
+export declare function drawLegend(ctx: CanvasRenderingContext2D, series: ChartSeries[], rect: Rect): void;
+export declare function drawPlaceholderPlot(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void;
+export declare function effectiveLabels(chart: Chart, s: ChartSeries): DataLabels | undefined;
+export declare function buildLabelText(dl: DataLabels, chart: Chart, series: ChartSeries, categoryIdx: number, value: number, categoryTotal: number): string;
+export declare function drawLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, align?: CanvasTextAlign, baseline?: CanvasTextBaseline): void;
+export declare function niceTicks(min: number, max: number, count: number): number[];
+export declare function niceNum(range: number, round: boolean): number;
+export declare function formatAxisValue(v: number, fmt: string | undefined): string;
+export declare function formatGeneral(v: number): string;
+export declare function decimalsIn(fmt: string): number;
+export declare function withGrouping(v: number, decimals: number): string;

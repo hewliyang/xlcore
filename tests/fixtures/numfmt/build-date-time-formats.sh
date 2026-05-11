@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Date / time built-in + custom number formats.
-# Catches: formatNumber() in render-ts has no date branch — these
+# Catches: formatNumber() in packages/xlsx-preview has no date branch — these
 # all currently render as the raw serial number.
 set -euo pipefail
 F=${1:-$(dirname "$0")/date-time-formats.xlsx}

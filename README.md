@@ -1,6 +1,6 @@
-# excel-spike (xlcore)
+# xlsx-preview
 
-Rust crate(s) + TS canvas renderer for an agent-/HITL-friendly Excel pipeline.
+Rust extractor workspace + `@hewliyang/xlsx-preview` canvas renderer for an agent-/HITL-friendly Excel pipeline.
 See [`plan-excel-rust-lib.md`](plan-excel-rust-lib.md) for the architecture and
 multi-month roadmap.
 
@@ -16,7 +16,7 @@ crates/
   xlcore-io/        ooxmlsdk facade (open/save, A1 helpers)
   xlcore-export/    extract WorkbookLayout (cells, styles, layout, charts) → JSON
   xlcore-cli/       `xlcore extract` and `xlcore preview` binaries
-render-ts/          canvas renderer; runs in browser + (eventually) node-canvas
+packages/xlsx-preview/          npm package source for `@hewliyang/xlsx-preview`; canvas renderer for browser/React/Node
 plan-excel-rust-lib.md
 ```
 
@@ -33,7 +33,7 @@ crates/
 
 ```bash
 # 1. build the renderer bundle
-cd render-ts && bun install && bun run build && cd ..
+cd packages/xlsx-preview && bun install && bun run build && cd ..
 
 # 2. build the rust workspace
 cargo build --release
@@ -70,14 +70,14 @@ SpreadsheetDocument (full OOXML tree, charts/CF/etc preserved verbatim)
   │  walk sheets/rows/cells, resolve fonts/fills/borders/numFmts;
   │  extract drawings + charts; resolve chart range refs
   ▼  (xlcore-export)
-WorkbookLayout JSON  ──►  render-ts canvas renderer  ──►  <canvas> / PNG
+WorkbookLayout JSON  ──►  @hewliyang/xlsx-preview canvas renderer  ──►  <canvas> / PNG
 ```
 
 The JSON contract is generated from one source via
 [`ts-rs`](https://github.com/Aleph-Alpha/ts-rs):
 - Rust source of truth: [`crates/xlcore-export/src/schema.rs`](crates/xlcore-export/src/schema.rs)
-- Generated TS (per type): `render-ts/src/schema/*.ts`
-- Barrel re-export the renderer imports: [`render-ts/src/types.ts`](render-ts/src/types.ts)
+- Generated TS (per type): `packages/xlsx-preview/src/schema/*.ts`
+- Barrel re-export the renderer imports: [`packages/xlsx-preview/src/types.ts`](packages/xlsx-preview/src/types.ts)
 
 Regenerate after any schema change:
 
@@ -120,7 +120,7 @@ Implemented:
 - **Vector-crisp zoom**: re-renders on `devicePixelRatio` change
   (browser Cmd+/-) and via `±` app-level zoom buttons; never
   bitmap-upscales.
-- Schema kept in sync via `ts-rs`-generated `render-ts/src/schema/*.ts`.
+- Schema kept in sync via `ts-rs`-generated `packages/xlsx-preview/src/schema/*.ts`.
 
 Not yet (engine preserves XML on round-trip; renderer skips). See
 [`PARITY.md`](PARITY.md) for the full per-feature scoreboard:
@@ -150,7 +150,7 @@ section has the full ranked list with effort estimates.
 3. **Number-format compiler** — real format-section evaluator (`[Red]`,
    `[>0]`, AM/PM, fractions, scientific).
 4. **Charts: line / pie / scatter / area** — each is one new drawer in
-   `render-ts/src/chart.ts`.
+   `packages/xlsx-preview/src/chart.ts`.
 5. **Comments + hyperlinks** — cheap and visible (red-triangle marker,
    blue+underline). Both have OOXML parts not yet in `WorkbookLayout`.
 6. **`xlcore-engine`** — fork IronCalc, port `SUMPRODUCT` first.

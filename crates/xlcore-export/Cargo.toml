@@ -7,7 +7,7 @@ description = "Extract a structured WorkbookLayout (cells, styles, layout) from 
 
 [features]
 default = []
-# Enable when regenerating TypeScript schema files under render-ts/src/schema.
+# Enable when regenerating TypeScript schema files under packages/xlsx-preview/src/schema.
 typescript = ["dep:ts-rs"]
 
 [dependencies]

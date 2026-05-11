@@ -19,7 +19,7 @@
 //!   (ECMA-376 §20.1.2.3.30); converted to 0..255 bytes.
 //! - `<a:hslClr hue="deg * 60000" sat="% * 1000" lum="% * 1000">`
 //!   (§20.1.2.3.13) — HSL → RGB. Note OOXML HSL is *not* the same as the
-//!   theme-tint HLS curve in `render-ts/src/render.ts`; here we just do
+//!   theme-tint HLS curve in `packages/xlsx-preview/src/render.ts`; here we just do
 //!   the standard sRGB conversion.
 //! - `<a:prstClr val="name">` (§20.1.10.47) — lookup against the spec's
 //!   190-entry preset color table (CSS3/X11 names + `dk`/`lt`/`med`
@@ -30,7 +30,7 @@
 //! Color modifier children (`<a:tint>`, `<a:shade>`, `<a:lumMod>`,
 //! `<a:satMod>`, `<a:alpha>`, …) are intentionally ignored at the theme
 //! level — themes ship raw scheme colors; the cell-level tint handling
-//! lives in `render-ts/src/render.ts::applyTint` and operates on the
+//! lives in `packages/xlsx-preview/src/render.ts::applyTint` and operates on the
 //! resolved hex we emit here.
 use crate::schema::Theme;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;

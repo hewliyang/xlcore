@@ -1,0 +1,68 @@
+{
+  "name": "@hewliyang/xlsx-preview",
+  "version": "0.0.1",
+  "description": "XLSX preview/rendering library for browser, React, and Node.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "bin": {
+    "xlsx-preview": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "bun run build:ts",
+    "build:ts": "tsc --emitDeclarationOnly && bun build src/browser.ts --outfile dist/browser.js --target browser --format iife && bun build src/index.ts --outfile dist/index.js --target node --format esm --external skia-canvas && bun build src/cli.ts --outfile dist/cli.js --target node --format esm --external skia-canvas && bun run copy:wasm && bun build src/previewer.ts --outfile dist/previewer.js --target browser --format esm && bun build src/browserLoader.ts --outfile dist/browser-loader.js --target browser --format esm && bun build src/react.ts --outfile dist/react.js --target browser --format esm --external react && bun build src/xlsxWorker.ts --outfile dist/xlsxWorker.js --target browser --format esm",
+    "build:wasm": "cd ../.. && wasm-pack build crates/xlcore-wasm --target web --out-dir pkg --profile wasm-size --no-opt",
+    "build:release": "bun run build:wasm && bun run build:ts",
+    "copy:wasm": "test -f ../../crates/xlcore-wasm/pkg/xlcore_wasm.js && test -f ../../crates/xlcore-wasm/pkg/xlcore_wasm_bg.wasm && cp ../../crates/xlcore-wasm/pkg/xlcore_wasm.js ../../crates/xlcore-wasm/pkg/xlcore_wasm_bg.wasm dist/",
+    "prepack": "bun run build:release",
+    "check": "bun run typecheck && bun run lint && bun run check:loc && bun run knip",
+    "check:loc": "bun scripts/check-loc.ts",
+    "dev": "bun build src/browser.ts --outfile dist/browser.js --target browser --format iife --watch",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "knip": "knip",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./previewer": {
+      "import": "./dist/previewer.js",
+      "types": "./dist/previewer.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/browser-loader.js",
+      "types": "./dist/browserLoader.d.ts"
+    },
+    "./react": {
+      "import": "./dist/react.js",
+      "types": "./dist/react.d.ts"
+    }
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "dependencies": {
+    "skia-canvas": "^3.0.6"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.15",
+    "@types/bun": "^1.3.13",
+    "@types/react": "^19.2.14",
+    "knip": "^6.12.2",
+    "react": "^19.2.6",
+    "typescript": "^5.5.0",
+    "xlcore-wasm": "file:../../crates/xlcore-wasm/pkg"
+  },
+  "trustedDependencies": [
+    "skia-canvas"
+  ]
+}

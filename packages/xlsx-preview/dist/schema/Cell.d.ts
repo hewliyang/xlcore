@@ -1,0 +1,29 @@
+import type { TextRun } from "./TextRun.js";
+export type Cell = {
+    /**
+     * Row, 1-based.
+     */
+    r: number;
+    /**
+     * Col, 1-based.
+     */
+    c: number;
+    /**
+     * `n` numeric, `s` shared string (value is the index as a string),
+     * `inline` inline string, `b` boolean ("0"/"1"), `e` error, `str` plain
+     * string from a formula, `f` formula (cached value goes in `value`).
+     */
+    type: string;
+    /**
+     * Source-cached value (raw, unformatted). Numbers are decimal strings.
+     */
+    value?: string;
+    formula?: string;
+    styleIndex?: number;
+    /**
+     * Rich-text runs for `inline` cells that carry `<r>` children. For
+     * shared-string cells, look up runs via `WorkbookLayout.shared_string_runs`
+     * using `value` as the SST index. Empty when the cell is plain text.
+     */
+    runs: Array<TextRun>;
+};
