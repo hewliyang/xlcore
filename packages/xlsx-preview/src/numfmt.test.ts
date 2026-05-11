@@ -75,3 +75,29 @@ test("multiple fills in one section both surface in fills[]", () => {
   expect(r.text).toBe(`${FILL_SENTINEL}7${FILL_SENTINEL}`);
   expect(r.fills).toEqual(["-", "="]);
 });
+
+// Unquoted `General` is a format-code keyword, not literal text. It means
+// "render value through the General format". Surrounding literals (here
+// the `\E`) stay verbatim. Real-world repro: e-010_input.xlsx ships
+// formats `General\E`/`General\A`/`General\F` on date cells.
+test("General keyword splices formatGeneral output, with literal suffix", () => {
+  expect(formatValue(45473, "General\\E").text).toBe("45473E");
+  expect(formatValue(1.5, "General\\A").text).toBe("1.5A");
+  // Bare "General" still hits the fast path in formatValue, so also
+  // cover case-insensitive parsing inside a longer code.
+  expect(formatValue(42, "GENERAL\\F").text).toBe("42F");
+});
+
+// Multi-section formats select a slot by sign; the slot is responsible
+// for any sign/parens it wants. Excel renders |value| through the
+// negative slot — repro'd in spreadjs. Before this fix, `0.0;General`
+// on -5 emitted "-5" instead of "5".
+test("negative-slot sections receive |value|", () => {
+  expect(formatValue(-5, "0.0;General").text).toBe("5");
+  expect(formatValue(-5, "General;General").text).toBe("5");
+  // Single-section still keeps the auto sign.
+  expect(formatValue(-1234.5, "#,##0").text).toBe("-1,235");
+  // Explicit sign in neg slot still works (slot literals supply "-"/"()").
+  expect(formatValue(-5, "0.0;-0.0").text).toBe("-5.0");
+  expect(formatValue(-1234.5, "#,##0;(#,##0)").text).toBe("(1,235)");
+});

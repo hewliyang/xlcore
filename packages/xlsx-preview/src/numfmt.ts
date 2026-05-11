@@ -59,10 +59,18 @@ export function formatValue(value: number, fmt: string | undefined): FormatResul
   } catch {
     return { text: formatGeneral(value) };
   }
-  const sec = pickSection(sections, value);
-  if (!sec) return { text: formatGeneral(value) };
+  const picked = pickSection(sections, value);
+  if (!picked) return { text: formatGeneral(value) };
+  const { sec, isNegSlot } = picked;
   try {
-    const text = renderSection(value, sec);
+    // When the section was chosen because the value is negative AND
+    // there's a dedicated negative slot, the slot itself encodes the
+    // sign (e.g. `0.0;(0.0)` or `0.0;General`). Per OOXML, the value
+    // rendered through the slot is |value| — the slot's literals supply
+    // any minus / parens. Single-section formats keep the signed value
+    // (renderNumber auto-prefixes "-").
+    const renderValue = isNegSlot ? Math.abs(value) : value;
+    const text = renderSection(renderValue, sec);
     const fills = sec.tokens.flatMap((t) => (t.kind === "fill" ? [t.ch] : []));
     const out: FormatResult = { text, color: sec.color };
     if (fills.length > 0) out.fills = fills;
@@ -94,6 +102,7 @@ export type Tok =
   | { kind: "elapsed"; field: "h" | "m" | "s"; width: number } // [h], [hh], [mm]:..., etc.
   | { kind: "ampm"; upper: boolean; abbreviated: boolean }
   | { kind: "fill"; ch: string } // *x — pad with `x` to fill cell width
+  | { kind: "general" } // unquoted "General" — splice formatGeneral(value) here
   | { kind: "text" }; // @
 
 export interface Section {
@@ -321,11 +330,13 @@ function parseSection(raw: string): Section {
   );
   const hasText = tokens.some((t) => t.kind === "text");
   const hasDigit = tokens.some((t) => t.kind === "digit");
+  const hasGeneral = tokens.some((t) => t.kind === "general");
 
   if (hasDate) flavor = "date";
   else if (slashIdx >= 0 && hasDigit) flavor = "fraction";
   else if (expIdx >= 0 && hasDigit) flavor = "scientific";
   else if (hasDigit) flavor = "number";
+  else if (hasGeneral) flavor = "literal"; // rendered via litOrFill switch
   else if (hasText) flavor = "text";
   else flavor = "literal";
 
@@ -593,6 +604,14 @@ function tokenize(s: string): Tok[] {
       i += 3;
       continue;
     }
+    // Unquoted, unescaped "General" — render value through formatGeneral
+    // and splice it in here. Surrounding literals (e.g. `General\E`) are
+    // kept verbatim. Case-insensitive per Excel.
+    if ((c === "G" || c === "g") && /^general/i.test(s.slice(i))) {
+      out.push({ kind: "general" });
+      i += 7;
+      continue;
+    }
     if (c === "0" || c === "#" || c === "?") {
       out.push({ kind: "digit", ch: c });
       i++;
@@ -643,7 +662,10 @@ function tokenize(s: string): Tok[] {
 
 // ---------- section selection ----------
 
-function pickSection(sections: Section[], value: number): Section | undefined {
+function pickSection(
+  sections: Section[],
+  value: number,
+): { sec: Section; isNegSlot: boolean } | undefined {
   if (sections.length === 0) return undefined;
   // If any section has an explicit [cond], interpret per OOXML:
   // section[0]'s cond, section[1]'s cond, section[2] = "everything else".
@@ -652,16 +674,23 @@ function pickSection(sections: Section[], value: number): Section | undefined {
     for (let i = 0; i < Math.min(2, sections.length); i++) {
       const s = sections[i]!;
       if (!s.condition) continue;
-      if (matchesCond(value, s.condition)) return s;
+      if (matchesCond(value, s.condition)) return { sec: s, isNegSlot: false };
     }
-    return sections[2] ?? sections[sections.length - 1];
+    const fallback = sections[2] ?? sections[sections.length - 1]!;
+    return { sec: fallback, isNegSlot: false };
   }
   // Sign-based: pos / neg / zero / text (we don't get text values here).
-  if (sections.length === 1) return sections[0];
-  if (value > 0) return sections[0];
-  if (value < 0) return sections[1] ?? sections[0];
+  // Single-section formats handle their own sign (renderNumber auto-prefixes
+  // "-"); the "neg slot" concept only applies when sections.length >= 2.
+  if (sections.length === 1) return { sec: sections[0]!, isNegSlot: false };
+  if (value > 0) return { sec: sections[0]!, isNegSlot: false };
+  if (value < 0) {
+    const neg = sections[1];
+    if (neg) return { sec: neg, isNegSlot: true };
+    return { sec: sections[0]!, isNegSlot: false };
+  }
   // value == 0
-  return sections[2] ?? sections[0];
+  return { sec: sections[2] ?? sections[0]!, isNegSlot: false };
 }
 
 function matchesCond(v: number, c: NonNullable<Section["condition"]>): boolean {
@@ -687,7 +716,13 @@ function renderSection(value: number, sec: Section): string {
   // For non-numeric flavors we still need to expose `*x` fill points so
   // the renderer can pad them; lower fill tokens to the sentinel char.
   const litOrFill = (t: Tok): string =>
-    t.kind === "lit" ? t.s : t.kind === "fill" ? FILL_SENTINEL : "";
+    t.kind === "lit"
+      ? t.s
+      : t.kind === "fill"
+        ? FILL_SENTINEL
+        : t.kind === "general"
+          ? formatGeneral(value)
+          : "";
   switch (sec.flavor) {
     case "literal":
       return sec.tokens.map(litOrFill).join("");
