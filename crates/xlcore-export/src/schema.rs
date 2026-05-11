@@ -6,9 +6,11 @@
 use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct WorkbookLayout {
     pub sheets: Vec<Sheet>,
     pub styles: Styles,
@@ -60,7 +62,10 @@ pub struct WorkbookLayout {
 /// handle yet) we fall back to the Office default for that slot.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Theme {
     /// 12 hex colors, indexed by `Color.theme`.
@@ -81,9 +86,11 @@ pub struct Theme {
 /// own font".
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct TextRun {
     pub text: String,
     #[serde(default, skip_serializing_if = "is_false")]
@@ -92,6 +99,16 @@ pub struct TextRun {
     pub italic: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     pub underline: bool,
+    /// OOXML `<u val="..."/>` variant when not the default `single`.
+    /// One of `"single"` / `"double"` / `"singleAccounting"` /
+    /// `"doubleAccounting"`. Absent = `single` (matches the OOXML default).
+    /// Renderer paints `double*` as two parallel strokes; the
+    /// accounting variants currently fall through to single/double
+    /// (the "line extends across the full cell width" semantics are
+    /// not honored yet — tracked in PARITY.md).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub underline_style: Option<String>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub strike: bool,
     /// Font size in points (matches `Font.size`).
@@ -104,12 +121,38 @@ pub struct TextRun {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<Color>,
+    /// OOXML `<vertAlign val="..."/>` — `"superscript"` or
+    /// `"subscript"`. `"baseline"` (the default) is omitted. Renderer
+    /// draws sup/sub at ~58% of the run's font size, shifted ±33%/+14% of
+    /// the base font's em above/below the baseline.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vert_align: Option<String>,
+    /// OOXML `<family val="N"/>` — numeric font-family hint (0..5):
+    /// 0=N/A, 1=Roman (serif), 2=Swiss (sans-serif), 3=Modern (monospace),
+    /// 4=Script (cursive), 5=Decorative (fantasy). Renderer uses this to
+    /// pick a richer CSS fallback so a workbook authored in a serif
+    /// typeface that's not installed locally still falls back to a serif
+    /// (not the generic sans-serif default).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family: Option<u8>,
+    /// OOXML `<scheme val="major|minor"/>` — theme-font reference. When
+    /// present, the run logically references the workbook's theme major /
+    /// minor font; the `<rFont>` cache may be stale if a different theme
+    /// document has been swapped in. Renderer prefers the resolved theme
+    /// font over `font_name` when this is set. `"none"` is omitted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scheme: Option<String>,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Sheet {
     pub index: u32,
     pub name: String,
@@ -122,6 +165,11 @@ pub struct Sheet {
     pub default_row_height_px: f32,
     /// Custom column widths (sparse). Each entry covers cols `min..=max`.
     pub cols: Vec<Col>,
+    /// **Wire-invisible**: the extractor populates this Vec, then a
+    /// post-pass collapses it into the columnar blobs below and clears
+    /// it. Always empty in serialized JSON. Hidden from TS bindings.
+    #[cfg_attr(feature = "typescript", ts(skip))]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub rows: Vec<Row>,
     pub merges: Vec<Merge>,
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -140,6 +188,38 @@ pub struct Sheet {
     /// rows, filter-arrow glyphs); no filtering interactivity.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tables: Vec<Table>,
+
+    // ---------------------------------------------------------------
+    // Columnar cell storage. The extractor still builds `rows` (above)
+    // for ergonomic post-processing (chart-ref resolution, etc.); a
+    // post-pass in `lib.rs::compactify_sheets` converts that into the
+    // typed-array blobs below and clears `rows`. The wire format only
+    // ships the columnar form. See `crates/xlcore-export/src/columnar.rs`.
+    // ---------------------------------------------------------------
+    /// Non-empty cell records, sorted (row asc, col asc within row).
+    /// All inner blobs are base64-encoded little-endian typed arrays
+    /// of length `count`. The renderer decodes these once at load time
+    /// into Uint32Array/Int32Array/Uint8Array views.
+    #[serde(default)]
+    pub cells: ColumnarCells,
+    /// Per-row metadata for rows that carry custom height/style/hidden
+    /// flags or simply have any cells. Sorted by `index` ascending.
+    #[serde(default)]
+    pub row_meta: RowMetaBlob,
+    /// Deduplicated string pool for `cells.valueIdx`. `valueIdx[i] >= 0`
+    /// means "look up `value_pool[valueIdx[i]]`"; `-1` means the cell
+    /// has no cached value (rare; mostly empty formula cells).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub value_pool: Vec<String>,
+    /// Deduplicated formula pool for `cells.formulaIdx`. Most cells
+    /// have no formula (`formulaIdx[i] == -1`); pool is small.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub formula_pool: Vec<String>,
+    /// Inline rich-text run lists for cells that carry `<r>` children
+    /// directly (i.e. `kind == "inline"` with explicit runs). Indexed
+    /// by `cells.runsIdx`; `-1` means "no inline runs on this cell".
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub inline_runs: Vec<Vec<TextRun>>,
     /// `<hyperlink>` entries from the worksheet's `<hyperlinks>` block.
     /// External `r:id` rels are resolved to absolute URLs at extract
     /// time; `location` carries internal in-workbook jumps (e.g.
@@ -161,6 +241,135 @@ pub struct Sheet {
     /// expand-collapse interactivity. ("Cheap path" in PARITY.md.)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub pivots: Vec<Pivot>,
+    /// OOXML `<sheetPr><outlinePr summaryBelow="..."
+    /// summaryRight="..."/></sheetPr>`. Tells the renderer where the
+    /// summary row/col sits relative to a group (default: below + right,
+    /// matching Excel's UI default). `None` = use those defaults.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub outline_pr: Option<OutlinePr>,
+    /// Sparkline groups from the worksheet's `<extLst>` (x14 ext URI
+    /// `{05C60535-1F16-4fd2-B633-F4F36F0B64E0}`). Each group shares
+    /// type/colors/axis settings across N anchored sparklines.
+    /// Renderer paints one mini-chart per anchor cell.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sparkline_groups: Vec<SparklineGroup>,
+}
+
+/// One `<x14:sparklineGroup>` — shared chrome across N `<x14:sparkline>`
+/// children. All booleans default false unless noted (matches OOXML).
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct SparklineGroup {
+    /// `"line"` (default), `"column"`, or `"stacked"` (win/loss).
+    pub spark_type: String,
+    /// Default 0.75pt — matches Excel's UI default for new sparklines.
+    pub line_weight: f32,
+    pub markers: bool,
+    pub high: bool,
+    pub low: bool,
+    pub first: bool,
+    pub last: bool,
+    pub negative: bool,
+    /// `displayXAxis=1` paints a horizontal axis line at zero when the
+    /// data crosses zero. (Excel calls this "Show Axis".)
+    pub display_x_axis: bool,
+    pub right_to_left: bool,
+    /// `"gap"` (default), `"zero"`, or `"span"` — controls how empty
+    /// cells in the data range are treated.
+    pub display_empty_cells_as: String,
+    /// `"individual"` (default), `"group"`, or `"custom"`.
+    pub min_axis_type: String,
+    pub max_axis_type: String,
+    /// Set when `min_axis_type == "custom"`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manual_min: Option<f64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manual_max: Option<f64>,
+    /// Resolved when `min_axis_type == "group"` — the renderer should
+    /// use this as both the per-cell min and max so the entire group
+    /// shares one y-scale. `None` when not in group mode (or no data).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group_min: Option<f64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group_max: Option<f64>,
+    /// Series fill / line color (hex `RRGGBB`). `None` ⇒ renderer
+    /// falls back to a sensible default (theme accent1).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_series: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_negative: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_axis: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_markers: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_first: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_last: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_high: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_low: Option<String>,
+    /// Anchored sparklines that share this group's chrome.
+    pub sparklines: Vec<Sparkline>,
+}
+
+/// One `<x14:sparkline>` — anchored at one cell, drawing values from
+/// `formula`. Values are resolved post-extract (see
+/// `lib.rs::resolve_sparkline_refs`); preserve `None` for empty/text
+/// cells so the renderer can honor `displayEmptyCellsAs`.
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct Sparkline {
+    /// 1-based anchor cell row.
+    pub r: u32,
+    /// 1-based anchor cell column.
+    pub c: u32,
+    /// Source-data formula, e.g. `"Sheet1!B2:G2"`. Kept for debugging.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub formula: Option<String>,
+    /// Resolved data values in source order. `None` entries indicate
+    /// empty / non-numeric source cells; the renderer interprets them
+    /// according to the group's `displayEmptyCellsAs`.
+    pub values: Vec<Option<f64>>,
+}
+
+/// `<outlinePr>` defaults from `<sheetPr>`. Both fields default to true
+/// when `<outlinePr>` is absent (matches Excel/OOXML spec).
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct OutlinePr {
+    pub summary_below: bool,
+    pub summary_right: bool,
 }
 
 /// One `<pivotTableDefinition>` — just enough to paint the cosmetic
@@ -169,7 +378,10 @@ pub struct Sheet {
 /// with explicit cell xfs).
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Pivot {
     /// Internal name (`name=` attr on `<pivotTableDefinition>`).
@@ -187,7 +399,10 @@ pub struct Pivot {
 /// 1-based cell address. Used by `Pivot.filter_arrow_cells`.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct CellRef {
     pub r: u32,
@@ -198,7 +413,10 @@ pub struct CellRef {
 /// At least one of `target` / `location` is set.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Hyperlink {
     /// Range covered by this hyperlink (often a single cell, but the
@@ -228,7 +446,10 @@ pub struct Hyperlink {
 /// One `<comment>` entry from the worksheet's comments part.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Comment {
     /// 1-based row.
@@ -253,7 +474,10 @@ pub struct Comment {
 /// pure cosmetic chrome; the cell values themselves stay in `Sheet.rows`.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Table {
     /// Internal name (`name` attr; falls back to `displayName`).
@@ -281,7 +505,10 @@ pub struct Table {
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct TableColumn {
     pub name: String,
@@ -303,7 +530,10 @@ pub struct TableColumn {
 /// when it doesn't recognize the style name.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct TableStyle {
     /// Built-in style name, e.g. `TableStyleMedium2`. The trailing
@@ -322,9 +552,11 @@ pub struct TableStyle {
 /// One drawing object placed on the sheet, with its xlsx cell-anchor.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Drawing {
     /// `chart`, `image`, `shape` (only `chart` and `image` are rendered).
     pub kind: String,
@@ -339,9 +571,11 @@ pub struct Drawing {
 /// Inline-encoded raster image extracted from `xl/media/*`.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Image {
     /// `data:image/png;base64,...` style URI, ready to feed to <img>.
     pub data_uri: String,
@@ -350,28 +584,32 @@ pub struct Image {
 /// 1 EMU = 1/9525 px at 96 DPI.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct DrawingAnchor {
-     pub from_col: u32,
-     #[cfg_attr(feature = "typescript", ts(type = "number"))]
-     pub from_col_off_emu: i64,
-     pub from_row: u32,
-     #[cfg_attr(feature = "typescript", ts(type = "number"))]
-     pub from_row_off_emu: i64,
-     pub to_col: u32,
-     #[cfg_attr(feature = "typescript", ts(type = "number"))]
-     pub to_col_off_emu: i64,
-     pub to_row: u32,
-     #[cfg_attr(feature = "typescript", ts(type = "number"))]
-     pub to_row_off_emu: i64,
+    pub from_col: u32,
+    #[cfg_attr(feature = "typescript", ts(type = "number"))]
+    pub from_col_off_emu: i64,
+    pub from_row: u32,
+    #[cfg_attr(feature = "typescript", ts(type = "number"))]
+    pub from_row_off_emu: i64,
+    pub to_col: u32,
+    #[cfg_attr(feature = "typescript", ts(type = "number"))]
+    pub to_col_off_emu: i64,
+    pub to_row: u32,
+    #[cfg_attr(feature = "typescript", ts(type = "number"))]
+    pub to_row_off_emu: i64,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Chart {
     /// `column`, `bar`, `line`, `pie`, `area`, `scatter`, `unknown`.
     /// `column` and `bar` collapse into one `BarChart` schema entry; the
@@ -433,7 +671,10 @@ pub struct Chart {
 /// Empty when extracted from `<c:delete val="1"/>` (suppression marker).
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct DataLabels {
     #[serde(default, skip_serializing_if = "is_false")]
@@ -465,9 +706,11 @@ pub struct DataLabels {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct ChartSeries {
     pub name: String,
     /// Formula for the series name (e.g. `Sheet1!$A$2`). Resolved after
@@ -510,9 +753,11 @@ pub struct ChartSeries {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct ConditionalFormat {
     /// One or more rectangular ranges (from the sqref attribute).
     pub ranges: Vec<Merge>,
@@ -520,9 +765,11 @@ pub struct ConditionalFormat {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct CfRule {
     pub priority: i32,
     /// `colorScale`, `dataBar`, `iconSet`, `cellIs`, `expression`, `top10`,
@@ -604,7 +851,10 @@ pub struct CfRule {
 /// "inherit from base".
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct Dxf {
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -622,6 +872,10 @@ pub struct Dxf {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub underline: Option<bool>,
+    /// OOXML `<u val="..."/>` variant; see `Font.underline_style`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub underline_style: Option<String>,
     /// Fill foreground color (solid pattern). Background is rare in dxfs.
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -630,12 +884,19 @@ pub struct Dxf {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub num_fmt: Option<String>,
+    /// `<vertAlign val="..."/>` override from a dxf font block. See
+    /// `TextRun.vert_align`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vert_align: Option<String>,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct CfColorScale {
     pub stops: Vec<CfColorScaleStop>,
 }
@@ -649,7 +910,10 @@ pub struct CfColorScale {
 /// match ECMA-376 §18.3.1.28.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct CfDataBar {
     pub min: CfvoStop,
@@ -670,6 +934,13 @@ pub struct CfDataBar {
     pub max_length_pct: u32,
     /// When false, the cell value is hidden and only the bar paints.
     pub show_value: bool,
+    /// When true (Excel 2010+ default), the bar fill paints as a
+    /// linear gradient from `color` at the axis to transparent at
+    /// the bar's outer edge. When false, paints as a solid block.
+    /// Stored only on the x14 extension (`<x14:dataBar gradient="..."/>`),
+    /// which we don't parse yet — defaults to `true` to match what
+    /// modern Excel + SpreadJS author and what users see by default.
+    pub gradient: bool,
 }
 
 /// `iconSet` conditional-format rule. Picks one icon from a named
@@ -685,7 +956,10 @@ pub struct CfDataBar {
 /// every threshold as `>=`.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct CfIconSet {
     /// One of the OOXML preset IDs: `3Arrows`, `3ArrowsGray`,
@@ -711,7 +985,10 @@ pub struct CfIconSet {
 /// shape between the min and max stop.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct CfvoStop {
     /// `min`, `max`, `num`, `percent`, `percentile`, `formula`,
@@ -724,9 +1001,11 @@ pub struct CfvoStop {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct CfColorScaleStop {
     /// `min`, `max`, `num`, `percent`, `percentile`, `formula`.
     #[serde(rename = "type")]
@@ -738,9 +1017,11 @@ pub struct CfColorScaleStop {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Col {
     pub min: u32,
     pub max: u32,
@@ -750,12 +1031,19 @@ pub struct Col {
     pub style_index: Option<u32>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub hidden: bool,
+    /// OOXML `<col outlineLevel="N">` (0..=7). 0 = no grouping; the
+    /// renderer paints a bracket above the column header(s) covering
+    /// each contiguous run at level >= 1. Spec caps at 7.
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub outline_level: u8,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Row {
     pub index: u32,
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -767,12 +1055,20 @@ pub struct Row {
     pub style_index: Option<u32>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub hidden: bool,
+    /// OOXML `<row outlineLevel="N">` (0..=7). Wire-only on this
+    /// transient struct; gets folded into `RowMetaBlob.outline_level`
+    /// during `compactify_sheet`. Always 0 in serialized JSON
+    /// (Sheet.rows is `ts(skip)`-hidden).
+    #[serde(default, skip_serializing_if = "is_zero_u8")]
+    pub outline_level: u8,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Cell {
     /// Row, 1-based.
     pub r: u32,
@@ -801,9 +1097,11 @@ pub struct Cell {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Merge {
     pub r1: u32,
     pub c1: u32,
@@ -812,9 +1110,11 @@ pub struct Merge {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Freeze {
     /// 1-based: rows above this index are frozen.
     pub top_row: u32,
@@ -826,9 +1126,11 @@ pub struct Freeze {
 // ============================================================
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Styles {
     pub fonts: Vec<Font>,
     pub fills: Vec<Fill>,
@@ -841,9 +1143,11 @@ pub struct Styles {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Font {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -857,17 +1161,41 @@ pub struct Font {
     pub italic: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     pub underline: bool,
+    /// OOXML `<u val="..."/>` variant when not the default `single`.
+    /// See `TextRun.underline_style` for values + renderer behavior.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub underline_style: Option<String>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub strike: bool,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<Color>,
+    /// OOXML `<vertAlign val="..."/>` on the cell font (see
+    /// `TextRun.vert_align`). `"superscript"` / `"subscript"`; absent =
+    /// `"baseline"` (default).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vert_align: Option<String>,
+    /// OOXML `<family val="N"/>` — see `TextRun.family`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family: Option<u8>,
+    /// OOXML `<scheme val="major|minor"/>` — see `TextRun.scheme`. When
+    /// set, the renderer resolves the typeface from the workbook theme
+    /// (`WorkbookLayout.theme.major_font` / `minor_font`) instead of the
+    /// `<name>` cache stored on this font.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scheme: Option<String>,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Fill {
     /// "solid", "none", "pattern", "gradient".
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -879,16 +1207,60 @@ pub struct Fill {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bg_color: Option<Color>,
-    /// Gradient stop colors in source order. v0 renderer uses the first and
-    /// last stop for a linear left→right fill.
+    /// Gradient stops in source order. Each stop carries its OOXML
+    /// `position` (0..1 along the gradient axis for `linear`, or 0..1
+    /// from the inner convergence rect outward for `path`/radial).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub gradient_stops: Vec<Color>,
+    pub gradient_stops: Vec<GradientStop>,
+    /// `"linear"` (default) or `"path"` (radial-ish, with a rectangular
+    /// inner-convergence region). Only meaningful when
+    /// `pattern_type == "gradient"`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient_type: Option<String>,
+    /// Linear gradient angle in degrees (OOXML `degree`). 0 = left→right,
+    /// 90 = top→bottom, 180 = right→left, 270 = bottom→top. Ignored when
+    /// `gradient_type == "path"`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient_degree: Option<f64>,
+    /// Path-gradient inner-convergence rectangle, expressed as fractions
+    /// of cell width/height inset from each side (0..1). Defaults to 0
+    /// when missing (rect collapses to a point at the relevant corner).
+    /// Ignored unless `gradient_type == "path"`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient_left: Option<f64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient_right: Option<f64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient_top: Option<f64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gradient_bottom: Option<f64>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct GradientStop {
+    /// Position along the gradient axis. 0..1.
+    pub position: f64,
+    pub color: Color,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Border {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -918,9 +1290,11 @@ pub struct Border {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct BorderLine {
     /// "thin","medium","thick","double","dotted","dashed","hair", etc.
     pub style: String,
@@ -930,9 +1304,11 @@ pub struct BorderLine {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct CellFormat {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -965,9 +1341,11 @@ pub struct CellFormat {
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct NumberFormat {
     pub id: u32,
     pub format_code: String,
@@ -975,9 +1353,11 @@ pub struct NumberFormat {
 /// Color: at least one of `rgb`, `theme`, or `indexed` is set.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[cfg_attr(feature = "typescript", ts(export, export_to = "../../../render-ts/src/schema/"))]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
 #[serde(rename_all = "camelCase")]
-
 pub struct Color {
     /// 8-char "AARRGGBB" or 6-char "RRGGBB".
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -994,4 +1374,90 @@ pub struct Color {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tint: Option<f64>,
 }
-fn is_false(b: &bool) -> bool { !*b }
+fn is_false(b: &bool) -> bool {
+    !*b
+}
+fn is_zero_u8(n: &u8) -> bool {
+    *n == 0
+}
+
+// ============================================================
+// Columnar storage
+// ============================================================
+//
+// All blobs are base64-encoded little-endian typed-array bytes. The
+// browser decodes them once via `atob` + a typed-array view (zero copy
+// past the b64 step). Skipping per-cell JSON objects shrinks the wire
+// (~2× after gzip on big sheets) AND collapses millions of small JS
+// allocations into a handful of typed arrays — the latter is the
+// bigger runtime win.
+//
+// Layout invariants:
+//   * `cells.{r,c,kind,valueIdx,formulaIdx,styleIdx,runsIdx}` all have
+//     length == `cells.count`.
+//   * Records are sorted by (r asc, c asc within r).
+//   * `cells.rowPtr` has length == `rowMeta.count + 1`. Cells for
+//     `rowMeta.index[i]` live in `[rowPtr[i], rowPtr[i+1])`.
+//   * `kind` is the small enum below; ASCII values match for grep'ability
+//     but the wire is numeric.
+//
+// Cell-kind enum (matches `Cell.kind` strings):
+//   0 = `n`     numeric
+//   1 = `s`     shared string (value = SST index as decimal string)
+//   2 = `inline` inline string
+//   3 = `b`     boolean ("0"/"1")
+//   4 = `e`     error
+//   5 = `str`   plain string from a formula
+//   6 = `f`     formula (cached value lives in `value`)
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ColumnarCells {
+    pub count: u32,
+    /// 1-based row indices, u32 LE.
+    pub r: String,
+    /// 1-based col indices, u32 LE.
+    pub c: String,
+    /// Kind enum, u8.
+    pub kind: String,
+    /// Index into `Sheet.value_pool`, i32 LE; -1 = no value.
+    pub value_idx: String,
+    /// Index into `Sheet.formula_pool`, i32 LE; -1 = no formula.
+    pub formula_idx: String,
+    /// `Cell.styleIndex`, i32 LE; -1 = no explicit style.
+    pub style_idx: String,
+    /// Index into `Sheet.inline_runs`, i32 LE; -1 = no inline runs.
+    pub runs_idx: String,
+    /// Row-pointer array: cells for `row_meta.index[i]` live in
+    /// `[row_ptr[i], row_ptr[i+1])`. u32 LE, length == `row_meta.count + 1`.
+    pub row_ptr: String,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../render-ts/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct RowMetaBlob {
+    pub count: u32,
+    /// 1-based row indices, u32 LE. Sorted ascending.
+    pub index: String,
+    /// f32 LE; NaN means "use sheet's default row height".
+    pub height_px: String,
+    /// i32 LE; -1 = no row-level style override.
+    pub style_idx: String,
+    /// u8: 0/1.
+    pub hidden: String,
+    /// u8: OOXML `<row outlineLevel="N">`, 0..=7. 0 = no grouping.
+    /// Empty string when every row is at level 0 (the common case);
+    /// renderer treats absent blob as all-zeros.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub outline_level: String,
+}

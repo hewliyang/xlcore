@@ -8,8 +8,8 @@ use crate::schema::*;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as x;
 // Disambiguate ooxmlsdk types from our schema types of the same name.
 use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main::{
-    Font as XFont, Fill as XFill, Border as XBorder, CellFormat as XCellFormat,
-    DifferentialFormat as XDxf,
+    Border as XBorder, CellFormat as XCellFormat, DifferentialFormat as XDxf, Fill as XFill,
+    Font as XFont,
 };
 
 pub fn extract(s: &x::Stylesheet) -> Styles {
@@ -90,19 +90,43 @@ pub fn extract(s: &x::Stylesheet) -> Styles {
 /// subset the renderer actually uses today: font color/bold/italic/
 /// underline/strike, solid fill foreground, and num-format override.
 pub fn extract_dxfs(s: &x::Stylesheet) -> Vec<crate::schema::Dxf> {
-    let Some(dxfs) = s.differential_formats.as_ref() else { return Vec::new(); };
+    let Some(dxfs) = s.differential_formats.as_ref() else {
+        return Vec::new();
+    };
     dxfs.x_dxf.iter().map(extract_dxf).collect()
 }
 
 fn extract_dxf(d: &XDxf) -> crate::schema::Dxf {
     let mut out = crate::schema::Dxf::default();
     if let Some(f) = d.font.as_ref() {
-        if let Some(b) = f.bold.as_ref() { out.bold = Some(b.val.unwrap_or(true)); }
-        if let Some(i) = f.italic.as_ref() { out.italic = Some(i.val.unwrap_or(true)); }
-        if let Some(s) = f.strike.as_ref() { out.strike = Some(s.val.unwrap_or(true)); }
-        if f.underline.is_some() { out.underline = Some(true); }
+        if let Some(b) = f.bold.as_ref() {
+            out.bold = Some(b.val.unwrap_or(true));
+        }
+        if let Some(i) = f.italic.as_ref() {
+            out.italic = Some(i.val.unwrap_or(true));
+        }
+        if let Some(s) = f.strike.as_ref() {
+            out.strike = Some(s.val.unwrap_or(true));
+        }
+        if let Some(u) = f.underline.as_ref() {
+            match crate::underline_variant(u.val) {
+                Some("none") => {}
+                Some(v) => {
+                    out.underline = Some(true);
+                    if v != "single" {
+                        out.underline_style = Some(v.to_string());
+                    }
+                }
+                None => {
+                    out.underline = Some(true);
+                }
+            }
+        }
         if let Some(c) = f.color.as_ref() {
             out.font_color = extract_color_x(c);
+        }
+        if let Some(v) = f.vertical_text_alignment.as_ref() {
+            out.vert_align = crate::vert_align_variant(v.val);
         }
     }
     if let Some(fill) = d.fill.as_ref() {
@@ -113,14 +137,20 @@ fn extract_dxf(d: &XDxf) -> crate::schema::Dxf {
             // Try fg first, then bg, so non-solid patterns still resolve.
             let fg = pf.foreground_color.as_ref().and_then(|c| {
                 extract_color_x(&x::Color {
-                    auto: c.auto, indexed: c.indexed, rgb: c.rgb.clone(),
-                    theme: c.theme, tint: c.tint,
+                    auto: c.auto,
+                    indexed: c.indexed,
+                    rgb: c.rgb.clone(),
+                    theme: c.theme,
+                    tint: c.tint,
                 })
             });
             let bg = pf.background_color.as_ref().and_then(|c| {
                 extract_color_x(&x::Color {
-                    auto: c.auto, indexed: c.indexed, rgb: c.rgb.clone(),
-                    theme: c.theme, tint: c.tint,
+                    auto: c.auto,
+                    indexed: c.indexed,
+                    rgb: c.rgb.clone(),
+                    theme: c.theme,
+                    tint: c.tint,
                 })
             });
             out.fill_color = fg.or(bg);
@@ -140,11 +170,44 @@ fn extract_font(f: &XFont) -> Font {
     Font {
         name: f.font_name.as_ref().map(|n| n.val.as_str().to_string()),
         size: f.font_size.as_ref().map(|s| s.val as f32),
-        bold: f.bold.as_ref().map(|b| b.val.unwrap_or(true)).unwrap_or(false),
-        italic: f.italic.as_ref().map(|i| i.val.unwrap_or(true)).unwrap_or(false),
-        underline: f.underline.is_some(),
-        strike: f.strike.as_ref().map(|s| s.val.unwrap_or(true)).unwrap_or(false),
+        bold: f
+            .bold
+            .as_ref()
+            .map(|b| b.val.unwrap_or(true))
+            .unwrap_or(false),
+        italic: f
+            .italic
+            .as_ref()
+            .map(|i| i.val.unwrap_or(true))
+            .unwrap_or(false),
+        underline: match f.underline.as_ref() {
+            Some(u) => !matches!(crate::underline_variant(u.val), Some("none")),
+            None => false,
+        },
+        underline_style: f.underline.as_ref().and_then(|u| {
+            match crate::underline_variant(u.val) {
+                Some(v) if v != "single" && v != "none" => Some(v.to_string()),
+                _ => None,
+            }
+        }),
+        strike: f
+            .strike
+            .as_ref()
+            .map(|s| s.val.unwrap_or(true))
+            .unwrap_or(false),
         color: f.color.as_ref().and_then(extract_color_x),
+        vert_align: f
+            .vertical_text_alignment
+            .as_ref()
+            .and_then(|v| crate::vert_align_variant(v.val)),
+        family: f.font_family_numbering.as_ref().and_then(|fm| {
+            let v = fm.val;
+            if (0..=5).contains(&v) { Some(v as u8) } else { None }
+        }),
+        scheme: f
+            .font_scheme
+            .as_ref()
+            .and_then(|s| crate::font_scheme_variant(s.val)),
     }
 }
 
@@ -157,28 +220,64 @@ fn extract_fill(f: &XFill) -> Fill {
                 .map(|p| pattern_type_to_str(p).to_string());
             let fg_color = pf.foreground_color.as_ref().and_then(|c| {
                 extract_color_x(&x::Color {
-                    auto: c.auto, indexed: c.indexed, rgb: c.rgb.clone(),
-                    theme: c.theme, tint: c.tint,
+                    auto: c.auto,
+                    indexed: c.indexed,
+                    rgb: c.rgb.clone(),
+                    theme: c.theme,
+                    tint: c.tint,
                 })
             });
             let bg_color = pf.background_color.as_ref().and_then(|c| {
                 extract_color_x(&x::Color {
-                    auto: c.auto, indexed: c.indexed, rgb: c.rgb.clone(),
-                    theme: c.theme, tint: c.tint,
+                    auto: c.auto,
+                    indexed: c.indexed,
+                    rgb: c.rgb.clone(),
+                    theme: c.theme,
+                    tint: c.tint,
                 })
             });
-            Fill { pattern_type, fg_color, bg_color, gradient_stops: Vec::new() }
+            Fill {
+                pattern_type,
+                fg_color,
+                bg_color,
+                ..Fill::default()
+            }
         }
         Some(x::FillChoice::XGradientFill(gf)) => {
-            let gradient_stops: Vec<Color> = gf.x_stop
+            use crate::schema::GradientStop as Gs;
+            let gradient_stops: Vec<Gs> = gf
+                .x_stop
                 .iter()
-                .filter_map(|stop| extract_color_x(&stop.color))
+                .filter_map(|stop| {
+                    extract_color_x(&stop.color).map(|color| Gs {
+                        position: stop.position,
+                        color,
+                    })
+                })
                 .collect();
+            let gradient_type = match gf.r#type {
+                Some(x::GradientValues::Path) => Some("path".to_string()),
+                _ => Some("linear".to_string()),
+            };
+            // OOXML `degree` is required by the schema but optional in our
+            // model; we omit it (defaults to 0 = left→right) when missing.
+            let gradient_degree = gf.degree;
+            let conv = |v: &Option<ooxmlsdk::simple_type::DoubleValue>| *v;
+            // The path-convergence attrs (left/right/top/bottom) only make
+            // sense for `path` gradients; suppress them otherwise so the
+            // JSON stays clean.
+            let is_path = matches!(gf.r#type, Some(x::GradientValues::Path));
             Fill {
                 pattern_type: Some("gradient".to_string()),
-                fg_color: gradient_stops.first().cloned(),
-                bg_color: gradient_stops.last().cloned(),
+                fg_color: gradient_stops.first().map(|s| s.color.clone()),
+                bg_color: gradient_stops.last().map(|s| s.color.clone()),
                 gradient_stops,
+                gradient_type,
+                gradient_degree: if is_path { None } else { gradient_degree },
+                gradient_left: if is_path { conv(&gf.left) } else { None },
+                gradient_right: if is_path { conv(&gf.right) } else { None },
+                gradient_top: if is_path { conv(&gf.top) } else { None },
+                gradient_bottom: if is_path { conv(&gf.bottom) } else { None },
             }
         }
         None => Fill::default(),
@@ -214,39 +313,69 @@ fn extract_border(b: &XBorder) -> Border {
     Border {
         left: b.left_border.as_ref().and_then(|s| {
             let style = border_style_str(s.style.as_ref().map(|s| format!("{s:?}")).as_deref());
-            let color = s.color.as_ref().and_then(|c| extract_color_x(&x::Color {
-                auto: c.auto, indexed: c.indexed, rgb: c.rgb.clone(), theme: c.theme, tint: c.tint,
-            }));
+            let color = s.color.as_ref().and_then(|c| {
+                extract_color_x(&x::Color {
+                    auto: c.auto,
+                    indexed: c.indexed,
+                    rgb: c.rgb.clone(),
+                    theme: c.theme,
+                    tint: c.tint,
+                })
+            });
             style.map(|st| BorderLine { style: st, color })
         }),
         right: b.right_border.as_ref().and_then(|s| {
             let style = border_style_str(s.style.as_ref().map(|s| format!("{s:?}")).as_deref());
-            let color = s.color.as_ref().and_then(|c| extract_color_x(&x::Color {
-                auto: c.auto, indexed: c.indexed, rgb: c.rgb.clone(), theme: c.theme, tint: c.tint,
-            }));
+            let color = s.color.as_ref().and_then(|c| {
+                extract_color_x(&x::Color {
+                    auto: c.auto,
+                    indexed: c.indexed,
+                    rgb: c.rgb.clone(),
+                    theme: c.theme,
+                    tint: c.tint,
+                })
+            });
             style.map(|st| BorderLine { style: st, color })
         }),
         top: b.top_border.as_ref().and_then(|s| {
             let style = border_style_str(s.style.as_ref().map(|s| format!("{s:?}")).as_deref());
-            let color = s.color.as_ref().and_then(|c| extract_color_x(&x::Color {
-                auto: c.auto, indexed: c.indexed, rgb: c.rgb.clone(), theme: c.theme, tint: c.tint,
-            }));
+            let color = s.color.as_ref().and_then(|c| {
+                extract_color_x(&x::Color {
+                    auto: c.auto,
+                    indexed: c.indexed,
+                    rgb: c.rgb.clone(),
+                    theme: c.theme,
+                    tint: c.tint,
+                })
+            });
             style.map(|st| BorderLine { style: st, color })
         }),
         bottom: b.bottom_border.as_ref().and_then(|s| {
             let style = border_style_str(s.style.as_ref().map(|s| format!("{s:?}")).as_deref());
-            let color = s.color.as_ref().and_then(|c| extract_color_x(&x::Color {
-                auto: c.auto, indexed: c.indexed, rgb: c.rgb.clone(), theme: c.theme, tint: c.tint,
-            }));
+            let color = s.color.as_ref().and_then(|c| {
+                extract_color_x(&x::Color {
+                    auto: c.auto,
+                    indexed: c.indexed,
+                    rgb: c.rgb.clone(),
+                    theme: c.theme,
+                    tint: c.tint,
+                })
+            });
             style.map(|st| BorderLine { style: st, color })
         }),
         diagonal_up: b.diagonal_up.unwrap_or(false),
         diagonal_down: b.diagonal_down.unwrap_or(false),
         diagonal: b.diagonal_border.as_ref().and_then(|s| {
             let style = border_style_str(s.style.as_ref().map(|s| format!("{s:?}")).as_deref());
-            let color = s.color.as_ref().and_then(|c| extract_color_x(&x::Color {
-                auto: c.auto, indexed: c.indexed, rgb: c.rgb.clone(), theme: c.theme, tint: c.tint,
-            }));
+            let color = s.color.as_ref().and_then(|c| {
+                extract_color_x(&x::Color {
+                    auto: c.auto,
+                    indexed: c.indexed,
+                    rgb: c.rgb.clone(),
+                    theme: c.theme,
+                    tint: c.tint,
+                })
+            });
             style.map(|st| BorderLine { style: st, color })
         }),
     }
@@ -261,21 +390,37 @@ fn border_style_str(dbg: Option<&str>) -> Option<String> {
     // contains `mediumDashDot` which contains `mediumDashed` is
     // false but contains `mediumDash` (not a real value). The
     // ordering below is the topological sort.
-    let s = if lower.contains("none") { return None; }
-        else if lower.contains("slantdashdot") { "slantDashDot" }
-        else if lower.contains("mediumdashdotdot") { "mediumDashDotDot" }
-        else if lower.contains("mediumdashdot") { "mediumDashDot" }
-        else if lower.contains("mediumdashed") { "mediumDashed" }
-        else if lower.contains("medium") { "medium" }
-        else if lower.contains("thick") { "thick" }
-        else if lower.contains("double") { "double" }
-        else if lower.contains("dotted") { "dotted" }
-        else if lower.contains("dashdotdot") { "dashDotDot" }
-        else if lower.contains("dashdot") { "dashDot" }
-        else if lower.contains("dashed") { "dashed" }
-        else if lower.contains("hair") { "hair" }
-        else if lower.contains("thin") { "thin" }
-        else { return None; };
+    let s = if lower.contains("none") {
+        return None;
+    } else if lower.contains("slantdashdot") {
+        "slantDashDot"
+    } else if lower.contains("mediumdashdotdot") {
+        "mediumDashDotDot"
+    } else if lower.contains("mediumdashdot") {
+        "mediumDashDot"
+    } else if lower.contains("mediumdashed") {
+        "mediumDashed"
+    } else if lower.contains("medium") {
+        "medium"
+    } else if lower.contains("thick") {
+        "thick"
+    } else if lower.contains("double") {
+        "double"
+    } else if lower.contains("dotted") {
+        "dotted"
+    } else if lower.contains("dashdotdot") {
+        "dashDotDot"
+    } else if lower.contains("dashdot") {
+        "dashDot"
+    } else if lower.contains("dashed") {
+        "dashed"
+    } else if lower.contains("hair") {
+        "hair"
+    } else if lower.contains("thin") {
+        "thin"
+    } else {
+        return None;
+    };
     Some(s.to_string())
 }
 
@@ -283,19 +428,24 @@ fn border_style_str(dbg: Option<&str>) -> Option<String> {
 /// `cellStyleXf` (resolved via `xfId`). When the flag is missing or
 /// `"1"`, the cell xf's own value wins; when `"0"`, the parent style's
 /// value is used. ECMA-376 §18.8.45.
-fn extract_xf_with_inheritance(
-    xf: &XCellFormat,
-    parents: &[CellFormat],
-) -> CellFormat {
+fn extract_xf_with_inheritance(xf: &XCellFormat, parents: &[CellFormat]) -> CellFormat {
     let mut cf = extract_xf(xf);
-    let parent = xf
-        .format_id
-        .and_then(|id| parents.get(id as usize));
-    let Some(parent) = parent else { return cf; };
-    if xf.apply_font == Some(false) { cf.font_id = parent.font_id; }
-    if xf.apply_fill == Some(false) { cf.fill_id = parent.fill_id; }
-    if xf.apply_border == Some(false) { cf.border_id = parent.border_id; }
-    if xf.apply_number_format == Some(false) { cf.num_fmt_id = parent.num_fmt_id; }
+    let parent = xf.format_id.and_then(|id| parents.get(id as usize));
+    let Some(parent) = parent else {
+        return cf;
+    };
+    if xf.apply_font == Some(false) {
+        cf.font_id = parent.font_id;
+    }
+    if xf.apply_fill == Some(false) {
+        cf.fill_id = parent.fill_id;
+    }
+    if xf.apply_border == Some(false) {
+        cf.border_id = parent.border_id;
+    }
+    if xf.apply_number_format == Some(false) {
+        cf.num_fmt_id = parent.num_fmt_id;
+    }
     if xf.apply_alignment == Some(false) {
         cf.horizontal_alignment = parent.horizontal_alignment.clone();
         cf.vertical_alignment = parent.vertical_alignment.clone();
@@ -317,17 +467,33 @@ fn extract_xf(xf: &XCellFormat) -> CellFormat {
     if let Some(align) = &xf.alignment {
         if let Some(h) = &align.horizontal {
             let dbg = format!("{h:?}").to_ascii_lowercase();
-            cf.horizontal_alignment = Some(if dbg.contains("center") { "center" }
-                else if dbg.contains("right") { "right" }
-                else if dbg.contains("justify") { "justify" }
-                else if dbg.contains("fill") { "fill" }
-                else { "left" }.to_string());
+            cf.horizontal_alignment = Some(
+                if dbg.contains("center") {
+                    "center"
+                } else if dbg.contains("right") {
+                    "right"
+                } else if dbg.contains("justify") {
+                    "justify"
+                } else if dbg.contains("fill") {
+                    "fill"
+                } else {
+                    "left"
+                }
+                .to_string(),
+            );
         }
         if let Some(v) = &align.vertical {
             let dbg = format!("{v:?}").to_ascii_lowercase();
-            cf.vertical_alignment = Some(if dbg.contains("center") { "center" }
-                else if dbg.contains("top") { "top" }
-                else { "bottom" }.to_string());
+            cf.vertical_alignment = Some(
+                if dbg.contains("center") {
+                    "center"
+                } else if dbg.contains("top") {
+                    "top"
+                } else {
+                    "bottom"
+                }
+                .to_string(),
+            );
         }
         cf.wrap_text = align.wrap_text.unwrap_or(false);
         cf.indent = align.indent;
@@ -338,7 +504,9 @@ fn extract_xf(xf: &XCellFormat) -> CellFormat {
 
 fn extract_color_x(c: &x::Color) -> Option<Color> {
     let any = c.rgb.is_some() || c.theme.is_some() || c.indexed.is_some();
-    if !any { return None; }
+    if !any {
+        return None;
+    }
     Some(Color {
         rgb: c.rgb.as_ref().map(|s| s.as_str().to_string()),
         theme: c.theme,

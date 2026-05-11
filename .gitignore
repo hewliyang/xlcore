@@ -2,5 +2,7 @@ target/
 node_modules/
 render-ts/dist/
 *.html
+!render-ts/examples/xlsx-app.html
+!render-ts/examples/xlsx-upload.html
 layout.json
 .DS_Store

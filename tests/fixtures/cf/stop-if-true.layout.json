@@ -1,0 +1,318 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Sheet1",
+      "maxRow": 11,
+      "maxCol": 4,
+      "defaultColWidthPx": 64.01,
+      "defaultRowHeightPx": 20.0,
+      "cols": [
+        {
+          "min": 1,
+          "max": 4,
+          "widthPx": 103.0
+        }
+      ],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "conditionalFormats": [
+        {
+          "ranges": [
+            {
+              "r1": 2,
+              "c1": 1,
+              "r2": 11,
+              "c2": 1
+            }
+          ],
+          "rules": [
+            {
+              "priority": 2,
+              "kind": "colorScale",
+              "colorScale": {
+                "stops": [
+                  {
+                    "type": "min",
+                    "color": {
+                      "rgb": "FF63BE7B"
+                    }
+                  },
+                  {
+                    "type": "percentile",
+                    "val": "50",
+                    "color": {
+                      "rgb": "FFFFEB84"
+                    }
+                  },
+                  {
+                    "type": "max",
+                    "color": {
+                      "rgb": "FFF8696B"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "priority": 1,
+              "kind": "cellIs",
+              "operator": "greaterThan",
+              "operands": [
+                "7"
+              ],
+              "dxfId": 0
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 2,
+              "c1": 2,
+              "r2": 11,
+              "c2": 2
+            }
+          ],
+          "rules": [
+            {
+              "priority": 3,
+              "kind": "cellIs",
+              "operator": "greaterThan",
+              "operands": [
+                "7"
+              ],
+              "dxfId": 0,
+              "stopIfTrue": true
+            },
+            {
+              "priority": 4,
+              "kind": "colorScale",
+              "colorScale": {
+                "stops": [
+                  {
+                    "type": "min",
+                    "color": {
+                      "rgb": "FF63BE7B"
+                    }
+                  },
+                  {
+                    "type": "percentile",
+                    "val": "50",
+                    "color": {
+                      "rgb": "FFFFEB84"
+                    }
+                  },
+                  {
+                    "type": "max",
+                    "color": {
+                      "rgb": "FFF8696B"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 2,
+              "c1": 3,
+              "r2": 11,
+              "c2": 3
+            }
+          ],
+          "rules": [
+            {
+              "priority": 5,
+              "kind": "cellIs",
+              "operator": "greaterThan",
+              "operands": [
+                "7"
+              ],
+              "dxfId": 0,
+              "stopIfTrue": true
+            },
+            {
+              "priority": 6,
+              "kind": "dataBar",
+              "dataBar": {
+                "min": {
+                  "type": "min"
+                },
+                "max": {
+                  "type": "max"
+                },
+                "color": {
+                  "rgb": "FF638EC6"
+                },
+                "minLengthPct": 0,
+                "maxLengthPct": 100,
+                "showValue": true
+              }
+            }
+          ]
+        },
+        {
+          "ranges": [
+            {
+              "r1": 2,
+              "c1": 4,
+              "r2": 11,
+              "c2": 4
+            }
+          ],
+          "rules": [
+            {
+              "priority": 7,
+              "kind": "cellIs",
+              "operator": "greaterThan",
+              "operands": [
+                "7"
+              ],
+              "dxfId": 0,
+              "stopIfTrue": true
+            },
+            {
+              "priority": 8,
+              "kind": "iconSet",
+              "iconSet": {
+                "iconSet": "3Arrows",
+                "cfvos": [
+                  {
+                    "type": "percent",
+                    "val": "0"
+                  },
+                  {
+                    "type": "percent",
+                    "val": "33"
+                  },
+                  {
+                    "type": "percent",
+                    "val": "67"
+                  }
+                ],
+                "showValue": true,
+                "reverse": false
+              }
+            }
+          ]
+        }
+      ],
+      "cells": {
+        "count": 44,
+        "r": "AQAAAAEAAAABAAAAAQAAAAIAAAACAAAAAgAAAAIAAAADAAAAAwAAAAMAAAADAAAABAAAAAQAAAAEAAAABAAAAAUAAAAFAAAABQAAAAUAAAAGAAAABgAAAAYAAAAGAAAABwAAAAcAAAAHAAAABwAAAAgAAAAIAAAACAAAAAgAAAAJAAAACQAAAAkAAAAJAAAACgAAAAoAAAAKAAAACgAAAAsAAAALAAAACwAAAAsAAAA=",
+        "c": "AQAAAAIAAAADAAAABAAAAAEAAAACAAAAAwAAAAQAAAABAAAAAgAAAAMAAAAEAAAAAQAAAAIAAAADAAAABAAAAAEAAAACAAAAAwAAAAQAAAABAAAAAgAAAAMAAAAEAAAAAQAAAAIAAAADAAAABAAAAAEAAAACAAAAAwAAAAQAAAABAAAAAgAAAAMAAAAEAAAAAQAAAAIAAAADAAAABAAAAAEAAAACAAAAAwAAAAQAAAA=",
+        "kind": "AgICAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAEAAAABAAAAAQAAAAFAAAABQAAAAUAAAAFAAAABgAAAAYAAAAGAAAABgAAAAcAAAAHAAAABwAAAAcAAAAIAAAACAAAAAgAAAAIAAAACQAAAAkAAAAJAAAACQAAAAoAAAAKAAAACgAAAAoAAAALAAAACwAAAAsAAAALAAAADAAAAAwAAAAMAAAADAAAAA0AAAANAAAADQAAAA0AAAA=",
+        "formulaIdx": "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=",
+        "styleIdx": "AQAAAAEAAAABAAAAAQAAAP////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=",
+        "runsIdx": "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=",
+        "rowPtr": "AAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAABwAAAAgAAAAJAAAACgAAAAsAAAA"
+      },
+      "rowMeta": {
+        "count": 11,
+        "index": "AQAAAAIAAAADAAAABAAAAAUAAAAGAAAABwAAAAgAAAAJAAAACgAAAAsAAAA=",
+        "heightPx": "AADAfwAAwH8AAMB/AADAfwAAwH8AAMB/AADAfwAAwH8AAMB/AADAfwAAwH8=",
+        "styleIdx": "//////////////////////////////////////////////////////////8=",
+        "hidden": "AAAAAAAAAAAAAAA="
+      },
+      "valuePool": [
+        "no-stop",
+        "stop-cs",
+        "stop-db",
+        "stop-icon",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10"
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "color": {
+          "rgb": "FF000000"
+        }
+      },
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "bold": true,
+        "color": {
+          "rgb": "FF000000"
+        }
+      }
+    ],
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      },
+      {
+        "fontId": 1,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0
+  },
+  "sharedStrings": [],
+  "dxfs": [
+    {
+      "fontColor": {
+        "rgb": "FF000000"
+      },
+      "bold": true,
+      "fillColor": {
+        "rgb": "FFFFD966"
+      }
+    }
+  ],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  },
+  "activeSheetIndex": 0
+}

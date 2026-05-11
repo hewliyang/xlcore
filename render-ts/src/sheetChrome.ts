@@ -1,5 +1,6 @@
-import type { Color, Dxf, Sheet } from "./types.js";
+import type { Color, Dxf, Sheet, WorkbookLayout } from "./types.js";
 import { activeThemeColor } from "./color.js";
+import { findCell } from "./geometry.js";
 import { HEADER_H, HEADER_W, colLabel } from "./grid.js";
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, cellRect, mergedRect } from "./geometry.js";
@@ -62,7 +63,10 @@ function mixHex(hex: string, other: string, t: number): string {
   return "#" + toHex(r) + toHex(g) + toHex(b);
 }
 
-export function computeTableState(sheet: Sheet): {
+export function computeTableState(
+  sheet: Sheet,
+  vis?: Visible,
+): {
   tableDxfs: Map<string, Dxf>;
   filterArrows: Set<string>;
 } {
@@ -96,13 +100,17 @@ export function computeTableState(sheet: Sheet): {
     // Header row: accent fill + bold white text; filter arrows on
     // each header cell when autoFilter is on.
     if (headerR >= 0) {
-      for (let c = c1; c <= c2; c++) {
+      const hc1 = Math.max(c1, vis?.firstCol ?? c1);
+      const hc2 = Math.min(c2, vis?.lastCol ?? c2);
+      for (let c = hc1; c <= hc2; c++) {
         const k = `${headerR}:${c}`;
-        tableDxfs.set(k, {
-          fillColor: accentColor,
-          fontColor: whiteColor,
-          bold: true,
-        });
+        if (!vis || (headerR >= vis.firstRow && headerR <= vis.lastRow)) {
+          tableDxfs.set(k, {
+            fillColor: accentColor,
+            fontColor: whiteColor,
+            bold: true,
+          });
+        }
         if (t.hasAutoFilter) filterArrows.add(k);
       }
     }
@@ -110,10 +118,14 @@ export function computeTableState(sheet: Sheet): {
     // Banded data rows: every other data row (1-indexed from data
     // start) gets the band tint. Skip when stripes are off.
     if (t.style?.showRowStripes !== false) {
-      for (let r = dataStart; r <= dataEnd; r++) {
+      const rr1 = Math.max(dataStart, vis?.firstRow ?? dataStart);
+      const rr2 = Math.min(dataEnd, vis?.lastRow ?? dataEnd);
+      const cc1 = Math.max(c1, vis?.firstCol ?? c1);
+      const cc2 = Math.min(c2, vis?.lastCol ?? c2);
+      for (let r = rr1; r <= rr2; r++) {
         const isOdd = ((r - dataStart) & 1) === 1;
         if (!isOdd) continue;
-        for (let c = c1; c <= c2; c++) {
+        for (let c = cc1; c <= cc2; c++) {
           const k = `${r}:${c}`;
           if (tableDxfs.has(k)) continue;
           tableDxfs.set(k, { fillColor: bandColor });
@@ -126,7 +138,10 @@ export function computeTableState(sheet: Sheet): {
     // bold the text + give it the band tint.
     if (totalsRows > 0) {
       const totalsR = r2;
-      for (let c = c1; c <= c2; c++) {
+      if (vis && (totalsR < vis.firstRow || totalsR > vis.lastRow)) continue;
+      const tc1 = Math.max(c1, vis?.firstCol ?? c1);
+      const tc2 = Math.min(c2, vis?.lastCol ?? c2);
+      for (let c = tc1; c <= tc2; c++) {
         const k = `${totalsR}:${c}`;
         if (tableDxfs.has(k)) continue;
         tableDxfs.set(k, { fillColor: bandColor, bold: true });
@@ -211,10 +226,21 @@ export function drawHeaders(
   const colScrollVis = (topPinPane ?? scrollPane).vis;
   const rowScrollVis = (leftPinPane ?? scrollPane).vis;
 
+  // Header strips run from the gutter band edge to the canvas edge;
+  // the gutter strips (when present) get their own background.
+  const headerLeft = g.rowGutterW; // left edge of row-number column
+  const headerTop = g.colGutterH; // top edge of column-letter row
+  const originX = g.originX; // = HEADER_W + rowGutterW; right edge of row headers
+  const originY = g.originY; // = HEADER_H + colGutterH; bottom edge of col headers
+
   ctx.save();
   ctx.fillStyle = HEADER_BG;
-  ctx.fillRect(0, 0, canvasW, HEADER_H);
-  ctx.fillRect(0, 0, HEADER_W, canvasH);
+  // Column-header band (everything in the top originY px) + row-header
+  // band (everything in the left originX px). Painting both as one
+  // L-shape would overlap the corner; doing it in two rects is cheaper
+  // than masking.
+  ctx.fillRect(0, 0, canvasW, originY);
+  ctx.fillRect(0, 0, originX, canvasH);
 
   // Faint inter-tab rules. Pinned segments don't translate; scrolling
   // segments pan with the BR viewport.
@@ -224,22 +250,22 @@ export function drawHeaders(
   // --- column-header rules ---
   ctx.save();
   ctx.beginPath();
-  ctx.rect(HEADER_W, 0, canvasW - HEADER_W, HEADER_H);
+  ctx.rect(originX, headerTop, canvasW - originX, HEADER_H);
   ctx.clip();
   ctx.beginPath();
   // Pinned col rules.
   for (let c = 2; c < splitX; c++) {
     const x = Math.round(g.colX[c] ?? 0) + 0.5;
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, HEADER_H);
+    ctx.moveTo(x, headerTop);
+    ctx.lineTo(x, originY);
   }
   // Scrolling col rules.
   const firstScrollCol = Math.max(splitX, colScrollVis.firstCol);
   for (let c = Math.max(2, firstScrollCol); c <= colScrollVis.lastCol + 1; c++) {
     const x = Math.round((g.colX[c] ?? 0) - sx) + 0.5;
-    if (x < HEADER_W + pcw) continue;
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, HEADER_H);
+    if (x < originX + pcw) continue;
+    ctx.moveTo(x, headerTop);
+    ctx.lineTo(x, originY);
   }
   ctx.stroke();
   ctx.restore();
@@ -247,20 +273,20 @@ export function drawHeaders(
   // --- row-header rules ---
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, HEADER_H, HEADER_W, canvasH - HEADER_H);
+  ctx.rect(headerLeft, originY, HEADER_W, canvasH - originY);
   ctx.clip();
   ctx.beginPath();
   for (let r = 2; r < splitY; r++) {
     const y = Math.round(g.rowY[r] ?? 0) + 0.5;
-    ctx.moveTo(0, y);
-    ctx.lineTo(HEADER_W, y);
+    ctx.moveTo(headerLeft, y);
+    ctx.lineTo(originX, y);
   }
   const firstScrollRow = Math.max(splitY, rowScrollVis.firstRow);
   for (let r = Math.max(2, firstScrollRow); r <= rowScrollVis.lastRow + 1; r++) {
     const y = Math.round((g.rowY[r] ?? 0) - sy) + 0.5;
-    if (y < HEADER_H + prh) continue;
-    ctx.moveTo(0, y);
-    ctx.lineTo(HEADER_W, y);
+    if (y < originY + prh) continue;
+    ctx.moveTo(headerLeft, y);
+    ctx.lineTo(originX, y);
   }
   ctx.stroke();
   ctx.restore();
@@ -270,25 +296,24 @@ export function drawHeaders(
     ctx.fillStyle = HEADER_HIGHLIGHT;
     // Column-header tint: split into pinned segment (cols < splitX) and
     // scrolling segment (cols >= splitX) so the tint stays glued to the
-    // correct cells regardless of scroll.
+    // correct cells regardless of scroll. Tint covers only the label
+    // band [headerTop..originY], not the gutter strip above it.
     const cAbsX1 = g.colX[sel.c1] ?? 0;
     const cAbsX2 = g.colX[sel.c2 + 1] ?? cAbsX1;
     if (cAbsX2 > cAbsX1) {
-      // Pinned slice [c1..min(c2, splitX-1)] -> canvas x = colX[c]
       if (sel.c1 < splitX) {
         const x1 = cAbsX1;
         const x2 = Math.min(cAbsX2, g.colX[splitX] ?? cAbsX2);
-        const cx1 = Math.max(HEADER_W, x1);
-        const cx2 = Math.min(HEADER_W + pcw, x2);
-        if (cx2 > cx1) ctx.fillRect(cx1, 0, cx2 - cx1, HEADER_H);
+        const cx1 = Math.max(originX, x1);
+        const cx2 = Math.min(originX + pcw, x2);
+        if (cx2 > cx1) ctx.fillRect(cx1, headerTop, cx2 - cx1, HEADER_H);
       }
-      // Scrolling slice [max(c1, splitX)..c2] -> canvas x = colX[c] - sx
       if (sel.c2 >= splitX) {
         const x1 = Math.max(cAbsX1, g.colX[splitX] ?? cAbsX1) - sx;
         const x2 = cAbsX2 - sx;
-        const cx1 = Math.max(HEADER_W + pcw, x1);
+        const cx1 = Math.max(originX + pcw, x1);
         const cx2 = Math.min(canvasW, x2);
-        if (cx2 > cx1) ctx.fillRect(cx1, 0, cx2 - cx1, HEADER_H);
+        if (cx2 > cx1) ctx.fillRect(cx1, headerTop, cx2 - cx1, HEADER_H);
       }
     }
 
@@ -298,29 +323,48 @@ export function drawHeaders(
       if (sel.r1 < splitY) {
         const y1 = rAbsY1;
         const y2 = Math.min(rAbsY2, g.rowY[splitY] ?? rAbsY2);
-        const cy1 = Math.max(HEADER_H, y1);
-        const cy2 = Math.min(HEADER_H + prh, y2);
-        if (cy2 > cy1) ctx.fillRect(0, cy1, HEADER_W, cy2 - cy1);
+        const cy1 = Math.max(originY, y1);
+        const cy2 = Math.min(originY + prh, y2);
+        if (cy2 > cy1) ctx.fillRect(headerLeft, cy1, HEADER_W, cy2 - cy1);
       }
       if (sel.r2 >= splitY) {
         const y1 = Math.max(rAbsY1, g.rowY[splitY] ?? rAbsY1) - sy;
         const y2 = rAbsY2 - sy;
-        const cy1 = Math.max(HEADER_H + prh, y1);
+        const cy1 = Math.max(originY + prh, y1);
         const cy2 = Math.min(canvasH, y2);
-        if (cy2 > cy1) ctx.fillRect(0, cy1, HEADER_W, cy2 - cy1);
+        if (cy2 > cy1) ctx.fillRect(headerLeft, cy1, HEADER_W, cy2 - cy1);
       }
     }
   }
 
-  // Gutter line.
+  // Gutter line. Draws the bottom edge of the column-header strip and
+  // the right edge of the row-header strip, both in the darker GUTTER_LINE.
   ctx.strokeStyle = GUTTER_LINE;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(0, HEADER_H);
-  ctx.lineTo(canvasW, HEADER_H);
-  ctx.moveTo(HEADER_W, 0);
-  ctx.lineTo(HEADER_W, canvasH);
+  ctx.moveTo(0, originY);
+  ctx.lineTo(canvasW, originY);
+  ctx.moveTo(originX, 0);
+  ctx.lineTo(originX, canvasH);
   ctx.stroke();
+  // Faint inner separators between gutter strip and header label strip
+  // when a gutter is present.
+  if (g.rowGutterW > 0 || g.colGutterH > 0) {
+    ctx.strokeStyle = HEADER_BORDER;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (g.rowGutterW > 0) {
+      const x = headerLeft + 0.5;
+      ctx.moveTo(x, originY);
+      ctx.lineTo(x, canvasH);
+    }
+    if (g.colGutterH > 0) {
+      const y = headerTop + 0.5;
+      ctx.moveTo(originX, y);
+      ctx.lineTo(canvasW, y);
+    }
+    ctx.stroke();
+  }
 
   ctx.fillStyle = HEADER_FG;
   ctx.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
@@ -328,60 +372,131 @@ export function drawHeaders(
   ctx.textAlign = "center";
 
   // --- column labels (pinned + scrolling) ---
+  const colLabelMidY = headerTop + HEADER_H / 2;
   if (splitX > 1) {
     ctx.save();
     ctx.beginPath();
-    ctx.rect(HEADER_W, 0, pcw, HEADER_H);
+    ctx.rect(originX, headerTop, pcw, HEADER_H);
     ctx.clip();
     for (let c = 1; c < splitX; c++) {
-      const x = (g.colX[c] ?? 0) + (g.colW[c] ?? 0) / 2;
-      ctx.fillText(colLabel(c), x, HEADER_H / 2);
+      const w = g.colW[c] ?? 0;
+      if (w <= 0) continue;
+      const x = (g.colX[c] ?? 0) + w / 2;
+      ctx.fillText(colLabel(c), x, colLabelMidY);
     }
     ctx.restore();
   }
   ctx.save();
   ctx.beginPath();
-  ctx.rect(HEADER_W + pcw, 0, canvasW - HEADER_W - pcw, HEADER_H);
+  ctx.rect(originX + pcw, headerTop, canvasW - originX - pcw, HEADER_H);
   ctx.clip();
   for (let c = Math.max(splitX, colScrollVis.firstCol); c <= colScrollVis.lastCol; c++) {
-    const x = (g.colX[c] ?? 0) + (g.colW[c] ?? 0) / 2 - sx;
-    ctx.fillText(colLabel(c), x, HEADER_H / 2);
+    const w = g.colW[c] ?? 0;
+    if (w <= 0) continue;
+    const x = (g.colX[c] ?? 0) + w / 2 - sx;
+    ctx.fillText(colLabel(c), x, colLabelMidY);
   }
   ctx.restore();
 
   // --- row labels ---
+  const rowLabelMidX = headerLeft + HEADER_W / 2;
   if (splitY > 1) {
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, HEADER_H, HEADER_W, prh);
+    ctx.rect(headerLeft, originY, HEADER_W, prh);
     ctx.clip();
     for (let r = 1; r < splitY; r++) {
-      const y = (g.rowY[r] ?? 0) + (g.rowH[r] ?? 0) / 2;
-      ctx.fillText(String(r), HEADER_W / 2, y);
+      const h = g.rowH[r] ?? 0;
+      if (h <= 0) continue;
+      const y = (g.rowY[r] ?? 0) + h / 2;
+      ctx.fillText(String(r), rowLabelMidX, y);
     }
     ctx.restore();
   }
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, HEADER_H + prh, HEADER_W, canvasH - HEADER_H - prh);
+  ctx.rect(headerLeft, originY + prh, HEADER_W, canvasH - originY - prh);
   ctx.clip();
   for (let r = Math.max(splitY, rowScrollVis.firstRow); r <= rowScrollVis.lastRow; r++) {
-    const y = (g.rowY[r] ?? 0) + (g.rowH[r] ?? 0) / 2 - sy;
-    ctx.fillText(String(r), HEADER_W / 2, y);
+    const h = g.rowH[r] ?? 0;
+    if (h <= 0) continue;
+    const y = (g.rowY[r] ?? 0) + h / 2 - sy;
+    ctx.fillText(String(r), rowLabelMidX, y);
   }
   ctx.restore();
+
+  // --- collapsed-group boundary ticks ---
+  // When a contiguous run of rows (or columns) is hidden, Excel paints a
+  // short green bar on the header of the *next visible* row/column to
+  // signal "click here to expand the hidden range". We approximate that
+  // with a 2px stroke on the leading edge (top edge for rows, left edge
+  // for columns) of the first visible row/col after any hidden run.
+  drawCollapsedRowTicks(ctx, g, sy, splitY, prh, canvasH, rowScrollVis);
+  drawCollapsedColTicks(ctx, g, sx, splitX, pcw, canvasW, colScrollVis);
+
+  // --- outline gutter strips ---
+  // Excel paints group brackets in dedicated strips outside the row/col
+  // header bands: a horizontal strip above the col letters for column
+  // groupings, and a vertical strip left of the row numbers for row
+  // groupings. The shared top-left corner shows level-numeral buttons
+  // (1, 2, 3, ...) so you can collapse to a given depth.
+  if (g.rowGutterW > 0 || g.colGutterH > 0) {
+    drawOutlineCornerButtons(ctx, g);
+  }
+  if (g.rowGutterW > 0) {
+    drawRowOutlineGutter(ctx, sheet, g, sy, splitY, prh, canvasH);
+  }
+  if (g.colGutterH > 0) {
+    drawColOutlineGutter(ctx, sheet, g, sx, splitX, pcw, canvasW);
+  }
+  // Buttons paint last so they sit on top of any bracket strokes that
+  // would otherwise occlude them. Single pass over both axes; collapsed
+  // runs (zero bracket extent) still get their + glyph here.
+  if (g.rowGutterW > 0 || g.colGutterH > 0) {
+    drawOutlineButtons(ctx, sheet, g, {
+      sx,
+      sy,
+      splitX,
+      splitY,
+      pcw,
+      prh,
+      canvasW,
+      canvasH,
+    });
+  }
 
   ctx.textAlign = "start";
   ctx.textBaseline = "alphabetic";
   ctx.restore();
 }
 
+import {
+  drawCollapsedColTicks,
+  drawCollapsedRowTicks,
+  drawColOutlineGutter,
+  drawOutlineButtons,
+  drawOutlineCornerButtons,
+  drawRowOutlineGutter,
+} from "./outlineGutter.js";
+
 /// Hyperlinks: cells covered by any `<hyperlink>` range get a `Dxf`
 /// overlay — `theme[10]` (hlink color, default Office blue `#0563C1`)
 /// + `underline: true`. Same plumbing as table chrome, just emitted
 /// from the sheet's `hyperlinks` array. We don't try to override an
 /// already-present CF or table dxf — caller checks that.
-export function computeHyperlinkDxfs(sheet: Sheet): Map<string, Dxf> {
+///
+/// **Yields to explicit cell formatting.** When the cell's resolved
+/// xf points to a non-default fontId, that author chose a font
+/// deliberately and Excel/hsx honors it (e.g. `e-007_input-3.xlsx`
+/// has a stale `mailto:` rel pointing at a cell whose displayed text
+/// was later edited to a plain phone number formatted in Arial 9
+/// black — hsx renders that plain, not as a blue+underlined link).
+/// We mirror the same rule: skip emitting the overlay when the
+/// cell carries its own non-default fontId.
+export function computeHyperlinkDxfs(
+  sheet: Sheet,
+  layout: WorkbookLayout,
+): Map<string, Dxf> {
   const out = new Map<string, Dxf>();
   const hyperlinks = sheet.hyperlinks ?? [];
   if (hyperlinks.length === 0) return out;
@@ -395,6 +510,17 @@ export function computeHyperlinkDxfs(sheet: Sheet): Map<string, Dxf> {
       for (let c = c1; c <= c2; c++) {
         const k = `${r}:${c}`;
         if (out.has(k)) continue;
+        // Check the cell's explicit xf.fontId. The default font is
+        // index 0 in `styles.fonts`; anything else means the author
+        // chose a specific font and the hyperlink overlay should
+        // yield. We only check `cell.styleIndex` (not the row/col
+        // fallback) because OOXML's hyperlink-style overlay applies
+        // when the cell hasn't been re-styled away from the default.
+        const cell = findCell(sheet, r, c);
+        if (cell && cell.styleIndex !== undefined) {
+          const xf = layout.styles.cellXfs[cell.styleIndex];
+          if (xf && xf.fontId !== undefined && xf.fontId !== 0) continue;
+        }
         out.set(k, { fontColor: hlinkColor, underline: true });
       }
     }

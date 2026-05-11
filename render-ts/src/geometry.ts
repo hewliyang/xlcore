@@ -1,5 +1,7 @@
-import type { Cell, Sheet } from "./types.js";
-import { HEADER_H, HEADER_W } from "./grid.js";
+import type { Sheet } from "./types.js";
+import { HEADER_H as _HEADER_H, HEADER_W as _HEADER_W } from "./grid.js";
+void _HEADER_H;
+void _HEADER_W;
 import type { Grid } from "./grid.js";
 import { GRID_COLOR } from "./renderConstants.js";
 import type { Visible } from "./renderTypes.js";
@@ -12,9 +14,9 @@ export function drawGridLines(
   vis: Visible,
 ): void {
   if (!sheet.showGridLines) return;
-  const top = g.rowY[vis.firstRow] ?? HEADER_H;
+  const top = g.rowY[vis.firstRow] ?? g.originY;
   const bot = g.rowY[vis.lastRow + 1] ?? g.totalH;
-  const left = g.colX[vis.firstCol] ?? HEADER_W;
+  const left = g.colX[vis.firstCol] ?? g.originX;
   const right = g.colX[vis.lastCol + 1] ?? g.totalW;
   ctx.strokeStyle = GRID_COLOR;
   ctx.lineWidth = 1;
@@ -86,9 +88,8 @@ export function rectFor(
   return m ? mergedRect(g, m) : cellRect(g, r, c);
 }
 
-// Find the cell that lives at (r,c). Linear scan; merges are rare enough
-// per-sheet that this is fine.
-export function findCell(sheet: Sheet, r: number, c: number): Cell | undefined {
-  const row = sheet.rows.find((row) => row.index === r);
-  return row?.cells.find((cell) => cell.c === c);
-}
+// Find the cell at (r,c) — O(log rowCount + log cellsInRow) via the
+// columnar `rowPtr` index. Returns a freshly-materialized POJO from
+// the sheet's typed-array storage; callers that ask for the same cell
+// in a hot loop should cache the result.
+export { findCell } from "./columnar.js";

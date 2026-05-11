@@ -158,8 +158,8 @@ section has the full ranked list with effort estimates.
 7. **`xlcore-wasm`** — wasm-bindgen entry for end-to-end in-browser
    extraction (currently `xlcore preview` re-runs the Rust extractor
    server-side).
-8. **node-canvas adapter** so the same TS renderer produces server-side
-   PNGs — also unlocks pixel-diff CI against `hsx screenshot`.
+8. ~~**node-canvas adapter** so the same TS renderer produces server-side
+   PNGs~~ **DONE** — next step is pixel-diff CI against `hsx screenshot`.
 9. **Virtualized rendering** for large workbooks (current code paints
    the whole sheet).
 10. **Active-cell + selection rendering** for the HITL preview.

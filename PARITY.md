@@ -35,7 +35,10 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | Text rotation                   | ✅      | ✅     | OOXML `textRotation` 1–180 (CCW + CW) and 255 (stacked) all painted. CCW anchors at cell bottom-left + extends up-right; CW anchors top-left + extends down-right; stacked draws each char upright on its own line, horizontally centered. `halign=center`/`right` shifts the baseline anchor along the cell width. No overflow into neighbors and no wrap support for rotated text (matches Excel — author-time row height already accounts for the rotated extent). Fixture: `tests/fixtures/text/rotation.xlsx`. Open: vertical placement on slanted angles is bottom-anchored where hsx keeps the rotated bounding-box vertically centered (cosmetic). |
 | Strikethrough                   | ✅      | ✅     | painted as a 1px stroke through the visual middle (baseline − 30% font-size).                                                           |
 | Underline (single)              | ✅      | ✅     | painted as a 1px stroke at baseline+12% font-size; honors per-run, dxf-overlay, and hyperlink underlines.                                                                                                 |
-| Underline (double / accounting) | 🟡      | ❌     | only "is underlined" bit, not the variant.                                                      |
+| Font scheme (`<scheme>`)        | ✅      | ✅     | OOXML `<scheme val="major|minor"/>` on `<font>` and `<rPr>` extracted into a new `scheme: Option<String>` on `Font` / `TextRun`. The accompanying `<name>` is a denormalized cache that goes stale when a theme document swaps in different typefaces — renderer now prefers `WorkbookLayout.theme.{majorFont,minorFont}` over the cache when `scheme` is set (`resolveSchemeName` in `textRenderer.ts`). Falls back to the `<rFont>` / `<name>` cache when the theme is missing the relevant slot. Fixture cells use `<name val="WRONG"/>` + `<scheme val="major"/>` against a custom theme1.xml whose majorFont is `Georgia`; without scheme resolution the cells render in `WRONG` (→ generic fallback), with it they render in Georgia. Hsx divergence: SpreadJS ignores `<scheme>` entirely and renders the cached `<name>`. We match Excel desktop. |
+| Font family (`<family>` fallback) | ✅      | ✅     | OOXML `<family val="N"/>` (ECMA-376 §18.18.30 ST_FontFamilyNum) extracted as `family: Option<u8>` on `Font` / `TextRun` (clamped 0..5). Renderer's `cssFont` now appends a family-specific generic chain instead of the previous hardcoded `"Calibri, Aptos, Arial, sans-serif"`: 1=Roman → `Cambria, "Times New Roman", Georgia, serif`; 2=Swiss → sans-serif; 3=Modern → `Consolas, "Courier New", monospace`; 4=Script → `"Brush Script MT", "Lucida Handwriting", cursive`; 5=Decorative → `Papyrus, Impact, fantasy`; 0/missing → sans-serif default. A workbook authored in a serif typeface that isn't installed locally now stays in a serif instead of falling through to Arial. Run-level `family` overrides the cell base when present. Fixture: `tests/fixtures/text/fontfamily.xlsx` exercises 1/3/4/5 with an uninstalled named typeface. Hsx divergence: SpreadJS ignores `<family>` entirely; we match Excel desktop. |
+| Superscript / subscript         | ✅      | ✅     | OOXML `<vertAlign val="superscript|subscript"/>` extracted into a new `vertAlign: Option<String>` on `Font` / `TextRun` / `Dxf`. Renderer lowers each variant to a shrunk font (~58% of the run's pt size, matching Excel's Font panel) plus a per-piece `baselineShiftPx` (− 33% of the base em for `superscript`, +14% for `subscript`); both fast-path and multi-line/multi-run layout apply the shift to `fillText` and forward it to `paintTextDecorations` so underlines / strikes track the raised/dropped baseline. Line height stays based on the unshrunk base size so a sup/sub run never re-heights its line. Fixture: `tests/fixtures/text/vertalign.xlsx` covers cell-font sup/sub on whole cells plus rich-text H₂O / x² / E=mc² mixed-run cases. Hsx divergence: SpreadJS's xlsx import drops every rich-text run except the last when the workbook uses inline strings + `<vertAlign>` in `<rPr>`, so the hsx baseline screenshot shows just the trailing character; we match Excel desktop's correct rendering. |
+| Underline (double / accounting) | ✅      | ✅     | All 4 OOXML `ST_UnderlineValues` (`single` / `double` / `singleAccounting` / `doubleAccounting`) extracted into a new `underlineStyle` field on `Font` / `TextRun` / `Dxf` (absent = `single`, the OOXML default). Renderer paints `double` / `doubleAccounting` as two parallel strokes (gap = `max(2, fontSizePx * 0.1)`); accounting variants extend across the full cell width per Excel's accounting convention via an optional `accountingExtent: {x, w}` parameter on `paintTextDecorations` that the cell-text caller fills with the cell's inner clip rect (`clip.x + 1`, `clip.w - 2`). Non-accounting underlines still hug the text segment. Fixture: `tests/fixtures/text/underline.xlsx`. Hsx divergence: SpreadJS paints all four variants as identical single thin underlines; we match Excel desktop on both the double-line and the cell-spanning accounting variants. |
 | `<i val="0"/>` boolean unset    | ✅      | ✅     | (bug fix: was treated as `true`).                                                               |
 | Theme XML colors                | ✅      | ✅     | parsed from `xl/theme/theme1.xml`. Spreadsheet `theme="N"` indexing (lt1/dk1/lt2/dk2 swap) is correct. Cell + chart-series accents resolve against the workbook palette. All five OOXML color-choice variants resolved: `srgbClr`, `sysClr.lastClr`, `scrgbClr` (RGB percentages → 0..255 bytes), `hslClr` (HSL → sRGB), and `prstClr` (190-entry preset table covering CSS3/X11 names + `dk*`/`lt*`/`med*` abbreviations + 2010 aliases). Office defaults remain only as a last-resort fallback when the theme part is missing entirely. Unit tests in `crates/xlcore-export/src/theme.rs`. |
 | Indexed-color palette           | ✅      | ✅     | Full ECMA-376 §18.8.27 default `indexedColors` table baked into `INDEXED_PALETTE` (`render.ts`) and the parallel 1-based `COLOR_BY_INDEX` (`numfmt.ts`, used by `[ColorN]` format codes). Covers all 56 legacy slots + 64/65 specials. Open: workbook-level palette override via `<colors><indexedColors>` in styles.xml (vanishingly rare — Excel only writes that block when the user customizes the palette through Office 2003-era dialogs). |
@@ -55,8 +58,8 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | Borders around merged ranges | ✅      | ✅     | (bug fix: perimeter cells of merge now paint their border segments). |
 | Pattern fills (solid)        | ✅      | ✅     |                                                                      |
 | Pattern fills (gray, hatch)  | ✅      | ✅     | All 18 OOXML `PatternValues` types extracted via a real `match` (was a Debug-string scan). Renderer paints each via an 8x8 binary tile (`PATTERN_TILES_8X8` in `render.ts`) drawn into an offscreen canvas + fed to `ctx.createPattern(_, "repeat")`; bg paints first, fg paints the marks on top. Pattern cache keyed by `(type|fg|bg)`. Fixture: `tests/fixtures/fills/patterns.xlsx` (built via Python zip-patch — SpreadJS doesn't surface hatches on its public style API). |
-| Gradient fills (linear)      | ✅      | ✅     | left→right only.                                                     |
-| Gradient fills (radial)      | ❌      | ❌     |                                                                      |
+| Gradient fills (linear)      | ✅      | ✅     | Multi-stop linear with arbitrary `degree` (0° = L→R, 90° = T→B, 180° = R→L, 270° = B→T) and intermediate angles via the rotated-axis projection of the cell rect onto `(cosθ, sinθ)`. Stop positions and colors round-trip through the new `GradientStop { position, color }` schema (was `Vec<Color>` discarding positions). Fixture: `tests/fixtures/fills/gradients.xlsx`. |
+| Gradient fills (radial/path) | ✅      | ✅     | OOXML `<gradientFill type="path">` with `left`/`right`/`top`/`bottom` inner-convergence rect (each a fraction of cell size). Renderer fills the cell with the innermost stop, then overlays a `createRadialGradient` from the inner rect's bounding circle out to the farthest cell corner. Schema: `gradientType` + `gradientLeft|Right|Top|Bottom`. Fixture: `tests/fixtures/fills/gradients.xlsx`. Hsx divergence: SpreadJS paints path gradients as a much smaller / washed-out radial blob; we match Excel desktop's stronger inner-rect-out-to-corners behavior. |
 
 ### Layout
 
@@ -64,8 +67,8 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | ------------------------- | ------- | ------ | ----------------------------------------- |
 | Custom column widths      | ✅      | ✅     |                                           |
 | Custom row heights        | ✅      | ✅     |                                           |
-| Hidden rows / cols        | ✅      | ✅     | (zero-sized in grid).                     |
-| Outline / group levels    | ❌      | ❌     | no `outlineLevel`; no expand-collapse UI. |
+| Hidden rows / cols        | ✅      | ✅     | Zero-sized in the grid. Row/col header labels suppressed for any band with `rowH <= 0` / `colW <= 0` (was: numerals stacked into an unreadable smear when an outline group was collapsed). Collapsed-group boundary: a 2px Office-green (`#137333`) tick paints on the leading edge of the row/col header of the first visible band after every hidden run — matches Excel desktop's "click here to expand" affordance. Outline bracket painter (`paintRowRunsForLevel` / `paintColRunsForLevel`) now skips runs whose visible extent is `< 3px` so the 4px tick caps don't smear into a stray grey notch next to the green tick. Fixture: `../excel-fixtures/e-007_input-4.xlsx` (Alphabet IS sheet — dense collapsed groups on both axes). |
+| Outline / group levels    | ✅      | ✅     | OOXML `<row outlineLevel="N">` and `<col outlineLevel="N">` extracted (capped at the spec limit of 7); `Col.outlineLevel: u8` + a `RowMetaBlob.outlineLevel` u8 blob (omitted from JSON when every row is at level 0). `<sheetPr><outlinePr summaryBelow summaryRight/>` lands on `Sheet.outlinePr` (defaults true/true match Excel). Renderer paints dedicated Excel-style **outline gutter strips** outside the row/col header bands: vertical row-gutter strip at `x ∈ [0, rowGutterW]` (left of the row-number column) containing `[`-shaped vertical brackets per row group, and horizontal col-gutter strip at `y ∈ [0, colGutterH]` (above the column-letter row) containing `⌐`-shaped horizontal brackets per column group. Each level reserves one `OUTLINE_GUTTER_STEP=12px` track; total track count = `depth + 1` (the inner-most track holds the level-`N+1` corner numeral = Excel's "expand all"). A small white `[-]` button paints at every group's summary row/column, positioned by `outlinePr.summaryBelow`/`summaryRight` (default true → below/right of detail). Level-numeral corner buttons ("1", "2", …, `depth+1`) paint in the shared top-left corner box, stacked vertically along the row-gutter tracks and horizontally along the col-gutter tracks. **Refactor:** the grid coordinate system now carries `originX = HEADER_W + rowGutterW` and `originY = HEADER_H + colGutterH` on `Grid`; every downstream module (panes, geometry, interact hit-testing, header drawing, sparkline clip) reads `g.originX` / `g.originY` instead of the raw `HEADER_W` / `HEADER_H` constants, so the gutter just shifts the grid origin without per-call-site math. Outline painters live in `render-ts/src/outlineGutter.ts`. Fixture: `tests/fixtures/outline/outline-groups.xlsx`. Hsx divergence: SpreadJS doesn't render outline gutters in screenshot mode at all; Excel desktop does and we match it. **Interactivity (NEW):** clicking a [-] / [+] button toggles its run — collapse sets every detail row/col override to 0 in the existing `rowOverrides` / `colOverrides` mailboxes the previewer already feeds into `buildGrid`; expand removes those entries so the schema height/width takes over. Painter and hit-tester share one `outlineButtonHits(sheet, g, view)` source of truth so a click lands exactly on the rendered glyph; collapsed runs (zero bracket extent) still get their `+` button via a dedicated `drawOutlineButtons` pass that runs after the bracket pass. Cursor turns to `pointer` over any outline button. Corner level-numeral buttons (`1`, `2`, …, `depth+1`) drive a "collapse to depth N" sweep across both axes (level `depth + 1` therefore expands everything — Excel's *show all*). Glyph picks `+` when `isOutlineRunCollapsed` is true, `-` otherwise. Unit tests in `render-ts/src/outlineGutter.test.ts`. |
 | Freeze panes              | ✅      | ✅     | 4-pane split.                             |
 | Split panes (non-frozen)  | ❌      | ❌     |                                           |
 | Merged cells              | ✅      | ✅     |                                           |
@@ -77,7 +80,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | Feature                            | Extract | Render | Notes                                           |
 | ---------------------------------- | ------- | ------ | ----------------------------------------------- |
 | `colorScale` (2-stop / 3-stop)     | ✅      | ✅     | min/max/percent/percentile/num.                 |
-| `dataBar`                          | 🟡      | 🟡     | Legacy `<dataBar>` parsed; renderer paints proportional fill, splits at zero for mixed-sign ranges, suppresses text on `showValue=false`. Open: gradient fill (renders solid), x14 extension (canonical color / negative color / axis color / `automin`-`automax` cfvos / `minLength`-`maxLength`). Fixture + workarounds: `tests/fixtures/cf/{data-bar.xlsx,TRIAGE.md}`. |
+| `dataBar`                          | 🟡      | 🟡     | Legacy `<dataBar>` parsed; renderer paints proportional fill (gradient by default — `createLinearGradient` from anchor to tip with stops `color@1.0 → color@0.8 at 70% → color@0.05`), splits at zero for mixed-sign ranges, suppresses text on `showValue=false`. New schema field `CfDataBar.gradient: bool` defaults true (matches Excel 2010+, SpreadJS, LibreOffice); when x14 parsing lands the extractor will read the actual flag from `<x14:dataBar gradient="..."/>`. Open: x14 extension (canonical color / negative color / axis color / `automin`-`automax` cfvos / `minLength`-`maxLength`). Fixture + workarounds: `tests/fixtures/cf/{data-bar.xlsx,TRIAGE.md}`. |
 | `iconSet`                          | ✅      | ✅     | All 17 OOXML preset IDs parsed; renderer paints hand-coded canvas paths for arrows / traffic-lights / signs / flags / symbols / ratings / quarters / boxes / triangles / stars (red→yellow→green ramps for color sets, gray ramp for `*Gray`). Bucket assignment is `largest k where v >= cfvo[k]`; `reverse` swaps. `showValue=false` suppresses cell text. Open: x14 extension (custom thresholds + per-icon mixing), curved arrow shapes, row-height–aware sizing. Fixture: `tests/fixtures/cf/icon-set.xlsx`. |
 | `cellIs` (>, <, between, …)        | ✅      | ✅     | All 8 operators (eq/ne/gt/ge/lt/le/between/notBetween) with literal-number / quoted-string operands; cell-ref / formula operands need recalc and are skipped (false). Excel text-vs-number ordering quirk (text > any number) is honored. Fixture: `tests/fixtures/cf/cell-is.xlsx`. |
 | `expression` (formula)             | 🟡      | ❌     | needs IronCalc to evaluate formula per cell.    |
@@ -86,7 +89,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | `containsText` / friends           | ✅      | ✅     | All four kinds — `containsText` / `notContainsText` / `beginsWith` / `endsWith` — case-insensitive against the displayed text. `notContainsText` matches empty cells (Excel parity). Fixture: `tests/fixtures/cf/cf-non-recalc.xlsx`. |
 | `duplicateValues` / `uniqueValues` | ✅      | ✅     | Count-by-value over the rule's combined ranges; numbers and text-of-the-same-digits stay in distinct buckets (`1` ≠ `"1"`, mirrors Excel). Empty cells excluded. Fixture: `tests/fixtures/cf/cf-non-recalc.xlsx`. |
 | `timePeriod`                       | ✅      | ✅     | All 10 named periods (yesterday / today / tomorrow / last7Days / lastWeek / thisWeek / nextWeek / lastMonth / thisMonth / nextMonth) evaluated against the wall-clock at render time. Excel weeks are Sunday–Saturday. **Not in the fixture corpus** because the matching set rotates daily and would invalidate the snapshot. |
-| Stop-if-true semantics             | ❌      | ❌     | rule priority + masking not modelled.           |
+| Stop-if-true semantics             | ✅      | ✅     | Cross-kind masking: a higher-priority rule with `stopIfTrue=true` suppresses every lower-priority rule on the same cell, regardless of kind (cellIs / colorScale / dataBar / iconSet all participate). Implemented via a single `computeCfStopLocks(sheet, layout)` upfront pass that flattens all CF blocks, sorts by priority globally, and emits `Map<cellKey, lockedAtPriority>`; each visual pass (`computeCfDxfMap`, color-scale paint, data-bar paint, `computeCfIconState`, `computeCfTextSuppress`) calls `isCfLocked(locks, k, rule.priority)` and skips. Predicate kinds (`cellIs`, `top10`, etc.) lock only the cells whose value matches; visual kinds (`colorScale`/`dataBar`/`iconSet`) lock every cell in their `sqref` (Excel's UI doesn't allow stopIfTrue here, but the OOXML schema does and we honor it). `expression` doesn't lock without recalc — better to under-mask than over-mask. Fixture: `tests/fixtures/cf/stop-if-true.xlsx` (4 columns: control + cellIs masking colorScale / dataBar / iconSet). Pixel-matches hsx. |
 
 ### Tables, validation, charts, drawings
 
@@ -104,7 +107,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | Chart: area (stacked / 100%)              | ✅      | ✅     | Default stacked behavior matches Excel; `standard` (overlapping) and `percentStacked` also handled. Translucent fill + outlined top edge. |
 | Chart: combo / secondary axis             | ❌      | ❌     |                                                                                                                   |
 | Chart: data labels                        | ✅      | ✅     | `<c:dLbls>` extracted at chart-group + per-series level. New `DataLabels { showValue, showCategory, showSeriesName, showPercent, position, separator, numFmt }` schema; series-level overrides chart-level. Renderer paints labels for column/bar (outEnd/inEnd/inBase/ctr), line (t/b/l/r/ctr above markers), area (top edge of each segment), pie/doughnut (outEnd/ctr/inEnd, percent computed against series total), scatter (right of each xy point). White halo behind each label for legibility on filled bars. Open: leader-line drawing for pie outside labels (cosmetic; Excel draws thin gray lines from the slice edge to outside labels when they would collide with the pie); per-point `<c:dLbl idx=N>` overrides; `<c:dLbls>` ext-list `dispBlanksAs` propagation. ooxmlsdk parse quirk: SpreadJS-emitted pies write `<c:leaderLines>` AFTER `<c:extLst>` inside `<c:dLbls>`, which trips the SDK's strict-sequence parser and silently zeros the show* fields — the fixture build script post-patches the offending block via Python zip-edit. Real Excel-emitted pies put leaderLines before extLst and parse cleanly. Fixture: `tests/fixtures/charts/data-labels.xlsx` (column/bar/line/area/pie/scatter, six configurations). |
-| Sparklines                                | ❌      | ❌     | stored under `extLst`.                                                                                            |
+| Sparklines                                | ✅      | ✅     | OOXML `<x14:sparklineGroup>` parsed from the worksheet's `<extLst>`. All three types painted: `line` (with optional plain markers + per-extremum colored markers for `high`/`low`/`first`/`last`/`negative`), `column` (baseline-anchored bars with per-extremum / negative recoloring), and `stacked` (Excel's win/loss — fixed-height up/down bars centered vertically, gap on zero/empty). Group-axis resolution (`minAxisType="group"`/`maxAxisType="group"`) is precomputed in `lib.rs::resolve_sparkline_refs` and stored as `groupMin`/`groupMax` on the wire so the renderer doesn't re-walk the data. `displayEmptyCellsAs` (`gap`/`zero`/`span`) honored for line; `displayXAxis` paints a horizontal axis line at zero when the data crosses zero. Per-element color overrides (`colorSeries`/`colorNegative`/`colorAxis`/`colorMarkers`/`colorFirst`/`colorLast`/`colorHigh`/`colorLow`) all wired through. Fixture: `tests/fixtures/sparklines/sparklines.xlsx`. **Open / known issue:** ooxmlsdk's parser keys element matching by literal prefix string (see `is_foreign_prefixed_child` in `ooxmlsdk-0.6.1/src/common.rs`), so the inner `<f>` / `<sqref>` elements must be written with the `xne:` prefix that ooxmlsdk's qname strings expect. Excel desktop typically writes them with the `xm:` prefix, which would silently parse as 0 sparklines per group; a robust fix needs an XML-level prefix-rewrite preprocess of the worksheet ext blob, or upstreaming a URI-keyed parser into ooxmlsdk. **Open (cosmetic):** marker glyphs are currently filled circles — Excel's default marker is a small filled square; per-marker shape (square/diamond/triangle) and per-marker size are not yet honored. |
 | Images (raster)                           | ✅      | ✅     | base64 inline.                                                                                                    |
 | Images: cropped / rotated                 | 🟡      | 🟡     | crop/rotation transforms ignored.                                                                                 |
 | Shapes                                    | ❌      | ❌     | placeholder grey box.                                                                                             |
@@ -153,8 +156,13 @@ of real-world workbooks looking wrong.
      paints red); `showValue=false` suppresses cell text. Hsx writes
      incomplete `<dataBar>` XML (no `<color>` child, defaults wrong)
      so the fixture build-script post-patches with a zip rewrite.
-     Open sub-items: gradient fill, x14 extension parsing. See
-     `tests/fixtures/cf/TRIAGE.md`.
+     ~~Gradient fill~~ **DONE** — `CfDataBar.gradient: bool` defaults
+     true and the renderer uses `createLinearGradient` (anchor→tip:
+     `color@1.0 → color@0.8 at 70% → color@0.05`) instead of a flat
+     fill. Pixel-matches hsx on `tests/fixtures/cf/data-bar.xlsx`
+     across the auto / num-num / mixed-sign / barOnly / explicit-gradient
+     rows. Open sub-item: x14 extension parsing (would let users
+     turn gradient off). See `tests/fixtures/cf/TRIAGE.md`.
    - ~~`iconSet`~~ **DONE.** Schema: `CfIconSet { iconSet, cfvos[],
      showValue, reverse }` extracted from legacy `<x:iconSet>`.
      Renderer: per-cell glyph drawn as canvas paths (arrows / traffic
@@ -204,9 +212,23 @@ of real-world workbooks looking wrong.
    spans. Verified against four fixtures in `tests/fixtures/numfmt/`
    (date/time, currency-locale, multi-section conditions, fractions +
    scientific). All 45 sample rows match hsx to the character. Open
-   sub-items: `_x`/`*x` width-aware padding (needs cell-width plumbing),
-   per-format memoization, locale separator, parser-on-Rust-side
-   refactor — see `tests/fixtures/numfmt/TRIAGE.md`.
+   sub-items: per-format memoization, locale separator, parser-on-
+   Rust-side refactor — see `tests/fixtures/numfmt/TRIAGE.md`.
+   ~~`_x`/`*x` width-aware padding~~ **DONE** — `*x` fill tokens now
+   lower to a `FILL_SENTINEL` (`\u0001`) in `FormatResult.text` plus a
+   parallel `fills: string[]` carrying each fill char; the textRenderer
+   loop in `drawCellText` measures the cell's primary span at
+   `ownRect.w - padX*2`, computes the available slack, and substitutes
+   N copies of the matching fill char per sentinel (split evenly when
+   a section has multiple `*` tokens). Accounting format
+   `_("$"* #,##0_)` for `80539` now packs as `$    80,539 ` flush
+   against both cell edges, matching hsx's `$  80,539 ` look on the
+   `tests/fixtures/numfmt/currency-locale.xlsx` fixture (exact
+   gap depends on cell width). `_x` continues to emit a single space
+   — width-aware `_x` padding (which would measure the width of `x`
+   in the cell font and pad by that many px instead of one space)
+   stays open; visually undistinguishable from a literal space in
+   every fixture today.
 
 5. ~~**Charts: line / pie / scatter / area.**~~ **DONE.** Four new
    drawers in `render-ts/src/chart.ts`:
@@ -315,6 +337,12 @@ Bigger lifts (own milestones):
     HSL primaries (red/green/blue/black/white/gray), and hex format.
 - **Formula recalc.** Forking IronCalc + filling its function gaps is
   milestone 1 in `plan-excel-rust-lib.md`.
+- ~~**node-canvas backend.**~~ **DONE.** `@xlcore/render-ts` now exports
+  `renderToCanvas()` / `renderToPng()` from `render-ts/src/node.ts`, backed by
+  `@napi-rs/canvas` and the exact same `render()` pass used by the browser
+  preview. Pattern-fill offscreen canvases route through a shared factory so
+  hatch fills keep working outside `document`. Open follow-up: wire this into
+  fixture pixel-diff CI.
 - **Filtered-row hiding (autoFilter).** Needs the engine OR a "hidden row"
   fast-path keyed off `<row hidden="1">` markers some writers emit.
 - **Sparklines.** Stored under `extLst`; chart-class effort.
@@ -625,6 +653,31 @@ surrounding workbook noise.
       plain Calibri 11 (default xf ids); now Title / Heading 1 /
       Highlighted / Centered all pick up their named-style
       formatting. Hsx divergence noted in the fixture README.
+- [x] Outline / group levels: `tests/fixtures/outline/outline-groups.xlsx`
+      lays out two row groups (rows 3-4, 7-8 at `outlineLevel=1`) and
+      one column group (cols B-D at `outlineLevel=1`). Schema additions:
+      `Col.outlineLevel: u8`, `RowMetaBlob.outlineLevel` u8 blob (skipped
+      from JSON when all-zero), `Sheet.outlinePr: Option<{summaryBelow,
+      summaryRight}>`. Renderer paints the brackets inside the existing
+      header strips (no layout shift, no `HEADER_W` / `HEADER_H`
+      refactor); scrolling + freeze panes both honored via separate
+      pinned/scrolling run passes per level. SpreadJS drops
+      `outlineLevel` on xlsx export so the fixture is built via Python
+      zip-patch (also splits the existing `<col min="2" max="6">` block
+      into B-D / E-F so only the grouped columns get the attr). **Open:**
+      proper Excel-style outline gutter strip outside the header strips
+      (with +/- buttons + level numerals at the corner) is the planned
+      follow-up.
+- [x] CF stopIfTrue cross-kind masking: `tests/fixtures/cf/stop-if-true.xlsx`
+      — four side-by-side columns each with values 1..10 and a
+      `cellIs(>7)` yellow-fill dxf rule layered against (a) no stop,
+      (b) a colorScale, (c) a dataBar, (d) an iconSet; the stopping
+      cellIs rule has higher priority and `stopIfTrue=true`. Without
+      the fix, lower-priority colorScale / dataBar / iconSet rules
+      paint over the stopped cells; with the fix, rows 8–10 in cols
+      B–D show only the yellow dxf, matching Excel + hsx. SpreadJS
+      drops `stopIfTrue` on its public xlsx-emit path so the fixture
+      is built via Python zip-patch (`_patch_stop_if_true.py`).
 - [x] Every-border-style fixture: `tests/fixtures/borders/every-style.xlsx`
       lays out all 14 OOXML `ST_BorderStyle` values in a 2×7 grid,
       each on all four sides of its cell. Caught two latent bugs:
@@ -636,14 +689,101 @@ surrounding workbook noise.
       OOXML; hsx's public API doesn't expose `slantDashDot`. Documented
       hsx divergence: SpreadJS draws all `*DashDot*` variants as solid
       lines, ours match Excel desktop. See PARITY row.
+- [x] Font-family detection (`<scheme>` + `<family>`):
+      `tests/fixtures/text/fontfamily.xlsx` covers both flavors. The
+      fixture rewrites `xl/theme/theme1.xml` so majorFont=Georgia,
+      minorFont=Verdana, then defines six cell fonts: two with
+      `<scheme val="major|minor"/>` + a deliberately wrong cached
+      `<name val="WRONG"/>` (must resolve via the theme), and four
+      with an uninstalled typeface `NotInstalledFontXYZ` + `<family>`
+      values 1/3/4/5 (must fall through to serif/monospace/cursive/
+      fantasy generics). Our render shows Georgia / Verdana / serif /
+      monospace / cursive / fantasy correctly; hsx renders all six
+      cells in the same fallback typeface (it ignores both attrs).
+      Built via Python zip-patch because hsx's public JS API exposes
+      neither `<scheme>` nor `<family>` on the font block.
+- [x] Superscript / subscript (`<vertAlign>`):
+      `tests/fixtures/text/vertalign.xlsx` covers cell-font `vertAlign`
+      (whole cell super/sub via styles.xml) and rich-text-run
+      `vertAlign` (H, 2-sub, O / x, 2-sup / E = mc, 2-sup). Built via
+      Python zip-patch because hsx's public JS API doesn't expose
+      `vertAlign` on either path — and importantly, its xlsx-import
+      path drops every rich-text run but the last when the cells use
+      inline strings, so the snapshot only confirms shape, not
+      correctness. Our render shows the correct shrunk-and-shifted
+      glyphs for every case; underline / strike inside a sup/sub run
+      track the shifted baseline.
+- [x] Underline variants (double / singleAccounting / doubleAccounting):
+      `tests/fixtures/text/underline.xlsx` puts all 4 ST_UnderlineValues +
+      a "no underline" control in a row of 5 cells. Schema gains
+      `underlineStyle: Option<String>` on `Font` / `TextRun` / `Dxf`;
+      extractor reads `<u val="..."/>` via a shared `underline_variant`
+      helper. Renderer paints `double` / `doubleAccounting` as two
+      parallel strokes (`gap = max(2, fontSizePx * 0.1)`); accounting
+      variants now extend across the full cell width via a new optional
+      `accountingExtent: {x, w}` parameter on `paintTextDecorations`
+      that the cell-text caller fills with the cell's inner clip rect
+      (`clip.x + 1`, `clip.w - 2`). Non-accounting underlines keep
+      hugging the text segment. Hsx draws all 4 variants as identical
+      single thin lines so this fixture is built via Python zip-patch
+      (hsx's public JS API only exposes a boolean `underline()`
+      toggle anyway).
+- [x] Gradient fills (linear multi-stop + path/radial):
+      `tests/fixtures/fills/gradients.xlsx` lays out 6 cells covering
+      linear `degree=0/45/90/270`, a 3-stop linear, and a path gradient
+      with a centered inner-convergence rect. Schema gains `GradientStop
+      { position, color }` (replaces `Vec<Color>` that silently dropped
+      stop positions) plus `gradientType` / `gradientDegree` /
+      `gradientLeft|Right|Top|Bottom`. Renderer in `cellPaint.ts` paints
+      multi-stop linear via rotated-axis projection of the cell rect onto
+      `(cosθ, sinθ)` (so position 0 hits the leading corner along the
+      gradient axis and position 1 hits the trailing corner), and path
+      gradients via `createRadialGradient` from the inner rect's bounding
+      circle out to the farthest cell corner with the innermost stop
+      pre-filled across the full cell. SpreadJS doesn't expose gradient
+      fills on its public style API so the fixture is built via Python
+      zip-patch (`_patch_gradients.py`).
+- [x] Sparklines (x14): `tests/fixtures/sparklines/sparklines.xlsx`
+      lays out 7 row sparklines anchored in column H across 6
+      `<x14:sparklineGroup>` blocks — plain line, line with markers +
+      extrema toggles, line with axis + negative coloring, column
+      with high/low overrides, two-sparkline group sharing a
+      `minAxisType="group"` / `maxAxisType="group"` y-scale across
+      small-magnitude vs large-magnitude data rows, and a `type=
+      "stacked"` win/loss row. New schema: `Sheet.sparkline_groups:
+      Vec<SparklineGroup>`, where each group carries shared chrome
+      (type, line weight, marker toggles, color overrides, axis
+      types, manual/group min-max, RTL, displayEmptyCellsAs,
+      displayXAxis) and `Vec<Sparkline>` of `(r, c, formula,
+      values: Vec<Option<f64>>)`. Values resolve in a new
+      `lib.rs::resolve_sparkline_refs` post-pass that mirrors the
+      chart-ref resolver — walks each formula range against the
+      already-extracted sheet rows, preserves `None` for empty / non-
+      numeric source cells (so `displayEmptyCellsAs` can do its job),
+      and reduces over the group when in group-axis mode. Renderer:
+      new `render-ts/src/sparklines.ts` (~330 LOC) wired into the
+      per-pane render loop right after `drawCfIcons`, with three
+      drawer paths matching the OOXML types and a shared
+      `resolveRange` helper for axis math. Hsx-divergence: minimal
+      — win/loss bar positioning slightly differs in vertical anchor
+      (we center on midpoint vs hsx's gap-and-stack arrangement), and
+      our line markers are filled circles vs Excel's default square;
+      tracked in PARITY row. Built via Python zip-patch
+      (`_patch_sparklines.py`) because hsx's public JS API doesn't
+      expose the x14 sparkline schema at all. **Caught a latent
+      ooxmlsdk parsing quirk:** the SDK keys element matching by
+      literal prefix (not URI), so the `<xne:f>` / `<xne:sqref>`
+      inner elements must use the `xne:` prefix the qname strings
+      hard-code; the more idiomatic `<xm:f>` Excel writes would
+      parse as 0 sparklines per group. PARITY row notes this as the
+      next robustness lift.
 - [ ] Land the next batch of per-feature fixtures (the four marked above
       as "would have caught X bug").
 - [ ] CI guard: `cargo test … export_bindings && git diff --exit-code
     render-ts/src/schema/`.
 - [ ] `cargo-insta` snapshot test on `WorkbookLayout` JSON for every
       fixture.
-- [ ] Pixel-diff snapshot test once `node-canvas` lands — render via
-      node-canvas, imagehash against the stored `*.hsx.png`, fail CI on
-      regression.
+- [ ] Pixel-diff snapshot test — render via the new node-canvas adapter,
+      imagehash against the stored `*.hsx.png`, fail CI on regression.
 - [ ] `bun test` on pure-helper TS (`niceTicks`, `formatNumber`, A1
       helpers, `layoutSpans`).

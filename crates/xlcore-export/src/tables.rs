@@ -14,14 +14,15 @@ pub fn extract(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) -> Vec<Ta
     let mut out = Vec::new();
     // Snapshot the part refs so we can `root_element(doc)` per part
     // without holding an iterator borrow on the document.
-    let table_parts: Vec<_> = ws_part
-        .table_definition_parts(doc)
-        .map(|p| p.clone())
-        .collect();
+    let table_parts: Vec<_> = ws_part.table_definition_parts(doc).collect();
 
     for tp in &table_parts {
-        let Ok(t) = tp.root_element(doc) else { continue; };
-        let Some(((r1, c1), (r2, c2))) = parse_range(t.reference.as_str()) else { continue; };
+        let Ok(t) = tp.root_element(doc) else {
+            continue;
+        };
+        let Some(((r1, c1), (r2, c2))) = parse_range(t.reference.as_str()) else {
+            continue;
+        };
         let display_name = t.display_name.as_str().to_string();
         let name = t
             .name
@@ -42,10 +43,7 @@ pub fn extract(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) -> Vec<Ta
                     .totals_row_function
                     .as_ref()
                     .map(|v| format!("{:?}", v).to_lowercase()),
-                totals_row_label: c
-                    .totals_row_label
-                    .as_ref()
-                    .map(|s| s.as_str().to_string()),
+                totals_row_label: c.totals_row_label.as_ref().map(|s| s.as_str().to_string()),
             })
             .collect();
 

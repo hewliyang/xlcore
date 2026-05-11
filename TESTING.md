@@ -144,7 +144,7 @@ See `plan-excel-rust-lib.md` for what each represents.
 - [ ] Per-feature mini-fixtures so a failed visual diff names the suspect:
       `cf-color-scale.xlsx`, `text-overflow.xlsx`, `bar-chart-clustered.xlsx`,
       `freeze-pane.xlsx`, etc.
-- [ ] Pixel-diff snapshot test once the `node-canvas` adapter lands —
-      render via node-canvas, imagehash against a stored reference PNG with
-      a tolerance, fail CI on regression.
+- [ ] Pixel-diff snapshot test using the node-canvas adapter — render via
+      `renderToPng`, imagehash against a stored reference PNG with a tolerance,
+      fail CI on regression.
 - [ ] `bun test` on pure-helper TS (`niceTicks`, `formatNumber`, A1 helpers).

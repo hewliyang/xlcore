@@ -53,9 +53,14 @@ Key design choices, documented inline:
 
 ## Known small gaps (intentional, low priority)
 
-- **Padding / fill**: `_x` emits a single space (instead of measuring
-  `x`'s width); `*x` emits nothing (instead of filling the cell). Both
-  need cell-width plumbing into the formatter.
+- **Padding / fill**: ~~`*x` emits nothing~~ **DONE** — `*x` tokens now
+  emit a `FILL_SENTINEL` (`\u0001`) in `FormatResult.text` plus a parallel
+  `fills: string[]` carrying the fill char; the textRenderer measures the
+  cell-primary span at `ownRect.w - padX*2` and substitutes N copies of
+  the fill char per sentinel so accounting `_("$"* #,##0_)` packs as
+  `$    80,539 ` flush against both cell edges. `_x` still emits a single
+  space instead of measuring `x`'s glyph width — visually equivalent for
+  the parens / space chars accounting formats actually use.
 - **Per-format memoization**: `parseFormat` runs per cell. With dedupe
   it's cheap; a `Map<string, Section[]>` cache is a trivial follow-up.
 - **Locale separator (`.` vs `,`)**: hardcoded en-US.

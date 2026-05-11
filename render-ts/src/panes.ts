@@ -1,5 +1,5 @@
 import type { Sheet } from "./types.js";
-import { HEADER_H, HEADER_W } from "./grid.js";
+
 import type { Grid } from "./grid.js";
 import type { Pane, Viewport, Visible } from "./renderTypes.js";
 
@@ -14,8 +14,8 @@ function frozenExtent(
   const fz = sheet.freeze;
   const splitX = fz && fz.leftCol > 1 ? fz.leftCol : 1;
   const splitY = fz && fz.topRow > 1 ? fz.topRow : 1;
-  const pcw = splitX > 1 ? (g.colX[splitX] ?? HEADER_W) - HEADER_W : 0;
-  const prh = splitY > 1 ? (g.rowY[splitY] ?? HEADER_H) - HEADER_H : 0;
+  const pcw = splitX > 1 ? (g.colX[splitX] ?? g.originX) - g.originX : 0;
+  const prh = splitY > 1 ? (g.rowY[splitY] ?? g.originY) - g.originY : 0;
   return { splitX, splitY, pcw, prh };
 }
 
@@ -36,8 +36,8 @@ export function splitPanes(
 
   // BR (always present) — covers everything past both splits.
   {
-    const cx = HEADER_W + pcw;
-    const cy = HEADER_H + prh;
+    const cx = g.originX + pcw;
+    const cy = g.originY + prh;
     const cw = Math.max(0, canvasW - cx);
     const ch = Math.max(0, canvasH - cy);
     const tx = -vpx;
@@ -49,8 +49,8 @@ export function splitPanes(
   }
   if (hasV) {
     // TR — pinned rows, scrolling cols.
-    const cx = HEADER_W + pcw;
-    const cy = HEADER_H;
+    const cx = g.originX + pcw;
+    const cy = g.originY;
     const cw = Math.max(0, canvasW - cx);
     const ch = prh;
     const tx = -vpx;
@@ -63,8 +63,8 @@ export function splitPanes(
   }
   if (hasH) {
     // BL — pinned cols, scrolling rows.
-    const cx = HEADER_W;
-    const cy = HEADER_H + prh;
+    const cx = g.originX;
+    const cy = g.originY + prh;
     const cw = pcw;
     const ch = Math.max(0, canvasH - cy);
     const tx = 0;
@@ -77,8 +77,8 @@ export function splitPanes(
   }
   if (hasH && hasV) {
     // TL — fully pinned corner.
-    const cx = HEADER_W;
-    const cy = HEADER_H;
+    const cx = g.originX;
+    const cy = g.originY;
     const cw = pcw;
     const ch = prh;
     const vis: Visible = {

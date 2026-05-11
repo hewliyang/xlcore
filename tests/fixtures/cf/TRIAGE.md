@@ -82,11 +82,13 @@ parsing": when we add it, drop both workarounds.
 
 ### Renderer punts
 
-- **`gradient` (Excel 2010+ default) renders as solid.** SpreadJS
-  paints data bars as a `linear-gradient(color, transparent)`; we
-  paint a flat rect of the bar's fill color. Cosmetic; the row 6
-  ("gradient") variant in the fixture is the marker for when this
-  ships.
+- ~~**`gradient` (Excel 2010+ default) renders as solid.**~~ **DONE.**
+  Renderer now paints a `createLinearGradient` from the bar's anchor
+  edge to its tip with stops `color@1.0 → color@0.8 at 70% → color@0.05`,
+  matching the visual character SpreadJS produces. New schema field
+  `CfDataBar.gradient: bool` defaults true; when x14 parsing lands
+  the extractor will read `<x14:dataBar gradient="..."/>` and only
+  fall back to a flat fill when explicitly disabled.
 - **Negative bar color = hard-coded `#FF0000`.** Real files store the
   per-rule negative color in the x14 extension's `negativeFillColor`.
   Until that's parsed, all negative bar segments paint pure red,

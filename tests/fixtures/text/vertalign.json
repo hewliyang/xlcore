@@ -1,0 +1,200 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Sheet1",
+      "maxRow": 3,
+      "maxCol": 6,
+      "defaultColWidthPx": 80.10364,
+      "defaultRowHeightPx": 20.0,
+      "cols": [
+        {
+          "min": 2,
+          "max": 6,
+          "widthPx": 201.0
+        }
+      ],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "cells": {
+        "count": 10,
+        "r": "AgAAAAIAAAACAAAAAgAAAAIAAAADAAAAAwAAAAMAAAADAAAAAwAAAA==",
+        "c": "AgAAAAMAAAAEAAAABQAAAAYAAAACAAAAAwAAAAQAAAAFAAAABgAAAA==",
+        "kind": "AgICAgICAgICAg==",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAA==",
+        "formulaIdx": "/////////////////////////////////////////////////////w==",
+        "styleIdx": "AAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAgAAAAAAAAAAAAAAAAAAAA==",
+        "runsIdx": "/////////////////////////////////////wAAAAABAAAAAgAAAA==",
+        "rowPtr": "AAAAAAUAAAAKAAAA"
+      },
+      "rowMeta": {
+        "count": 2,
+        "index": "AgAAAAMAAAA=",
+        "heightPx": "q6rqQauqKkI=",
+        "styleIdx": "//////////8=",
+        "hidden": "AAA="
+      },
+      "valuePool": [
+        "Cell-Super",
+        "Cell-Sub",
+        "H2O (rich)",
+        "x^2 (rich)",
+        "E=mc^2 (rich)",
+        "tiny up",
+        "tiny down",
+        "H2O",
+        "x2",
+        "E = mc2"
+      ],
+      "inlineRuns": [
+        [
+          {
+            "text": "H",
+            "size": 14.0,
+            "fontName": "Calibri",
+            "color": {
+              "rgb": "FF000000"
+            }
+          },
+          {
+            "text": "2",
+            "size": 14.0,
+            "fontName": "Calibri",
+            "color": {
+              "rgb": "FF000000"
+            },
+            "vertAlign": "subscript"
+          },
+          {
+            "text": "O",
+            "size": 14.0,
+            "fontName": "Calibri",
+            "color": {
+              "rgb": "FF000000"
+            }
+          }
+        ],
+        [
+          {
+            "text": "x",
+            "size": 14.0,
+            "fontName": "Calibri",
+            "color": {
+              "rgb": "FF000000"
+            }
+          },
+          {
+            "text": "2",
+            "size": 14.0,
+            "fontName": "Calibri",
+            "color": {
+              "rgb": "FF000000"
+            },
+            "vertAlign": "superscript"
+          }
+        ],
+        [
+          {
+            "text": "E = mc",
+            "size": 14.0,
+            "fontName": "Calibri",
+            "color": {
+              "rgb": "FF000000"
+            }
+          },
+          {
+            "text": "2",
+            "size": 14.0,
+            "fontName": "Calibri",
+            "color": {
+              "rgb": "FF000000"
+            },
+            "vertAlign": "superscript"
+          }
+        ]
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 14.0,
+        "color": {
+          "rgb": "FF000000"
+        }
+      },
+      {
+        "name": "Calibri",
+        "size": 14.0,
+        "color": {
+          "rgb": "FF000000"
+        },
+        "vertAlign": "superscript"
+      },
+      {
+        "name": "Calibri",
+        "size": 14.0,
+        "color": {
+          "rgb": "FF000000"
+        },
+        "vertAlign": "subscript"
+      }
+    ],
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      },
+      {
+        "fontId": 1,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      },
+      {
+        "fontId": 2,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 14.0
+  },
+  "sharedStrings": [],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  },
+  "activeSheetIndex": 0
+}

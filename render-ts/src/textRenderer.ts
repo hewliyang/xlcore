@@ -1,7 +1,8 @@
 import type { Cell, Dxf, Font, Sheet, TextRun, WorkbookLayout } from "./types.js";
-import { resolveCellText } from "./cellText.js";
+import { resolveCellText, resolveCellXf } from "./cellText.js";
 import { colorToCss } from "./color.js";
-import { HEADER_H, HEADER_W } from "./grid.js";
+import { iterCellsInRange } from "./columnar.js";
+
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, rectFor } from "./geometry.js";
 import { frozenDims } from "./panes.js";
@@ -14,12 +15,20 @@ import type { Visible } from "./renderTypes.js";
 /// successive `fillText` calls.
 interface Span {
   text: string;
-  font: string; // canvas `ctx.font` shorthand
-  fontSizePx: number; // for line-height + ascent math
+  font: string; // canvas `ctx.font` shorthand (already shrunk for sup/sub)
+  fontSizePx: number; // base-font size: drives line-height + decoration math
   color: string;
   bold: boolean; // kept for re-`measureText` shortcuts
   underline: boolean;
+  /// OOXML `<u val="..."/>` variant when not the default `single`.
+  /// One of `"double"` / `"singleAccounting"` / `"doubleAccounting"`.
+  /// Painted by `paintTextDecorations`.
+  underlineStyle?: string;
   strike: boolean;
+  /// Per-piece baseline shift in px (sup = negative → raise; sub =
+  /// positive → drop). Underline / strike inherit this shift because
+  /// they're computed relative to the baseline argument passed in.
+  baselineShiftPx?: number;
 }
 
 /// Build the flat list of `Span`s for a cell, honoring rich-text runs from
@@ -35,10 +44,18 @@ function resolveCellSpans(
   defaultFontSizePt: number,
 ): Span[] {
   const baseSizePt = baseFont?.size ?? defaultFontSizePt;
-  const baseName = baseFont?.name ?? defaultFontFamily;
+  // OOXML `<scheme val="major|minor"/>` on the cell font resolves against
+  // the workbook theme's `major_font` / `minor_font`. The `<name>` cache
+  // can be stale when a theme document swaps in different typefaces, so
+  // when scheme is present we trust the theme over the cache. Falls back
+  // to the cached name if the theme is missing the relevant slot.
+  const baseName =
+    resolveSchemeName(baseFont?.scheme, layout) ?? baseFont?.name ?? defaultFontFamily;
+  const baseFamily = baseFont?.family;
   const baseBold = baseFont?.bold ?? false;
   const baseItalic = baseFont?.italic ?? false;
   const baseUnderline = baseFont?.underline ?? false;
+  const baseUnderlineStyle = baseFont?.underlineStyle;
   const baseStrike = baseFont?.strike ?? false;
 
   // Pull the run list. Inline cells carry it directly; shared-string cells
@@ -52,23 +69,22 @@ function resolveCellSpans(
     if (sr && sr.length > 0) runs = sr;
   }
 
+  const baseVertAlign = baseFont?.vertAlign;
+
   if (!runs) {
     return [
-      {
-        text,
-        font: cssFont(baseName, baseSizePt, baseBold, baseItalic),
-        fontSizePx: ptToPx(baseSizePt),
-        color: baseColor,
-        bold: baseBold,
-        underline: baseUnderline,
-        strike: baseStrike,
-      },
+      buildSpan(text, baseSizePt, baseName, baseFamily, baseBold, baseItalic, baseColor, baseUnderline, baseUnderlineStyle, baseStrike, baseVertAlign),
     ];
   }
 
   return runs.map((r) => {
     const sizePt = r.size ?? baseSizePt;
-    const name = r.fontName ?? baseName;
+    // Same scheme → theme-font resolution path as the cell base; a run
+    // with `<scheme val="major"/>` re-resolves to the theme's major font
+    // even when `<rFont>` carries a stale cached name.
+    const name =
+      resolveSchemeName(r.scheme, layout) ?? r.fontName ?? baseName;
+    const family = r.family ?? baseFamily;
     const bold = r.bold ?? baseBold;
     const italic = r.italic ?? baseItalic;
     const color = r.color ? colorToCss(r.color, baseColor) : baseColor;
@@ -76,29 +92,90 @@ function resolveCellSpans(
     // OR the cell's base flags so e.g. a hyperlink dxf underline still
     // wins on a run with no rPr underline of its own.
     const underline = r.underline || baseUnderline;
+    // Per-run variant wins; falls through to the cell-base font's variant.
+    const underlineStyle = r.underlineStyle ?? baseUnderlineStyle;
     const strike = r.strike || baseStrike;
-    return {
-      text: r.text,
-      font: cssFont(name, sizePt, bold, italic),
-      fontSizePx: ptToPx(sizePt),
-      color,
-      bold,
-      underline,
-      strike,
-    };
+    // vertAlign on a run wins over the cell's base font; absent on both
+    // means baseline (no shift).
+    const vertAlign = r.vertAlign ?? baseVertAlign;
+    return buildSpan(r.text, sizePt, name, family, bold, italic, color, underline, underlineStyle, strike, vertAlign);
   });
+}
+
+/// Resolve OOXML `<scheme val="major|minor"/>` against the workbook's
+/// theme font scheme. Returns `undefined` when scheme is absent, set to
+/// `"none"`, or the requested slot is missing on the theme — caller
+/// falls back to the `<name>` cache.
+function resolveSchemeName(
+  scheme: string | undefined,
+  layout: WorkbookLayout,
+): string | undefined {
+  if (!scheme || scheme === "none") return undefined;
+  const t = layout.theme;
+  if (!t) return undefined;
+  if (scheme === "major") return t.majorFont || undefined;
+  if (scheme === "minor") return t.minorFont || undefined;
+  return undefined;
+}
+
+/// Construct a `Span`, lowering OOXML `vertAlign` to a shrunk font + a
+/// baseline-shift offset. Excel sup/sub is ~58% of the base font size
+/// (`Font` panel in the desktop client), raised by ~33% of the base em
+/// for superscript or dropped ~14% for subscript.
+function buildSpan(
+  text: string,
+  sizePt: number,
+  name: string,
+  family: number | undefined,
+  bold: boolean,
+  italic: boolean,
+  color: string,
+  underline: boolean,
+  underlineStyle: string | undefined,
+  strike: boolean,
+  vertAlign: string | undefined,
+): Span {
+  const basePx = ptToPx(sizePt);
+  let drawSizePt = sizePt;
+  let baselineShiftPx = 0;
+  if (vertAlign === "superscript") {
+    drawSizePt = sizePt * 0.58;
+    baselineShiftPx = -basePx * 0.33;
+  } else if (vertAlign === "subscript") {
+    drawSizePt = sizePt * 0.58;
+    baselineShiftPx = basePx * 0.14;
+  }
+  return {
+    text,
+    font: cssFont(name, drawSizePt, bold, italic, family),
+    fontSizePx: basePx,
+    color,
+    bold,
+    underline,
+    underlineStyle,
+    strike,
+    baselineShiftPx: baselineShiftPx || undefined,
+  };
 }
 
 /// Paint underline / strike for a single text segment on the canvas at
 /// (`x`, `baseline`). Underline sits ~2px below the baseline; strike
 /// runs through the visual middle (~30% above the baseline). Width is
 /// the segment's measured pixel width.
+///
+/// `accountingExtent` (optional): when the span uses an OOXML
+/// `singleAccounting` / `doubleAccounting` underline variant, the
+/// underline extends across the full cell width (Excel's accounting
+/// convention) instead of just the text segment. Caller passes the
+/// cell's inner-rect `{x, w}` here. Non-accounting underlines ignore
+/// it. Strike is unaffected by this option.
 function paintTextDecorations(
   ctx: CanvasRenderingContext2D,
   span: Span,
   x: number,
   baseline: number,
   width: number,
+  accountingExtent?: { x: number; w: number },
 ): void {
   if (!span.underline && !span.strike) return;
   ctx.save();
@@ -108,10 +185,26 @@ function paintTextDecorations(
   ctx.lineWidth = Math.max(1, span.fontSizePx / 16);
   if (span.underline) {
     const y = baseline + Math.max(1, span.fontSizePx * 0.12);
+    const v = span.underlineStyle;
+    const isAccounting = v === "singleAccounting" || v === "doubleAccounting";
+    // Accounting variants span the full cell width; otherwise the line
+    // matches the text segment.
+    const ux = isAccounting && accountingExtent ? accountingExtent.x : x;
+    const uw = isAccounting && accountingExtent ? accountingExtent.w : width;
     ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + width, y);
+    ctx.moveTo(ux, y);
+    ctx.lineTo(ux + uw, y);
     ctx.stroke();
+    // OOXML `<u val="double">` / `"doubleAccounting"`: paint a second
+    // parallel stroke ~2px below the first.
+    if (v === "double" || v === "doubleAccounting") {
+      const gap = Math.max(2, span.fontSizePx * 0.1);
+      const y2 = y + gap;
+      ctx.beginPath();
+      ctx.moveTo(ux, y2);
+      ctx.lineTo(ux + uw, y2);
+      ctx.stroke();
+    }
   }
   if (span.strike) {
     const y = baseline - span.fontSizePx * 0.3;
@@ -127,9 +220,46 @@ function ptToPx(pt: number): number {
   return (pt * 4) / 3;
 }
 
-function cssFont(name: string, sizePt: number, bold: boolean, italic: boolean): string {
+/// Map an OOXML `<family val="N"/>` numeric family hint to a chain of
+/// CSS fallback typefaces. When the workbook's named typeface isn't
+/// installed locally, the browser walks this chain — so a serif workbook
+/// stays in a serif, a monospace workbook stays in a monospace, etc.
+///
+/// OOXML ST_FontFamilyNum (ECMA-376 §18.18.30):
+///   0 = Not applicable
+///   1 = Roman      → serif
+///   2 = Swiss      → sans-serif
+///   3 = Modern     → monospace
+///   4 = Script     → cursive
+///   5 = Decorative → fantasy
+function familyFallbackChain(family: number | undefined): string {
+  switch (family) {
+    case 1:
+      return '"Cambria", "Times New Roman", Georgia, serif';
+    case 3:
+      return 'Consolas, "Courier New", monospace';
+    case 4:
+      return '"Brush Script MT", "Lucida Handwriting", cursive';
+    case 5:
+      return 'Papyrus, Impact, fantasy';
+    case 2:
+    case 0:
+    default:
+      // Sans-serif covers most workbooks (Calibri / Aptos / Arial are
+      // all family=2). Unknown / missing also falls here.
+      return 'Calibri, Aptos, Arial, sans-serif';
+  }
+}
+
+function cssFont(
+  name: string,
+  sizePt: number,
+  bold: boolean,
+  italic: boolean,
+  family?: number,
+): string {
   const px = ptToPx(sizePt);
-  return `${italic ? "italic " : ""}${bold ? "bold " : ""}${px}px "${name}", Calibri, Aptos, Arial, sans-serif`;
+  return `${italic ? "italic " : ""}${bold ? "bold " : ""}${px}px "${name}", ${familyFallbackChain(family)}`;
 }
 
 /// One laid-out line: a list of (font-styled) span pieces in display order,
@@ -226,6 +356,23 @@ function layoutSpans(
   return lines;
 }
 
+function occupiedCellsInRange(
+  sheet: Sheet,
+  layout: WorkbookLayout,
+  firstRow: number,
+  lastRow: number,
+  firstCol: number,
+  lastCol: number,
+): Set<string> {
+  const occupied = new Set<string>();
+  iterCellsInRange(sheet, firstRow, lastRow, firstCol, lastCol, (cell) => {
+    // A cell is "occupied" iff it has visible content. Empty styled cells
+    // can still be overflowed into.
+    if (hasContent(cell, sheet, layout)) occupied.add(`${cell.r}:${cell.c}`);
+  });
+  return occupied;
+}
+
 export function drawCellText(
   ctx: CanvasRenderingContext2D,
   sheet: Sheet,
@@ -239,34 +386,34 @@ export function drawCellText(
   const { covered, topLeftOf } = buildMergeMaps(sheet);
   const styles = layout.styles;
 
-  // Build a fast "this position is occupied" lookup so we can grant overflow
-  // into truly empty neighbors only — exactly Excel's rule.
-  const occupied = new Set<string>();
-  for (const row of sheet.rows) {
-    for (const cell of row.cells) {
-      // A cell is "occupied" iff it has visible content. Empty styled cells
-      // can still be overflowed into.
-      if (hasContent(cell, layout)) occupied.add(`${cell.r}:${cell.c}`);
-    }
-  }
-  for (const k of covered) occupied.add(k);
-
   // Allow text to overflow horizontally into the visible column band; we
   // also pad by a few columns on the left so a long string anchored just
   // off-screen still bleeds in.
   const overflowFirstCol = Math.max(1, vis.firstCol - 8);
   const overflowLastCol = Math.min(g.maxCol, vis.lastCol + 8);
+  // Build a fast "this position is occupied" lookup only for the rows and
+  // columns this paint can actually consult. A whole-sheet occupancy map is
+  // pathological for large flat data exports where first paint only needs a
+  // small viewport.
+  const occupied = occupiedCellsInRange(
+    sheet,
+    layout,
+    vis.firstRow,
+    vis.lastRow,
+    overflowFirstCol,
+    overflowLastCol,
+  );
+  for (const k of covered) occupied.add(k);
 
-  for (const row of sheet.rows) {
-    if (row.index < vis.firstRow || row.index > vis.lastRow) continue;
-    for (const cell of row.cells) {
-      if (cell.c < overflowFirstCol || cell.c > overflowLastCol) continue;
+  iterCellsInRange(sheet, vis.firstRow, vis.lastRow, overflowFirstCol, overflowLastCol, (cell) => {
       const k = `${cell.r}:${cell.c}`;
-      if (covered.has(k)) continue;
-      if (cfTextSuppress.has(k)) continue;
-      const xf = cell.styleIndex !== undefined ? styles.cellXfs[cell.styleIndex] : undefined;
-      const { text, defaultAlign, formatColor } = resolveCellText(cell, layout, xf);
-      if (!text) continue;
+      if (covered.has(k)) return;
+      if (cfTextSuppress.has(k)) return;
+      const xf = resolveCellXf(cell, sheet, layout);
+      const resolved = resolveCellText(cell, layout, xf);
+      let { text } = resolved;
+      const { defaultAlign, formatColor, fills } = resolved;
+      if (!text) return;
 
       const baseFontEntry = xf?.fontId !== undefined ? styles.fonts[xf.fontId] : undefined;
       // Apply CF dxf overrides (cellIs / expression). Bold/italic/underline/
@@ -281,6 +428,7 @@ export function drawCellText(
           bold: dxf.bold ?? baseFontEntry?.bold ?? false,
           italic: dxf.italic ?? baseFontEntry?.italic ?? false,
           underline: dxf.underline ?? baseFontEntry?.underline ?? false,
+          underlineStyle: dxf.underlineStyle ?? baseFontEntry?.underlineStyle,
           strike: dxf.strike ?? baseFontEntry?.strike ?? false,
           color: dxf.fontColor ?? baseFontEntry?.color,
         };
@@ -308,6 +456,48 @@ export function drawCellText(
       const merge = topLeftOf.get(k);
       const isMerged = !!merge;
       const padX = 4;
+
+      // Accounting `*x` fill expansion: numfmt left FILL_SENTINEL chars
+      // in `text`; we measure the rest at the primary span's font and
+      // pad each sentinel with N copies of its fill char so the whole
+      // string fills the cell's inner width. Excel accounting renders
+      // `_($* #,##0_)` as `$    80,539 ` — the `*` is what produces the
+      // gap between the currency symbol and the right-justified number.
+      // We force the text rectangle to span the full inner width (no
+      // overflow / no extra alignment shift) because the format already
+      // encodes the horizontal placement.
+      if (fills && fills.length > 0 && text.includes("\u0001")) {
+        const primary = spans[0]!;
+        const prevFont = ctx.font;
+        ctx.font = primary.font;
+        // Measure the text with every sentinel stripped — that's the
+        // fixed-width content. The remaining width goes to fill chars.
+        const stripped = text.replace(/\u0001/g, "");
+        const baseW = ctx.measureText(stripped).width;
+        const innerW = Math.max(0, ownRect.w - padX * 2);
+        let avail = innerW - baseW;
+        const parts = text.split("\u0001");
+        const fillCount = parts.length - 1;
+        if (fillCount > 0) {
+          let assembled = parts[0]!;
+          for (let fi = 0; fi < fillCount; fi++) {
+            const ch = fills[fi] ?? fills[fills.length - 1] ?? " ";
+            const chW = Math.max(0.5, ctx.measureText(ch).width);
+            // Spread the remaining slack evenly across the remaining
+            // sentinels so multiple `*` fills (rare) share the gap.
+            const slice = avail / (fillCount - fi);
+            const n = Math.max(0, Math.floor(slice / chW));
+            avail -= n * chW;
+            assembled += ch.repeat(n) + parts[fi + 1]!;
+          }
+          text = assembled;
+          // Numbers never carry rich-text runs — spans is always length 1
+          // on this path. Rebuild the span so downstream layout / measure
+          // walks see the padded string.
+          if (spans.length === 1) spans[0] = { ...spans[0]!, text };
+        }
+        ctx.font = prevFont;
+      }
 
       // Text rotation fast path. OOXML `textRotation`:
       //   0       horizontal (fall through to standard pipeline)
@@ -361,7 +551,7 @@ export function drawCellText(
           }
           ctx.textAlign = prevAlign;
           ctx.restore();
-          continue;
+          return;
         }
 
         // Rotated text. Convert OOXML angle to canvas rotation (positive =
@@ -403,7 +593,7 @@ export function drawCellText(
         ctx.fillText(text, 0, 0);
         paintTextDecorations(ctx, span, 0, 0, tw);
         ctx.restore();
-        continue;
+        return;
       }
       // CF iconSet reserves the leftmost N pixels of the cell for the
       // glyph; text positioning shifts right by that amount.
@@ -555,10 +745,14 @@ export function drawCellText(
           default:
             ty = ownRect.y + ownRect.h - 4;
         }
-        ctx.fillText(display, tx, ty);
-        paintTextDecorations(ctx, span, tx, ty, ctx.measureText(display).width);
+        const tyShift = ty + (span.baselineShiftPx ?? 0);
+        ctx.fillText(display, tx, tyShift);
+        paintTextDecorations(ctx, span, tx, tyShift, ctx.measureText(display).width, {
+          x: clip.x + 1,
+          w: Math.max(0, clip.w - 2),
+        });
         ctx.restore();
-        continue;
+        return;
       }
 
       // Multi-line / multi-run layout. Wrap to `innerW` when wrap=true;
@@ -600,21 +794,24 @@ export function drawCellText(
         for (const piece of line.pieces) {
           ctx.font = piece.span.font;
           ctx.fillStyle = piece.span.color;
-          ctx.fillText(piece.text, cursorX, baseline);
-          paintTextDecorations(ctx, piece.span, cursorX, baseline, piece.width);
+          const pieceBaseline = baseline + (piece.span.baselineShiftPx ?? 0);
+          ctx.fillText(piece.text, cursorX, pieceBaseline);
+          paintTextDecorations(ctx, piece.span, cursorX, pieceBaseline, piece.width, {
+            x: clip.x + 1,
+            w: Math.max(0, clip.w - 2),
+          });
           cursorX += piece.width;
         }
         lineTop += line.height;
       }
 
       ctx.restore();
-    }
-  }
+    });
 }
 
 // Has any visible content (text, number, or formula result)?
-function hasContent(cell: Cell, layout: WorkbookLayout): boolean {
-  const xf = cell.styleIndex !== undefined ? layout.styles.cellXfs[cell.styleIndex] : undefined;
+function hasContent(cell: Cell, sheet: Sheet, layout: WorkbookLayout): boolean {
+  const xf = resolveCellXf(cell, sheet, layout);
   const { text } = resolveCellText(cell, layout, xf);
   return text.length > 0;
 }
@@ -637,12 +834,12 @@ export function drawFreezeIndicators(
   ctx.lineWidth = 1;
   ctx.beginPath();
   if (sheet.freeze.leftCol > 1) {
-    const x = Math.round(HEADER_W + pcw) + 0.5;
+    const x = Math.round(g.originX + pcw) + 0.5;
     ctx.moveTo(x, 0);
     ctx.lineTo(x, canvasH);
   }
   if (sheet.freeze.topRow > 1) {
-    const y = Math.round(HEADER_H + prh) + 0.5;
+    const y = Math.round(g.originY + prh) + 0.5;
     ctx.moveTo(0, y);
     ctx.lineTo(canvasW, y);
   }

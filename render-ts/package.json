@@ -5,8 +5,12 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "xlcore-render": "./dist/cli.js"
+  },
   "scripts": {
-    "build": "bun build src/browser.ts --outfile dist/browser.js --target browser --format iife && bun build src/index.ts --outfile dist/index.js --target node --format esm",
+    "build": "tsc --emitDeclarationOnly && bun build src/browser.ts --outfile dist/browser.js --target browser --format iife && bun build src/index.ts --outfile dist/index.js --target node --format esm --external skia-canvas && bun build src/cli.ts --outfile dist/cli.js --target node --format esm --external skia-canvas && cp ../crates/xlcore-wasm/pkg/xlcore_wasm_bg.wasm dist/xlcore_wasm_bg.wasm && bun build src/previewer.ts --outfile dist/previewer.js --target browser --format esm && bun build src/browserLoader.ts --outfile dist/browser-loader.js --target browser --format esm && bun build src/react.ts --outfile dist/react.js --target browser --format esm --external react && bun build src/xlsxWorker.ts --outfile dist/xlsxWorker.js --target browser --format esm",
+    "build:wasm": "cd .. && wasm-pack build crates/xlcore-wasm --target web --out-dir pkg --profile wasm-size --no-opt",
     "check": "bun run typecheck && bun run lint && bun run check:loc && bun run knip",
     "check:loc": "bun scripts/check-loc.ts",
     "dev": "bun build src/browser.ts --outfile dist/browser.js --target browser --format iife --watch",
@@ -21,12 +25,36 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./previewer": {
+      "import": "./dist/previewer.js",
+      "types": "./dist/previewer.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/browser-loader.js",
+      "types": "./dist/browserLoader.d.ts"
+    },
+    "./react": {
+      "import": "./dist/react.js",
+      "types": "./dist/react.d.ts"
     }
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "dependencies": {
+    "skia-canvas": "^3.0.6"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
     "@types/bun": "^1.3.13",
+    "@types/react": "^19.2.14",
     "knip": "^6.12.2",
-    "typescript": "^5.5.0"
-  }
+    "react": "^19.2.6",
+    "typescript": "^5.5.0",
+    "xlcore-wasm": "file:../crates/xlcore-wasm/pkg"
+  },
+  "trustedDependencies": [
+    "skia-canvas"
+  ]
 }

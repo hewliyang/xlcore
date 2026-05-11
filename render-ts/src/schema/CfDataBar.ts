@@ -35,4 +35,13 @@ maxLengthPct: number,
 /**
  * When false, the cell value is hidden and only the bar paints.
  */
-showValue: boolean, };
+showValue: boolean, 
+/**
+ * When true (Excel 2010+ default), the bar fill paints as a
+ * linear gradient from `color` at the axis to transparent at
+ * the bar's outer edge. When false, paints as a solid block.
+ * Stored only on the x14 extension (`<x14:dataBar gradient="..."/>`),
+ * which we don't parse yet — defaults to `true` to match what
+ * modern Excel + SpreadJS author and what users see by default.
+ */
+gradient: boolean, };

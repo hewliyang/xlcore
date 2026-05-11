@@ -1,4 +1,4 @@
-import type { Tok } from "./numfmt.js";
+import { FILL_SENTINEL, type Tok } from "./numfmt.js";
 
 export function renderIntegerTokens(tokens: Tok[], intDigits: string, grouping: boolean): string {
   // Strip leading zeros that exceed the actual int magnitude (we'll add
@@ -64,6 +64,7 @@ export function renderIntegerTokens(tokens: Tok[], intDigits: string, grouping: 
       if (isGroupingMarker(i, t)) continue; // already baked into digits
       s += t.s;
     } else if (t.kind === "percent") s += "%";
+    else if (t.kind === "fill") s += FILL_SENTINEL;
   }
   return s;
 }
@@ -84,6 +85,8 @@ export function renderFractionalTokens(tokens: Tok[], fracDigits: string): strin
       s += t.s;
     } else if (t.kind === "percent") {
       s += "%";
+    } else if (t.kind === "fill") {
+      s += FILL_SENTINEL;
     }
     // ignore other kinds in this slice
   }

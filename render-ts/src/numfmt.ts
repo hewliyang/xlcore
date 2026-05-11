@@ -27,7 +27,20 @@ export interface FormatResult {
   /** CSS color from `[Red]` / `[Color12]` etc., if the matched section
    *  carried one. The renderer uses it as a font-color override. */
   color?: string;
+  /** Fill chars (one per `*x` token), in left-to-right order in the
+   *  rendered text. Each occurrence is marked in `text` with the
+   *  sentinel `\u0001` (`FILL_SENTINEL`). The renderer expands each
+   *  sentinel to N copies of the matching fill char where N is sized
+   *  to make the whole string fill the cell's inner width — this needs
+   *  font metrics + a cell rect, which numfmt doesn't have. */
+  fills?: string[];
 }
+
+/** Placeholder char emitted at each `*x` fill point in `FormatResult.text`.
+ *  Renderer measures the rest of the text and expands the sentinel. */
+export const FILL_SENTINEL = "\u0001";
+
+const FORMAT_CACHE = new Map<string, Section[]>();
 
 /** Format a numeric value through an OOXML format code.
  *
@@ -41,14 +54,19 @@ export function formatValue(value: number, fmt: string | undefined): FormatResul
   if (!f || f.toLowerCase() === "general") return { text: formatGeneral(value) };
   let sections: Section[];
   try {
-    sections = parseFormat(f);
+    sections = FORMAT_CACHE.get(f) ?? parseFormat(f);
+    FORMAT_CACHE.set(f, sections);
   } catch {
     return { text: formatGeneral(value) };
   }
   const sec = pickSection(sections, value);
   if (!sec) return { text: formatGeneral(value) };
   try {
-    return { text: renderSection(value, sec), color: sec.color };
+    const text = renderSection(value, sec);
+    const fills = sec.tokens.flatMap((t) => (t.kind === "fill" ? [t.ch] : []));
+    const out: FormatResult = { text, color: sec.color };
+    if (fills.length > 0) out.fills = fills;
+    return out;
   } catch {
     return { text: formatGeneral(value) };
   }
@@ -75,6 +93,7 @@ export type Tok =
   | { kind: "date"; field: string } // "y","yy","yyyy","m","mm","mmm","mmmm","mmmmm","d","dd","ddd","dddd","h","hh","s","ss"
   | { kind: "elapsed"; field: "h" | "m" | "s"; width: number } // [h], [hh], [mm]:..., etc.
   | { kind: "ampm"; upper: boolean; abbreviated: boolean }
+  | { kind: "fill"; ch: string } // *x — pad with `x` to fill cell width
   | { kind: "text" }; // @
 
 export interface Section {
@@ -518,9 +537,16 @@ function tokenize(s: string): Tok[] {
       out.push({ kind: "lit", s: " " });
       continue;
     }
-    // *x — fill char (we emit nothing; we don't know the cell width here)
+    // *x — fill char. We don't know the cell width here, so emit a
+    // `fill` token. `renderSection` lowers it to the FILL_SENTINEL char
+    // in the output text; the renderer (which has font metrics + the
+    // cell rect) measures the rest of the text and substitutes N copies
+    // of the fill char so the whole string lands flush against the cell
+    // edges (Excel accounting convention).
     if (c === "*") {
+      const ch = i + 1 < s.length ? s[i + 1]! : " ";
       i += i + 1 < s.length ? 2 : 1;
+      out.push({ kind: "fill", ch });
       continue;
     }
     // Bracketed run: currency, elapsed-time, or stray (unhandled) tag
@@ -658,12 +684,16 @@ function matchesCond(v: number, c: NonNullable<Section["condition"]>): boolean {
 // ---------- rendering ----------
 
 function renderSection(value: number, sec: Section): string {
+  // For non-numeric flavors we still need to expose `*x` fill points so
+  // the renderer can pad them; lower fill tokens to the sentinel char.
+  const litOrFill = (t: Tok): string =>
+    t.kind === "lit" ? t.s : t.kind === "fill" ? FILL_SENTINEL : "";
   switch (sec.flavor) {
     case "literal":
-      return sec.tokens.map((t) => (t.kind === "lit" ? t.s : "")).join("");
+      return sec.tokens.map(litOrFill).join("");
     case "text":
       // No string value to substitute on the numeric path; emit the literal scaffolding.
-      return sec.tokens.map((t) => (t.kind === "lit" ? t.s : "")).join("");
+      return sec.tokens.map(litOrFill).join("");
     case "number":
       return renderNumber(value, sec);
     case "date":

@@ -12,14 +12,16 @@
 //! No formulas are recomputed here — we emit the source-cached `<v>`. Recalc is
 //! `xlcore-bridge`'s job (future).
 
-mod schema;
-mod styles;
-mod sheet;
+mod annotations;
 mod charts;
+mod columnar;
+mod pivots;
+mod schema;
+mod sheet;
+mod sparklines;
+mod styles;
 mod tables;
 mod theme;
-mod annotations;
-mod pivots;
 
 pub use schema::*;
 
@@ -34,8 +36,22 @@ pub fn extract<P: AsRef<Path>>(path: P) -> Result<WorkbookLayout> {
     extract_doc(&mut doc)
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct ExtractOptions {
+    pub sheet_index: Option<usize>,
+    pub sheet_name: Option<String>,
+}
+
 /// Extract from an already-open document.
 pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookLayout> {
+    extract_doc_with_options(doc, &ExtractOptions::default())
+}
+
+/// Extract from an already-open document, optionally narrowing to one sheet.
+pub fn extract_doc_with_options(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    options: &ExtractOptions,
+) -> Result<WorkbookLayout> {
     let shared_strings = preload_shared_strings(doc);
 
     let (styles, dxfs) = {
@@ -57,7 +73,7 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
             // Theme XML can fail to parse (rare — corrupt drawingml); fall
             // back to the default palette rather than failing the whole
             // extract.
-            tp.root_element(doc).ok().map(|t| theme::extract(t))
+            tp.root_element(doc).ok().map(theme::extract)
         } else {
             None
         }
@@ -76,14 +92,29 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
         .and_then(|wv| wv.active_tab);
 
     let wb_part = doc.workbook_part()?;
-    let ws_parts: Vec<_> = wb_part.worksheet_parts(doc).map(|p| p.clone()).collect();
+    let ws_parts: Vec<_> = wb_part.worksheet_parts(doc).collect();
     let ws_parts_by_rel_id: HashMap<String, _> = ws_parts
         .iter()
         .filter_map(|p| p.relationship_id().map(|id| (id.to_string(), p.clone())))
         .collect();
 
-    let mut sheets = Vec::with_capacity(workbook_sheets.len());
+    let sheet_capacity = if options.sheet_index.is_some() || options.sheet_name.is_some() {
+        1
+    } else {
+        workbook_sheets.len()
+    };
+    let mut sheets = Vec::with_capacity(sheet_capacity);
     for (idx, wb_sheet) in workbook_sheets.iter().enumerate() {
+        if let Some(wanted_idx) = options.sheet_index {
+            if idx != wanted_idx {
+                continue;
+            }
+        }
+        if let Some(wanted_name) = options.sheet_name.as_deref() {
+            if wb_sheet.name.as_str() != wanted_name {
+                continue;
+            }
+        }
         let ws_part = ws_parts_by_rel_id
             .get(wb_sheet.id.as_str())
             // Fallback for malformed packages or SDKs that don't expose child
@@ -91,12 +122,16 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
             // dropping a sheet.
             .or_else(|| ws_parts.get(idx))
             .cloned();
-        let Some(ws_part) = ws_part else { continue; };
+        let Some(ws_part) = ws_part else {
+            continue;
+        };
 
         let drawings = charts::extract(doc, &ws_part, theme.as_ref());
         let tables = tables::extract(doc, &ws_part);
         let pivots = pivots::extract(doc, &ws_part);
         let comments = annotations::extract_comments(doc, &ws_part);
+        let ws_for_sparks = ws_part.root_element(doc)?.clone();
+        let sparkline_groups = sparklines::extract(&ws_for_sparks);
         // Hyperlinks need both the worksheet XML (for the `<hyperlinks>`
         // block) and the worksheet part (to resolve `r:id` rels). Borrow
         // the XML once, then drop before annotations::extract_comments
@@ -112,7 +147,17 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
         sheet.pivots = pivots;
         sheet.hyperlinks = hyperlinks;
         sheet.comments = comments;
+        sheet.sparkline_groups = sparkline_groups;
         sheets.push(sheet);
+    }
+
+    if sheets.is_empty() {
+        if let Some(name) = options.sheet_name.as_deref() {
+            anyhow::bail!("sheet not found: {name}");
+        }
+        if let Some(index) = options.sheet_index {
+            anyhow::bail!("sheet index out of range: {index}");
+        }
     }
 
     let mut layout = WorkbookLayout {
@@ -122,9 +167,19 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
         shared_string_runs: shared_strings.1,
         dxfs,
         theme,
-        active_sheet_index,
+        active_sheet_index: if options.sheet_index.is_some() || options.sheet_name.is_some() {
+            Some(0)
+        } else {
+            active_sheet_index
+        },
     };
     resolve_chart_refs(&mut layout);
+    resolve_sparkline_refs(&mut layout);
+    // Final pass: collapse `Sheet.rows: Vec<Row>` (the ergonomic shape
+    // every other extractor pass uses) into the columnar typed-array
+    // blobs that actually ship in the JSON. After this point the
+    // `rows` field is empty and must not be read.
+    columnar::compactify(&mut layout);
     Ok(layout)
 }
 
@@ -143,7 +198,9 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
 
     let read_string = |sheets: &[Sheet], target: &Cell, sst: &[String]| -> Option<String> {
         match target.kind.as_str() {
-            "s" => target.value.as_ref()
+            "s" => target
+                .value
+                .as_ref()
                 .and_then(|v| v.parse::<usize>().ok())
                 .and_then(|idx| sst.get(idx).cloned()),
             "inline" | "str" => target.value.clone(),
@@ -162,14 +219,23 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
     };
 
     // Helpers: resolve range -> Vec of cells in row-major order.
-    let collect_cells = |sheets: &[Sheet], sheet_name: &str, r1: u32, c1: u32, r2: u32, c2: u32|
-        -> Vec<Option<Cell>> {
-        let Some(&idx) = name_to_idx.get(sheet_name) else { return Vec::new(); };
+    let collect_cells = |sheets: &[Sheet],
+                         sheet_name: &str,
+                         r1: u32,
+                         c1: u32,
+                         r2: u32,
+                         c2: u32|
+     -> Vec<Option<Cell>> {
+        let Some(&idx) = name_to_idx.get(sheet_name) else {
+            return Vec::new();
+        };
         let sheet = &sheets[idx];
         let mut out = Vec::with_capacity(((r2 - r1 + 1) * (c2 - c1 + 1)) as usize);
         for r in r1..=r2 {
             for c in c1..=c2 {
-                let cell = sheet.rows.iter()
+                let cell = sheet
+                    .rows
+                    .iter()
                     .find(|row| row.index == r)
                     .and_then(|row| row.cells.iter().find(|cc| cc.r == r && cc.c == c))
                     .cloned();
@@ -184,18 +250,22 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
 
     for sheet in layout.sheets.iter_mut() {
         for drawing in sheet.drawings.iter_mut() {
-            let Some(chart) = drawing.chart.as_mut() else { continue; };
+            let Some(chart) = drawing.chart.as_mut() else {
+                continue;
+            };
 
             // categories
             if chart.categories.is_empty() {
                 if let Some(formula) = &chart.categories_ref {
                     if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
                         let cells = collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
-                        chart.categories = cells.into_iter()
-                            .map(|cell| cell
-                                .as_ref()
-                                .and_then(|cc| read_string(&snapshot_sheets, cc, &sst))
-                                .unwrap_or_default())
+                        chart.categories = cells
+                            .into_iter()
+                            .map(|cell| {
+                                cell.as_ref()
+                                    .and_then(|cc| read_string(&snapshot_sheets, cc, &sst))
+                                    .unwrap_or_default()
+                            })
                             .collect();
                     }
                 }
@@ -207,7 +277,8 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
                     if let Some(formula) = &ser.name_ref {
                         if let Some((sheet_name, r1, c1, _, _)) = parse_chart_ref(formula) {
                             // Series name is a single-cell ref; just read (r1,c1).
-                            let cells = collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r1, c1);
+                            let cells =
+                                collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r1, c1);
                             if let Some(Some(cell)) = cells.first() {
                                 if let Some(s) = read_string(&snapshot_sheets, cell, &sst) {
                                     ser.name = s;
@@ -219,8 +290,10 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
                 if ser.values.is_empty() {
                     if let Some(formula) = &ser.values_ref {
                         if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
-                            let cells = collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
-                            ser.values = cells.into_iter()
+                            let cells =
+                                collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
+                            ser.values = cells
+                                .into_iter()
                                 .map(|cell| cell.as_ref().and_then(read_number).unwrap_or(0.0))
                                 .collect();
                         }
@@ -229,8 +302,10 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
                 if ser.x_values.is_empty() {
                     if let Some(formula) = &ser.x_values_ref {
                         if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
-                            let cells = collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
-                            ser.x_values = cells.into_iter()
+                            let cells =
+                                collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
+                            ser.x_values = cells
+                                .into_iter()
                                 .map(|cell| cell.as_ref().and_then(read_number).unwrap_or(0.0))
                                 .collect();
                         }
@@ -241,6 +316,98 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
     }
 }
 
+/// Walk every sparkline group, resolve `formula` -> numeric value
+/// vector against the (already-extracted) sheet data, and compute the
+/// shared `group_min`/`group_max` when `min/maxAxisType == "group"`.
+/// Falls back to using the host sheet's name when the formula has no
+/// explicit sheet prefix (Excel's UI defaults to the anchor sheet).
+fn resolve_sparkline_refs(layout: &mut WorkbookLayout) {
+    let name_to_idx: std::collections::HashMap<String, usize> = layout
+        .sheets
+        .iter()
+        .enumerate()
+        .map(|(i, s)| (s.name.clone(), i))
+        .collect();
+    let snapshot = layout.sheets.clone();
+
+    let read_number = |sheets: &[Sheet], sheet_name: &str, r: u32, c: u32| -> Option<f64> {
+        let &idx = name_to_idx.get(sheet_name)?;
+        let sheet = sheets.get(idx)?;
+        let row = sheet.rows.iter().find(|row| row.index == r)?;
+        let cell = row.cells.iter().find(|cc| cc.r == r && cc.c == c)?;
+        // Only numeric kinds count for sparkline plotting; text / errors
+        // / booleans become None ("empty") so the renderer can honor
+        // displayEmptyCellsAs.
+        match cell.kind.as_str() {
+            "n" | "f" => cell.value.as_ref().and_then(|v| v.parse::<f64>().ok()),
+            _ => None,
+        }
+    };
+
+    for sheet_idx in 0..layout.sheets.len() {
+        let host_name = layout.sheets[sheet_idx].name.clone();
+        let groups_len = layout.sheets[sheet_idx].sparkline_groups.len();
+        for gi in 0..groups_len {
+            let mut all_values: Vec<f64> = Vec::new();
+            let spark_count = layout.sheets[sheet_idx].sparkline_groups[gi].sparklines.len();
+            for si in 0..spark_count {
+                let formula = layout.sheets[sheet_idx].sparkline_groups[gi].sparklines[si]
+                    .formula
+                    .clone();
+                let Some(formula) = formula else { continue };
+                let Some((sheet_name, r1, c1, r2, c2)) =
+                    parse_sparkline_ref(&formula, &host_name)
+                else {
+                    continue;
+                };
+                let mut vals: Vec<Option<f64>> = Vec::new();
+                // Walk row-major (rows then cols). For typical 1xN or Nx1
+                // ranges this is just the source order.
+                for r in r1..=r2 {
+                    for c in c1..=c2 {
+                        let v = read_number(&snapshot, &sheet_name, r, c);
+                        if let Some(v) = v {
+                            all_values.push(v);
+                        }
+                        vals.push(v);
+                    }
+                }
+                layout.sheets[sheet_idx].sparkline_groups[gi].sparklines[si].values = vals;
+            }
+            // Group-axis resolution.
+            let g = &mut layout.sheets[sheet_idx].sparkline_groups[gi];
+            if !all_values.is_empty() {
+                if g.min_axis_type == "group" {
+                    g.group_min = Some(all_values.iter().cloned().fold(f64::INFINITY, f64::min));
+                }
+                if g.max_axis_type == "group" {
+                    g.group_max = Some(all_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
+                }
+            }
+        }
+    }
+}
+
+/// Parse a sparkline data ref. Accepts:
+///   - `Sheet1!B2:G2`
+///   - `'My Sheet'!$A$1:$F$1`
+///   - `B2:G2` (no sheet prefix ⇒ use the anchor sheet)
+///   - `B2` (single cell)
+fn parse_sparkline_ref(formula: &str, host_sheet: &str) -> Option<(String, u32, u32, u32, u32)> {
+    let (sheet, range_part) = if let Some((s, r)) = formula.split_once('!') {
+        (s.trim_matches('\'').to_string(), r)
+    } else {
+        (host_sheet.to_string(), formula)
+    };
+    let cleaned: String = range_part.chars().filter(|c| *c != '$').collect();
+    let (a, b) = cleaned
+        .split_once(':')
+        .unwrap_or((cleaned.as_str(), cleaned.as_str()));
+    let (r1, c1) = xlcore_io::parse_a1(a)?;
+    let (r2, c2) = xlcore_io::parse_a1(b)?;
+    Some((sheet, r1.min(r2), c1.min(c2), r1.max(r2), c1.max(c2)))
+}
+
 /// Parse a chart-style reference like `Sheet1!$B$2:$E$2` or
 /// `'My Sheet'!$A$1` into (sheet, r1, c1, r2, c2).
 fn parse_chart_ref(formula: &str) -> Option<(String, u32, u32, u32, u32)> {
@@ -248,7 +415,9 @@ fn parse_chart_ref(formula: &str) -> Option<(String, u32, u32, u32, u32)> {
     // Strip surrounding quotes if present.
     let sheet = sheet_part.trim_matches('\'').to_string();
     let cleaned: String = range_part.chars().filter(|c| *c != '$').collect();
-    let (a, b) = cleaned.split_once(':').unwrap_or((cleaned.as_str(), cleaned.as_str()));
+    let (a, b) = cleaned
+        .split_once(':')
+        .unwrap_or((cleaned.as_str(), cleaned.as_str()));
     let (r1, c1) = xlcore_io::parse_a1(a)?;
     let (r2, c2) = xlcore_io::parse_a1(b)?;
     let (r1, r2) = (r1.min(r2), r1.max(r2));
@@ -263,7 +432,6 @@ fn parse_chart_ref(formula: &str) -> Option<(String, u32, u32, u32, u32)> {
 fn preload_shared_strings(
     doc: &mut xlcore_io::SpreadsheetDocument,
 ) -> (Vec<String>, Vec<Vec<TextRun>>) {
-    use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as x;
     let wb_part = match doc.workbook_part() {
         Ok(p) => p,
         Err(_) => return (Vec::new(), Vec::new()),
@@ -310,14 +478,42 @@ use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as xsp
 /// aren't set leave the field as `None`/`false` so the renderer can
 /// inherit from the cell's own font.
 pub(crate) fn text_run_from(r: &xspread::Run, text: String) -> TextRun {
-    let mut tr = TextRun { text, ..Default::default() };
-    let Some(rpr) = &r.run_properties else { return tr; };
+    let mut tr = TextRun {
+        text,
+        ..Default::default()
+    };
+    let Some(rpr) = &r.run_properties else {
+        return tr;
+    };
     // CT_BooleanProperty: element present + no `val` attr defaults to true,
     // but `val="0"` explicitly unsets the property. Same pattern as Font.
-    if let Some(b) = rpr.x_b.first() { tr.bold = b.val.unwrap_or(true); }
-    if let Some(i) = rpr.x_i.first() { tr.italic = i.val.unwrap_or(true); }
-    if !rpr.x_u.is_empty() { tr.underline = true; }
-    if let Some(s) = rpr.x_strike.first() { tr.strike = s.val.unwrap_or(true); }
+    if let Some(b) = rpr.x_b.first() {
+        tr.bold = b.val.unwrap_or(true);
+    }
+    if let Some(i) = rpr.x_i.first() {
+        tr.italic = i.val.unwrap_or(true);
+    }
+    if let Some(u) = rpr.x_u.first() {
+        // OOXML CT_UnderlineProperty: element present, no `val` => `single`
+        // (default). `val="none"` explicitly disables underline; all other
+        // values turn it on, with the variant captured in `underline_style`.
+        let variant = underline_variant(u.val);
+        match variant {
+            Some("none") => {}
+            Some(v) => {
+                tr.underline = true;
+                if v != "single" {
+                    tr.underline_style = Some(v.to_string());
+                }
+            }
+            None => {
+                tr.underline = true;
+            }
+        }
+    }
+    if let Some(s) = rpr.x_strike.first() {
+        tr.strike = s.val.unwrap_or(true);
+    }
     if let Some(sz) = rpr.x_sz.first() {
         tr.size = Some(sz.val as f32);
     }
@@ -335,10 +531,82 @@ pub(crate) fn text_run_from(r: &xspread::Run, text: String) -> TextRun {
             });
         }
     }
+    // OOXML `<vertAlign val="superscript|subscript|baseline"/>`. Baseline
+    // is the default — omit so the field stays absent in JSON.
+    if let Some(v) = rpr.x_vert_align.first() {
+        tr.vert_align = vert_align_variant(v.val);
+    }
+    // `<family val="N"/>` — OOXML clamps 0..5. Stored as `Option<u8>` so
+    // the renderer can pick a CSS fallback (serif / sans-serif / etc.)
+    // when the named typeface isn't installed.
+    if let Some(fm) = rpr.x_family.first() {
+        let v = fm.val;
+        if (0..=5).contains(&v) {
+            tr.family = Some(v as u8);
+        }
+    }
+    // `<scheme val="major|minor"/>` — theme font reference. `none` is
+    // omitted to match the OOXML default.
+    if let Some(s) = rpr.x_scheme.first() {
+        tr.scheme = font_scheme_variant(s.val);
+    }
     tr
 }
 
+/// Map ooxmlsdk's `FontSchemeValues` to a wire string. `None`/`"none"`
+/// returns `None` so the field is omitted (matches the OOXML default and
+/// keeps the JSON small).
+pub(crate) fn font_scheme_variant(
+    v: xspread::FontSchemeValues,
+) -> Option<String> {
+    use xspread::FontSchemeValues as S;
+    match v {
+        S::None => None,
+        S::Major => Some("major".to_string()),
+        S::Minor => Some("minor".to_string()),
+    }
+}
+
+/// Map ooxmlsdk's `VerticalAlignmentRunValues` to a wire string.
+/// `Baseline` returns `None` so the field is omitted (matches the OOXML
+/// default and keeps JSON tidy).
+pub(crate) fn vert_align_variant(
+    v: xspread::VerticalAlignmentRunValues,
+) -> Option<String> {
+    use xspread::VerticalAlignmentRunValues as V;
+    match v {
+        V::Baseline => None,
+        V::Superscript => Some("superscript".to_string()),
+        V::Subscript => Some("subscript".to_string()),
+    }
+}
+
+/// Map an `Option<UnderlineValues>` from ooxmlsdk to one of the OOXML
+/// `<u val="..."/>` strings. `None` (no `val` attr) returns `None` and
+/// the caller treats it as the default `single`.
+pub(crate) fn underline_variant(
+    v: Option<xspread::UnderlineValues>,
+) -> Option<&'static str> {
+    use xspread::UnderlineValues as U;
+    let v = v?;
+    Some(match v {
+        U::Single => "single",
+        U::Double => "double",
+        U::SingleAccounting => "singleAccounting",
+        U::DoubleAccounting => "doubleAccounting",
+        U::None => "none",
+    })
+}
+
 fn is_unstyled_run(r: &TextRun) -> bool {
-    !r.bold && !r.italic && !r.underline && !r.strike
-        && r.size.is_none() && r.font_name.is_none() && r.color.is_none()
+    !r.bold
+        && !r.italic
+        && !r.underline
+        && !r.strike
+        && r.size.is_none()
+        && r.font_name.is_none()
+        && r.color.is_none()
+        && r.vert_align.is_none()
+        && r.family.is_none()
+        && r.scheme.is_none()
 }

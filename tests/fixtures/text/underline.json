@@ -1,0 +1,161 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Sheet1",
+      "maxRow": 3,
+      "maxCol": 6,
+      "defaultColWidthPx": 80.10364,
+      "defaultRowHeightPx": 20.0,
+      "cols": [
+        {
+          "min": 2,
+          "max": 6,
+          "widthPx": 183.18182
+        }
+      ],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "cells": {
+        "count": 10,
+        "r": "AgAAAAIAAAACAAAAAgAAAAIAAAADAAAAAwAAAAMAAAADAAAAAwAAAA==",
+        "c": "AgAAAAMAAAAEAAAABQAAAAYAAAACAAAAAwAAAAQAAAAFAAAABgAAAA==",
+        "kind": "AgICAgICAgICAg==",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABQAAAAUAAAAGAAAABgAAAA==",
+        "formulaIdx": "/////////////////////////////////////////////////////w==",
+        "styleIdx": "//////////////////////////8AAAAAAQAAAAIAAAADAAAABAAAAA==",
+        "runsIdx": "/////////////////////////////////////////////////////w==",
+        "rowPtr": "AAAAAAUAAAAKAAAA"
+      },
+      "rowMeta": {
+        "count": 2,
+        "index": "AgAAAAMAAAA=",
+        "heightPx": "q6rqQauqKkI=",
+        "styleIdx": "//////////8=",
+        "hidden": "AAA="
+      },
+      "valuePool": [
+        "none",
+        "single",
+        "double",
+        "singleAccounting",
+        "doubleAccounting",
+        "Lorem",
+        "$1,234.50"
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 14.0,
+        "color": {
+          "rgb": "FF000000"
+        }
+      },
+      {
+        "name": "Calibri",
+        "size": 14.0,
+        "underline": true,
+        "color": {
+          "rgb": "FF000000"
+        }
+      },
+      {
+        "name": "Calibri",
+        "size": 14.0,
+        "underline": true,
+        "underlineStyle": "double",
+        "color": {
+          "rgb": "FF000000"
+        }
+      },
+      {
+        "name": "Calibri",
+        "size": 14.0,
+        "underline": true,
+        "underlineStyle": "singleAccounting",
+        "color": {
+          "rgb": "FF000000"
+        }
+      },
+      {
+        "name": "Calibri",
+        "size": 14.0,
+        "underline": true,
+        "underlineStyle": "doubleAccounting",
+        "color": {
+          "rgb": "FF000000"
+        }
+      }
+    ],
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      },
+      {
+        "fontId": 1,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      },
+      {
+        "fontId": 2,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      },
+      {
+        "fontId": 3,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      },
+      {
+        "fontId": 4,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 14.0
+  },
+  "sharedStrings": [],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  },
+  "activeSheetIndex": 0
+}

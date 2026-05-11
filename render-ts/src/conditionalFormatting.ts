@@ -11,69 +11,152 @@ import type {
 } from "./types.js";
 import { cellNumericValue, cellTextValue } from "./cellText.js";
 import { colorToCss } from "./color.js";
+import { withAlpha } from "./chartUtils.js";
+import { iterAllCells } from "./columnar.js";
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, cellRect, mergedRect } from "./geometry.js";
 import type { Visible } from "./renderTypes.js";
 
 // ---------- conditional formatting ----------
 
+// Kinds whose match set is value-driven (the rule only "applies" to
+// cells whose value satisfies the predicate). All other kinds
+// (colorScale / dataBar / iconSet / expression) either always apply
+// across their full sqref (the visual passes paint a no-op for cells
+// whose value isn't numeric) or need a formula engine.
+const PREDICATE_KINDS = new Set([
+  "cellIs",
+  "top10",
+  "aboveAverage",
+  "duplicateValues",
+  "uniqueValues",
+  "containsText",
+  "notContainsText",
+  "beginsWith",
+  "endsWith",
+  "timePeriod",
+]);
+
+/// Walk every CF rule across the whole sheet in priority order and
+/// collect the cells "locked" by a `stopIfTrue` rule. Returns a map
+/// from cellKey (`"r:c"`) to the priority value at which that cell is
+/// locked — any subsequent rule with priority strictly greater than
+/// the recorded value must be masked.
+///
+/// Cross-kind masking is the whole point: in Excel, a higher-priority
+/// `cellIs` rule with stopIfTrue=true will suppress a lower-priority
+/// colorScale on the same cell, and vice-versa. We treat colorScale /
+/// dataBar / iconSet rules as matching every cell in their `sqref`
+/// (Excel's UI doesn't let you set stopIfTrue on these, but the OOXML
+/// schema allows it and writers in the wild do produce it).
+/// `expression` rules need recalc to evaluate so they don't lock
+/// anything today (better to under-mask than over-mask).
+export function computeCfStopLocks(
+  sheet: Sheet,
+  layout: WorkbookLayout,
+): Map<string, number> {
+  const locks = new Map<string, number>();
+  const cfs = sheet.conditionalFormats;
+  if (!cfs || cfs.length === 0) return locks;
+
+  const cellByKey = new Map<string, Cell>();
+  iterAllCells(sheet, (cell) => {
+    cellByKey.set(`${cell.r}:${cell.c}`, cell);
+  });
+
+  // Flatten rules across all CF blocks with their parent ranges, then
+  // sort globally by priority (low = high precedence).
+  const entries: { rule: CfRule; ranges: Merge[] }[] = [];
+  for (const cf of cfs) for (const rule of cf.rules) entries.push({ rule, ranges: cf.ranges });
+  entries.sort((a, b) => a.rule.priority - b.rule.priority);
+
+  for (const { rule, ranges } of entries) {
+    if (!rule.stopIfTrue) continue;
+    let matched: Iterable<string>;
+    if (PREDICATE_KINDS.has(rule.kind)) {
+      matched = computeRuleMatchSet(rule, ranges, cellByKey, layout);
+    } else if (
+      rule.kind === "colorScale" ||
+      rule.kind === "dataBar" ||
+      rule.kind === "iconSet"
+    ) {
+      const all: string[] = [];
+      for (const range of ranges) {
+        for (let r = range.r1; r <= range.r2; r++) {
+          for (let c = range.c1; c <= range.c2; c++) all.push(`${r}:${c}`);
+        }
+      }
+      matched = all;
+    } else {
+      // expression / unknown: skip without locking.
+      continue;
+    }
+    for (const k of matched) {
+      const cur = locks.get(k);
+      if (cur === undefined || rule.priority < cur) locks.set(k, rule.priority);
+    }
+  }
+  return locks;
+}
+
+/// `true` if `rulePriority` should be masked at `cellKey` by some
+/// higher-priority stopIfTrue rule.
+export function isCfLocked(
+  locks: Map<string, number> | undefined,
+  cellKey: string,
+  rulePriority: number,
+): boolean {
+  if (!locks) return false;
+  const at = locks.get(cellKey);
+  return at !== undefined && at < rulePriority;
+}
+
 /// Walk every CF rule once and build the merged dxf overlay per cell.
 /// Today: only `cellIs` (with literal-numeric/literal-string operands) is
 /// evaluated; `expression` and friends need a formula engine and are
-/// skipped. Honors rule priority (lower number wins) and `stopIfTrue`.
-export function computeCfDxfMap(sheet: Sheet, layout: WorkbookLayout): Map<string, Dxf> {
+/// skipped. Honors rule priority (lower number wins) and `stopIfTrue`,
+/// including cross-kind masking via `locks` (e.g. a higher-priority
+/// stopIfTrue colorScale will suppress a lower-priority dxf overlay).
+export function computeCfDxfMap(
+  sheet: Sheet,
+  layout: WorkbookLayout,
+  locks?: Map<string, number>,
+): Map<string, Dxf> {
   const out = new Map<string, Dxf>();
   const dxfs = layout.dxfs ?? [];
   if (dxfs.length === 0) return out;
   const cfs = sheet.conditionalFormats;
   if (!cfs || cfs.length === 0) return out;
 
-  // Index cell values for fast lookup.
   const cellByKey = new Map<string, Cell>();
-  for (const row of sheet.rows) {
-    for (const cell of row.cells) cellByKey.set(`${cell.r}:${cell.c}`, cell);
-  }
+  iterAllCells(sheet, (cell) => {
+    cellByKey.set(`${cell.r}:${cell.c}`, cell);
+  });
 
-  // Per cell, track "stopIfTrue locked" so a higher-priority match short-
-  // circuits remaining rules.
-  const locked = new Set<string>();
-
-  // Kinds we can evaluate without a formula engine.
-  const SUPPORTED = new Set([
-    "cellIs",
-    "top10",
-    "aboveAverage",
-    "duplicateValues",
-    "uniqueValues",
-    "containsText",
-    "notContainsText",
-    "beginsWith",
-    "endsWith",
-    "timePeriod",
-  ]);
+  // In-pass dxf-overlay locks layered on top of the cross-kind locks.
+  // The cross-kind `locks` only contains stopIfTrue rules; an in-pass
+  // match by a non-stopping higher-priority rule still wins per-field
+  // against same-cell overlaps via mergeDxf.
+  const locallyLocked = new Set<string>();
 
   for (const cf of cfs) {
     // Walk this block's rules in priority order (low number = high prio).
     const sortedRules = [...cf.rules].sort((a, b) => a.priority - b.priority);
     for (const rule of sortedRules) {
-      if (!SUPPORTED.has(rule.kind)) continue;
+      if (!PREDICATE_KINDS.has(rule.kind)) continue;
       if (rule.dxfId === undefined) continue;
       const dxf = dxfs[rule.dxfId];
       if (!dxf) continue;
 
-      // Precompute the set of cell keys this rule matches across all of
-      // its ranges. For most kinds the predicate is per-cell, but top10
-      // and aboveAverage need a population pass first.
       const matched = computeRuleMatchSet(rule, cf.ranges, cellByKey, layout);
       if (matched.size === 0) continue;
 
       for (const k of matched) {
-        if (locked.has(k)) continue;
-        // Merge with anything already there (lower priority): existing
-        // wins per-field because we iterate highest-priority first.
+        if (locallyLocked.has(k)) continue;
+        if (isCfLocked(locks, k, rule.priority)) continue;
         const prev = out.get(k);
         out.set(k, prev ? mergeDxf(prev, dxf) : dxf);
-        if (rule.stopIfTrue) locked.add(k);
+        if (rule.stopIfTrue) locallyLocked.add(k);
       }
     }
   }
@@ -317,6 +400,7 @@ function mergeDxf(base: Dxf, overlay: Dxf): Dxf {
     italic: base.italic ?? overlay.italic,
     strike: base.strike ?? overlay.strike,
     underline: base.underline ?? overlay.underline,
+    underlineStyle: base.underlineStyle ?? overlay.underlineStyle,
     fillColor: base.fillColor ?? overlay.fillColor,
     numFmt: base.numFmt ?? overlay.numFmt,
   };
@@ -459,6 +543,7 @@ export function drawConditionalFormats(
   g: Grid,
   vis: Visible,
   cfDxfs: Map<string, Dxf>,
+  locks?: Map<string, number>,
 ): void {
   // First pass: paint dxf fill rects for cellIs / expression matches.
   // (Color-scale fills paint below from their own min/max plumbing.)
@@ -485,15 +570,13 @@ export function drawConditionalFormats(
   // Index numeric values so each color-scale rule only computes its range
   // bounds once.
   const cellNumeric = new Map<string, number>();
-  for (const row of sheet.rows) {
-    for (const cell of row.cells) {
-      if (cell.value === undefined) continue;
-      if (cell.type === "n" || cell.type === "f") {
-        const n = parseFloat(cell.value);
-        if (!Number.isNaN(n)) cellNumeric.set(`${cell.r}:${cell.c}`, n);
-      }
+  iterAllCells(sheet, (cell) => {
+    if (cell.value === undefined) return;
+    if (cell.type === "n" || cell.type === "f") {
+      const n = parseFloat(cell.value);
+      if (!Number.isNaN(n)) cellNumeric.set(`${cell.r}:${cell.c}`, n);
     }
-  }
+  });
 
   for (const cf of cfs) {
     // Highest-priority color-scale rule wins (lower number = higher priority).
@@ -526,6 +609,7 @@ export function drawConditionalFormats(
         for (let c = c1; c <= c2; c++) {
           const k = `${r}:${c}`;
           if (covered.has(k)) continue;
+          if (isCfLocked(locks, k, rule.priority)) continue;
           const v = cellNumeric.get(k);
           if (v === undefined) continue;
           const css = interpolateStops(stops, v);
@@ -588,6 +672,7 @@ export function drawConditionalFormats(
         for (let c = c1; c <= c2; c++) {
           const k = `${r}:${c}`;
           if (covered.has(k)) continue;
+          if (isCfLocked(locks, k, rule.priority)) continue;
           const v = cellNumeric.get(k);
           if (v === undefined) continue;
           const rect = topLeftOf.has(k) ? mergedRect(g, topLeftOf.get(k)!) : cellRect(g, r, c);
@@ -599,22 +684,47 @@ export function drawConditionalFormats(
           const bh = Math.max(0, rect.h - inset * 2);
           if (bw <= 0 || bh <= 0) continue;
 
+          // `gradient` (Excel 2010+ default) paints a `linear-gradient(
+          // color, color->transparent)` from the bar's anchor edge to
+          // its outer tip; solid mode paints a flat fill of the same
+          // color across the whole bar. Excel's gradient stops aren't
+          // documented; visually-matched approximation: full-opacity at
+          // the anchor end, ~5% opacity at the tip, with the curve held
+          // mostly flat (~80% opacity at 70% of the bar) so the bar
+          // still reads as solid color from a distance.
+          const fillBar = (
+            x: number,
+            y: number,
+            w: number,
+            h: number,
+            css: string,
+            anchor: "left" | "right",
+          ) => {
+            if (w <= 0 || h <= 0) return;
+            if (db.gradient !== false) {
+              const x0 = anchor === "left" ? x : x + w;
+              const x1 = anchor === "left" ? x + w : x;
+              const grad = ctx.createLinearGradient(x0, y, x1, y);
+              grad.addColorStop(0, withAlpha(css, 1.0));
+              grad.addColorStop(0.7, withAlpha(css, 0.8));
+              grad.addColorStop(1, withAlpha(css, 0.05));
+              ctx.fillStyle = grad;
+            } else {
+              ctx.fillStyle = css;
+            }
+            ctx.fillRect(x, y, w, h);
+          };
+
           if (straddles) {
             const axisX = bx + bw * axisFrac;
             if (v >= 0) {
               const t = Math.min(1, v / maxVal);
               const len = bw * (1 - axisFrac) * (minPct + t * (maxPct - minPct));
-              if (len > 0) {
-                ctx.fillStyle = posCss;
-                ctx.fillRect(axisX, by, len, bh);
-              }
+              fillBar(axisX, by, len, bh, posCss, "left");
             } else {
               const t = Math.min(1, -v / -minVal);
               const len = bw * axisFrac * (minPct + t * (maxPct - minPct));
-              if (len > 0) {
-                ctx.fillStyle = negCss;
-                ctx.fillRect(axisX - len, by, len, bh);
-              }
+              fillBar(axisX - len, by, len, bh, negCss, "right");
             }
             // Thin axis tick (Excel paints a 1px black line at zero).
             ctx.fillStyle = "#000000";
@@ -623,10 +733,7 @@ export function drawConditionalFormats(
             // Single-direction bar from the left edge.
             const t = Math.max(0, Math.min(1, (v - minVal) / (maxVal - minVal)));
             const len = bw * (minPct + t * (maxPct - minPct));
-            if (len > 0) {
-              ctx.fillStyle = posCss;
-              ctx.fillRect(bx, by, len, bh);
-            }
+            fillBar(bx, by, len, bh, posCss, "left");
           }
         }
       }
@@ -685,7 +792,10 @@ export function resolveCfvoValue(
 
 export { computeCfIconState } from "./cfIconState.js";
 
-export function computeCfTextSuppress(sheet: Sheet): Set<string> {
+export function computeCfTextSuppress(
+  sheet: Sheet,
+  locks?: Map<string, number>,
+): Set<string> {
   const out = new Set<string>();
   const cfs = sheet.conditionalFormats;
   if (!cfs || cfs.length === 0) return out;
@@ -697,7 +807,9 @@ export function computeCfTextSuppress(sheet: Sheet): Set<string> {
     for (const range of cf.ranges) {
       for (let r = range.r1; r <= range.r2; r++) {
         for (let c = range.c1; c <= range.c2; c++) {
-          out.add(`${r}:${c}`);
+          const k = `${r}:${c}`;
+          if (isCfLocked(locks, k, rule.priority)) continue;
+          out.add(k);
         }
       }
     }
