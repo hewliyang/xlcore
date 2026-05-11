@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { FILL_SENTINEL, formatValue } from "./numfmt";
 
 // Accounting `*x` fill: numfmt can't size the gap (no cell width here),

@@ -33,7 +33,8 @@ crates/
 
 ```bash
 # 1. build the renderer bundle
-cd packages/xlsx-preview && bun install && bun run build && cd ..
+pnpm install
+pnpm build
 
 # 2. build the rust workspace
 cargo build --release

@@ -526,7 +526,7 @@ Until the CI loop above lands, use this for spot-checks:
 
 ```bash
 # 1. build
-cd packages/xlsx-preview && bun run build && cd ..
+pnpm build
 cargo build --release
 
 # 2. our render
@@ -785,5 +785,5 @@ surrounding workbook noise.
       fixture.
 - [ ] Pixel-diff snapshot test — render via the new node-canvas adapter,
       imagehash against the stored `*.hsx.png`, fail CI on regression.
-- [ ] `bun test` on pure-helper TS (`niceTicks`, `formatNumber`, A1
+- [ ] `pnpm --filter @hewliyang/xlsx-preview test` on pure-helper TS (`niceTicks`, `formatNumber`, A1
       helpers, `layoutSpans`).

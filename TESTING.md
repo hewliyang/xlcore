@@ -147,4 +147,4 @@ See `plan-excel-rust-lib.md` for what each represents.
 - [ ] Pixel-diff snapshot test using the node-canvas adapter — render via
       `renderToPng`, imagehash against a stored reference PNG with a tolerance,
       fail CI on regression.
-- [ ] `bun test` on pure-helper TS (`niceTicks`, `formatNumber`, A1 helpers).
+- [ ] `pnpm --filter @hewliyang/xlsx-preview test` on pure-helper TS (`niceTicks`, `formatNumber`, A1 helpers).

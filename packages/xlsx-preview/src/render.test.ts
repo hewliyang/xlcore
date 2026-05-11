@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { applyTint } from "./render";
 
 // Reference values cross-checked against Excel's color picker.

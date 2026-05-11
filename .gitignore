@@ -1,9 +1,8 @@
 target/
 node_modules/
-render-ts/dist/
+packages/*/dist/
 *.html
-!render-ts/examples/xlsx-app.html
-!render-ts/examples/xlsx-upload.html
+!packages/xlsx-preview/examples/xlsx-app.html
 layout.json
 .DS_Store
 TODO.md

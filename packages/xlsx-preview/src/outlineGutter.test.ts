@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { computeOutlineRuns, isOutlineRunCollapsed, outlineButtonHits } from "./outlineGutter";
 import type { Grid } from "./grid";
 import type { Sheet } from "./types";

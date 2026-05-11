@@ -81,7 +81,7 @@ fn cmd_preview(args: &[String]) -> Result<()> {
     // Find the renderer bundle.
     let renderer_path = renderer_path.or_else(default_renderer_path).context(
         "could not locate packages/xlsx-preview bundle; pass --renderer path/to/dist/browser.js \
-             or build it first (cd packages/xlsx-preview && bun run build)",
+             or build it first (pnpm build)",
     )?;
     let renderer_js = fs::read_to_string(&renderer_path)
         .with_context(|| format!("reading renderer bundle: {}", renderer_path.display()))?;
