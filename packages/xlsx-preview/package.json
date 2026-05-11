@@ -27,7 +27,7 @@
     "knip": "knip",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
-    "test": "vitest run",
+    "test": "node scripts/build.mjs && vitest run",
     "typecheck": "tsc --noEmit"
   },
   "exports": {

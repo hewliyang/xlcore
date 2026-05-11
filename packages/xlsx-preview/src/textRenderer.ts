@@ -429,6 +429,17 @@ export function drawCellText(
     const k = `${cell.r}:${cell.c}`;
     if (covered.has(k)) return;
     if (cfTextSuppress.has(k)) return;
+    // Skip cells whose own column/row has been collapsed to zero size
+    // (hidden columns, hidden rows, or columns inside a collapsed
+    // outline group). Excel does not paint or overflow text from a
+    // hidden cell into its visible neighbors. Merged cells use the
+    // merge anchor's rect later, so let those through — `topLeftOf`
+    // handles the size accounting for the whole range.
+    if (!topLeftOf.has(k)) {
+      const ownColW = g.colW[cell.c] ?? 0;
+      const ownRowH = g.rowH[cell.r] ?? 0;
+      if (ownColW <= 0 || ownRowH <= 0) return;
+    }
     const xf = resolveCellXf(cell, sheet, layout);
     const resolved = resolveCellText(cell, layout, xf);
     let { text } = resolved;
