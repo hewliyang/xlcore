@@ -89,7 +89,7 @@ self.onmessage = async (event) => {
     });
     const mod = await wasmModulePromise;
     stage("Extracting OOXML");
-    const layout = mod.extract_xlsx(new Uint8Array(bytes));
+    const layout = mod.extract_xlsx(new Uint8Array(bytes), undefined);
     self.postMessage({ type: "layout", layout });
   } catch (error) {
     self.postMessage({ type: "error", message: error && error.stack ? error.stack : String(error) });

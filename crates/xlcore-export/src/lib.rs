@@ -36,8 +36,22 @@ pub fn extract<P: AsRef<Path>>(path: P) -> Result<WorkbookLayout> {
     extract_doc(&mut doc)
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct ExtractOptions {
+    pub sheet_index: Option<usize>,
+    pub sheet_name: Option<String>,
+}
+
 /// Extract from an already-open document.
 pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookLayout> {
+    extract_doc_with_options(doc, &ExtractOptions::default())
+}
+
+/// Extract from an already-open document, optionally narrowing to one sheet.
+pub fn extract_doc_with_options(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    options: &ExtractOptions,
+) -> Result<WorkbookLayout> {
     let shared_strings = preload_shared_strings(doc);
 
     let (styles, dxfs) = {
@@ -84,8 +98,23 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
         .filter_map(|p| p.relationship_id().map(|id| (id.to_string(), p.clone())))
         .collect();
 
-    let mut sheets = Vec::with_capacity(workbook_sheets.len());
+    let sheet_capacity = if options.sheet_index.is_some() || options.sheet_name.is_some() {
+        1
+    } else {
+        workbook_sheets.len()
+    };
+    let mut sheets = Vec::with_capacity(sheet_capacity);
     for (idx, wb_sheet) in workbook_sheets.iter().enumerate() {
+        if let Some(wanted_idx) = options.sheet_index {
+            if idx != wanted_idx {
+                continue;
+            }
+        }
+        if let Some(wanted_name) = options.sheet_name.as_deref() {
+            if wb_sheet.name.as_str() != wanted_name {
+                continue;
+            }
+        }
         let ws_part = ws_parts_by_rel_id
             .get(wb_sheet.id.as_str())
             // Fallback for malformed packages or SDKs that don't expose child
@@ -122,6 +151,15 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
         sheets.push(sheet);
     }
 
+    if sheets.is_empty() {
+        if let Some(name) = options.sheet_name.as_deref() {
+            anyhow::bail!("sheet not found: {name}");
+        }
+        if let Some(index) = options.sheet_index {
+            anyhow::bail!("sheet index out of range: {index}");
+        }
+    }
+
     let mut layout = WorkbookLayout {
         sheets,
         styles,
@@ -129,7 +167,11 @@ pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookL
         shared_string_runs: shared_strings.1,
         dxfs,
         theme,
-        active_sheet_index,
+        active_sheet_index: if options.sheet_index.is_some() || options.sheet_name.is_some() {
+            Some(0)
+        } else {
+            active_sheet_index
+        },
     };
     resolve_chart_refs(&mut layout);
     resolve_sparkline_refs(&mut layout);
