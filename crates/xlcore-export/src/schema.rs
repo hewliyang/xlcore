@@ -121,6 +121,30 @@ pub struct TextRun {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<Color>,
+    /// OOXML `<vertAlign val="..."/>` — `"superscript"` or
+    /// `"subscript"`. `"baseline"` (the default) is omitted. Renderer
+    /// draws sup/sub at ~58% of the run's font size, shifted ±33%/+14% of
+    /// the base font's em above/below the baseline.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vert_align: Option<String>,
+    /// OOXML `<family val="N"/>` — numeric font-family hint (0..5):
+    /// 0=N/A, 1=Roman (serif), 2=Swiss (sans-serif), 3=Modern (monospace),
+    /// 4=Script (cursive), 5=Decorative (fantasy). Renderer uses this to
+    /// pick a richer CSS fallback so a workbook authored in a serif
+    /// typeface that's not installed locally still falls back to a serif
+    /// (not the generic sans-serif default).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family: Option<u8>,
+    /// OOXML `<scheme val="major|minor"/>` — theme-font reference. When
+    /// present, the run logically references the workbook's theme major /
+    /// minor font; the `<rFont>` cache may be stale if a different theme
+    /// document has been swapped in. Renderer prefers the resolved theme
+    /// font over `font_name` when this is set. `"none"` is omitted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scheme: Option<String>,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -860,6 +884,11 @@ pub struct Dxf {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub num_fmt: Option<String>,
+    /// `<vertAlign val="..."/>` override from a dxf font block. See
+    /// `TextRun.vert_align`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vert_align: Option<String>,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -1142,6 +1171,23 @@ pub struct Font {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<Color>,
+    /// OOXML `<vertAlign val="..."/>` on the cell font (see
+    /// `TextRun.vert_align`). `"superscript"` / `"subscript"`; absent =
+    /// `"baseline"` (default).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vert_align: Option<String>,
+    /// OOXML `<family val="N"/>` — see `TextRun.family`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family: Option<u8>,
+    /// OOXML `<scheme val="major|minor"/>` — see `TextRun.scheme`. When
+    /// set, the renderer resolves the typeface from the workbook theme
+    /// (`WorkbookLayout.theme.major_font` / `minor_font`) instead of the
+    /// `<name>` cache stored on this font.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scheme: Option<String>,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]

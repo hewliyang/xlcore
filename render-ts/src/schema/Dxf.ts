@@ -19,4 +19,9 @@ fillColor?: Color,
 /**
  * Override number-format code, e.g. `"0.00%"`.
  */
-numFmt?: string, };
+numFmt?: string, 
+/**
+ * `<vertAlign val="..."/>` override from a dxf font block. See
+ * `TextRun.vert_align`.
+ */
+vertAlign?: string, };

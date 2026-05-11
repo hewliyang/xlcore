@@ -35,6 +35,9 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | Text rotation                   | ✅      | ✅     | OOXML `textRotation` 1–180 (CCW + CW) and 255 (stacked) all painted. CCW anchors at cell bottom-left + extends up-right; CW anchors top-left + extends down-right; stacked draws each char upright on its own line, horizontally centered. `halign=center`/`right` shifts the baseline anchor along the cell width. No overflow into neighbors and no wrap support for rotated text (matches Excel — author-time row height already accounts for the rotated extent). Fixture: `tests/fixtures/text/rotation.xlsx`. Open: vertical placement on slanted angles is bottom-anchored where hsx keeps the rotated bounding-box vertically centered (cosmetic). |
 | Strikethrough                   | ✅      | ✅     | painted as a 1px stroke through the visual middle (baseline − 30% font-size).                                                           |
 | Underline (single)              | ✅      | ✅     | painted as a 1px stroke at baseline+12% font-size; honors per-run, dxf-overlay, and hyperlink underlines.                                                                                                 |
+| Font scheme (`<scheme>`)        | ✅      | ✅     | OOXML `<scheme val="major|minor"/>` on `<font>` and `<rPr>` extracted into a new `scheme: Option<String>` on `Font` / `TextRun`. The accompanying `<name>` is a denormalized cache that goes stale when a theme document swaps in different typefaces — renderer now prefers `WorkbookLayout.theme.{majorFont,minorFont}` over the cache when `scheme` is set (`resolveSchemeName` in `textRenderer.ts`). Falls back to the `<rFont>` / `<name>` cache when the theme is missing the relevant slot. Fixture cells use `<name val="WRONG"/>` + `<scheme val="major"/>` against a custom theme1.xml whose majorFont is `Georgia`; without scheme resolution the cells render in `WRONG` (→ generic fallback), with it they render in Georgia. Hsx divergence: SpreadJS ignores `<scheme>` entirely and renders the cached `<name>`. We match Excel desktop. |
+| Font family (`<family>` fallback) | ✅      | ✅     | OOXML `<family val="N"/>` (ECMA-376 §18.18.30 ST_FontFamilyNum) extracted as `family: Option<u8>` on `Font` / `TextRun` (clamped 0..5). Renderer's `cssFont` now appends a family-specific generic chain instead of the previous hardcoded `"Calibri, Aptos, Arial, sans-serif"`: 1=Roman → `Cambria, "Times New Roman", Georgia, serif`; 2=Swiss → sans-serif; 3=Modern → `Consolas, "Courier New", monospace`; 4=Script → `"Brush Script MT", "Lucida Handwriting", cursive`; 5=Decorative → `Papyrus, Impact, fantasy`; 0/missing → sans-serif default. A workbook authored in a serif typeface that isn't installed locally now stays in a serif instead of falling through to Arial. Run-level `family` overrides the cell base when present. Fixture: `tests/fixtures/text/fontfamily.xlsx` exercises 1/3/4/5 with an uninstalled named typeface. Hsx divergence: SpreadJS ignores `<family>` entirely; we match Excel desktop. |
+| Superscript / subscript         | ✅      | ✅     | OOXML `<vertAlign val="superscript|subscript"/>` extracted into a new `vertAlign: Option<String>` on `Font` / `TextRun` / `Dxf`. Renderer lowers each variant to a shrunk font (~58% of the run's pt size, matching Excel's Font panel) plus a per-piece `baselineShiftPx` (− 33% of the base em for `superscript`, +14% for `subscript`); both fast-path and multi-line/multi-run layout apply the shift to `fillText` and forward it to `paintTextDecorations` so underlines / strikes track the raised/dropped baseline. Line height stays based on the unshrunk base size so a sup/sub run never re-heights its line. Fixture: `tests/fixtures/text/vertalign.xlsx` covers cell-font sup/sub on whole cells plus rich-text H₂O / x² / E=mc² mixed-run cases. Hsx divergence: SpreadJS's xlsx import drops every rich-text run except the last when the workbook uses inline strings + `<vertAlign>` in `<rPr>`, so the hsx baseline screenshot shows just the trailing character; we match Excel desktop's correct rendering. |
 | Underline (double / accounting) | ✅      | ✅     | All 4 OOXML `ST_UnderlineValues` (`single` / `double` / `singleAccounting` / `doubleAccounting`) extracted into a new `underlineStyle` field on `Font` / `TextRun` / `Dxf` (absent = `single`, the OOXML default). Renderer paints `double` / `doubleAccounting` as two parallel strokes (gap = `max(2, fontSizePx * 0.1)`); accounting variants extend across the full cell width per Excel's accounting convention via an optional `accountingExtent: {x, w}` parameter on `paintTextDecorations` that the cell-text caller fills with the cell's inner clip rect (`clip.x + 1`, `clip.w - 2`). Non-accounting underlines still hug the text segment. Fixture: `tests/fixtures/text/underline.xlsx`. Hsx divergence: SpreadJS paints all four variants as identical single thin underlines; we match Excel desktop on both the double-line and the cell-spanning accounting variants. |
 | `<i val="0"/>` boolean unset    | ✅      | ✅     | (bug fix: was treated as `true`).                                                               |
 | Theme XML colors                | ✅      | ✅     | parsed from `xl/theme/theme1.xml`. Spreadsheet `theme="N"` indexing (lt1/dk1/lt2/dk2 swap) is correct. Cell + chart-series accents resolve against the workbook palette. All five OOXML color-choice variants resolved: `srgbClr`, `sysClr.lastClr`, `scrgbClr` (RGB percentages → 0..255 bytes), `hslClr` (HSL → sRGB), and `prstClr` (190-entry preset table covering CSS3/X11 names + `dk*`/`lt*`/`med*` abbreviations + 2010 aliases). Office defaults remain only as a last-resort fallback when the theme part is missing entirely. Unit tests in `crates/xlcore-export/src/theme.rs`. |
@@ -686,6 +689,30 @@ surrounding workbook noise.
       OOXML; hsx's public API doesn't expose `slantDashDot`. Documented
       hsx divergence: SpreadJS draws all `*DashDot*` variants as solid
       lines, ours match Excel desktop. See PARITY row.
+- [x] Font-family detection (`<scheme>` + `<family>`):
+      `tests/fixtures/text/fontfamily.xlsx` covers both flavors. The
+      fixture rewrites `xl/theme/theme1.xml` so majorFont=Georgia,
+      minorFont=Verdana, then defines six cell fonts: two with
+      `<scheme val="major|minor"/>` + a deliberately wrong cached
+      `<name val="WRONG"/>` (must resolve via the theme), and four
+      with an uninstalled typeface `NotInstalledFontXYZ` + `<family>`
+      values 1/3/4/5 (must fall through to serif/monospace/cursive/
+      fantasy generics). Our render shows Georgia / Verdana / serif /
+      monospace / cursive / fantasy correctly; hsx renders all six
+      cells in the same fallback typeface (it ignores both attrs).
+      Built via Python zip-patch because hsx's public JS API exposes
+      neither `<scheme>` nor `<family>` on the font block.
+- [x] Superscript / subscript (`<vertAlign>`):
+      `tests/fixtures/text/vertalign.xlsx` covers cell-font `vertAlign`
+      (whole cell super/sub via styles.xml) and rich-text-run
+      `vertAlign` (H, 2-sub, O / x, 2-sup / E = mc, 2-sup). Built via
+      Python zip-patch because hsx's public JS API doesn't expose
+      `vertAlign` on either path — and importantly, its xlsx-import
+      path drops every rich-text run but the last when the cells use
+      inline strings, so the snapshot only confirms shape, not
+      correctness. Our render shows the correct shrunk-and-shifted
+      glyphs for every case; underline / strike inside a sup/sub run
+      track the shifted baseline.
 - [x] Underline variants (double / singleAccounting / doubleAccounting):
       `tests/fixtures/text/underline.xlsx` puts all 4 ST_UnderlineValues +
       a "no underline" control in a row of 5 cells. Schema gains

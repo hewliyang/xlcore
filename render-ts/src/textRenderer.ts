@@ -15,8 +15,8 @@ import type { Visible } from "./renderTypes.js";
 /// successive `fillText` calls.
 interface Span {
   text: string;
-  font: string; // canvas `ctx.font` shorthand
-  fontSizePx: number; // for line-height + ascent math
+  font: string; // canvas `ctx.font` shorthand (already shrunk for sup/sub)
+  fontSizePx: number; // base-font size: drives line-height + decoration math
   color: string;
   bold: boolean; // kept for re-`measureText` shortcuts
   underline: boolean;
@@ -25,6 +25,10 @@ interface Span {
   /// Painted by `paintTextDecorations`.
   underlineStyle?: string;
   strike: boolean;
+  /// Per-piece baseline shift in px (sup = negative → raise; sub =
+  /// positive → drop). Underline / strike inherit this shift because
+  /// they're computed relative to the baseline argument passed in.
+  baselineShiftPx?: number;
 }
 
 /// Build the flat list of `Span`s for a cell, honoring rich-text runs from
@@ -40,7 +44,14 @@ function resolveCellSpans(
   defaultFontSizePt: number,
 ): Span[] {
   const baseSizePt = baseFont?.size ?? defaultFontSizePt;
-  const baseName = baseFont?.name ?? defaultFontFamily;
+  // OOXML `<scheme val="major|minor"/>` on the cell font resolves against
+  // the workbook theme's `major_font` / `minor_font`. The `<name>` cache
+  // can be stale when a theme document swaps in different typefaces, so
+  // when scheme is present we trust the theme over the cache. Falls back
+  // to the cached name if the theme is missing the relevant slot.
+  const baseName =
+    resolveSchemeName(baseFont?.scheme, layout) ?? baseFont?.name ?? defaultFontFamily;
+  const baseFamily = baseFont?.family;
   const baseBold = baseFont?.bold ?? false;
   const baseItalic = baseFont?.italic ?? false;
   const baseUnderline = baseFont?.underline ?? false;
@@ -58,24 +69,22 @@ function resolveCellSpans(
     if (sr && sr.length > 0) runs = sr;
   }
 
+  const baseVertAlign = baseFont?.vertAlign;
+
   if (!runs) {
     return [
-      {
-        text,
-        font: cssFont(baseName, baseSizePt, baseBold, baseItalic),
-        fontSizePx: ptToPx(baseSizePt),
-        color: baseColor,
-        bold: baseBold,
-        underline: baseUnderline,
-        underlineStyle: baseUnderlineStyle,
-        strike: baseStrike,
-      },
+      buildSpan(text, baseSizePt, baseName, baseFamily, baseBold, baseItalic, baseColor, baseUnderline, baseUnderlineStyle, baseStrike, baseVertAlign),
     ];
   }
 
   return runs.map((r) => {
     const sizePt = r.size ?? baseSizePt;
-    const name = r.fontName ?? baseName;
+    // Same scheme → theme-font resolution path as the cell base; a run
+    // with `<scheme val="major"/>` re-resolves to the theme's major font
+    // even when `<rFont>` carries a stale cached name.
+    const name =
+      resolveSchemeName(r.scheme, layout) ?? r.fontName ?? baseName;
+    const family = r.family ?? baseFamily;
     const bold = r.bold ?? baseBold;
     const italic = r.italic ?? baseItalic;
     const color = r.color ? colorToCss(r.color, baseColor) : baseColor;
@@ -86,17 +95,67 @@ function resolveCellSpans(
     // Per-run variant wins; falls through to the cell-base font's variant.
     const underlineStyle = r.underlineStyle ?? baseUnderlineStyle;
     const strike = r.strike || baseStrike;
-    return {
-      text: r.text,
-      font: cssFont(name, sizePt, bold, italic),
-      fontSizePx: ptToPx(sizePt),
-      color,
-      bold,
-      underline,
-      underlineStyle,
-      strike,
-    };
+    // vertAlign on a run wins over the cell's base font; absent on both
+    // means baseline (no shift).
+    const vertAlign = r.vertAlign ?? baseVertAlign;
+    return buildSpan(r.text, sizePt, name, family, bold, italic, color, underline, underlineStyle, strike, vertAlign);
   });
+}
+
+/// Resolve OOXML `<scheme val="major|minor"/>` against the workbook's
+/// theme font scheme. Returns `undefined` when scheme is absent, set to
+/// `"none"`, or the requested slot is missing on the theme — caller
+/// falls back to the `<name>` cache.
+function resolveSchemeName(
+  scheme: string | undefined,
+  layout: WorkbookLayout,
+): string | undefined {
+  if (!scheme || scheme === "none") return undefined;
+  const t = layout.theme;
+  if (!t) return undefined;
+  if (scheme === "major") return t.majorFont || undefined;
+  if (scheme === "minor") return t.minorFont || undefined;
+  return undefined;
+}
+
+/// Construct a `Span`, lowering OOXML `vertAlign` to a shrunk font + a
+/// baseline-shift offset. Excel sup/sub is ~58% of the base font size
+/// (`Font` panel in the desktop client), raised by ~33% of the base em
+/// for superscript or dropped ~14% for subscript.
+function buildSpan(
+  text: string,
+  sizePt: number,
+  name: string,
+  family: number | undefined,
+  bold: boolean,
+  italic: boolean,
+  color: string,
+  underline: boolean,
+  underlineStyle: string | undefined,
+  strike: boolean,
+  vertAlign: string | undefined,
+): Span {
+  const basePx = ptToPx(sizePt);
+  let drawSizePt = sizePt;
+  let baselineShiftPx = 0;
+  if (vertAlign === "superscript") {
+    drawSizePt = sizePt * 0.58;
+    baselineShiftPx = -basePx * 0.33;
+  } else if (vertAlign === "subscript") {
+    drawSizePt = sizePt * 0.58;
+    baselineShiftPx = basePx * 0.14;
+  }
+  return {
+    text,
+    font: cssFont(name, drawSizePt, bold, italic, family),
+    fontSizePx: basePx,
+    color,
+    bold,
+    underline,
+    underlineStyle,
+    strike,
+    baselineShiftPx: baselineShiftPx || undefined,
+  };
 }
 
 /// Paint underline / strike for a single text segment on the canvas at
@@ -161,9 +220,46 @@ function ptToPx(pt: number): number {
   return (pt * 4) / 3;
 }
 
-function cssFont(name: string, sizePt: number, bold: boolean, italic: boolean): string {
+/// Map an OOXML `<family val="N"/>` numeric family hint to a chain of
+/// CSS fallback typefaces. When the workbook's named typeface isn't
+/// installed locally, the browser walks this chain — so a serif workbook
+/// stays in a serif, a monospace workbook stays in a monospace, etc.
+///
+/// OOXML ST_FontFamilyNum (ECMA-376 §18.18.30):
+///   0 = Not applicable
+///   1 = Roman      → serif
+///   2 = Swiss      → sans-serif
+///   3 = Modern     → monospace
+///   4 = Script     → cursive
+///   5 = Decorative → fantasy
+function familyFallbackChain(family: number | undefined): string {
+  switch (family) {
+    case 1:
+      return '"Cambria", "Times New Roman", Georgia, serif';
+    case 3:
+      return 'Consolas, "Courier New", monospace';
+    case 4:
+      return '"Brush Script MT", "Lucida Handwriting", cursive';
+    case 5:
+      return 'Papyrus, Impact, fantasy';
+    case 2:
+    case 0:
+    default:
+      // Sans-serif covers most workbooks (Calibri / Aptos / Arial are
+      // all family=2). Unknown / missing also falls here.
+      return 'Calibri, Aptos, Arial, sans-serif';
+  }
+}
+
+function cssFont(
+  name: string,
+  sizePt: number,
+  bold: boolean,
+  italic: boolean,
+  family?: number,
+): string {
   const px = ptToPx(sizePt);
-  return `${italic ? "italic " : ""}${bold ? "bold " : ""}${px}px "${name}", Calibri, Aptos, Arial, sans-serif`;
+  return `${italic ? "italic " : ""}${bold ? "bold " : ""}${px}px "${name}", ${familyFallbackChain(family)}`;
 }
 
 /// One laid-out line: a list of (font-styled) span pieces in display order,
@@ -649,8 +745,9 @@ export function drawCellText(
           default:
             ty = ownRect.y + ownRect.h - 4;
         }
-        ctx.fillText(display, tx, ty);
-        paintTextDecorations(ctx, span, tx, ty, ctx.measureText(display).width, {
+        const tyShift = ty + (span.baselineShiftPx ?? 0);
+        ctx.fillText(display, tx, tyShift);
+        paintTextDecorations(ctx, span, tx, tyShift, ctx.measureText(display).width, {
           x: clip.x + 1,
           w: Math.max(0, clip.w - 2),
         });
@@ -697,8 +794,9 @@ export function drawCellText(
         for (const piece of line.pieces) {
           ctx.font = piece.span.font;
           ctx.fillStyle = piece.span.color;
-          ctx.fillText(piece.text, cursorX, baseline);
-          paintTextDecorations(ctx, piece.span, cursorX, baseline, piece.width, {
+          const pieceBaseline = baseline + (piece.span.baselineShiftPx ?? 0);
+          ctx.fillText(piece.text, cursorX, pieceBaseline);
+          paintTextDecorations(ctx, piece.span, cursorX, pieceBaseline, piece.width, {
             x: clip.x + 1,
             w: Math.max(0, clip.w - 2),
           });

@@ -6,4 +6,21 @@ export type Font = { name?: string, size?: number, bold: boolean, italic: boolea
  * OOXML `<u val="..."/>` variant when not the default `single`.
  * See `TextRun.underline_style` for values + renderer behavior.
  */
-underlineStyle?: string, strike: boolean, color?: Color, };
+underlineStyle?: string, strike: boolean, color?: Color, 
+/**
+ * OOXML `<vertAlign val="..."/>` on the cell font (see
+ * `TextRun.vert_align`). `"superscript"` / `"subscript"`; absent =
+ * `"baseline"` (default).
+ */
+vertAlign?: string, 
+/**
+ * OOXML `<family val="N"/>` — see `TextRun.family`.
+ */
+family?: number, 
+/**
+ * OOXML `<scheme val="major|minor"/>` — see `TextRun.scheme`. When
+ * set, the renderer resolves the typeface from the workbook theme
+ * (`WorkbookLayout.theme.major_font` / `minor_font`) instead of the
+ * `<name>` cache stored on this font.
+ */
+scheme?: string, };

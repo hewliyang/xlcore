@@ -489,7 +489,54 @@ pub(crate) fn text_run_from(r: &xspread::Run, text: String) -> TextRun {
             });
         }
     }
+    // OOXML `<vertAlign val="superscript|subscript|baseline"/>`. Baseline
+    // is the default — omit so the field stays absent in JSON.
+    if let Some(v) = rpr.x_vert_align.first() {
+        tr.vert_align = vert_align_variant(v.val);
+    }
+    // `<family val="N"/>` — OOXML clamps 0..5. Stored as `Option<u8>` so
+    // the renderer can pick a CSS fallback (serif / sans-serif / etc.)
+    // when the named typeface isn't installed.
+    if let Some(fm) = rpr.x_family.first() {
+        let v = fm.val;
+        if (0..=5).contains(&v) {
+            tr.family = Some(v as u8);
+        }
+    }
+    // `<scheme val="major|minor"/>` — theme font reference. `none` is
+    // omitted to match the OOXML default.
+    if let Some(s) = rpr.x_scheme.first() {
+        tr.scheme = font_scheme_variant(s.val);
+    }
     tr
+}
+
+/// Map ooxmlsdk's `FontSchemeValues` to a wire string. `None`/`"none"`
+/// returns `None` so the field is omitted (matches the OOXML default and
+/// keeps the JSON small).
+pub(crate) fn font_scheme_variant(
+    v: xspread::FontSchemeValues,
+) -> Option<String> {
+    use xspread::FontSchemeValues as S;
+    match v {
+        S::None => None,
+        S::Major => Some("major".to_string()),
+        S::Minor => Some("minor".to_string()),
+    }
+}
+
+/// Map ooxmlsdk's `VerticalAlignmentRunValues` to a wire string.
+/// `Baseline` returns `None` so the field is omitted (matches the OOXML
+/// default and keeps JSON tidy).
+pub(crate) fn vert_align_variant(
+    v: xspread::VerticalAlignmentRunValues,
+) -> Option<String> {
+    use xspread::VerticalAlignmentRunValues as V;
+    match v {
+        V::Baseline => None,
+        V::Superscript => Some("superscript".to_string()),
+        V::Subscript => Some("subscript".to_string()),
+    }
 }
 
 /// Map an `Option<UnderlineValues>` from ooxmlsdk to one of the OOXML
@@ -517,4 +564,7 @@ fn is_unstyled_run(r: &TextRun) -> bool {
         && r.size.is_none()
         && r.font_name.is_none()
         && r.color.is_none()
+        && r.vert_align.is_none()
+        && r.family.is_none()
+        && r.scheme.is_none()
 }

@@ -125,6 +125,9 @@ fn extract_dxf(d: &XDxf) -> crate::schema::Dxf {
         if let Some(c) = f.color.as_ref() {
             out.font_color = extract_color_x(c);
         }
+        if let Some(v) = f.vertical_text_alignment.as_ref() {
+            out.vert_align = crate::vert_align_variant(v.val);
+        }
     }
     if let Some(fill) = d.fill.as_ref() {
         if let Some(x::FillChoice::XPatternFill(pf)) = &fill.fill_choice {
@@ -193,6 +196,18 @@ fn extract_font(f: &XFont) -> Font {
             .map(|s| s.val.unwrap_or(true))
             .unwrap_or(false),
         color: f.color.as_ref().and_then(extract_color_x),
+        vert_align: f
+            .vertical_text_alignment
+            .as_ref()
+            .and_then(|v| crate::vert_align_variant(v.val)),
+        family: f.font_family_numbering.as_ref().and_then(|fm| {
+            let v = fm.val;
+            if (0..=5).contains(&v) { Some(v as u8) } else { None }
+        }),
+        scheme: f
+            .font_scheme
+            .as_ref()
+            .and_then(|s| crate::font_scheme_variant(s.val)),
     }
 }
 
