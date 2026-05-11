@@ -6,6 +6,19 @@ export function renderIntegerTokens(tokens: Tok[], intDigits: string, grouping: 
   let digits = intDigits.replace(/^0+(?=\d)/, "");
   if (digits === "") digits = "0";
 
+  // Excel zero-suppression for `?`/`#`-only int sides: when the value's
+  // integer part is exactly 0 AND the format provides no `0` placeholder
+  // to anchor the digit, treat the int part as empty so `?` placeholders
+  // emit spaces and `#` placeholders emit nothing. This is what makes
+  // the standard Accounting format's zero section `_("$"* "-"??_)` render
+  // as `"-  "` (dash + two blanks) instead of `"- 0"` for absolute zero.
+  if (digits === "0") {
+    const hasZeroPlaceholder = tokens.some(
+      (t) => t.kind === "digit" && t.ch === "0",
+    );
+    if (!hasZeroPlaceholder) digits = "";
+  }
+
   // Apply grouping commas onto `digits`. The grouping commas in the
   // FORMAT string (lit "," tokens between digit placeholders) are
   // grouping markers — we drop them at render time and replace with the

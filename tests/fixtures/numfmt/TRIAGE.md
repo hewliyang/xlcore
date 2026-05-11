@@ -67,9 +67,15 @@ Key design choices, documented inline:
 - **Pre-1900-03-01 dates**: serial < 60 is off by one day (Excel's bogus
   1900 leap year).
 - **Asian / lunar calendar tokens** (`g`, `e`, `b1`, `b2`).
-- **Accounting-zero `??`**: format `_("$"* "-"??_)` for value 0 emits
-  `"- 0"` (digit `0` fills the `??` placeholders); Excel emits `"-  "`
-  (treats 0 as empty for `?`-only int part). Edge case.
+- ~~**Accounting-zero `??`**~~: **DONE.** Format `_("$"* "-"??_)` for
+  value 0 now emits `"-  "` (dash + two blanks) to match Excel. Fix in
+  `renderIntegerTokens` (`numfmtNumberParts.ts`): when the value's
+  integer part is exactly `0` AND the format provides no `0`
+  placeholder, treat `intDigits` as empty so `?` placeholders fall
+  through to spaces and `#` placeholders emit nothing. Tests in
+  `numfmt.test.ts` cover the accounting third section + bare `??` /
+  `???` / `#` and verify `0.00` / `#,##0` still anchor a literal zero
+  for value 0.
 
 ## Architectural followup (not blocking)
 

@@ -1,16 +1,19 @@
 {
+  // Default config: used by the IDE, `pnpm typecheck`, and vitest.
+  // Sees the whole package (tests, scripts) and never emits.
+  // For shipping declarations see `tsconfig.build.json`.
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "lib": ["ES2022", "DOM"],
+    "types": ["node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "declaration": true,
-    "outDir": "dist",
-    "rootDir": "src"
+    "noEmit": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "scripts/**/*"],
+  "exclude": ["dist"]
 }

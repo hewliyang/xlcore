@@ -14,7 +14,7 @@
   },
   "scripts": {
     "build": "pnpm run build:ts",
-    "build:ts": "tsc --emitDeclarationOnly && node scripts/build.mjs",
+    "build:ts": "tsc -p tsconfig.build.json && node scripts/build.mjs",
     "build:wasm": "cd ../.. && wasm-pack build crates/xlcore-wasm --target web --out-dir pkg --profile wasm-size --no-opt",
     "build:release": "pnpm run build:wasm && pnpm run build:ts",
     "prepack": "pnpm run build:release",

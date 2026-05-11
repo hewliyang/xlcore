@@ -33,12 +33,26 @@ test("accounting negative: routes to the second section + sentinel inside parens
 
 test("accounting zero: routes to the third section with placeholder dash", () => {
   const r = formatValue(0, ACC);
-  // `_("$"* "-"??_)` — "-" literal then two `?` digit placeholders.
-  // The `?` over zero currently renders one digit + one blank (known
-  // tiny divergence vs Excel's "two blanks", see TRIAGE.md). Lock
-  // sentinel placement, not the `?` zero quirk.
-  expect(r.text).toBe(` $${FILL_SENTINEL}- 0 `);
+  // `_("$"* "-"??_)` — "-" literal then two `?` digit placeholders. The
+  // `??` int side has no `0` placeholder to anchor a literal zero, so
+  // Excel renders absolute zero as `"-  "` (dash + two blanks). The
+  // trailing space comes from the `_)` literal.
+  expect(r.text).toBe(` $${FILL_SENTINEL}-   `);
   expect(r.fills).toEqual([" "]);
+});
+
+test("format with `0` placeholder still emits literal zero for value 0", () => {
+  // `0` placeholder anchors a digit even when the value is zero; only
+  // `?`/`#`-only int sides trigger the suppression.
+  expect(formatValue(0, "0.00").text).toBe("0.00");
+  expect(formatValue(0, "#,##0").text).toBe("0");
+});
+
+test("`?`-only int side emits blanks for zero, not a literal digit", () => {
+  expect(formatValue(0, "??").text).toBe("  ");
+  expect(formatValue(0, "???").text).toBe("   ");
+  // `#`-only emits nothing.
+  expect(formatValue(0, "#").text).toBe("");
 });
 
 test("non-accounting format has no fills array", () => {

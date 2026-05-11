@@ -99,13 +99,19 @@ async function loadCollapsedAndRecordFillText() {
   // context wrapper. Since renderToCanvas constructs the canvas
   // internally, we wrap the prototype's `getContext` temporarily.
   const fillTextCalls: string[] = [];
-  type Ctx2D = CanvasRenderingContext2D & { __wrapped?: boolean };
-  const proto = Object.getPrototypeOf(canvas.getContext("2d") as Ctx2D) as Ctx2D;
+  // Only the bits we actually touch — keeps us decoupled from whether
+  // `canvas.getContext('2d')` returns the DOM or skia-canvas flavour
+  // of `CanvasRenderingContext2D` (they differ slightly).
+  type Ctx2D = {
+    fillText(text: string, x: number, y: number, maxWidth?: number): void;
+  };
+  const ctx = canvas.getContext("2d") as unknown as Ctx2D;
+  const proto = Object.getPrototypeOf(ctx) as Ctx2D;
   const originalFillText = proto.fillText;
-  proto.fillText = function (this: Ctx2D, text: string, x: number, y: number, maxWidth?: number) {
+  proto.fillText = function (this: Ctx2D, text, x, y, maxWidth) {
     fillTextCalls.push(text);
-    return originalFillText.call(this, text, x, y, maxWidth as number);
-  } as Ctx2D["fillText"];
+    return originalFillText.call(this, text, x, y, maxWidth);
+  };
   try {
     // Second render, this time every fillText is captured.
     renderToCanvas(layout, { colOverrides });
