@@ -47,78 +47,108 @@
   /* --- app bar ------------------------------------------------------ */
   header {
     min-width: 0;
-    padding: 0 14px;
-    height: 48px;
+    padding: 0 8px;
+    height: 34px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    gap: 12px;
-  }
-  .brand {
-    display: flex;
-    align-items: center;
     gap: 8px;
-    font-weight: 600;
-    font-size: 13px;
-    letter-spacing: -0.01em;
   }
-  .brand-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 2px;
-    background: linear-gradient(135deg, var(--accent), #06b6d4);
+  .name-box {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 8px;
+    min-width: 64px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
   }
+  .fx-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-style: italic;
+    color: var(--text-dim);
+  }
+  .formula-box {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 22px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .formula-box:empty::before { content: ""; }
   .file-picker {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 0 10px;
-    height: 28px;
+    gap: 5px;
+    padding: 0 8px;
+    height: 22px;
     border: 1px solid var(--border-strong);
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     background: var(--surface);
     color: var(--text);
     font: inherit;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
     cursor: pointer;
     transition: background 0.12s, border-color 0.12s;
+    flex: none;
   }
   .file-picker:hover { background: var(--surface-muted); border-color: var(--text-dim); }
-  .file-picker svg { width: 14px; height: 14px; }
+  .file-picker svg { width: 12px; height: 12px; }
   .file-picker input { position: absolute; left: -9999px; }
   #status {
-    margin-left: 4px;
     color: var(--text-muted);
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 12px;
+    font-size: 11px;
+    flex: none;
+    max-width: 240px;
   }
   #status .status-pill {
     display: inline-block;
-    padding: 1px 6px;
+    padding: 0 5px;
     border-radius: 3px;
     background: var(--surface-muted);
     color: var(--text);
     font-weight: 500;
     margin-right: 4px;
   }
-  .spacer { flex: 1 1 auto; }
+  header .sep {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+    flex: none;
+  }
   #panel-toggle {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     padding: 0;
     flex: none;
     border: 1px solid var(--border-strong);
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     background: var(--surface);
     color: var(--text-muted);
     cursor: pointer;
     font: inherit;
-    font-size: 14px;
+    font-size: 12px;
     line-height: 1;
     transition: background 0.12s;
   }
@@ -138,6 +168,10 @@
     background: var(--surface);
   }
   body.panel-collapsed #preview { border-right: 0; }
+  /* Hide the previewer's built-in sheet-tab strip and formula bar —
+     we render compact equivalents in the app bar / footer. */
+  #preview .xlcore-tabs { display: none !important; }
+  #preview .xlcore-formula-bar { display: none !important; }
 
   /* --- inspector aside --------------------------------------------- */
   aside {
@@ -288,30 +322,91 @@
   .state .n { color: #b45309; }     /* numbers: amber */
   .state .p { color: var(--text-dim); }   /* punctuation */
 
-  /* --- status bar -------------------------------------------------- */
-  footer.statusbar {
+  /* --- sheet tab bar (footer) -------------------------------------- */
+  footer.tabbar {
     height: 28px;
     border-top: 1px solid var(--border);
     background: var(--surface);
     display: flex;
+    align-items: stretch;
+    min-width: 0;
+  }
+  .tabbar .tabs {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    padding: 0 6px;
+    min-width: 0;
+  }
+  .tabbar .tabs::-webkit-scrollbar { height: 6px; }
+  .tabbar .tabs::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+  .tabbar .tab {
+    position: relative;
+    display: inline-flex;
     align-items: center;
-    gap: 16px;
-    padding: 0 14px;
-    font-size: 11.5px;
+    height: 100%;
+    padding: 0 12px;
+    border: 0;
+    background: transparent;
     color: var(--text-muted);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    border-radius: 0;
+    transition: color 0.12s, background 0.12s;
+  }
+  .tabbar .tab:hover { color: var(--text); background: var(--surface-muted); }
+  .tabbar .tab.active { color: var(--accent-strong); font-weight: 600; }
+  .tabbar .tab.active::after {
+    content: "";
+    position: absolute;
+    left: 6px; right: 6px; bottom: 0;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 2px 2px 0 0;
+  }
+  .tabbar .right {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 8px;
+    border-left: 1px solid var(--border);
     font-variant-numeric: tabular-nums;
   }
-  .statusbar .group { display: flex; align-items: center; gap: 6px; }
-  .statusbar .label { color: var(--text-dim); }
-  .statusbar .value { color: var(--text); font-weight: 500; }
-  .statusbar .value.mono { font-family: var(--font-mono); }
-  .statusbar .sep { width: 1px; height: 14px; background: var(--border); }
-  .statusbar .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .tabbar .icon-btn {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tabbar .icon-btn:hover { background: var(--surface-muted); color: var(--text); }
+  .tabbar #zoom-label {
+    min-width: 38px;
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text);
+  }
 
   /* --- loading overlay -------------------------------------------- */
   #loading {
     position: fixed;
-    inset: 48px 300px 28px 0;
+    inset: 34px 300px 28px 0;
     z-index: 10;
     display: grid;
     place-items: center;
@@ -358,21 +453,24 @@
     #preview { border-right: 0; border-bottom: 1px solid var(--border); }
     body.panel-collapsed #preview { border-bottom: 0; }
     aside { max-height: 45vh; }
-    #loading { inset: 48px 0 calc(45vh + 28px) 0; }
-    body.panel-collapsed #loading { inset: 48px 0 28px 0; }
+    #loading { inset: 34px 0 calc(45vh + 28px) 0; }
+    body.panel-collapsed #loading { inset: 34px 0 28px 0; }
   }
 </style>
 </head>
 <body>
 <header>
-  <span class="brand"><span class="brand-dot"></span>xlcore</span>
   <label class="file-picker" for="picker">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    <span>Open .xlsx</span>
+    <span>Open</span>
     <input type="file" id="picker" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
   </label>
+  <span class="sep"></span>
+  <span class="name-box" id="name-box">—</span>
+  <span class="fx-label">fx</span>
+  <span class="formula-box" id="formula-box"></span>
+  <span class="sep"></span>
   <span id="status">Load an .xlsx file to begin</span>
-  <span class="spacer"></span>
   <button id="panel-toggle" type="button" aria-label="Collapse side panel" aria-expanded="true" title="Toggle inspector">›</button>
 </header>
 
@@ -401,18 +499,9 @@
     </details>
 
     <details class="section" open>
-      <summary>Sheets</summary>
-      <div class="body">
-        <select id="sheet-select" disabled></select>
-      </div>
-    </details>
-
-    <details class="section" open>
       <summary>Viewport</summary>
       <div class="body">
         <div class="grid2">
-          <button id="zoom-out">Zoom −</button>
-          <button id="zoom-in">Zoom +</button>
           <button id="scroll-active">Scroll active</button>
           <button id="reset-view">Reset view</button>
         </div>
@@ -428,16 +517,12 @@
   </aside>
 </main>
 
-<footer class="statusbar">
-  <div class="group"><span class="label">Cell</span><span class="value mono" id="sb-cell">—</span></div>
-  <div class="sep"></div>
-  <div class="group"><span class="label">Range</span><span class="value mono" id="sb-range">—</span></div>
-  <div class="sep"></div>
-  <div class="group"><span class="label">Size</span><span class="value" id="sb-size">—</span></div>
+<footer class="tabbar">
+  <div class="tabs" id="sheet-tabs" role="tablist" aria-label="Sheets"></div>
   <div class="right">
-    <span class="label">Sheet</span><span class="value" id="sb-sheet">—</span>
-    <div class="sep"></div>
-    <span class="label">Zoom</span><span class="value" id="sb-zoom">—</span>
+    <button class="icon-btn" id="zoom-out" type="button" aria-label="Zoom out" title="Zoom out">−</button>
+    <span id="zoom-label">100%</span>
+    <button class="icon-btn" id="zoom-in" type="button" aria-label="Zoom in" title="Zoom in">+</button>
   </div>
 </footer>
 
@@ -464,7 +549,10 @@ const picker = document.getElementById("picker");
 const status = document.getElementById("status");
 const previewRoot = document.getElementById("preview");
 const panelToggle = document.getElementById("panel-toggle");
-const sheetSelect = document.getElementById("sheet-select");
+const sheetTabs = document.getElementById("sheet-tabs");
+const zoomLabel = document.getElementById("zoom-label");
+const nameBox = document.getElementById("name-box");
+const formulaBox = document.getElementById("formula-box");
 const stateBox = document.getElementById("state");
 const address = document.getElementById("address");
 const loading = document.getElementById("loading");
@@ -474,11 +562,6 @@ const loadingElapsed = document.getElementById("loading-elapsed");
 const selActive = document.getElementById("sel-active");
 const selRange = document.getElementById("sel-range");
 const selSize = document.getElementById("sel-size");
-const sbCell = document.getElementById("sb-cell");
-const sbRange = document.getElementById("sb-range");
-const sbSize = document.getElementById("sb-size");
-const sbSheet = document.getElementById("sb-sheet");
-const sbZoom = document.getElementById("sb-zoom");
 
 let previewer = null;
 let elapsedTimer = null;
@@ -535,13 +618,57 @@ function highlightJSON(text) {
     .replace(/([{}\[\],])/g, '<span class="p">$1</span>');
 }
 
+// Cell kinds (must mirror columnar.ts KIND_NAMES).
+const CELL_KIND = ["n", "s", "inline", "b", "e", "str", "f"];
+
+function activeCellDisplay(sheet, layout, r, c) {
+  const meta = sheet.decodedRowMeta;
+  const cells = sheet.decodedCells;
+  if (!meta || !cells) return "";
+  const m = meta.byIndex?.get(r);
+  if (m === undefined) return "";
+  const start = cells.rowPtr[m] ?? 0;
+  const end = cells.rowPtr[m + 1] ?? cells.count;
+  // Binary search by column within the row's cell range.
+  let lo = start, hi = end - 1, idx = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const col = cells.c[mid] ?? 0;
+    if (col === c) { idx = mid; break; }
+    if (col < c) lo = mid + 1; else hi = mid - 1;
+  }
+  if (idx < 0) return "";
+  const formulaIdx = cells.formulaIdx?.[idx] ?? -1;
+  if (formulaIdx >= 0) {
+    const f = sheet.formulaPool?.[formulaIdx] ?? "";
+    return f ? (f.startsWith("=") ? f : `=${f}`) : "";
+  }
+  const valueIdx = cells.valueIdx?.[idx] ?? -1;
+  const raw = valueIdx >= 0 ? sheet.valuePool?.[valueIdx] : undefined;
+  const kind = CELL_KIND[cells.kind?.[idx] ?? 0] ?? "n";
+  if (kind === "s" && raw !== undefined) {
+    const sst = layout.sharedStrings?.[Number(raw)] ?? "";
+    return sst;
+  }
+  if (kind === "inline") {
+    const runsIdx = cells.runsIdx?.[idx] ?? -1;
+    if (runsIdx >= 0) {
+      const runs = sheet.inlineRuns?.[runsIdx] ?? [];
+      return runs.map((run) => run.text ?? "").join("");
+    }
+  }
+  return raw ?? "";
+}
+
 function renderState() {
   if (!previewer) {
     stateBox.textContent = "No workbook loaded";
     selActive.textContent = "—";
     selRange.textContent = "—";
     selSize.textContent = "—";
-    sbCell.textContent = sbRange.textContent = sbSize.textContent = sbSheet.textContent = sbZoom.textContent = "—";
+    zoomLabel.textContent = "100%";
+    nameBox.textContent = "—";
+    formulaBox.textContent = "";
     return;
   }
   const state = previewer.getState();
@@ -556,11 +683,23 @@ function renderState() {
   selActive.textContent = activeAddr;
   selRange.textContent = rangeAddr;
   selSize.textContent = size;
-  sbCell.textContent = activeAddr;
-  sbRange.textContent = rangeAddr;
-  sbSize.textContent = size;
-  sbSheet.textContent = sheet.name;
-  sbZoom.textContent = zoomPct;
+  zoomLabel.textContent = zoomPct;
+  // Name box shows range when multi-cell (Excel convention shows the size,
+  // e.g. "3R x 4C"). For a single cell, show the address.
+  nameBox.textContent = rows === 1 && cols === 1 ? activeAddr : `${rows}R×${cols}C`;
+  try {
+    formulaBox.textContent = String(
+      activeCellDisplay(sheet, previewer.layout, state.activeCell.r, state.activeCell.c) ?? "",
+    );
+  } catch {
+    formulaBox.textContent = "";
+  }
+
+  // Reflect active sheet in the tab strip.
+  const activeIndex = state.activeSheetIndex;
+  for (const btn of sheetTabs.querySelectorAll(".tab")) {
+    btn.classList.toggle("active", Number(btn.dataset.index) === activeIndex);
+  }
 
   const payload = {
     sheet: sheet.name,
@@ -573,19 +712,21 @@ function renderState() {
 }
 
 function populateSheets() {
-  sheetSelect.replaceChildren();
-  if (!previewer) {
-    sheetSelect.disabled = true;
-    return;
-  }
+  sheetTabs.replaceChildren();
+  if (!previewer) return;
   previewer.layout.sheets.forEach((sheet, index) => {
-    const option = document.createElement("option");
-    option.value = String(index);
-    option.textContent = sheet.name;
-    sheetSelect.append(option);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tab";
+    btn.dataset.index = String(index);
+    btn.textContent = sheet.name;
+    btn.setAttribute("role", "tab");
+    btn.addEventListener("click", () => {
+      requirePreviewer().setActiveSheet(index);
+      renderState();
+    });
+    sheetTabs.append(btn);
   });
-  sheetSelect.value = String(previewer.getActiveSheetIndex());
-  sheetSelect.disabled = false;
 }
 
 function parseCell(value) {
@@ -662,10 +803,7 @@ picker.addEventListener("change", async () => {
     });
     window.xlcorePreviewer = previewer;
     previewer.on("selectionchange", renderState);
-    previewer.on("sheetchange", () => {
-      sheetSelect.value = String(previewer.getActiveSheetIndex());
-      renderState();
-    });
+    previewer.on("sheetchange", renderState);
     previewer.on("zoomchange", renderState);
     populateSheets();
     renderState();
@@ -699,11 +837,6 @@ document.querySelectorAll("[data-range]").forEach((button) => {
     requirePreviewer().selectRange(parseRange(button.dataset.range), { scroll: true });
     renderState();
   });
-});
-
-sheetSelect.addEventListener("change", () => {
-  requirePreviewer().setActiveSheet(Number(sheetSelect.value));
-  renderState();
 });
 
 document.getElementById("zoom-out").addEventListener("click", () => {
