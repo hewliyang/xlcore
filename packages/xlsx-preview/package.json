@@ -2,6 +2,24 @@
   "name": "@hewliyang/xlsx-preview",
   "version": "0.0.2",
   "description": "XLSX preview/rendering library for browser, React, and Node.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hewliyang/xlcore.git",
+    "directory": "packages/xlsx-preview"
+  },
+  "homepage": "https://github.com/hewliyang/xlcore#readme",
+  "bugs": "https://github.com/hewliyang/xlcore/issues",
+  "license": "MIT OR Apache-2.0",
+  "author": "hewliyang",
+  "keywords": [
+    "xlsx",
+    "excel",
+    "spreadsheet",
+    "preview",
+    "canvas",
+    "react",
+    "wasm"
+  ],
   "engines": {
     "node": ">=20"
   },
