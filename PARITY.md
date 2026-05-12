@@ -129,10 +129,11 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a not in scope for v0.
 | IronCalc fork integration                                                             | ❌    | milestone 1 in `plan-excel-rust-lib.md`. |
 | `SUMPRODUCT`, `LET`, `LAMBDA`, `FILTER`, `SORT`, `UNIQUE`, `SEQUENCE`, dynamic arrays | ❌    | function gap list lives in the plan.     |
 
-## Quick wins (next in priority order)
+## Quick wins (mostly DONE — historical record)
 
-The first 4 items are small, high-visibility, and would each catch a class
-of real-world workbooks looking wrong.
+The original 7 items in this section have all shipped. Kept here so the
+done-state notes stay searchable; remaining open sub-items are folded
+into each entry and into [Bigger lifts](#bigger-lifts-own-milestones) below.
 
 1. ~~**Theme XML parsing.**~~ **DONE.** `xl/theme/theme1.xml` is parsed
    in `xlcore-export/theme.rs` and emitted as `WorkbookLayout.theme`
@@ -293,7 +294,8 @@ of real-world workbooks looking wrong.
    interactivity — all need an aggregation engine (Bar 2 in the
    `pivot has to work` decomposition; months of work).
 
-Bigger lifts (own milestones):
+## Bigger lifts (own milestones)
+
 
 - ~~**Diagonal borders.**~~ **DONE.** `Border.diagonalUp` /
   `diagonalDown` / `diagonal` (style + color) added to the schema;
@@ -337,12 +339,12 @@ Bigger lifts (own milestones):
     HSL primaries (red/green/blue/black/white/gray), and hex format.
 - **Formula recalc.** Forking IronCalc + filling its function gaps is
   milestone 1 in `plan-excel-rust-lib.md`.
-- ~~**node-canvas backend.**~~ **DONE.** `@hewliyang/xlsx-preview` now exports
+- ~~**Node-side canvas backend.**~~ **DONE** (via `skia-canvas`, not the
+  similarly-named `node-canvas` package). `@hewliyang/xlsx-preview` now exports
   `renderToCanvas()` / `renderToPng()` from `packages/xlsx-preview/src/node.ts`, backed by
-  `@napi-rs/canvas` and the exact same `render()` pass used by the browser
+  `skia-canvas` and the exact same `render()` pass used by the browser
   preview. Pattern-fill offscreen canvases route through a shared factory so
-  hatch fills keep working outside `document`. Open follow-up: wire this into
-  fixture pixel-diff CI.
+  hatch fills keep working outside `document`.
 - **Filtered-row hiding (autoFilter).** Needs the engine OR a "hidden row"
   fast-path keyed off `<row hidden="1">` markers some writers emit.
 - **Sparklines.** Stored under `extLst`; chart-class effort.
@@ -392,85 +394,26 @@ Add new types to **all of**:
 
 ## Fixture corpus (in progress)
 
-Fixtures live in `tests/fixtures/` (source-controlled). See
-[`tests/fixtures/README.md`](tests/fixtures/README.md) for the live
-table + how to add new ones. Today:
-
-- `kitchensink/kitchensink.xlsx` — the canonical mixed workbook.
-- `themes/custom-theme-accent.xlsx` — theme-color resolution per
-  spreadsheet `theme="N"` slot, against a non-default palette.
+Fixtures live in `tests/fixtures/` (source-controlled). The live table
+(today: ~25 per-feature workbooks across text / cf / numfmt / borders /
+fills / charts / pivot / tables / annotations / outline / sparklines /
+styles / themes / freeze-pane plus the kitchen sink) is maintained in
+[`tests/fixtures/README.md`](tests/fixtures/README.md). That doc is the
+source of truth; this section is intentionally short.
 
 The goal of the corpus is that **a failed visual diff names the
-suspect**. Target sketch (each row a future fixture; ones already
-landed are checked):
+suspect** — add a new fixture whenever you ship a feature whose
+regression wouldn't be caught by an existing one. The headline gaps
+still missing fixtures:
 
-```
-tests/fixtures/
-  kitchensink/                # ✅ landed
-    kitchensink.xlsx
-    build.sh
-  text/
-    rich-text-runs.xlsx       # bold/italic/color spans + \n
-    wrap-text.xlsx
-    overflow-into-empty.xlsx
-    merged-with-borders.xlsx  # would have caught the perimeter-border bug
-    indent-rotation.xlsx
-  cf/
-    color-scale-2-stop.xlsx
-    color-scale-3-stop.xlsx
-    data-bar.xlsx
-    icon-set-arrows.xlsx
-    cell-is-greater.xlsx
-    expression-formula.xlsx
-    top10.xlsx
-    duplicate-values.xlsx
-  numfmt/
-    currency-locale.xlsx
-    date-time-formats.xlsx
-    custom-section-conditions.xlsx   # `[Red]` / `[>100]` etc.
-    fraction-and-scientific.xlsx
-  borders/
-    every-style.xlsx          # thin/medium/thick/dashed/double/etc.
-    diagonal.xlsx
-    around-merged-range.xlsx
-  fills/
-    pattern-types.xlsx
-    gradient-linear.xlsx
-    theme-color-tints.xlsx
-  charts/
-    line.xlsx
-    pie.xlsx
-    scatter.xlsx
-    area-stacked.xlsx
-    combo-secondary-axis.xlsx
-    data-labels.xlsx
-  drawings/
-    image-anchored.xlsx
-    image-cropped.xlsx
-    shape.xlsx
-  pivot/
-    pivot-simple.xlsx
-    pivot-multi-row.xlsx
-    pivot-with-slicer.xlsx
-  tables/
-    table-medium-style.xlsx
-    table-with-totals.xlsx
-  validation/
-    list-dropdown.xlsx
-    decimal-range.xlsx
-  layout/
-    freeze-rows-cols.xlsx
-    hidden-rows-cols.xlsx
-    grouped-outlined.xlsx
-    rtl-sheet.xlsx
-  text-overflow/
-    long-string-into-empty.xlsx
-    long-string-into-occupied.xlsx
-    centered-merge-overflow.xlsx
-  themes/                     # ✅ custom-theme-accent landed
-    custom-theme-accent.xlsx
-    dark-theme.xlsx
-```
+- Drawings other than charts + images (shapes, SmartArt).
+- Slicers, timelines.
+- Data validation (list dropdown, decimal range).
+- RTL sheets.
+- Combo charts + secondary axis, bubble.
+
+When the engine lands, add `expression`-CF and recalc-dependent
+fixtures alongside.
 
 ### How fixtures are built
 
@@ -777,13 +720,17 @@ surrounding workbook noise.
       hard-code; the more idiomatic `<xm:f>` Excel writes would
       parse as 0 sparklines per group. PARITY row notes this as the
       next robustness lift.
-- [ ] Land the next batch of per-feature fixtures (the four marked above
-      as "would have caught X bug").
+- [ ] Land the per-feature fixtures still listed as gaps in the
+      [Fixture corpus](#fixture-corpus-in-progress) section
+      (drawings/shapes, data validation, slicers, RTL, combo charts).
 - [ ] CI guard: `cargo test … export_bindings && git diff --exit-code
     packages/xlsx-preview/src/schema/`.
 - [ ] `cargo-insta` snapshot test on `WorkbookLayout` JSON for every
       fixture.
-- [ ] Pixel-diff snapshot test — render via the new node-canvas adapter,
-      imagehash against the stored `*.hsx.png`, fail CI on regression.
-- [ ] `pnpm --filter @hewliyang/xlsx-preview test` on pure-helper TS (`niceTicks`, `formatNumber`, A1
-      helpers, `layoutSpans`).
+- ~~Pixel-diff snapshot test against `*.hsx.png`.~~ **Punted.**
+      Subpixel font/DPI deltas between Skia and Chromium+SpreadJS
+      swamp imagehash tolerances; the manual visual-diff workflow
+      above catches regressions cheaper.
+- [x] Pure-helper TS unit tests: `numfmt.test.ts`, `render.test.ts`
+      (tints), `hiddenCellOverflow.test.ts`, `outlineGutter.test.ts`
+      — run via `pnpm --filter @hewliyang/xlsx-preview test`.

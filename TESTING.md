@@ -8,8 +8,20 @@ Three layers, smallest first.
 cargo test --workspace
 ```
 
-Today: one A1-roundtrip test in `xlcore-io`. Snapshot tests on the JSON
-output (cargo-insta) are listed in [open work](#open-work).
+Today: A1-roundtrip test in `xlcore-io`, theme color resolvers
+(`scrgb_byte`, `hsl_to_rgb`, prstClr table) in `xlcore-export`.
+Snapshot tests on the JSON output (cargo-insta) are listed in
+[open work](#open-work).
+
+The TypeScript renderer ships unit tests too:
+
+```bash
+pnpm --filter @hewliyang/xlsx-preview test
+```
+
+Covers `numfmt.ts` (date/time/fraction/scientific/sections),
+`render.ts` HLS-tint math, hidden-cell overflow, outline-gutter
+placement.
 
 ## 2. End-to-end CLI smoke
 
@@ -133,18 +145,13 @@ F=tests/fixtures/themes/custom-theme-accent.xlsx
 hsx screenshot "$F" -o /tmp/xlcore-hsx.png
 ```
 
-Other spike outputs in `/tmp/ssbench/out/`: `ks_walnut.xlsx`,
-`ks_hsx.xlsx`, `ks_ironcalc.xlsx`, `ks_spike.xlsx`, `ks_mutated.xlsx`.
-See `plan-excel-rust-lib.md` for what each represents.
-
 ## open work
 
-- [x] Move `kitchensink.xlsx` into `tests/fixtures/` (source-controlled).
-- [ ] `cargo-insta` snapshot test on the WorkbookLayout JSON.
-- [ ] Per-feature mini-fixtures so a failed visual diff names the suspect:
-      `cf-color-scale.xlsx`, `text-overflow.xlsx`, `bar-chart-clustered.xlsx`,
-      `freeze-pane.xlsx`, etc.
-- [ ] Pixel-diff snapshot test using the node-canvas adapter — render via
-      `renderToPng`, imagehash against a stored reference PNG with a tolerance,
-      fail CI on regression.
-- [ ] `pnpm --filter @hewliyang/xlsx-preview test` on pure-helper TS (`niceTicks`, `formatNumber`, A1 helpers).
+- [ ] `cargo-insta` snapshot test on the WorkbookLayout JSON for every
+      committed fixture.
+- ~~Pixel-diff snapshot test against `*.hsx.png`.~~ **Punted.** Tried
+      and dropped — subpixel deltas across font stacks + DPI swamp
+      imagehash tolerances, and the manual `hsx screenshot` eyeball
+      pass in step 3 above catches regressions for less effort.
+- [ ] CI guard: `cargo test … export_bindings && git diff --exit-code
+      packages/xlsx-preview/src/schema/` to catch silent schema drift.

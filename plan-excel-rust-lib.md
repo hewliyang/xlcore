@@ -14,42 +14,53 @@ xlsx bytes ─► xlcore (Rust, wasm-targetable)
                     │
         ┌───────────┴───────────┐
         ▼                       ▼
-  browser <canvas>         node-canvas (same TS)
+  browser <canvas>         skia-canvas (same TS)
   HITL preview             agent visual verify, PDF
 ```
 
-Validated by spikes in `/tmp/ssbench/` (now folded into the main
-workspace; the canonical kitchen-sink fixture lives at
-`tests/fixtures/kitchensink/kitchensink.xlsx`):
+The two design bets that justified the architecture were validated by
+early spikes (now folded into this workspace; the canonical kitchen-sink
+fixture lives at `tests/fixtures/kitchensink/kitchensink.xlsx`):
 
-- `src/spike.rs` + `src/spike_mutate.rs` — fuse pattern works, 100% feature fidelity round-trip on the kitchen-sink workbook (charts/CF/tables/comments/theme/extLst all preserved), dependency graph fires correctly on input mutation.
-- `src/render_spike.rs` + `out/render_canvas.html` — same engine output renders correctly via browser `<canvas>`, badly via tiny-skia. **Drop pure-Rust rendering.**
+- ooxmlsdk + a thin fuse layer round-trips the kitchen-sink workbook
+  with 100% feature fidelity (charts/CF/tables/comments/theme/extLst
+  all preserved); IronCalc's dependency graph fires correctly on input
+  mutation.
+- The same engine output renders cleanly via browser `<canvas>` and
+  badly via `tiny-skia`. **Decision: drop pure-Rust rendering.**
 
 ## key decisions
 
 1. **Compose, don't rewrite.** `ooxmlsdk` (`/tmp/ooxmlsdk/`, ~118k LOC of generated SpreadsheetML schemas, MIT/Apache) for I/O fidelity; `ironcalc` (`~/.cargo/registry/src/index.crates.io-*/ironcalc-0.7.1/`) for calc. Ship v0 in months, not years.
 2. **Fill the IronCalc function gap.** Confirmed missing in 0.7.1: `SUMPRODUCT`, `LET`, `LAMBDA`, `FILTER`, `SORT`, `SORTBY`, `UNIQUE`, `SEQUENCE`, `XMATCH`, `HSTACK/VSTACK/TOCOL/TOROW/TAKE/DROP/CHOOSE{ROWS,COLS}`, `BYROW/BYCOL/MAP/REDUCE/SCAN/MAKEARRAY`, `AGGREGATE`. Spec source: LibreOffice `sc/source/core/tool/interpr1.cxx … interpr8.cxx`. Fallback already implemented in spike: when engine errors, preserve source-cached `<v>`.
 3. **Engine emits workbook data, not pixels.** Cells with resolved styles, merge maps, column widths, CF evaluated per-cell, chart data, drawings. NOT rasterized primitives.
-4. **Renderer is TypeScript on canvas.** Same code in browser and Node (via `node-canvas`). Native browser text/font/AA. Reference: `/Users/m1a1/Developer/oai-artifact-tools/examples/browser-workbook-preview/src/simple-workbook-canvas.mjs` (2800 LOC, the realistic scope) and `walnut-spreadsheet-proto.d.ts` (schema-design thinking already done).
+4. **Renderer is TypeScript on canvas.** Same code in browser and Node (via `skia-canvas`). Native browser text/font/AA. Reference: `/Users/m1a1/Developer/oai-artifact-tools/examples/browser-workbook-preview/src/simple-workbook-canvas.mjs` (2800 LOC, the realistic scope) and `walnut-spreadsheet-proto.d.ts` (schema-design thinking already done).
 5. **Defer:** OT/CRDT collab, multi-threaded recalc, vectorized formula groups, full chart suite. All possible but v1+.
 
 ## non-goals for v0
 
-- ~~Charts beyond placeholder boxes with title.~~ **Shipped:** clustered/stacked column + bar charts with title, axis ticks (workbook number-format aware), theme accent series colors, legend, range-formula resolution when numCache is empty. **Line / pie+doughnut / area (standard, stacked, percentStacked) / xy scatter** also shipped — see `tests/fixtures/charts/line-pie-area-scatter.xlsx` and the per-row notes in PARITY.md.
-- Pivot tables, slicers, timelines (engine preserves the XML, renderer skips).
-- LAMBDA/LET (artifact-tool itself stubs these — see `/tmp/ssbench/artifact_tool.pretty.mjs:274957`).
+- ~~Charts beyond placeholder boxes.~~ **Shipped.** Column / bar
+  (clustered + stacked), line, area (standard/stacked/percentStacked),
+  pie + doughnut (with per-slice `<c:dPt>` colors), xy scatter
+  (`lineMarker` / `smoothMarker`), data labels.
+- ~~Pivot tables.~~ **Cheap path shipped** — materialized cells +
+  filter-arrow chevrons. True pivot interactivity (filter / refresh /
+  expand-collapse) still out of scope until the aggregation engine
+  lands. Slicers, timelines remain out of scope.
+- LAMBDA/LET (artifact-tool itself stubs these).
 - Native-Rust rendering. Use browser canvas.
 
 ## crate layout
 
 ```
-xlcore/
-  xlcore-io/       # ooxmlsdk facade, narrowed schema generator (~70% size cut)
-  xlcore-engine/   # ironcalc fork + missing functions
-  xlcore-bridge/   # harvest/replay/write-back; agent batch-mutation API
-  xlcore-export/   # WorkbookLayout serializer (JSON + Postcard)
-  xlcore-wasm/     # wasm-bindgen entry for browser
-xlcore-packages/xlsx-preview/  # separate npm pkg, runs in browser + Node
+crates/
+  xlcore-io/       # ✅ ooxmlsdk facade
+  xlcore-export/   # ✅ WorkbookLayout serializer (ts-rs-generated TS bindings)
+  xlcore-wasm/     # ✅ wasm-bindgen entry for browser (used by xlsxWorker.ts)
+  xlcore-cli/      # ✅ `xlcore extract` / `xlcore preview`
+  xlcore-engine/   # 🔴 not yet — ironcalc fork + missing functions
+  xlcore-bridge/   # 🔴 not yet — harvest/replay/write-back; agent batch-mutation API
+packages/xlsx-preview/  # ✅ npm package, runs in browser + Node
 ```
 
 ## validation
@@ -66,41 +77,35 @@ feature-by-feature scoreboard.
 
 ## references on this machine
 
-- `/tmp/ssbench/` — all spike code + outputs (kitchen sink, mutated, render comparisons)
 - `/tmp/ooxmlsdk/` — full ooxmlsdk source, 159 schema files
 - `~/.cargo/registry/src/index.crates.io-*/ironcalc{,_base}-0.7.1/` — IronCalc internals; `src/functions/mod.rs` for the function enum
-- `/Users/m1a1/Developer/oai-artifact-tools/examples/browser-workbook-preview/` — OAI's canvas renderer reference (`README.md`, `src/simple-workbook-canvas.mjs`, `FULL_FIDELITY_PLAN.md`)
+- `/Users/m1a1/Developer/oai-artifact-tools/examples/browser-workbook-preview/` — OAI's canvas renderer reference (`src/simple-workbook-canvas.mjs`, `FULL_FIDELITY_PLAN.md`)
 - `/Users/m1a1/Developer/oai-artifact-tools/openai-primary-runtime/plugins/spreadsheets/skills/spreadsheets/SKILL.md` — agent-facing API surface that artifact-tool exposes; useful as a target shape for our agent API
-- `/tmp/ssbench/artifact_tool.pretty.mjs` — prettier-formatted OAI bundle (305k lines), grep for function impls vs stubs
 - LibreOffice Calc (clone separately): `sc/source/core/tool/interpr*.cxx` — function semantics spec; `sc/source/filter/oox/` — xlsx import quirks
 
-## first milestones
+## status
 
-1. ~~Fork IronCalc, port `SUMPRODUCT`~~ **TODO** — still the headline blocker for live recalc.
-2. ~~Define `WorkbookLayout` schema based on `walnut-spreadsheet-proto.d.ts`.~~ **DONE** — `crates/xlcore-export/src/schema.rs` + mirrored `packages/xlsx-preview/src/types.ts`.
-3. ~~Port a slim `simple-workbook-canvas.mjs` (cells/styles/borders/merges/basic CF, no charts).~~ **DONE** — `packages/xlsx-preview/src/render.ts` (~700 LOC). Includes CF color scales, text overflow into empty neighbors, vector-crisp zoom (re-renders on DPR + app-zoom changes), subtle freeze indicators, basic number formats.
-4. Wire `xlcore` → wasm → JSON → browser canvas end-to-end. **PARTIAL** — JSON pipeline + standalone HTML preview shipped (`xlcore preview` inlines renderer + data). Wasm entry not done; preview currently re-runs the Rust extractor server-side.
-5. ~~Add `node-canvas` backend running same TS for server PNG.~~ **DONE** —
-   `packages/xlsx-preview/src/node.ts` wires `@napi-rs/canvas` into the same `render()`
-   entrypoint and exports `renderToCanvas()` / `renderToPng()`. Pattern-fill
-   hatches now get their offscreen canvas through a tiny factory so browser
-   and Node share the paint path. Smoke-tested against
-   `tests/fixtures/tables/table-medium.xlsx` → `/tmp/xlcore-table-node.png`.
+The extraction → schema → canvas pipeline is **end-to-end in the browser**
+via wasm (`xlcore-wasm` + `packages/xlsx-preview/src/xlsxWorker.ts`) and
+in Node via `skia-canvas` (`renderToPng()` in `packages/xlsx-preview/
+src/node.ts`). See `PARITY.md` for the per-feature scoreboard — most of
+the original v0 milestones plus a good chunk of the "v1+" wishlist
+(line/pie/area/scatter, theme XML, sparklines, pivot cheap-path, x14
+comments, all of CF except `expression`) have landed.
 
-Bonus shipped (was "v1+"):
+Remaining headline work:
 
-- ~~Charts beyond placeholders.~~ **DONE** for column + bar (clustered + stacked) plus line / area (standard/stacked/percentStacked) / pie+doughnut / xy scatter, all with axis number formats, theme colors, and shared legend. See `crates/xlcore-export/src/charts.rs` and `packages/xlsx-preview/src/chart.ts`.
-- ~~Theme XML parsing.~~ **DONE.** `xl/theme/theme1.xml` parsed by
-  `crates/xlcore-export/src/theme.rs`; emitted as
-  `WorkbookLayout.theme` (12-entry palette in spreadsheet-index order +
-  major/minor font names). Cell colors and chart-series accents now
-  resolve against the workbook's actual theme instead of hardcoded
-  Office 2007+ defaults. Fixture:
-  `tests/fixtures/themes/custom-theme-accent.xlsx`.
-- ~~Source-controlled fixture corpus.~~ **STARTED** under
-  `tests/fixtures/`, with reproducible build scripts. See
-  `tests/fixtures/README.md`.
+1. **`xlcore-engine` + `xlcore-bridge`.** Fork IronCalc, fill the
+   function gap (§key decisions #2), wire harvest/replay through to
+   the layout. Unblocks live recalc, `#SPILL!`, `expression` CF rules,
+   and the agent batch-mutation API.
+2. **Selection / active-cell** rendering for HITL.
+3. The long tail: combo charts, secondary axes, slicers, validation
+   UI, formula-driven CF, `autoFilter` filtered-row hiding. See
+   `PARITY.md` for the ranked list.
 
-After milestone 1 (recalc) + 4 (wasm): usable v0 for agent edits + HITL preview.
-The long tail (combo charts, slicers, validation UI, selection polish, formula
-CF) comes next — see `PARITY.md` for the ranked list.
+Visual fidelity is checked manually against `hsx screenshot` (ground
+truth) per `TESTING.md` — a pixel-diff CI was scoped and rejected as
+unrealistic (Excel/SpreadJS render small subpixel deltas across font
+stacks + DPI that swamp imagehash tolerances; the manual checklist
+catches regressions cheaper).
