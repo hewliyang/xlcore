@@ -4,6 +4,7 @@ packages/*/dist/
 *.html
 !packages/xlsx-preview/examples/xlsx-app.html
 !packages/xlsx-preview/examples/xlsx-multi.html
+!packages/xlsx-preview/examples/xlsx-tiles.html
 layout.json
 .DS_Store
 TODO.md

@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>xlcore tiles · multi-workbook</title>
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+<style>
+  /* --- tokens ------------------------------------------------------- */
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --surface-muted: #f4f6f8;
+    --border: #e4e7eb;
+    --border-strong: #d4d8de;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+    --accent: #4f46e5;
+    --danger: #dc2626;
+    --radius-sm: 4px;
+    --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 13px var(--font);
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 0;
+  }
+
+  header {
+    height: 34px;
+    padding: 0 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  header b { font-size: 12px; font-weight: 600; }
+  header .hint { color: var(--text-muted); font-size: 11.5px; }
+  header .sep { width: 1px; height: 16px; background: var(--border); flex: none; }
+  header button {
+    height: 22px; padding: 0 8px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text);
+    font: inherit; font-size: 11px; font-weight: 500;
+    cursor: pointer;
+  }
+  header button:hover { background: var(--surface-muted); }
+  .spacer { flex: 1; }
+
+  /* --- tile tree ---------------------------------------------------- */
+  #root-tile { display: flex; min-width: 0; min-height: 0; }
+  .split {
+    display: flex; min-width: 0; min-height: 0;
+    width: 100%; height: 100%;
+  }
+  .split.vertical { flex-direction: column; }
+  .split.horizontal { flex-direction: row; }
+  .split > .pane-host { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; }
+
+  /* Split.js gutter styling */
+  .gutter {
+    background: var(--border);
+    background-repeat: no-repeat;
+    background-position: 50%;
+    flex: none;
+    transition: background 0.12s;
+  }
+  .gutter:hover { background: var(--accent); }
+  .gutter.gutter-horizontal { cursor: col-resize; width: 4px; }
+  .gutter.gutter-vertical { cursor: row-resize; height: 4px; }
+
+  /* --- leaf pane ---------------------------------------------------- */
+  .pane {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    background: var(--surface);
+    min-width: 0; min-height: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+  }
+  .pane-head {
+    height: 26px;
+    padding: 0 6px 0 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11.5px;
+    background: #fafbfc;
+  }
+  .pane-head .name { color: var(--text); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pane-head .meta { color: var(--text-dim); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pane-head .actions { display: flex; gap: 2px; flex: none; }
+  .pane-head .icon-btn {
+    width: 20px; height: 20px; padding: 0;
+    border: 1px solid transparent; border-radius: 3px;
+    background: transparent; color: var(--text-muted);
+    cursor: pointer; font-size: 11px; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .pane-head .icon-btn:hover { background: var(--surface-muted); color: var(--text); border-color: var(--border); }
+  .pane-head .icon-btn.danger:hover { background: #fef2f2; color: var(--danger); border-color: #fecaca; }
+  .pane-body {
+    min-width: 0; min-height: 0; position: relative;
+    overflow: hidden;
+  }
+  .pane-body.empty {
+    display: grid; place-items: center;
+    color: var(--text-dim);
+    background: repeating-linear-gradient(45deg, #fafbfc 0 8px, #f4f6f8 8px 16px);
+    cursor: pointer;
+  }
+  .pane-body.empty .empty-inner { text-align: center; font-size: 11.5px; }
+  .pane-body.empty .empty-inner b { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
+  .pane-body.empty input { position: absolute; left: -9999px; }
+  /* Each previewer renders its own formula bar + tabs; in a small tile
+     we hide them to keep maximum sheet visible. */
+  .pane-body .xlcore-formula-bar,
+  .pane-body .xlcore-tabs { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <b>xlcore · tiles</b>
+  <span class="hint">Each pane is independent. Use ⇢ / ⇣ to split, ✕ to close. Drag the gutters to resize.</span>
+  <span class="spacer"></span>
+  <button id="reset">Reset layout</button>
+</header>
+<div id="root-tile"></div>
+
+<script src="https://unpkg.com/split.js@1.6.5/dist/split.min.js"></script>
+<script type="module">
+const REMOTE_CDN = "https://pub-5694368c6d1d48138a9b3c2a0829b544.r2.dev/xlcore-preview/v0.0.1/";
+let ASSET_BASE = "../dist/";
+let createWorkbookPreviewerFromFile;
+try {
+  ({ createWorkbookPreviewerFromFile } = await import(`../dist/browser-loader.js?v=${Date.now()}`));
+} catch (error) {
+  console.warn("Local renderer failed; falling back to CDN", error);
+  ASSET_BASE = REMOTE_CDN;
+  ({ createWorkbookPreviewerFromFile } = await import(`${REMOTE_CDN}browser-loader.js?v=20260511-renderer`));
+}
+
+const root = document.getElementById("root-tile");
+
+// ----- tile tree --------------------------------------------------------
+//
+// Each tile is either a leaf (with an optional loaded workbook) or a
+// split that contains exactly two children plus a Split.js instance for
+// drag-resize between them. The tree is mutated in place: splitting a
+// leaf replaces it with a Split node whose first child holds the
+// original leaf and whose second child is a fresh empty leaf. Closing a
+// leaf finds its parent split and replaces the parent with the surviving
+// sibling — exactly how tmux/zellij pane-close works.
+
+let nextId = 1;
+function uid() { return `t${nextId++}`; }
+
+/**
+ * @typedef {Object} Leaf
+ * @property {"leaf"} kind
+ * @property {string} id
+ * @property {HTMLElement} el        // .pane element
+ * @property {HTMLElement} bodyEl    // .pane-body
+ * @property {HTMLElement} nameEl
+ * @property {HTMLElement} metaEl
+ * @property {any|null} previewer    // WorkbookPreviewer | null
+ * @property {Split|null} parentSplit
+ * @property {Object|null} parent
+ */
+/**
+ * @typedef {Object} Split
+ * @property {"split"} kind
+ * @property {"horizontal"|"vertical"} direction
+ * @property {HTMLElement} el        // .split element
+ * @property {[Object, Object]} children // each child has .host (pane-host wrapper)
+ * @property {[HTMLElement, HTMLElement]} hosts
+ * @property {any} instance          // Split.js instance
+ * @property {Object|null} parent
+ */
+
+let rootNode = null;
+
+function createLeaf() {
+  const el = document.createElement("div");
+  el.className = "pane";
+  el.dataset.id = uid();
+
+  const head = document.createElement("div");
+  head.className = "pane-head";
+  const nameEl = document.createElement("span");
+  nameEl.className = "name";
+  nameEl.textContent = "Empty";
+  const metaEl = document.createElement("span");
+  metaEl.className = "meta";
+  metaEl.textContent = "no workbook";
+  const actions = document.createElement("span");
+  actions.className = "actions";
+  const splitRight = iconBtn("⇢", "Split right");
+  const splitDown = iconBtn("⇣", "Split down");
+  const closeBtn = iconBtn("✕", "Close pane");
+  closeBtn.classList.add("danger");
+  actions.append(splitRight, splitDown, closeBtn);
+  head.append(nameEl, metaEl, actions);
+
+  const body = document.createElement("div");
+  body.className = "pane-body empty";
+  const fileId = `file-${el.dataset.id}`;
+  body.innerHTML = `
+    <label for="${fileId}" class="empty-inner">
+      <b>Drop or click to load</b>
+      <span>any .xlsx file</span>
+      <input type="file" id="${fileId}" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+    </label>`;
+
+  el.append(head, body);
+
+  /** @type {Leaf} */
+  const leaf = {
+    kind: "leaf",
+    id: el.dataset.id,
+    el,
+    bodyEl: body,
+    nameEl,
+    metaEl,
+    previewer: null,
+    parent: null,
+  };
+
+  splitRight.onclick = () => splitLeaf(leaf, "horizontal");
+  splitDown.onclick = () => splitLeaf(leaf, "vertical");
+  closeBtn.onclick = () => closeLeaf(leaf);
+  body.querySelector("input").addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) loadInto(leaf, file);
+    e.target.value = "";
+  });
+
+  return leaf;
+}
+
+function iconBtn(label, title) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "icon-btn";
+  b.title = title;
+  b.setAttribute("aria-label", title);
+  b.textContent = label;
+  return b;
+}
+
+async function loadInto(leaf, file) {
+  // Tearing down a previous workbook before re-loading the slot keeps
+  // canvas/worker resources from leaking when a user opens a new file
+  // into a pane that already has one.
+  if (leaf.previewer) {
+    leaf.previewer.destroy();
+    leaf.previewer = null;
+  }
+  leaf.bodyEl.classList.remove("empty");
+  leaf.bodyEl.innerHTML = "";
+  leaf.nameEl.textContent = file.name;
+  leaf.metaEl.textContent = "loading…";
+  const started = performance.now();
+  try {
+    leaf.previewer = await createWorkbookPreviewerFromFile(leaf.bodyEl, file, {
+      wasmUrl: `${ASSET_BASE}xlcore_wasm.js`,
+      workerUrl: `${ASSET_BASE}xlsxWorker.js`,
+      onProgress: ({ label }) => (leaf.metaEl.textContent = label),
+    });
+    const dt = ((performance.now() - started) / 1000).toFixed(1);
+    leaf.metaEl.textContent = `${leaf.previewer.layout.sheets.length} sheet(s) · ${dt}s`;
+  } catch (err) {
+    leaf.metaEl.textContent = "failed";
+    leaf.bodyEl.classList.add("empty");
+    leaf.bodyEl.textContent = err?.message ?? String(err);
+  }
+}
+
+// ----- split / merge ----------------------------------------------------
+
+/** Replace `leaf` in the tree with a new Split node whose first child
+ *  is `leaf` and whose second child is a fresh empty leaf. Split.js
+ *  manages the drag-resize gutter between them. */
+function splitLeaf(leaf, direction) {
+  const newLeaf = createLeaf();
+  const split = createSplitNode(direction, leaf, newLeaf);
+  // IMPORTANT: replaceNode reads `leaf.parent` to find the slot it lives
+  // in, so we must not have rewritten the parent pointers on the
+  // children yet. createSplitNode therefore returns a split whose
+  // children's `.parent` is still pointing at the original tree.
+  replaceNode(leaf, split);
+  leaf.parent = split;
+  split.children[1].parent = split;
+  instantiateSplit(split);
+}
+
+function createSplitNode(direction, a, b) {
+  const el = document.createElement("div");
+  el.className = `split ${direction}`;
+  const hostA = document.createElement("div");
+  const hostB = document.createElement("div");
+  hostA.className = "pane-host";
+  hostB.className = "pane-host";
+  hostA.append(a.el);
+  hostB.append(b.el);
+  el.append(hostA, hostB);
+  /** @type {Split} */
+  const node = {
+    kind: "split", direction, el,
+    children: [a, b], hosts: [hostA, hostB],
+    instance: null, parent: null,
+  };
+  // Parent pointers on children are intentionally NOT set here; the
+  // caller wires them up after replaceNode has used the old pointer.
+  return node;
+}
+
+function instantiateSplit(node) {
+  // Split.js wants the actual DOM children to size; we feed it the
+  // wrapper hosts so leaves themselves stay flexible.
+  node.instance = Split([node.hosts[0], node.hosts[1]], {
+    direction: node.direction === "horizontal" ? "horizontal" : "vertical",
+    sizes: [50, 50],
+    minSize: 80,
+    gutterSize: 4,
+    snapOffset: 0,
+    gutter: (_index, direction) => {
+      const g = document.createElement("div");
+      g.className = `gutter gutter-${direction}`;
+      return g;
+    },
+    // Fire a redraw on each previewer in this split as the user drags,
+    // otherwise the canvas keeps its old logical size until the next
+    // ResizeObserver tick.
+    onDrag: () => redrawSubtree(node),
+    onDragEnd: () => redrawSubtree(node),
+  });
+}
+
+function redrawSubtree(node) {
+  if (!node) return;
+  if (node.kind === "leaf") {
+    node.previewer?.redraw();
+    return;
+  }
+  for (const c of node.children) redrawSubtree(c);
+}
+
+function replaceNode(oldNode, newNode) {
+  const parent = oldNode.parent;
+  newNode.parent = parent;
+  if (!parent) {
+    root.replaceChildren(newNode.el);
+    rootNode = newNode;
+    return;
+  }
+  // Find which slot the old node was in.
+  const idx = parent.children.indexOf(oldNode);
+  parent.children[idx] = newNode;
+  parent.hosts[idx].replaceChildren(newNode.el);
+}
+
+/** Close a leaf. If it's the root, replace it with a fresh empty leaf
+ *  (a tile manager always shows at least one pane). Otherwise, replace
+ *  the parent split with the surviving sibling, destroying the Split.js
+ *  instance along the way. */
+function closeLeaf(leaf) {
+  leaf.previewer?.destroy();
+  if (!leaf.parent) {
+    const fresh = createLeaf();
+    rootNode = fresh;
+    root.replaceChildren(fresh.el);
+    return;
+  }
+  const parent = leaf.parent;
+  const sibling = parent.children[0] === leaf ? parent.children[1] : parent.children[0];
+  parent.instance?.destroy();
+  // Detach sibling from parent's host wrapper so replaceNode can re-home it.
+  sibling.el.remove();
+  sibling.parent = null;
+  replaceNode(parent, sibling);
+}
+
+// ----- init -------------------------------------------------------------
+
+function resetLayout() {
+  if (rootNode) destroyTree(rootNode);
+  rootNode = createLeaf();
+  root.replaceChildren(rootNode.el);
+}
+
+function destroyTree(node) {
+  if (node.kind === "leaf") {
+    node.previewer?.destroy();
+    return;
+  }
+  node.instance?.destroy();
+  for (const c of node.children) destroyTree(c);
+}
+
+document.getElementById("reset").addEventListener("click", resetLayout);
+resetLayout();
+</script>
+</body>
+</html>
