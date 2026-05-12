@@ -1,6 +1,8 @@
 target/
 node_modules/
 packages/*/dist/
+site/
+.wrangler/
 *.html
 !packages/xlsx-preview/examples/xlsx-app.html
 !packages/xlsx-preview/examples/xlsx-multi.html
