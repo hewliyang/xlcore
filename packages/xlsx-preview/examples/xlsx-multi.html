@@ -65,6 +65,15 @@
     color: #94a3b8; font-size: 12px;
     background: repeating-linear-gradient(45deg, #fafbfc 0 8px, #f4f6f8 8px 16px);
   }
+  main.drop-target::after {
+    content: "Drop .xlsx files anywhere";
+    position: fixed; inset: 36px 0 0 0; z-index: 100;
+    display: grid; place-items: center;
+    background: rgba(79, 70, 229, 0.08);
+    border: 2px dashed #4f46e5;
+    color: #4f46e5; font-weight: 600; font-size: 14px;
+    pointer-events: none;
+  }
   /* Hide each previewer's built-in formula bar + tab strip — they all
      stack and we don't want the chrome doubled in a multi-pane layout. */
   .pane-body .xlcore-formula-bar,
@@ -168,12 +177,45 @@ function setStatus() {
     : "no workbooks loaded";
 }
 
-picker.addEventListener("change", async () => {
-  const files = Array.from(picker.files ?? []);
-  picker.value = "";
+async function loadFiles(files) {
   // Load in parallel — each call spins its own one-shot Worker for the
   // OOXML extraction, then attaches an isolated previewer to its pane.
   await Promise.all(files.map((f) => addWorkbook(f)));
+}
+
+picker.addEventListener("change", async () => {
+  const files = Array.from(picker.files ?? []);
+  picker.value = "";
+  await loadFiles(files);
+});
+
+// Page-wide drop zone: dropping anywhere outside an existing previewer
+// adds a new pane per file. Filters down to .xlsx so accidental drags
+// of unrelated files don't spam empty panes.
+let dragDepth = 0;
+const isXlsx = (f) => f && (/\.xlsx$/i.test(f.name) || f.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+window.addEventListener("dragenter", (e) => {
+  if (!e.dataTransfer?.types?.includes("Files")) return;
+  e.preventDefault();
+  dragDepth++;
+  panes.classList.add("drop-target");
+});
+window.addEventListener("dragover", (e) => {
+  if (!e.dataTransfer?.types?.includes("Files")) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "copy";
+});
+window.addEventListener("dragleave", () => {
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) panes.classList.remove("drop-target");
+});
+window.addEventListener("drop", async (e) => {
+  if (!e.dataTransfer?.files?.length) return;
+  e.preventDefault();
+  dragDepth = 0;
+  panes.classList.remove("drop-target");
+  const files = Array.from(e.dataTransfer.files).filter(isXlsx);
+  if (files.length) await loadFiles(files);
 });
 </script>
 </body>

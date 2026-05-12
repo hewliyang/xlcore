@@ -112,9 +112,24 @@
     background: repeating-linear-gradient(45deg, #fafbfc 0 8px, #f4f6f8 8px 16px);
     cursor: pointer;
   }
-  .pane-body.empty .empty-inner { text-align: center; font-size: 11.5px; }
+  .pane-body.empty .empty-inner { text-align: center; font-size: 11.5px; pointer-events: none; }
   .pane-body.empty .empty-inner b { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
   .pane-body.empty input { position: absolute; left: -9999px; }
+  /* Drag-over affordance: light accent tint covers the whole pane body
+     (empty or already-loaded — dropping onto a loaded pane replaces its
+     workbook). The overlay is pointer-events:none so the underlying drop
+     target keeps receiving the event. */
+  .pane-body.drop-target::after {
+    content: "Drop to load";
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    background: rgba(79, 70, 229, 0.08);
+    border: 2px dashed var(--accent);
+    color: var(--accent);
+    font-weight: 600; font-size: 13px;
+    pointer-events: none;
+    z-index: 5;
+  }
   /* Each previewer renders its own formula bar + tabs; in a small tile
      we hide them to keep maximum sheet visible. */
   .pane-body .xlcore-formula-bar,
@@ -237,9 +252,57 @@ function createLeaf() {
     if (file) loadInto(leaf, file);
     e.target.value = "";
   });
+  wireDropZone(leaf);
 
   return leaf;
 }
+
+/** Wire native drag-and-drop on a leaf's body. We accept the first
+ *  .xlsx in the dataTransfer and load it into this slot, regardless of
+ *  whether the slot is currently empty or already holds a workbook. */
+function wireDropZone(leaf) {
+  const body = leaf.bodyEl;
+  let depth = 0; // dragenter/dragleave fire per child, so we ref-count.
+  const isXlsx = (f) =>
+    f && (
+      /\.xlsx$/i.test(f.name) ||
+      f.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+  body.addEventListener("dragenter", (e) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+    depth++;
+    body.classList.add("drop-target");
+  });
+  body.addEventListener("dragover", (e) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+    // Tell the browser this is a copy operation (cursor + drop-allowed).
+    e.dataTransfer.dropEffect = "copy";
+  });
+  body.addEventListener("dragleave", () => {
+    depth = Math.max(0, depth - 1);
+    if (depth === 0) body.classList.remove("drop-target");
+  });
+  body.addEventListener("drop", (e) => {
+    if (!e.dataTransfer?.files?.length) return;
+    e.preventDefault();
+    depth = 0;
+    body.classList.remove("drop-target");
+    const file = Array.from(e.dataTransfer.files).find(isXlsx);
+    if (file) loadInto(leaf, file);
+    else leaf.metaEl.textContent = "not an .xlsx file";
+  });
+}
+
+// Suppress the browser default of opening dropped files when the drop
+// lands outside any pane body (otherwise the user navigates away).
+window.addEventListener("dragover", (e) => {
+  if (e.dataTransfer?.types?.includes("Files")) e.preventDefault();
+});
+window.addEventListener("drop", (e) => {
+  if (e.dataTransfer?.types?.includes("Files")) e.preventDefault();
+});
 
 function iconBtn(label, title) {
   const b = document.createElement("button");

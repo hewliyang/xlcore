@@ -166,8 +166,18 @@
     min-height: 0;
     border-right: 1px solid var(--border);
     background: var(--surface);
+    position: relative;
   }
   body.panel-collapsed #preview { border-right: 0; }
+  #preview.drop-target::after {
+    content: "Drop to load .xlsx";
+    position: absolute; inset: 0; z-index: 50;
+    display: grid; place-items: center;
+    background: rgba(79, 70, 229, 0.08);
+    border: 2px dashed var(--accent);
+    color: var(--accent); font-weight: 600; font-size: 14px;
+    pointer-events: none;
+  }
   /* Hide the previewer's built-in sheet-tab strip and formula bar —
      we render compact equivalents in the app bar / footer. */
   #preview .xlcore-tabs { display: none !important; }
@@ -789,8 +799,7 @@ function goFromAddress() {
   }
 }
 
-picker.addEventListener("change", async () => {
-  const file = picker.files && picker.files[0];
+async function loadWorkbookFile(file) {
   if (!file) return;
   const started = startLoading();
   try {
@@ -817,7 +826,53 @@ picker.addEventListener("change", async () => {
     finishLoading();
     setStatus(error && error.message ? error.message : String(error));
   }
+}
+
+picker.addEventListener("change", () => {
+  const file = picker.files && picker.files[0];
+  loadWorkbookFile(file);
+  picker.value = "";
 });
+
+// Drag-and-drop on the preview pane. Accepts a single .xlsx; extra
+// files are ignored. Drops outside the pane are swallowed at window
+// level so the browser doesn't navigate away.
+(() => {
+  let depth = 0;
+  const isXlsx = (f) =>
+    f && (/\.xlsx$/i.test(f.name) || f.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  previewRoot.addEventListener("dragenter", (e) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+    depth++;
+    previewRoot.classList.add("drop-target");
+  });
+  previewRoot.addEventListener("dragover", (e) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  });
+  previewRoot.addEventListener("dragleave", () => {
+    depth = Math.max(0, depth - 1);
+    if (depth === 0) previewRoot.classList.remove("drop-target");
+  });
+  previewRoot.addEventListener("drop", (e) => {
+    if (!e.dataTransfer?.files?.length) return;
+    e.preventDefault();
+    depth = 0;
+    previewRoot.classList.remove("drop-target");
+    const file = Array.from(e.dataTransfer.files).find(isXlsx);
+    if (file) loadWorkbookFile(file);
+    else setStatus("not an .xlsx file");
+  });
+  // Page-wide swallow so accidental drops elsewhere don't navigate.
+  window.addEventListener("dragover", (e) => {
+    if (e.dataTransfer?.types?.includes("Files")) e.preventDefault();
+  });
+  window.addEventListener("drop", (e) => {
+    if (e.dataTransfer?.types?.includes("Files")) e.preventDefault();
+  });
+})();
 
 document.getElementById("go-cell").addEventListener("click", goFromAddress);
 address.addEventListener("keydown", (e) => { if (e.key === "Enter") goFromAddress(); });
