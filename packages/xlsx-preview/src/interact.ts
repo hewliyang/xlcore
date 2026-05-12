@@ -94,6 +94,16 @@ export function attachInteractivity(
   opts: InteractOptions,
 ): InteractHandle {
   let drag: { hit: HitCol | HitRow; startPx: number; original: number } | null = null;
+  // Active drag-selection. `anchor` is the cell where the pointer went down
+  // (resolved through merges); we use it as the fixed corner while the
+  // opposite corner tracks the pointer. `kind` distinguishes data-area
+  // rectangle drags from header-strip column/row range drags.
+  let selDrag:
+    | {
+        kind: "cell" | "col" | "row";
+        anchor: { r: number; c: number };
+      }
+    | null = null;
   const savedCursor = canvas.style.cursor;
   let cachedGrid: {
     sheet: Sheet;
@@ -327,6 +337,34 @@ export function attachInteractivity(
       opts.redraw();
       return;
     }
+    if (selDrag) {
+      const grid = getGrid();
+      const lp = toLogical(ev);
+      // Clamp pointer to the data area so dragging into a header still
+      // extends the selection to the nearest in-grid row/column instead of
+      // bailing out.
+      const cx = Math.max(grid.originX + 0.5, lp.x);
+      const cy = Math.max(grid.originY + 0.5, lp.y);
+      const cell = cellAt(grid, cx, cy);
+      if (!cell) return;
+      const a = selDrag.anchor;
+      const cur = expandThroughMerge(cell.r, cell.c);
+      const anc = expandThroughMerge(a.r, a.c);
+      let r1 = Math.min(anc.r1, cur.r1);
+      let r2 = Math.max(anc.r2, cur.r2);
+      let c1 = Math.min(anc.c1, cur.c1);
+      let c2 = Math.max(anc.c2, cur.c2);
+      if (selDrag.kind === "col") {
+        r1 = 1;
+        r2 = grid.maxRow;
+      } else if (selDrag.kind === "row") {
+        c1 = 1;
+        c2 = grid.maxCol;
+      }
+      setSelection(a, { r1, c1, r2, c2 });
+      opts.redraw();
+      return;
+    }
     const cp = toCanvasLocal(ev);
     if (maybeOutlineCursor(cp)) return;
     const hit = hitTest(cp.x, cp.y);
@@ -384,6 +422,24 @@ export function attachInteractivity(
   function setSelection(active: { r: number; c: number }, range: Selection) {
     opts.activeCell.set(active);
     opts.selection?.set(range);
+  }
+
+  // Resolve a cell through any covering merge to the merge's bounding box.
+  // Used when extending a selection so that landing inside a merged region
+  // pulls in the entire merge rather than slicing it in half.
+  function expandThroughMerge(r: number, c: number): {
+    r1: number;
+    c1: number;
+    r2: number;
+    c2: number;
+  } {
+    const sheet = opts.getSheet();
+    for (const m of sheet.merges) {
+      if (r >= m.r1 && r <= m.r2 && c >= m.c1 && c <= m.c2) {
+        return { r1: m.r1, c1: m.c1, r2: m.r2, c2: m.c2 };
+      }
+    }
+    return { r1: r, c1: c, r2: r, c2: c };
   }
 
   // ---- outline gutter [-]/[+] buttons ----
@@ -517,6 +573,7 @@ export function attachInteractivity(
     if (ev.button !== 0) return;
     const cp = toCanvasLocal(ev);
     const p = toLogical(ev);
+    const shift = ev.shiftKey;
 
     // Outline-gutter buttons take precedence over header-resize and
     // header-select hit-tests — they live in the gutter strip outside
@@ -570,7 +627,17 @@ export function attachInteractivity(
       const cell = cellAt(grid, p.x, grid.originY + 1);
       if (cell) {
         ev.preventDefault();
-        setSelection({ r: 1, c: cell.c }, { r1: 1, c1: cell.c, r2: grid.maxRow, c2: cell.c });
+        canvas.setPointerCapture(ev.pointerId);
+        const cur = opts.activeCell.get();
+        if (shift && cur) {
+          const c1 = Math.min(cur.c, cell.c);
+          const c2 = Math.max(cur.c, cell.c);
+          selDrag = { kind: "col", anchor: { r: 1, c: cur.c } };
+          setSelection({ r: 1, c: cur.c }, { r1: 1, c1, r2: grid.maxRow, c2 });
+        } else {
+          selDrag = { kind: "col", anchor: { r: 1, c: cell.c } };
+          setSelection({ r: 1, c: cell.c }, { r1: 1, c1: cell.c, r2: grid.maxRow, c2: cell.c });
+        }
         opts.redraw();
         canvas.focus({ preventScroll: true });
       }
@@ -581,7 +648,17 @@ export function attachInteractivity(
       const cell = cellAt(grid, grid.originX + 1, p.y);
       if (cell) {
         ev.preventDefault();
-        setSelection({ r: cell.r, c: 1 }, { r1: cell.r, c1: 1, r2: cell.r, c2: grid.maxCol });
+        canvas.setPointerCapture(ev.pointerId);
+        const cur = opts.activeCell.get();
+        if (shift && cur) {
+          const r1 = Math.min(cur.r, cell.r);
+          const r2 = Math.max(cur.r, cell.r);
+          selDrag = { kind: "row", anchor: { r: cur.r, c: 1 } };
+          setSelection({ r: cur.r, c: 1 }, { r1, c1: 1, r2, c2: grid.maxCol });
+        } else {
+          selDrag = { kind: "row", anchor: { r: cell.r, c: 1 } };
+          setSelection({ r: cell.r, c: 1 }, { r1: cell.r, c1: 1, r2: cell.r, c2: grid.maxCol });
+        }
         opts.redraw();
         canvas.focus({ preventScroll: true });
       }
@@ -592,6 +669,26 @@ export function attachInteractivity(
     if (cp.x >= grid.originX && cp.y >= grid.originY) {
       const cell = cellAt(grid, p.x, p.y);
       if (cell) {
+        ev.preventDefault();
+        canvas.setPointerCapture(ev.pointerId);
+        const cur = opts.activeCell.get();
+        if (shift && cur) {
+          // Extend selection from the existing active cell to the clicked
+          // cell. Active cell stays put; bounding box covers both, expanded
+          // through merges at either corner.
+          const anc = expandThroughMerge(cur.r, cur.c);
+          const tgt = expandThroughMerge(cell.r, cell.c);
+          const r1 = Math.min(anc.r1, tgt.r1);
+          const r2 = Math.max(anc.r2, tgt.r2);
+          const c1 = Math.min(anc.c1, tgt.c1);
+          const c2 = Math.max(anc.c2, tgt.c2);
+          selDrag = { kind: "cell", anchor: cur };
+          setSelection(cur, { r1, c1, r2, c2 });
+          opts.redraw();
+          canvas.focus({ preventScroll: true });
+          return;
+        }
+
         // Resolve merge: clicks anywhere inside a merged region select the
         // merge's top-left and the selection rect spans the whole merge.
         const sheet = opts.getSheet();
@@ -606,6 +703,9 @@ export function attachInteractivity(
         if (anchor === cell) {
           setSelection(cell, { r1: cell.r, c1: cell.c, r2: cell.r, c2: cell.c });
         }
+        // Begin a drag-select rooted at the anchor (merge top-left when the
+        // click landed inside a merge, otherwise the clicked cell).
+        selDrag = { kind: "cell", anchor };
         opts.redraw();
         canvas.focus({ preventScroll: true });
 
@@ -757,6 +857,30 @@ export function attachInteractivity(
     }
     ev.preventDefault();
     const grid = getGrid();
+    // Shift + arrow extends the selection from the active cell. The moving
+    // corner is whichever corner of the current selection isn't the active
+    // cell; we infer it by axis so a column-selected range still extends
+    // correctly along rows (and vice versa).
+    if (ev.shiftKey && (dr !== 0 || dc !== 0) && opts.selection) {
+      const sel = opts.selection.get() ?? {
+        r1: cur.r,
+        c1: cur.c,
+        r2: cur.r,
+        c2: cur.c,
+      };
+      const leadR = sel.r1 === cur.r ? sel.r2 : sel.r1;
+      const leadC = sel.c1 === cur.c ? sel.c2 : sel.c1;
+      const nextLeadR = clamp(leadR + dr, 1, grid.maxRow);
+      const nextLeadC = clamp(leadC + dc, 1, grid.maxCol);
+      const r1 = Math.min(cur.r, nextLeadR);
+      const r2 = Math.max(cur.r, nextLeadR);
+      const c1 = Math.min(cur.c, nextLeadC);
+      const c2 = Math.max(cur.c, nextLeadC);
+      setSelection(cur, { r1, c1, r2, c2 });
+      ensureVisible({ r: nextLeadR, c: nextLeadC });
+      opts.redraw();
+      return;
+    }
     const next = {
       r: clamp(cur.r + dr, 1, grid.maxRow),
       c: clamp(cur.c + dc, 1, grid.maxCol),
@@ -769,13 +893,14 @@ export function attachInteractivity(
   }
 
   function onPointerUp(ev: PointerEvent) {
-    if (drag) {
+    if (drag || selDrag) {
       try {
         canvas.releasePointerCapture(ev.pointerId);
       } catch {
         /* noop */
       }
       drag = null;
+      selDrag = null;
     }
   }
 
