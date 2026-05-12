@@ -8,7 +8,7 @@
 //     multi/index.html    <- packages/xlsx-preview/examples/xlsx-multi.html
 //
 // Cloudflare Pages maps `/app` to `app/index.html` automatically.
-// The examples try `../dist/browser-loader.js` first (for local dev under
+// The examples try `../dist/browserLoader.js` first (for local dev under
 // `pnpm preview`); that 404s on Pages and the page falls through to the
 // jsdelivr-hosted npm bundle pinned to the published version. We don't
 // ship dist/ here — jsdelivr is globally edge-cached and pinned by

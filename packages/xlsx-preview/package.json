@@ -1,6 +1,6 @@
 {
   "name": "@hewliyang/xlsx-preview",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "XLSX preview/rendering library for browser, React, and Node.",
   "repository": {
     "type": "git",
@@ -61,7 +61,7 @@
       "types": "./dist/previewer.d.ts"
     },
     "./browser": {
-      "import": "./dist/browser-loader.js",
+      "import": "./dist/browserLoader.js",
       "types": "./dist/browserLoader.d.ts"
     },
     "./react": {

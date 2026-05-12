@@ -5,6 +5,16 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-05-12
+
+### Fixed
+
+- `@hewliyang/xlsx-preview/browser` and the example HTML files now resolve
+  against the actual emitted file. In 0.0.2 the loader was emitted as
+  `dist/browserLoader.js` (matching the source name and the existing
+  `.d.ts`), but `package.json` `exports["./browser"]` and the demo HTML
+  pages still pointed at the legacy `dist/browser-loader.js` path.
+
 ## [0.0.2] - 2026-05-12
 
 ### Fixed

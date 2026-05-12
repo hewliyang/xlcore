@@ -93,15 +93,15 @@
 <main id="panes"></main>
 
 <script type="module">
-const REMOTE_CDN = "https://cdn.jsdelivr.net/npm/@hewliyang/xlsx-preview@0.0.2/dist/";
+const REMOTE_CDN = "https://cdn.jsdelivr.net/npm/@hewliyang/xlsx-preview@0.0.3/dist/";
 let ASSET_BASE = "../dist/";
 let createWorkbookPreviewerFromFile;
 try {
-  ({ createWorkbookPreviewerFromFile } = await import(`../dist/browser-loader.js?v=${Date.now()}`));
+  ({ createWorkbookPreviewerFromFile } = await import(`../dist/browserLoader.js?v=${Date.now()}`));
 } catch (error) {
   console.warn("Local renderer failed; falling back to CDN", error);
   ASSET_BASE = REMOTE_CDN;
-  ({ createWorkbookPreviewerFromFile } = await import(`${REMOTE_CDN}browser-loader.js`));
+  ({ createWorkbookPreviewerFromFile } = await import(`${REMOTE_CDN}browserLoader.js`));
 }
 
 const panes = document.getElementById("panes");
