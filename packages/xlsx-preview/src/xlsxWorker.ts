@@ -1,9 +1,3 @@
-// Worker entry. Statically imports the wasm-bindgen shim so the bundler
-// follows the chain to `xlcore_wasm_bg.wasm`. The main thread passes the
-// final wasm binary URL via postMessage so we can bypass the shim's
-// internal `new URL("./xlcore_wasm_bg.wasm", import.meta.url)` default —
-// that default fails when bundlers copy the shim as a raw asset without
-// recursing into it.
 import init, { extract_xlsx } from "./xlcore_wasm.js";
 
 let wasmReady: Promise<void> | null = null;

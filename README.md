@@ -27,28 +27,22 @@ import { ExcelPreviewer } from "@hewliyang/xlsx-preview/react";
 <ExcelPreviewer file={file} />;
 ```
 
-Works out of the box in **Vite** and **webpack 5** — both pick up the worker
-(`new Worker(new URL("./xlsxWorker.js", import.meta.url), { type: "module" })`)
-and the wasm binary (`new URL("./xlcore_wasm_bg.wasm", import.meta.url)`) as
-static assets and emit them into your build automatically. No plugin, no
-manual copy step.
-
-If your bundler doesn't follow `new URL(..., import.meta.url)` (Rollup without
-plugins, esbuild standalone, some older configs), pass the URLs explicitly:
+Vite and webpack 5 emit the worker and wasm asset automatically. If your
+setup does not, pass explicit asset URLs:
 
 ```tsx
-// Vite: use `?url` imports
 import workerUrl from "@hewliyang/xlsx-preview/dist/xlsxWorker.js?url";
 import wasmBinaryUrl from "@hewliyang/xlsx-preview/dist/xlcore_wasm_bg.wasm?url";
 
 <ExcelPreviewer file={file} workerUrl={workerUrl} wasmBinaryUrl={wasmBinaryUrl} />;
 ```
 
+For plain ESM pages, use CDN-hosted assets:
+
 ```tsx
-// No bundler / plain <script type="module"> / CodePen / Observable:
 import { jsDelivrUrls } from "@hewliyang/xlsx-preview/cdn";
 
-<ExcelPreviewer file={file} {...jsDelivrUrls("0.0.1")} />;
+<ExcelPreviewer file={file} {...jsDelivrUrls("0.0.2")} />;
 ```
 
 ## node

@@ -10,24 +10,9 @@ export interface WorkbookLoadProgress {
 }
 
 export interface WorkbookLoaderOptions {
-  /**
-   * Absolute URL to `xlcore_wasm_bg.wasm`. If not provided, defaults to
-   * the binary sitting next to this module (resolved via
-   * `new URL("./xlcore_wasm_bg.wasm", import.meta.url)`).
-   *
-   * Bundlers (Vite, webpack 5, Rollup) will emit the binary as a static
-   * asset when they see that pattern. If your bundler doesn't pick it up,
-   * pass an explicit URL — e.g. with Vite:
-   *
-   *   import wasmBinaryUrl from "@hewliyang/xlsx-preview/dist/xlcore_wasm_bg.wasm?url";
-   *   <ExcelPreviewer file={file} wasmBinaryUrl={wasmBinaryUrl} />
-   */
+  /** URL of `xlcore_wasm_bg.wasm`; defaults to the package asset. */
   wasmBinaryUrl?: string;
-  /**
-   * Absolute URL to the worker module (`xlsxWorker.js`). Defaults to the
-   * file next to this module. Only needed if your bundler doesn't follow
-   * `new Worker(new URL("./xlsxWorker.js", import.meta.url), { type: "module" })`.
-   */
+  /** URL of `xlsxWorker.js`; defaults to the package worker. */
   workerUrl?: string;
   onProgress?: (progress: WorkbookLoadProgress) => void;
 }
@@ -95,8 +80,6 @@ function createExtractionWorker(options: WorkbookLoaderOptions): Worker {
   if (options.workerUrl) {
     return new Worker(options.workerUrl, { type: "module" });
   }
-  // Literal `new Worker(new URL(...), { type: "module" })` shape — this is
-  // what Vite's worker plugin and webpack 5's asset handling match on.
   return new Worker(new URL("./xlsxWorker.js", import.meta.url), { type: "module" });
 }
 
