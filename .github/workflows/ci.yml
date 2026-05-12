@@ -38,14 +38,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Build first: a test file imports from ../dist/index.js so it can
+      # pick up the wasm sitting alongside the built node entry. tsc and
+      # vitest both need dist/ present.
+      - name: Build
+        run: pnpm --filter @hewliyang/xlsx-preview build
+
       - name: Type check
         run: pnpm --filter @hewliyang/xlsx-preview typecheck
 
       - name: Lint
         run: pnpm --filter @hewliyang/xlsx-preview lint
-
-      - name: Build
-        run: pnpm --filter @hewliyang/xlsx-preview build
 
       - name: Test (node)
         run: pnpm --filter @hewliyang/xlsx-preview test
