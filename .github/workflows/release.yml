@@ -21,9 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # No version pin — pnpm/action-setup reads `packageManager` from
+      # the root package.json (currently pnpm@10.33.0).
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       # Node 24 ships npm >= 11.5.1, the minimum for npm trusted
       # publishing via GitHub Actions OIDC. CI runs on Node 20 (the
