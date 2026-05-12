@@ -4,7 +4,7 @@ Built four narrow fixtures to map exactly which number-format families
 break in `packages/xlsx-preview/src/render.ts::formatNumber`. Each `.xlsx` ships
 with both its `*.hsx.png` ground-truth screenshot and a current
 `*.ours.png` for side-by-side review. Rerun the visual diff with the
-workflow in [`TESTING.md`](../../../TESTING.md).
+workflow in [`TESTING.md`](../../../docs/TESTING.md).
 
 ## Status (2026-05-09, after evaluator rewrite)
 

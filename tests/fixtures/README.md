@@ -1,7 +1,7 @@
 # tests/fixtures
 
 Per-feature fixtures used by the visual-diff workflow in
-[`TESTING.md`](../../TESTING.md). Each subdirectory holds:
+[`TESTING.md`](../../docs/TESTING.md). Each subdirectory holds:
 
 - `<name>.xlsx` — the fixture workbook (committed binary).
 - `build-<name>.sh` — reproducible builder. Either `hsx`-driven, or a
@@ -65,6 +65,6 @@ instead of `<fgColor rgb="..."/>`).
 2. Make a subdirectory + a `build-<name>.sh` — go through `hsx` when
    possible (small, easy to read), through a zip patch when not.
 3. Run it, commit `<name>.xlsx`, screenshot ours and HSX side-by-side
-   per the [`TESTING.md`](../../TESTING.md) workflow.
+   per the [`TESTING.md`](../../docs/TESTING.md) workflow.
 4. Update the table above and link the fixture from the relevant
    PARITY.md row.

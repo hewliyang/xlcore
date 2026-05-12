@@ -71,7 +71,7 @@ The canonical fixture lives at
 `tests/fixtures/kitchensink/kitchensink.xlsx`; per-feature fixtures sit
 alongside it under `tests/fixtures/<feature>/`. See
 [`TESTING.md`](TESTING.md) for the workflow,
-[`tests/fixtures/README.md`](tests/fixtures/README.md) for the fixture
+[`tests/fixtures/README.md`](../tests/fixtures/README.md) for the fixture
 table + how to add new ones, and [`PARITY.md`](PARITY.md) for the
 feature-by-feature scoreboard.
 

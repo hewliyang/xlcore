@@ -129,7 +129,7 @@ canvas.save("/tmp/xlcore-compare.png")
 ## fixtures
 
 Live in `tests/fixtures/` (source-controlled). See
-[`tests/fixtures/README.md`](./tests/fixtures/README.md) for the table
+[`tests/fixtures/README.md`](../tests/fixtures/README.md) for the table
 of what each one covers and how to add new ones.
 
 Quickstart:

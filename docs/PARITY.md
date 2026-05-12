@@ -398,7 +398,7 @@ Fixtures live in `tests/fixtures/` (source-controlled). The live table
 (today: ~25 per-feature workbooks across text / cf / numfmt / borders /
 fills / charts / pivot / tables / annotations / outline / sparklines /
 styles / themes / freeze-pane plus the kitchen sink) is maintained in
-[`tests/fixtures/README.md`](tests/fixtures/README.md). That doc is the
+[`tests/fixtures/README.md`](../tests/fixtures/README.md). That doc is the
 source of truth; this section is intentionally short.
 
 The goal of the corpus is that **a failed visual diff names the
