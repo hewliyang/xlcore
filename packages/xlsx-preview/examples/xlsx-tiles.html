@@ -76,7 +76,7 @@
   /* --- leaf pane ---------------------------------------------------- */
   .pane {
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
     background: var(--surface);
     min-width: 0; min-height: 0;
     width: 100%; height: 100%;
@@ -90,6 +90,9 @@
     font-size: 11.5px;
     background: #fafbfc;
   }
+  .pane-head { cursor: grab; user-select: none; }
+  .pane-head:active { cursor: grabbing; }
+  .pane-head button { cursor: pointer; }
   .pane-head .name { color: var(--text); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pane-head .meta { color: var(--text-dim); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pane-head .actions { display: flex; gap: 2px; flex: none; }
@@ -130,10 +133,108 @@
     pointer-events: none;
     z-index: 5;
   }
-  /* Each previewer renders its own formula bar + tabs; in a small tile
-     we hide them to keep maximum sheet visible. */
+  /* Pane-rearrange drop zones: shown when another pane's header is being
+     dragged over this body. The overlay rectangle previews where the
+     dragged pane will land (left/right/top/bottom half = insert as a
+     sibling on that edge; center = swap positions). */
+  .pane-body[data-pane-zone]::before {
+    content: "";
+    position: absolute;
+    background: rgba(79, 70, 229, 0.18);
+    border: 2px solid var(--accent);
+    pointer-events: none;
+    z-index: 6;
+    transition: inset 0.08s ease;
+  }
+  .pane-body[data-pane-zone="left"]::before   { inset: 0 50% 0 0; }
+  .pane-body[data-pane-zone="right"]::before  { inset: 0 0 0 50%; }
+  .pane-body[data-pane-zone="top"]::before    { inset: 0 0 50% 0; }
+  .pane-body[data-pane-zone="bottom"]::before { inset: 50% 0 0 0; }
+  .pane-body[data-pane-zone="center"]::before { inset: 0; background: rgba(79, 70, 229, 0.28); }
+  .pane.dragging { opacity: 0.6; }
+  /* The previewer renders its own formula bar + sheet tab strip. We
+     hide both: the formula bar to save vertical space in small tiles,
+     and the built-in tabs because we render our own footer below
+     (matching the look in xlsx-app.html). */
   .pane-body .xlcore-formula-bar,
   .pane-body .xlcore-tabs { display: none !important; }
+
+  /* --- per-pane sheet tab bar (footer) ----------------------------- */
+  /* Cloned from xlsx-app.html. Lives inside each leaf pane. */
+  .tabbar {
+    height: 28px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: stretch;
+    min-width: 0;
+  }
+  .tabbar .tabs {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    padding: 0 6px;
+    min-width: 0;
+  }
+  .tabbar .tabs::-webkit-scrollbar { height: 6px; }
+  .tabbar .tabs::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+  .tabbar .tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 12px;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.12s, background 0.12s;
+  }
+  .tabbar .tab:hover { color: var(--text); background: var(--surface-muted); }
+  .tabbar .tab.active { color: var(--accent); font-weight: 600; }
+  .tabbar .tab.active::after {
+    content: "";
+    position: absolute;
+    left: 6px; right: 6px; bottom: 0;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 2px 2px 0 0;
+  }
+  .tabbar .right {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 6px;
+    border-left: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  .tabbar .icon-btn {
+    width: 22px; height: 22px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .tabbar .icon-btn:hover { background: var(--surface-muted); color: var(--text); }
+  .tabbar .zoom-label {
+    min-width: 36px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .tabbar.empty { opacity: 0.4; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -173,6 +274,13 @@ const root = document.getElementById("root-tile");
 let nextId = 1;
 function uid() { return `t${nextId++}`; }
 
+// Custom MIME used by the pane-rearrange drag-and-drop. Drop targets
+// look for this type to distinguish an internal move from an external
+// .xlsx file drop. Note: most browsers normalise the type to lowercase
+// when it's read back via `dataTransfer.types`, so we use a lowercase
+// canonical form everywhere.
+const PANE_MIME = "application/x-xlcore-pane";
+
 /**
  * @typedef {Object} Leaf
  * @property {"leaf"} kind
@@ -205,6 +313,10 @@ function createLeaf() {
 
   const head = document.createElement("div");
   head.className = "pane-head";
+  const idEl = document.createElement("span");
+  idEl.className = "meta";
+  idEl.style.cssText = "flex:none;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;opacity:.5;";
+  idEl.textContent = el.dataset.id;
   const nameEl = document.createElement("span");
   nameEl.className = "name";
   nameEl.textContent = "Empty";
@@ -218,7 +330,7 @@ function createLeaf() {
   const closeBtn = iconBtn("✕", "Close pane");
   closeBtn.classList.add("danger");
   actions.append(splitRight, splitDown, closeBtn);
-  head.append(nameEl, metaEl, actions);
+  head.append(idEl, nameEl, metaEl, actions);
 
   const body = document.createElement("div");
   body.className = "pane-body empty";
@@ -227,10 +339,37 @@ function createLeaf() {
     <label for="${fileId}" class="empty-inner">
       <b>Drop or click to load</b>
       <span>any .xlsx file</span>
-      <input type="file" id="${fileId}" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+      <input type="file" id="${fileId}" multiple accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
     </label>`;
 
-  el.append(head, body);
+  // Per-pane footer (sheet tabs + zoom controls). Cloned from
+  // xlsx-app.html — each leaf owns its own tabbar wired to its own
+  // previewer instance. Starts in the "empty" state until a workbook
+  // is loaded.
+  const tabbar = document.createElement("footer");
+  tabbar.className = "tabbar empty";
+  const tabs = document.createElement("div");
+  tabs.className = "tabs";
+  tabs.setAttribute("role", "tablist");
+  const right = document.createElement("div");
+  right.className = "right";
+  const zoomOut = document.createElement("button");
+  zoomOut.type = "button";
+  zoomOut.className = "icon-btn";
+  zoomOut.title = "Zoom out";
+  zoomOut.textContent = "−";
+  const zoomLabel = document.createElement("span");
+  zoomLabel.className = "zoom-label";
+  zoomLabel.textContent = "100%";
+  const zoomIn = document.createElement("button");
+  zoomIn.type = "button";
+  zoomIn.className = "icon-btn";
+  zoomIn.title = "Zoom in";
+  zoomIn.textContent = "+";
+  right.append(zoomOut, zoomLabel, zoomIn);
+  tabbar.append(tabs, right);
+
+  el.append(head, body, tabbar);
 
   /** @type {Leaf} */
   const leaf = {
@@ -240,16 +379,52 @@ function createLeaf() {
     bodyEl: body,
     nameEl,
     metaEl,
+    tabbarEl: tabbar,
+    tabsEl: tabs,
+    zoomLabelEl: zoomLabel,
     previewer: null,
     parent: null,
+  };
+
+  zoomOut.onclick = () => {
+    if (!leaf.previewer) return;
+    leaf.previewer.setZoom(leaf.previewer.getZoom() - 0.25);
+  };
+  zoomIn.onclick = () => {
+    if (!leaf.previewer) return;
+    leaf.previewer.setZoom(leaf.previewer.getZoom() + 0.25);
   };
 
   splitRight.onclick = () => splitLeaf(leaf, "horizontal");
   splitDown.onclick = () => splitLeaf(leaf, "vertical");
   closeBtn.onclick = () => closeLeaf(leaf);
+
+  // The pane head doubles as a drag handle: dragging it onto another
+  // pane re-parents this leaf in the tree (see moveLeaf). We tag the
+  // dataTransfer with a custom MIME type so drop targets can tell
+  // pane-rearrange drags apart from external file drops.
+  head.draggable = true;
+  head.addEventListener("dragstart", (e) => {
+    // Action buttons inside the head shouldn't initiate a move drag.
+    if (e.target instanceof Element && e.target.closest("button")) {
+      e.preventDefault();
+      return;
+    }
+    e.dataTransfer.setData(PANE_MIME, leaf.id);
+    e.dataTransfer.effectAllowed = "move";
+    leaf.el.classList.add("dragging");
+  });
+  head.addEventListener("dragend", () => {
+    leaf.el.classList.remove("dragging");
+    // Any zone overlays still showing (e.g. drag cancelled outside any
+    // pane) should be cleared.
+    for (const b of document.querySelectorAll(".pane-body[data-pane-zone]")) {
+      b.removeAttribute("data-pane-zone");
+    }
+  });
   body.querySelector("input").addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (file) loadInto(leaf, file);
+    const files = Array.from(e.target.files ?? []);
+    if (files.length) loadFiles(leaf, files);
     e.target.value = "";
   });
   wireDropZone(leaf);
@@ -257,42 +432,120 @@ function createLeaf() {
   return leaf;
 }
 
-/** Wire native drag-and-drop on a leaf's body. We accept the first
- *  .xlsx in the dataTransfer and load it into this slot, regardless of
- *  whether the slot is currently empty or already holds a workbook. */
+/** Wire native drag-and-drop on a leaf's body. Handles two drag kinds:
+ *  (1) external `.xlsx` files dragged from the OS — load them into
+ *      this slot via loadFiles (splits if the slot already holds a
+ *      workbook), and (2) an internal pane-rearrange drag where the
+ *      user grabbed another pane's header — show a directional drop
+ *      overlay (left/right/top/bottom/center) and on drop call
+ *      moveLeaf to re-home the source leaf in this slot. */
 function wireDropZone(leaf) {
   const body = leaf.bodyEl;
-  let depth = 0; // dragenter/dragleave fire per child, so we ref-count.
+  let fileDepth = 0; // dragenter/dragleave fire per child, so we ref-count.
   const isXlsx = (f) =>
     f && (
       /\.xlsx$/i.test(f.name) ||
       f.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
+  const isPaneDrag = (types) => types?.includes(PANE_MIME);
+  const isFileDrag = (types) => types?.includes("Files");
+
   body.addEventListener("dragenter", (e) => {
-    if (!e.dataTransfer?.types?.includes("Files")) return;
-    e.preventDefault();
-    depth++;
-    body.classList.add("drop-target");
+    const types = e.dataTransfer?.types;
+    if (isFileDrag(types)) {
+      e.preventDefault();
+      fileDepth++;
+      body.classList.add("drop-target");
+    } else if (isPaneDrag(types)) {
+      e.preventDefault();
+      // Zone overlay is computed in dragover (needs pointer coords).
+    }
   });
   body.addEventListener("dragover", (e) => {
-    if (!e.dataTransfer?.types?.includes("Files")) return;
-    e.preventDefault();
-    // Tell the browser this is a copy operation (cursor + drop-allowed).
-    e.dataTransfer.dropEffect = "copy";
+    const types = e.dataTransfer?.types;
+    if (isPaneDrag(types)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      const zone = computeZone(body, e.clientX, e.clientY);
+      if (body.dataset.paneZone !== zone) body.dataset.paneZone = zone;
+    } else if (isFileDrag(types)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    }
   });
-  body.addEventListener("dragleave", () => {
-    depth = Math.max(0, depth - 1);
-    if (depth === 0) body.classList.remove("drop-target");
+  body.addEventListener("dragleave", (e) => {
+    const types = e.dataTransfer?.types;
+    if (isFileDrag(types)) {
+      fileDepth = Math.max(0, fileDepth - 1);
+      if (fileDepth === 0) body.classList.remove("drop-target");
+    }
+    if (isPaneDrag(types)) {
+      // dragleave fires when the pointer crosses into a child element
+      // too, but in that case a fresh dragenter follows immediately and
+      // re-sets the attribute via dragover. Safe to clear here; if the
+      // pointer is still over the body it'll be set again on the next
+      // dragover frame.
+      const r = body.getBoundingClientRect();
+      if (
+        e.clientX < r.left || e.clientX >= r.right ||
+        e.clientY < r.top || e.clientY >= r.bottom
+      ) {
+        delete body.dataset.paneZone;
+      }
+    }
   });
   body.addEventListener("drop", (e) => {
+    const types = e.dataTransfer?.types;
+
+    // Pane-rearrange drop: re-home the source leaf relative to this one.
+    if (isPaneDrag(types)) {
+      e.preventDefault();
+      e.stopPropagation();
+      const sourceId = e.dataTransfer.getData(PANE_MIME);
+      const zone = body.dataset.paneZone ?? computeZone(body, e.clientX, e.clientY);
+      delete body.dataset.paneZone;
+      const sourceLeaf = findLeafById(rootNode, sourceId);
+      if (sourceLeaf && sourceLeaf !== leaf) moveLeaf(sourceLeaf, leaf, zone);
+      return;
+    }
+
+    // External file drop.
     if (!e.dataTransfer?.files?.length) return;
     e.preventDefault();
-    depth = 0;
+    e.stopPropagation();
+    fileDepth = 0;
     body.classList.remove("drop-target");
-    const file = Array.from(e.dataTransfer.files).find(isXlsx);
-    if (file) loadInto(leaf, file);
+    const files = Array.from(e.dataTransfer.files).filter(isXlsx);
+    if (files.length) loadFiles(leaf, files);
     else leaf.metaEl.textContent = "not an .xlsx file";
   });
+}
+
+/** Bucket a pointer position inside `body` into one of five drop zones.
+ *  The central rectangle (30%–70% on both axes) is "center" → swap;
+ *  outside that it falls to the nearest edge. */
+function computeZone(body, clientX, clientY) {
+  const r = body.getBoundingClientRect();
+  const fx = (clientX - r.left) / Math.max(1, r.width);
+  const fy = (clientY - r.top) / Math.max(1, r.height);
+  if (fx >= 0.3 && fx <= 0.7 && fy >= 0.3 && fy <= 0.7) return "center";
+  const dl = fx, dr = 1 - fx, dt = fy, db = 1 - fy;
+  const m = Math.min(dl, dr, dt, db);
+  if (m === dl) return "left";
+  if (m === dr) return "right";
+  if (m === dt) return "top";
+  return "bottom";
+}
+
+/** Walk the tree, return the leaf whose id matches. */
+function findLeafById(node, id) {
+  if (!node) return null;
+  if (node.kind === "leaf") return node.id === id ? node : null;
+  for (const c of node.children) {
+    const hit = findLeafById(c, id);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 // Suppress the browser default of opening dropped files when the drop
@@ -314,6 +567,29 @@ function iconBtn(label, title) {
   return b;
 }
 
+/** Load N files starting from `startLeaf`. The drop target itself
+ *  takes the first file (if empty) or is split to make room. Extra
+ *  files cascade: each one splits the leaf the previous file landed
+ *  in. Split direction is perpendicular to the target leaf's longest
+ *  side, so a wide pane cuts left/right and a tall pane cuts
+ *  top/bottom — matching the way a user would expect a drop to
+ *  subdivide that specific tile. */
+async function loadFiles(startLeaf, files) {
+  let target = startLeaf;
+  for (const file of files) {
+    if (target.previewer) {
+      const rect = target.el.getBoundingClientRect();
+      const direction = rect.width >= rect.height ? "horizontal" : "vertical";
+      target = splitLeaf(target, direction);
+    }
+    // Sequential: keeps Split.js state and layout mutations serialized,
+    // and avoids N concurrent WASM workbook parses fighting for the
+    // main thread.
+    // eslint-disable-next-line no-await-in-loop
+    await loadInto(target, file);
+  }
+}
+
 async function loadInto(leaf, file) {
   // Tearing down a previous workbook before re-loading the slot keeps
   // canvas/worker resources from leaking when a user opens a new file
@@ -322,6 +598,7 @@ async function loadInto(leaf, file) {
     leaf.previewer.destroy();
     leaf.previewer = null;
   }
+  resetTabbar(leaf);
   leaf.bodyEl.classList.remove("empty");
   leaf.bodyEl.innerHTML = "";
   leaf.nameEl.textContent = file.name;
@@ -335,11 +612,49 @@ async function loadInto(leaf, file) {
     });
     const dt = ((performance.now() - started) / 1000).toFixed(1);
     leaf.metaEl.textContent = `${leaf.previewer.layout.sheets.length} sheet(s) · ${dt}s`;
+    populateTabbar(leaf);
+    // Sheet/zoom changes can come from keyboard nav or programmatic
+    // calls inside the previewer; mirror them in our tabbar.
+    leaf.previewer.on("sheetchange", () => updateTabbar(leaf));
+    leaf.previewer.on("zoomchange", () => updateTabbar(leaf));
   } catch (err) {
     leaf.metaEl.textContent = "failed";
     leaf.bodyEl.classList.add("empty");
     leaf.bodyEl.textContent = err?.message ?? String(err);
   }
+}
+
+function resetTabbar(leaf) {
+  leaf.tabsEl.replaceChildren();
+  leaf.zoomLabelEl.textContent = "100%";
+  leaf.tabbarEl.classList.add("empty");
+}
+
+function populateTabbar(leaf) {
+  leaf.tabsEl.replaceChildren();
+  leaf.tabbarEl.classList.remove("empty");
+  leaf.previewer.layout.sheets.forEach((sheet, index) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tab";
+    btn.dataset.index = String(index);
+    btn.textContent = sheet.name;
+    btn.setAttribute("role", "tab");
+    btn.addEventListener("click", () => {
+      leaf.previewer.setActiveSheet(index);
+    });
+    leaf.tabsEl.append(btn);
+  });
+  updateTabbar(leaf);
+}
+
+function updateTabbar(leaf) {
+  if (!leaf.previewer) return;
+  const state = leaf.previewer.getState();
+  for (const btn of leaf.tabsEl.querySelectorAll(".tab")) {
+    btn.classList.toggle("active", Number(btn.dataset.index) === state.activeSheetIndex);
+  }
+  leaf.zoomLabelEl.textContent = `${Math.round(state.zoom * 100)}%`;
 }
 
 // ----- split / merge ----------------------------------------------------
@@ -358,6 +673,7 @@ function splitLeaf(leaf, direction) {
   leaf.parent = split;
   split.children[1].parent = split;
   instantiateSplit(split);
+  return newLeaf;
 }
 
 function createSplitNode(direction, a, b) {
@@ -424,6 +740,102 @@ function replaceNode(oldNode, newNode) {
   const idx = parent.children.indexOf(oldNode);
   parent.children[idx] = newNode;
   parent.hosts[idx].replaceChildren(newNode.el);
+}
+
+/** Re-home `source` relative to `target` based on a drop zone:
+ *   - "center"           → swap the two leaves' positions in the tree.
+ *   - "left"  / "right"  → wrap target in a new horizontal split with
+ *                          source on the requested side.
+ *   - "top"   / "bottom" → same but vertical.
+ *  No-ops if source === target, if source is the root (nothing to
+ *  detach), or if the move would be visually a no-op (source is
+ *  already target's sibling on the same side with same direction). */
+function moveLeaf(source, target, zone) {
+  if (!source || !target || source === target) return;
+  if (zone === "center") { swapLeaves(source, target); return; }
+  if (!source.parent) return; // root can't be detached
+  // After detaching source the tree shrinks; we then wrap target in a
+  // new split with source. The order of operations matters: detach
+  // first so `target.parent` reflects the post-detach state when we
+  // compute its slot.
+  detachLeaf(source);
+  insertLeafAt(target, source, zone);
+}
+
+/** Remove `leaf` from its parent split, replacing the parent in the
+ *  grandparent with the surviving sibling. Mirrors closeLeaf but
+ *  preserves the previewer (we're going to re-insert it elsewhere). */
+function detachLeaf(leaf) {
+  const parent = leaf.parent;
+  if (!parent) return;
+  const sibling = parent.children[0] === leaf ? parent.children[1] : parent.children[0];
+  parent.instance?.destroy();
+  parent.instance = null;
+  // Detach DOM nodes from their current hosts so replaceNode can re-home
+  // the sibling cleanly.
+  sibling.el.remove();
+  sibling.parent = null;
+  replaceNode(parent, sibling);
+  leaf.el.remove();
+  leaf.parent = null;
+}
+
+/** Insert `source` next to `target` on the given side, creating a new
+ *  Split node in target's previous slot. */
+function insertLeafAt(target, source, side) {
+  const direction = (side === "left" || side === "right") ? "horizontal" : "vertical";
+  const sourceFirst = side === "left" || side === "top";
+  // Detach target from its current host so createSplitNode can place
+  // both children into its fresh host wrappers.
+  const targetParent = target.parent;
+  const targetIdx = targetParent ? targetParent.children.indexOf(target) : -1;
+  target.el.remove();
+  source.el.remove();
+  const a = sourceFirst ? source : target;
+  const b = sourceFirst ? target : source;
+  const split = createSplitNode(direction, a, b);
+  // Plug the new split into the slot target used to live in (handles
+  // root-replacement when target was root).
+  if (!targetParent) {
+    root.replaceChildren(split.el);
+    rootNode = split;
+    split.parent = null;
+  } else {
+    targetParent.children[targetIdx] = split;
+    targetParent.hosts[targetIdx].replaceChildren(split.el);
+    split.parent = targetParent;
+  }
+  a.parent = split;
+  b.parent = split;
+  instantiateSplit(split);
+  // Both panes' previewers may need a redraw now that their containers
+  // have new sizes; the resize observer will fire on its own tick but
+  // a manual nudge eliminates a one-frame flash.
+  source.previewer?.redraw();
+  target.previewer?.redraw();
+}
+
+/** Swap two leaves' positions in the tree (each ends up where the other
+ *  used to be). Both leaves must have parents (no root involvement). */
+function swapLeaves(a, b) {
+  if (a === b || !a.parent || !b.parent) return;
+  const pa = a.parent, pb = b.parent;
+  const ia = pa.children.indexOf(a);
+  const ib = pb.children.indexOf(b);
+  if (ia < 0 || ib < 0) return;
+  // Pull both elements out of their hosts before re-homing — otherwise
+  // appendChild would silently move the still-live sibling and we'd lose
+  // track of one of them.
+  a.el.remove();
+  b.el.remove();
+  pa.children[ia] = b;
+  pb.children[ib] = a;
+  pa.hosts[ia].replaceChildren(b.el);
+  pb.hosts[ib].replaceChildren(a.el);
+  a.parent = pb;
+  b.parent = pa;
+  a.previewer?.redraw();
+  b.previewer?.redraw();
 }
 
 /** Close a leaf. If it's the root, replace it with a fresh empty leaf
