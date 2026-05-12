@@ -545,7 +545,10 @@
 </div>
 
 <script type="module">
-const REMOTE_CDN = "https://pub-5694368c6d1d48138a9b3c2a0829b544.r2.dev/xlcore-preview/v0.0.1/";
+// Examples load the renderer from a local `../dist/` build when run under
+// `pnpm preview`, and fall back to the published npm package on jsdelivr
+// when the HTML is opened standalone (e.g. hosted on Pages / file://).
+const REMOTE_CDN = "https://cdn.jsdelivr.net/npm/@hewliyang/xlsx-preview@0.0.1/dist/";
 let ASSET_BASE = "../dist/";
 let createWorkbookPreviewerFromFile;
 try {
@@ -553,7 +556,7 @@ try {
 } catch (error) {
   console.warn("Local renderer failed to load; falling back to CDN build", error);
   ASSET_BASE = REMOTE_CDN;
-  ({ createWorkbookPreviewerFromFile } = await import(`${REMOTE_CDN}browser-loader.js?v=20260511-renderer`));
+  ({ createWorkbookPreviewerFromFile } = await import(`${REMOTE_CDN}browser-loader.js`));
 }
 const picker = document.getElementById("picker");
 const status = document.getElementById("status");

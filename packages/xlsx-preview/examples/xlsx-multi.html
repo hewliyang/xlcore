@@ -93,7 +93,7 @@
 <main id="panes"></main>
 
 <script type="module">
-const REMOTE_CDN = "https://pub-5694368c6d1d48138a9b3c2a0829b544.r2.dev/xlcore-preview/v0.0.1/";
+const REMOTE_CDN = "https://cdn.jsdelivr.net/npm/@hewliyang/xlsx-preview@0.0.1/dist/";
 let ASSET_BASE = "../dist/";
 let createWorkbookPreviewerFromFile;
 try {
@@ -101,7 +101,7 @@ try {
 } catch (error) {
   console.warn("Local renderer failed; falling back to CDN", error);
   ASSET_BASE = REMOTE_CDN;
-  ({ createWorkbookPreviewerFromFile } = await import(`${REMOTE_CDN}browser-loader.js?v=20260511-renderer`));
+  ({ createWorkbookPreviewerFromFile } = await import(`${REMOTE_CDN}browser-loader.js`));
 }
 
 const panes = document.getElementById("panes");
