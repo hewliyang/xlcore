@@ -10,7 +10,24 @@ export interface WorkbookLoadProgress {
 }
 
 export interface WorkbookLoaderOptions {
-  wasmUrl?: string;
+  /**
+   * Absolute URL to `xlcore_wasm_bg.wasm`. If not provided, defaults to
+   * the binary sitting next to this module (resolved via
+   * `new URL("./xlcore_wasm_bg.wasm", import.meta.url)`).
+   *
+   * Bundlers (Vite, webpack 5, Rollup) will emit the binary as a static
+   * asset when they see that pattern. If your bundler doesn't pick it up,
+   * pass an explicit URL — e.g. with Vite:
+   *
+   *   import wasmBinaryUrl from "@hewliyang/xlsx-preview/dist/xlcore_wasm_bg.wasm?url";
+   *   <ExcelPreviewer file={file} wasmBinaryUrl={wasmBinaryUrl} />
+   */
+  wasmBinaryUrl?: string;
+  /**
+   * Absolute URL to the worker module (`xlsxWorker.js`). Defaults to the
+   * file next to this module. Only needed if your bundler doesn't follow
+   * `new Worker(new URL("./xlsxWorker.js", import.meta.url), { type: "module" })`.
+   */
   workerUrl?: string;
   onProgress?: (progress: WorkbookLoadProgress) => void;
 }
@@ -19,8 +36,7 @@ export interface CreateWorkbookPreviewerFromFileOptions
   extends WorkbookLoaderOptions,
     PreviewerOptions {}
 
-const DEFAULT_WASM_URL = new URL("./xlcore_wasm.js", import.meta.url).toString();
-const DEFAULT_WORKER_URL = new URL("./xlsxWorker.js", import.meta.url).toString();
+const DEFAULT_WASM_BINARY_URL = new URL("./xlcore_wasm_bg.wasm", import.meta.url).href;
 
 export async function loadWorkbookFromFile(
   file: Blob,
@@ -56,7 +72,10 @@ export async function loadWorkbookFromArrayBuffer(
       worker.terminate();
       reject(new Error(event.message || "Workbook worker failed"));
     };
-    worker.postMessage({ bytes, wasmUrl: options.wasmUrl ?? DEFAULT_WASM_URL }, [bytes]);
+    worker.postMessage(
+      { bytes, wasmBinaryUrl: options.wasmBinaryUrl ?? DEFAULT_WASM_BINARY_URL },
+      [bytes],
+    );
   });
 }
 
@@ -73,36 +92,12 @@ export async function createWorkbookPreviewerFromFile(
 }
 
 function createExtractionWorker(options: WorkbookLoaderOptions): Worker {
-  const workerUrl = options.workerUrl ?? DEFAULT_WORKER_URL;
-  try {
-    return new Worker(workerUrl, { type: "module" });
-  } catch {
-    return createBlobWorker();
+  if (options.workerUrl) {
+    return new Worker(options.workerUrl, { type: "module" });
   }
-}
-
-function createBlobWorker(): Worker {
-  const source = `
-let wasmModulePromise = null;
-const stage = (label) => self.postMessage({ type: "stage", label });
-self.onmessage = async (event) => {
-  try {
-    const { bytes, wasmUrl } = event.data;
-    stage("Loading WASM");
-    wasmModulePromise ??= import(wasmUrl).then(async (mod) => {
-      await mod.default();
-      return mod;
-    });
-    const mod = await wasmModulePromise;
-    stage("Extracting OOXML");
-    const layout = mod.extract_xlsx(new Uint8Array(bytes), undefined);
-    self.postMessage({ type: "layout", layout });
-  } catch (error) {
-    self.postMessage({ type: "error", message: error && error.stack ? error.stack : String(error) });
-  }
-};
-`;
-  return new Worker(URL.createObjectURL(new Blob([source], { type: "text/javascript" })));
+  // Literal `new Worker(new URL(...), { type: "module" })` shape — this is
+  // what Vite's worker plugin and webpack 5's asset handling match on.
+  return new Worker(new URL("./xlsxWorker.js", import.meta.url), { type: "module" });
 }
 
 function progress(options: WorkbookLoaderOptions, label: string): void {

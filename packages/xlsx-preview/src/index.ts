@@ -26,4 +26,6 @@ export type {
   WorkbookPreviewer,
 } from "./previewer.js";
 export type { RenderPngOptions } from "./node.js";
+export { jsDelivrUrls, unpkgUrls } from "./cdn.js";
+export type { CdnAssetUrls } from "./cdn.js";
 export type * from "./types.js";

@@ -156,7 +156,7 @@ async function addWorkbook(file) {
   const started = performance.now();
   try {
     entry.previewer = await createWorkbookPreviewerFromFile(body, file, {
-      wasmUrl: `${ASSET_BASE}xlcore_wasm.js`,
+      wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
       workerUrl: `${ASSET_BASE}xlsxWorker.js`,
       onProgress: ({ label }) => (metaEl.textContent = label),
     });

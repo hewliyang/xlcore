@@ -103,7 +103,7 @@ export function ExcelPreviewer(props: ExcelPreviewerProps): React.ReactElement {
     previewerRef,
     className,
     style,
-    wasmUrl,
+    wasmBinaryUrl,
     workerUrl,
     initialSheet,
     initialZoom,
@@ -116,7 +116,7 @@ export function ExcelPreviewer(props: ExcelPreviewerProps): React.ReactElement {
     ...divProps
   } = props;
   const result = useWorkbookPreviewer(file, {
-    wasmUrl,
+    wasmBinaryUrl,
     workerUrl,
     initialSheet,
     initialZoom,

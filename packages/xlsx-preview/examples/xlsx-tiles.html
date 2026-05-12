@@ -606,7 +606,7 @@ async function loadInto(leaf, file) {
   const started = performance.now();
   try {
     leaf.previewer = await createWorkbookPreviewerFromFile(leaf.bodyEl, file, {
-      wasmUrl: `${ASSET_BASE}xlcore_wasm.js`,
+      wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
       workerUrl: `${ASSET_BASE}xlsxWorker.js`,
       onProgress: ({ label }) => (leaf.metaEl.textContent = label),
     });

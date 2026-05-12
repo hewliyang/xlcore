@@ -809,7 +809,7 @@ async function loadWorkbookFile(file) {
     previewer?.destroy();
     previewRoot.replaceChildren();
     previewer = await createWorkbookPreviewerFromFile(previewRoot, file, {
-      wasmUrl: `${ASSET_BASE}xlcore_wasm.js`,
+      wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
       workerUrl: `${ASSET_BASE}xlsxWorker.js`,
       onProgress: ({ label }) => setLoadingStage(label),
     });
