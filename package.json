@@ -5,7 +5,7 @@
     "build": "pnpm --filter @hewliyang/xlsx-preview build",
     "check": "pnpm --filter @hewliyang/xlsx-preview check",
     "preview": "pnpm --filter @hewliyang/xlsx-preview preview",
-    "site:build": "pnpm --filter @hewliyang/xlsx-preview run build:release && node scripts/build-site.mjs",
+    "site:build": "node scripts/build-site.mjs",
     "site:deploy": "pnpm run site:build && wrangler pages deploy site --project-name=xlcore --branch=main --commit-dirty=true"
   },
   "devDependencies": {

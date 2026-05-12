@@ -6,13 +6,13 @@
 //     app/index.html      <- packages/xlsx-preview/examples/xlsx-app.html
 //     tiles/index.html    <- packages/xlsx-preview/examples/xlsx-tiles.html
 //     multi/index.html    <- packages/xlsx-preview/examples/xlsx-multi.html
-//     dist/...            <- packages/xlsx-preview/dist (renderer + wasm)
 //
 // Cloudflare Pages maps `/app` to `app/index.html` automatically.
-// The examples use `../dist/browser-loader.js` for the local-first import,
-// so each route reaches `site/dist/` one level up — works in prod and in
-// local dev via `pnpm preview`. The jsdelivr fallback is still there for
-// anyone who copies an HTML file in isolation.
+// The examples try `../dist/browser-loader.js` first (for local dev under
+// `pnpm preview`); that 404s on Pages and the page falls through to the
+// jsdelivr-hosted npm bundle pinned to the published version. We don't
+// ship dist/ here — jsdelivr is globally edge-cached and pinned by
+// `@version`, so re-hosting the 17 MB wasm would just duplicate it.
 
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -22,7 +22,6 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "..");
 const out = resolve(repo, "site");
 const examples = resolve(repo, "packages/xlsx-preview/examples");
-const dist = resolve(repo, "packages/xlsx-preview/dist");
 
 const routes = [
   ["app", "xlsx-app.html"],
@@ -41,15 +40,6 @@ async function exists(p) {
 
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
-
-if (!(await exists(resolve(dist, "browser-loader.js")))) {
-  console.error(
-    "dist/ not found. Run `pnpm --filter @hewliyang/xlsx-preview run build:release` first.",
-  );
-  process.exit(1);
-}
-
-await cp(dist, resolve(out, "dist"), { recursive: true });
 
 for (const [route, file] of routes) {
   const src = resolve(examples, file);
