@@ -3,6 +3,7 @@ node_modules/
 packages/*/dist/
 *.html
 !packages/xlsx-preview/examples/xlsx-app.html
+!packages/xlsx-preview/examples/xlsx-multi.html
 layout.json
 .DS_Store
 TODO.md
