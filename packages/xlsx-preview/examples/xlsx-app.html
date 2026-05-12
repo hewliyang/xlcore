@@ -3,100 +3,447 @@
 <head>
 <meta charset="utf-8">
 <title>xlcore Excel app example</title>
+<link rel="preconnect" href="https://rsms.me/">
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css">
 <style>
+  /* --- design tokens ------------------------------------------------ */
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --surface-muted: #f4f6f8;
+    --border: #e4e7eb;
+    --border-strong: #d4d8de;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+    --accent: #4f46e5;
+    --accent-soft: #eef2ff;
+    --accent-strong: #4338ca;
+    --good: #16a34a;
+    --warn: #d97706;
+    --danger: #dc2626;
+    --code-bg: #fbfaf6;
+    --code-border: #ece8d8;
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+    --radius: 6px;
+    --radius-sm: 4px;
+    --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: #eef0f3; color: #111827; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  body { display: grid; grid-template-rows: auto 1fr; }
-  header { min-width: 0; padding: 10px 14px; background: #172033; color: #f9fafb; display: flex; align-items: center; gap: 12px; font-size: 13px; }
-  header b { font-size: 14px; white-space: nowrap; }
-  input[type=file] { color: #f9fafb; font: inherit; font-size: 12px; max-width: 260px; }
-  #status { margin-left: auto; color: #d1d5db; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #panel-toggle { width: 32px; height: 28px; padding: 0; flex: none; border-color: #64748b; background: #243047; color: #f9fafb; }
-  #panel-toggle:hover { background: #334155; }
-  main { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    font-feature-settings: "cv11", "ss03";
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 0;
+  }
+
+  /* --- app bar ------------------------------------------------------ */
+  header {
+    min-width: 0;
+    padding: 0 14px;
+    height: 48px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: -0.01em;
+  }
+  .brand-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: linear-gradient(135deg, var(--accent), #06b6d4);
+  }
+  .file-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    height: 28px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .file-picker:hover { background: var(--surface-muted); border-color: var(--text-dim); }
+  .file-picker svg { width: 14px; height: 14px; }
+  .file-picker input { position: absolute; left: -9999px; }
+  #status {
+    margin-left: 4px;
+    color: var(--text-muted);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  #status .status-pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: var(--surface-muted);
+    color: var(--text);
+    font-weight: 500;
+    margin-right: 4px;
+  }
+  .spacer { flex: 1 1 auto; }
+  #panel-toggle {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    flex: none;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    line-height: 1;
+    transition: background 0.12s;
+  }
+  #panel-toggle:hover { background: var(--surface-muted); color: var(--text); }
+
+  /* --- main grid: preview + aside ----------------------------------- */
+  main {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
   body.panel-collapsed main { grid-template-columns: minmax(0, 1fr) 0; }
-  #preview { min-width: 0; min-height: 0; border-right: 1px solid #cfd4dc; }
+  #preview {
+    min-width: 0;
+    min-height: 0;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+  }
   body.panel-collapsed #preview { border-right: 0; }
-  aside { min-height: 0; overflow: auto; background: #f8fafc; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
-  body.panel-collapsed aside { padding: 0; overflow: hidden; border: 0; }
+
+  /* --- inspector aside --------------------------------------------- */
+  aside {
+    min-height: 0;
+    overflow: auto;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+  }
+  body.panel-collapsed aside { overflow: hidden; }
   body.panel-collapsed aside > * { display: none; }
-  section { display: grid; gap: 8px; }
-  h2 { margin: 0; font-size: 12px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: 0; }
-  .row { display: flex; gap: 8px; align-items: center; min-width: 0; }
-  button, select, input[type=text], input[type=number] { height: 32px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #111827; font: inherit; font-size: 13px; }
-  button { padding: 0 10px; cursor: pointer; white-space: nowrap; }
-  button:hover { background: #f1f5f9; }
-  button:disabled, select:disabled, input:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  /* Collapsible section */
+  details.section {
+    border-bottom: 1px solid var(--border);
+  }
+  details.section[open] { background: var(--surface); }
+  details.section > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 11px 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    user-select: none;
+  }
+  details.section > summary::-webkit-details-marker { display: none; }
+  details.section > summary::before {
+    content: "";
+    width: 0;
+    height: 0;
+    border: 3px solid transparent;
+    border-left-color: var(--text-dim);
+    transform: rotate(0deg);
+    transition: transform 0.14s;
+    margin-right: 2px;
+  }
+  details.section[open] > summary::before { transform: rotate(90deg); }
+  details.section > summary:hover { color: var(--text); }
+  details.section .body {
+    padding: 0 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Key/value rows */
+  .kv {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 4px 12px;
+    align-items: baseline;
+    padding: 4px 0;
+    font-size: 12px;
+  }
+  .kv dt {
+    color: var(--text-muted);
+    font-weight: 400;
+    margin: 0;
+  }
+  .kv dd {
+    margin: 0;
+    color: var(--text);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .kv dd.mono { font-family: var(--font-mono); font-size: 11.5px; }
+
+  /* Form controls */
+  .row { display: flex; gap: 6px; align-items: center; min-width: 0; }
+  button, select, input[type=text], input[type=number] {
+    height: 28px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 12px;
+    transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+  }
+  button { padding: 0 10px; cursor: pointer; white-space: nowrap; font-weight: 500; }
+  button:hover { background: var(--surface-muted); }
+  button:active { background: var(--border); }
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  button.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+  button:disabled, select:disabled, input:disabled { opacity: 0.5; cursor: not-allowed; }
   select, input[type=text], input[type=number] { min-width: 0; padding: 0 8px; }
-  #address { flex: 1; }
+  input[type=text]:focus, input[type=number]:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  #address { flex: 1; font-family: var(--font-mono); font-size: 11.5px; }
   #sheet-select { width: 100%; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .state { margin: 0; padding: 10px; min-height: 116px; overflow: auto; background: #111827; color: #e5e7eb; border-radius: 6px; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
-  #loading { position: fixed; inset: 43px 320px 0 0; z-index: 10; display: grid; place-items: center; background: rgba(238,240,243,0.9); }
+
+  /* Chip-style quick jumps */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .chip {
+    height: 24px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface-muted);
+    color: var(--text);
+    font: inherit;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .chip:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  /* Syntax-highlighted state block (light) */
+  .state {
+    margin: 0;
+    padding: 10px 12px;
+    overflow: auto;
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: #374151;
+    white-space: pre;
+  }
+  .state .k { color: #6d28d9; }     /* keys: purple */
+  .state .s { color: #047857; }     /* strings: green */
+  .state .n { color: #b45309; }     /* numbers: amber */
+  .state .p { color: var(--text-dim); }   /* punctuation */
+
+  /* --- status bar -------------------------------------------------- */
+  footer.statusbar {
+    height: 28px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 14px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .statusbar .group { display: flex; align-items: center; gap: 6px; }
+  .statusbar .label { color: var(--text-dim); }
+  .statusbar .value { color: var(--text); font-weight: 500; }
+  .statusbar .value.mono { font-family: var(--font-mono); }
+  .statusbar .sep { width: 1px; height: 14px; background: var(--border); }
+  .statusbar .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+  /* --- loading overlay -------------------------------------------- */
+  #loading {
+    position: fixed;
+    inset: 48px 300px 28px 0;
+    z-index: 10;
+    display: grid;
+    place-items: center;
+    background: rgba(247, 248, 250, 0.9);
+    backdrop-filter: blur(2px);
+  }
   body.panel-collapsed #loading { right: 0; }
   #loading[hidden] { display: none; }
-  .loading-box { min-width: 280px; padding: 20px 24px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; box-shadow: 0 12px 28px rgba(15,23,42,0.12); }
-  .loading-title { margin: 0 0 10px; font-size: 14px; font-weight: 650; }
-  .loading-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #4b5563; }
-  .spinner { width: 16px; height: 16px; border: 2px solid #d1d5db; border-top-color: #2563eb; border-radius: 999px; animation: spin 0.8s linear infinite; flex: none; }
-  #loading-elapsed { margin-top: 8px; font-size: 11px; color: #6b7280; }
+  .loading-box {
+    min-width: 280px;
+    padding: 18px 22px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  }
+  .loading-title {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .loading-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 999px;
+    animation: spin 0.8s linear infinite;
+    flex: none;
+  }
+  #loading-elapsed { margin-top: 8px; font-size: 11px; color: var(--text-dim); }
   @keyframes spin { to { transform: rotate(360deg); } }
+
   @media (max-width: 860px) {
     main { grid-template-columns: 1fr; grid-template-rows: minmax(360px, 1fr) auto; }
     body.panel-collapsed main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) 0; }
-    #preview { border-right: 0; border-bottom: 1px solid #cfd4dc; }
+    #preview { border-right: 0; border-bottom: 1px solid var(--border); }
     body.panel-collapsed #preview { border-bottom: 0; }
     aside { max-height: 45vh; }
-    #loading { inset: 43px 0 45vh 0; }
-    body.panel-collapsed #loading { inset: 43px 0 0 0; }
+    #loading { inset: 48px 0 calc(45vh + 28px) 0; }
+    body.panel-collapsed #loading { inset: 48px 0 28px 0; }
   }
 </style>
 </head>
 <body>
 <header>
-  <b>xlcore app bindings</b>
-  <input type="file" id="picker" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-  <span id="status">Load an .xlsx file</span>
-  <button id="panel-toggle" type="button" aria-label="Collapse side panel" aria-expanded="true">›</button>
+  <span class="brand"><span class="brand-dot"></span>xlcore</span>
+  <label class="file-picker" for="picker">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <span>Open .xlsx</span>
+    <input type="file" id="picker" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+  </label>
+  <span id="status">Load an .xlsx file to begin</span>
+  <span class="spacer"></span>
+  <button id="panel-toggle" type="button" aria-label="Collapse side panel" aria-expanded="true" title="Toggle inspector">›</button>
 </header>
+
 <main>
   <div id="preview"></div>
   <aside>
-    <section>
-      <h2>Selection</h2>
-      <div class="row">
-        <input id="address" type="text" value="C5" aria-label="Cell address">
-        <button id="go-cell">Go</button>
+    <details class="section" open>
+      <summary>Selection</summary>
+      <div class="body">
+        <dl class="kv" id="sel-kv">
+          <dt>Active</dt><dd class="mono" id="sel-active">—</dd>
+          <dt>Range</dt><dd class="mono" id="sel-range">—</dd>
+          <dt>Size</dt><dd id="sel-size">—</dd>
+        </dl>
+        <div class="row">
+          <input id="address" type="text" value="C5" aria-label="Cell address" placeholder="e.g. F12 or B2:E8">
+          <button id="go-cell" class="primary">Go</button>
+        </div>
+        <div class="chips" id="quick-chips">
+          <button class="chip" data-cell="A1">A1</button>
+          <button class="chip" data-cell="C5">C5</button>
+          <button class="chip" data-cell="F12">F12</button>
+          <button class="chip" data-range="B2:E8">B2:E8</button>
+        </div>
       </div>
-      <div class="grid2">
-        <button data-cell="A1">A1</button>
-        <button data-cell="C5">C5</button>
-        <button data-cell="F12">F12</button>
-        <button data-range="B2:E8">B2:E8</button>
+    </details>
+
+    <details class="section" open>
+      <summary>Sheets</summary>
+      <div class="body">
+        <select id="sheet-select" disabled></select>
       </div>
-    </section>
-    <section>
-      <h2>Sheets</h2>
-      <select id="sheet-select" disabled></select>
-    </section>
-    <section>
-      <h2>Viewport</h2>
-      <div class="grid2">
-        <button id="zoom-out">Zoom -</button>
-        <button id="zoom-in">Zoom +</button>
-        <button id="scroll-active">Scroll active</button>
-        <button id="reset-view">Reset view</button>
+    </details>
+
+    <details class="section" open>
+      <summary>Viewport</summary>
+      <div class="body">
+        <div class="grid2">
+          <button id="zoom-out">Zoom −</button>
+          <button id="zoom-in">Zoom +</button>
+          <button id="scroll-active">Scroll active</button>
+          <button id="reset-view">Reset view</button>
+        </div>
       </div>
-    </section>
-    <section>
-      <h2>Live state</h2>
-      <pre id="state" class="state">No workbook loaded</pre>
-    </section>
+    </details>
+
+    <details class="section">
+      <summary>Live state</summary>
+      <div class="body">
+        <pre id="state" class="state">No workbook loaded</pre>
+      </div>
+    </details>
   </aside>
 </main>
+
+<footer class="statusbar">
+  <div class="group"><span class="label">Cell</span><span class="value mono" id="sb-cell">—</span></div>
+  <div class="sep"></div>
+  <div class="group"><span class="label">Range</span><span class="value mono" id="sb-range">—</span></div>
+  <div class="sep"></div>
+  <div class="group"><span class="label">Size</span><span class="value" id="sb-size">—</span></div>
+  <div class="right">
+    <span class="label">Sheet</span><span class="value" id="sb-sheet">—</span>
+    <div class="sep"></div>
+    <span class="label">Zoom</span><span class="value" id="sb-zoom">—</span>
+  </div>
+</footer>
+
 <div id="loading" role="status" aria-live="polite" hidden>
   <div class="loading-box">
-    <p class="loading-title">Loading workbook...</p>
+    <p class="loading-title">Loading workbook…</p>
     <div class="loading-row"><span class="spinner" aria-hidden="true"></span><span id="loading-stage">Loading preview</span></div>
     <div id="loading-elapsed">0.0s elapsed</div>
   </div>
@@ -123,6 +470,16 @@ const address = document.getElementById("address");
 const loading = document.getElementById("loading");
 const loadingStage = document.getElementById("loading-stage");
 const loadingElapsed = document.getElementById("loading-elapsed");
+
+const selActive = document.getElementById("sel-active");
+const selRange = document.getElementById("sel-range");
+const selSize = document.getElementById("sel-size");
+const sbCell = document.getElementById("sb-cell");
+const sbRange = document.getElementById("sb-range");
+const sbSize = document.getElementById("sb-size");
+const sbSheet = document.getElementById("sb-sheet");
+const sbZoom = document.getElementById("sb-zoom");
+
 let previewer = null;
 let elapsedTimer = null;
 
@@ -134,8 +491,15 @@ panelToggle.addEventListener("click", () => {
   requestAnimationFrame(() => previewer?.redraw());
 });
 
-function setStatus(text) {
-  status.textContent = text;
+function setStatus(text, pill) {
+  status.textContent = "";
+  if (pill) {
+    const p = document.createElement("span");
+    p.className = "status-pill";
+    p.textContent = pill;
+    status.appendChild(p);
+  }
+  status.appendChild(document.createTextNode(text));
 }
 
 function setLoadingStage(text) {
@@ -160,20 +524,52 @@ function finishLoading() {
   loading.hidden = true;
 }
 
+/** Tiny JSON syntax highlighter for the live-state block. */
+function highlightJSON(text) {
+  // Escape HTML first.
+  const esc = text.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  return esc
+    .replace(/("(?:\\.|[^"\\])*")(\s*:)/g, '<span class="k">$1</span><span class="p">$2</span>')
+    .replace(/: ("(?:\\.|[^"\\])*")/g, ': <span class="s">$1</span>')
+    .replace(/: (-?\d+\.?\d*)/g, ': <span class="n">$1</span>')
+    .replace(/([{}\[\],])/g, '<span class="p">$1</span>');
+}
+
 function renderState() {
   if (!previewer) {
     stateBox.textContent = "No workbook loaded";
+    selActive.textContent = "—";
+    selRange.textContent = "—";
+    selSize.textContent = "—";
+    sbCell.textContent = sbRange.textContent = sbSize.textContent = sbSheet.textContent = sbZoom.textContent = "—";
     return;
   }
   const state = previewer.getState();
   const sheet = previewer.getActiveSheet();
-  stateBox.textContent = JSON.stringify({
+  const activeAddr = formatCell(state.activeCell.r, state.activeCell.c);
+  const rangeAddr = formatSelection(state.selection);
+  const rows = state.selection.r2 - state.selection.r1 + 1;
+  const cols = state.selection.c2 - state.selection.c1 + 1;
+  const size = rows === 1 && cols === 1 ? "1 cell" : `${rows} × ${cols} (${rows * cols} cells)`;
+  const zoomPct = `${Math.round(state.zoom * 100)}%`;
+
+  selActive.textContent = activeAddr;
+  selRange.textContent = rangeAddr;
+  selSize.textContent = size;
+  sbCell.textContent = activeAddr;
+  sbRange.textContent = rangeAddr;
+  sbSize.textContent = size;
+  sbSheet.textContent = sheet.name;
+  sbZoom.textContent = zoomPct;
+
+  const payload = {
     sheet: sheet.name,
     sheetIndex: state.activeSheetIndex,
-    activeCell: formatCell(state.activeCell.r, state.activeCell.c),
-    selection: formatSelection(state.selection),
-    zoom: `${Math.round(state.zoom * 100)}%`,
-  }, null, 2);
+    activeCell: activeAddr,
+    selection: rangeAddr,
+    zoom: zoomPct,
+  };
+  stateBox.innerHTML = highlightJSON(JSON.stringify(payload, null, 2));
 }
 
 function populateSheets() {
@@ -237,6 +633,21 @@ function requirePreviewer() {
   return previewer;
 }
 
+function goFromAddress() {
+  try {
+    const raw = address.value.trim();
+    if (raw.includes(":")) {
+      requirePreviewer().selectRange(parseRange(raw), { scroll: true });
+    } else {
+      const cell = parseCell(raw);
+      requirePreviewer().selectCell(cell.r, cell.c, { scroll: true });
+    }
+    renderState();
+  } catch (error) {
+    setStatus(error.message || String(error));
+  }
+}
+
 picker.addEventListener("change", async () => {
   const file = picker.files && picker.files[0];
   if (!file) return;
@@ -259,7 +670,10 @@ picker.addEventListener("change", async () => {
     populateSheets();
     renderState();
     requestAnimationFrame(finishLoading);
-    setStatus(`${file.name} · ${previewer.layout.sheets.length} sheet(s) · ${((performance.now() - started) / 1000).toFixed(1)}s`);
+    setStatus(
+      `${previewer.layout.sheets.length} sheet(s) · ${((performance.now() - started) / 1000).toFixed(1)}s`,
+      file.name,
+    );
   } catch (error) {
     console.error(error);
     finishLoading();
@@ -267,15 +681,8 @@ picker.addEventListener("change", async () => {
   }
 });
 
-document.getElementById("go-cell").addEventListener("click", () => {
-  try {
-    const cell = parseCell(address.value);
-    requirePreviewer().selectCell(cell.r, cell.c, { scroll: true });
-    renderState();
-  } catch (error) {
-    setStatus(error.message || String(error));
-  }
-});
+document.getElementById("go-cell").addEventListener("click", goFromAddress);
+address.addEventListener("keydown", (e) => { if (e.key === "Enter") goFromAddress(); });
 
 document.querySelectorAll("[data-cell]").forEach((button) => {
   button.addEventListener("click", () => {
@@ -288,6 +695,7 @@ document.querySelectorAll("[data-cell]").forEach((button) => {
 
 document.querySelectorAll("[data-range]").forEach((button) => {
   button.addEventListener("click", () => {
+    address.value = button.dataset.range;
     requirePreviewer().selectRange(parseRange(button.dataset.range), { scroll: true });
     renderState();
   });
