@@ -10,5 +10,12 @@
   },
   "devDependencies": {
     "wrangler": "^4.71.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "skia-canvas",
+      "workerd"
+    ]
   }
 }
