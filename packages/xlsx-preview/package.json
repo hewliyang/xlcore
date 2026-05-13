@@ -9,7 +9,7 @@
   },
   "homepage": "https://github.com/hewliyang/xlcore#readme",
   "bugs": "https://github.com/hewliyang/xlcore/issues",
-  "license": "MIT OR Apache-2.0",
+  "license": "MIT",
   "author": "hewliyang",
   "keywords": [
     "xlsx",
