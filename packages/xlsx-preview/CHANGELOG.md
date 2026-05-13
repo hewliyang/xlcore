@@ -5,8 +5,16 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-05-13
+
 ### Fixed
 
+- Cross-origin worker URLs now work. When `workerUrl` resolves to a
+  different origin (e.g. a jsDelivr or unpkg CDN), the loader wraps the
+  script in a same-origin Blob shim before constructing the module worker,
+  so the documented `jsDelivrUrls()` / `unpkgUrls()` flow renders instead
+  of throwing `Failed to construct 'Worker': ... cannot be accessed from
+  origin`.
 - Workbooks from producers that use alternate threaded-comment namespace
   prefixes, including Google Sheets, now load without
   `unexpected tag while parsing PersonList` errors.

@@ -80,12 +80,29 @@ export async function createWorkbookPreviewerFromFile(
 }
 
 function createExtractionWorker(options: WorkbookLoaderOptions): Worker {
-  if (options.workerUrl) {
-    return new Worker(options.workerUrl, { type: "module" });
+  if (!options.workerUrl) {
+    return new Worker(new URL("./xlsxWorker.js", import.meta.url), {
+      type: "module",
+    });
   }
-  return new Worker(new URL("./xlsxWorker.js", import.meta.url), {
-    type: "module",
-  });
+  const url = new URL(options.workerUrl, location.href).href;
+  if (isCrossOrigin(url)) {
+    const shim = `import ${JSON.stringify(url)};`;
+    const blobUrl = URL.createObjectURL(new Blob([shim], { type: "text/javascript" }));
+    const worker = new Worker(blobUrl, { type: "module" });
+    queueMicrotask(() => URL.revokeObjectURL(blobUrl));
+    return worker;
+  }
+  return new Worker(url, { type: "module" });
+}
+
+function isCrossOrigin(url: string): boolean {
+  if (typeof location === "undefined") return false;
+  try {
+    return new URL(url, location.href).origin !== location.origin;
+  } catch {
+    return false;
+  }
 }
 
 function progress(options: WorkbookLoaderOptions, label: string): void {
