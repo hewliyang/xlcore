@@ -12,12 +12,13 @@ npm install @hewliyang/xlsx-preview
 ```ts
 import { createWorkbookPreviewerFromFile } from "@hewliyang/xlsx-preview/browser";
 
-const file = /* File from an <input type="file"> */;
 await createWorkbookPreviewerFromFile(container, file);
 ```
 
 The browser entry runs the Rust extractor as wasm inside a Web Worker, so the
-xlsx never leaves the page.
+xlsx never leaves the page. See the
+[`vanilla-js` examples](packages/xlsx-preview/examples/vanilla-js/) for both a
+no-build CDN demo and a Vite starter.
 
 ## react
 
@@ -27,23 +28,9 @@ import { ExcelPreviewer } from "@hewliyang/xlsx-preview/react";
 <ExcelPreviewer file={file} />;
 ```
 
-Vite and webpack 5 emit the worker and wasm asset automatically. If your
-setup does not, pass explicit asset URLs:
-
-```tsx
-import workerUrl from "@hewliyang/xlsx-preview/dist/xlsxWorker.js?url";
-import wasmBinaryUrl from "@hewliyang/xlsx-preview/dist/xlcore_wasm_bg.wasm?url";
-
-<ExcelPreviewer file={file} workerUrl={workerUrl} wasmBinaryUrl={wasmBinaryUrl} />;
-```
-
-For plain ESM pages, use CDN-hosted assets:
-
-```tsx
-import { jsDelivrUrls } from "@hewliyang/xlsx-preview/cdn";
-
-<ExcelPreviewer file={file} {...jsDelivrUrls("0.0.2")} />;
-```
+See the framework starters for full minimal projects:
+[`react-vite`](packages/xlsx-preview/examples/react-vite/) and
+[`nextjs`](packages/xlsx-preview/examples/nextjs/).
 
 ## node
 
@@ -67,29 +54,8 @@ xlsx-preview model.xlsx -o previews/{index}-{sheet}.png --all
 
 Live demos: <https://xlcore.pages.dev>.
 
-Runnable sources under
-[`packages/xlsx-preview/examples/`](packages/xlsx-preview/examples/):
-
-Plain HTML (no build step):
-
-- [`xlsx-app.html`](packages/xlsx-preview/examples/xlsx-app.html) — full
-  previewer app (file picker, sheet tabs, zoom).
-- [`xlsx-tiles.html`](packages/xlsx-preview/examples/xlsx-tiles.html) —
-  multi-workbook tiled previews.
-- [`xlsx-multi.html`](packages/xlsx-preview/examples/xlsx-multi.html) —
-  side-by-side panes.
-
-No-build CDN demo:
-
-- [`vanilla-js/demo.html`](packages/xlsx-preview/examples/vanilla-js/demo.html)
-  — single HTML file, opens straight from disk, loads code + wasm from
-  jsDelivr.
-
-Framework starters (`pnpm install && pnpm dev`):
-
-- [`vanilla-js/`](packages/xlsx-preview/examples/vanilla-js/) — Vite + plain JS.
-- [`react-vite/`](packages/xlsx-preview/examples/react-vite/) — Vite + React + TS.
-- [`nextjs/`](packages/xlsx-preview/examples/nextjs/) — Next.js App Router.
+For runnable examples and minimal starters, see
+[`packages/xlsx-preview/examples/`](packages/xlsx-preview/examples/).
 
 ## development
 
