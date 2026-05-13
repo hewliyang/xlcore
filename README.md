@@ -82,7 +82,7 @@ Plain HTML (no build step):
 No-build CDN demo:
 
 - [`vanilla-js/demo.html`](packages/xlsx-preview/examples/vanilla-js/demo.html)
-  — single HTML file, opens straight from disk, loads everything from
+  — single HTML file, opens straight from disk, loads code + wasm from
   jsDelivr.
 
 Framework starters (`pnpm install && pnpm dev`):

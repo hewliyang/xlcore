@@ -16,8 +16,8 @@ load `@hewliyang/xlsx-preview` from jsDelivr.
 ## No-build CDN demo
 
 - [`vanilla-js/demo.html`](./vanilla-js/demo.html) — the smallest possible
-  integration. Open the file in a browser; everything (code, worker,
-  wasm) is served from jsDelivr.
+  integration. Open the file in a browser; code and wasm are served from
+  jsDelivr. Uses main-thread extraction so it also works from `file://`.
 
 ## Framework starters
 

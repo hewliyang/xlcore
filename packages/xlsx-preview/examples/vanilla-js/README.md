@@ -6,11 +6,12 @@ Two flavors, pick one:
 
 [`demo.html`](./demo.html) loads everything from a CDN — just open it in
 a browser (or serve the folder statically) and pick an `.xlsx` file. No
-`npm install`, no bundler. This is the smallest possible integration
-(~30 lines of HTML + JS).
+`npm install`, no bundler.
 
-The CDN flow works thanks to the same-origin Blob worker shim added in
-0.0.4 — earlier versions throw on cross-origin module workers.
+Because double-clicked `file://` pages cannot start module workers in Chrome,
+this demo runs the wasm extractor on the main thread and then renders with
+`createWorkbookPreviewer`. For production apps, prefer the Vite starter below
+or the React / Next.js starters so extraction runs in a Worker.
 
 ## 2. Build-based starter (Vite)
 
@@ -37,7 +38,7 @@ Then open the printed URL and pick an `.xlsx` file.
 
 | File | Why |
 | --- | --- |
-| `demo.html` | No-build CDN version |
+| `demo.html` | No-build CDN version, works from `file://` |
 | `index.html` | Vite entry markup |
 | `src/main.js` | One call to `createWorkbookPreviewerFromFile` |
 | `vite.config.js` | `optimizeDeps.exclude` so the worker URL resolves in dev |

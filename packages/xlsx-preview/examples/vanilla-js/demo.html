@@ -16,18 +16,24 @@
     <div id="preview"></div>
 
     <script type="module">
-      import { createWorkbookPreviewerFromFile } from "https://esm.sh/@hewliyang/xlsx-preview@0.0.4/browser";
-      import { jsDelivrUrls } from "https://esm.sh/@hewliyang/xlsx-preview@0.0.4/cdn";
+      import { createWorkbookPreviewer } from "https://esm.sh/@hewliyang/xlsx-preview@0.0.4/previewer";
+      import initWasm, { extract_xlsx } from "https://cdn.jsdelivr.net/npm/@hewliyang/xlsx-preview@0.0.4/dist/xlcore_wasm.js";
 
-      const assets = jsDelivrUrls("0.0.4");
+      const wasmReady = initWasm({
+        module_or_path:
+          "https://cdn.jsdelivr.net/npm/@hewliyang/xlsx-preview@0.0.4/dist/xlcore_wasm_bg.wasm",
+      });
       const container = document.getElementById("preview");
       let previewer = null;
 
       document.getElementById("picker").addEventListener("change", async (event) => {
         const file = event.target.files?.[0];
         if (!file) return;
+        await wasmReady;
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const layout = extract_xlsx(bytes, undefined);
         previewer?.destroy();
-        previewer = await createWorkbookPreviewerFromFile(container, file, assets);
+        previewer = createWorkbookPreviewer(container, layout);
       });
     </script>
   </body>
