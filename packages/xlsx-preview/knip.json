@@ -1,6 +1,15 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["src/*.test.ts"],
+  "entry": [
+    "src/*.test.ts",
+    "src/browserLoader.ts",
+    "src/cdn.ts",
+    "src/cli.ts",
+    "src/index.ts",
+    "src/node.ts",
+    "src/react.ts",
+    "src/xlsxWorker.ts"
+  ],
   "project": ["src/**/*.ts"],
   "ignore": ["src/schema/Row.ts"],
   "ignoreBinaries": ["wasm-pack"],

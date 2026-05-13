@@ -19,14 +19,14 @@
             "fromColOffEmu": 0,
             "fromRow": 4,
             "fromRowOffEmu": 0,
-            "toCol": 7,
-            "toColOffEmu": 438150,
+            "toCol": 8,
+            "toColOffEmu": 228600,
             "toRow": 20,
             "toRowOffEmu": 0
           },
           "chart": {
             "type": "pie",
-            "title": "Q3 share — explicit slice colors",
+            "title": "Q3 share — default slice palette",
             "series": [
               {
                 "name": "Q3",
@@ -39,14 +39,7 @@
                   102.0,
                   88.0
                 ],
-                "valuesRef": "Sheet1!$B$2:$F$2",
-                "pointColors": [
-                  "#B22222",
-                  "#008080",
-                  "#DAA520",
-                  "#4B0082",
-                  "#20B2AA"
-                ]
+                "valuesRef": "Sheet1!$B$2:$F$2"
               }
             ],
             "categories": [

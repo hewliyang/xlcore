@@ -13,9 +13,7 @@ export function renderIntegerTokens(tokens: Tok[], intDigits: string, grouping: 
   // the standard Accounting format's zero section `_("$"* "-"??_)` render
   // as `"-  "` (dash + two blanks) instead of `"- 0"` for absolute zero.
   if (digits === "0") {
-    const hasZeroPlaceholder = tokens.some(
-      (t) => t.kind === "digit" && t.ch === "0",
-    );
+    const hasZeroPlaceholder = tokens.some((t) => t.kind === "digit" && t.ch === "0");
     if (!hasZeroPlaceholder) digits = "";
   }
 

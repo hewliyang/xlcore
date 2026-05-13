@@ -13,7 +13,8 @@
 // Number formatting reuses the same subset as the cell renderer, so axis
 // labels match cell-level "$#,##0" formatting.
 
-import type { Chart } from "./types.js";
+import type { Chart, ChartSeries } from "./types.js";
+import { activeThemeColor } from "./color.js";
 import {
   buildLabelText,
   buildStackedRows,
@@ -22,6 +23,7 @@ import {
   drawLabel,
   drawLegend,
   drawPlaceholderPlot,
+  measureVerticalLegendWidth,
   effectiveLabels,
   formatAxisValue,
   formatGeneral,
@@ -67,21 +69,82 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     cursorY += TITLE_FONT_SIZE + TITLE_PAD;
   }
 
-  // Legend strip (bottom default)
-  const legendH = chart.series.length > 0 ? LEGEND_FONT_SIZE + 14 : 0;
-  const legendRect: Rect = {
-    x: rect.x,
-    y: rect.y + rect.h - legendH,
-    w: rect.w,
-    h: legendH,
-  };
+  // Build the legend entry list up front so we can measure the side
+  // strip width when positioning at `l` / `r` / `tr`. Pie/doughnut
+  // legends are slice-keyed (one entry per category); everything else
+  // is series-keyed.
+  // `categories` / `pointColors` get `skip_serializing_if = Vec::is_empty`
+  // on the wire, so the renderer must treat them as optional even though
+  // the TS type calls them required arrays.
+  const cats = chart.categories ?? [];
+  const legendEntries: ChartSeries[] =
+    (chart.type === "pie" || chart.type === "doughnut") && chart.series.length > 0
+      ? (() => {
+          const s = chart.series[0]!;
+          const pointColors = s.pointColors ?? [];
+          const sliceCount = Math.max(s.values.length, cats.length);
+          return Array.from({ length: sliceCount }, (_, i) => ({
+            ...s,
+            name: cats[i] ?? `${i + 1}`,
+            color: pieSliceColor(i, pointColors),
+          }));
+        })()
+      : chart.series;
 
+  // ECMA-376 legend positions: t/b/l/r/tr. Default to bottom when
+  // unset. `tr` is Excel's "top-right" overlay; we treat it as `r`
+  // since we don't overlay legends today.
+  const legendPos = chart.series.length > 0 ? (chart.legendPos ?? "b") : null;
+  const legendVertical = legendPos === "l" || legendPos === "r" || legendPos === "tr";
+  let legendW = 0;
+  let legendH = 0;
+  if (legendPos !== null) {
+    if (legendVertical) {
+      legendW = measureVerticalLegendWidth(ctx, legendEntries);
+    } else {
+      legendH = LEGEND_FONT_SIZE + 14;
+    }
+  }
+
+  let legendRect: Rect = { x: 0, y: 0, w: 0, h: 0 };
   const plotRect: Rect = {
     x: rect.x + PLOT_PAD_LEFT,
     y: cursorY,
     w: rect.w - PLOT_PAD_LEFT - PLOT_PAD_RIGHT,
-    h: rect.y + rect.h - cursorY - legendH - 4,
+    h: rect.y + rect.h - cursorY - 4,
   };
+  switch (legendPos) {
+    case "t":
+      legendRect = { x: rect.x, y: cursorY, w: rect.w, h: legendH };
+      plotRect.y = cursorY + legendH;
+      plotRect.h = rect.y + rect.h - plotRect.y - 4;
+      break;
+    case "l":
+      legendRect = { x: rect.x + 4, y: cursorY, w: legendW, h: plotRect.h };
+      plotRect.x = rect.x + 4 + legendW + 8;
+      plotRect.w = rect.x + rect.w - plotRect.x - PLOT_PAD_RIGHT;
+      break;
+    case "r":
+    case "tr":
+      legendRect = {
+        x: rect.x + rect.w - legendW - 8,
+        y: cursorY,
+        w: legendW,
+        h: plotRect.h,
+      };
+      plotRect.w = legendRect.x - plotRect.x - 8;
+      break;
+    case "b":
+    default:
+      legendRect = {
+        x: rect.x,
+        y: rect.y + rect.h - legendH,
+        w: rect.w,
+        h: legendH,
+      };
+      plotRect.h = rect.y + rect.h - cursorY - legendH - 4;
+      break;
+  }
   if (plotRect.w <= 20 || plotRect.h <= 20) return;
 
   switch (chart.type) {
@@ -106,7 +169,9 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       drawPlaceholderPlot(ctx, chart, plotRect);
   }
 
-  if (legendH > 0) drawLegend(ctx, chart.series, legendRect);
+  if (legendPos !== null) {
+    drawLegend(ctx, legendEntries, legendRect, legendVertical ? "vertical" : "horizontal");
+  }
 }
 
 // ---------- bar/column ----------
@@ -120,7 +185,10 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     drawPlaceholderPlot(ctx, chart, rect);
     return;
   }
-  const categoryCount = Math.max(...series.map((s) => s.values.length), chart.categories.length);
+  const categoryCount = Math.max(
+    ...series.map((s) => s.values.length),
+    (chart.categories ?? []).length,
+  );
   if (categoryCount === 0) return;
 
   // Compute value range.
@@ -212,7 +280,7 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     const center = horizontal
       ? innerRect.y + (i + 0.5) * groupGap
       : innerRect.x + (i + 0.5) * groupGap;
-    const label = chart.categories[i] ?? `${i + 1}`;
+    const label = (chart.categories ?? [])[i] ?? `${i + 1}`;
     if (horizontal) {
       ctx.textAlign = "right";
       ctx.fillText(label, innerRect.x - 4, center);
@@ -386,7 +454,10 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     drawPlaceholderPlot(ctx, chart, rect);
     return;
   }
-  const categoryCount = Math.max(...series.map((s) => s.values.length), chart.categories.length);
+  const categoryCount = Math.max(
+    ...series.map((s) => s.values.length),
+    (chart.categories ?? []).length,
+  );
   if (categoryCount === 0) return;
 
   const stacked = chart.grouping === "stacked" || chart.grouping === "percentstacked";
@@ -482,7 +553,10 @@ function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     drawPlaceholderPlot(ctx, chart, rect);
     return;
   }
-  const categoryCount = Math.max(...series.map((s) => s.values.length), chart.categories.length);
+  const categoryCount = Math.max(
+    ...series.map((s) => s.values.length),
+    (chart.categories ?? []).length,
+  );
   if (categoryCount === 0) return;
 
   const stacked = chart.grouping !== "standard"; // default for area is stacked in Excel
@@ -562,6 +636,15 @@ function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
 
 // ---------- pie / doughnut ----------
 
+const DEFAULT_PIE_ACCENTS = ["#4472C4", "#ED7D31", "#A5A5A5", "#FFC000", "#5B9BD5", "#70AD47"];
+
+function pieSliceColor(index: number, pointColors: readonly (string | undefined)[]): string {
+  const explicit = pointColors[index];
+  if (explicit && explicit.length > 0) return explicit;
+  const accentIndex = 4 + (index % 6);
+  return activeThemeColor(accentIndex, DEFAULT_PIE_ACCENTS[index % DEFAULT_PIE_ACCENTS.length]!);
+}
+
 function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   // Pie uses series[0] only; data points become slices, one per category.
   const ser = chart.series[0];
@@ -583,9 +666,8 @@ function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): 
 
   // Excel cycles accents per slice, not per series. When the workbook
   // serialises explicit `<c:dPt>` fills we use those (extractor surfaces
-  // them as `series.pointColors[i]`); otherwise we fall back to a fixed
-  // 6-color palette mirroring the Office accent ramp.
-  const palette = ["#4472C4", "#ED7D31", "#A5A5A5", "#FFC000", "#5B9BD5", "#70AD47"];
+  // them as `series.pointColors[i]`); otherwise we cycle the workbook
+  // theme accents (theme indexes 4..9).
   const pointColors = ser.pointColors ?? [];
 
   // First pass: paint slices. Second pass: paint labels (so labels
@@ -598,8 +680,7 @@ function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): 
     if (v <= 0) continue;
     const sweep = (v / total) * Math.PI * 2;
     const end = start + sweep;
-    const explicit = pointColors[i];
-    ctx.fillStyle = explicit && explicit.length > 0 ? explicit : palette[i % palette.length]!;
+    ctx.fillStyle = pieSliceColor(i, pointColors);
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.arc(cx, cy, r, start, end);
@@ -661,7 +742,7 @@ function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     if (xs.length > 0) return xs.slice();
     // Fallback: index labels from chart.categories, parsed as numbers.
     return s.values.map((_, i) => {
-      const c = chart.categories[i];
+      const c = (chart.categories ?? [])[i];
       const n = c == null ? i + 1 : parseFloat(c);
       return Number.isFinite(n) ? n : i + 1;
     });

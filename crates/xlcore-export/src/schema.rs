@@ -602,6 +602,15 @@ pub struct DrawingAnchor {
     pub to_row: u32,
     #[cfg_attr(feature = "typescript", ts(type = "number"))]
     pub to_row_off_emu: i64,
+    /// `oneCellAnchor` width in EMU. When set, the renderer uses this value
+    /// instead of the approximated `to` cell.
+    #[cfg_attr(feature = "typescript", ts(type = "number | null", optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ext_emu_cx: Option<i64>,
+    /// `oneCellAnchor` height in EMU. See `ext_emu_cx`.
+    #[cfg_attr(feature = "typescript", ts(type = "number | null", optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ext_emu_cy: Option<i64>,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -638,6 +647,11 @@ pub struct Chart {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_format: Option<String>,
+    /// Number-format string for category-axis labels. When omitted, labels
+    /// are rendered as plain text.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub categories_format: Option<String>,
     /// `clustered`, `stacked`, `percentStacked`, `standard` (line/area).
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]

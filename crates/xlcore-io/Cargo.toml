@@ -9,3 +9,4 @@ description = "OOXML xlsx I/O facade over ooxmlsdk; preserves charts/CF/comments
 ooxmlsdk = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
+zip = { version = "8.6", default-features = false, features = ["deflate"] }

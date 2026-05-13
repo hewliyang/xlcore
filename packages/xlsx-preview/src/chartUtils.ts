@@ -122,10 +122,31 @@ export function drawCategoryAxis(
   // them on cat centers ((i+0.5)/n). The horizontal=false path here is
   // only used by line/area today.
   const denom = Math.max(1, categoryCount - 1);
+  // Decimate labels so they don't overlap into an unreadable bar.
+  // Walk forward, drawing a label only when the previous one's right
+  // edge is comfortably past the new one's left edge.
+  const fmt = chart.categoriesFormat;
+  const labels = Array.from({ length: categoryCount }, (_, i) => {
+    const raw = chart.categories[i] ?? `${i + 1}`;
+    if (!fmt) return raw;
+    const n = parseFloat(raw);
+    if (!Number.isFinite(n)) return raw;
+    return formatValue(n, fmt).text;
+  });
+  const minGapPx = 8;
+  let lastRight = -Infinity;
   for (let i = 0; i < categoryCount; i++) {
-    const x = inner.x + (i / denom) * inner.w;
-    const label = chart.categories[i] ?? `${i + 1}`;
-    ctx.fillText(label, x, inner.y + inner.h + 4);
+    const label = labels[i]!;
+    const w = ctx.measureText(label).width;
+    if (horizontal) {
+      ctx.fillText(label, inner.x - 4, inner.y + (i / denom) * inner.h);
+      continue;
+    }
+    const cx = inner.x + (i / denom) * inner.w;
+    const left = cx - w / 2;
+    if (left < lastRight + minGapPx) continue;
+    ctx.fillText(label, cx, inner.y + inner.h + 4);
+    lastRight = cx + w / 2;
   }
 }
 
@@ -141,12 +162,38 @@ export function withAlpha(color: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+// Import lazily so chartUtils remains a leaf module for callers that do not
+// need category-axis number formatting.
+import { formatValue } from "./numfmt.js";
+
 // ---------- legend ----------
 
-export function drawLegend(ctx: CanvasRenderingContext2D, series: ChartSeries[], rect: Rect): void {
+export function drawLegend(
+  ctx: CanvasRenderingContext2D,
+  series: ChartSeries[],
+  rect: Rect,
+  orientation: "horizontal" | "vertical" = "horizontal",
+): void {
   ctx.font = `${LEGEND_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   ctx.textBaseline = "middle";
   const swatchW = 10;
+  if (orientation === "vertical") {
+    // Stack one entry per line beside the plot area.
+    const lineH = LEGEND_FONT_SIZE + 6;
+    const totalH = series.length * lineH;
+    let y = rect.y + Math.max(0, (rect.h - totalH) / 2) + lineH / 2;
+    const x = rect.x;
+    for (let i = 0; i < series.length; i++) {
+      const s = series[i]!;
+      ctx.fillStyle = s.color ?? "#4472C4";
+      ctx.fillRect(x, y - swatchW / 2, swatchW, swatchW);
+      ctx.fillStyle = AXIS_LABEL_COLOR;
+      ctx.textAlign = "left";
+      ctx.fillText(s.name || `Series ${i + 1}`, x + swatchW + 4, y);
+      y += lineH;
+    }
+    return;
+  }
   const itemPad = 16;
   // Measure total width to center.
   const widths = series.map((s) => swatchW + 6 + ctx.measureText(s.name || "").width);
@@ -162,6 +209,23 @@ export function drawLegend(ctx: CanvasRenderingContext2D, series: ChartSeries[],
     ctx.fillText(s.name || `Series ${i + 1}`, x + swatchW + 4, y);
     x += widths[i]! + itemPad;
   }
+}
+
+/// Measure the width needed by a vertical legend column, including the
+/// swatch, gap, and widest label.
+export function measureVerticalLegendWidth(
+  ctx: CanvasRenderingContext2D,
+  series: ChartSeries[],
+): number {
+  if (series.length === 0) return 0;
+  ctx.font = `${LEGEND_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  const swatchW = 10;
+  let maxLabel = 0;
+  for (const s of series) {
+    const w = ctx.measureText(s.name || "").width;
+    if (w > maxLabel) maxLabel = w;
+  }
+  return Math.ceil(swatchW + 4 + maxLabel + 4);
 }
 
 // ---------- placeholder ----------

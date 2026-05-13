@@ -31,6 +31,11 @@ export type Chart = {
    */
   valueFormat?: string;
   /**
+   * Number-format string for category-axis labels. When omitted, labels are
+   * rendered as plain text.
+   */
+  categoriesFormat?: string;
+  /**
    * `clustered`, `stacked`, `percentStacked`, `standard` (line/area).
    */
   grouping?: string;

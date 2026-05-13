@@ -11,6 +11,8 @@ use std::path::Path;
 pub use ooxmlsdk::parts::spreadsheet_document::SpreadsheetDocument;
 pub use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as spreadsheetml;
 
+mod xmlns_normalize;
+
 /// Open an xlsx file from disk.
 pub fn open<P: AsRef<Path>>(path: P) -> anyhow::Result<SpreadsheetDocument> {
     let f = File::open(path.as_ref())?;
@@ -18,13 +20,19 @@ pub fn open<P: AsRef<Path>>(path: P) -> anyhow::Result<SpreadsheetDocument> {
 }
 
 /// Open an xlsx document from any seekable byte stream.
-pub fn open_reader<R: Read + Seek>(reader: R) -> anyhow::Result<SpreadsheetDocument> {
-    Ok(SpreadsheetDocument::new(reader)?)
+pub fn open_reader<R: Read + Seek>(mut reader: R) -> anyhow::Result<SpreadsheetDocument> {
+    let mut buf = Vec::new();
+    reader.read_to_end(&mut buf)?;
+    open_bytes(buf)
 }
 
 /// Open an xlsx document from in-memory bytes.
 pub fn open_bytes(bytes: Vec<u8>) -> anyhow::Result<SpreadsheetDocument> {
-    open_reader(std::io::Cursor::new(bytes))
+    // Some producers (e.g. Google Sheets) bind the threadedcomments namespaces
+    // to non-canonical prefixes such as `x18tc`. ooxmlsdk does literal prefix
+    // matching against `xltc`/`xltc2`, so we normalize before parsing.
+    let bytes = xmlns_normalize::normalize_xlsx(bytes)?;
+    Ok(SpreadsheetDocument::new(std::io::Cursor::new(bytes))?)
 }
 
 /// Save an xlsx document to disk.

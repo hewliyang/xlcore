@@ -61,16 +61,53 @@ pub fn extract(
                     to_col_off_emu: to.column_offset,
                     to_row: to.row_id as u32,
                     to_row_off_emu: to.row_offset,
+                    ext_emu_cx: None,
+                    ext_emu_cy: None,
                 };
                 let target = match a.two_cell_anchor_choice.as_ref()? {
-                    xdr::TwoCellAnchorChoice::XdrGraphicFrame(gf) => {
-                        // The chart `r:id` is in the graphicData's untyped
-                        // children: `<c:chart r:id="rId1"/>`. Regex it out.
-                        AnchorTarget::Chart(find_relationship_id(
-                            &gf.graphic.graphic_data.xml_children,
-                        )?)
-                    }
+                    xdr::TwoCellAnchorChoice::XdrGraphicFrame(gf) => AnchorTarget::Chart(
+                        find_relationship_id(&gf.graphic.graphic_data.xml_children)?,
+                    ),
                     xdr::TwoCellAnchorChoice::XdrPic(pic) => {
+                        let blip = pic.blip_fill.blip.as_ref()?;
+                        let embed = blip.embed.as_ref()?;
+                        AnchorTarget::Image(embed.as_str().to_string())
+                    }
+                    _ => return None,
+                };
+                Some((anchor, target))
+            }
+            xdr::WorksheetDrawingChoice::XdrOneCellAnchor(a) => {
+                // `oneCellAnchor` pins the upper-left to a cell + offset
+                // and sizes the drawing via a fixed EMU extent. We keep
+                // the exact extent in `ext_emu_*` for pixel-accurate
+                // rendering; the `to_*` fields are filled with a coarse
+                // cell-count approximation (default col 64px / row 20px)
+                // so grid expansion (minCols/minRows) still reserves
+                // roughly enough space for the chart.
+                let from = a.from_marker.as_ref()?;
+                let ext = a.extent.as_ref()?;
+                const EMU_PER_DEFAULT_COL: i64 = 64 * 9525;
+                const EMU_PER_DEFAULT_ROW: i64 = 20 * 9525;
+                let col_span = ((ext.cx + EMU_PER_DEFAULT_COL - 1) / EMU_PER_DEFAULT_COL).max(1);
+                let row_span = ((ext.cy + EMU_PER_DEFAULT_ROW - 1) / EMU_PER_DEFAULT_ROW).max(1);
+                let anchor = DrawingAnchor {
+                    from_col: from.column_id as u32,
+                    from_col_off_emu: from.column_offset,
+                    from_row: from.row_id as u32,
+                    from_row_off_emu: from.row_offset,
+                    to_col: from.column_id as u32 + col_span as u32,
+                    to_col_off_emu: 0,
+                    to_row: from.row_id as u32 + row_span as u32,
+                    to_row_off_emu: 0,
+                    ext_emu_cx: Some(ext.cx),
+                    ext_emu_cy: Some(ext.cy),
+                };
+                let target = match a.one_cell_anchor_choice.as_ref()? {
+                    xdr::OneCellAnchorChoice::XdrGraphicFrame(gf) => AnchorTarget::Chart(
+                        find_relationship_id(&gf.graphic.graphic_data.xml_children)?,
+                    ),
+                    xdr::OneCellAnchorChoice::XdrPic(pic) => {
                         let blip = pic.blip_fill.blip.as_ref()?;
                         let embed = blip.embed.as_ref()?;
                         AnchorTarget::Image(embed.as_str().to_string())
@@ -199,6 +236,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
     let mut series: Vec<ChartSeries> = Vec::new();
     let mut categories: Vec<String> = Vec::new();
     let mut _categories_ref: Option<String> = None;
+    let mut categories_format: Option<String> = None;
     let mut value_format: Option<String> = None;
 
     // Helper macro: extract the (categories, value_format) for the first
@@ -221,9 +259,10 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                 row.data_labels = extract_data_labels(ser.c_d_lbls.as_deref());
                 series.push(row);
                 if categories.is_empty() {
-                    let (cs, r) = ax_data_values(ser.c_cat.as_deref());
+                    let (cs, r, fmt) = ax_data_values(ser.c_cat.as_deref());
                     categories = cs;
                     cats_ref = r;
+                    categories_format = fmt;
                 }
                 if value_format.is_none() {
                     value_format = values_format(ser.c_val.as_deref());
@@ -317,9 +356,10 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                     series.push(row);
                     if categories.is_empty() {
                         // Stash the x-axis ref for axis labels (numeric).
-                        let (cs, r) = x_axis_values(ser.c_x_val.as_deref());
+                        let (cs, r, fmt) = x_axis_values(ser.c_x_val.as_deref());
                         categories = cs;
                         cats_ref = r;
+                        categories_format = fmt;
                     }
                     if value_format.is_none() {
                         value_format = y_values_format(ser.c_y_val.as_deref());
@@ -362,6 +402,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
         series,
         categories,
         categories_ref: _categories_ref,
+        categories_format,
         legend_pos,
         value_format,
         grouping,
@@ -537,17 +578,20 @@ fn extract_point_colors(
 
 /// Read string/number values out of a CategoryAxisData slot (used by both
 /// `c:cat` on bar/line/area/pie and `c:xVal` on scatter).
-fn ax_data_values(cat: Option<&c::CategoryAxisData>) -> (Vec<String>, Option<String>) {
+fn ax_data_values(
+    cat: Option<&c::CategoryAxisData>,
+) -> (Vec<String>, Option<String>, Option<String>) {
     let Some(cat) = cat else {
-        return (Vec::new(), None);
+        return (Vec::new(), None, None);
     };
     let Some(choice) = cat.category_axis_data_choice.as_ref() else {
-        return (Vec::new(), None);
+        return (Vec::new(), None, None);
     };
     match choice {
         c::CategoryAxisDataChoice::CStrRef(sr) => (
             string_cache_values(&sr.string_cache),
             Some(sr.formula.as_str().to_string()),
+            None,
         ),
         c::CategoryAxisDataChoice::CNumRef(nr) => {
             let vals = nr
@@ -560,13 +604,20 @@ fn ax_data_values(cat: Option<&c::CategoryAxisData>) -> (Vec<String>, Option<Str
                         .collect()
                 })
                 .unwrap_or_default();
-            (vals, Some(nr.formula.as_str().to_string()))
+            (
+                vals,
+                Some(nr.formula.as_str().to_string()),
+                nr.numbering_cache
+                    .as_ref()
+                    .and_then(|nc| nc.format_code.as_ref().map(|s| s.as_str().to_string())),
+            )
         }
         c::CategoryAxisDataChoice::CStrLit(lit) => (
             lit.c_pt
                 .iter()
                 .map(|p| p.numeric_value.as_str().to_string())
                 .collect(),
+            None,
             None,
         ),
         c::CategoryAxisDataChoice::CNumLit(lit) => (
@@ -575,8 +626,9 @@ fn ax_data_values(cat: Option<&c::CategoryAxisData>) -> (Vec<String>, Option<Str
                 .map(|p| p.numeric_value.as_str().to_string())
                 .collect(),
             None,
+            lit.format_code.as_ref().map(|s| s.as_str().to_string()),
         ),
-        _ => (Vec::new(), None),
+        _ => (Vec::new(), None, None),
     }
 }
 
@@ -650,17 +702,18 @@ fn y_values_format(v: Option<&c::YValues>) -> Option<String> {
     }
 }
 
-fn x_axis_values(x: Option<&c::XValues>) -> (Vec<String>, Option<String>) {
+fn x_axis_values(x: Option<&c::XValues>) -> (Vec<String>, Option<String>, Option<String>) {
     let Some(x) = x else {
-        return (Vec::new(), None);
+        return (Vec::new(), None, None);
     };
     let Some(choice) = x.x_values_choice.as_ref() else {
-        return (Vec::new(), None);
+        return (Vec::new(), None, None);
     };
     match choice {
         c::XValuesChoice::CStrRef(sr) => (
             string_cache_values(&sr.string_cache),
             Some(sr.formula.as_str().to_string()),
+            None,
         ),
         c::XValuesChoice::CNumRef(nr) => {
             let vals = nr
@@ -673,13 +726,20 @@ fn x_axis_values(x: Option<&c::XValues>) -> (Vec<String>, Option<String>) {
                         .collect()
                 })
                 .unwrap_or_default();
-            (vals, Some(nr.formula.as_str().to_string()))
+            (
+                vals,
+                Some(nr.formula.as_str().to_string()),
+                nr.numbering_cache
+                    .as_ref()
+                    .and_then(|nc| nc.format_code.as_ref().map(|s| s.as_str().to_string())),
+            )
         }
         c::XValuesChoice::CStrLit(lit) => (
             lit.c_pt
                 .iter()
                 .map(|p| p.numeric_value.as_str().to_string())
                 .collect(),
+            None,
             None,
         ),
         c::XValuesChoice::CNumLit(lit) => (
@@ -688,8 +748,9 @@ fn x_axis_values(x: Option<&c::XValues>) -> (Vec<String>, Option<String>) {
                 .map(|p| p.numeric_value.as_str().to_string())
                 .collect(),
             None,
+            lit.format_code.as_ref().map(|s| s.as_str().to_string()),
         ),
-        _ => (Vec::new(), None),
+        _ => (Vec::new(), None, None),
     }
 }
 

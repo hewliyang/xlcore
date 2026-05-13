@@ -13,4 +13,13 @@ export type DrawingAnchor = {
   toColOffEmu: number;
   toRow: number;
   toRowOffEmu: number;
+  /**
+   * `oneCellAnchor` width in EMU. When set, the renderer uses this value
+   * instead of the approximated `to` cell.
+   */
+  extEmuCx?: number | null;
+  /**
+   * `oneCellAnchor` height in EMU. See `extEmuCx`.
+   */
+  extEmuCy?: number | null;
 };

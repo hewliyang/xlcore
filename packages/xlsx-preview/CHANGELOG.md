@@ -5,6 +5,34 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Workbooks from producers that use alternate threaded-comment namespace
+  prefixes, including Google Sheets, now load without
+  `unexpected tag while parsing PersonList` errors.
+- Data-bar conditional formats that use Excel's `<x14:color>` fill-color
+  element now load without `unexpected tag while parsing DataBar` errors.
+- Charts anchored with `<xdr:oneCellAnchor>`, including Excel's
+  "move but don't size with cells" drawings, are now rendered.
+- Chart data resolution now ignores text cells, so shared-string indexes are
+  no longer treated as numeric series values.
+- Chart series backed by padded array-formula ranges are trimmed at the last numeric value instead of rendering an empty zero-value tail.
+- Pie and doughnut legends now render one entry per category, using the same per-slice colors as the chart (`c:dPt` overrides, otherwise theme accents).
+- Dense line and area chart category labels are thinned to avoid overlap.
+- Numeric category-axis labels, including date serials, now use the chart cache or source cell number format.
+
+### Changed
+
+- Legends now honor the chart's `legendPos` value, including vertical
+  left and right legends.
+
+### Added
+
+- `DrawingAnchor.extEmuCx` and `extEmuCy` expose explicit
+  `oneCellAnchor` extents to the renderer.
+- `Chart.categoriesFormat` exposes the number format used for category-axis
+  labels.
+
 ## [0.0.3] - 2026-05-12
 
 ### Fixed

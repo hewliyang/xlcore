@@ -183,6 +183,79 @@ pub fn extract_doc_with_options(
     Ok(layout)
 }
 
+/// Read a numeric value out of a cell for chart-data purposes. Text
+/// cells (`kind = "s"`/`"str"`/`"inline"`) are rejected even when
+/// their `value` parses as a number; shared-string indexes are not chart
+/// data. Booleans and errors are also
+/// excluded so they don't silently coerce to 0/1.
+fn chart_cell_to_number(target: &Cell) -> Option<f64> {
+    match target.kind.as_str() {
+        "n" | "f" => target.value.as_ref().and_then(|v| v.parse::<f64>().ok()),
+        _ => None,
+    }
+}
+
+/// Trim trailing `None`s off a value vector. Common with Google
+/// Sheets-style array formulas (`IF(B28:B2218="","",...)`) that pad an
+/// unbounded chart reference with empty strings; without this the
+/// renderer sees `[v1, ..., vN, 0, 0, ..., 0]` and flatlines.
+fn trim_trailing_empties<T>(mut values: Vec<Option<T>>) -> Vec<Option<T>> {
+    if let Some(last) = values.iter().rposition(Option::is_some) {
+        values.truncate(last + 1);
+        values
+    } else {
+        Vec::new()
+    }
+}
+
+/// Resolve the effective number-format code for a cell, walking
+/// `cell.style_index -> cell_xfs[i].num_fmt_id -> num_fmts[].format_code`
+/// and falling back to the built-in OOXML format table (ids 0..49).
+fn cell_format_code(cell: &Cell, styles: &Styles) -> Option<String> {
+    let style_idx = cell.style_index? as usize;
+    let xf = styles.cell_xfs.get(style_idx)?;
+    let fmt_id = xf.num_fmt_id?;
+    if let Some(nf) = styles.num_fmts.iter().find(|f| f.id == fmt_id) {
+        return Some(nf.format_code.clone());
+    }
+    builtin_num_fmt(fmt_id).map(str::to_string)
+}
+
+/// ECMA-376 Part 1 §18.8.30 — built-in number-format ids. Only the
+/// subset that's actually useful for chart axis labels; unknown ids
+/// fall back to `None` and the renderer renders the raw value.
+fn builtin_num_fmt(id: u32) -> Option<&'static str> {
+    Some(match id {
+        0 => "General",
+        1 => "0",
+        2 => "0.00",
+        3 => "#,##0",
+        4 => "#,##0.00",
+        9 => "0%",
+        10 => "0.00%",
+        11 => "0.00E+00",
+        14 => "m/d/yyyy",
+        15 => "d-mmm-yy",
+        16 => "d-mmm",
+        17 => "mmm-yy",
+        18 => "h:mm AM/PM",
+        19 => "h:mm:ss AM/PM",
+        20 => "h:mm",
+        21 => "h:mm:ss",
+        22 => "m/d/yyyy h:mm",
+        37 => "#,##0 ;(#,##0)",
+        38 => "#,##0 ;[Red](#,##0)",
+        39 => "#,##0.00;(#,##0.00)",
+        40 => "#,##0.00;[Red](#,##0.00)",
+        45 => "mm:ss",
+        46 => "[h]:mm:ss",
+        47 => "mmss.0",
+        48 => "##0.0E+0",
+        49 => "@",
+        _ => return None,
+    })
+}
+
 /// After all sheets are extracted, resolve any `Sheet!$A$1:$B$2`-style
 /// references in chart series/categories that didn't come with cached
 /// numbers. Office writes the cache most of the time, but not always --
@@ -214,9 +287,7 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
         })
     };
 
-    let read_number = |target: &Cell| -> Option<f64> {
-        target.value.as_ref().and_then(|v| v.parse::<f64>().ok())
-    };
+    let read_number = chart_cell_to_number;
 
     // Helpers: resolve range -> Vec of cells in row-major order.
     let collect_cells = |sheets: &[Sheet],
@@ -247,6 +318,7 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
 
     let snapshot_sheets = layout.sheets.clone();
     let sst = layout.shared_strings.clone();
+    let styles_snapshot = layout.styles.clone();
 
     for sheet in layout.sheets.iter_mut() {
         for drawing in sheet.drawings.iter_mut() {
@@ -255,10 +327,20 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
             };
 
             // categories
-            if chart.categories.is_empty() {
-                if let Some(formula) = &chart.categories_ref {
-                    if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
-                        let cells = collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
+            if let Some(formula) = &chart.categories_ref {
+                if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
+                    let cells = collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
+                    // Pick up the format string from the first populated
+                    // referenced cell even when chart XML already supplied a
+                    // value cache. Producers often cache numeric category
+                    // values but omit <c:formatCode>, and date serial labels
+                    // need the source-cell style to render correctly.
+                    if chart.categories_format.is_none() {
+                        if let Some(Some(cell)) = cells.iter().find(|c| c.is_some()) {
+                            chart.categories_format = cell_format_code(cell, &styles_snapshot);
+                        }
+                    }
+                    if chart.categories.is_empty() {
                         chart.categories = cells
                             .into_iter()
                             .map(|cell| {
@@ -292,10 +374,12 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
                         if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
                             let cells =
                                 collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
-                            ser.values = cells
+                            let opt: Vec<Option<f64>> = cells
                                 .into_iter()
-                                .map(|cell| cell.as_ref().and_then(read_number).unwrap_or(0.0))
+                                .map(|cell| cell.as_ref().and_then(read_number))
                                 .collect();
+                            let trimmed = trim_trailing_empties(opt);
+                            ser.values = trimmed.into_iter().map(|v| v.unwrap_or(0.0)).collect();
                         }
                     }
                 }
@@ -304,13 +388,29 @@ fn resolve_chart_refs(layout: &mut WorkbookLayout) {
                         if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
                             let cells =
                                 collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
-                            ser.x_values = cells
+                            let opt: Vec<Option<f64>> = cells
                                 .into_iter()
-                                .map(|cell| cell.as_ref().and_then(read_number).unwrap_or(0.0))
+                                .map(|cell| cell.as_ref().and_then(read_number))
                                 .collect();
+                            let trimmed = trim_trailing_empties(opt);
+                            ser.x_values = trimmed.into_iter().map(|v| v.unwrap_or(0.0)).collect();
                         }
                     }
                 }
+            }
+
+            // Categories are read 1:1 from their ref but the parallel
+            // value series may have been trimmed. Excel pairs them by
+            // index, so trim categories down to the longest series so
+            // we don't render N extra ghost points along the x-axis.
+            let max_series_len = chart
+                .series
+                .iter()
+                .map(|s| s.values.len())
+                .max()
+                .unwrap_or(0);
+            if chart.categories.len() > max_series_len {
+                chart.categories.truncate(max_series_len);
             }
         }
     }
@@ -349,14 +449,15 @@ fn resolve_sparkline_refs(layout: &mut WorkbookLayout) {
         let groups_len = layout.sheets[sheet_idx].sparkline_groups.len();
         for gi in 0..groups_len {
             let mut all_values: Vec<f64> = Vec::new();
-            let spark_count = layout.sheets[sheet_idx].sparkline_groups[gi].sparklines.len();
+            let spark_count = layout.sheets[sheet_idx].sparkline_groups[gi]
+                .sparklines
+                .len();
             for si in 0..spark_count {
                 let formula = layout.sheets[sheet_idx].sparkline_groups[gi].sparklines[si]
                     .formula
                     .clone();
                 let Some(formula) = formula else { continue };
-                let Some((sheet_name, r1, c1, r2, c2)) =
-                    parse_sparkline_ref(&formula, &host_name)
+                let Some((sheet_name, r1, c1, r2, c2)) = parse_sparkline_ref(&formula, &host_name)
                 else {
                     continue;
                 };
@@ -381,7 +482,8 @@ fn resolve_sparkline_refs(layout: &mut WorkbookLayout) {
                     g.group_min = Some(all_values.iter().cloned().fold(f64::INFINITY, f64::min));
                 }
                 if g.max_axis_type == "group" {
-                    g.group_max = Some(all_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
+                    g.group_max =
+                        Some(all_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
                 }
             }
         }
@@ -556,9 +658,7 @@ pub(crate) fn text_run_from(r: &xspread::Run, text: String) -> TextRun {
 /// Map ooxmlsdk's `FontSchemeValues` to a wire string. `None`/`"none"`
 /// returns `None` so the field is omitted (matches the OOXML default and
 /// keeps the JSON small).
-pub(crate) fn font_scheme_variant(
-    v: xspread::FontSchemeValues,
-) -> Option<String> {
+pub(crate) fn font_scheme_variant(v: xspread::FontSchemeValues) -> Option<String> {
     use xspread::FontSchemeValues as S;
     match v {
         S::None => None,
@@ -570,9 +670,7 @@ pub(crate) fn font_scheme_variant(
 /// Map ooxmlsdk's `VerticalAlignmentRunValues` to a wire string.
 /// `Baseline` returns `None` so the field is omitted (matches the OOXML
 /// default and keeps JSON tidy).
-pub(crate) fn vert_align_variant(
-    v: xspread::VerticalAlignmentRunValues,
-) -> Option<String> {
+pub(crate) fn vert_align_variant(v: xspread::VerticalAlignmentRunValues) -> Option<String> {
     use xspread::VerticalAlignmentRunValues as V;
     match v {
         V::Baseline => None,
@@ -584,9 +682,7 @@ pub(crate) fn vert_align_variant(
 /// Map an `Option<UnderlineValues>` from ooxmlsdk to one of the OOXML
 /// `<u val="..."/>` strings. `None` (no `val` attr) returns `None` and
 /// the caller treats it as the default `single`.
-pub(crate) fn underline_variant(
-    v: Option<xspread::UnderlineValues>,
-) -> Option<&'static str> {
+pub(crate) fn underline_variant(v: Option<xspread::UnderlineValues>) -> Option<&'static str> {
     use xspread::UnderlineValues as U;
     let v = v?;
     Some(match v {
@@ -609,4 +705,116 @@ fn is_unstyled_run(r: &TextRun) -> bool {
         && r.vert_align.is_none()
         && r.family.is_none()
         && r.scheme.is_none()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Build a `Cell` containing the fields used by the chart helpers.
+    fn cell(kind: &str, value: Option<&str>, style_index: Option<u32>) -> Cell {
+        Cell {
+            r: 1,
+            c: 1,
+            kind: kind.to_string(),
+            value: value.map(str::to_string),
+            formula: None,
+            style_index,
+            runs: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn chart_cell_to_number_accepts_only_numeric_cells() {
+        assert_eq!(
+            chart_cell_to_number(&cell("n", Some("42.5"), None)),
+            Some(42.5)
+        );
+        assert_eq!(
+            chart_cell_to_number(&cell("f", Some("-3"), None)),
+            Some(-3.0)
+        );
+
+        // Regression: `t="s"` cells store the SST index in <v>; treating
+        // that as a number turns header strings into bogus data points
+        // (notably the doughnut header that came back as a 50% slice).
+        assert_eq!(chart_cell_to_number(&cell("s", Some("23"), None)), None);
+        assert_eq!(
+            chart_cell_to_number(&cell("inline", Some("12"), None)),
+            None
+        );
+        assert_eq!(chart_cell_to_number(&cell("str", Some("7"), None)), None);
+
+        assert_eq!(chart_cell_to_number(&cell("b", Some("1"), None)), None);
+        assert_eq!(
+            chart_cell_to_number(&cell("e", Some("#DIV/0!"), None)),
+            None
+        );
+        assert_eq!(
+            chart_cell_to_number(&cell("n", Some("not numeric"), None)),
+            None
+        );
+    }
+
+    #[test]
+    fn trim_trailing_empties_preserves_interior_gaps() {
+        assert_eq!(
+            trim_trailing_empties(vec![Some(1.0), None, Some(3.0), None, None]),
+            vec![Some(1.0), None, Some(3.0)]
+        );
+        assert_eq!(
+            trim_trailing_empties(vec![Some(1.0), Some(2.0), None, None]),
+            vec![Some(1.0), Some(2.0)]
+        );
+        assert_eq!(
+            trim_trailing_empties(vec![None, None]),
+            Vec::<Option<f64>>::new()
+        );
+    }
+
+    fn styles_with(num_fmts: Vec<(u32, &str)>, cell_xfs: Vec<Option<u32>>) -> Styles {
+        Styles {
+            num_fmts: num_fmts
+                .into_iter()
+                .map(|(id, code)| NumberFormat {
+                    id,
+                    format_code: code.to_string(),
+                })
+                .collect(),
+            cell_xfs: cell_xfs
+                .into_iter()
+                .map(|nf| CellFormat {
+                    num_fmt_id: nf,
+                    ..Default::default()
+                })
+                .collect(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn cell_format_code_resolves_custom_and_builtin_formats() {
+        let styles = styles_with(vec![(164, "mmm d, yyyy")], vec![Some(164)]);
+        let c = cell("n", Some("45974.66"), Some(0));
+        assert_eq!(
+            cell_format_code(&c, &styles).as_deref(),
+            Some("mmm d, yyyy")
+        );
+
+        let styles = styles_with(vec![], vec![Some(14)]);
+        let c = cell("n", Some("45974"), Some(0));
+        assert_eq!(cell_format_code(&c, &styles).as_deref(), Some("m/d/yyyy"));
+    }
+
+    #[test]
+    fn cell_format_code_returns_none_without_a_supported_format() {
+        let styles = styles_with(vec![], vec![Some(14)]);
+        assert_eq!(cell_format_code(&cell("n", Some("1"), None), &styles), None);
+
+        let styles = styles_with(vec![], vec![Some(999)]);
+        assert_eq!(
+            cell_format_code(&cell("n", Some("1"), Some(0)), &styles),
+            None
+        );
+    }
 }

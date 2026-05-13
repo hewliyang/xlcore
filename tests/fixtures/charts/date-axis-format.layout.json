@@ -3,8 +3,8 @@
     {
       "index": 0,
       "name": "Sheet1",
-      "maxRow": 2,
-      "maxCol": 6,
+      "maxRow": 5,
+      "maxCol": 2,
       "defaultColWidthPx": 66.96094,
       "defaultRowHeightPx": 20.0,
       "cols": [],
@@ -17,83 +17,73 @@
           "anchor": {
             "fromCol": 0,
             "fromColOffEmu": 0,
-            "fromRow": 4,
-            "fromRowOffEmu": 0,
-            "toCol": 7,
-            "toColOffEmu": 438150,
-            "toRow": 20,
-            "toRowOffEmu": 0
+            "fromRow": 5,
+            "fromRowOffEmu": 95250,
+            "toCol": 9,
+            "toColOffEmu": 19050,
+            "toRow": 21,
+            "toRowOffEmu": 95250
           },
           "chart": {
-            "type": "pie",
-            "title": "Q3 share — explicit slice colors",
+            "type": "line",
+            "title": "Revenue by date",
             "series": [
               {
-                "name": "Q3",
-                "nameRef": "Sheet1!$A$2",
+                "name": "Revenue",
+                "nameRef": "Sheet1!$B$1",
                 "color": "#4F81BD",
                 "values": [
+                  120.0,
+                  138.0,
                   151.0,
-                  121.0,
-                  172.0,
-                  102.0,
-                  88.0
+                  169.0
                 ],
-                "valuesRef": "Sheet1!$B$2:$F$2",
-                "pointColors": [
-                  "#B22222",
-                  "#008080",
-                  "#DAA520",
-                  "#4B0082",
-                  "#20B2AA"
-                ]
+                "valuesRef": "Sheet1!$B$2:$B$5"
               }
             ],
             "categories": [
-              "North",
-              "South",
-              "East",
-              "West",
-              "Central"
+              "45658",
+              "45689",
+              "45717",
+              "45748"
             ],
-            "categoriesRef": "Sheet1!$B$1:$F$1",
+            "categoriesRef": "Sheet1!$A$2:$A$5",
             "legendPos": "b",
             "valueFormat": "General",
-            "categoriesFormat": "General"
+            "categoriesFormat": "mmm d",
+            "grouping": "standard"
           }
         }
       ],
       "cells": {
-        "count": 12,
-        "r": "AQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAgAAAAIAAAACAAAAAgAAAAIAAAACAAAA",
-        "c": "AQAAAAIAAAADAAAABAAAAAUAAAAGAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAA",
-        "kind": "AQEBAQEBAQAAAAAA",
-        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAA",
-        "formulaIdx": "////////////////////////////////////////////////////////////////",
-        "styleIdx": "AQAAAAEAAAABAAAAAQAAAAEAAAABAAAA////////////////////////////////",
-        "runsIdx": "////////////////////////////////////////////////////////////////",
-        "rowPtr": "AAAAAAYAAAAMAAAA"
+        "count": 10,
+        "r": "AQAAAAEAAAACAAAAAgAAAAMAAAADAAAABAAAAAQAAAAFAAAABQAAAA==",
+        "c": "AQAAAAIAAAABAAAAAgAAAAEAAAACAAAAAQAAAAIAAAABAAAAAgAAAA==",
+        "kind": "AQEAAAAAAAAAAA==",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAA==",
+        "formulaIdx": "/////////////////////////////////////////////////////w==",
+        "styleIdx": "AQAAAAEAAAACAAAA/////wIAAAD/////AgAAAP////8CAAAA/////w==",
+        "runsIdx": "/////////////////////////////////////////////////////w==",
+        "rowPtr": "AAAAAAIAAAAEAAAABgAAAAgAAAAKAAAA"
       },
       "rowMeta": {
-        "count": 2,
-        "index": "AQAAAAIAAAA=",
-        "heightPx": "AACgQQAAoEE=",
-        "styleIdx": "//////////8=",
-        "hidden": "AAA="
+        "count": 5,
+        "index": "AQAAAAIAAAADAAAABAAAAAUAAAA=",
+        "heightPx": "AACgQQAAoEEAAKBBAACgQQAAoEE=",
+        "styleIdx": "//////////////////////////8=",
+        "hidden": "AAAAAAA="
       },
       "valuePool": [
         "0",
         "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
+        "45658",
+        "120",
+        "45689",
+        "138",
+        "45717",
         "151",
-        "121",
-        "172",
-        "102",
-        "88"
+        "45748",
+        "169"
       ]
     }
   ],
@@ -110,6 +100,10 @@
       {
         "name": "Calibri",
         "bold": true,
+        "scheme": "minor"
+      },
+      {
+        "name": "Calibri",
         "scheme": "minor"
       }
     ],
@@ -139,27 +133,29 @@
         "borderId": 0,
         "numFmtId": 0,
         "verticalAlignment": "top"
+      },
+      {
+        "fontId": 2,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 15975,
+        "verticalAlignment": "top"
       }
     ],
-    "numFmts": [],
+    "numFmts": [
+      {
+        "id": 15975,
+        "formatCode": "mmm d"
+      }
+    ],
     "defaultFont": "Calibri",
     "defaultFontSize": 11.0
   },
   "sharedStrings": [
-    "Quarter",
-    "North",
-    "South",
-    "East",
-    "West",
-    "Central",
-    "Q3"
+    "Date",
+    "Revenue"
   ],
   "sharedStringRuns": [
-    [],
-    [],
-    [],
-    [],
-    [],
     [],
     []
   ],

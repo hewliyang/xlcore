@@ -75,7 +75,10 @@ function parseArgs(argv: string[]): CliOptions {
     throw new Error("--all cannot be combined with --sheet or --sheet-index");
   if (!Number.isFinite(options.scale) || options.scale <= 0)
     throw new Error(`Invalid --scale: ${options.scale}`);
-  if (options.sheetIndex !== undefined && (!Number.isInteger(options.sheetIndex) || options.sheetIndex < 0))
+  if (
+    options.sheetIndex !== undefined &&
+    (!Number.isInteger(options.sheetIndex) || options.sheetIndex < 0)
+  )
     throw new Error(`Invalid --sheet-index: ${options.sheetIndex}`);
   return options;
 }
@@ -94,8 +97,16 @@ async function main(): Promise<void> {
     const layout = await loadWorkbookFromXlsx(input);
     const rendered = [];
     for (let i = 0; i < layout.sheets.length; i++) {
-      const output = outputForSheet(resolve(options.output!), layout.sheets[i]?.name ?? `Sheet${i + 1}`, i);
-      const png = await renderToPng(layout, { range: options.range, sheetIndex: i, scale: options.scale });
+      const output = outputForSheet(
+        resolve(options.output!),
+        layout.sheets[i]?.name ?? `Sheet${i + 1}`,
+        i,
+      );
+      const png = await renderToPng(layout, {
+        range: options.range,
+        sheetIndex: i,
+        scale: options.scale,
+      });
       await mkdir(dirname(output), { recursive: true });
       await writeFile(output, png);
       rendered.push({ sheetIndex: i, sheet: layout.sheets[i]?.name, output, bytes: png.length });
@@ -136,7 +147,8 @@ function workbookInfo(input: string, layout: Awaited<ReturnType<typeof loadWorkb
       name: sheet.name,
       maxRow: sheet.maxRow,
       maxCol: sheet.maxCol,
-      usedRange: sheet.maxRow > 0 && sheet.maxCol > 0 ? `A1:${colName(sheet.maxCol)}${sheet.maxRow}` : null,
+      usedRange:
+        sheet.maxRow > 0 && sheet.maxCol > 0 ? `A1:${colName(sheet.maxCol)}${sheet.maxRow}` : null,
       cells: sheet.cells?.count ?? 0,
       tables: sheet.tables?.length ?? 0,
       drawings: sheet.drawings?.length ?? 0,

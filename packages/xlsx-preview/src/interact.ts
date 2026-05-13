@@ -8,8 +8,9 @@
 // Interaction state (zoom value, width/height overrides) lives outside the
 // renderer; the host owns it and calls `redraw()` whenever interact updates
 // the maps. This keeps the layout JSON immutable.
-import type { Sheet, WorkbookLayout, Comment, Hyperlink } from "./types.js";
+import type { Sheet, WorkbookLayout } from "./types.js";
 import { buildGrid, frozenDims } from "./render.js";
+import { createAnnotationLayer } from "./interactAnnotations.js";
 import {
   computeOutlineRuns,
   outlineButtonHits,
@@ -98,12 +99,10 @@ export function attachInteractivity(
   // (resolved through merges); we use it as the fixed corner while the
   // opposite corner tracks the pointer. `kind` distinguishes data-area
   // rectangle drags from header-strip column/row range drags.
-  let selDrag:
-    | {
-        kind: "cell" | "col" | "row";
-        anchor: { r: number; c: number };
-      }
-    | null = null;
+  let selDrag: {
+    kind: "cell" | "col" | "row";
+    anchor: { r: number; c: number };
+  } | null = null;
   const savedCursor = canvas.style.cursor;
   let cachedGrid: {
     sheet: Sheet;
@@ -131,33 +130,7 @@ export function attachInteractivity(
     return grid;
   }
 
-  // ---- annotations: hyperlink click + comment hover popover ----
-  //
-  // Both maps are keyed by `"r:c"` 1-based cell strings, including every
-  // cell of a multi-cell hyperlink range and the comment anchor (which
-  // is always a single cell). Rebuilt lazily per sheet via `ensureMaps`
-  // below so tab switches in the host don't keep stale entries.
-  let mapsForSheet: Sheet | null = null;
-  let hyperlinkMap = new Map<string, Hyperlink>();
-  let commentMap = new Map<string, Comment>();
-
-  function ensureMaps() {
-    const sheet = opts.getSheet();
-    if (mapsForSheet === sheet) return;
-    mapsForSheet = sheet;
-    hyperlinkMap = new Map();
-    commentMap = new Map();
-    for (const h of sheet.hyperlinks ?? []) {
-      for (let r = h.range.r1; r <= h.range.r2; r++) {
-        for (let c = h.range.c1; c <= h.range.c2; c++) {
-          hyperlinkMap.set(`${r}:${c}`, h);
-        }
-      }
-    }
-    for (const cmt of sheet.comments ?? []) {
-      commentMap.set(`${cmt.r}:${cmt.c}`, cmt);
-    }
-  }
+  const annotations = createAnnotationLayer(canvas, opts.getSheet);
 
   // Resolve a cell to its merge top-left when applicable. Hyperlinks and
   // comments anchor on the merge's top-left in OOXML, so a click inside
@@ -168,64 +141,6 @@ export function attachInteractivity(
       if (r >= m.r1 && r <= m.r2 && c >= m.c1 && c <= m.c2) return { r: m.r1, c: m.c1 };
     }
     return { r, c };
-  }
-
-  // Single shared popover element, lazily created on the first comment
-  // hover. We attach to `document.body` so it floats above any host
-  // chrome (scrollbars, sticky headers) without z-index gymnastics.
-  let popoverEl: HTMLDivElement | null = null;
-  function ensurePopover(): HTMLDivElement {
-    if (popoverEl) return popoverEl;
-    const el = document.createElement("div");
-    el.setAttribute("data-xlcore", "comment-popover");
-    el.style.cssText = [
-      "position: fixed",
-      "z-index: 10000",
-      "max-width: 280px",
-      "padding: 6px 10px",
-      "background: #fffbcb", // Excel's pale-yellow comment fill
-      "border: 1px solid #c0a060",
-      "box-shadow: 2px 2px 6px rgba(0,0,0,0.18)",
-      "font: 12px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      "color: #111",
-      "white-space: pre-wrap", // preserve newlines inside the body
-      "pointer-events: none", // never steal pointer events
-      "display: none",
-    ].join("; ");
-    document.body.appendChild(el);
-    popoverEl = el;
-    return el;
-  }
-  function hidePopover() {
-    if (popoverEl) popoverEl.style.display = "none";
-  }
-  function showPopover(cmt: Comment, anchorClient: { left: number; top: number; right: number }) {
-    const el = ensurePopover();
-    // Clear + rebuild content. Author is bold on its own line; body
-    // preserves whitespace so multi-line comments read correctly.
-    el.textContent = "";
-    if (cmt.author) {
-      const a = document.createElement("div");
-      a.style.cssText = "font-weight: 600; margin-bottom: 2px;";
-      a.textContent = cmt.author;
-      el.appendChild(a);
-    }
-    const body = document.createElement("div");
-    body.textContent = cmt.text;
-    el.appendChild(body);
-    // Anchor: just to the right of the cell, vertically aligned with
-    // its top. Falls back to left side if the right edge would clip
-    // off the viewport.
-    el.style.display = "block";
-    const popW = el.offsetWidth;
-    const popH = el.offsetHeight;
-    let x = anchorClient.right + 6;
-    let y = anchorClient.top;
-    if (x + popW > window.innerWidth - 4) x = anchorClient.left - popW - 6;
-    if (y + popH > window.innerHeight - 4) y = window.innerHeight - popH - 4;
-    if (y < 4) y = 4;
-    el.style.left = x + "px";
-    el.style.top = y + "px";
   }
 
   // Cell at canvas-local logical position, or null when in a header /
@@ -315,7 +230,7 @@ export function attachInteractivity(
   function maybeOutlineCursor(cp: { x: number; y: number }): boolean {
     if (outlineButtonAt(cp) || outlineCornerAt(cp)) {
       canvas.style.cursor = "pointer";
-      hidePopover();
+      annotations.hidePopover();
       return true;
     }
     return false;
@@ -370,23 +285,22 @@ export function attachInteractivity(
     const hit = hitTest(cp.x, cp.y);
     if (hit) {
       canvas.style.cursor = hit.kind === "col" ? "col-resize" : "row-resize";
-      hidePopover();
+      annotations.hidePopover();
       return;
     }
 
     // No resize hit — check annotations on the cell under the cursor.
-    ensureMaps();
+    annotations.ensureMaps();
     const lp = toLogical(ev);
     const cell = cellAtLogical(lp);
     if (!cell) {
       canvas.style.cursor = savedCursor;
-      hidePopover();
+      annotations.hidePopover();
       return;
     }
     const anchor = resolveAnchor(cell.r, cell.c);
-    const k = `${anchor.r}:${anchor.c}`;
-    const link = hyperlinkMap.get(k);
-    const cmt = commentMap.get(k);
+    const link = annotations.hyperlinkAt(anchor);
+    const cmt = annotations.commentAt(anchor);
 
     canvas.style.cursor = link ? "pointer" : savedCursor;
 
@@ -413,9 +327,9 @@ export function attachInteractivity(
       void splitY;
       void pcw;
       void prh;
-      showPopover(cmt, { left, top, right });
+      annotations.showPopover(cmt, { left, top, right });
     } else {
-      hidePopover();
+      annotations.hidePopover();
     }
   }
 
@@ -427,7 +341,10 @@ export function attachInteractivity(
   // Resolve a cell through any covering merge to the merge's bounding box.
   // Used when extending a selection so that landing inside a merged region
   // pulls in the entire merge rather than slicing it in half.
-  function expandThroughMerge(r: number, c: number): {
+  function expandThroughMerge(
+    r: number,
+    c: number,
+  ): {
     r1: number;
     c1: number;
     r2: number;
@@ -712,36 +629,10 @@ export function attachInteractivity(
         // Hyperlink: open after the selection update so the cell still
         // gets the focus ring before the new tab steals attention.
         // Excel matches single-click-opens for cells with a hyperlink.
-        ensureMaps();
-        const link = hyperlinkMap.get(`${anchor.r}:${anchor.c}`);
-        if (link) openHyperlink(link);
+        annotations.ensureMaps();
+        const link = annotations.hyperlinkAt(anchor);
+        if (link) annotations.openHyperlink(link);
       }
-    }
-  }
-
-  /// Open the link target in a new tab. External targets resolve as-is;
-  /// in-workbook `location` jumps fall through to the host (we just log
-  /// since cross-sheet navigation is host-specific). `target` strings
-  /// prefixed with `#` (e.g. `#Sheet1!D7`) come from writers that fold
-  /// in-workbook links into the rel target rather than the `location`
-  /// attribute — we treat them as locations here too.
-  function openHyperlink(link: Hyperlink) {
-    const t = link.target ?? "";
-    const isInWorkbook = t.startsWith("#") || (!link.target && !!link.location);
-    if (isInWorkbook) {
-      // Host-specific: dispatch a custom event the embedder can listen to.
-      const dest = link.target?.startsWith("#") ? link.target.slice(1) : (link.location ?? "");
-      canvas.dispatchEvent(
-        new CustomEvent("xlcore-hyperlink-jump", {
-          detail: { location: dest },
-          bubbles: true,
-        }),
-      );
-      return;
-    }
-    if (link.target) {
-      // `noopener` to keep the new tab from reaching back into our window.
-      window.open(link.target, "_blank", "noopener");
     }
   }
 
@@ -906,7 +797,7 @@ export function attachInteractivity(
 
   function onPointerLeave() {
     if (!drag) canvas.style.cursor = savedCursor;
-    hidePopover();
+    annotations.hidePopover();
   }
 
   // Trackpad pinch arrives as wheel + ctrlKey. Cmd/Ctrl + wheel is the
@@ -988,8 +879,7 @@ export function attachInteractivity(
       canvas.removeEventListener("wheel", onWheel);
       canvas.style.cursor = savedCursor;
       canvas.style.outline = savedOutline;
-      if (popoverEl && popoverEl.parentNode) popoverEl.parentNode.removeChild(popoverEl);
-      popoverEl = null;
+      annotations.destroy();
     },
   };
 }

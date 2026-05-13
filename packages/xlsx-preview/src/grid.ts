@@ -182,8 +182,17 @@ export function anchorToRect(
   const a = d.anchor;
   const fromX = colEdge(g, a.fromCol + 1) + a.fromColOffEmu * PX_PER_EMU;
   const fromY = rowEdge(g, a.fromRow + 1) + a.fromRowOffEmu * PX_PER_EMU;
-  const toX = colEdge(g, a.toCol + 1) + a.toColOffEmu * PX_PER_EMU;
-  const toY = rowEdge(g, a.toRow + 1) + a.toRowOffEmu * PX_PER_EMU;
+  // `oneCellAnchor` (and any anchor that ships an explicit extent)
+  // wins over the resolved `to_*` cell — the producer measured the
+  // size in EMU and we render to that exact pixel size.
+  const toX =
+    a.extEmuCx != null && a.extEmuCx > 0
+      ? fromX + a.extEmuCx * PX_PER_EMU
+      : colEdge(g, a.toCol + 1) + a.toColOffEmu * PX_PER_EMU;
+  const toY =
+    a.extEmuCy != null && a.extEmuCy > 0
+      ? fromY + a.extEmuCy * PX_PER_EMU
+      : rowEdge(g, a.toRow + 1) + a.toRowOffEmu * PX_PER_EMU;
   const w = toX - fromX;
   const h = toY - fromY;
   if (w <= 1 || h <= 1) return null;

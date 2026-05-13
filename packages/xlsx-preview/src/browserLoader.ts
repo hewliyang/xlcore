@@ -58,7 +58,10 @@ export async function loadWorkbookFromArrayBuffer(
       reject(new Error(event.message || "Workbook worker failed"));
     };
     worker.postMessage(
-      { bytes, wasmBinaryUrl: options.wasmBinaryUrl ?? DEFAULT_WASM_BINARY_URL },
+      {
+        bytes,
+        wasmBinaryUrl: options.wasmBinaryUrl ?? DEFAULT_WASM_BINARY_URL,
+      },
       [bytes],
     );
   });
@@ -80,7 +83,9 @@ function createExtractionWorker(options: WorkbookLoaderOptions): Worker {
   if (options.workerUrl) {
     return new Worker(options.workerUrl, { type: "module" });
   }
-  return new Worker(new URL("./xlsxWorker.js", import.meta.url), { type: "module" });
+  return new Worker(new URL("./xlsxWorker.js", import.meta.url), {
+    type: "module",
+  });
 }
 
 function progress(options: WorkbookLoaderOptions, label: string): void {

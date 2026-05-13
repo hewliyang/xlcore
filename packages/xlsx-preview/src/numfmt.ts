@@ -336,7 +336,8 @@ function parseSection(raw: string): Section {
   else if (slashIdx >= 0 && hasDigit) flavor = "fraction";
   else if (expIdx >= 0 && hasDigit) flavor = "scientific";
   else if (hasDigit) flavor = "number";
-  else if (hasGeneral) flavor = "literal"; // rendered via litOrFill switch
+  else if (hasGeneral)
+    flavor = "literal"; // rendered via litOrFill switch
   else if (hasText) flavor = "text";
   else flavor = "literal";
 
