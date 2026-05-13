@@ -728,8 +728,12 @@ function renderSection(value: number, sec: Section): string {
     case "literal":
       return sec.tokens.map(litOrFill).join("");
     case "text":
-      // No string value to substitute on the numeric path; emit the literal scaffolding.
-      return sec.tokens.map(litOrFill).join("");
+      // `@` substitutes the cell's string value; for a numeric cell
+      // Excel falls back to general formatting rather than emitting
+      // nothing.
+      return sec.tokens
+        .map((t) => (t.kind === "text" ? formatGeneral(value) : litOrFill(t)))
+        .join("");
     case "number":
       return renderNumber(value, sec);
     case "date":

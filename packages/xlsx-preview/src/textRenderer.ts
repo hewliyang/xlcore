@@ -535,10 +535,11 @@ export function drawCellText(
     //   1..90   N° counterclockwise
     //   91..180 (value-90)° clockwise
     //   255     stacked: chars upright, drawn vertically.
-    // We honor it here with a single-line, no-overflow, no-wrap layout —
-    // matches Excel's behavior (rotated cells don't bleed into neighbors
-    // and Excel auto-grows the row to fit the rotated extent at author
-    // time, so the source row height is already correct).
+    // Single-line, no-wrap layout. We do NOT clip rotated runs to
+    // `ownRect`: when a tall+narrow cell hosts a large rotated string,
+    // the rotated bbox's perpendicular extent can exceed the column
+    // width, and Excel/SpreadJS let it bleed past. Stacked (255) still
+    // gets the cell-rect clip — its glyphs fit by construction.
     const textRot = xf?.textRotation ?? 0;
     if (textRot !== 0) {
       // Use the first span's font for rotated/stacked text (rich-text
@@ -546,9 +547,11 @@ export function drawCellText(
       // with per-run sizing in rotated cells).
       const span = spans[0]!;
       ctx.save();
-      ctx.beginPath();
-      ctx.rect(ownRect.x, ownRect.y, ownRect.w, ownRect.h);
-      ctx.clip();
+      if (textRot === 255) {
+        ctx.beginPath();
+        ctx.rect(ownRect.x, ownRect.y, ownRect.w, ownRect.h);
+        ctx.clip();
+      }
       ctx.font = span.font;
       ctx.fillStyle = span.color;
       ctx.textBaseline = "alphabetic";
@@ -593,31 +596,42 @@ export function drawCellText(
           : ((textRot - 90) * Math.PI) / 180; // CW  (91..180)
       const tw = ctx.measureText(text).width;
       const ascent = span.fontSizePx * 0.8;
+      const descent = span.fontSizePx * 0.2;
       const pad = 2;
       // Anchor convention matches Excel / SpreadJS:
       //   CCW (angleRad < 0): bottom-left of cell content; text reads
       //     up-right along the rotated baseline.
       //   CW  (angleRad > 0): top-left of cell content; text reads
       //     down-right along the rotated baseline.
-      // halign=center shifts the start of the baseline so the text
-      // along that baseline is centered horizontally within the cell
-      // — a softer interpretation of "center" that still matches the
-      // tilted-header look.
-      let anchorX = ownRect.x + pad;
+      // Project the rotated text rectangle onto the cell's x-axis and
+      // align by its bbox extremes (not the baseline). The four corners
+      // of the unrotated rect at textBaseline=alphabetic are
+      // (0,-ascent), (tw,-ascent), (tw,descent), (0,descent); canvas
+      // rotation maps (px,py) -> (px*cos - py*sin, _) and only the
+      // x-component matters here. Baseline-anchoring ignored the
+      // ascender/descender asymmetry and visibly mis-centered large
+      // 90° glyphs by ~(ascender-descender)/2.
+      const cosA = Math.cos(angleRad);
+      const sinA = Math.sin(angleRad);
+      const cornerXs = [
+        0 * cosA - -ascent * sinA,
+        tw * cosA - -ascent * sinA,
+        tw * cosA - descent * sinA,
+        0 * cosA - descent * sinA,
+      ];
+      const rxMin = Math.min(...cornerXs);
+      const rxMax = Math.max(...cornerXs);
+      let anchorX: number;
       const anchorY =
         angleRad < 0
           ? ownRect.y + ownRect.h - pad // bottom for CCW
           : ownRect.y + pad + ascent; // top  for CW
       if (halign === "center") {
-        // Project the text length onto the cell's width axis and shift
-        // the anchor so the rotated string is horizontally centered.
-        const projW = Math.abs(tw * Math.cos(angleRad));
-        const slack = ownRect.w - projW - pad * 2;
-        if (slack > 0) anchorX += slack / 2;
+        anchorX = ownRect.x + ownRect.w / 2 - (rxMin + rxMax) / 2;
       } else if (halign === "right") {
-        const projW = Math.abs(tw * Math.cos(angleRad));
-        const slack = ownRect.w - projW - pad * 2;
-        if (slack > 0) anchorX += slack;
+        anchorX = ownRect.x + ownRect.w - pad - rxMax;
+      } else {
+        anchorX = ownRect.x + pad - rxMin;
       }
       ctx.translate(anchorX, anchorY);
       ctx.rotate(angleRad);
