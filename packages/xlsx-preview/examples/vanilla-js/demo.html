@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>xlsx-preview · CDN demo</title>
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; padding: 16px; }
+      #preview { height: 80vh; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; margin-top: 12px; }
+    </style>
+  </head>
+  <body>
+    <h1 style="margin:0">xlsx-preview · CDN demo</h1>
+    <p>No build step. Just open this file (or serve the folder statically).</p>
+    <p><input id="picker" type="file" accept=".xlsx" /></p>
+    <div id="preview"></div>
+
+    <script type="module">
+      import { createWorkbookPreviewerFromFile } from "https://esm.sh/@hewliyang/xlsx-preview@0.0.4/browser";
+      import { jsDelivrUrls } from "https://esm.sh/@hewliyang/xlsx-preview@0.0.4/cdn";
+
+      const assets = jsDelivrUrls("0.0.4");
+      const container = document.getElementById("preview");
+      let previewer = null;
+
+      document.getElementById("picker").addEventListener("change", async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        previewer?.destroy();
+        previewer = await createWorkbookPreviewerFromFile(container, file, assets);
+      });
+    </script>
+  </body>
+</html>

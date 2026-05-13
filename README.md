@@ -65,13 +65,31 @@ xlsx-preview model.xlsx -o previews/{index}-{sheet}.png --all
 
 ## examples
 
-Runnable HTML demos live under
+Live demos: <https://xlcore.pages.dev>.
+
+Runnable sources under
 [`packages/xlsx-preview/examples/`](packages/xlsx-preview/examples/):
+
+Plain HTML (no build step):
 
 - [`xlsx-app.html`](packages/xlsx-preview/examples/xlsx-app.html) — full
   previewer app (file picker, sheet tabs, zoom).
 - [`xlsx-tiles.html`](packages/xlsx-preview/examples/xlsx-tiles.html) —
-  multi-workbook tiled previews
+  multi-workbook tiled previews.
+- [`xlsx-multi.html`](packages/xlsx-preview/examples/xlsx-multi.html) —
+  side-by-side panes.
+
+No-build CDN demo:
+
+- [`vanilla-js/demo.html`](packages/xlsx-preview/examples/vanilla-js/demo.html)
+  — single HTML file, opens straight from disk, loads everything from
+  jsDelivr.
+
+Framework starters (`pnpm install && pnpm dev`):
+
+- [`vanilla-js/`](packages/xlsx-preview/examples/vanilla-js/) — Vite + plain JS.
+- [`react-vite/`](packages/xlsx-preview/examples/react-vite/) — Vite + React + TS.
+- [`nextjs/`](packages/xlsx-preview/examples/nextjs/) — Next.js App Router.
 
 ## development
 

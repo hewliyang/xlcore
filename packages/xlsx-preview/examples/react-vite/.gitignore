@@ -1,0 +1,6 @@
+node_modules
+dist
+.vite
+*.log
+tsconfig.tsbuildinfo
+pnpm-lock.yaml
