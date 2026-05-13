@@ -496,7 +496,7 @@
           <dt>Size</dt><dd id="sel-size">—</dd>
         </dl>
         <div class="row">
-          <input id="address" type="text" value="C5" aria-label="Cell address" placeholder="e.g. F12 or B2:E8">
+          <input id="address" type="text" value="C5" aria-label="Cell address" placeholder="e.g. F12, B2:E8, or 'Sheet 2'!A1:D10">
           <button id="go-cell" class="primary">Go</button>
         </div>
         <div class="chips" id="quick-chips">
@@ -743,7 +743,7 @@ function populateSheets() {
 }
 
 function parseCell(value) {
-  const match = String(value).trim().match(/^([A-Za-z]+)(\d+)$/);
+  const match = String(value).trim().match(/^\$?([A-Za-z]+)\$?(\d+)$/);
   if (!match) throw new Error(`Invalid cell address: ${value}`);
   return { c: colNumber(match[1]), r: Number(match[2]) };
 }
@@ -753,6 +753,51 @@ function parseRange(value) {
   const start = parseCell(a);
   const end = parseCell(b || a);
   return { r1: start.r, c1: start.c, r2: end.r, c2: end.c };
+}
+
+function splitSheetReference(value) {
+  const raw = String(value).trim();
+  if (!raw) throw new Error("Enter a cell, range, or sheet-qualified reference");
+
+  // Supports Excel-style sheet-qualified references:
+  //   Sheet1!A1
+  //   'Sheet 2'!B2:E8
+  //   'Bob''s Sheet'!$C$5
+  let inQuotedSheetName = false;
+  let bang = -1;
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i];
+    if (ch === "'") {
+      if (inQuotedSheetName && raw[i + 1] === "'") i++; // escaped quote inside a quoted sheet name
+      else inQuotedSheetName = !inQuotedSheetName;
+    } else if (ch === "!" && !inQuotedSheetName) {
+      bang = i;
+      break;
+    }
+  }
+
+  if (bang < 0) return { sheet: null, reference: raw };
+
+  const sheetPart = raw.slice(0, bang).trim();
+  const reference = raw.slice(bang + 1).trim();
+  if (!sheetPart) throw new Error(`Missing sheet name in reference: ${value}`);
+  if (!reference) throw new Error(`Missing cell/range in reference: ${value}`);
+
+  const sheet = sheetPart.startsWith("'") && sheetPart.endsWith("'")
+    ? sheetPart.slice(1, -1).replace(/''/g, "'")
+    : sheetPart;
+  return { sheet, reference };
+}
+
+function parseNavigationReference(value) {
+  const { sheet, reference } = splitSheetReference(value);
+  const isRange = reference.includes(":");
+  return {
+    sheet,
+    reference,
+    isRange,
+    selection: parseRange(reference),
+  };
 }
 
 function colNumber(label) {
@@ -789,12 +834,13 @@ function requirePreviewer() {
 
 function goFromAddress() {
   try {
-    const raw = address.value.trim();
-    if (raw.includes(":")) {
-      requirePreviewer().selectRange(parseRange(raw), { scroll: true });
+    const nav = parseNavigationReference(address.value);
+    const p = requirePreviewer();
+    if (nav.sheet !== null) p.setActiveSheet(nav.sheet);
+    if (nav.isRange) {
+      p.selectRange(nav.selection, { scroll: true });
     } else {
-      const cell = parseCell(raw);
-      requirePreviewer().selectCell(cell.r, cell.c, { scroll: true });
+      p.selectCell(nav.selection.r1, nav.selection.c1, { scroll: true });
     }
     renderState();
   } catch (error) {
