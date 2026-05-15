@@ -42,6 +42,13 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   combo renderers to respect per-point delete/text/format/position overrides.
 - Fixed generated TypeScript schema exports for the new chart and data-label
   fields.
+- Fixed bar, column, line, and area charts to clip series geometry to the
+  plot rectangle when data exceeds a workbook-pinned `<c:scaling><c:max>`
+  (or falls below `<c:min>`). Stacked column totals larger than the axis
+  max, line strokes crossing an outlier, and area fills with a peak past
+  the topmost gridline now match Excel and SpreadJS instead of painting
+  past the plot frame. Added `chart-stacked-overflow-clip` and
+  `chart-line-area-overflow-clip` regression fixtures.
 
 ## [0.0.4] - 2026-05-13
 

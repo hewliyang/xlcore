@@ -475,6 +475,25 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   }
   ctx.textAlign = "left";
 
+  // Excel clips bar fills to the plot area when stacked totals (or
+  // individual values) exceed the value-axis range — e.g. workbooks
+  // that pin `<c:max val="100"/>` on a stacked chart whose category
+  // sums reach 141. Without clipping, the fillRect paints past the
+  // top of the inner rect and bars visibly overshoot the topmost
+  // gridline. We clip the fill rect only (not labels) so out-of-range
+  // dLbls (e.g. `outEnd`) still render at their natural position.
+  const plotTop = innerRect.y;
+  const plotBot = innerRect.y + innerRect.h;
+  const plotLeft = innerRect.x;
+  const plotRight = innerRect.x + innerRect.w;
+  const clampFill = (bx: number, by: number, bw: number, bh: number) => {
+    const x1 = Math.max(plotLeft, bx);
+    const x2 = Math.min(plotRight, bx + bw);
+    const y1 = Math.max(plotTop, by);
+    const y2 = Math.min(plotBot, by + bh);
+    return { x: x1, y: y1, w: Math.max(0, x2 - x1), h: Math.max(0, y2 - y1) };
+  };
+
   // Draw bars
   if (stacked) {
     for (let i = 0; i < categoryCount; i++) {
@@ -520,7 +539,8 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
         }
         if (fill.skip) continue; // transparent dPt — no fill, no label
         ctx.fillStyle = fill.color;
-        ctx.fillRect(bx, by, bw, bh);
+        const c = clampFill(bx, by, bw, bh);
+        if (c.w > 0 && c.h > 0) ctx.fillRect(c.x, c.y, c.w, c.h);
         // Stacked label: position default `ctr` (in-bar center).
         const dl = effectiveLabels(chart, s);
         if (dl) {
@@ -565,7 +585,8 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
         }
         if (fill.skip) continue; // transparent dPt — no fill, no label
         ctx.fillStyle = fill.color;
-        ctx.fillRect(bx, by, bw, bh);
+        const c = clampFill(bx, by, bw, bh);
+        if (c.w > 0 && c.h > 0) ctx.fillRect(c.x, c.y, c.w, c.h);
         const dl = effectiveLabels(chart, s);
         if (dl) {
           const po = pointLabel(dl, i);
@@ -717,6 +738,15 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     return v != null && Number.isFinite(v);
   };
 
+  // Excel clips line strokes, markers and labels to the plot rect when
+  // values exceed the value-axis bounds (e.g. workbooks that pin a
+  // `<c:max>` below an outlier). Without clipping, line segments shoot
+  // past the topmost gridline. Restore after all series are drawn.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(inner.x, inner.y, inner.w, inner.h);
+  ctx.clip();
+
   for (let si = 0; si < series.length; si++) {
     const s = series[si]!;
     const data = stackedSeries[si]!;
@@ -791,6 +821,7 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
       }
     }
   }
+  ctx.restore();
   ctx.lineWidth = 1;
   // Bug #13 step 1: heavier zero baseline when the axis straddles zero.
   paintZeroBaseline(ctx, inner, minV, maxV);
@@ -845,6 +876,14 @@ function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
   const xStep = inner.w / Math.max(1, categoryCount - 1);
   const yFor = (v: number) => inner.y + (1 - (v - minV) / (maxV - minV)) * inner.h;
 
+  // Clip area fills + outline strokes to the plot rect so out-of-range
+  // peaks (data > pinned `<c:max>`) don't spill above the topmost
+  // gridline. Matches Excel's behavior; mirrors the line/bar paths.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(inner.x, inner.y, inner.w, inner.h);
+  ctx.clip();
+
   for (let si = 0; si < series.length; si++) {
     const s = series[si]!;
     const top = tops[si]!;
@@ -892,6 +931,7 @@ function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
       }
     }
   }
+  ctx.restore();
   ctx.lineWidth = 1;
   // Bug #13 step 1: heavier zero baseline when the axis straddles zero.
   paintZeroBaseline(ctx, inner, minV, maxV);

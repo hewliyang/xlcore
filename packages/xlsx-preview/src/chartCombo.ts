@@ -299,6 +299,21 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     };
     const pending: BarLabel[] = [];
 
+    // Excel clips bar fills to the plot area; honor the same here so
+    // out-of-range stacked totals (or single values larger than a
+    // user-pinned `<c:max>`) don't paint past the top gridline.
+    const _plotTop = inner.y;
+    const _plotBot = inner.y + inner.h;
+    const _plotLeft = inner.x;
+    const _plotRight = inner.x + inner.w;
+    const clampFill = (bx: number, by: number, bw: number, bh: number) => {
+      const x1 = Math.max(_plotLeft, bx);
+      const x2 = Math.min(_plotRight, bx + bw);
+      const y1 = Math.max(_plotTop, by);
+      const y2 = Math.min(_plotBot, by + bh);
+      return { x: x1, y: y1, w: Math.max(0, x2 - x1), h: Math.max(0, y2 - y1) };
+    };
+
     if (stacked) {
       for (let i = 0; i < categoryCount; i++) {
         let pos = 0,
@@ -323,7 +338,8 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
           const bh = Math.abs(yB - yA);
           if (fill.skip) continue;
           ctx.fillStyle = fill.color;
-          ctx.fillRect(bx, by, barW, bh);
+          const c = clampFill(bx, by, barW, bh);
+          if (c.w > 0 && c.h > 0) ctx.fillRect(c.x, c.y, c.w, c.h);
           if (effectiveLabels(chart, s)) {
             pending.push({ s, i, v, catTotal, bx, by, bw: barW, bh, stacked: true });
           }
@@ -344,7 +360,8 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
           const bh = Math.abs(y1 - y0);
           if (fill.skip) continue;
           ctx.fillStyle = fill.color;
-          ctx.fillRect(bx, by, barW, bh);
+          const c = clampFill(bx, by, barW, bh);
+          if (c.w > 0 && c.h > 0) ctx.fillRect(c.x, c.y, c.w, c.h);
           if (effectiveLabels(chart, s)) {
             pending.push({ s, i, v, catTotal: 0, bx, by, bw: barW, bh, stacked: false });
           }
