@@ -384,6 +384,7 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     chart.valueMax,
     /*zeroClamp=*/ true,
     AXIS_TICK_COUNT,
+    chart.majorUnit,
   );
   minV = _bcRange.minV;
   maxV = _bcRange.maxV;
@@ -714,6 +715,7 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     chart.valueMax,
     /*zeroClamp=*/ false,
     AXIS_TICK_COUNT,
+    chart.majorUnit,
   );
   minV = _lRange.minV;
   maxV = _lRange.maxV;
@@ -865,6 +867,7 @@ function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     chart.valueMax,
     /*zeroClamp=*/ true,
     AXIS_TICK_COUNT,
+    chart.majorUnit,
   );
   minV = _aRange.minV;
   maxV = _aRange.maxV;

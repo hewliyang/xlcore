@@ -599,17 +599,65 @@ export function resolveAxisRange(
   forcedMax: number | undefined,
   zeroClamp: boolean,
   tickCount: number,
+  forcedMajorUnit?: number,
 ): { minV: number; maxV: number; ticks: number[] } {
   let lo = forcedMin ?? dataMin;
   let hi = forcedMax ?? dataMax;
-  const userScaled = forcedMin !== undefined || forcedMax !== undefined;
+  const userScaled =
+    forcedMin !== undefined || forcedMax !== undefined || forcedMajorUnit !== undefined;
   if (zeroClamp && !userScaled) {
     if (lo > 0) lo = 0;
     if (hi < 0) hi = 0;
   }
   if (lo === hi) hi = lo + 1;
-  let t = niceTicks(lo, hi, tickCount);
   const EPS = 1e-9;
+  // `<c:majorUnit>` path: step ticks exactly by the authored unit
+  // (ECMA-376 §21.2.2.121). Anchor the cadence on the *forced* min if
+  // the workbook pinned one, else on a multiple of majorUnit below
+  // dataMin so the bottom tick still lands cleanly; mirror the same
+  // logic on the top so a pinned max remains the last tick. Skips
+  // pathological cases (non-finite or implausibly tiny step that
+  // would produce hundreds of ticks) and falls back to niceTicks.
+  let t: number[];
+  if (
+    forcedMajorUnit !== undefined &&
+    Number.isFinite(forcedMajorUnit) &&
+    forcedMajorUnit > 0 &&
+    (hi - lo) / forcedMajorUnit < 1000
+  ) {
+    const step = forcedMajorUnit;
+    // Anchor the cadence on `forcedMin` when set, else 0 — matches
+    // Excel's behaviour where major-unit ticks land on multiples of
+    // step counted from the forced bound (or from zero).
+    const anchor = forcedMin !== undefined ? forcedMin : 0;
+    // When no `forcedMin` was authored, Excel walks the step grid
+    // down to zero (or just past dataMin if data straddles zero) so
+    // long as the resulting tick count is reasonable — a positive
+    // series like 18..43 with `<c:max val="45000"/>` +
+    // `<c:majorUnit val="9000"/>` renders 0/9/18/27/36/45, not just
+    // 9..45. We cap the implicit extension at 14 ticks total so we
+    // don't blow up axes where step is tiny relative to the data
+    // (e.g. data 100..200 with step=1 — keep niceTicks-style floor
+    // at dataMin instead of dropping all the way to 0).
+    let niceMin: number;
+    if (forcedMin !== undefined) {
+      niceMin = forcedMin;
+    } else {
+      const floorAtData = anchor + Math.floor((lo - anchor) / step + EPS) * step;
+      const floorAtZero = anchor + Math.min(0, Math.floor((lo - anchor) / step + EPS)) * step;
+      const tentativeMax = anchor + Math.ceil((hi - anchor) / step - EPS) * step;
+      const tickCountToZero = Math.round((tentativeMax - floorAtZero) / step) + 1;
+      niceMin = tickCountToZero <= 14 ? floorAtZero : floorAtData;
+    }
+    const niceMax = anchor + Math.ceil((hi - anchor) / step - EPS) * step;
+    t = [];
+    for (let v = niceMin; v <= niceMax + step / 2; v += step) {
+      t.push(parseFloat(v.toPrecision(12)));
+    }
+    if (t.length === 0) t.push(lo, hi);
+  } else {
+    t = niceTicks(lo, hi, tickCount);
+  }
   if (forcedMin !== undefined) {
     t = t.filter((v) => v >= forcedMin - EPS);
     if (t.length === 0 || t[0]! > forcedMin + EPS) t.unshift(forcedMin);

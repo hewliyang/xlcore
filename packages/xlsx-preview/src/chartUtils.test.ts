@@ -4,6 +4,7 @@ import {
   computeBarSlotMetrics,
   formatAxisValue,
   isZeroTickInside,
+  resolveAxisRange,
   zeroAxisMetrics,
 } from "./chartUtils.js";
 
@@ -137,5 +138,71 @@ describe("zeroAxisMetrics — shared zero-baseline helper", () => {
     expect(isZeroTickInside(0, -10, 10)).toBe(true);
     expect(isZeroTickInside(0, 0, 10)).toBe(false); // not straddling
     expect(isZeroTickInside(5, -10, 10)).toBe(false);
+  });
+});
+
+describe("resolveAxisRange — <c:majorUnit> cadence", () => {
+  it("AGS NWC: max=45000, majorUnit=9000, positive data → 0/9000/.../45000", () => {
+    // ECMA-376 §21.2.2.121 in source units. dispUnits scaling is the
+    // tick-label formatter's job, not resolveAxisRange's — we just
+    // emit the raw tick positions. NWC line chart's authored
+    // `<c:max val="45000"/>` + `<c:majorUnit val="9000"/>` over data
+    // ~17869..43118 must produce 0/9000/18000/27000/36000/45000 so
+    // formatAxisValue(..., 1000) renders 0/9/18/27/36/45 to match
+    // Excel's authored cadence.
+    const r = resolveAxisRange(17869, 43118, undefined, 45000, false, 5, 9000);
+    expect(r.ticks).toEqual([0, 9000, 18000, 27000, 36000, 45000]);
+    expect(r.minV).toBe(0);
+    expect(r.maxV).toBe(45000);
+  });
+
+  it("respects forcedMin verbatim and anchors step cadence above it", () => {
+    // Workbook explicitly pinned min=100; the implicit walk-to-zero
+    // path must not override that.
+    const r = resolveAxisRange(115, 136, 100, 140, false, 5, 10);
+    expect(r.minV).toBe(100);
+    expect(r.maxV).toBe(140);
+    expect(r.ticks).toEqual([100, 110, 120, 130, 140]);
+  });
+
+  it("falls back to niceTicks when majorUnit is absent", () => {
+    // No majorUnit + zeroClamp=true (bar default) + positive data.
+    // niceTicks for 0..43 with count=5 picks step=10 → 0..50.
+    const r = resolveAxisRange(17, 43, undefined, undefined, true, 5);
+    expect(r.ticks[0]).toBe(0);
+    expect(r.ticks[r.ticks.length - 1]).toBeGreaterThanOrEqual(43);
+  });
+
+  it("caps the walk-to-zero extension at 14 ticks to avoid blow-ups", () => {
+    // Tiny step (1) over data 100..200 — walking to zero would produce
+    // 201 ticks. The guard must fall back to anchoring at dataMin so
+    // we don't generate a hundred-tick axis.
+    const r = resolveAxisRange(100, 200, undefined, 200, false, 5, 1);
+    // Without the cap: 201 ticks starting at 0. With cap: ticks start
+    // at or near dataMin (100 or floor-of-100 = 100).
+    expect(r.ticks.length).toBeLessThan(120);
+    expect(r.minV).toBeGreaterThanOrEqual(100);
+  });
+
+  it("handles dataMin straddling zero: walks one step below zero", () => {
+    // Negative-positive mixed data with majorUnit=10. Walk-down
+    // should descend past zero to bracket the negative tail at a
+    // multiple of the step.
+    const r = resolveAxisRange(-15, 30, undefined, 30, false, 5, 10);
+    expect(r.minV).toBeLessThanOrEqual(-15);
+    expect(r.maxV).toBe(30);
+    // Cadence stays on multiples of 10.
+    for (const t of r.ticks) {
+      expect(Math.abs(t / 10 - Math.round(t / 10))).toBeLessThan(1e-9);
+    }
+  });
+
+  it("rejects invalid majorUnit (zero / negative / non-finite) and uses niceTicks", () => {
+    const r1 = resolveAxisRange(0, 100, undefined, undefined, true, 5, 0);
+    const r2 = resolveAxisRange(0, 100, undefined, undefined, true, 5, -10);
+    const r3 = resolveAxisRange(0, 100, undefined, undefined, true, 5, Infinity);
+    // All three should fall through to niceTicks identically.
+    expect(r1.ticks).toEqual(r2.ticks);
+    expect(r1.ticks).toEqual(r3.ticks);
   });
 });

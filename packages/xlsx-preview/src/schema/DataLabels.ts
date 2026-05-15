@@ -35,15 +35,5 @@ export type DataLabels = {
    * falls back to the chart's `valueFormat`.
    */
   numFmt?: string;
-  /**
-   * Per-data-point `<c:dLbl idx=N>` overrides. Each entry replaces
-   * the base block on just one data point: either suppresses that
-   * point's label (`<c:delete val="1"/>`), substitutes literal
-   * text (`<c:tx>`), or tweaks position / show* / numFmt for just
-   * that point. Common authoring idioms: pies that label only the
-   * largest slice, column charts that highlight an outlier, line
-   * charts that name only the endpoints. Empty Vec when the source
-   * has no `<c:dLbl>` children.
-   */
   pointOverrides: Array<PointDataLabel>;
 };

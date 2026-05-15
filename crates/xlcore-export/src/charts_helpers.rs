@@ -16,11 +16,44 @@ pub(crate) fn built_in_unit_factor(b: &c::BuiltInUnitValues) -> f64 {
     }
 }
 
+/// English label for a built-in display-unit value. Excel emits these as
+/// the default `<c:dispUnitsLbl>` caption text when the workbook authored
+/// `<c:dispUnitsLbl>` without an explicit `<c:tx>` child — the label band
+/// still renders, but with the localized unit name. We hard-code the
+/// en-US strings to match Excel desktop's default UI; full localization
+/// would require a per-workbook locale + a translation table, which is
+/// out of scope here.
+pub(crate) fn built_in_unit_default_label(b: &c::BuiltInUnitValues) -> &'static str {
+    match b {
+        c::BuiltInUnitValues::Hundreds => "Hundreds",
+        c::BuiltInUnitValues::Thousands => "Thousands",
+        c::BuiltInUnitValues::TenThousands => "Ten Thousands",
+        c::BuiltInUnitValues::HundredThousands => "Hundred Thousands",
+        c::BuiltInUnitValues::Millions => "Millions",
+        c::BuiltInUnitValues::TenMillions => "Ten Millions",
+        c::BuiltInUnitValues::HundredMillions => "Hundred Millions",
+        c::BuiltInUnitValues::Billions => "Billions",
+        c::BuiltInUnitValues::Trillions => "Trillions",
+    }
+}
+
 /// Extract `<c:dispUnits>` into `(divisor, optional label text)`.
 /// Returns `None` when the block is absent or carries no usable choice.
+///
+/// Label resolution priority (per ECMA-376 §21.2.2.46):
+///   1. `<c:dispUnitsLbl><c:tx>...` explicit text — use as-is.
+///   2. `<c:dispUnitsLbl>` present *without* `<c:tx>` AND the unit is a
+///      built-in — fall back to the localized name of the built-in
+///      ("Thousands", "Millions", …). Excel paints this default caption
+///      even though the XML carries no text node. Without this fallback
+///      we drop the entire "Thousands" caption on charts that scale to
+///      thousands via `<c:builtInUnit val="thousands"/>` without an
+///      explicit `<c:tx>` (e.g. AGS Metrics Model NWC line chart).
+///   3. No `<c:dispUnitsLbl>` element at all — no caption.
 pub(crate) fn extract_disp_units(du: Option<&c::DisplayUnits>) -> Option<(f64, Option<String>)> {
     let du = du?;
-    let factor = match du.display_units_choice.as_ref()? {
+    let choice = du.display_units_choice.as_ref()?;
+    let factor = match choice {
         c::DisplayUnitsChoice::CBuiltInUnit(b) => {
             built_in_unit_factor(b.val.as_ref().unwrap_or(&c::BuiltInUnitValues::Hundreds))
         }
@@ -29,10 +62,25 @@ pub(crate) fn extract_disp_units(du: Option<&c::DisplayUnits>) -> Option<(f64, O
     if !(factor > 0.0) {
         return None;
     }
-    let label = du
+    let lbl_present = du.c_disp_units_lbl.is_some();
+    let explicit = du
         .c_disp_units_lbl
         .as_deref()
         .and_then(extract_disp_units_lbl_text);
+    let label = match explicit {
+        Some(s) => Some(s),
+        None if lbl_present => match choice {
+            c::DisplayUnitsChoice::CBuiltInUnit(b) => Some(
+                built_in_unit_default_label(
+                    b.val.as_ref().unwrap_or(&c::BuiltInUnitValues::Hundreds),
+                )
+                .to_string(),
+            ),
+            // CustUnit with no text — nothing sensible to default to.
+            c::DisplayUnitsChoice::CCustUnit(_) => None,
+        },
+        None => None,
+    };
     Some((factor, label))
 }
 
@@ -743,4 +791,43 @@ pub(crate) fn string_cache_values(sc: &Option<Box<c::StringCache>>) -> Vec<Strin
         .collect();
     indexed.sort_by_key(|(i, _)| *i);
     indexed.into_iter().map(|(_, v)| v).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn built_in_unit_labels_match_excel_ui() {
+        // English fallback caption used by extract_disp_units when the
+        // workbook authored `<c:dispUnitsLbl>` without an explicit
+        // `<c:tx>` child. Regression guard for the AGS NWC line chart,
+        // where `<c:builtInUnit val="thousands"/>` + empty
+        // `<c:dispUnitsLbl>` should still paint "Thousands" on the
+        // y-axis.
+        assert_eq!(
+            built_in_unit_default_label(&c::BuiltInUnitValues::Thousands),
+            "Thousands",
+        );
+        assert_eq!(
+            built_in_unit_default_label(&c::BuiltInUnitValues::Millions),
+            "Millions",
+        );
+        assert_eq!(
+            built_in_unit_default_label(&c::BuiltInUnitValues::TenThousands),
+            "Ten Thousands",
+        );
+        assert_eq!(
+            built_in_unit_default_label(&c::BuiltInUnitValues::Billions),
+            "Billions",
+        );
+    }
+
+    #[test]
+    fn built_in_unit_factors_powers_of_ten() {
+        // Sanity: the factor must match the label's order of magnitude.
+        assert_eq!(built_in_unit_factor(&c::BuiltInUnitValues::Thousands), 1e3);
+        assert_eq!(built_in_unit_factor(&c::BuiltInUnitValues::Millions), 1e6);
+        assert_eq!(built_in_unit_factor(&c::BuiltInUnitValues::Billions), 1e9);
+    }
 }

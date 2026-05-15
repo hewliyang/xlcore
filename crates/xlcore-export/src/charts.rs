@@ -267,6 +267,12 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
     let mut disp_units_label: Option<String> = None;
     let mut disp_units_secondary: Option<f64> = None;
     let mut disp_units_label_secondary: Option<String> = None;
+    // `<c:majorUnit val="N"/>` per value axis (ECMA-376 §21.2.2.121).
+    // When authored, the renderer steps ticks by exactly N source
+    // units instead of niceTicks; lets workbooks pin cadences like
+    // 9000 (NWC line chart, dispUnits=thousands → 0/9/18/27/36/45).
+    let mut major_unit: Option<f64> = None;
+    let mut major_unit_secondary: Option<f64> = None;
     // Route an axis's title to x / y / y-secondary by its `axPos`.
     // ECMA-376: `b`/`t` → horizontal, `l` → vertical, `r` → secondary
     // vertical. This is intentionally axis-*position*-driven (not
@@ -372,6 +378,16 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                 .as_ref()
                 .and_then(|s| s.max_axis_value.as_ref())
                 .map(|m| m.val);
+            // `<c:majorUnit>` sits *outside* `<c:scaling>` directly on
+            // the valAx (per ECMA-376 §21.2.2.120) — not nested like
+            // min/max. Positive-finite values only; OOXML allows any
+            // positive double but niceTicks already handles boundary
+            // weirdness so we re-validate here for safety.
+            let axis_major_unit = va
+                .c_major_unit
+                .as_ref()
+                .map(|m| m.val)
+                .filter(|v| v.is_finite() && *v > 0.0);
             if is_secondary {
                 secondary_ax_ids.push(axid);
                 if secondary_val_fmt.is_none() {
@@ -391,6 +407,9 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                         disp_units_secondary = Some(f);
                         disp_units_label_secondary = lbl;
                     }
+                }
+                if major_unit_secondary.is_none() {
+                    major_unit_secondary = axis_major_unit;
                 }
             } else if is_horizontal_value_axis {
                 // Scatter x-axis: contributes its axId to primary_ax_ids
@@ -417,6 +436,9 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                         disp_units = Some(f);
                         disp_units_label = lbl;
                     }
+                }
+                if major_unit.is_none() {
+                    major_unit = axis_major_unit;
                 }
             }
             route_title(
@@ -731,7 +753,30 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
     }
     let value_format = value_format.or(primary_val_fmt);
 
-    let title = extract_title(chart.title.as_deref());
+    // Title resolution (ECMA-376 §21.2.2.211 + §21.2.2.4):
+    //   - `<c:title><c:tx>...` explicit text wins.
+    //   - `<c:title>` present *without* `<c:tx>` AND `<c:autoTitleDeleted
+    //     val="0"/>` (or element absent, which defaults to false) AND
+    //     the chart has exactly one series → Excel auto-generates the
+    //     title from that series's name. This is how the AGS NWC line
+    //     chart picks up its "NWC" title even though chart15.xml's
+    //     `<c:title>` carries only `<c:spPr>`/`<c:txPr>` (formatting,
+    //     no text node).
+    //   - `<c:autoTitleDeleted val="1"/>` → user explicitly cleared
+    //     the auto title; we honor that and emit no title.
+    let auto_title_deleted = chart
+        .auto_title_deleted
+        .as_ref()
+        .and_then(|a| a.val)
+        .unwrap_or(false);
+    let title = extract_title(chart.title.as_deref()).or_else(|| {
+        if chart.title.is_some() && !auto_title_deleted && series.len() == 1 {
+            let n = series[0].name.clone();
+            if n.is_empty() { None } else { Some(n) }
+        } else {
+            None
+        }
+    });
     // Legend presence + position. Critical distinction:
     //   - `<c:legend>` absent             → legend_pos = None        (don't paint)
     //   - `<c:legend>` present, no <c:legendPos>  → legend_pos = Some("r")  (Excel default)
@@ -777,6 +822,8 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
         value_max,
         value_min_secondary,
         value_max_secondary,
+        major_unit,
+        major_unit_secondary,
         bar_gap_width,
         bar_overlap,
         x_axis_title,

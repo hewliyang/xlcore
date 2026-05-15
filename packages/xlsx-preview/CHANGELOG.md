@@ -20,6 +20,21 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   axes, and dual-axis lines.
 - Added chart utility tests for bar slot metrics, display-unit axis formatting,
   and zero-baseline helpers.
+- Added `<c:majorUnit>` extraction on primary + secondary value axes
+  (`Chart.majorUnit` / `majorUnitSecondary`). When authored, the renderer
+  steps ticks by exactly the authored unit and walks the cadence down to
+  zero for positive-only data with no `<c:min>` (capped at 14 ticks to
+  avoid pathological expansion), so workbooks pinning a `<c:max>` +
+  `<c:majorUnit>` get Excel's authored cadence (e.g. 0/9/18/27/36/45)
+  instead of niceTicks (10/20/30/40/45). Wired through `bar/column`,
+  `line`, `area`, and `combo` painters.
+- Added unit tests for `resolveAxisRange` with `majorUnit` cadence,
+  including the walk-to-zero heuristic, forced-min anchoring, tick-count
+  cap on tiny steps, and dataMin straddling zero.
+- Added Rust unit tests for `theme_scheme_color` covering all twelve
+  ECMA-376 §20.1.6.2 scheme slots (accents, bg/tx, lt/dk, hlink) plus
+  workbook-theme overrides on the lt1/bg1 slot, and for
+  `built_in_unit_default_label` /​ `built_in_unit_factor` consistency.
 
 ### Changed
 
@@ -36,6 +51,29 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fixed scheme-color resolution on chart `<c:spPr>` and `<c:dPt>` blocks to
+  handle every ECMA-376 §20.1.6.2 SchemeColor variant — not just
+  `accent1..accent6`. `bg1`/`tx1`/`bg2`/`tx2`, `lt1`/`dk1`/`lt2`/`dk2`,
+  `hlink`/`folHlink`, and the `windowText`/`window` system aliases now
+  route through the workbook theme (with the ECMA-default `<a:clrMap>`
+  fallback `bg1↔lt1`, `tx1↔dk1`, `bg2↔lt2`, `tx2↔dk2`). Fixes the
+  "fake-waterfall" idiom where invisible stack segments are painted with
+  `<a:schemeClr val="bg1"/>` (white-on-white) instead of `<a:noFill/>`;
+  those segments used to inherit their parent series's accent color and
+  break the floating-bar illusion. Refactored into a single shared
+  `theme_scheme_color()` helper used by both fill and outline resolvers.
+- Fixed chart title auto-generation from the series name. Per ECMA-376
+  §21.2.2.211 + §21.2.2.4, when `<c:title>` is present without an explicit
+  `<c:tx>` and `<c:autoTitleDeleted val="0"/>` (or the element is absent,
+  which defaults to false) and the chart has exactly one series, Excel
+  auto-uses the series name as the title; we used to render no title.
+  `<c:autoTitleDeleted val="1"/>` continues to suppress.
+- Fixed `<c:dispUnitsLbl>` default caption resolution. When the label
+  element is present without an inner `<c:tx>` and the unit is a built-in
+  (e.g. `<c:builtInUnit val="thousands"/>`), the extractor now falls back
+  to the localized unit name ("Thousands", "Millions", … per
+  `built_in_unit_default_label`) instead of dropping the caption. Excel
+  paints this default even though the XML carries no text node.
 - Fixed value-axis gridline rendering so gridlines only paint when authored
   and do not double-paint the zero line.
 - Fixed chart data labels across bar, line, area, pie/doughnut, scatter, and

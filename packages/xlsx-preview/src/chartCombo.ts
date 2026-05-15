@@ -142,6 +142,7 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     chart.valueMax,
     /*zeroClamp=*/ primaryHasBars,
     AXIS_TICK_COUNT,
+    chart.majorUnit,
   );
   const primaryTicks = pResolved.ticks;
   const pMin = pResolved.minV;
@@ -154,6 +155,7 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
         chart.valueMaxSecondary,
         /*zeroClamp=*/ secondaryHasBars,
         AXIS_TICK_COUNT,
+        chart.majorUnitSecondary,
       )
     : null;
   const secondaryTicks = sResolved ? sResolved.ticks : null;

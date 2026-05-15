@@ -146,6 +146,20 @@ pub struct Chart {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_max_secondary: Option<f64>,
+    /// `<c:majorUnit val="N"/>` on the primary value axis — the explicit
+    /// tick step. When present, the renderer generates ticks at
+    /// `min + k*majorUnit` instead of using its niceTicks heuristic, so
+    /// axis labels match Excel's authored cadence (e.g. NWC line chart
+    /// authored `<c:majorUnit val="9000"/>` with `<c:max val="45000"/>`
+    /// produces 0/9/18/27/36/45 once `dispUnits=1000` scales tick labels).
+    /// Stored in source units (before any `dispUnits` divisor).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub major_unit: Option<f64>,
+    /// Same as `major_unit`, but for the secondary value axis.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub major_unit_secondary: Option<f64>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bar_gap_width: Option<u16>,

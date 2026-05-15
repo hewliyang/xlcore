@@ -74,13 +74,98 @@ pub(crate) fn series_color_via_debug(
     }
     if let Some(p) = fill_block.find("SchemeColor {") {
         let scheme_scope = scope_from_open_brace(&fill_block[p..]);
-        for n in 1..=6u32 {
-            let needle = format!("Accent{n}");
-            if scheme_scope.contains(&needle) {
-                let base = theme_accent_color(n, theme);
-                return Some(apply_color_modifiers(&base, scheme_scope));
-            }
+        if let Some(base) = theme_scheme_color(scheme_scope, theme) {
+            return Some(apply_color_modifiers(&base, scheme_scope));
         }
+    }
+    None
+}
+
+/// Resolve a SchemeColor Debug-scope block (`"SchemeColor { val: <Variant>, ... }"`)
+/// to a base hex `#RRGGBB` via the workbook theme. Handles all twelve
+/// ECMA-376 §20.1.6.2 scheme-color slots — not just the six accent
+/// colors — so that authored fills like `<a:schemeClr val="bg1"/>` (used
+/// in the stacked-bar "fake waterfall" idiom where invisible segments are
+/// painted in the plot-area background color) resolve correctly instead
+/// of silently falling back to the series color.
+///
+/// Defaults follow the ECMA-376 default `<a:clrMap>`: `bg1`↔`lt1`,
+/// `tx1`↔`dk1`, `bg2`↔`lt2`, `tx2`↔`dk2`. `windowText`/`window` are
+/// system colors resolved to black/white. ooxmlsdk's SchemeColorValues
+/// Debug variant names are used (e.g. `Background1` for `bg1`,
+/// `Light1` for `lt1`); we match on substring presence inside the scoped
+/// block.
+pub(crate) fn theme_scheme_color(scheme_scope: &str, theme: Option<&Theme>) -> Option<String> {
+    // Accents 1..6 → theme slots 4..9.
+    for n in 1..=6u32 {
+        let needle = format!("Accent{n}");
+        if scheme_scope.contains(&needle) {
+            return Some(theme_accent_color(n, theme));
+        }
+    }
+    // Light/Dark slots. Matched *before* the bg1/tx1 aliases so a
+    // workbook that authored `lt1` directly still hits the same slot.
+    let by_slot = |slot: usize| -> String {
+        theme
+            .and_then(|t| t.colors.get(slot).cloned())
+            .filter(|h| h.len() == 6)
+            .map(|h| format!("#{}", h))
+            .unwrap_or_else(|| match slot {
+                0 => "#FFFFFF".to_string(),
+                1 => "#000000".to_string(),
+                2 => "#E7E6E6".to_string(),
+                3 => "#44546A".to_string(),
+                10 => "#0563C1".to_string(),
+                11 => "#954F72".to_string(),
+                _ => "#000000".to_string(),
+            })
+    };
+    // `val: Light1` / `val: Dark1` / `val: Light2` / `val: Dark2`.
+    // Word away the `Light` prefix substring collisions by anchoring
+    // on `val: ` — the surrounding scope is small enough that the
+    // simpler `contains` is safe in practice, but the prefix keeps
+    // future renames honest.
+    if scheme_scope.contains("val: Light1") {
+        return Some(by_slot(0));
+    }
+    if scheme_scope.contains("val: Dark1") {
+        return Some(by_slot(1));
+    }
+    if scheme_scope.contains("val: Light2") {
+        return Some(by_slot(2));
+    }
+    if scheme_scope.contains("val: Dark2") {
+        return Some(by_slot(3));
+    }
+    // Bg/Tx aliases — default clrMap routes them to Light/Dark slots.
+    // Workbooks may override via `<a:clrMap>` but the corpus uses the
+    // default; honoring overrides is a follow-up.
+    if scheme_scope.contains("val: Background1") {
+        return Some(by_slot(0));
+    }
+    if scheme_scope.contains("val: Text1") {
+        return Some(by_slot(1));
+    }
+    if scheme_scope.contains("val: Background2") {
+        return Some(by_slot(2));
+    }
+    if scheme_scope.contains("val: Text2") {
+        return Some(by_slot(3));
+    }
+    if scheme_scope.contains("val: Hyperlink") {
+        return Some(by_slot(10));
+    }
+    if scheme_scope.contains("val: FollowedHyperlink") {
+        return Some(by_slot(11));
+    }
+    // System colors authored directly as schemeClr. Excel sometimes
+    // emits `<a:schemeClr val="windowText"/>` in title spPr; here for
+    // completeness.
+    if scheme_scope.contains("val: WindowText") {
+        return Some("#000000".to_string());
+    }
+    if scheme_scope.contains("val: Window") {
+        return Some("#FFFFFF".to_string());
     }
     None
 }
@@ -145,12 +230,8 @@ pub(crate) fn line_color_via_debug(
     }
     if let Some(p) = fill_block.find("SchemeColor {") {
         let scheme_scope = scope_from_open_brace(&fill_block[p..]);
-        for n in 1..=6u32 {
-            let needle = format!("Accent{n}");
-            if scheme_scope.contains(&needle) {
-                let base = theme_accent_color(n, theme);
-                return Some(apply_color_modifiers(&base, scheme_scope));
-            }
+        if let Some(base) = theme_scheme_color(scheme_scope, theme) {
+            return Some(apply_color_modifiers(&base, scheme_scope));
         }
     }
     None
@@ -405,6 +486,94 @@ mod color_mod_tests {
         assert!(scoped.ends_with('}'));
         assert!(!scoped.contains("trailing"));
     }
+
+    // -- theme_scheme_color: every documented scheme slot -----------
+    //
+    // Covers the regression fixed when we extended SchemeColor parsing
+    // beyond Accent1..Accent6 to handle bg1/tx1/bg2/tx2 + lt/dk + hlink
+    // aliases (AGS Metrics Model Return Drivers "fake waterfall":
+    // invisible bars authored as `<a:schemeClr val="bg1"/>`).
+    fn block_with_val(variant: &str) -> String {
+        format!("SchemeColor {{ val: {variant}, scheme_color_choice: [] }}")
+    }
+
+    #[test]
+    fn scheme_bg1_resolves_to_white_via_default_palette() {
+        let block = block_with_val("Background1");
+        assert_eq!(theme_scheme_color(&block, None).as_deref(), Some("#FFFFFF"));
+    }
+
+    #[test]
+    fn scheme_tx1_resolves_to_black() {
+        let block = block_with_val("Text1");
+        assert_eq!(theme_scheme_color(&block, None).as_deref(), Some("#000000"));
+    }
+
+    #[test]
+    fn scheme_lt1_dk1_match_bg1_tx1_under_default_clrmap() {
+        // ECMA-376 default `<a:clrMap>`: lt1↔bg1 and dk1↔tx1. Our
+        // resolver routes both alias families to the same slot, so a
+        // workbook that authored `lt1` directly should resolve to the
+        // same hex as `bg1`.
+        let lt = theme_scheme_color(&block_with_val("Light1"), None);
+        let bg = theme_scheme_color(&block_with_val("Background1"), None);
+        assert_eq!(lt, bg);
+        let dk = theme_scheme_color(&block_with_val("Dark1"), None);
+        let tx = theme_scheme_color(&block_with_val("Text1"), None);
+        assert_eq!(dk, tx);
+    }
+
+    #[test]
+    fn scheme_bg2_uses_default_lt2() {
+        // Default theme lt2 = E7E6E6 (Office 2016).
+        let block = block_with_val("Background2");
+        assert_eq!(theme_scheme_color(&block, None).as_deref(), Some("#E7E6E6"));
+    }
+
+    #[test]
+    fn scheme_accent1_still_works() {
+        // Regression guard: the accent path predates the new helper;
+        // make sure we didn't break it by adding bg/tx branches.
+        let block = block_with_val("Accent1");
+        assert_eq!(theme_scheme_color(&block, None).as_deref(), Some("#4472C4"));
+    }
+
+    #[test]
+    fn scheme_hyperlink_resolves_to_default_hlink() {
+        let block = block_with_val("Hyperlink");
+        assert_eq!(theme_scheme_color(&block, None).as_deref(), Some("#0563C1"));
+    }
+
+    #[test]
+    fn scheme_unknown_variant_returns_none() {
+        // Defensive: unknown / phClr / future enum variants should
+        // bail out cleanly so the caller can fall back to the series
+        // color instead of silently mapping to black.
+        let block = block_with_val("PhColor");
+        assert!(theme_scheme_color(&block, None).is_none());
+    }
+
+    #[test]
+    fn scheme_bg1_honors_workbook_theme_override() {
+        // A workbook whose theme remapped slot 0 (lt1/bg1) to a tinted
+        // background — the resolver should follow theme.colors[0].
+        let theme = Theme {
+            colors: vec![
+                "FFF8E1".to_string(), // lt1 override
+                "000000".to_string(),
+                "E7E6E6".to_string(),
+                "44546A".to_string(),
+            ],
+            major_font: None,
+            minor_font: None,
+        };
+        let block = block_with_val("Background1");
+        assert_eq!(
+            theme_scheme_color(&block, Some(&theme)).as_deref(),
+            Some("#FFF8E1"),
+        );
+    }
+
 }
 
 /// Resolve `accent{n}` against the workbook theme (slots 4..9 in our
