@@ -40,15 +40,7 @@ export function computeCfIconState(
 
     // Gather values inside this rule's ranges to drive percent /
     // percentile / min / max thresholds.
-    const values: number[] = [];
-    for (const range of cf.ranges) {
-      for (let r = range.r1; r <= range.r2; r++) {
-        for (let c = range.c1; c <= range.c2; c++) {
-          const v = cellNumeric.get(`${r}:${c}`);
-          if (v !== undefined) values.push(v);
-        }
-      }
-    }
+    const values = numericValuesInRanges(cellNumeric, cf.ranges);
     if (values.length === 0) continue;
     const dataMin = Math.min(...values);
     const dataMax = Math.max(...values);
@@ -61,25 +53,44 @@ export function computeCfIconState(
       resolveCfvoValue(s, dataMin, dataMax, sorted, i === 0),
     );
 
-    for (const range of cf.ranges) {
-      for (let r = range.r1; r <= range.r2; r++) {
-        for (let c = range.c1; c <= range.c2; c++) {
-          const k = `${r}:${c}`;
-          if (isCfLocked(locks, k, rule.priority)) continue;
-          const v = cellNumeric.get(k);
-          if (v === undefined) continue;
-          // Largest k such that v >= thresholds[k]; default 0 (low icon).
-          let idx = 0;
-          for (let i = 1; i < n; i++) {
-            if (v >= thresholds[i]!) idx = i;
-          }
-          if (is.reverse) idx = n - 1 - idx;
-          cfIconReserve.set(k, ICON_RESERVE_PX);
-          cfIconDraw.set(k, { iconSet: is.iconSet, idx, n });
-          if (!is.showValue) cfIconSuppress.add(k);
-        }
+    for (const [k, v] of cellsInNumericRanges(cellNumeric, cf.ranges)) {
+      if (isCfLocked(locks, k, rule.priority)) continue;
+      // Largest k such that v >= thresholds[k]; default 0 (low icon).
+      let idx = 0;
+      for (let i = 1; i < n; i++) {
+        if (v >= thresholds[i]!) idx = i;
       }
+      if (is.reverse) idx = n - 1 - idx;
+      cfIconReserve.set(k, ICON_RESERVE_PX);
+      cfIconDraw.set(k, { iconSet: is.iconSet, idx, n });
+      if (!is.showValue) cfIconSuppress.add(k);
     }
   }
   return { cfIconReserve, cfIconDraw, cfIconSuppress };
+}
+
+function numericValuesInRanges(
+  cellNumeric: Map<string, number>,
+  ranges: { r1: number; r2: number; c1: number; c2: number }[],
+): number[] {
+  return cellsInNumericRanges(cellNumeric, ranges).map(([, v]) => v);
+}
+
+function cellsInNumericRanges(
+  cellNumeric: Map<string, number>,
+  ranges: { r1: number; r2: number; c1: number; c2: number }[],
+): [string, number][] {
+  const out: [string, number][] = [];
+  for (const [k, v] of cellNumeric) {
+    const sep = k.indexOf(":");
+    const r = Number(k.slice(0, sep));
+    const c = Number(k.slice(sep + 1));
+    for (const range of ranges) {
+      if (r >= range.r1 && r <= range.r2 && c >= range.c1 && c <= range.c2) {
+        out.push([k, v]);
+        break;
+      }
+    }
+  }
+  return out;
 }

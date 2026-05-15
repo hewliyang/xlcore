@@ -74,9 +74,16 @@ export function computeCfStopLocks(sheet: Sheet, layout: WorkbookLayout): Map<st
       matched = computeRuleMatchSet(rule, ranges, cellByKey, layout);
     } else if (rule.kind === "colorScale" || rule.kind === "dataBar" || rule.kind === "iconSet") {
       const all: string[] = [];
+      // CF sqrefs in real workbooks are often whole-row/whole-column or
+      // extend to XFD/1048576 even when the sheet's used range is tiny.
+      // Never expand beyond the renderer's effective grid bounds.
       for (const range of ranges) {
-        for (let r = range.r1; r <= range.r2; r++) {
-          for (let c = range.c1; c <= range.c2; c++) all.push(`${r}:${c}`);
+        const r1 = Math.max(1, range.r1);
+        const r2 = Math.min(sheet.maxRow, range.r2);
+        const c1 = Math.max(1, range.c1);
+        const c2 = Math.min(sheet.maxCol, range.c2);
+        for (let r = r1; r <= r2; r++) {
+          for (let c = c1; c <= c2; c++) all.push(`${r}:${c}`);
         }
       }
       matched = all;
@@ -156,6 +163,35 @@ export function computeCfDxfMap(
   return out;
 }
 
+function actualCellsInRanges(
+  cellByKey: Map<string, Cell>,
+  ranges: Merge[],
+): { k: string; cell: Cell }[] {
+  const out: { k: string; cell: Cell }[] = [];
+  for (const [k, cell] of cellByKey) {
+    if (cellInRanges(cell.r, cell.c, ranges)) out.push({ k, cell });
+  }
+  return out;
+}
+
+function numericValuesInRanges(cellNumeric: Map<string, number>, ranges: Merge[]): number[] {
+  const out: number[] = [];
+  for (const [k, v] of cellNumeric) {
+    const sep = k.indexOf(":");
+    const r = Number(k.slice(0, sep));
+    const c = Number(k.slice(sep + 1));
+    if (cellInRanges(r, c, ranges)) out.push(v);
+  }
+  return out;
+}
+
+function cellInRanges(r: number, c: number, ranges: Merge[]): boolean {
+  for (const range of ranges) {
+    if (r >= range.r1 && r <= range.r2 && c >= range.c1 && c <= range.c2) return true;
+  }
+  return false;
+}
+
 /// Walk every cell covered by `ranges` and return the keys (`"r:c"`)
 /// that satisfy the rule. Caller handles priority + stopIfTrue.
 function computeRuleMatchSet(
@@ -166,16 +202,10 @@ function computeRuleMatchSet(
 ): Set<string> {
   const out = new Set<string>();
 
-  // Collect every (key, cell) pair this rule covers, once.
-  const covered: { k: string; cell: Cell | undefined }[] = [];
-  for (const range of ranges) {
-    for (let r = range.r1; r <= range.r2; r++) {
-      for (let c = range.c1; c <= range.c2; c++) {
-        const k = `${r}:${c}`;
-        covered.push({ k, cell: cellByKey.get(k) });
-      }
-    }
-  }
+  // Collect actual cells covered by this rule. Do not materialize blank
+  // grid cells from the sqref: some workbooks contain CF ranges like
+  // A299:XFD1048576, which would otherwise allocate billions of entries.
+  const covered = actualCellsInRanges(cellByKey, ranges);
 
   switch (rule.kind) {
     case "cellIs": {
@@ -579,15 +609,7 @@ export function drawConditionalFormats(
     if (!rule || !rule.colorScale) continue;
 
     // Gather all numeric values inside this CF's ranges to compute min/max.
-    const values: number[] = [];
-    for (const range of cf.ranges) {
-      for (let r = range.r1; r <= range.r2; r++) {
-        for (let c = range.c1; c <= range.c2; c++) {
-          const v = cellNumeric.get(`${r}:${c}`);
-          if (v !== undefined) values.push(v);
-        }
-      }
-    }
+    const values = numericValuesInRanges(cellNumeric, cf.ranges);
     if (values.length === 0) continue;
 
     const stops = resolveColorScaleStops(rule.colorScale, values);
@@ -627,15 +649,7 @@ export function drawConditionalFormats(
     const db = rule.dataBar;
 
     // Numeric values inside the rule's ranges drive the auto min/max.
-    const values: number[] = [];
-    for (const range of cf.ranges) {
-      for (let r = range.r1; r <= range.r2; r++) {
-        for (let c = range.c1; c <= range.c2; c++) {
-          const v = cellNumeric.get(`${r}:${c}`);
-          if (v !== undefined) values.push(v);
-        }
-      }
-    }
+    const values = numericValuesInRanges(cellNumeric, cf.ranges);
     if (values.length === 0) continue;
     const dataMin = Math.min(...values);
     const dataMax = Math.max(...values);
@@ -795,8 +809,12 @@ export function computeCfTextSuppress(sheet: Sheet, locks?: Map<string, number>)
       .sort((a, b) => a.priority - b.priority)[0];
     if (!rule) continue;
     for (const range of cf.ranges) {
-      for (let r = range.r1; r <= range.r2; r++) {
-        for (let c = range.c1; c <= range.c2; c++) {
+      const r1 = Math.max(1, range.r1);
+      const r2 = Math.min(sheet.maxRow, range.r2);
+      const c1 = Math.max(1, range.c1);
+      const c2 = Math.min(sheet.maxCol, range.c2);
+      for (let r = r1; r <= r2; r++) {
+        for (let c = c1; c <= c2; c++) {
           const k = `${r}:${c}`;
           if (isCfLocked(locks, k, rule.priority)) continue;
           out.add(k);

@@ -5,6 +5,13 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Avoid freezing/OOMing on sheets whose conditional-formatting ranges extend
+  to full Excel row/column bounds (for example `XFD` / `1048576`) by scanning
+  actual populated/numeric cells and clipping range expansion to the sheet's
+  effective bounds.
+
 ## [0.0.5] - 2026-05-16
 
 ### Added
