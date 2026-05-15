@@ -126,6 +126,67 @@ canvas.save("/tmp/xlcore-compare.png")
 - At app-zoom 200% (`+` twice in our preview UI) text re-shapes crisply
   rather than upscaling as bitmap.
 
+## footguns
+
+### `pnpm exec xlsx-preview` resolves to the **global** install, not the workspace
+
+The workspace package `@hewliyang/xlsx-preview` exposes a `xlsx-preview`
+bin. If you've ever `npm i -g @hewliyang/xlsx-preview` (or it landed via
+some other global install), `pnpm exec xlsx-preview` — even from inside
+`packages/xlsx-preview/` — silently resolves to
+`~/.nvm/.../bin/xlsx-preview` → the globally-installed `dist/cli.js`.
+That bin ships its own bundled wasm and renderer code, frozen at the
+published version. Every fix you make locally — extractor, schema,
+renderer — is invisible to that binary.
+
+Symptoms: "my change doesn't show up," "this combo chart used to work
+and now it's bar-only," "the dispUnits caption isn't painting even
+though the unit test passes." The wasm version of the data the
+global binary surfaces predates whatever schema field your renderer
+is now reading, so the field is silently `undefined` and your code
+path dead-ends.
+
+Diagnose:
+
+```bash
+which xlsx-preview
+#   /Users/you/.nvm/versions/node/vN/bin/xlsx-preview
+readlink "$(which xlsx-preview)"
+#   ../lib/node_modules/@hewliyang/xlsx-preview/dist/cli.js   ← NOT YOUR CODE
+```
+
+Fixes:
+
+- **For local CLI testing, always invoke the workspace build directly:**
+
+  ```bash
+  node packages/xlsx-preview/dist/cli.js <args>
+  ```
+
+  Confirms you're hitting the freshly-built `dist/` and the freshly-built
+  `crates/xlcore-wasm/pkg/xlcore_wasm_bg.wasm`. Pair with
+  `pnpm --filter @hewliyang/xlsx-preview build` (TS only) or
+  `pnpm --filter @hewliyang/xlsx-preview run build:release` (full,
+  including the wasm rebuild) before each run when you've changed
+  Rust extractor code.
+
+- Don't trust `pnpm exec` / `npx` / bare `xlsx-preview` for workspace
+  verification — they'll happily run the wrong binary against your
+  local fixtures and produce convincingly stale screenshots.
+
+Related: the wasm bundle (`crates/xlcore-wasm/pkg/xlcore_wasm_bg.wasm`)
+is a *separate* build artifact from the TS bundle. `pnpm --filter ...
+build` only rebuilds TS; you need `build:release` (or `build:wasm`) to
+pick up extractor changes. The wasm's mtime is the canonical check:
+
+```bash
+stat -f "%Sm %N" crates/xlcore-wasm/pkg/xlcore_wasm_bg.wasm
+```
+
+If it predates your last extractor edit, the renderer is reading stale
+data. (`hsx`'s output is unaffected since it doesn't go through our
+wasm at all.)
+
 ## fixtures
 
 Live in `tests/fixtures/` (source-controlled). See

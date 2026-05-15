@@ -31,8 +31,8 @@ export type Chart = {
    */
   valueFormat?: string;
   /**
-   * Number-format string for category-axis labels. When omitted, labels are
-   * rendered as plain text.
+   * Number-format string for category-axis labels. When omitted, labels
+   * are rendered as plain text.
    */
   categoriesFormat?: string;
   /**
@@ -57,4 +57,132 @@ export type Chart = {
    * labels (Excel's default for every chart type).
    */
   dataLabels?: DataLabels;
+  /**
+   * True when one or more series in the chart are bound to a
+   * secondary value axis (typical for combo charts: bar + line
+   * with a right-hand axis). Set by the extractor whenever a
+   * `<c:valAx>` with `axPos="r"` is found alongside a primary
+   * `axPos="l"` axis. The renderer uses this to know it needs to
+   * draw a second y-axis, and per-series `axisGroup` picks the
+   * side each series belongs to.
+   */
+  secondaryAxis: boolean;
+  /**
+   * Number-format for the *secondary* value axis when
+   * `secondary_axis` is true. Falls back to `value_format` if
+   * the right-hand axis didn't declare its own `numFmt`.
+   */
+  valueFormatSecondary?: string;
+  /**
+   * Explicit primary value-axis minimum (`<c:scaling><c:min>`).
+   * When absent the renderer auto-picks a nice round floor near
+   * the data minimum (Excel's default). Setting this overrides
+   * the renderer's normal "clamp to zero" rule — critical for
+   * charts whose interesting range sits far above zero (e.g.
+   * data 1098–1220 with `<c:max val="1220"/>` should not show a
+   * 0–1220 axis or every bar looks identical).
+   */
+  valueMin?: number;
+  /**
+   * Explicit primary value-axis maximum (`<c:scaling><c:max>`).
+   */
+  valueMax?: number;
+  /**
+   * Explicit secondary value-axis minimum.
+   */
+  valueMinSecondary?: number;
+  /**
+   * Explicit secondary value-axis maximum.
+   */
+  valueMaxSecondary?: number;
+  /**
+   * `<c:gapWidth val="N"/>` on `<c:barChart>` / `<c:bar3DChart>`.
+   * ECMA-376 §21.2.2.75: percentage of *bar width* left as space
+   * *between category groups*. Default 150 (i.e. gap = 1.5× bar
+   * width → bar fills 1/(1+1.5)=40% of its category slot). Range
+   * 0..500. The renderer feeds this into `barFracOfSlot = 100 /
+   * (100 + gapWidth)` to size each bar group.
+   */
+  barGapWidth?: number;
+  /**
+   * `<c:overlap val="N"/>` on `<c:barChart>` / `<c:bar3DChart>`.
+   * ECMA-376 §21.2.2.108: percentage overlap between adjacent
+   * series in the *same* category. Range -100..100. Default 0 for
+   * clustered, 100 for stacked (Excel writes the value explicitly
+   * either way). Negative = extra space between cluster members,
+   * positive = visual overlap, 100 = stacked behavior.
+   */
+  barOverlap?: number;
+  /**
+   * `<c:catAx><c:title>` / `<c:dateAx><c:title>` text on the
+   * horizontal (category / x) axis — `axPos="b"` or `"t"`.
+   * Renderer paints centered below the plot area.
+   */
+  xAxisTitle?: string;
+  /**
+   * `<c:valAx><c:title>` text on the primary value axis
+   * (`axPos="l"`, or single-axis fallback). Renderer paints
+   * rotated -90° along the left edge of the plot area.
+   */
+  yAxisTitle?: string;
+  /**
+   * `<c:majorGridlines>` toggle for the primary value axis.
+   * ECMA-376 §21.2.2.85: gridlines are drawn only when the
+   * element is present, and `<c:spPr><a:ln><a:noFill/></a:ln></c:spPr>`
+   * suppresses the stroke even when the element is. `None` (or
+   * `Some(true)`) ⇒ paint, `Some(false)` ⇒ skip. Defaulting to
+   * "paint" matches Excel's UI default for new charts (which
+   * always include `<c:majorGridlines>`).
+   */
+  showMajorGridlines?: boolean;
+  /**
+   * Same as `show_major_gridlines`, but for the secondary value
+   * axis. Only meaningful when `secondary_axis` is true.
+   */
+  showMajorGridlinesSecondary?: boolean;
+  /**
+   * `<c:valAx><c:title>` text on the secondary value axis
+   * (`axPos="r"`). Renderer paints rotated -90° (text reads
+   * top→bottom on a right-side axis just like the left side,
+   * matching Excel desktop) along the right edge of the plot
+   * area when `secondary_axis` is true.
+   */
+  yAxisTitleSecondary?: string;
+  /**
+   * `<c:dispUnits>` divisor on the primary value axis. Tick labels
+   * are divided by this value before formatting (e.g. 1000 for
+   * `builtInUnit=thousands`, the `val` of `<c:custUnit>` for custom).
+   * ECMA-376 §21.2.2.46. Data labels and series values are NOT
+   * scaled — only tick labels (matches Excel desktop).
+   */
+  dispUnits?: number;
+  /**
+   * `<c:dispUnitsLbl>` text on the primary value axis (e.g.
+   * `"S$ mn"`). Renderer paints near the top of the y-axis as a
+   * caption when `disp_units` is set.
+   */
+  dispUnitsLabel?: string;
+  /**
+   * Same as `disp_units`, but for the secondary value axis.
+   */
+  dispUnitsSecondary?: number;
+  /**
+   * Same as `disp_units_label`, but for the secondary value axis.
+   */
+  dispUnitsLabelSecondary?: string;
+  /**
+   * `<c:bubbleScale val="N"/>` on `<c:bubbleChart>`. ECMA-376
+   * §21.2.2.30: percentage (0..=300) that scales the rendered
+   * bubble diameters. Default 100. Renderer feeds this into the
+   * max-bubble-radius computation in `drawBubbleChart`.
+   * Only meaningful for chart_type == "bubble".
+   */
+  bubbleScale?: number;
+  /**
+   * `<c:sizeRepresents val="area|w"/>` on `<c:bubbleChart>`.
+   * ECMA-376 §21.2.2.197: `area` (default) means `bubbleSize`
+   * values map to circle *area*; `w` means they map to circle
+   * *width* (diameter). Only meaningful for chart_type == "bubble".
+   */
+  sizeRepresents?: string;
 };

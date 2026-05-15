@@ -5,6 +5,44 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Expanded chart support for combo and dual-axis charts, including secondary
+  value axes, per-series axis groups/chart types, secondary formats/scaling,
+  axis titles, display units/labels, and secondary gridline metadata.
+- Added bubble chart schema/rendering support with bubble sizes, bubble scale,
+  and size-representation handling.
+- Added per-data-point chart data-label overrides (`PointDataLabel`) with
+  literal text, delete/suppress, position, number-format, and show-field
+  inheritance/overrides.
+- Added chart fixtures/builders for bubble charts, per-point data labels,
+  no-fill stacked waterfall bars, stacked color modifiers, combo secondary
+  axes, and dual-axis lines.
+- Added chart utility tests for bar slot metrics, display-unit axis formatting,
+  and zero-baseline helpers.
+
+### Changed
+
+- Improved chart axis range resolution to honor explicit scaling bounds,
+  avoid unintended zero-clamping, apply display-unit divisors to tick labels,
+  and draw a heavier zero baseline when axes straddle zero.
+- Improved bar/column geometry to follow OOXML `gapWidth` and `overlap` for
+  clustered, stacked, and percent-stacked charts.
+- Improved legends to reflect series style with filled swatches, line strokes,
+  markers, or line+marker combinations.
+- Improved line, scatter, combo, pie/doughnut, and bar rendering for marker
+  suppression, blank-point gaps, sorted scatter line paths, per-point colors,
+  no-fill point overrides, and per-point labels.
+
+### Fixed
+
+- Fixed value-axis gridline rendering so gridlines only paint when authored
+  and do not double-paint the zero line.
+- Fixed chart data labels across bar, line, area, pie/doughnut, scatter, and
+  combo renderers to respect per-point delete/text/format/position overrides.
+- Fixed generated TypeScript schema exports for the new chart and data-label
+  fields.
+
 ## [0.0.4] - 2026-05-13
 
 ### Fixed

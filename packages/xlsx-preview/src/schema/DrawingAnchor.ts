@@ -19,7 +19,7 @@ export type DrawingAnchor = {
    */
   extEmuCx?: number | null;
   /**
-   * `oneCellAnchor` height in EMU. See `extEmuCx`.
+   * `oneCellAnchor` height in EMU. See `ext_emu_cx`.
    */
   extEmuCy?: number | null;
 };

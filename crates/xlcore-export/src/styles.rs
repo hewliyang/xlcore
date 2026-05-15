@@ -184,12 +184,13 @@ fn extract_font(f: &XFont) -> Font {
             Some(u) => !matches!(crate::underline_variant(u.val), Some("none")),
             None => false,
         },
-        underline_style: f.underline.as_ref().and_then(|u| {
-            match crate::underline_variant(u.val) {
+        underline_style: f
+            .underline
+            .as_ref()
+            .and_then(|u| match crate::underline_variant(u.val) {
                 Some(v) if v != "single" && v != "none" => Some(v.to_string()),
                 _ => None,
-            }
-        }),
+            }),
         strike: f
             .strike
             .as_ref()
@@ -202,7 +203,11 @@ fn extract_font(f: &XFont) -> Font {
             .and_then(|v| crate::vert_align_variant(v.val)),
         family: f.font_family_numbering.as_ref().and_then(|fm| {
             let v = fm.val;
-            if (0..=5).contains(&v) { Some(v as u8) } else { None }
+            if (0..=5).contains(&v) {
+                Some(v as u8)
+            } else {
+                None
+            }
         }),
         scheme: f
             .font_scheme

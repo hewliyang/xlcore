@@ -1,0 +1,267 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Sheet1",
+      "maxRow": 2,
+      "maxCol": 6,
+      "defaultColWidthPx": 66.96094,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "drawings": [
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 0,
+            "fromColOffEmu": 0,
+            "fromRow": 4,
+            "fromRowOffEmu": 0,
+            "toCol": 5,
+            "toColOffEmu": 476250,
+            "toRow": 20,
+            "toRowOffEmu": 0
+          },
+          "chart": {
+            "type": "pie",
+            "title": "Pie — per-slice <c:dLbl>",
+            "series": [
+              {
+                "name": "Revenue",
+                "nameRef": "Sheet1!$A$2",
+                "color": "#4F81BD",
+                "values": [
+                  151.0,
+                  121.0,
+                  92.0,
+                  102.0,
+                  88.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$F$2",
+                "dataLabels": {
+                  "showCategory": true,
+                  "position": "bestFit",
+                  "separator": ", ",
+                  "pointOverrides": [
+                    {
+                      "idx": 0,
+                      "text": "★ TOP",
+                      "showCategory": true
+                    },
+                    {
+                      "idx": 1,
+                      "delete": true
+                    },
+                    {
+                      "idx": 3,
+                      "numFmt": "$#,##0",
+                      "showValue": true
+                    }
+                  ]
+                }
+              }
+            ],
+            "categories": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4",
+              "Q5"
+            ],
+            "categoriesRef": "Sheet1!$B$1:$F$1",
+            "legendPos": "b",
+            "valueFormat": "General",
+            "categoriesFormat": "General"
+          }
+        },
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 6,
+            "fromColOffEmu": 76200,
+            "fromRow": 4,
+            "fromRowOffEmu": 0,
+            "toCol": 12,
+            "toColOffEmu": 152400,
+            "toRow": 20,
+            "toRowOffEmu": 0
+          },
+          "chart": {
+            "type": "column",
+            "title": "Column — per-bar <c:dLbl>",
+            "series": [
+              {
+                "name": "Revenue",
+                "nameRef": "Sheet1!$A$2",
+                "color": "#4F81BD",
+                "values": [
+                  151.0,
+                  121.0,
+                  92.0,
+                  102.0,
+                  88.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$F$2",
+                "dataLabels": {
+                  "showValue": true,
+                  "position": "outEnd",
+                  "separator": ", ",
+                  "pointOverrides": [
+                    {
+                      "idx": 0,
+                      "text": "Q1!",
+                      "showValue": false
+                    },
+                    {
+                      "idx": 2,
+                      "position": "inEnd"
+                    },
+                    {
+                      "idx": 4,
+                      "delete": true
+                    }
+                  ]
+                }
+              }
+            ],
+            "categories": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4",
+              "Q5"
+            ],
+            "categoriesRef": "Sheet1!$B$1:$F$1",
+            "legendPos": "b",
+            "valueFormat": "General",
+            "categoriesFormat": "General",
+            "grouping": "clustered",
+            "barDir": "column",
+            "barGapWidth": 150,
+            "barOverlap": -27,
+            "showMajorGridlines": true
+          }
+        }
+      ],
+      "cells": {
+        "count": 12,
+        "r": "AQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAgAAAAIAAAACAAAAAgAAAAIAAAACAAAA",
+        "c": "AQAAAAIAAAADAAAABAAAAAUAAAAGAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAA",
+        "kind": "AQEBAQEBAQAAAAAA",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAA",
+        "formulaIdx": "////////////////////////////////////////////////////////////////",
+        "styleIdx": "AQAAAAEAAAABAAAAAQAAAAEAAAABAAAA////////////////////////////////",
+        "runsIdx": "////////////////////////////////////////////////////////////////",
+        "rowPtr": "AAAAAAYAAAAMAAAA"
+      },
+      "rowMeta": {
+        "count": 2,
+        "index": "AQAAAAIAAAA=",
+        "heightPx": "AACgQQAAoEE=",
+        "styleIdx": "//////////8=",
+        "hidden": "AAA="
+      },
+      "valuePool": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "151",
+        "121",
+        "92",
+        "102",
+        "88"
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "color": {
+          "theme": 1
+        },
+        "scheme": "minor"
+      },
+      {
+        "name": "Calibri",
+        "bold": true,
+        "scheme": "minor"
+      }
+    ],
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {},
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 1,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      },
+      {
+        "fontId": 1,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0
+  },
+  "sharedStrings": [
+    "",
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4",
+    "Q5",
+    "Revenue"
+  ],
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  },
+  "activeSheetIndex": 0
+}

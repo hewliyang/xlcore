@@ -25,16 +25,32 @@ export type ChartSeries = {
    */
   xValues: Array<number>;
   /**
-   * Formula for the x-values range (scatter only). Resolved after
-   * sheet extraction if `x_values` is empty.
+   * Formula for the x-values range (scatter / bubble only).
+   * Resolved after sheet extraction if `x_values` is empty.
    */
   xValuesRef?: string;
+  /**
+   * Bubble-size values for bubble-chart series (one per data
+   * point, parallel to `values`). Empty for every other chart
+   * type. The renderer maps these to circle area or width per
+   * `Chart.size_represents`.
+   */
+  bubbleSizes: Array<number>;
+  /**
+   * Formula for the bubble-size range. Resolved after sheet
+   * extraction if `bubble_sizes` is empty.
+   */
+  bubbleSizesRef?: string;
   /**
    * Per-data-point CSS color overrides, parallel to `values` (one
    * entry per category). Empty string at index `i` means "use the
    * series-level `color` (or the renderer's per-slice palette for
-   * pie/doughnut)". Sourced from `<c:dPt>` children with explicit
-   * `spPr` fills. Empty Vec when no `<c:dPt>` overrides exist.
+   * pie/doughnut)". The sentinel string `"none"` means "this data
+   * point is explicitly transparent (`<c:spPr><a:noFill/>`)" — the
+   * renderer should skip painting the geometry while still
+   * consuming any stacked-axis space the point would have taken.
+   * Sourced from `<c:dPt>` children with explicit `spPr` fills.
+   * Empty Vec when no `<c:dPt>` overrides exist.
    */
   pointColors: Array<string>;
   /**
@@ -42,4 +58,31 @@ export type ChartSeries = {
    * when present.
    */
   dataLabels?: DataLabels;
+  /**
+   * `primary` (left-hand y-axis) or `secondary` (right-hand).
+   * Only meaningful for charts that have a secondary axis;
+   * otherwise omitted. Renderers should treat absent as primary.
+   */
+  axisGroup?: string;
+  /**
+   * Per-series chart-type override for combo charts. One of
+   * `column`, `bar`, `line`, `area`, `scatter`, `pie`,
+   * `doughnut`. When `None`, the series uses the chart-level
+   * `Chart.type`. The extractor sets this whenever a chart's
+   * plotArea contains more than one chart-group element (e.g.
+   * `<c:barChart>` + `<c:lineChart>`); in that case the chart's
+   * own `type` is set to `"combo"`.
+   */
+  chartType?: string;
+  /**
+   * Per-series `<c:marker><c:symbol val="..."/>` override. One of
+   * the OOXML `ST_MarkerStyle` values: `circle` / `square` /
+   * `diamond` / `triangle` / `x` / `plus` / `star` / `dash` /
+   * `dot` / `none` / `picture` / `auto`. Renderers honor `none`
+   * to suppress the per-point marker glyph on line / scatter
+   * series even when the chart type would normally draw one.
+   * Other values are surfaced for future per-series-symbol
+   * rendering; today only `none` is acted on.
+   */
+  markerSymbol?: string;
 };

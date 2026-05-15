@@ -1,0 +1,593 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Sheet1",
+      "maxRow": 7,
+      "maxCol": 7,
+      "defaultColWidthPx": 66.96094,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": {
+        "topRow": 2,
+        "leftCol": 1
+      },
+      "showGridLines": true,
+      "drawings": [
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 5,
+            "fromColOffEmu": 381000,
+            "fromRow": 0,
+            "fromRowOffEmu": 0,
+            "toCol": 11,
+            "toColOffEmu": 266700,
+            "toRow": 12,
+            "toRowOffEmu": 0
+          },
+          "chart": {
+            "type": "column",
+            "title": "Column — outsideEnd",
+            "series": [
+              {
+                "name": "North",
+                "nameRef": "Sheet1!$B$1",
+                "color": "#4F81BD",
+                "values": [
+                  120.0,
+                  138.0,
+                  151.0,
+                  169.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$B$5",
+                "dataLabels": {
+                  "showValue": true,
+                  "position": "outEnd",
+                  "separator": ", "
+                }
+              },
+              {
+                "name": "South",
+                "nameRef": "Sheet1!$C$1",
+                "color": "#C0504D",
+                "values": [
+                  98.0,
+                  110.0,
+                  121.0,
+                  135.0
+                ],
+                "valuesRef": "Sheet1!$C$2:$C$5",
+                "dataLabels": {
+                  "showValue": true,
+                  "position": "outEnd",
+                  "separator": ", "
+                }
+              },
+              {
+                "name": "East",
+                "nameRef": "Sheet1!$D$1",
+                "color": "#9BBB59",
+                "values": [
+                  145.0,
+                  158.0,
+                  172.0,
+                  189.0
+                ],
+                "valuesRef": "Sheet1!$D$2:$D$5",
+                "dataLabels": {
+                  "showValue": true,
+                  "position": "outEnd",
+                  "separator": ", "
+                }
+              }
+            ],
+            "categories": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "categoriesRef": "Sheet1!$A$2:$A$5",
+            "legendPos": "b",
+            "valueFormat": "General",
+            "grouping": "clustered",
+            "barDir": "column",
+            "barGapWidth": 150,
+            "barOverlap": -27,
+            "showMajorGridlines": true
+          }
+        },
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 11,
+            "fromColOffEmu": 361950,
+            "fromRow": 0,
+            "fromRowOffEmu": 0,
+            "toCol": 17,
+            "toColOffEmu": 247650,
+            "toRow": 12,
+            "toRowOffEmu": 0
+          },
+          "chart": {
+            "type": "bar",
+            "title": "Bar — center",
+            "series": [
+              {
+                "name": "North",
+                "nameRef": "Sheet1!$B$1",
+                "color": "#4F81BD",
+                "values": [
+                  120.0,
+                  138.0,
+                  151.0,
+                  169.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$B$5",
+                "dataLabels": {
+                  "showValue": true,
+                  "position": "ctr",
+                  "separator": ", "
+                }
+              },
+              {
+                "name": "South",
+                "nameRef": "Sheet1!$C$1",
+                "color": "#C0504D",
+                "values": [
+                  98.0,
+                  110.0,
+                  121.0,
+                  135.0
+                ],
+                "valuesRef": "Sheet1!$C$2:$C$5",
+                "dataLabels": {
+                  "showValue": true,
+                  "position": "ctr",
+                  "separator": ", "
+                }
+              },
+              {
+                "name": "East",
+                "nameRef": "Sheet1!$D$1",
+                "color": "#9BBB59",
+                "values": [
+                  145.0,
+                  158.0,
+                  172.0,
+                  189.0
+                ],
+                "valuesRef": "Sheet1!$D$2:$D$5",
+                "dataLabels": {
+                  "showValue": true,
+                  "position": "ctr",
+                  "separator": ", "
+                }
+              }
+            ],
+            "categories": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "categoriesRef": "Sheet1!$A$2:$A$5",
+            "legendPos": "b",
+            "valueFormat": "General",
+            "grouping": "clustered",
+            "barDir": "bar",
+            "barGapWidth": 182,
+            "barOverlap": 0,
+            "showMajorGridlines": true
+          }
+        },
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 17,
+            "fromColOffEmu": 342900,
+            "fromRow": 0,
+            "fromRowOffEmu": 0,
+            "toCol": 19,
+            "toColOffEmu": 590550,
+            "toRow": 12,
+            "toRowOffEmu": 0
+          },
+          "chart": {
+            "type": "line",
+            "title": "Line — above",
+            "series": [
+              {
+                "name": "North",
+                "nameRef": "Sheet1!$B$1",
+                "color": "#4F81BD",
+                "values": [
+                  120.0,
+                  138.0,
+                  151.0,
+                  169.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$B$5",
+                "dataLabels": {
+                  "showValue": true,
+                  "position": "t",
+                  "separator": ", "
+                }
+              },
+              {
+                "name": "South",
+                "nameRef": "Sheet1!$C$1",
+                "color": "#C0504D",
+                "values": [
+                  98.0,
+                  110.0,
+                  121.0,
+                  135.0
+                ],
+                "valuesRef": "Sheet1!$C$2:$C$5",
+                "dataLabels": {
+                  "showValue": true,
+                  "position": "t",
+                  "separator": ", "
+                }
+              },
+              {
+                "name": "East",
+                "nameRef": "Sheet1!$D$1",
+                "color": "#9BBB59",
+                "values": [
+                  145.0,
+                  158.0,
+                  172.0,
+                  189.0
+                ],
+                "valuesRef": "Sheet1!$D$2:$D$5",
+                "dataLabels": {
+                  "showValue": true,
+                  "position": "t",
+                  "separator": ", "
+                }
+              }
+            ],
+            "categories": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "categoriesRef": "Sheet1!$A$2:$A$5",
+            "legendPos": "b",
+            "valueFormat": "General",
+            "grouping": "standard",
+            "showMajorGridlines": true
+          }
+        },
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 5,
+            "fromColOffEmu": 381000,
+            "fromRow": 12,
+            "fromRowOffEmu": 95250,
+            "toCol": 11,
+            "toColOffEmu": 266700,
+            "toRow": 24,
+            "toRowOffEmu": 95250
+          },
+          "chart": {
+            "type": "area",
+            "title": "Area — cat+val",
+            "series": [
+              {
+                "name": "North",
+                "nameRef": "Sheet1!$B$1",
+                "color": "#4F81BD",
+                "values": [
+                  120.0,
+                  138.0,
+                  151.0,
+                  169.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$B$5",
+                "dataLabels": {
+                  "showValue": true,
+                  "showCategory": true,
+                  "separator": ", "
+                }
+              },
+              {
+                "name": "South",
+                "nameRef": "Sheet1!$C$1",
+                "color": "#C0504D",
+                "values": [
+                  98.0,
+                  110.0,
+                  121.0,
+                  135.0
+                ],
+                "valuesRef": "Sheet1!$C$2:$C$5",
+                "dataLabels": {
+                  "showValue": true,
+                  "showCategory": true,
+                  "separator": ", "
+                }
+              },
+              {
+                "name": "East",
+                "nameRef": "Sheet1!$D$1",
+                "color": "#9BBB59",
+                "values": [
+                  145.0,
+                  158.0,
+                  172.0,
+                  189.0
+                ],
+                "valuesRef": "Sheet1!$D$2:$D$5",
+                "dataLabels": {
+                  "showValue": true,
+                  "showCategory": true,
+                  "separator": ", "
+                }
+              }
+            ],
+            "categories": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "categoriesRef": "Sheet1!$A$2:$A$5",
+            "legendPos": "b",
+            "valueFormat": "General",
+            "grouping": "stacked",
+            "showMajorGridlines": true
+          }
+        },
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 11,
+            "fromColOffEmu": 361950,
+            "fromRow": 12,
+            "fromRowOffEmu": 95250,
+            "toCol": 17,
+            "toColOffEmu": 247650,
+            "toRow": 24,
+            "toRowOffEmu": 95250
+          },
+          "chart": {
+            "type": "pie",
+            "title": "Pie — % + cat",
+            "series": [
+              {
+                "name": "Q3",
+                "nameRef": "Sheet1!$A$4",
+                "color": "#4F81BD",
+                "values": [
+                  151.0,
+                  121.0,
+                  172.0
+                ],
+                "valuesRef": "Sheet1!$B$4:$D$4",
+                "dataLabels": {
+                  "showCategory": true,
+                  "showPercent": true,
+                  "position": "outEnd",
+                  "separator": ", "
+                }
+              }
+            ],
+            "legendPos": "b",
+            "valueFormat": "General"
+          }
+        },
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 17,
+            "fromColOffEmu": 342900,
+            "fromRow": 12,
+            "fromRowOffEmu": 95250,
+            "toCol": 19,
+            "toColOffEmu": 590550,
+            "toRow": 24,
+            "toRowOffEmu": 95250
+          },
+          "chart": {
+            "type": "scatter",
+            "title": "Scatter — value",
+            "series": [
+              {
+                "name": "Y",
+                "nameRef": "Sheet1!$G$1",
+                "color": "#4F81BD",
+                "values": [
+                  3.5,
+                  4.1,
+                  2.9,
+                  5.6,
+                  6.2,
+                  5.0
+                ],
+                "valuesRef": "Sheet1!$G$2:$G$7",
+                "xValues": [
+                  1.2,
+                  2.8,
+                  3.5,
+                  4.7,
+                  5.1,
+                  6.4
+                ],
+                "xValuesRef": "Sheet1!$F$2:$F$7",
+                "dataLabels": {
+                  "showValue": true,
+                  "position": "r",
+                  "separator": ", "
+                }
+              }
+            ],
+            "categories": [
+              "1.2",
+              "2.8",
+              "3.5",
+              "4.7",
+              "5.1",
+              "6.4"
+            ],
+            "categoriesRef": "Sheet1!$F$2:$F$7",
+            "legendPos": "b",
+            "valueFormat": "General",
+            "categoriesFormat": "General",
+            "scatterStyle": "lineMarker",
+            "showMajorGridlines": false
+          }
+        }
+      ],
+      "cells": {
+        "count": 34,
+        "r": "AQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAgAAAAIAAAACAAAAAgAAAAIAAAACAAAAAwAAAAMAAAADAAAAAwAAAAMAAAADAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABQAAAAUAAAAFAAAABQAAAAUAAAAFAAAABgAAAAYAAAAHAAAABwAAAA==",
+        "c": "AQAAAAIAAAADAAAABAAAAAYAAAAHAAAAAQAAAAIAAAADAAAABAAAAAYAAAAHAAAAAQAAAAIAAAADAAAABAAAAAYAAAAHAAAAAQAAAAIAAAADAAAABAAAAAYAAAAHAAAAAQAAAAIAAAADAAAABAAAAAYAAAAHAAAABgAAAAcAAAAGAAAABwAAAA==",
+        "kind": "AQEBAQEBAQAAAAAAAQAAAAAAAQAAAAAAAQAAAAAAAAAAAA==",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAADwAAABAAAAARAAAAEgAAABMAAAAUAAAAFQAAAAsAAAAWAAAAFwAAABgAAAAZAAAAGgAAABsAAAAcAAAAHQAAAB4AAAAfAAAABQAAAA==",
+        "formulaIdx": "/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////w==",
+        "styleIdx": "AQAAAAEAAAABAAAAAQAAAAEAAAABAAAA/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////w==",
+        "runsIdx": "/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////w==",
+        "rowPtr": "AAAAAAYAAAAMAAAAEgAAABgAAAAeAAAAIAAAACIAAAA="
+      },
+      "rowMeta": {
+        "count": 7,
+        "index": "AQAAAAIAAAADAAAABAAAAAUAAAAGAAAABwAAAA==",
+        "heightPx": "AACgQQAAoEEAAKBBAACgQQAAoEEAAKBBAACgQQ==",
+        "styleIdx": "/////////////////////////////////////w==",
+        "hidden": "AAAAAAAAAA=="
+      },
+      "valuePool": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "120",
+        "98",
+        "145",
+        "1.2",
+        "3.5",
+        "7",
+        "138",
+        "110",
+        "158",
+        "2.8",
+        "4.1",
+        "8",
+        "151",
+        "121",
+        "172",
+        "2.9",
+        "9",
+        "169",
+        "135",
+        "189",
+        "4.7",
+        "5.6",
+        "5.1",
+        "6.2",
+        "6.4"
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "color": {
+          "theme": 1
+        },
+        "scheme": "minor"
+      },
+      {
+        "name": "Calibri",
+        "bold": true,
+        "scheme": "minor"
+      }
+    ],
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {},
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 1,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      },
+      {
+        "fontId": 1,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0
+  },
+  "sharedStrings": [
+    "Quarter",
+    "North",
+    "South",
+    "East",
+    "X",
+    "Y",
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4"
+  ],
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  },
+  "activeSheetIndex": 0
+}

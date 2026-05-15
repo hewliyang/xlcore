@@ -1,0 +1,178 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Sheet1",
+      "maxRow": 5,
+      "maxCol": 3,
+      "defaultColWidthPx": 64.01,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "drawings": [
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 5,
+            "fromColOffEmu": 0,
+            "fromRow": 1,
+            "fromRowOffEmu": 0,
+            "toCol": 13,
+            "toColOffEmu": 76200,
+            "toRow": 17,
+            "toRowOffEmu": 0
+          },
+          "chart": {
+            "type": "column",
+            "title": "Stacked columns: distinct series colors",
+            "series": [
+              {
+                "name": "Services",
+                "color": "#5B9BD5",
+                "values": [
+                  35.0,
+                  45.0,
+                  52.0,
+                  60.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$B$5"
+              },
+              {
+                "name": "Manpower",
+                "color": "#A9D18E",
+                "values": [
+                  20.0,
+                  24.0,
+                  29.0,
+                  33.0
+                ],
+                "valuesRef": "Sheet1!$C$2:$C$5"
+              }
+            ],
+            "categories": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "categoriesRef": "Sheet1!$A$2:$A$5",
+            "legendPos": "b",
+            "valueFormat": "General",
+            "grouping": "stacked",
+            "barDir": "column",
+            "barOverlap": 100,
+            "showMajorGridlines": true
+          }
+        }
+      ],
+      "cells": {
+        "count": 15,
+        "r": "AQAAAAEAAAABAAAAAgAAAAIAAAACAAAAAwAAAAMAAAADAAAABAAAAAQAAAAEAAAABQAAAAUAAAAFAAAA",
+        "c": "AQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAA",
+        "kind": "AQEBAQAAAQAAAQAAAQAA",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA",
+        "formulaIdx": "////////////////////////////////////////////////////////////////////////////////",
+        "styleIdx": "////////////////////////////////////////////////////////////////////////////////",
+        "runsIdx": "////////////////////////////////////////////////////////////////////////////////",
+        "rowPtr": "AAAAAAMAAAAGAAAACQAAAAwAAAAPAAAA"
+      },
+      "rowMeta": {
+        "count": 5,
+        "index": "AQAAAAIAAAADAAAABAAAAAUAAAA=",
+        "heightPx": "AADAfwAAwH8AAMB/AADAfwAAwH8=",
+        "styleIdx": "//////////////////////////8=",
+        "hidden": "AAAAAAA="
+      },
+      "valuePool": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "35",
+        "20",
+        "4",
+        "45",
+        "24",
+        "5",
+        "52",
+        "29",
+        "6",
+        "60",
+        "33"
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "color": {
+          "theme": 1
+        },
+        "family": 2,
+        "scheme": "minor"
+      }
+    ],
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0
+  },
+  "sharedStrings": [
+    "Quarter",
+    "Services",
+    "Manpower",
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4"
+  ],
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  }
+}

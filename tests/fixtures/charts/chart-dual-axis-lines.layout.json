@@ -1,0 +1,184 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Sheet1",
+      "maxRow": 5,
+      "maxCol": 3,
+      "defaultColWidthPx": 64.01,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "drawings": [
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 5,
+            "fromColOffEmu": 0,
+            "fromRow": 1,
+            "fromRowOffEmu": 0,
+            "toCol": 13,
+            "toColOffEmu": 457200,
+            "toRow": 17,
+            "toRowOffEmu": 95250
+          },
+          "chart": {
+            "type": "line",
+            "title": "Dual-axis lines",
+            "series": [
+              {
+                "name": "SG&A",
+                "color": "#70AD47",
+                "values": [
+                  12.4,
+                  13.1,
+                  13.8,
+                  14.2
+                ],
+                "valuesRef": "Sheet1!$B$2:$B$5",
+                "axisGroup": "primary",
+                "markerSymbol": "circle"
+              },
+              {
+                "name": "SG&A %",
+                "color": "#FFC000",
+                "values": [
+                  0.182,
+                  0.176,
+                  0.169,
+                  0.161
+                ],
+                "valuesRef": "Sheet1!$C$2:$C$5",
+                "axisGroup": "secondary",
+                "markerSymbol": "diamond"
+              }
+            ],
+            "categories": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "categoriesRef": "Sheet1!$A$2:$A$5",
+            "legendPos": "b",
+            "valueFormat": "General",
+            "grouping": "standard",
+            "secondaryAxis": true,
+            "valueFormatSecondary": "General",
+            "yAxisTitle": "SG&A",
+            "showMajorGridlines": true,
+            "showMajorGridlinesSecondary": false
+          }
+        }
+      ],
+      "cells": {
+        "count": 15,
+        "r": "AQAAAAEAAAABAAAAAgAAAAIAAAACAAAAAwAAAAMAAAADAAAABAAAAAQAAAAEAAAABQAAAAUAAAAFAAAA",
+        "c": "AQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAA",
+        "kind": "AQEBAQAAAQAAAQAAAQAA",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA",
+        "formulaIdx": "////////////////////////////////////////////////////////////////////////////////",
+        "styleIdx": "////////////////////////////////////////////////////////////////////////////////",
+        "runsIdx": "////////////////////////////////////////////////////////////////////////////////",
+        "rowPtr": "AAAAAAMAAAAGAAAACQAAAAwAAAAPAAAA"
+      },
+      "rowMeta": {
+        "count": 5,
+        "index": "AQAAAAIAAAADAAAABAAAAAUAAAA=",
+        "heightPx": "AADAfwAAwH8AAMB/AADAfwAAwH8=",
+        "styleIdx": "//////////////////////////8=",
+        "hidden": "AAAAAAA="
+      },
+      "valuePool": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "12.4",
+        "0.182",
+        "4",
+        "13.1",
+        "0.176",
+        "5",
+        "13.8",
+        "0.169",
+        "6",
+        "14.2",
+        "0.161"
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "color": {
+          "theme": 1
+        },
+        "family": 2,
+        "scheme": "minor"
+      }
+    ],
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0
+  },
+  "sharedStrings": [
+    "Quarter",
+    "SG&A",
+    "SG&A %",
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4"
+  ],
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  }
+}

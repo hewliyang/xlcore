@@ -1,0 +1,194 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Sheet1",
+      "maxRow": 6,
+      "maxCol": 3,
+      "defaultColWidthPx": 64.01,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "drawings": [
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 5,
+            "fromColOffEmu": 0,
+            "fromRow": 1,
+            "fromRowOffEmu": 0,
+            "toCol": 13,
+            "toColOffEmu": 457200,
+            "toRow": 17,
+            "toRowOffEmu": 95250
+          },
+          "chart": {
+            "type": "combo",
+            "title": "Combo with secondary axis",
+            "series": [
+              {
+                "name": "Guards",
+                "color": "#4472C4",
+                "values": [
+                  80.0,
+                  86.0,
+                  91.0,
+                  96.0,
+                  103.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$B$6",
+                "axisGroup": "primary",
+                "chartType": "column"
+              },
+              {
+                "name": "Avg salary",
+                "color": "#ED7D31",
+                "values": [
+                  2100.0,
+                  2150.0,
+                  2230.0,
+                  2280.0,
+                  2350.0
+                ],
+                "valuesRef": "Sheet1!$C$2:$C$6",
+                "axisGroup": "secondary",
+                "chartType": "line",
+                "markerSymbol": "circle"
+              }
+            ],
+            "categories": [
+              "Jan",
+              "Feb",
+              "Mar",
+              "Apr",
+              "May"
+            ],
+            "categoriesRef": "Sheet1!$A$2:$A$6",
+            "legendPos": "b",
+            "valueFormat": "General",
+            "grouping": "clustered",
+            "barDir": "column",
+            "secondaryAxis": true,
+            "valueFormatSecondary": "General",
+            "yAxisTitle": "Guards",
+            "showMajorGridlines": true,
+            "showMajorGridlinesSecondary": false
+          }
+        }
+      ],
+      "cells": {
+        "count": 18,
+        "r": "AQAAAAEAAAABAAAAAgAAAAIAAAACAAAAAwAAAAMAAAADAAAABAAAAAQAAAAEAAAABQAAAAUAAAAFAAAABgAAAAYAAAAGAAAA",
+        "c": "AQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAA",
+        "kind": "AQEBAQAAAQAAAQAAAQAAAQAA",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAADwAAABAAAAARAAAA",
+        "formulaIdx": "////////////////////////////////////////////////////////////////////////////////////////////////",
+        "styleIdx": "////////////////////////////////////////////////////////////////////////////////////////////////",
+        "runsIdx": "////////////////////////////////////////////////////////////////////////////////////////////////",
+        "rowPtr": "AAAAAAMAAAAGAAAACQAAAAwAAAAPAAAAEgAAAA=="
+      },
+      "rowMeta": {
+        "count": 6,
+        "index": "AQAAAAIAAAADAAAABAAAAAUAAAAGAAAA",
+        "heightPx": "AADAfwAAwH8AAMB/AADAfwAAwH8AAMB/",
+        "styleIdx": "////////////////////////////////",
+        "hidden": "AAAAAAAA"
+      },
+      "valuePool": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "80",
+        "2100",
+        "4",
+        "86",
+        "2150",
+        "5",
+        "91",
+        "2230",
+        "6",
+        "96",
+        "2280",
+        "7",
+        "103",
+        "2350"
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "color": {
+          "theme": 1
+        },
+        "family": 2,
+        "scheme": "minor"
+      }
+    ],
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0
+  },
+  "sharedStrings": [
+    "Month",
+    "Guards",
+    "Avg salary",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May"
+  ],
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  }
+}

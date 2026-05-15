@@ -1,0 +1,201 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Sheet1",
+      "maxRow": 7,
+      "maxCol": 3,
+      "defaultColWidthPx": 66.96094,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "drawings": [
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 4,
+            "fromColOffEmu": 19050,
+            "fromRow": 0,
+            "fromRowOffEmu": 0,
+            "toCol": 11,
+            "toColOffEmu": 457200,
+            "toRow": 16,
+            "toRowOffEmu": 0
+          },
+          "chart": {
+            "type": "bubble",
+            "title": "Bubble",
+            "series": [
+              {
+                "name": "Y",
+                "nameRef": "Sheet1!$B$1",
+                "color": "#4F81BD",
+                "values": [
+                  3.5,
+                  4.1,
+                  2.9,
+                  5.6,
+                  6.2,
+                  5.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$B$7",
+                "xValues": [
+                  1.2,
+                  2.8,
+                  3.5,
+                  4.7,
+                  5.1,
+                  6.4
+                ],
+                "xValuesRef": "Sheet1!$A$2:$A$7",
+                "bubbleSizes": [
+                  12.0,
+                  40.0,
+                  4.0,
+                  85.0,
+                  24.0,
+                  60.0
+                ],
+                "bubbleSizesRef": "Sheet1!$C$2:$C$7"
+              }
+            ],
+            "categories": [
+              "1.2",
+              "2.8",
+              "3.5",
+              "4.7",
+              "5.1",
+              "6.4"
+            ],
+            "categoriesRef": "Sheet1!$A$2:$A$7",
+            "legendPos": "b",
+            "valueFormat": "General",
+            "categoriesFormat": "General",
+            "showMajorGridlines": true,
+            "bubbleScale": 100,
+            "sizeRepresents": "area"
+          }
+        }
+      ],
+      "cells": {
+        "count": 21,
+        "r": "AQAAAAEAAAABAAAAAgAAAAIAAAACAAAAAwAAAAMAAAADAAAABAAAAAQAAAAEAAAABQAAAAUAAAAFAAAABgAAAAYAAAAGAAAABwAAAAcAAAAHAAAA",
+        "c": "AQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAA",
+        "kind": "AQEBAAAAAAAAAAAAAAAAAAAAAAAA",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAABAAAAAkAAAAKAAAACwAAAAwAAAANAAAADgAAAA8AAAAQAAAAEQAAABIAAAATAAAA",
+        "formulaIdx": "////////////////////////////////////////////////////////////////////////////////////////////////////////////////",
+        "styleIdx": "AQAAAAEAAAABAAAA////////////////////////////////////////////////////////////////////////////////////////////////",
+        "runsIdx": "////////////////////////////////////////////////////////////////////////////////////////////////////////////////",
+        "rowPtr": "AAAAAAMAAAAGAAAACQAAAAwAAAAPAAAAEgAAABUAAAA="
+      },
+      "rowMeta": {
+        "count": 7,
+        "index": "AQAAAAIAAAADAAAABAAAAAUAAAAGAAAABwAAAA==",
+        "heightPx": "AACgQQAAoEEAAKBBAACgQQAAoEEAAKBBAACgQQ==",
+        "styleIdx": "/////////////////////////////////////w==",
+        "hidden": "AAAAAAAAAA=="
+      },
+      "valuePool": [
+        "0",
+        "1",
+        "2",
+        "1.2",
+        "3.5",
+        "12",
+        "2.8",
+        "4.1",
+        "40",
+        "2.9",
+        "4",
+        "4.7",
+        "5.6",
+        "85",
+        "5.1",
+        "6.2",
+        "24",
+        "6.4",
+        "5",
+        "60"
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "color": {
+          "theme": 1
+        },
+        "scheme": "minor"
+      },
+      {
+        "name": "Calibri",
+        "bold": true,
+        "scheme": "minor"
+      }
+    ],
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {},
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 1,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      },
+      {
+        "fontId": 1,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0
+  },
+  "sharedStrings": [
+    "X",
+    "Y",
+    "Size"
+  ],
+  "sharedStringRuns": [
+    [],
+    [],
+    []
+  ],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  },
+  "activeSheetIndex": 0
+}

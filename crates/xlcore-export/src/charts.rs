@@ -7,6 +7,9 @@
 //! Pie/line/area/scatter/etc. are recognised but rendered as a placeholder
 //! box with title for now.
 
+use crate::chart_colors::*;
+use crate::charts_helpers::*;
+
 use crate::schema::*;
 use base64::Engine;
 use ooxmlsdk::parts::spreadsheet_document::SpreadsheetDocument;
@@ -229,24 +232,254 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
     let chart = space.c_chart.as_ref()?;
     let plot_area = &chart.plot_area;
 
-    let mut chart_type = "unknown".to_string();
+    // Pre-scan plot_area_choice2 for value axes. We need to know which
+    // axId belongs to the primary (left/bottom) vs secondary (right/top)
+    // value axis so that, per chart-type group below, we can tag its
+    // series with axis_group = primary/secondary. We also stash the
+    // secondary numFmt to expose as Chart.value_format_secondary.
+    let mut secondary_ax_ids: Vec<u32> = Vec::new();
+    let mut primary_ax_ids: Vec<u32> = Vec::new();
+    let mut primary_val_fmt: Option<String> = None;
+    let mut secondary_val_fmt: Option<String> = None;
+    let mut value_min: Option<f64> = None;
+    let mut value_max: Option<f64> = None;
+    let mut value_min_secondary: Option<f64> = None;
+    let mut value_max_secondary: Option<f64> = None;
+    // Axis titles. ECMA-376 §21.2.2.213 — every axis CT carries an
+    // optional `<c:title>` (same `CT_Title` shape as the chart title).
+    // We route by `axPos`: `b`/`t` → x-axis (catAx/dateAx), `l` →
+    // y-axis, `r` → secondary y-axis.
+    let mut x_axis_title: Option<String> = None;
+    let mut y_axis_title: Option<String> = None;
+    let mut y_axis_title_secondary: Option<String> = None;
+    // `<c:majorGridlines>` toggle per value axis. ECMA-376 §21.2.2.85:
+    // gridlines paint iff the element is present, and `<a:noFill/>` on
+    // its line suppresses the stroke even when present. None ⇒ the
+    // value axis is absent on this side; we collapse that to "don't
+    // paint" at the renderer.
+    let mut show_major_gridlines: Option<bool> = None;
+    let mut show_major_gridlines_secondary: Option<bool> = None;
+    // `<c:dispUnits>` per value axis. ECMA-376 §21.2.2.46:
+    // tick labels on the axis are divided by `disp_units` before
+    // formatting, and `disp_units_label` (if present) is painted near
+    // the axis as a caption (e.g. "S$ mn" with `builtInUnit=thousands`).
+    let mut disp_units: Option<f64> = None;
+    let mut disp_units_label: Option<String> = None;
+    let mut disp_units_secondary: Option<f64> = None;
+    let mut disp_units_label_secondary: Option<String> = None;
+    // Route an axis's title to x / y / y-secondary by its `axPos`.
+    // ECMA-376: `b`/`t` → horizontal, `l` → vertical, `r` → secondary
+    // vertical. This is intentionally axis-*position*-driven (not
+    // axis-*type*-driven) so horizontal bar charts — where the
+    // catAx is at `l` and the valAx is at `b` — land their titles
+    // on the correct edge.
+    let route_title = |pos: Option<&c::AxisPositionValues>,
+                       title: Option<&c::Title>,
+                       x: &mut Option<String>,
+                       y: &mut Option<String>,
+                       y2: &mut Option<String>| {
+        let Some(t) = extract_title(title) else {
+            return;
+        };
+        match pos {
+            Some(c::AxisPositionValues::Bottom) | Some(c::AxisPositionValues::Top) => {
+                if x.is_none() {
+                    *x = Some(t);
+                }
+            }
+            Some(c::AxisPositionValues::Right) => {
+                if y2.is_none() {
+                    *y2 = Some(t);
+                }
+            }
+            // Default / `Left` / unknown → primary y.
+            _ => {
+                if y.is_none() {
+                    *y = Some(t);
+                }
+            }
+        }
+    };
+    for choice in &plot_area.plot_area_choice2 {
+        match choice {
+            c::PlotAreaChoice2::CCatAx(ca) => route_title(
+                ca.axis_position.as_ref().map(|p| &p.val),
+                ca.title.as_deref(),
+                &mut x_axis_title,
+                &mut y_axis_title,
+                &mut y_axis_title_secondary,
+            ),
+            c::PlotAreaChoice2::CDateAx(da) => route_title(
+                da.axis_position.as_ref().map(|p| &p.val),
+                da.title.as_deref(),
+                &mut x_axis_title,
+                &mut y_axis_title,
+                &mut y_axis_title_secondary,
+            ),
+            _ => {}
+        }
+        if let c::PlotAreaChoice2::CValAx(va) = choice {
+            let axid = va.axis_id.as_ref().map(|a| a.val).unwrap_or(0);
+            let pos = va.axis_position.as_ref().map(|p| &p.val);
+            let is_secondary = matches!(
+                pos,
+                Some(c::AxisPositionValues::Right) | Some(c::AxisPositionValues::Top)
+            );
+            // Scatter charts emit TWO `<c:valAx>` blocks — the numeric
+            // x-axis at `axPos="b"` and the y-axis at `axPos="l"`. Only
+            // the latter is the conceptual "primary value axis" whose
+            // gridlines/format/scaling we want; the x-axis valAx should
+            // be ignored for those concerns. (For bar/line/area charts
+            // the catAx sits at b/t and there's only one valAx at l/r,
+            // so this filter is a no-op.)
+            let is_horizontal_value_axis =
+                matches!(pos, Some(c::AxisPositionValues::Bottom)) && !is_secondary;
+            // Major gridlines: present ∧ line not `<a:noFill/>`.
+            // The MajorGridlines element only carries an optional
+            // `<c:spPr>`; we look at its Debug repr for an `ANoFill`
+            // token inside the line block (same pragma as the series
+            // color resolver). When spPr is absent the default stroke
+            // applies, so "present without noFill" ⇒ show. Element
+            // entirely absent ⇒ don't paint (ECMA-376 §21.2.2.85).
+            //
+            // We deliberately always emit `Some(bool)` here instead of
+            // mapping through `.map()` — the schema's `Option<bool>` is
+            // for "no value axis exists at all" (pie/doughnut), not for
+            // "value axis exists but its `<c:majorGridlines>` element is
+            // absent". A None on the wire would let the renderer's
+            // `!== false` back-compat fallback paint gridlines that
+            // weren't authored.
+            let gridlines_on = Some(va.major_gridlines.as_ref().is_some_and(|mg| {
+                match mg.chart_shape_properties.as_deref() {
+                    None => true,
+                    Some(sp) => !line_has_no_fill(sp),
+                }
+            }));
+            let fmt = va
+                .numbering_format
+                .as_ref()
+                .map(|nf| nf.format_code.as_str().to_string());
+            // `<c:scaling><c:min>` / `<c:max>`: explicit axis bounds.
+            // Either may be absent (Excel auto-picks); both come
+            // through as `f64` so just forward to schema.
+            let scaling_min = va
+                .scaling
+                .as_ref()
+                .and_then(|s| s.min_axis_value.as_ref())
+                .map(|m| m.val);
+            let scaling_max = va
+                .scaling
+                .as_ref()
+                .and_then(|s| s.max_axis_value.as_ref())
+                .map(|m| m.val);
+            if is_secondary {
+                secondary_ax_ids.push(axid);
+                if secondary_val_fmt.is_none() {
+                    secondary_val_fmt = fmt;
+                }
+                if value_min_secondary.is_none() {
+                    value_min_secondary = scaling_min;
+                }
+                if value_max_secondary.is_none() {
+                    value_max_secondary = scaling_max;
+                }
+                if show_major_gridlines_secondary.is_none() {
+                    show_major_gridlines_secondary = gridlines_on;
+                }
+                if disp_units_secondary.is_none() {
+                    if let Some((f, lbl)) = extract_disp_units(va.c_disp_units.as_deref()) {
+                        disp_units_secondary = Some(f);
+                        disp_units_label_secondary = lbl;
+                    }
+                }
+            } else if is_horizontal_value_axis {
+                // Scatter x-axis: contributes its axId to primary_ax_ids
+                // (so series axis-group resolution still works) but
+                // not its gridlines / numFmt / scaling — those belong
+                // to the y-axis.
+                primary_ax_ids.push(axid);
+            } else {
+                primary_ax_ids.push(axid);
+                if primary_val_fmt.is_none() {
+                    primary_val_fmt = fmt;
+                }
+                if value_min.is_none() {
+                    value_min = scaling_min;
+                }
+                if value_max.is_none() {
+                    value_max = scaling_max;
+                }
+                if show_major_gridlines.is_none() {
+                    show_major_gridlines = gridlines_on;
+                }
+                if disp_units.is_none() {
+                    if let Some((f, lbl)) = extract_disp_units(va.c_disp_units.as_deref()) {
+                        disp_units = Some(f);
+                        disp_units_label = lbl;
+                    }
+                }
+            }
+            route_title(
+                va.axis_position.as_ref().map(|p| &p.val),
+                va.title.as_deref(),
+                &mut x_axis_title,
+                &mut y_axis_title,
+                &mut y_axis_title_secondary,
+            );
+        }
+    }
+
+    // Edge case: no axPos on either side. Treat first valAx encountered
+    // as primary so single-axis charts still render.
+    let secondary_axis = !secondary_ax_ids.is_empty() && !primary_ax_ids.is_empty();
+
+    /// Resolve a chart-type group's axIds (a Vec<AxisId> with 2 entries:
+    /// one cat-axis ref, one val-axis ref) to "primary" / "secondary".
+    /// Defaults to primary when neither axId matches a known valAx —
+    /// the safest fallback for malformed/legacy files.
+    fn axis_group_for(ax_ids: &[c::AxisId], sec: &[u32]) -> Option<String> {
+        if sec.is_empty() {
+            return None;
+        }
+        for a in ax_ids {
+            if sec.contains(&a.val) {
+                return Some("secondary".to_string());
+            }
+        }
+        Some("primary".to_string())
+    }
+
     let mut bar_dir: Option<String> = None;
     let mut scatter_style: Option<String> = None;
+    let mut bubble_scale: Option<u32> = None;
+    let mut size_represents: Option<String> = None;
     let mut grouping: Option<String> = None;
+    // ECMA-376 §21.2.2.75 / §21.2.2.108. Captured from the first
+    // `<c:barChart>` group encountered (a chart can technically host
+    // multiple bar groups but Excel writes one); combo charts get the
+    // bar-side values, line/area groups don't carry these.
+    let mut bar_gap_width: Option<u16> = None;
+    let mut bar_overlap: Option<i8> = None;
     let mut series: Vec<ChartSeries> = Vec::new();
     let mut categories: Vec<String> = Vec::new();
     let mut _categories_ref: Option<String> = None;
     let mut categories_format: Option<String> = None;
     let mut value_format: Option<String> = None;
-
-    // Helper macro: extract the (categories, value_format) for the first
-    // series of a chart that uses c_cat / c_val (i.e. everything except
-    // scatter). Also pushes per-series ChartSeries rows.
     let mut chart_data_labels: Option<DataLabels> = None;
 
+    // Track every chart-type tag we encounter so we can emit `combo`
+    // when more than one is present in the same plotArea.
+    let mut group_types: Vec<&'static str> = Vec::new();
+
+    // Helper macro: extract a chart-type group's series, tagging each
+    // with `axis_group` (when the chart has a secondary axis) and
+    // `chart_type` (per-series override, for combo rendering). The
+    // chart-level categories/value_format are taken from the first
+    // primary-axis group we see; combo charts otherwise inherit the
+    // primary scale.
     macro_rules! extract_chartlike {
-        ($coll:expr) => {{
-            let mut cats_ref: Option<String> = None;
+        ($coll:expr, $kind:expr, $ax_ids:expr, $is_primary_group:expr) => {{
+            let ag = axis_group_for($ax_ids, &secondary_ax_ids);
             for ser in $coll {
                 let mut row = common_series(
                     &ser.order,
@@ -257,72 +490,114 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                     theme,
                 );
                 row.data_labels = extract_data_labels(ser.c_d_lbls.as_deref());
+                row.axis_group = ag.clone();
+                row.chart_type = Some($kind.to_string());
                 series.push(row);
-                if categories.is_empty() {
+                if $is_primary_group && categories.is_empty() {
                     let (cs, r, fmt) = ax_data_values(ser.c_cat.as_deref());
                     categories = cs;
-                    cats_ref = r;
+                    _categories_ref = r;
                     categories_format = fmt;
                 }
-                if value_format.is_none() {
+                if $is_primary_group && value_format.is_none() {
                     value_format = values_format(ser.c_val.as_deref());
                 }
             }
-            _categories_ref = cats_ref;
         }};
     }
 
     for choice in &plot_area.plot_area_choice1 {
         match choice {
             c::PlotAreaChoice::CBarChart(bc) => {
-                chart_type = "bar".to_string();
-                bar_dir = Some(format!("{:?}", bc.bar_direction.val).to_ascii_lowercase());
-                if let Some(g) = &bc.bar_grouping {
-                    grouping = g
+                let kind = match bc.bar_direction.val {
+                    c::BarDirectionValues::Column => "column",
+                    c::BarDirectionValues::Bar => "bar",
+                };
+                if bar_dir.is_none() {
+                    bar_dir = Some(format!("{:?}", bc.bar_direction.val).to_ascii_lowercase());
+                }
+                if grouping.is_none() {
+                    if let Some(g) = &bc.bar_grouping {
+                        grouping = g
+                            .val
+                            .as_ref()
+                            .map(|v| format!("{:?}", v).to_ascii_lowercase());
+                    }
+                }
+                if chart_data_labels.is_none() {
+                    chart_data_labels = extract_data_labels(bc.c_d_lbls.as_deref());
+                }
+                if bar_gap_width.is_none() {
+                    bar_gap_width = bc.c_gap_width.as_ref().and_then(|g| g.val);
+                }
+                if bar_overlap.is_none() {
+                    bar_overlap = bc.c_overlap.as_ref().and_then(|o| o.val);
+                }
+                let ag = axis_group_for(&bc.c_ax_id, &secondary_ax_ids);
+                let is_primary = !matches!(ag.as_deref(), Some("secondary"));
+                extract_chartlike!(&bc.c_ser, kind, &bc.c_ax_id, is_primary);
+                group_types.push(kind);
+            }
+            c::PlotAreaChoice::CLineChart(lc) => {
+                if grouping.is_none() {
+                    grouping = lc
+                        .grouping
                         .val
                         .as_ref()
                         .map(|v| format!("{:?}", v).to_ascii_lowercase());
                 }
-                chart_data_labels = extract_data_labels(bc.c_d_lbls.as_deref());
-                extract_chartlike!(&bc.c_ser);
-                break;
-            }
-            c::PlotAreaChoice::CLineChart(lc) => {
-                chart_type = "line".into();
-                grouping = lc
-                    .grouping
-                    .val
-                    .as_ref()
-                    .map(|v| format!("{:?}", v).to_ascii_lowercase());
-                chart_data_labels = extract_data_labels(lc.c_d_lbls.as_deref());
-                extract_chartlike!(&lc.c_ser);
-                break;
+                if chart_data_labels.is_none() {
+                    chart_data_labels = extract_data_labels(lc.c_d_lbls.as_deref());
+                }
+                let ag = axis_group_for(&lc.c_ax_id, &secondary_ax_ids);
+                let is_primary = !matches!(ag.as_deref(), Some("secondary"));
+                let series_before = series.len();
+                extract_chartlike!(&lc.c_ser, "line", &lc.c_ax_id, is_primary);
+                // Propagate per-series `<c:marker><c:symbol val="..."/>`
+                // (LineChartSeries is the only series shape with a top-
+                // level `marker` field, so this can't go in the macro).
+                for (offset, ser) in lc.c_ser.iter().enumerate() {
+                    let sym = ser
+                        .marker
+                        .as_ref()
+                        .and_then(|m| m.symbol.as_ref())
+                        .map(|s| marker_symbol_str(&s.val));
+                    if let Some(row) = series.get_mut(series_before + offset) {
+                        row.marker_symbol = sym;
+                    }
+                }
+                group_types.push("line");
             }
             c::PlotAreaChoice::CAreaChart(ac) => {
-                chart_type = "area".into();
-                grouping = ac
-                    .grouping
-                    .as_ref()
-                    .and_then(|g| g.val.as_ref())
-                    .map(|v| format!("{:?}", v).to_ascii_lowercase());
-                chart_data_labels = extract_data_labels(ac.c_d_lbls.as_deref());
-                extract_chartlike!(&ac.c_ser);
-                break;
+                if grouping.is_none() {
+                    grouping = ac
+                        .grouping
+                        .as_ref()
+                        .and_then(|g| g.val.as_ref())
+                        .map(|v| format!("{:?}", v).to_ascii_lowercase());
+                }
+                if chart_data_labels.is_none() {
+                    chart_data_labels = extract_data_labels(ac.c_d_lbls.as_deref());
+                }
+                let ag = axis_group_for(&ac.c_ax_id, &secondary_ax_ids);
+                let is_primary = !matches!(ag.as_deref(), Some("secondary"));
+                extract_chartlike!(&ac.c_ser, "area", &ac.c_ax_id, is_primary);
+                group_types.push("area");
             }
             c::PlotAreaChoice::CPieChart(pc) => {
-                chart_type = "pie".into();
                 chart_data_labels = extract_data_labels(pc.c_d_lbls.as_deref());
-                extract_chartlike!(&pc.c_ser);
+                // Pie has no axes in OOXML; pass an empty slice.
+                extract_chartlike!(&pc.c_ser, "pie", &[] as &[c::AxisId], true);
+                group_types.push("pie");
                 break;
             }
             c::PlotAreaChoice::CDoughnutChart(dc) => {
-                chart_type = "doughnut".into();
                 chart_data_labels = extract_data_labels(dc.c_d_lbls.as_deref());
-                extract_chartlike!(&dc.c_ser);
+                extract_chartlike!(&dc.c_ser, "doughnut", &[] as &[c::AxisId], true);
+                group_types.push("doughnut");
                 break;
             }
             c::PlotAreaChoice::CScatterChart(sc) => {
-                chart_type = "scatter".into();
                 chart_data_labels = extract_data_labels(sc.c_d_lbls.as_deref());
                 // ECMA-376 §21.2.2.193: ScatterStyle val is required
                 // (default `line`). Excel's *UI* default for new scatter
@@ -339,7 +614,6 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                     }
                     .to_string()
                 });
-                let mut cats_ref: Option<String> = None;
                 for ser in &sc.c_ser {
                     let mut row = common_series_scatter(
                         &ser.order,
@@ -353,48 +627,136 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                     row.x_values = xs;
                     row.x_values_ref = xref;
                     row.data_labels = extract_data_labels(ser.c_d_lbls.as_deref());
+                    row.axis_group = axis_group_for(&sc.c_ax_id, &secondary_ax_ids);
+                    row.chart_type = Some("scatter".to_string());
+                    row.marker_symbol = ser
+                        .marker
+                        .as_ref()
+                        .and_then(|m| m.symbol.as_ref())
+                        .map(|s| marker_symbol_str(&s.val));
                     series.push(row);
                     if categories.is_empty() {
                         // Stash the x-axis ref for axis labels (numeric).
                         let (cs, r, fmt) = x_axis_values(ser.c_x_val.as_deref());
                         categories = cs;
-                        cats_ref = r;
+                        _categories_ref = r;
                         categories_format = fmt;
                     }
                     if value_format.is_none() {
                         value_format = y_values_format(ser.c_y_val.as_deref());
                     }
                 }
-                _categories_ref = cats_ref;
+                group_types.push("scatter");
                 break;
             }
             c::PlotAreaChoice::CBar3DChart(_) => {
-                chart_type = "bar".into();
+                group_types.push("bar");
+                break;
+            }
+            c::PlotAreaChoice::CBubbleChart(bc) => {
+                // ECMA-376 §21.2.2.30 / .197: bubbleScale (0..=300,
+                // default 100), sizeRepresents (`area` default or `w`).
+                bubble_scale = bc.c_bubble_scale.as_ref().and_then(|s| s.val);
+                size_represents = bc
+                    .c_size_represents
+                    .as_ref()
+                    .and_then(|s| s.val.as_ref())
+                    .map(|v| {
+                        match v {
+                            c::SizeRepresentsValues::Area => "area",
+                            c::SizeRepresentsValues::Width => "w",
+                        }
+                        .to_string()
+                    });
+                chart_data_labels = extract_data_labels(bc.c_d_lbls.as_deref());
+                for ser in &bc.c_ser {
+                    let mut row = common_series_scatter(
+                        &ser.order,
+                        ser.series_text.as_deref(),
+                        ser.chart_shape_properties.as_deref(),
+                        ser.c_y_val.as_deref(),
+                        &ser.c_d_pt,
+                        theme,
+                    );
+                    let (xs, xref) = scatter_x_values(ser.c_x_val.as_deref());
+                    row.x_values = xs;
+                    row.x_values_ref = xref;
+                    // BubbleSize shares the `CT_NumDataSource` shape
+                    // with YValues / Values. Reuse the YValues parser
+                    // by transmuting through a shared accessor.
+                    let (sizes, sref) = bubble_size_values(ser.c_bubble_size.as_deref());
+                    row.bubble_sizes = sizes;
+                    row.bubble_sizes_ref = sref;
+                    row.data_labels = extract_data_labels(ser.c_d_lbls.as_deref());
+                    row.axis_group = axis_group_for(&bc.c_ax_id, &secondary_ax_ids);
+                    row.chart_type = Some("bubble".to_string());
+                    series.push(row);
+                    if categories.is_empty() {
+                        let (cs, r, fmt) = x_axis_values(ser.c_x_val.as_deref());
+                        categories = cs;
+                        _categories_ref = r;
+                        categories_format = fmt;
+                    }
+                    if value_format.is_none() {
+                        value_format = y_values_format(ser.c_y_val.as_deref());
+                    }
+                }
+                group_types.push("bubble");
                 break;
             }
             _ => {}
         }
     }
 
-    if chart_type == "bar" && matches!(bar_dir.as_deref(), Some("col") | Some("column")) {
-        chart_type = "column".to_string();
+    // Single-type charts: collapse to the historical scalar type.
+    // Multi-type plotArea ⇒ "combo"; renderer dispatches per-series.
+    let unique_types: std::collections::BTreeSet<&&str> = group_types.iter().collect();
+    let chart_type = match unique_types.len() {
+        0 => "unknown".to_string(),
+        1 => (*group_types.first().unwrap()).to_string(),
+        _ => "combo".to_string(),
+    };
+    // When the chart isn't a combo, clear per-series chart_type so we
+    // don't bloat the JSON output for the common case.
+    if chart_type != "combo" {
+        for s in &mut series {
+            s.chart_type = None;
+        }
     }
+    // Same for axis_group when no secondary axis exists.
+    if !secondary_axis {
+        for s in &mut series {
+            s.axis_group = None;
+        }
+    }
+    let value_format = value_format.or(primary_val_fmt);
 
     let title = extract_title(chart.title.as_deref());
-    let legend_pos = chart
-        .legend
-        .as_ref()
-        .and_then(|l| l.legend_position.as_ref())
-        .and_then(|lp| lp.val.as_ref())
-        .map(|v| format!("{:?}", v).to_ascii_lowercase())
-        .map(|s| match s.as_str() {
-            x if x.contains("bottom") => "b".to_string(),
-            x if x.contains("top") && x.contains("right") => "tr".to_string(),
-            x if x.contains("top") => "t".to_string(),
-            x if x.contains("left") => "l".to_string(),
-            x if x.contains("right") => "r".to_string(),
-            _ => "b".to_string(),
-        });
+    // Legend presence + position. Critical distinction:
+    //   - `<c:legend>` absent             → legend_pos = None        (don't paint)
+    //   - `<c:legend>` present, no <c:legendPos>  → legend_pos = Some("r")  (Excel default)
+    //   - `<c:legend>` present with <c:legendPos>  → legend_pos = Some(<that>)
+    // The renderer treats `None` as "no legend". This matters because
+    // many AGS workbook charts have no `<c:legend>` element at all
+    // (e.g. the per-data-point waterfall on `Charts_Chart_2.xlsx` —
+    // see parity-charts.md Bug #3) and Excel desktop / hsx correctly
+    // omit the legend; pre-fix we were defaulting to "b" whenever
+    // `legend_pos` was `None`, fabricating a legend for every chart.
+    let legend_pos = chart.legend.as_ref().map(|l| {
+        l.legend_position
+            .as_ref()
+            .and_then(|lp| lp.val.as_ref())
+            .map(|v| format!("{:?}", v).to_ascii_lowercase())
+            .map(|s| match s.as_str() {
+                x if x.contains("bottom") => "b".to_string(),
+                x if x.contains("top") && x.contains("right") => "tr".to_string(),
+                x if x.contains("top") => "t".to_string(),
+                x if x.contains("left") => "l".to_string(),
+                x if x.contains("right") => "r".to_string(),
+                _ => "r".to_string(),
+            })
+            .unwrap_or_else(|| "r".to_string())
+    });
 
     Some(Chart {
         chart_type,
@@ -409,594 +771,24 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
         bar_dir,
         scatter_style,
         data_labels: chart_data_labels,
+        secondary_axis,
+        value_format_secondary: secondary_val_fmt,
+        value_min,
+        value_max,
+        value_min_secondary,
+        value_max_secondary,
+        bar_gap_width,
+        bar_overlap,
+        x_axis_title,
+        y_axis_title,
+        y_axis_title_secondary,
+        show_major_gridlines,
+        show_major_gridlines_secondary,
+        disp_units,
+        disp_units_label,
+        disp_units_secondary,
+        disp_units_label_secondary,
+        bubble_scale,
+        size_represents,
     })
-}
-
-/// Convert an OOXML `<c:dLbls>` block into our flat `DataLabels` shape.
-/// Returns `None` when the block is fully absent or carries `<c:delete
-/// val="1"/>` (Excel's "labels suppressed" marker), or when no show*
-/// flag is enabled — there's nothing to render in that case.
-fn extract_data_labels(dl: Option<&c::DataLabels>) -> Option<DataLabels> {
-    let dl = dl?;
-    let seq = match dl.data_labels_choice.as_ref()? {
-        c::DataLabelsChoice::CDelete(_) => return None,
-        c::DataLabelsChoice::Sequence(s) => s,
-    };
-    // OOXML CT_Boolean: element absent ⇒ false; element present with no
-    // val attr ⇒ true (per ECMA-376 part 1, §21.2.2.4 default); element
-    // present with val="0"/"false" ⇒ false; val="1"/"true" ⇒ true.
-    let show_value = seq
-        .show_value
-        .as_ref()
-        .is_some_and(|b| b.val.unwrap_or(true));
-    let show_category = seq
-        .show_category_name
-        .as_ref()
-        .is_some_and(|b| b.val.unwrap_or(true));
-    let show_series_name = seq
-        .show_series_name
-        .as_ref()
-        .is_some_and(|b| b.val.unwrap_or(true));
-    let show_percent = seq
-        .show_percent
-        .as_ref()
-        .is_some_and(|b| b.val.unwrap_or(true));
-    if !show_value && !show_category && !show_series_name && !show_percent {
-        return None;
-    }
-    let position = seq.data_label_position.as_ref().map(|p| {
-        match p.val {
-            c::DataLabelPositionValues::BestFit => "bestFit",
-            c::DataLabelPositionValues::Bottom => "b",
-            c::DataLabelPositionValues::Center => "ctr",
-            c::DataLabelPositionValues::InsideBase => "inBase",
-            c::DataLabelPositionValues::InsideEnd => "inEnd",
-            c::DataLabelPositionValues::Left => "l",
-            c::DataLabelPositionValues::OutsideEnd => "outEnd",
-            c::DataLabelPositionValues::Right => "r",
-            c::DataLabelPositionValues::Top => "t",
-        }
-        .to_string()
-    });
-    let separator = seq.separator.as_ref().map(|s| s.as_str().to_string());
-    let num_fmt = seq
-        .numbering_format
-        .as_ref()
-        .map(|nf| nf.format_code.as_str().to_string());
-    Some(DataLabels {
-        show_value,
-        show_category,
-        show_series_name,
-        show_percent,
-        position,
-        separator,
-        num_fmt,
-    })
-}
-
-/// Common per-series extraction shared by bar/line/area/pie. Reads name,
-/// color, and y-values from the standard `c:tx` / `c:spPr` / `c:val` slots.
-fn common_series(
-    order: &c::Order,
-    tx: Option<&c::SeriesText>,
-    sp_pr: Option<&c::ChartShapeProperties>,
-    val: Option<&c::Values>,
-    d_pts: &[c::DataPoint],
-    theme: Option<&Theme>,
-) -> ChartSeries {
-    let (name, name_ref) = series_text_or_ref(tx);
-    let (values, values_ref) = number_reference_values(val);
-    let color = series_color_via_debug(sp_pr, theme).or_else(|| {
-        let n = order.val % 6 + 1;
-        Some(theme_accent_color(n, theme))
-    });
-    let point_colors = extract_point_colors(d_pts, values.len(), theme);
-    ChartSeries {
-        name: name.unwrap_or_default(),
-        name_ref,
-        color,
-        values,
-        values_ref,
-        x_values: Vec::new(),
-        x_values_ref: None,
-        point_colors,
-        data_labels: None,
-    }
-}
-
-/// Same as `common_series` but takes the scatter-only `YValues` shape.
-fn common_series_scatter(
-    order: &c::Order,
-    tx: Option<&c::SeriesText>,
-    sp_pr: Option<&c::ChartShapeProperties>,
-    y_val: Option<&c::YValues>,
-    d_pts: &[c::DataPoint],
-    theme: Option<&Theme>,
-) -> ChartSeries {
-    let (name, name_ref) = series_text_or_ref(tx);
-    let (values, values_ref) = y_values_values(y_val);
-    let color = series_color_via_debug(sp_pr, theme).or_else(|| {
-        let n = order.val % 6 + 1;
-        Some(theme_accent_color(n, theme))
-    });
-    let point_colors = extract_point_colors(d_pts, values.len(), theme);
-    ChartSeries {
-        name: name.unwrap_or_default(),
-        name_ref,
-        color,
-        values,
-        values_ref,
-        x_values: Vec::new(),
-        x_values_ref: None,
-        point_colors,
-        data_labels: None,
-    }
-}
-
-/// Build a `point_colors` Vec from `<c:dPt>` children. Returns an empty
-/// Vec when no data point carries an explicit fill (the common case),
-/// so the renderer can cheaply fall back to its per-slice palette /
-/// series color. When at least one `<c:dPt>` does have a fill, the
-/// returned Vec is sized to `max(values_len, max_dpt_idx + 1)` and
-/// indexed by the data point's `c:idx` value; missing entries are
-/// empty strings. We can't always trust `values_len` because pie/line
-/// series load their numbers from `<c:numRef>` formulas that are only
-/// resolved post-sheet-extract — at chart-extract time `values` is
-/// commonly empty even though the dPts are present.
-fn extract_point_colors(
-    d_pts: &[c::DataPoint],
-    values_len: usize,
-    theme: Option<&Theme>,
-) -> Vec<String> {
-    if d_pts.is_empty() {
-        return Vec::new();
-    }
-    let max_idx = d_pts
-        .iter()
-        .map(|dp| dp.index.val as usize)
-        .max()
-        .unwrap_or(0);
-    let len = values_len.max(max_idx + 1);
-    let mut out = vec![String::new(); len];
-    let mut any = false;
-    for dp in d_pts {
-        let idx = dp.index.val as usize;
-        if idx >= len {
-            continue;
-        }
-        if let Some(c) = series_color_via_debug(dp.chart_shape_properties.as_deref(), theme) {
-            out[idx] = c;
-            any = true;
-        }
-    }
-    if any {
-        out
-    } else {
-        Vec::new()
-    }
-}
-
-/// Read string/number values out of a CategoryAxisData slot (used by both
-/// `c:cat` on bar/line/area/pie and `c:xVal` on scatter).
-fn ax_data_values(
-    cat: Option<&c::CategoryAxisData>,
-) -> (Vec<String>, Option<String>, Option<String>) {
-    let Some(cat) = cat else {
-        return (Vec::new(), None, None);
-    };
-    let Some(choice) = cat.category_axis_data_choice.as_ref() else {
-        return (Vec::new(), None, None);
-    };
-    match choice {
-        c::CategoryAxisDataChoice::CStrRef(sr) => (
-            string_cache_values(&sr.string_cache),
-            Some(sr.formula.as_str().to_string()),
-            None,
-        ),
-        c::CategoryAxisDataChoice::CNumRef(nr) => {
-            let vals = nr
-                .numbering_cache
-                .as_ref()
-                .map(|nc| {
-                    nc.c_pt
-                        .iter()
-                        .map(|p| p.numeric_value.as_str().to_string())
-                        .collect()
-                })
-                .unwrap_or_default();
-            (
-                vals,
-                Some(nr.formula.as_str().to_string()),
-                nr.numbering_cache
-                    .as_ref()
-                    .and_then(|nc| nc.format_code.as_ref().map(|s| s.as_str().to_string())),
-            )
-        }
-        c::CategoryAxisDataChoice::CStrLit(lit) => (
-            lit.c_pt
-                .iter()
-                .map(|p| p.numeric_value.as_str().to_string())
-                .collect(),
-            None,
-            None,
-        ),
-        c::CategoryAxisDataChoice::CNumLit(lit) => (
-            lit.c_pt
-                .iter()
-                .map(|p| p.numeric_value.as_str().to_string())
-                .collect(),
-            None,
-            lit.format_code.as_ref().map(|s| s.as_str().to_string()),
-        ),
-        _ => (Vec::new(), None, None),
-    }
-}
-
-fn values_format(v: Option<&c::Values>) -> Option<String> {
-    let v = v?;
-    match v.values_choice.as_ref()? {
-        c::ValuesChoice::CNumRef(nr) => nr
-            .numbering_cache
-            .as_ref()
-            .and_then(|nc| nc.format_code.as_ref().map(|s| s.as_str().to_string())),
-        c::ValuesChoice::CNumLit(lit) => lit.format_code.as_ref().map(|s| s.as_str().to_string()),
-    }
-}
-
-fn y_values_values(v: Option<&c::YValues>) -> (Vec<f64>, Option<String>) {
-    let Some(v) = v else {
-        return (Vec::new(), None);
-    };
-    let Some(choice) = v.y_values_choice.as_ref() else {
-        return (Vec::new(), None);
-    };
-    match choice {
-        c::YValuesChoice::CNumRef(nr) => {
-            let vals = nr
-                .numbering_cache
-                .as_ref()
-                .map(|nc| {
-                    let mut indexed: Vec<(u32, f64)> = nc
-                        .c_pt
-                        .iter()
-                        .filter_map(|p| {
-                            p.numeric_value
-                                .as_str()
-                                .parse::<f64>()
-                                .ok()
-                                .map(|v| (p.index, v))
-                        })
-                        .collect();
-                    indexed.sort_by_key(|(i, _)| *i);
-                    indexed.into_iter().map(|(_, v)| v).collect()
-                })
-                .unwrap_or_default();
-            (vals, Some(nr.formula.as_str().to_string()))
-        }
-        c::YValuesChoice::CNumLit(lit) => {
-            let mut indexed: Vec<(u32, f64)> = lit
-                .c_pt
-                .iter()
-                .filter_map(|p| {
-                    p.numeric_value
-                        .as_str()
-                        .parse::<f64>()
-                        .ok()
-                        .map(|v| (p.index, v))
-                })
-                .collect();
-            indexed.sort_by_key(|(i, _)| *i);
-            (indexed.into_iter().map(|(_, v)| v).collect(), None)
-        }
-    }
-}
-
-fn y_values_format(v: Option<&c::YValues>) -> Option<String> {
-    let v = v?;
-    match v.y_values_choice.as_ref()? {
-        c::YValuesChoice::CNumRef(nr) => nr
-            .numbering_cache
-            .as_ref()
-            .and_then(|nc| nc.format_code.as_ref().map(|s| s.as_str().to_string())),
-        c::YValuesChoice::CNumLit(lit) => lit.format_code.as_ref().map(|s| s.as_str().to_string()),
-    }
-}
-
-fn x_axis_values(x: Option<&c::XValues>) -> (Vec<String>, Option<String>, Option<String>) {
-    let Some(x) = x else {
-        return (Vec::new(), None, None);
-    };
-    let Some(choice) = x.x_values_choice.as_ref() else {
-        return (Vec::new(), None, None);
-    };
-    match choice {
-        c::XValuesChoice::CStrRef(sr) => (
-            string_cache_values(&sr.string_cache),
-            Some(sr.formula.as_str().to_string()),
-            None,
-        ),
-        c::XValuesChoice::CNumRef(nr) => {
-            let vals = nr
-                .numbering_cache
-                .as_ref()
-                .map(|nc| {
-                    nc.c_pt
-                        .iter()
-                        .map(|p| p.numeric_value.as_str().to_string())
-                        .collect()
-                })
-                .unwrap_or_default();
-            (
-                vals,
-                Some(nr.formula.as_str().to_string()),
-                nr.numbering_cache
-                    .as_ref()
-                    .and_then(|nc| nc.format_code.as_ref().map(|s| s.as_str().to_string())),
-            )
-        }
-        c::XValuesChoice::CStrLit(lit) => (
-            lit.c_pt
-                .iter()
-                .map(|p| p.numeric_value.as_str().to_string())
-                .collect(),
-            None,
-            None,
-        ),
-        c::XValuesChoice::CNumLit(lit) => (
-            lit.c_pt
-                .iter()
-                .map(|p| p.numeric_value.as_str().to_string())
-                .collect(),
-            None,
-            lit.format_code.as_ref().map(|s| s.as_str().to_string()),
-        ),
-        _ => (Vec::new(), None, None),
-    }
-}
-
-/// Numeric x-values for a scatter series. Returns parsed f64s when
-/// available, plus the underlying formula ref.
-fn scatter_x_values(x: Option<&c::XValues>) -> (Vec<f64>, Option<String>) {
-    let Some(x) = x else {
-        return (Vec::new(), None);
-    };
-    let Some(choice) = x.x_values_choice.as_ref() else {
-        return (Vec::new(), None);
-    };
-    match choice {
-        c::XValuesChoice::CNumRef(nr) => {
-            let vals = nr
-                .numbering_cache
-                .as_ref()
-                .map(|nc| {
-                    let mut indexed: Vec<(u32, f64)> = nc
-                        .c_pt
-                        .iter()
-                        .filter_map(|p| {
-                            p.numeric_value
-                                .as_str()
-                                .parse::<f64>()
-                                .ok()
-                                .map(|v| (p.index, v))
-                        })
-                        .collect();
-                    indexed.sort_by_key(|(i, _)| *i);
-                    indexed.into_iter().map(|(_, v)| v).collect()
-                })
-                .unwrap_or_default();
-            (vals, Some(nr.formula.as_str().to_string()))
-        }
-        c::XValuesChoice::CNumLit(lit) => {
-            let mut indexed: Vec<(u32, f64)> = lit
-                .c_pt
-                .iter()
-                .filter_map(|p| {
-                    p.numeric_value
-                        .as_str()
-                        .parse::<f64>()
-                        .ok()
-                        .map(|v| (p.index, v))
-                })
-                .collect();
-            indexed.sort_by_key(|(i, _)| *i);
-            (indexed.into_iter().map(|(_, v)| v).collect(), None)
-        }
-        _ => (Vec::new(), None),
-    }
-}
-
-fn series_text_or_ref(t: Option<&c::SeriesText>) -> (Option<String>, Option<String>) {
-    let Some(t) = t else {
-        return (None, None);
-    };
-    let Some(choice) = t.series_text_choice.as_ref() else {
-        return (None, None);
-    };
-    match choice {
-        c::SeriesTextChoice::CStrRef(sr) => {
-            let cached = sr.string_cache.as_ref().and_then(|sc| {
-                sc.c_pt
-                    .first()
-                    .map(|p| p.numeric_value.as_str().to_string())
-            });
-            (cached, Some(sr.formula.as_str().to_string()))
-        }
-        c::SeriesTextChoice::CV(v) => (Some(v.as_str().to_string()), None),
-    }
-}
-
-fn number_reference_values(v: Option<&c::Values>) -> (Vec<f64>, Option<String>) {
-    let Some(v) = v else {
-        return (Vec::new(), None);
-    };
-    let Some(choice) = v.values_choice.as_ref() else {
-        return (Vec::new(), None);
-    };
-    match choice {
-        c::ValuesChoice::CNumRef(nr) => {
-            let vals = nr
-                .numbering_cache
-                .as_ref()
-                .map(|nc| {
-                    let mut indexed: Vec<(u32, f64)> = nc
-                        .c_pt
-                        .iter()
-                        .filter_map(|p| {
-                            p.numeric_value
-                                .as_str()
-                                .parse::<f64>()
-                                .ok()
-                                .map(|v| (p.index, v))
-                        })
-                        .collect();
-                    indexed.sort_by_key(|(i, _)| *i);
-                    indexed.into_iter().map(|(_, v)| v).collect()
-                })
-                .unwrap_or_default();
-            (vals, Some(nr.formula.as_str().to_string()))
-        }
-        c::ValuesChoice::CNumLit(lit) => {
-            let mut indexed: Vec<(u32, f64)> = lit
-                .c_pt
-                .iter()
-                .filter_map(|p| {
-                    p.numeric_value
-                        .as_str()
-                        .parse::<f64>()
-                        .ok()
-                        .map(|v| (p.index, v))
-                })
-                .collect();
-            indexed.sort_by_key(|(i, _)| *i);
-            (indexed.into_iter().map(|(_, v)| v).collect(), None)
-        }
-    }
-}
-
-fn string_cache_values(sc: &Option<Box<c::StringCache>>) -> Vec<String> {
-    let Some(sc) = sc else {
-        return Vec::new();
-    };
-    let mut indexed: Vec<(u32, String)> = sc
-        .c_pt
-        .iter()
-        .map(|p| (p.index, p.numeric_value.as_str().to_string()))
-        .collect();
-    indexed.sort_by_key(|(i, _)| *i);
-    indexed.into_iter().map(|(_, v)| v).collect()
-}
-
-// Pull explicit fill colors out of a `<c:spPr>` block via the struct's
-// Debug repr. ooxmlsdk's choice enums are a moving target across
-// versions, so a string scan is pragmatic. The Debug repr uses Rust
-// type names (`RgbColorModelHex`, `SchemeColor`, `ASolidFill`) rather
-// than the XML qnames (`srgbClr`, `schemeClr`, `solidFill`) — so we
-// anchor on `ASolidFill(SolidFill {` to lock onto the fill (and skip
-// e.g. line-color `<a:ln>` blocks), then look for the first
-// `RgbColorModelHex { ... val: "<6 hex>"` or `SchemeColor { val:
-// AccentN` underneath it.
-fn series_color_via_debug(
-    props: Option<&c::ChartShapeProperties>,
-    theme: Option<&Theme>,
-) -> Option<String> {
-    let props = props?;
-    let dbg = format!("{:?}", props);
-    // Scope to the *shape's* solid fill (chart_shape_properties_choice2).
-    // Important: we deliberately don't look inside `a_ln: Some(Outline {
-    // ... ASolidFill(...) })` — that's the outline color, not the fill.
-    // Series-level spPr commonly has only an outline, no shape fill, in
-    // which case the function correctly returns None and the caller
-    // falls back to the theme accent.
-    let fill_pos = dbg.find("chart_shape_properties_choice2: Some(ASolidFill(SolidFill {")?;
-    let fill_block = &dbg[fill_pos..];
-    // Cap the scan at the close of the SolidFill struct (best-effort:
-    // first `}))` after the open brace covers the typical shape
-    // `ASolidFill(SolidFill { ... Some(ASrgbClr(... { ... }))` with the
-    // outer `}))` ending the SolidFill).
-    let end = fill_block
-        .find("})),")
-        .or_else(|| fill_block.find("}))"))
-        .unwrap_or(fill_block.len());
-    let fill_block = &fill_block[..end];
-
-    if let Some(p) = fill_block.find("RgbColorModelHex {") {
-        let rest = &fill_block[p..];
-        if let Some(v) = rest.find("val: \"") {
-            let rest = &rest[v + 6..];
-            if let Some(e) = rest.find('"') {
-                let hex = &rest[..e];
-                if hex.len() == 6 {
-                    return Some(format!("#{}", hex));
-                }
-            }
-        }
-    }
-    if fill_block.contains("SchemeColor {") {
-        for n in 1..=6u32 {
-            let needle = format!("Accent{n}");
-            if fill_block.contains(&needle) {
-                return Some(theme_accent_color(n, theme));
-            }
-        }
-    }
-    None
-}
-
-/// Resolve `accent{n}` against the workbook theme (slots 4..9 in our
-/// spreadsheet-indexed `theme.colors`), falling back to the Office
-/// 2007+ defaults when the theme didn't ship one.
-fn theme_accent_color(n: u32, theme: Option<&Theme>) -> String {
-    if let Some(t) = theme {
-        let slot = 3 + n as usize; // accent1 -> theme.colors[4]
-        if let Some(hex) = t.colors.get(slot) {
-            if hex.len() == 6 {
-                return format!("#{}", hex);
-            }
-        }
-    }
-    office_accent_color_default(n)
-}
-
-fn office_accent_color_default(n: u32) -> String {
-    match n {
-        1 => "#4472C4",
-        2 => "#ED7D31",
-        3 => "#A5A5A5",
-        4 => "#FFC000",
-        5 => "#5B9BD5",
-        6 => "#70AD47",
-        _ => "#4472C4",
-    }
-    .to_string()
-}
-
-fn extract_title(t: Option<&c::Title>) -> Option<String> {
-    let t = t?;
-    let txt = t.chart_text.as_ref()?;
-    match txt.chart_text_choice.as_ref()? {
-        c::ChartTextChoice::CStrRef(sr) => sr.string_cache.as_ref().and_then(|sc| {
-            sc.c_pt
-                .first()
-                .map(|p| p.numeric_value.as_str().to_string())
-        }),
-        c::ChartTextChoice::CRich(rich) => {
-            let mut s = String::new();
-            for p in &rich.a_p {
-                for ch in &p.paragraph_choice {
-                    if let ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main::ParagraphChoice::AR(run) = ch {
-                        s.push_str(run.text.as_str());
-                    }
-                }
-            }
-            if s.is_empty() {
-                None
-            } else {
-                Some(s)
-            }
-        }
-        c::ChartTextChoice::CStrLit(lit) => lit
-            .c_pt
-            .first()
-            .map(|p| p.numeric_value.as_str().to_string()),
-    }
 }

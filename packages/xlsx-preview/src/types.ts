@@ -34,6 +34,7 @@ export type {
   Chart,
   ChartSeries,
   DataLabels,
+  PointDataLabel,
   Col,
   Color,
   Comment,

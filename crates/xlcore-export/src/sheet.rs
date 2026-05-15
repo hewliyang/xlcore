@@ -188,11 +188,11 @@ pub fn extract(
         show_grid_lines,
         conditional_formats,
         outline_pr,
-        drawings: Vec::new(),   // populated by lib.rs after sheet extract
-        tables: Vec::new(),     // populated by lib.rs after sheet extract
-        pivots: Vec::new(),     // populated by lib.rs after sheet extract
-        hyperlinks: Vec::new(), // populated by lib.rs after sheet extract
-        comments: Vec::new(),   // populated by lib.rs after sheet extract
+        drawings: Vec::new(),         // populated by lib.rs after sheet extract
+        tables: Vec::new(),           // populated by lib.rs after sheet extract
+        pivots: Vec::new(),           // populated by lib.rs after sheet extract
+        hyperlinks: Vec::new(),       // populated by lib.rs after sheet extract
+        comments: Vec::new(),         // populated by lib.rs after sheet extract
         sparkline_groups: Vec::new(), // populated by lib.rs after sheet extract
         // Columnar blobs are filled by `columnar::compactify` after every
         // other pass has run; until then they're empty defaults.

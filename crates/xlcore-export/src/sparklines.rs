@@ -11,9 +11,9 @@
 use crate::schema::{Sparkline, SparklineGroup};
 use ooxmlsdk::schemas::schemas_microsoft_com_office_spreadsheetml_2009_9_main as x14;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as xspread;
+use xlcore_io::parse_a1;
 #[allow(unused)]
 use xspread::WorksheetExtensionChoice;
-use xlcore_io::parse_a1;
 
 pub fn extract(ws: &xspread::Worksheet) -> Vec<SparklineGroup> {
     let Some(ext_lst) = &ws.x_ext_lst else {
@@ -98,12 +98,18 @@ fn extract_group(g: &x14::SparklineGroup) -> SparklineGroup {
         manual_max: g.manual_max,
         group_min: None, // resolved post-pass
         group_max: None,
-        color_series: g.series_color.as_ref().and_then(|c| color_hex(c.rgb.as_deref())),
+        color_series: g
+            .series_color
+            .as_ref()
+            .and_then(|c| color_hex(c.rgb.as_deref())),
         color_negative: g
             .negative_color
             .as_ref()
             .and_then(|c| color_hex(c.rgb.as_deref())),
-        color_axis: g.axis_color.as_ref().and_then(|c| color_hex(c.rgb.as_deref())),
+        color_axis: g
+            .axis_color
+            .as_ref()
+            .and_then(|c| color_hex(c.rgb.as_deref())),
         color_markers: g
             .markers_color
             .as_ref()
@@ -135,7 +141,11 @@ fn extract_group(g: &x14::SparklineGroup) -> SparklineGroup {
 fn color_hex(rgb: Option<&str>) -> Option<String> {
     let s = rgb?;
     let trimmed = s.trim_start_matches('#');
-    let hex = if trimmed.len() == 8 { &trimmed[2..] } else { trimmed };
+    let hex = if trimmed.len() == 8 {
+        &trimmed[2..]
+    } else {
+        trimmed
+    };
     if hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit()) {
         Some(hex.to_ascii_uppercase())
     } else {

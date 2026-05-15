@@ -1,0 +1,188 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Sheet1",
+      "maxRow": 5,
+      "maxCol": 4,
+      "defaultColWidthPx": 64.01,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "drawings": [
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 5,
+            "fromColOffEmu": 0,
+            "fromRow": 1,
+            "fromRowOffEmu": 0,
+            "toCol": 13,
+            "toColOffEmu": 76200,
+            "toRow": 17,
+            "toRowOffEmu": 0
+          },
+          "chart": {
+            "type": "column",
+            "title": "Waterfall via no-fill stack",
+            "series": [
+              {
+                "name": "Base",
+                "color": "#4F81BD",
+                "values": [
+                  0.0,
+                  40.0,
+                  50.0,
+                  0.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$B$5"
+              },
+              {
+                "name": "Increase",
+                "color": "#4F81BD",
+                "values": [
+                  40.0,
+                  25.0,
+                  0.0,
+                  50.0
+                ],
+                "valuesRef": "Sheet1!$C$2:$C$5"
+              },
+              {
+                "name": "Decrease",
+                "color": "#C0504D",
+                "values": [
+                  0.0,
+                  0.0,
+                  15.0,
+                  0.0
+                ],
+                "valuesRef": "Sheet1!$D$2:$D$5"
+              }
+            ],
+            "categories": [
+              "Start",
+              "New",
+              "Churn",
+              "End"
+            ],
+            "categoriesRef": "Sheet1!$A$2:$A$5",
+            "legendPos": "b",
+            "valueFormat": "General",
+            "grouping": "percentstacked",
+            "barDir": "column",
+            "barOverlap": 100,
+            "showMajorGridlines": true
+          }
+        }
+      ],
+      "cells": {
+        "count": 20,
+        "r": "AQAAAAEAAAABAAAAAQAAAAIAAAACAAAAAgAAAAIAAAADAAAAAwAAAAMAAAADAAAABAAAAAQAAAAEAAAABAAAAAUAAAAFAAAABQAAAAUAAAA=",
+        "c": "AQAAAAIAAAADAAAABAAAAAEAAAACAAAAAwAAAAQAAAABAAAAAgAAAAMAAAAEAAAAAQAAAAIAAAADAAAABAAAAAEAAAACAAAAAwAAAAQAAAA=",
+        "kind": "AQEBAQEAAAABAAAAAQAAAAEAAAA=",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAAAAAABQAAAAAAAAAGAAAABQAAAAcAAAAAAAAACAAAAAkAAAAAAAAACgAAAAsAAAAAAAAACQAAAAAAAAA=",
+        "formulaIdx": "//////////////////////////////////////////////////////////////////////////////////////////////////////////8=",
+        "styleIdx": "//////////////////////////////////////////////////////////////////////////////////////////////////////////8=",
+        "runsIdx": "//////////////////////////////////////////////////////////////////////////////////////////////////////////8=",
+        "rowPtr": "AAAAAAQAAAAIAAAADAAAABAAAAAUAAAA"
+      },
+      "rowMeta": {
+        "count": 5,
+        "index": "AQAAAAIAAAADAAAABAAAAAUAAAA=",
+        "heightPx": "AADAfwAAwH8AAMB/AADAfwAAwH8=",
+        "styleIdx": "//////////////////////////8=",
+        "hidden": "AAAAAAA="
+      },
+      "valuePool": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "40",
+        "5",
+        "25",
+        "6",
+        "50",
+        "15",
+        "7"
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "color": {
+          "theme": 1
+        },
+        "family": 2,
+        "scheme": "minor"
+      }
+    ],
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0
+  },
+  "sharedStrings": [
+    "Step",
+    "Base",
+    "Increase",
+    "Decrease",
+    "Start",
+    "New",
+    "Churn",
+    "End"
+  ],
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  }
+}

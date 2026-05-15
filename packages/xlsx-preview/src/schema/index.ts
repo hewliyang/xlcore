@@ -15,6 +15,7 @@ export type { CfRule } from "./CfRule.js";
 export type { CfvoStop } from "./CfvoStop.js";
 export type { Chart } from "./Chart.js";
 export type { DataLabels } from "./DataLabels.js";
+export type { PointDataLabel } from "./PointDataLabel.js";
 export type { ChartSeries } from "./ChartSeries.js";
 export type { Col } from "./Col.js";
 export type { Color } from "./Color.js";

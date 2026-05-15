@@ -10,14 +10,12 @@
 // pixel rectangle; we lay out the title, plot area, value-axis ticks, x-axis
 // labels, bars and legend inside it.
 //
-// Number formatting reuses the same subset as the cell renderer, so axis
-// labels match cell-level "$#,##0" formatting.
-
+// Number formatting reuses the same subset as the cell renderer, so axis labels match cell formats.
 import type { Chart, ChartSeries } from "./types.js";
-import { activeThemeColor } from "./color.js";
 import {
   buildLabelText,
   buildStackedRows,
+  computeBarSlotMetrics,
   drawAxisFrame,
   drawCategoryAxis,
   drawLabel,
@@ -25,12 +23,24 @@ import {
   drawPlaceholderPlot,
   measureVerticalLegendWidth,
   effectiveLabels,
+  pointLabel,
   formatAxisValue,
-  formatGeneral,
-  niceTicks,
+  isZeroTickInside,
+  paintZeroBaseline,
+  zeroAxisMetrics,
+  resolveAxisRange,
   valueRange,
   withAlpha,
 } from "./chartUtils.js";
+
+import {
+  drawBubbleChart,
+  drawComboChart,
+  drawPieChart,
+  drawScatterChart,
+  pieSliceColor,
+  resolveBarFill,
+} from "./chartAdvanced.js";
 
 const TITLE_PAD = 8;
 const TITLE_FONT_SIZE = 14;
@@ -91,10 +101,15 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
         })()
       : chart.series;
 
-  // ECMA-376 legend positions: t/b/l/r/tr. Default to bottom when
-  // unset. `tr` is Excel's "top-right" overlay; we treat it as `r`
-  // since we don't overlay legends today.
-  const legendPos = chart.series.length > 0 ? (chart.legendPos ?? "b") : null;
+  // ECMA-376 legend positions: t/b/l/r/tr. The extractor surfaces
+  // `legendPos = undefined` when the source XML has no `<c:legend>`
+  // element (Excel: "no legend") and a concrete position string
+  // when the element is present (defaulting to `"r"` per Excel
+  // when `<c:legendPos>` itself is absent). We treat absent as
+  // "don't paint" to match Excel desktop / hsx — see
+  // parity-charts.md Bug #17. `tr` ("top-right overlay") is
+  // coerced to `r` below since we don't overlay legends today.
+  const legendPos = chart.series.length > 0 && chart.legendPos ? chart.legendPos : null;
   const legendVertical = legendPos === "l" || legendPos === "r" || legendPos === "tr";
   let legendW = 0;
   let legendH = 0;
@@ -145,32 +160,171 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       plotRect.h = rect.y + rect.h - cursorY - legendH - 4;
       break;
   }
+  // Axis-title bands. ECMA-376 §21.2.2.213 — every axis carries an
+  // optional `<c:title>`. We reserve a fixed strip (font size + 6px
+  // padding) on each occupied edge, then paint inside it. The strips
+  // sit *inside* the chart frame but *outside* the plot area so the
+  // axis tick labels still have room. We don't reserve when the
+  // corresponding side hosts no title — keeps unaffected charts
+  // pixel-stable.
+  const AXIS_TITLE_FONT_SIZE = 11;
+  const AXIS_TITLE_PAD = 6;
+  const AXIS_TITLE_BAND = AXIS_TITLE_FONT_SIZE + AXIS_TITLE_PAD;
+  const xTitle = chart.xAxisTitle;
+  const yTitle = chart.yAxisTitle;
+  const yTitle2 = chart.yAxisTitleSecondary;
+  let xTitleRect: Rect | null = null;
+  let yTitleRect: Rect | null = null;
+  let yTitle2Rect: Rect | null = null;
+  if (xTitle) {
+    xTitleRect = {
+      x: plotRect.x,
+      y: plotRect.y + plotRect.h - AXIS_TITLE_BAND,
+      w: plotRect.w,
+      h: AXIS_TITLE_BAND,
+    };
+    plotRect.h -= AXIS_TITLE_BAND;
+  }
+  if (yTitle) {
+    yTitleRect = {
+      x: plotRect.x,
+      y: plotRect.y,
+      w: AXIS_TITLE_BAND,
+      h: plotRect.h,
+    };
+    plotRect.x += AXIS_TITLE_BAND;
+    plotRect.w -= AXIS_TITLE_BAND;
+  }
+  if (yTitle2 && (chart.secondaryAxis || chart.type === "combo")) {
+    yTitle2Rect = {
+      x: plotRect.x + plotRect.w - AXIS_TITLE_BAND,
+      y: plotRect.y,
+      w: AXIS_TITLE_BAND,
+      h: plotRect.h,
+    };
+    plotRect.w -= AXIS_TITLE_BAND;
+  }
+
+  // `<c:dispUnitsLbl>` caption band. ECMA-376 §21.2.2.46: when an axis
+  // is authored with `<c:dispUnits>` (e.g. `builtInUnit=thousands`)
+  // and a sibling `<c:dispUnitsLbl>` (e.g. `"S$ mn"`), the caption
+  // paints near the axis to call out the scale factor applied to the
+  // tick labels. Excel's default rotation is along the axis (-5400000
+  // EMU = -90°) but the placement is also commonly horizontal at the
+  // top of the axis depending on theme. We paint horizontal,
+  // left-aligned to the y-axis on the primary side and right-aligned
+  // on the secondary side, in a narrow reserved band right above the
+  // plot area (i.e. between the chart title and the topmost tick).
+  const DISP_UNITS_FONT_SIZE = 10;
+  const DISP_UNITS_BAND = DISP_UNITS_FONT_SIZE + 4;
+  const duLabel = chart.dispUnits != null ? chart.dispUnitsLabel : undefined;
+  const duLabel2 =
+    chart.dispUnitsSecondary != null && (chart.secondaryAxis || chart.type === "combo")
+      ? chart.dispUnitsLabelSecondary
+      : undefined;
+  let duBandRect: Rect | null = null;
+  if (duLabel || duLabel2) {
+    duBandRect = {
+      x: plotRect.x,
+      y: plotRect.y,
+      w: plotRect.w,
+      h: DISP_UNITS_BAND,
+    };
+    plotRect.y += DISP_UNITS_BAND;
+    plotRect.h -= DISP_UNITS_BAND;
+  }
+
   if (plotRect.w <= 20 || plotRect.h <= 20) return;
 
-  switch (chart.type) {
-    case "column":
-    case "bar":
-      drawBarColumnChart(ctx, chart, plotRect);
-      break;
-    case "line":
-      drawLineChart(ctx, chart, plotRect);
-      break;
-    case "area":
-      drawAreaChart(ctx, chart, plotRect);
-      break;
-    case "pie":
-    case "doughnut":
-      drawPieChart(ctx, chart, plotRect);
-      break;
-    case "scatter":
-      drawScatterChart(ctx, chart, plotRect);
-      break;
-    default:
-      drawPlaceholderPlot(ctx, chart, plotRect);
+  // Combo charts (`<c:barChart>` + `<c:lineChart>` in one plotArea) or
+  // any chart with a secondary axis (right-hand y-axis) route through
+  // the dual-scale path so both series groups land on the same plot
+  // with their own y-scale. Per-series `chartType` lets us mix
+  // column/bar/line/area within a single chart.
+  if (chart.type === "combo" || chart.secondaryAxis) {
+    drawComboChart(ctx, chart, plotRect);
+  } else {
+    switch (chart.type) {
+      case "column":
+      case "bar":
+        drawBarColumnChart(ctx, chart, plotRect);
+        break;
+      case "line":
+        drawLineChart(ctx, chart, plotRect);
+        break;
+      case "area":
+        drawAreaChart(ctx, chart, plotRect);
+        break;
+      case "pie":
+      case "doughnut":
+        drawPieChart(ctx, chart, plotRect);
+        break;
+      case "scatter":
+        drawScatterChart(ctx, chart, plotRect);
+        break;
+      case "bubble":
+        drawBubbleChart(ctx, chart, plotRect);
+        break;
+      default:
+        drawPlaceholderPlot(ctx, chart, plotRect);
+    }
   }
 
   if (legendPos !== null) {
-    drawLegend(ctx, legendEntries, legendRect, legendVertical ? "vertical" : "horizontal");
+    drawLegend(ctx, legendEntries, legendRect, legendVertical ? "vertical" : "horizontal", chart);
+  }
+
+  // Paint axis titles on top — done last so they sit above any
+  // overflow from the plot painters. Y-axis titles rotate -90°
+  // (Excel convention: text reads bottom-to-top on the left edge,
+  // top-to-bottom on the right edge).
+  if (xTitleRect && xTitle) {
+    ctx.fillStyle = TITLE_COLOR;
+    ctx.font = `${AXIS_TITLE_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(xTitle, xTitleRect.x + xTitleRect.w / 2, xTitleRect.y + xTitleRect.h / 2);
+  }
+  if (yTitleRect && yTitle) {
+    ctx.save();
+    ctx.fillStyle = TITLE_COLOR;
+    ctx.font = `${AXIS_TITLE_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.translate(yTitleRect.x + yTitleRect.w / 2, yTitleRect.y + yTitleRect.h / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(yTitle, 0, 0);
+    ctx.restore();
+  }
+  if (yTitle2Rect && yTitle2) {
+    ctx.save();
+    ctx.fillStyle = TITLE_COLOR;
+    ctx.font = `${AXIS_TITLE_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    // Right-side rotation: text reads top-to-bottom, matching Excel.
+    ctx.translate(yTitle2Rect.x + yTitle2Rect.w / 2, yTitle2Rect.y + yTitle2Rect.h / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.fillText(yTitle2, 0, 0);
+    ctx.restore();
+  }
+  // `<c:dispUnitsLbl>` caption(s). Painted last so they sit above any
+  // gridline / fill bleed. Left caption hugs the left edge of the
+  // plot (right above the y-axis), right caption hugs the right edge.
+  if (duBandRect && (duLabel || duLabel2)) {
+    ctx.save();
+    ctx.fillStyle = AXIS_LABEL_COLOR;
+    ctx.font = `${DISP_UNITS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+    ctx.textBaseline = "middle";
+    if (duLabel) {
+      ctx.textAlign = "left";
+      ctx.fillText(duLabel, duBandRect.x + 2, duBandRect.y + duBandRect.h / 2);
+    }
+    if (duLabel2) {
+      ctx.textAlign = "right";
+      ctx.fillText(duLabel2, duBandRect.x + duBandRect.w - 2, duBandRect.y + duBandRect.h / 2);
+    }
+    ctx.restore();
   }
 }
 
@@ -191,9 +345,12 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   );
   if (categoryCount === 0) return;
 
-  // Compute value range.
-  let minV = 0,
-    maxV = 0;
+  // Compute value range. Seed with +/-Infinity so the data extremes
+  // win for entirely-positive data; the subsequent `resolveAxisRange`
+  // call applies the zero-clamp when no `<c:scaling>` override is
+  // present.
+  let minV = Number.POSITIVE_INFINITY,
+    maxV = Number.NEGATIVE_INFINITY;
   if (stacked) {
     for (let i = 0; i < categoryCount; i++) {
       let pos = 0,
@@ -214,17 +371,27 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
       }
     }
   }
-  // Always include zero.
-  if (minV > 0) minV = 0;
-  if (maxV < 0) maxV = 0;
-  if (minV === 0 && maxV === 0) maxV = 1;
-  const ticks = niceTicks(minV, maxV, AXIS_TICK_COUNT);
-  minV = ticks[0]!;
-  maxV = ticks[ticks.length - 1]!;
+  if (!Number.isFinite(minV)) minV = 0;
+  if (!Number.isFinite(maxV)) maxV = 1;
+  // Resolve the axis range, honoring any explicit `<c:scaling><c:min>`
+  // / `<c:max>` from the workbook. Bars/columns zero-clamp by default;
+  // an explicit min or max flips the axis into user-scaled mode
+  // (matches Excel).
+  const _bcRange = resolveAxisRange(
+    minV,
+    maxV,
+    chart.valueMin,
+    chart.valueMax,
+    /*zeroClamp=*/ true,
+    AXIS_TICK_COUNT,
+  );
+  minV = _bcRange.minV;
+  maxV = _bcRange.maxV;
+  const ticks = _bcRange.ticks;
 
   // Measure the value-axis label width so we can carve out a y-axis gutter.
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
-  const labelStrings = ticks.map((t) => formatAxisValue(t, chart.valueFormat));
+  const labelStrings = ticks.map((t) => formatAxisValue(t, chart.valueFormat, chart.dispUnits));
   const yAxisW = Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
   const xAxisH = AXIS_FONT_SIZE + 8;
 
@@ -232,7 +399,11 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     ? { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH }
     : { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH };
 
-  // Gridlines + value-axis labels
+  // Gridlines + value-axis labels. Gridline pass honors
+  // `chart.showMajorGridlines` per parity-charts.md Bug #12; tick
+  // labels always paint (Excel keeps labels even when gridlines
+  // are hidden via "Line Color: No Line").
+  const showGridlines = chart.showMajorGridlines !== false;
   ctx.fillStyle = AXIS_LABEL_COLOR;
   ctx.strokeStyle = GRIDLINE_COLOR;
   ctx.lineWidth = 1;
@@ -241,36 +412,50 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   for (let ti = 0; ti < ticks.length; ti++) {
     const t = ticks[ti]!;
     const frac = (t - minV) / (maxV - minV);
+    // Bug #13 step 1: skip the lighter gridline at t==0 when the axis
+    // straddles zero — we'll overlay the heavier baseline after fills.
+    const isZeroLine = isZeroTickInside(t, minV, maxV);
     if (horizontal) {
       const x = innerRect.x + frac * innerRect.w;
-      ctx.beginPath();
-      ctx.moveTo(Math.round(x) + 0.5, innerRect.y);
-      ctx.lineTo(Math.round(x) + 0.5, innerRect.y + innerRect.h);
-      ctx.stroke();
+      if (showGridlines && !isZeroLine) {
+        ctx.beginPath();
+        ctx.moveTo(Math.round(x) + 0.5, innerRect.y);
+        ctx.lineTo(Math.round(x) + 0.5, innerRect.y + innerRect.h);
+        ctx.stroke();
+      }
       ctx.fillText(labelStrings[ti]!, x, innerRect.y + innerRect.h + xAxisH / 2);
     } else {
       const y = innerRect.y + (1 - frac) * innerRect.h;
-      ctx.beginPath();
-      ctx.moveTo(innerRect.x, Math.round(y) + 0.5);
-      ctx.lineTo(innerRect.x + innerRect.w, Math.round(y) + 0.5);
-      ctx.stroke();
+      if (showGridlines && !isZeroLine) {
+        ctx.beginPath();
+        ctx.moveTo(innerRect.x, Math.round(y) + 0.5);
+        ctx.lineTo(innerRect.x + innerRect.w, Math.round(y) + 0.5);
+        ctx.stroke();
+      }
       ctx.fillText(labelStrings[ti]!, innerRect.x - 4, y);
     }
   }
 
-  // Bars
-  const groupSize = stacked ? 1 : series.length;
+  // Bars. Slot geometry per ECMA-376 §21.2.2.75 / .108 — see
+  // computeBarSlotMetrics. `gapWidth` defaults to 150 (Excel spec),
+  // `overlap` defaults to 100 for stacked / 0 for clustered.
   const groupGap = horizontal ? innerRect.h / categoryCount : innerRect.w / categoryCount;
-  const barGapFrac = 0.25; // share of group reserved for between-group spacing
-  const innerGapFrac = 0.05; // between bars in a group (clustered only)
-  const usableGroup = groupGap * (1 - barGapFrac);
-  const barSize = stacked
-    ? usableGroup
-    : (usableGroup * (1 - innerGapFrac * (groupSize - 1))) / groupSize;
+  const slot = computeBarSlotMetrics(
+    groupGap,
+    series.length,
+    stacked,
+    chart.barGapWidth,
+    chart.barOverlap,
+  );
+  const barSize = slot.barW;
 
-  // Precompute zero baseline.
-  const zeroFrac = (0 - minV) / (maxV - minV);
-  const zeroY = innerRect.y + (1 - zeroFrac) * innerRect.h;
+  // Precompute zero baseline (parity-charts.md Bug #13 step 3:
+  // shared `zeroAxisMetrics` so the bar geometry, the gridline-skip
+  // pass, and the post-fill heavier baseline all consult one source
+  // of truth).
+  const zMetrics = zeroAxisMetrics(innerRect, minV, maxV);
+  const zeroY = zMetrics.zeroY;
+  const zeroX = zMetrics.zeroX;
 
   // Category labels along axis.
   ctx.fillStyle = AXIS_LABEL_COLOR;
@@ -306,11 +491,14 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
         const v = s.values[i] ?? 0;
         const start = v >= 0 ? pos : neg;
         const end = v >= 0 ? pos + v : neg + v;
+        // Always advance the stack accumulator — transparent dPts
+        // (resolveBarFill skip=true) still occupy their slot so
+        // subsequent series float above the prior contributions.
         if (v >= 0) pos += v;
         else neg += v;
+        const fill = resolveBarFill(s, i);
         const sFrac = (start - minV) / (maxV - minV);
         const eFrac = (end - minV) / (maxV - minV);
-        ctx.fillStyle = s.color ?? "#4472C4";
         let bx = 0,
           by = 0,
           bw = 0,
@@ -330,12 +518,18 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
           bw = barSize;
           bh = Math.abs(yb - ya);
         }
+        if (fill.skip) continue; // transparent dPt — no fill, no label
+        ctx.fillStyle = fill.color;
         ctx.fillRect(bx, by, bw, bh);
         // Stacked label: position default `ctr` (in-bar center).
         const dl = effectiveLabels(chart, s);
         if (dl) {
-          const text = buildLabelText(dl, chart, s, i, v, catTotal);
-          drawLabel(ctx, text, bx + bw / 2, by + bh / 2);
+          const po = pointLabel(dl, i);
+          if (po !== null) {
+            const edl = po?.dl ?? dl;
+            const text = po?.text ?? buildLabelText(edl, chart, s, i, v, catTotal);
+            drawLabel(ctx, text, bx + bw / 2, by + bh / 2);
+          }
         }
       }
     }
@@ -345,23 +539,23 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
         const s = series[si]!;
         const v = s.values[i] ?? 0;
         const frac = (v - minV) / (maxV - minV);
-        ctx.fillStyle = s.color ?? "#4472C4";
+        const fill = resolveBarFill(s, i);
         let bx = 0,
           by = 0,
           bw = 0,
           bh = 0;
         if (horizontal) {
-          const groupTop = innerRect.y + i * groupGap + (groupGap - usableGroup) / 2;
-          const top = groupTop + si * (barSize + barSize * innerGapFrac);
-          const x1 = innerRect.x + ((0 - minV) / (maxV - minV)) * innerRect.w;
+          const groupTop = innerRect.y + i * groupGap + slot.firstBarLeftOffset;
+          const top = groupTop + si * slot.barShift;
+          const x1 = zeroX;
           const x2 = innerRect.x + frac * innerRect.w;
           bx = Math.min(x1, x2);
           by = top;
           bw = Math.abs(x2 - x1);
           bh = barSize;
         } else {
-          const groupLeft = innerRect.x + i * groupGap + (groupGap - usableGroup) / 2;
-          const left = groupLeft + si * (barSize + barSize * innerGapFrac);
+          const groupLeft = innerRect.x + i * groupGap + slot.firstBarLeftOffset;
+          const left = groupLeft + si * slot.barShift;
           const yTop = innerRect.y + (1 - frac) * innerRect.h;
           const yBot = zeroY;
           bx = left;
@@ -369,12 +563,17 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
           bw = barSize;
           bh = Math.abs(yBot - yTop);
         }
+        if (fill.skip) continue; // transparent dPt — no fill, no label
+        ctx.fillStyle = fill.color;
         ctx.fillRect(bx, by, bw, bh);
         const dl = effectiveLabels(chart, s);
         if (dl) {
-          const text = buildLabelText(dl, chart, s, i, v, /*catTotal=*/ 0);
+          const po = pointLabel(dl, i);
+          if (po === null) continue; // suppressed via per-point delete
+          const edl = po?.dl ?? dl;
+          const text = po?.text ?? buildLabelText(edl, chart, s, i, v, /*catTotal=*/ 0);
           // Default position: outEnd. `inEnd`/`ctr`/`inBase` honored.
-          const pos = dl.position ?? "outEnd";
+          const pos = edl.position ?? "outEnd";
           let lx = bx + bw / 2,
             ly = by + bh / 2;
           const PAD = 3;
@@ -432,11 +631,27 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     }
   }
 
-  // Axis baselines.
+  // Axis baselines. The horizontal stroke sits at the zero baseline
+  // (== bottom of inner rect when the axis is entirely non-negative;
+  // somewhere inside when the axis straddles zero). For the
+  // straddles-zero case we upgrade it to the heavier `paintZeroBaseline`
+  // stroke per parity-charts.md Bug #13 step 1, drawn *after* bar fills
+  // so it reads as a conceptual divider. When the axis doesn't straddle
+  // zero we keep the original light `#9ca3af` frame stroke since it's
+  // serving as the x-axis frame, not as a zero marker.
+  if (zMetrics.straddlesZero) {
+    paintZeroBaseline(ctx, innerRect, minV, maxV);
+  } else {
+    ctx.strokeStyle = "#9ca3af";
+    ctx.beginPath();
+    ctx.moveTo(innerRect.x, Math.round(zeroY) + 0.5);
+    ctx.lineTo(innerRect.x + innerRect.w, Math.round(zeroY) + 0.5);
+    ctx.stroke();
+  }
+  // Left y-axis frame edge (unchanged).
   ctx.strokeStyle = "#9ca3af";
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(innerRect.x, Math.round(zeroY) + 0.5);
-  ctx.lineTo(innerRect.x + innerRect.w, Math.round(zeroY) + 0.5);
   ctx.moveTo(Math.round(innerRect.x) + 0.5, innerRect.y);
   ctx.lineTo(Math.round(innerRect.x) + 0.5, innerRect.y + innerRect.h);
   ctx.stroke();
@@ -469,14 +684,19 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     : series.map((s) => Array.from({ length: categoryCount }, (_, i) => s.values[i] ?? 0));
 
   let { minV, maxV } = valueRange(stackedSeries);
-  if (minV > 0) minV = 0;
-  if (maxV < 0) maxV = 0;
-  if (minV === maxV) {
-    maxV = minV + 1;
-  }
-  const ticks = niceTicks(minV, maxV, AXIS_TICK_COUNT);
-  minV = ticks[0]!;
-  maxV = ticks[ticks.length - 1]!;
+  // Line charts don't zero-clamp by default (Excel auto-scales to
+  // data range), but explicit `<c:scaling>` bounds still override.
+  const _lRange = resolveAxisRange(
+    minV,
+    maxV,
+    chart.valueMin,
+    chart.valueMax,
+    /*zeroClamp=*/ false,
+    AXIS_TICK_COUNT,
+  );
+  minV = _lRange.minV;
+  maxV = _lRange.maxV;
+  const ticks = _lRange.ticks;
 
   const inner = drawAxisFrame(ctx, chart, rect, ticks, minV, maxV, /*horizontal=*/ false, percent);
 
@@ -486,36 +706,65 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
   const xStep = inner.w / Math.max(1, categoryCount - 1);
   const yFor = (v: number) => inner.y + (1 - (v - minV) / (maxV - minV)) * inner.h;
 
+  // Excel default `<c:dispBlanksAs val="gap"/>` (ECMA-376 §21.2.2.34):
+  // missing points break the line. Stacked rows from `buildStackedRows`
+  // already fill gaps with 0 by construction (stacking semantics), so
+  // this guard only fires for the unstacked path.
+  const hasPointL = (s: ChartSeries, i: number): boolean => {
+    if (stacked) return true;
+    if (i >= s.values.length) return false;
+    const v = s.values[i];
+    return v != null && Number.isFinite(v);
+  };
+
   for (let si = 0; si < series.length; si++) {
     const s = series[si]!;
     const data = stackedSeries[si]!;
     ctx.strokeStyle = s.color ?? "#4472C4";
     ctx.lineWidth = 2;
     ctx.beginPath();
+    let penDown = false;
     for (let i = 0; i < categoryCount; i++) {
+      if (!hasPointL(s, i)) {
+        penDown = false;
+        continue;
+      }
       const x = inner.x + i * xStep;
       const y = yFor(data[i] ?? 0);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      if (!penDown) {
+        ctx.moveTo(x, y);
+        penDown = true;
+      } else {
+        ctx.lineTo(x, y);
+      }
     }
     ctx.stroke();
-    // Markers (small circles).
-    ctx.fillStyle = s.color ?? "#4472C4";
-    for (let i = 0; i < categoryCount; i++) {
-      const x = inner.x + i * xStep;
-      const y = yFor(data[i] ?? 0);
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fill();
+    // Markers (small circles) — only at real data points. Skipped
+    // when `<c:marker><c:symbol val="none"/>` was authored on the
+    // series (e.g. chart32.xml's Technology line).
+    if (s.markerSymbol !== "none") {
+      ctx.fillStyle = s.color ?? "#4472C4";
+      for (let i = 0; i < categoryCount; i++) {
+        if (!hasPointL(s, i)) continue;
+        const x = inner.x + i * xStep;
+        const y = yFor(data[i] ?? 0);
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     // Data labels (default position `t` above the marker).
     const dl = effectiveLabels(chart, s);
     if (dl) {
-      const pos = dl.position ?? "t";
       const PAD = 5;
       for (let i = 0; i < categoryCount; i++) {
+        if (!hasPointL(s, i)) continue;
+        const po = pointLabel(dl, i);
+        if (po === null) continue;
+        const edl = po?.dl ?? dl;
+        const pos = edl.position ?? "t";
         const v = s.values[i] ?? 0;
-        const text = buildLabelText(dl, chart, s, i, v, 0);
+        const text = po?.text ?? buildLabelText(edl, chart, s, i, v, 0);
         if (!text) continue;
         const x = inner.x + i * xStep;
         const y = yFor(data[i] ?? 0);
@@ -543,6 +792,8 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     }
   }
   ctx.lineWidth = 1;
+  // Bug #13 step 1: heavier zero baseline when the axis straddles zero.
+  paintZeroBaseline(ctx, inner, minV, maxV);
 }
 
 // ---------- area ----------
@@ -574,12 +825,19 @@ function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     : series.map((_) => new Array(categoryCount).fill(0));
 
   let { minV, maxV } = valueRange([...tops, ...bottoms]);
-  if (minV > 0) minV = 0;
-  if (maxV < 0) maxV = 0;
-  if (minV === maxV) maxV = minV + 1;
-  const ticks = niceTicks(minV, maxV, AXIS_TICK_COUNT);
-  minV = ticks[0]!;
-  maxV = ticks[ticks.length - 1]!;
+  // Area uses zero baseline by convention, so zero-clamp unless the
+  // workbook overrode with explicit scaling bounds.
+  const _aRange = resolveAxisRange(
+    minV,
+    maxV,
+    chart.valueMin,
+    chart.valueMax,
+    /*zeroClamp=*/ true,
+    AXIS_TICK_COUNT,
+  );
+  minV = _aRange.minV;
+  maxV = _aRange.maxV;
+  const ticks = _aRange.ticks;
 
   const inner = drawAxisFrame(ctx, chart, rect, ticks, minV, maxV, /*horizontal=*/ false, percent);
   drawCategoryAxis(ctx, chart, inner, categoryCount, /*horizontal=*/ false);
@@ -622,8 +880,11 @@ function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     if (dl) {
       const PAD = 4;
       for (let i = 0; i < categoryCount; i++) {
+        const po = pointLabel(dl, i);
+        if (po === null) continue;
+        const edl = po?.dl ?? dl;
         const v = s.values[i] ?? 0;
-        const text = buildLabelText(dl, chart, s, i, v, 0);
+        const text = po?.text ?? buildLabelText(edl, chart, s, i, v, 0);
         if (!text) continue;
         const x = inner.x + i * xStep;
         const y = yFor(top[i] ?? 0);
@@ -632,242 +893,6 @@ function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     }
   }
   ctx.lineWidth = 1;
-}
-
-// ---------- pie / doughnut ----------
-
-const DEFAULT_PIE_ACCENTS = ["#4472C4", "#ED7D31", "#A5A5A5", "#FFC000", "#5B9BD5", "#70AD47"];
-
-function pieSliceColor(index: number, pointColors: readonly (string | undefined)[]): string {
-  const explicit = pointColors[index];
-  if (explicit && explicit.length > 0) return explicit;
-  const accentIndex = 4 + (index % 6);
-  return activeThemeColor(accentIndex, DEFAULT_PIE_ACCENTS[index % DEFAULT_PIE_ACCENTS.length]!);
-}
-
-function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
-  // Pie uses series[0] only; data points become slices, one per category.
-  const ser = chart.series[0];
-  if (!ser || ser.values.length === 0) {
-    drawPlaceholderPlot(ctx, chart, rect);
-    return;
-  }
-
-  const total = ser.values.reduce((a, b) => a + Math.max(0, b), 0);
-  if (total <= 0) {
-    drawPlaceholderPlot(ctx, chart, rect);
-    return;
-  }
-
-  const cx = rect.x + rect.w / 2;
-  const cy = rect.y + rect.h / 2;
-  const r = Math.min(rect.w, rect.h) / 2 - 8;
-  const innerR = chart.type === "doughnut" ? r * 0.55 : 0;
-
-  // Excel cycles accents per slice, not per series. When the workbook
-  // serialises explicit `<c:dPt>` fills we use those (extractor surfaces
-  // them as `series.pointColors[i]`); otherwise we cycle the workbook
-  // theme accents (theme indexes 4..9).
-  const pointColors = ser.pointColors ?? [];
-
-  // First pass: paint slices. Second pass: paint labels (so labels
-  // never sit beneath the next slice's fill on overlap).
-  type SliceGeom = { mid: number; idx: number; v: number };
-  const slices: SliceGeom[] = [];
-  let start = -Math.PI / 2; // 12 o'clock
-  for (let i = 0; i < ser.values.length; i++) {
-    const v = Math.max(0, ser.values[i] ?? 0);
-    if (v <= 0) continue;
-    const sweep = (v / total) * Math.PI * 2;
-    const end = start + sweep;
-    ctx.fillStyle = pieSliceColor(i, pointColors);
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, r, start, end);
-    ctx.closePath();
-    ctx.fill();
-    // Slice border for separation.
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    slices.push({ mid: (start + end) / 2, idx: i, v });
-    start = end;
-  }
-
-  if (innerR > 0) {
-    // Punch out the center for a doughnut.
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.lineWidth = 1;
-
-  // Data labels per slice. `outEnd` (default for pie) places the label
-  // just outside the arc; `ctr` / `inEnd` place it inside.
-  const dl = effectiveLabels(chart, ser);
-  if (dl) {
-    const pos = dl.position ?? "outEnd";
-    const labelR =
-      pos === "outEnd" || pos === "bestFit" ? r + 12 : pos === "ctr" ? (innerR + r) / 2 : r - 12; // inEnd
-    for (const sl of slices) {
-      const text = buildLabelText(dl, chart, ser, sl.idx, sl.v, total);
-      if (!text) continue;
-      const lx = cx + Math.cos(sl.mid) * labelR;
-      const ly = cy + Math.sin(sl.mid) * labelR;
-      const align: CanvasTextAlign =
-        pos === "outEnd" || pos === "bestFit"
-          ? Math.cos(sl.mid) >= 0
-            ? "left"
-            : "right"
-          : "center";
-      drawLabel(ctx, text, lx, ly, align, "middle");
-    }
-  }
-}
-
-// ---------- scatter ----------
-
-function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
-  const series = chart.series.filter((s) => s.values.length > 0);
-  if (series.length === 0) {
-    drawPlaceholderPlot(ctx, chart, rect);
-    return;
-  }
-
-  // X data: prefer per-series xValues; else parse the chart-level
-  // categories array (first series's xVal cache in our extractor).
-  const xCache: number[][] = series.map((s) => {
-    const xs = (s.xValues ?? []) as number[];
-    if (xs.length > 0) return xs.slice();
-    // Fallback: index labels from chart.categories, parsed as numbers.
-    return s.values.map((_, i) => {
-      const c = (chart.categories ?? [])[i];
-      const n = c == null ? i + 1 : parseFloat(c);
-      return Number.isFinite(n) ? n : i + 1;
-    });
-  });
-
-  let xMin = Infinity,
-    xMax = -Infinity;
-  let yMin = Infinity,
-    yMax = -Infinity;
-  for (let si = 0; si < series.length; si++) {
-    const xs = xCache[si]!;
-    const ys = series[si]!.values;
-    const n = Math.min(xs.length, ys.length);
-    for (let i = 0; i < n; i++) {
-      const x = xs[i]!,
-        y = ys[i]!;
-      if (x < xMin) xMin = x;
-      if (x > xMax) xMax = x;
-      if (y < yMin) yMin = y;
-      if (y > yMax) yMax = y;
-    }
-  }
-  if (!Number.isFinite(xMin) || !Number.isFinite(yMin)) {
-    drawPlaceholderPlot(ctx, chart, rect);
-    return;
-  }
-  if (xMin === xMax) {
-    xMax = xMin + 1;
-  }
-  if (yMin === yMax) {
-    yMax = yMin + 1;
-  }
-  const xTicks = niceTicks(xMin, xMax, AXIS_TICK_COUNT);
-  const yTicks = niceTicks(yMin, yMax, AXIS_TICK_COUNT);
-  xMin = xTicks[0]!;
-  xMax = xTicks[xTicks.length - 1]!;
-  yMin = yTicks[0]!;
-  yMax = yTicks[yTicks.length - 1]!;
-
-  // Y-axis frame + gridlines.
-  const inner = drawAxisFrame(ctx, chart, rect, yTicks, yMin, yMax, /*horizontal=*/ false, false);
-
-  // Numeric x-axis labels (scatter has them; bar/line/area pull from categories).
-  ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
-  ctx.fillStyle = AXIS_LABEL_COLOR;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  for (const t of xTicks) {
-    const frac = (t - xMin) / (xMax - xMin);
-    const x = inner.x + frac * inner.w;
-    ctx.fillText(formatGeneral(t), x, inner.y + inner.h + 4);
-  }
-
-  // ECMA-376 §21.2.2.193 ScatterStyle. Excel's UI default for new
-  // scatter charts is `marker` only; OOXML enum default is `line`.
-  // We treat an *unset* style as marker-only (matches the existing
-  // visual contract + Excel UI), and only draw connecting lines /
-  // smooth curves when the workbook explicitly asked for one.
-  const style = chart.scatterStyle;
-  const drawLines = style === "line" || style === "lineMarker";
-  const drawSmooth = style === "smooth" || style === "smoothMarker";
-  const drawMarkers =
-    style == null || style === "marker" || style === "lineMarker" || style === "smoothMarker";
-
-  // Plot points (and optional connecting lines).
-  for (let si = 0; si < series.length; si++) {
-    const s = series[si]!;
-    const xs = xCache[si]!;
-    const ys = s.values;
-    const n = Math.min(xs.length, ys.length);
-    if (n === 0) continue;
-    const color = s.color ?? "#4472C4";
-    ctx.fillStyle = color;
-    ctx.strokeStyle = color;
-    const dl = effectiveLabels(chart, s);
-
-    // Project points to canvas space once.
-    const pts: { x: number; y: number; v: number; i: number }[] = [];
-    for (let i = 0; i < n; i++) {
-      const px = inner.x + ((xs[i]! - xMin) / (xMax - xMin)) * inner.w;
-      const py = inner.y + (1 - (ys[i]! - yMin) / (yMax - yMin)) * inner.h;
-      pts.push({ x: px, y: py, v: ys[i]!, i });
-    }
-
-    // Lines connect points in x-sorted order (Excel sorts xy series
-    // before stroking; otherwise back-and-forth x produces a tangled
-    // path).
-    if ((drawLines || drawSmooth) && pts.length >= 2) {
-      const sorted = pts.slice().sort((a, b) => a.x - b.x);
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(sorted[0]!.x, sorted[0]!.y);
-      if (drawSmooth) {
-        // Catmull-Rom -> Bezier (tension 0.5). Robust + monotone in x
-        // because input is already x-sorted.
-        for (let k = 0; k < sorted.length - 1; k++) {
-          const p0 = sorted[Math.max(0, k - 1)]!;
-          const p1 = sorted[k]!;
-          const p2 = sorted[k + 1]!;
-          const p3 = sorted[Math.min(sorted.length - 1, k + 2)]!;
-          const cp1x = p1.x + (p2.x - p0.x) / 6;
-          const cp1y = p1.y + (p2.y - p0.y) / 6;
-          const cp2x = p2.x - (p3.x - p1.x) / 6;
-          const cp2y = p2.y - (p3.y - p1.y) / 6;
-          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-        }
-      } else {
-        for (let k = 1; k < sorted.length; k++) {
-          ctx.lineTo(sorted[k]!.x, sorted[k]!.y);
-        }
-      }
-      ctx.stroke();
-    }
-
-    // Markers + per-point labels.
-    for (const p of pts) {
-      if (drawMarkers) {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      if (dl) {
-        const text = buildLabelText(dl, chart, s, p.i, p.v, 0);
-        if (text) drawLabel(ctx, text, p.x, p.y - 6, "center", "bottom");
-      }
-    }
-  }
+  // Bug #13 step 1: heavier zero baseline when the axis straddles zero.
+  paintZeroBaseline(ctx, inner, minV, maxV);
 }
