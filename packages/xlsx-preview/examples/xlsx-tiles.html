@@ -630,10 +630,15 @@ function resetTabbar(leaf) {
   leaf.tabbarEl.classList.add("empty");
 }
 
+function isTabVisible(sheet) {
+  return sheet.state !== "hidden" && sheet.state !== "veryHidden";
+}
+
 function populateTabbar(leaf) {
   leaf.tabsEl.replaceChildren();
   leaf.tabbarEl.classList.remove("empty");
   leaf.previewer.layout.sheets.forEach((sheet, index) => {
+    if (!isTabVisible(sheet)) return;
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "tab";
