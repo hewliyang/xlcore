@@ -327,12 +327,20 @@ self.onmessage = async (event) => {{
   const zi = document.getElementById('zi');
   const zl = document.getElementById('zl');
   const namebox = document.getElementById('namebox');
-  // Honor `xl/workbook.xml`'s `<workbookView activeTab="N"/>` so
-  // workbooks that ship with a non-first sheet selected (pivot
-  // demos, dashboards) open on the right tab. Falls back to 0 when
-  // out-of-range or absent.
+  // ?showHidden=1 reveals hidden sheets; veryHidden stays omitted.
+  const _showHidden = new URLSearchParams(location.search).get('showHidden') === '1';
+  function _tabVisible(s) {{
+    if (s.state === 'veryHidden') return false;
+    if (s.state === 'hidden') return _showHidden;
+    return true;
+  }}
+  // Honor workbook activeTab when it points at a visible sheet.
   const _at = layout.activeSheetIndex;
-  let active = (typeof _at === 'number' && _at >= 0 && _at < layout.sheets.length) ? _at : 0;
+  const _firstVisible = (() => {{
+    for (let i = 0; i < layout.sheets.length; i++) if (_tabVisible(layout.sheets[i])) return i;
+    return 0;
+  }})();
+  let active = (typeof _at === 'number' && _at >= 0 && _at < layout.sheets.length && _tabVisible(layout.sheets[_at])) ? _at : _firstVisible;
   let zoom = 1;
   // Per-sheet column/row size overrides, keyed by sheet index. Each entry is
   // a {{ col, row }} pair of Maps. Resizing only the visible sheet keeps the
@@ -482,17 +490,47 @@ self.onmessage = async (event) => {{
       redraw: scheduleDraw,
     }});
   }}
+  const tabButtons = new Array(layout.sheets.length).fill(null);
+  function _contrastFg(css) {{
+    if (!css || css.length !== 7 || css[0] !== '#') return '#111827';
+    const r = parseInt(css.slice(1,3),16), g = parseInt(css.slice(3,5),16), bl = parseInt(css.slice(5,7),16);
+    return (r*299 + g*587 + bl*114) / 1000 > 140 ? '#111827' : '#ffffff';
+  }}
   layout.sheets.forEach((s, i) => {{
+    if (!_tabVisible(s)) return;
     const b = document.createElement('button');
     b.textContent = s.name;
+    // Excel tabColor: inactive fill, active text.
+    if (s.tabColor) {{
+      b.dataset.tabColor = window.xlcoreColorToCssWithTheme
+        ? window.xlcoreColorToCssWithTheme(s.tabColor, layout.theme, '#9ca3af')
+        : window.xlcoreColorToCss(s.tabColor, '#9ca3af');
+    }}
+    if (s.state === 'hidden') {{
+      b.style.fontStyle = 'italic';
+      b.style.opacity = '0.6';
+      b.title = `${{s.name}} (hidden)`;
+    }}
     b.onclick = () => {{ active = i; stage.scrollTop = 0; stage.scrollLeft = 0; attachForActive(); rerender(); }};
     tabs.insertBefore(b, document.getElementById('zoom'));
+    tabButtons[i] = b;
   }});
   function rerender() {{
-    Array.from(tabs.children).forEach((b) => {{
-      if (b.id === 'zoom') return;
-      const i = Array.from(tabs.children).filter(x => x.id !== 'zoom').indexOf(b);
-      b.classList.toggle('active', i === active);
+    tabButtons.forEach((b, i) => {{
+      if (!b) return;
+      const isActive = i === active;
+      b.classList.toggle('active', isActive);
+      const tab = b.dataset.tabColor;
+      if (isActive) {{
+        b.style.background = '#fff';
+        b.style.color = tab || '#111827';
+      }} else if (tab) {{
+        b.style.background = tab;
+        b.style.color = _contrastFg(tab);
+      }} else {{
+        b.style.background = '#fff';
+        b.style.color = '#111827';
+      }}
     }});
     zl.textContent = Math.round(zoom * 100) + '%';
     updateSpacerSize();

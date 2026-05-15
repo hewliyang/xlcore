@@ -23,6 +23,7 @@ for (const [entry, outfile, platform, external = []] of [
   ["src/index.ts", "dist/index.js", "node", ["skia-canvas"]],
   ["src/cli.ts", "dist/cli.js", "node", ["skia-canvas"]],
   ["src/previewer.ts", "dist/previewer.js", "browser"],
+  ["src/color.ts", "dist/color.js", "browser"],
   ["src/react.ts", "dist/react.js", "browser", ["react"]],
   ["src/cdn.ts", "dist/cdn.js", "browser"],
 ]) {

@@ -97,6 +97,9 @@ async function main(): Promise<void> {
     const layout = await loadWorkbookFromXlsx(input);
     const rendered = [];
     for (let i = 0; i < layout.sheets.length; i++) {
+      // --all skips hidden sheets; explicit --sheet can still target them.
+      const state = layout.sheets[i]?.state;
+      if (state === "hidden" || state === "veryHidden") continue;
       const output = outputForSheet(
         resolve(options.output!),
         layout.sheets[i]?.name ?? `Sheet${i + 1}`,

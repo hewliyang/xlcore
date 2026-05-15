@@ -370,14 +370,20 @@
     border-radius: 0;
     transition: color 0.12s, background 0.12s;
   }
+  .tabbar .tab[data-tab-color]:not(.active) { background: var(--tab-color); color: var(--tab-fg); }
   .tabbar .tab:hover { color: var(--text); background: var(--surface-muted); }
-  .tabbar .tab.active { color: var(--accent-strong); font-weight: 600; }
+  .tabbar .tab.hidden { font-style: italic; opacity: 0.6; }
+  .tabbar .tab.active {
+    background: var(--surface);
+    color: var(--tab-color, var(--accent-strong));
+    font-weight: 600;
+  }
   .tabbar .tab.active::after {
     content: "";
     position: absolute;
     left: 6px; right: 6px; bottom: 0;
     height: 2px;
-    background: var(--accent);
+    background: var(--tab-color, var(--accent));
     border-radius: 2px 2px 0 0;
   }
   .tabbar .right {
@@ -515,6 +521,7 @@
           <button id="scroll-active">Scroll active</button>
           <button id="reset-view">Reset view</button>
         </div>
+        <label class="row"><input id="show-hidden" type="checkbox"> Show hidden sheets</label>
       </div>
     </details>
 
@@ -551,12 +558,18 @@
 const REMOTE_CDN = "https://cdn.jsdelivr.net/npm/@hewliyang/xlsx-preview@0.0.4/dist/";
 let ASSET_BASE = "../dist/";
 let createWorkbookPreviewerFromFile;
+let colorToCssWithTheme;
 try {
   ({ createWorkbookPreviewerFromFile } = await import(`../dist/browserLoader.js?v=${Date.now()}`));
 } catch (error) {
   console.warn("Local renderer failed to load; falling back to CDN build", error);
   ASSET_BASE = REMOTE_CDN;
   ({ createWorkbookPreviewerFromFile } = await import(`${REMOTE_CDN}browserLoader.js`));
+}
+try {
+  ({ colorToCssWithTheme } = await import(`${ASSET_BASE}color.js?v=${Date.now()}`));
+} catch {
+  colorToCssWithTheme = fallbackColorToCssWithTheme;
 }
 const picker = document.getElementById("picker");
 const status = document.getElementById("status");
@@ -571,6 +584,7 @@ const address = document.getElementById("address");
 const loading = document.getElementById("loading");
 const loadingStage = document.getElementById("loading-stage");
 const loadingElapsed = document.getElementById("loading-elapsed");
+const showHiddenToggle = document.getElementById("show-hidden");
 
 const selActive = document.getElementById("sel-active");
 const selRange = document.getElementById("sel-range");
@@ -578,6 +592,8 @@ const selSize = document.getElementById("sel-size");
 
 let previewer = null;
 let elapsedTimer = null;
+let showHiddenSheets = new URLSearchParams(location.search).get("showHidden") === "1";
+showHiddenToggle.checked = showHiddenSheets;
 
 panelToggle.addEventListener("click", () => {
   const collapsed = document.body.classList.toggle("panel-collapsed");
@@ -633,6 +649,25 @@ function highlightJSON(text) {
 
 // Cell kinds (must mirror columnar.ts KIND_NAMES).
 const CELL_KIND = ["n", "s", "inline", "b", "e", "str", "f"];
+const DEFAULT_THEME = ["#ffffff", "#000000", "#e7e6e6", "#44546a", "#4472c4", "#ed7d31", "#a5a5a5", "#ffc000", "#5b9bd5", "#70ad47", "#0563c1", "#954f72"];
+const INDEXED = { 0: "#000000", 1: "#ffffff", 2: "#ff0000", 3: "#00ff00", 4: "#0000ff", 5: "#ffff00", 6: "#ff00ff", 7: "#00ffff", 64: "#000000", 65: "#ffffff" };
+
+function fallbackColorToCssWithTheme(color, theme, fallback = "#000000") {
+  if (!color) return fallback;
+  let base = null;
+  if (color.rgb) base = color.rgb.length === 8 ? `#${color.rgb.slice(2)}` : `#${color.rgb}`;
+  else if (color.theme !== undefined) base = theme?.colors?.[color.theme] ? `#${theme.colors[color.theme]}` : DEFAULT_THEME[color.theme];
+  else if (color.indexed !== undefined) base = INDEXED[color.indexed];
+  if (!base) return fallback;
+  return color.tint ? applyTint(base, color.tint) : base;
+}
+
+function applyTint(hex, tint) {
+  const mix = tint < 0 ? 0 : 255;
+  const f = Math.abs(tint);
+  const part = (i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * (1 - f) + mix * f).toString(16).padStart(2, "0");
+  return `#${part(1)}${part(3)}${part(5)}`;
+}
 
 function activeCellDisplay(sheet, layout, r, c) {
   const meta = sheet.decodedRowMeta;
@@ -671,6 +706,26 @@ function activeCellDisplay(sheet, layout, r, c) {
     }
   }
   return raw ?? "";
+}
+
+function isTabVisible(sheet) {
+  if (sheet.state === "veryHidden") return false;
+  if (sheet.state === "hidden") return showHiddenSheets;
+  return true;
+}
+
+function firstVisibleSheetIndex() {
+  const sheets = previewer?.layout?.sheets ?? [];
+  const i = sheets.findIndex(isTabVisible);
+  return i >= 0 ? i : 0;
+}
+
+function contrastTextColor(css) {
+  if (!css || css.length !== 7 || css[0] !== "#") return "#0f172a";
+  const r = parseInt(css.slice(1, 3), 16);
+  const g = parseInt(css.slice(3, 5), 16);
+  const b = parseInt(css.slice(5, 7), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 140 ? "#0f172a" : "#ffffff";
 }
 
 function renderState() {
@@ -728,12 +783,23 @@ function populateSheets() {
   sheetTabs.replaceChildren();
   if (!previewer) return;
   previewer.layout.sheets.forEach((sheet, index) => {
+    if (!isTabVisible(sheet)) return;
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "tab";
     btn.dataset.index = String(index);
     btn.textContent = sheet.name;
     btn.setAttribute("role", "tab");
+    if (sheet.tabColor) {
+      const tab = colorToCssWithTheme(sheet.tabColor, previewer.layout.theme, "#94a3b8");
+      btn.dataset.tabColor = tab;
+      btn.style.setProperty("--tab-color", tab);
+      btn.style.setProperty("--tab-fg", contrastTextColor(tab));
+    }
+    if (sheet.state === "hidden") {
+      btn.classList.add("hidden");
+      btn.title = `${sheet.name} (hidden)`;
+    }
     btn.addEventListener("click", () => {
       requirePreviewer().setActiveSheet(index);
       renderState();
@@ -857,6 +923,7 @@ async function loadWorkbookFile(file) {
     previewer = await createWorkbookPreviewerFromFile(previewRoot, file, {
       wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
       workerUrl: `${ASSET_BASE}xlsxWorker.js`,
+      showHidden: showHiddenSheets,
       onProgress: ({ label }) => setLoadingStage(label),
     });
     window.xlcorePreviewer = previewer;
@@ -962,9 +1029,18 @@ document.getElementById("scroll-active").addEventListener("click", () => {
   renderState();
 });
 
+showHiddenToggle.addEventListener("change", () => {
+  showHiddenSheets = showHiddenToggle.checked;
+  if (previewer && !isTabVisible(previewer.getActiveSheet())) {
+    previewer.setActiveSheet(firstVisibleSheetIndex());
+  }
+  populateSheets();
+  renderState();
+});
+
 document.getElementById("reset-view").addEventListener("click", () => {
   const p = requirePreviewer();
-  p.setActiveSheet(0);
+  p.setActiveSheet(firstVisibleSheetIndex());
   p.setZoom(1);
   p.selectCell(1, 1, { scroll: true });
   renderState();

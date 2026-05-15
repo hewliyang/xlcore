@@ -7,6 +7,11 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Hidden / very-hidden sheets and tab colors (`Sheet.state`,
+  `Sheet.tabColor`). `veryHidden` stays off the tab strip; `hidden`
+  can be revealed with `PreviewerOptions.showHidden` / `?showHidden=1`.
+  Fixture: `tests/fixtures/sheets/hidden-and-tabcolor.xlsx`.
+- Node CLI `--all` skips hidden sheets; explicit `--sheet` targets still work.
 - Expanded chart support for combo and dual-axis charts, including secondary
   value axes, per-series axis groups/chart types, secondary formats/scaling,
   axis titles, display units/labels, and secondary gridline metadata.

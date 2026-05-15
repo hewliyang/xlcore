@@ -160,6 +160,14 @@ pub struct TextRun {
 pub struct Sheet {
     pub index: u32,
     pub name: String,
+    /// Workbook sheet visibility. `None` means visible.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state: Option<String>,
+    /// `<sheetPr><tabColor/>` as unresolved `Color`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tab_color: Option<Color>,
     /// 1-based, inclusive. (0,0) when sheet is empty.
     pub max_row: u32,
     pub max_col: u32,

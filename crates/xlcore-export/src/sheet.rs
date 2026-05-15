@@ -153,6 +153,27 @@ pub fn extract(
 
     let conditional_formats = extract_conditional_formats(ws);
 
+    // <sheetPr><tabColor .../></sheetPr>
+    let tab_color = ws
+        .sheet_properties
+        .as_ref()
+        .and_then(|sp| sp.tab_color.as_ref())
+        .and_then(|tc| {
+            let rgb = tc.rgb.as_ref().map(|s| s.as_str().to_string());
+            let theme = tc.theme;
+            let indexed = tc.indexed;
+            if rgb.is_none() && theme.is_none() && indexed.is_none() {
+                None
+            } else {
+                Some(Color {
+                    rgb,
+                    theme,
+                    indexed,
+                    tint: tc.tint,
+                })
+            }
+        });
+
     // <sheetPr><outlinePr summaryBelow=... summaryRight=.../></sheetPr>.
     // Default-true matches Excel and the OOXML spec; we only emit the
     // struct when at least one default is overridden so the wire stays
@@ -177,6 +198,8 @@ pub fn extract(
     Sheet {
         index: index as u32,
         name,
+        state: None, // filled from workbook.xml in lib.rs
+        tab_color,
         max_row,
         max_col,
         default_col_width_px,

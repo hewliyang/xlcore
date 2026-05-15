@@ -149,6 +149,17 @@ pub fn extract_doc_with_options(
         let ws = ws_part.root_element(doc)?;
         let name = wb_sheet.name.as_str().to_string();
         let mut sheet = sheet::extract(ws, idx, name, &shared_strings.0, &styles);
+        // Sheet visibility lives in workbook.xml, not the worksheet part.
+        sheet.state = wb_sheet.state.as_ref().and_then(|s| {
+            let d = format!("{s:?}").to_ascii_lowercase();
+            if d.contains("veryhidden") {
+                Some("veryHidden".to_string())
+            } else if d.contains("hidden") {
+                Some("hidden".to_string())
+            } else {
+                None
+            }
+        });
         sheet.drawings = drawings;
         sheet.tables = tables;
         sheet.pivots = pivots;

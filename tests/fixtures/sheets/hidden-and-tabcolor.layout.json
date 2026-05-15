@@ -1,0 +1,236 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Visible Red",
+      "tabColor": {
+        "rgb": "FFFF0000"
+      },
+      "maxRow": 2,
+      "maxCol": 1,
+      "defaultColWidthPx": 64.01,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "cells": {
+        "count": 2,
+        "r": "AQAAAAIAAAA=",
+        "c": "AQAAAAEAAAA=",
+        "kind": "AgI=",
+        "valueIdx": "AAAAAAEAAAA=",
+        "formulaIdx": "//////////8=",
+        "styleIdx": "//////////8=",
+        "runsIdx": "//////////8=",
+        "rowPtr": "AAAAAAEAAAACAAAA"
+      },
+      "rowMeta": {
+        "count": 2,
+        "index": "AQAAAAIAAAA=",
+        "heightPx": "AADAfwAAwH8=",
+        "styleIdx": "//////////8=",
+        "hidden": "AAA="
+      },
+      "valuePool": [
+        "Visible Red sheet",
+        "tab: srgb FF0000"
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Visible Theme",
+      "tabColor": {
+        "theme": 4,
+        "tint": -0.25
+      },
+      "maxRow": 2,
+      "maxCol": 1,
+      "defaultColWidthPx": 64.01,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "cells": {
+        "count": 2,
+        "r": "AQAAAAIAAAA=",
+        "c": "AQAAAAEAAAA=",
+        "kind": "AgI=",
+        "valueIdx": "AAAAAAEAAAA=",
+        "formulaIdx": "//////////8=",
+        "styleIdx": "//////////8=",
+        "runsIdx": "//////////8=",
+        "rowPtr": "AAAAAAEAAAACAAAA"
+      },
+      "rowMeta": {
+        "count": 2,
+        "index": "AQAAAAIAAAA=",
+        "heightPx": "AADAfwAAwH8=",
+        "styleIdx": "//////////8=",
+        "hidden": "AAA="
+      },
+      "valuePool": [
+        "Visible Theme sheet",
+        "tab: theme=4 tint=-0.25"
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Plain",
+      "maxRow": 1,
+      "maxCol": 1,
+      "defaultColWidthPx": 64.01,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "cells": {
+        "count": 1,
+        "r": "AQAAAA==",
+        "c": "AQAAAA==",
+        "kind": "Ag==",
+        "valueIdx": "AAAAAA==",
+        "formulaIdx": "/////w==",
+        "styleIdx": "/////w==",
+        "runsIdx": "/////w==",
+        "rowPtr": "AAAAAAEAAAA="
+      },
+      "rowMeta": {
+        "count": 1,
+        "index": "AQAAAA==",
+        "heightPx": "AADAfw==",
+        "styleIdx": "/////w==",
+        "hidden": "AA=="
+      },
+      "valuePool": [
+        "Plain visible sheet (no tab color)"
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Hidden Sheet",
+      "state": "hidden",
+      "tabColor": {
+        "rgb": "FF00AA00"
+      },
+      "maxRow": 1,
+      "maxCol": 1,
+      "defaultColWidthPx": 64.01,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "cells": {
+        "count": 1,
+        "r": "AQAAAA==",
+        "c": "AQAAAA==",
+        "kind": "Ag==",
+        "valueIdx": "AAAAAA==",
+        "formulaIdx": "/////w==",
+        "styleIdx": "/////w==",
+        "runsIdx": "/////w==",
+        "rowPtr": "AAAAAAEAAAA="
+      },
+      "rowMeta": {
+        "count": 1,
+        "index": "AQAAAA==",
+        "heightPx": "AADAfw==",
+        "styleIdx": "/////w==",
+        "hidden": "AA=="
+      },
+      "valuePool": [
+        "If you can read this, hidden filtering is broken."
+      ]
+    },
+    {
+      "index": 4,
+      "name": "VeryHidden",
+      "state": "veryHidden",
+      "maxRow": 1,
+      "maxCol": 1,
+      "defaultColWidthPx": 64.01,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "cells": {
+        "count": 1,
+        "r": "AQAAAA==",
+        "c": "AQAAAA==",
+        "kind": "Ag==",
+        "valueIdx": "AAAAAA==",
+        "formulaIdx": "/////w==",
+        "styleIdx": "/////w==",
+        "runsIdx": "/////w==",
+        "rowPtr": "AAAAAAEAAAA="
+      },
+      "rowMeta": {
+        "count": 1,
+        "index": "AQAAAA==",
+        "heightPx": "AADAfw==",
+        "styleIdx": "/////w==",
+        "hidden": "AA=="
+      },
+      "valuePool": [
+        "VeryHidden — should never appear in the tab strip."
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "color": {
+          "theme": 1
+        },
+        "family": 2,
+        "scheme": "minor"
+      }
+    ],
+    "fills": [
+      {},
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0
+  },
+  "sharedStrings": [],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  },
+  "activeSheetIndex": 1
+}

@@ -1,12 +1,23 @@
 import { decodeWorkbookLayout, findCell, iterRows } from "./columnar.js";
+import { colorToCssWithTheme } from "./color.js";
 import { attachInteractivity, type InteractHandle, type Selection } from "./interact.js";
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
+import type { Sheet as WireSheet } from "./schema/Sheet.js";
 import type { Sheet, WorkbookLayout } from "./types.js";
 
 export interface PreviewerOptions {
   initialSheet?: number | string;
   initialZoom?: number;
   className?: string;
+  /** Show hidden sheets in the tab strip; veryHidden stays omitted. */
+  showHidden?: boolean;
+}
+
+function isTabVisible(sheet: WireSheet, showHidden: boolean): boolean {
+  const state = sheet.state;
+  if (state === "veryHidden") return false;
+  if (state === "hidden") return showHidden;
+  return true;
 }
 
 export interface PreviewerState {
@@ -77,7 +88,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private readonly stage: HTMLDivElement;
   private readonly spacer: HTMLDivElement;
   private readonly sheetStates: SheetState[];
-  private readonly tabButtons: HTMLButtonElement[] = [];
+  private readonly tabButtons: Array<HTMLButtonElement | null> = [];
+  private readonly showHidden: boolean;
   private readonly resizeObserver: ResizeObserver;
   private interactHandle: InteractHandle | null = null;
   private activeSheetIndex = 0;
@@ -89,6 +101,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     super();
     this.layout = decodeWorkbookLayout(rawLayout);
     this.zoom = clamp(options.initialZoom ?? 1, 0.25, 4);
+    this.showHidden = options.showHidden === true;
     this.sheetStates = this.layout.sheets.map(() => ({
       colOverrides: new Map(),
       rowOverrides: new Map(),
@@ -369,18 +382,41 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.sheetTabs.replaceChildren();
     this.tabButtons.length = 0;
     this.layout.sheets.forEach((sheet, i) => {
-      const button = makeTab(sheet.name);
+      if (!isTabVisible(sheet, this.showHidden)) {
+        this.tabButtons[i] = null;
+        return;
+      }
+      const button = makeTab(sheet.name, sheet, this.layout);
+      if (sheet.state === "hidden") {
+        button.style.fontStyle = "italic";
+        button.style.opacity = "0.6";
+        button.title = `${sheet.name} (hidden)`;
+      }
       button.onclick = () => this.setActiveSheet(i);
       this.sheetTabs.append(button);
-      this.tabButtons.push(button);
+      this.tabButtons[i] = button;
     });
     this.updateActiveTab();
   }
 
   private updateActiveTab(): void {
     this.tabButtons.forEach((button, i) => {
-      button.classList.toggle("active", i === this.activeSheetIndex);
-      button.style.fontWeight = i === this.activeSheetIndex ? "600" : "400";
+      if (!button) return;
+      const active = i === this.activeSheetIndex;
+      button.classList.toggle("active", active);
+      button.style.fontWeight = active ? "600" : "400";
+      // Excel tabColor: inactive fill, active text.
+      const tab = button.dataset.tabColor;
+      if (active) {
+        button.style.background = "#fff";
+        button.style.color = tab ?? "#111827";
+      } else if (tab) {
+        button.style.background = tab;
+        button.style.color = contrastingTextColor(tab);
+      } else {
+        button.style.background = "#fff";
+        button.style.color = "#111827";
+      }
     });
   }
 
@@ -412,9 +448,17 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private resolveInitialSheet(sheet: number | string | undefined): number {
     if (sheet !== undefined) return this.resolveSheet(sheet);
     const active = this.layout.activeSheetIndex;
-    return typeof active === "number" && active >= 0 && active < this.layout.sheets.length
-      ? active
-      : 0;
+    const firstVisible = this.layout.sheets.findIndex((s) => isTabVisible(s, this.showHidden));
+    const safeFallback = firstVisible >= 0 ? firstVisible : 0;
+    if (
+      typeof active === "number" &&
+      active >= 0 &&
+      active < this.layout.sheets.length &&
+      isTabVisible(this.layout.sheets[active]!, this.showHidden)
+    ) {
+      return active;
+    }
+    return safeFallback;
   }
 
   private resolveSheet(sheet: number | string): number {
@@ -500,12 +544,28 @@ function makeButton(label: string): HTMLButtonElement {
   return button;
 }
 
-function makeTab(label: string): HTMLButtonElement {
+function makeTab(label: string, sheet: WireSheet, layout: WorkbookLayout): HTMLButtonElement {
   const button = document.createElement("button");
   button.textContent = label;
-  button.style.cssText =
-    "flex:none;background:#fff;border:1px solid #d1d5db;border-bottom:none;padding:6px 14px;cursor:pointer;font:inherit;font-size:12px;white-space:nowrap;";
+  let bg = "#fff";
+  let fg = "#111827";
+  if (sheet.tabColor) {
+    const tab = colorToCssWithTheme(sheet.tabColor, layout.theme, "#9ca3af");
+    button.dataset.tabColor = tab;
+    bg = tab;
+    fg = contrastingTextColor(tab);
+  }
+  button.style.cssText = `flex:none;background:${bg};color:${fg};border:1px solid #d1d5db;border-bottom:none;padding:6px 14px;cursor:pointer;font:inherit;font-size:12px;white-space:nowrap;`;
   return button;
+}
+
+function contrastingTextColor(css: string): string {
+  if (css.length !== 7 || css[0] !== "#") return "#111827";
+  const r = parseInt(css.slice(1, 3), 16);
+  const g = parseInt(css.slice(3, 5), 16);
+  const b = parseInt(css.slice(5, 7), 16);
+  const luma = (r * 299 + g * 587 + b * 114) / 1000;
+  return luma > 140 ? "#111827" : "#ffffff";
 }
 
 function clamp(v: number, lo: number, hi: number): number {

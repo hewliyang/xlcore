@@ -88,16 +88,17 @@ const DEFAULT_THEME_PALETTE: Record<number, string> = {
 
 let activeThemePalette: Record<number, string> = DEFAULT_THEME_PALETTE;
 
-export function setActiveTheme(theme: WorkbookLayout["theme"]): void {
-  if (!theme || !theme.colors || theme.colors.length === 0) {
-    activeThemePalette = DEFAULT_THEME_PALETTE;
-    return;
-  }
+function paletteForTheme(theme: WorkbookLayout["theme"]): Record<number, string> {
+  if (!theme || !theme.colors || theme.colors.length === 0) return DEFAULT_THEME_PALETTE;
   const map: Record<number, string> = { ...DEFAULT_THEME_PALETTE };
   theme.colors.forEach((hex, i) => {
     if (hex && /^[0-9a-fA-F]{6}$/.test(hex)) map[i] = "#" + hex.toLowerCase();
   });
-  activeThemePalette = map;
+  return map;
+}
+
+export function setActiveTheme(theme: WorkbookLayout["theme"]): void {
+  activeThemePalette = paletteForTheme(theme);
 }
 
 export function activeThemeColor(index: number, fallback: string): string {
@@ -166,13 +167,29 @@ export function applyTint(hex: string, tint: number): string {
   return "#" + toHex(r2) + toHex(g2) + toHex(b2);
 }
 
-export function colorToCss(c: Color | undefined, fallback = "#000000"): string {
+function colorToCssUsingPalette(
+  c: Color | undefined,
+  fallback: string,
+  palette: Record<number, string>,
+): string {
   if (!c) return fallback;
   let base: string | null = null;
   if (c.rgb) base = parseRgbString(c.rgb);
-  else if (c.theme !== undefined) base = activeThemePalette[c.theme] ?? null;
+  else if (c.theme !== undefined) base = palette[c.theme] ?? null;
   else if (c.indexed !== undefined) base = INDEXED_PALETTE[c.indexed] ?? null;
   if (!base) return fallback;
   if (c.tint && c.tint !== 0) return applyTint(base, c.tint);
   return base;
+}
+
+export function colorToCss(c: Color | undefined, fallback = "#000000"): string {
+  return colorToCssUsingPalette(c, fallback, activeThemePalette);
+}
+
+export function colorToCssWithTheme(
+  c: Color | undefined,
+  theme: WorkbookLayout["theme"],
+  fallback = "#000000",
+): string {
+  return colorToCssUsingPalette(c, fallback, paletteForTheme(theme));
 }

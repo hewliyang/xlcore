@@ -62,6 +62,8 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a out of scope.
 | Custom column widths | ✅ | ✅ | |
 | Custom row heights | ✅ | ✅ | |
 | Hidden rows / cols | ✅ | ✅ | zero-sized; collapsed-group ticks |
+| Hidden / very-hidden sheets | ✅ | ✅ | `state` honored; `veryHidden` always off-chrome, `hidden` reveal via previewer `showHidden` option / `?showHidden=1`; fixture `sheets/hidden-and-tabcolor.xlsx` |
+| Sheet tab color | ✅ | ✅ | `<sheetPr><tabColor/>` rgb/theme/indexed+tint; full inactive-tab fill + active-tab text color; fixture `sheets/hidden-and-tabcolor.xlsx` |
 | Outline/group levels | ✅ | ✅ | gutters, brackets, +/- buttons, level buttons |
 | Freeze panes | ✅ | ✅ | 4-pane split |
 | Split panes | ❌ | ❌ | non-frozen panes |
@@ -164,6 +166,7 @@ Representative fixtures:
 | Charts | `charts/line-pie-area-scatter.xlsx`, `charts/data-labels.xlsx`, `charts/bubble.xlsx`, `charts/chart-*.xlsx` |
 | Layout | `outline/outline-groups.xlsx`, freeze-pane fixtures |
 | Annotations | `annotations/hyperlinks-comments.xlsx` |
+| Sheets | `sheets/hidden-and-tabcolor.xlsx` |
 | Sparklines | `sparklines/sparklines.xlsx` |
 | Styles/themes | `styles/named-inheritance.xlsx`, `themes/custom-theme-accent.xlsx` |
 
