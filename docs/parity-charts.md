@@ -70,6 +70,7 @@ Example fixtures:
 | 16 | `<c:dispUnits>` ignored | xlsx-preview | ✅ fixed | Tick labels scale by divisor; caption paints. |
 | 17 | Phantom legend without `<c:legend>` | xlsx-preview | ✅ fixed | Preserve absent legend vs present-with-default-position. |
 | 18 | Line outline color and marker suppression ignored | xlsx-preview | ✅ fixed | Use outline fill for line/scatter; honor `markerSymbol === "none"`. |
+| 19 | 3D legacy chart variants emitted empty bbox | xlsx-preview | ✅ fixed | `Bar3D` / `Line3D` / `Area3D` / `Pie3D` / `ofPie` plot-area arms dispatch to the 2D painter; depth/perspective dropped. `chart-3d-*`. |
 
 ## Chart-type coverage
 
@@ -85,8 +86,8 @@ Example fixtures:
 | `c:` | `radarChart` | ❌ | not wired |
 | `c:` | `stockChart` | ❌ | not wired |
 | `c:` | `surfaceChart` / `surface3DChart` | ❌ | not wired |
-| `c:` | `ofPieChart` | ❌ | not wired |
-| `c:` | `bar3DChart` / `line3DChart` / `area3DChart` / `pie3DChart` | ❌ | should initially dispatch to 2D painters |
+| `c:` | `ofPieChart` | 🟡 | rendered as plain pie (no satellite split) |
+| `c:` | `bar3DChart` / `line3DChart` / `area3DChart` / `pie3DChart` | ✅ | dispatched to 2D painters; 3D perspective/depth dropped |
 | `cx:` | `waterfall` | ❌ | chartEx unsupported |
 | `cx:` | `funnel` | ❌ | chartEx unsupported |
 | `cx:` | `treemap` | ❌ | chartEx unsupported |
@@ -108,9 +109,9 @@ Example fixtures:
 
 ## Priority order
 
-1. 3D legacy chart variants: dispatch to 2D painters.
+1. ~~3D legacy chart variants: dispatch to 2D painters.~~ **shipped.** `chart-3d-{bar3d,line3d,area3d,pie3d}.xlsx`.
 2. `radarChart`.
-3. `ofPieChart` as plain pie first.
+3. ~~`ofPieChart` as plain pie first.~~ **shipped** (satellite split still deferred). `chart-3d-ofpie.xlsx`.
 4. `stockChart`.
 5. `cx:` waterfall.
 6. `cx:` funnel / treemap / sunburst / histogram / boxWhisker.

@@ -671,8 +671,95 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                 group_types.push("scatter");
                 break;
             }
-            c::PlotAreaChoice::CBar3DChart(_) => {
-                group_types.push("bar");
+            c::PlotAreaChoice::CBar3DChart(bc) => {
+                // Legacy 3D variant: dispatch to the 2D bar painter.
+                // 3D-only flourishes (gap_depth, shape, perspective)
+                // are intentionally dropped — Excel's 3D chart visuals
+                // are out of scope for v0; the data + 2D layout match
+                // ECMA-376 well enough for HITL preview.
+                let kind = match bc.bar_direction.val {
+                    c::BarDirectionValues::Column => "column",
+                    c::BarDirectionValues::Bar => "bar",
+                };
+                if bar_dir.is_none() {
+                    bar_dir = Some(format!("{:?}", bc.bar_direction.val).to_ascii_lowercase());
+                }
+                if grouping.is_none() {
+                    if let Some(g) = &bc.bar_grouping {
+                        grouping = g
+                            .val
+                            .as_ref()
+                            .map(|v| format!("{:?}", v).to_ascii_lowercase());
+                    }
+                }
+                if chart_data_labels.is_none() {
+                    chart_data_labels = extract_data_labels(bc.c_d_lbls.as_deref());
+                }
+                if bar_gap_width.is_none() {
+                    bar_gap_width = bc.c_gap_width.as_ref().and_then(|g| g.val);
+                }
+                let ag = axis_group_for(&bc.c_ax_id, &secondary_ax_ids);
+                let is_primary = !matches!(ag.as_deref(), Some("secondary"));
+                extract_chartlike!(&bc.c_ser, kind, &bc.c_ax_id, is_primary);
+                group_types.push(kind);
+            }
+            c::PlotAreaChoice::CLine3DChart(lc) => {
+                if grouping.is_none() {
+                    grouping = lc
+                        .grouping
+                        .val
+                        .as_ref()
+                        .map(|v| format!("{:?}", v).to_ascii_lowercase());
+                }
+                if chart_data_labels.is_none() {
+                    chart_data_labels = extract_data_labels(lc.c_d_lbls.as_deref());
+                }
+                let ag = axis_group_for(&lc.c_ax_id, &secondary_ax_ids);
+                let is_primary = !matches!(ag.as_deref(), Some("secondary"));
+                let series_before = series.len();
+                extract_chartlike!(&lc.c_ser, "line", &lc.c_ax_id, is_primary);
+                for (offset, ser) in lc.c_ser.iter().enumerate() {
+                    let sym = ser
+                        .marker
+                        .as_ref()
+                        .and_then(|m| m.symbol.as_ref())
+                        .map(|s| marker_symbol_str(&s.val));
+                    if let Some(row) = series.get_mut(series_before + offset) {
+                        row.marker_symbol = sym;
+                    }
+                }
+                group_types.push("line");
+            }
+            c::PlotAreaChoice::CArea3DChart(ac) => {
+                if grouping.is_none() {
+                    grouping = ac
+                        .grouping
+                        .as_ref()
+                        .and_then(|g| g.val.as_ref())
+                        .map(|v| format!("{:?}", v).to_ascii_lowercase());
+                }
+                if chart_data_labels.is_none() {
+                    chart_data_labels = extract_data_labels(ac.c_d_lbls.as_deref());
+                }
+                let ag = axis_group_for(&ac.c_ax_id, &secondary_ax_ids);
+                let is_primary = !matches!(ag.as_deref(), Some("secondary"));
+                extract_chartlike!(&ac.c_ser, "area", &ac.c_ax_id, is_primary);
+                group_types.push("area");
+            }
+            c::PlotAreaChoice::CPie3DChart(pc) => {
+                chart_data_labels = extract_data_labels(pc.c_d_lbls.as_deref());
+                extract_chartlike!(&pc.c_ser, "pie", &[] as &[c::AxisId], true);
+                group_types.push("pie");
+                break;
+            }
+            c::PlotAreaChoice::COfPieChart(pc) => {
+                // ECMA-376 §21.2.2.124. `ofPieType` (`pie` | `bar`)
+                // would split the second plot into either a satellite
+                // pie or bar of grouped slices; we approximate as a
+                // plain pie until the satellite layout lands.
+                chart_data_labels = extract_data_labels(pc.c_d_lbls.as_deref());
+                extract_chartlike!(&pc.c_ser, "pie", &[] as &[c::AxisId], true);
+                group_types.push("pie");
                 break;
             }
             c::PlotAreaChoice::CBubbleChart(bc) => {
