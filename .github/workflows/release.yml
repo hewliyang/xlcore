@@ -36,7 +36,9 @@ jobs:
       - name: Install wasm-pack
         uses: jetli/wasm-pack-action@v0.4.0
         with:
-          version: latest
+          # `latest` currently resolves to the old v0.9.1 release in this action,
+          # which does not support `wasm-pack build --profile`.
+          version: v0.14.0
 
       - name: Build wasm
         run: wasm-pack build crates/xlcore-wasm --target web --out-dir pkg --profile wasm-size --no-opt
