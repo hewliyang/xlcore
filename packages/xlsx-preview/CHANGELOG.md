@@ -5,6 +5,12 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Added a time-period conditional-formatting fixture plus a schema-drift CI
+  guard, and documented the local schema regeneration / PNG fixture
+  comparison workflow.
+
 ## [0.0.6] - 2026-05-16
 
 ### Fixed

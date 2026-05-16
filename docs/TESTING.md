@@ -10,8 +10,6 @@ cargo test --workspace
 
 Today: A1-roundtrip test in `xlcore-io`, theme color resolvers
 (`scrgb_byte`, `hsl_to_rgb`, prstClr table) in `xlcore-export`.
-Snapshot tests on the JSON output (cargo-insta) are listed in
-[open work](#open-work).
 
 The TypeScript renderer ships unit tests too:
 
@@ -200,19 +198,27 @@ Quickstart:
 bash tests/fixtures/kitchensink/build.sh
 bash tests/fixtures/themes/build-custom-theme-accent.sh
 
-# Render ours / hsx for any fixture:
+# Render ours / hsx for any fixture (no browser needed):
 F=tests/fixtures/themes/custom-theme-accent.xlsx
-./target/release/xlcore preview "$F" -o /tmp/preview.html
+node packages/xlsx-preview/dist/cli.js "$F" -o /tmp/xlcore-ours.png --scale 2
 hsx screenshot "$F" -o /tmp/xlcore-hsx.png
+__PI_IMAGE__ /tmp/xlcore-ours.png /tmp/xlcore-hsx.png
 ```
 
 ## open work
 
-- [ ] `cargo-insta` snapshot test on the WorkbookLayout JSON for every
-      committed fixture.
+- ~~`cargo-insta` snapshot test on the WorkbookLayout JSON for every
+      committed fixture.~~ **Skipped.** Cost/benefit doesn't pencil out:
+      most extractor edits are intentional, so the workflow degenerates
+      to reflexive `cargo insta accept`, and the regressions that
+      actually matter (visual fidelity, schema drift) are already
+      covered by the `hsx`-eyeball pass + the schema-drift CI guard.
 - ~~Pixel-diff snapshot test against `*.hsx.png`.~~ **Punted.** Tried
       and dropped — subpixel deltas across font stacks + DPI swamp
       imagehash tolerances, and the manual `hsx screenshot` eyeball
       pass in step 3 above catches regressions for less effort.
-- [ ] CI guard: `cargo test … export_bindings && git diff --exit-code
-      packages/xlsx-preview/src/schema/` to catch silent schema drift.
+- ~~CI guard: `cargo test … export_bindings && git diff --exit-code
+      packages/xlsx-preview/src/schema/` to catch silent schema drift.~~
+      **Shipped** as the `Schema drift guard` step in
+      `.github/workflows/ci.yml`; regenerate locally with
+      `scripts/regen-schema.sh`.

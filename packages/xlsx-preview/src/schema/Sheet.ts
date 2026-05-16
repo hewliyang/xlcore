@@ -18,9 +18,13 @@ import type { TextRun } from "./TextRun.js";
 export type Sheet = {
   index: number;
   name: string;
-  /** Workbook sheet visibility. Omitted means visible. */
+  /**
+   * Workbook sheet visibility. `None` means visible.
+   */
   state?: string;
-  /** `<sheetPr><tabColor/>` as unresolved `Color`. */
+  /**
+   * `<sheetPr><tabColor/>` as unresolved `Color`.
+   */
   tabColor?: Color;
   /**
    * 1-based, inclusive. (0,0) when sheet is empty.

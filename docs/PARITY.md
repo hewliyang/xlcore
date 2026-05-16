@@ -84,7 +84,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a out of scope.
 | Above/below average | ✅ | ✅ | mean, equalAverage, stdDev |
 | Text contains/begins/ends | ✅ | ✅ | case-insensitive displayed text |
 | Duplicate/unique values | ✅ | ✅ | empty excluded; number/text distinct |
-| Time period | ✅ | ✅ | 10 named periods; no snapshot fixture |
+| Time period | ✅ | ✅ | 10 named periods; fixture `cf/time-period.xlsx` (rebuilt against current date) |
 | Stop-if-true | ✅ | ✅ | cross-kind masking |
 
 ## Tables, pivots, charts, drawings
@@ -152,7 +152,6 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a out of scope.
 | `tests/fixtures/**/build-*.sh` | reproducible fixture builders |
 | `tests/fixtures/**/*.xlsx` | source workbooks |
 | `tests/fixtures/**/*.hsx.png` | visual reference where committed |
-| `tests/fixtures/**/*.layout.json` | planned/insta data snapshots |
 
 Representative fixtures:
 
@@ -161,7 +160,7 @@ Representative fixtures:
 | Text | `text/indent.xlsx`, `text/rotation.xlsx`, `text/fontfamily.xlsx`, `text/vertalign.xlsx`, `text/underline.xlsx` |
 | Number formats | `numfmt/date-time-formats.xlsx`, `numfmt/custom-section-conditions.xlsx`, `numfmt/fraction-and-scientific.xlsx` |
 | Borders/fills | `borders/every-style.xlsx`, `borders/diagonal.xlsx`, `fills/patterns.xlsx`, `fills/gradients.xlsx` |
-| Conditional formatting | `cf/cell-is.xlsx`, `cf/data-bar.xlsx`, `cf/icon-set.xlsx`, `cf/cf-non-recalc.xlsx`, `cf/stop-if-true.xlsx` |
+| Conditional formatting | `cf/cell-is.xlsx`, `cf/data-bar.xlsx`, `cf/icon-set.xlsx`, `cf/cf-non-recalc.xlsx`, `cf/stop-if-true.xlsx`, `cf/time-period.xlsx` |
 | Tables/pivots | `tables/table-medium.xlsx`, `pivot/pivot-simple.xlsx` |
 | Charts | `charts/line-pie-area-scatter.xlsx`, `charts/data-labels.xlsx`, `charts/bubble.xlsx`, `charts/chart-*.xlsx` |
 | Layout | `outline/outline-groups.xlsx`, freeze-pane fixtures |
@@ -174,12 +173,12 @@ Representative fixtures:
 
 | Task | Command / file |
 | --- | --- |
-| Regenerate TS bindings | `cargo test --release -p xlcore-export export_bindings` |
+| Regenerate TS bindings | `scripts/regen-schema.sh` (runs export tests + biome format) |
 | Rust schema | `crates/xlcore-export/src/schema.rs` |
 | TS generated schema | `packages/xlsx-preview/src/schema/*.ts` |
 | TS barrel | `packages/xlsx-preview/src/schema/index.ts` |
 | Public TS re-export | `packages/xlsx-preview/src/types.ts` |
-| Planned CI guard | run export, then `git diff --exit-code packages/xlsx-preview/src/schema/` |
+| CI guard | `scripts/regen-schema.sh && git diff --exit-code packages/xlsx-preview/src/schema/` (see `.github/workflows/ci.yml`) |
 
 Schema conventions:
 
@@ -189,31 +188,34 @@ Schema conventions:
 
 ## Manual visual-diff workflow
 
+No browser needed — render straight to PNG via `skia-canvas`:
+
 ```bash
-pnpm build
-cargo build --release
+cargo build --release                            # rebuild xlcore + wasm if extractor changed
+pnpm --filter @hewliyang/xlsx-preview run build:release   # TS + wasm
+# or, if only TS / renderer changed:
+pnpm --filter @hewliyang/xlsx-preview build
 
-./target/release/xlcore preview path/to/file.xlsx -o /tmp/preview.html
-uv run browser-harness <<'PY'
-goto("file:///tmp/preview.html")
-wait_for_load()
-import time; time.sleep(2)
-screenshot("/tmp/ours.png")
-PY
-
-hsx screenshot path/to/file.xlsx -o /tmp/hsx.png
+F=path/to/file.xlsx
+node packages/xlsx-preview/dist/cli.js "$F" -o /tmp/ours.png --scale 2
+hsx screenshot "$F" -o /tmp/hsx.png
 __PI_IMAGE__ /tmp/ours.png /tmp/hsx.png
 ```
 
-Range screenshot:
+Range / single-sheet screenshot:
 
 ```bash
-hsx screenshot file.xlsx "Sheet!A1:M30" -o out.png
+node packages/xlsx-preview/dist/cli.js "$F" -o /tmp/ours.png \
+    --sheet Cover --range B3:E12 --scale 2
+hsx screenshot "$F" "Cover!B3:E12" -o /tmp/hsx.png
 ```
 
-If browser-harness breaks:
+Every sheet at once:
 
 ```bash
-cd ~/Developer/browser-harness
-uv run python -c "from admin import restart_daemon; restart_daemon()"
+node packages/xlsx-preview/dist/cli.js "$F" -o /tmp/previews/{index}-{sheet}.png --all
 ```
+
+Don't use `pnpm exec xlsx-preview` / bare `xlsx-preview` — they resolve to
+the global install and silently bypass your local build. See
+`docs/TESTING.md#footguns`.
