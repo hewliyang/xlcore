@@ -483,6 +483,12 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
     // bar-side values, line/area groups don't carry these.
     let mut bar_gap_width: Option<u16> = None;
     let mut bar_overlap: Option<i8> = None;
+    // Stock-chart decoration toggles. ECMA-376 §21.2.2.207 lets
+    // `<c:stockChart>` host `<c:hiLowLines/>`, `<c:upDownBars/>`,
+    // `<c:dropLines/>` as optional children.
+    let mut stock_hi_low_lines = false;
+    let mut stock_up_down_bars = false;
+    let mut stock_drop_lines = false;
     let mut series: Vec<ChartSeries> = Vec::new();
     let mut categories: Vec<String> = Vec::new();
     let mut _categories_ref: Option<String> = None;
@@ -793,6 +799,46 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                 group_types.push("radar");
                 break;
             }
+            c::PlotAreaChoice::CStockChart(sc) => {
+                // ECMA-376 §21.2.2.207. Stock charts are line-shaped
+                // series (LineChartSeries) with optional hiLowLines /
+                // upDownBars / dropLines decoration. The series count
+                // implies subtype:
+                //   3  → High-Low-Close (HLC)
+                //   4  → Open-High-Low-Close (OHLC)
+                //   4  → Volume-High-Low-Close (VHLC, if first series
+                //          is on a secondary axis as a column group;
+                //          xlsxwriter emits this differently, with a
+                //          parallel `<c:barChart>` for volume)
+                //   5  → Volume-Open-High-Low-Close (VOHLC)
+                // We just expose series + decoration flags; the
+                // renderer infers subtype from `series.length`.
+                if chart_data_labels.is_none() {
+                    chart_data_labels = extract_data_labels(sc.c_d_lbls.as_deref());
+                }
+                stock_hi_low_lines = stock_hi_low_lines || sc.c_hi_low_lines.is_some();
+                stock_up_down_bars = stock_up_down_bars || sc.c_up_down_bars.is_some();
+                stock_drop_lines = stock_drop_lines || sc.c_drop_lines.is_some();
+                let series_before = series.len();
+                extract_chartlike!(&sc.c_ser, "stock", &sc.c_ax_id, true);
+                // StockChart shares LineChartSeries; propagate the
+                // per-series marker symbol (same as line). xlsxwriter
+                // emits `<c:marker><c:symbol val="none"/></c:marker>`
+                // on high/low and `<c:symbol val="dot"/>` on close —
+                // we honor that so only close paints a marker.
+                for (offset, ser) in sc.c_ser.iter().enumerate() {
+                    let sym = ser
+                        .marker
+                        .as_ref()
+                        .and_then(|m| m.symbol.as_ref())
+                        .map(|s| marker_symbol_str(&s.val));
+                    if let Some(row) = series.get_mut(series_before + offset) {
+                        row.marker_symbol = sym;
+                    }
+                }
+                group_types.push("stock");
+                break;
+            }
             c::PlotAreaChoice::COfPieChart(pc) => {
                 // ECMA-376 §21.2.2.124. `ofPieType` (`pie` | `bar`)
                 // would split the second plot into either a satellite
@@ -966,5 +1012,8 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
         disp_units_label_secondary,
         bubble_scale,
         size_represents,
+        stock_hi_low_lines,
+        stock_up_down_bars,
+        stock_drop_lines,
     })
 }

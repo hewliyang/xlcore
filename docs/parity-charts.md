@@ -15,6 +15,7 @@ Chart parity corpus: small, public fixtures in `tests/fixtures/charts/`.
 | Waterfall authored via stacked bars + per-point noFill | ✅ | ✅ | tie |
 | Missing chart title | ✅ omits | ❌ paints `Chart Title` | xlsx-preview |
 | Anchor clipping | ✅ honors `xdr:to` | ❌ overflows | xlsx-preview |
+| `stockChart` (HLC / OHLC) | ✅ hi-low + candle up/down | ❌ empty plot | xlsx-preview |
 | Office theme series colors | ✅ | ✅ | tie |
 | Legend positioning | ✅ | 🟡 clipped on overflow | xlsx-preview |
 | Legend marker shapes | ✅ | ✅ | tie |
@@ -73,6 +74,7 @@ Example fixtures:
 | 18 | Line outline color and marker suppression ignored | xlsx-preview | ✅ fixed | Use outline fill for line/scatter; honor `markerSymbol === "none"`. |
 | 19 | 3D legacy chart variants emitted empty bbox | xlsx-preview | ✅ fixed | `Bar3D` / `Line3D` / `Area3D` / `Pie3D` / `ofPie` plot-area arms dispatch to the 2D painter; depth/perspective dropped. `chart-3d-*`. |
 | 20 | `radarChart` emitted empty bbox | xlsx-preview | ✅ fixed | New `drawRadarChart` (polar painter); polygon gridlines, per-spoke category labels, top-spoke value-axis ticks. `radarStyle` selects standard / marker / filled. `chart-radar-{standard,marker,filled}.xlsx`. |
+| 21 | `stockChart` emitted empty bbox | xlsx-preview | ✅ fixed | New `drawStockChart`; series-count infers subtype (3=HLC, 4=OHLC, 5=VOHLC). Honors `<c:hiLowLines/>` (vertical mark), `<c:upDownBars/>` (open→close rect; white-fill up, black-fill down), `<c:dropLines/>`. Volume sub-plot stub for VOHLC. hsx renders empty here. `chart-stock-{hlc,ohlc}.xlsx`. |
 
 ## Chart-type coverage
 
@@ -86,7 +88,7 @@ Example fixtures:
 | `c:` | `scatterChart` | ✅ | marker/line/lineMarker/smooth/smoothMarker |
 | `c:` | `bubbleChart` | ✅ | `bubbleScale`, `sizeRepresents` |
 | `c:` | `radarChart` | ✅ | `radarStyle` standard / marker / filled; polygon gridlines + spokes + tick labels along top spoke |
-| `c:` | `stockChart` | ❌ | not wired |
+| `c:` | `stockChart` | ✅ | HLC / OHLC; hi-low marks, up/down bars (white-up / black-down). xlsxwriter `<c:marker val="none"/>` on non-close series honored. `chart-stock-{hlc,ohlc}.xlsx`. |
 | `c:` | `surfaceChart` / `surface3DChart` | ❌ | not wired |
 | `c:` | `ofPieChart` | 🟡 | rendered as plain pie (no satellite split) |
 | `c:` | `bar3DChart` / `line3DChart` / `area3DChart` / `pie3DChart` | ✅ | dispatched to 2D painters; 3D perspective/depth dropped |
@@ -114,7 +116,7 @@ Example fixtures:
 1. ~~3D legacy chart variants: dispatch to 2D painters.~~ **shipped.** `chart-3d-{bar3d,line3d,area3d,pie3d}.xlsx`.
 2. ~~`radarChart`.~~ **shipped.** Polygon spider painter in `chartAdvanced.ts::drawRadarChart`; honors `radarStyle` (`standard` / `marker` / `filled`). `chart-radar-{standard,marker,filled}.xlsx`.
 3. ~~`ofPieChart` as plain pie first.~~ **shipped** (satellite split still deferred). `chart-3d-ofpie.xlsx`.
-4. `stockChart`.
+4. ~~`stockChart`.~~ **shipped.** `chartAdvanced.ts::drawStockChart`; HLC (3-series, hi-low marks) and OHLC (4-series, candlestick up/down bars). Volume sub-plot stub for 5-series VOHLC. `chart-stock-{hlc,ohlc}.xlsx`.
 5. `cx:` waterfall.
 6. `cx:` funnel / treemap / sunburst / histogram / boxWhisker.
 7. `surfaceChart` / `regionMap`.

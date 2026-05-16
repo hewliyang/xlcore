@@ -16,6 +16,18 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   category labels, and value-axis tick labels along the top spoke. Per-series
   `<c:marker><c:symbol val="none"/>` still overrides marker visibility.
   Fixtures: `tests/fixtures/charts/chart-radar-{standard,marker,filled}.xlsx`.
+- Added `stockChart` support (ECMA-376 §21.2.2.207). New painter in
+  `chartAdvanced.ts::drawStockChart` infers the subtype from series count
+  (3 → HLC, 4 → OHLC, 5 → VOHLC) and honors `<c:hiLowLines/>` (vertical mark
+  from category low to high), `<c:upDownBars/>` (candlestick-style open→close
+  rect; white-filled for up days, black-filled for down days), and
+  `<c:dropLines/>`. Volume sub-plot stub for VOHLC carves off the bottom 22%
+  of the plot rect. Legend swatches reflect what's actually painted: series
+  with `markerSymbol === "none"` (hi-low envelope contributors) render a thin
+  vertical bar in the hi-low ink color; series with markers render a colored
+  dot. hsx (SpreadJS) currently renders stock charts as an empty plot, so
+  xlsx-preview is the clear winner here. Fixtures:
+  `tests/fixtures/charts/chart-stock-{hlc,ohlc}.xlsx`.
 
 ## [0.0.6] - 2026-05-16
 

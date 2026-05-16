@@ -38,6 +38,7 @@ import {
   drawComboChart,
   drawPieChart,
   drawRadarChart,
+  drawStockChart,
   drawScatterChart,
   pieSliceColor,
   resolveBarFill,
@@ -268,6 +269,9 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
         break;
       case "radar":
         drawRadarChart(ctx, chart, plotRect);
+        break;
+      case "stock":
+        drawStockChart(ctx, chart, plotRect);
         break;
       default:
         drawPlaceholderPlot(ctx, chart, plotRect);

@@ -336,7 +336,7 @@ import { formatValue } from "./numfmt.js";
 ///
 /// `chart` is optional so callers that don't have the chart context
 /// (e.g. ad-hoc preview tooling) still get the old square behavior.
-export type LegendSwatchKind = "swatch" | "line" | "marker" | "lineMarker";
+export type LegendSwatchKind = "swatch" | "line" | "marker" | "lineMarker" | "verticalBar";
 
 function legendKindFor(chart: Chart | undefined, s: ChartSeries): LegendSwatchKind {
   if (!chart) return "swatch";
@@ -353,6 +353,17 @@ function legendKindFor(chart: Chart | undefined, s: ChartSeries): LegendSwatchKi
   // navy stroke with no glyphs.
   const noMarker = s.markerSymbol === "none";
   if (kind === "line") return noMarker ? "line" : "lineMarker";
+  if (kind === "stock") {
+    // Stock-chart legend semantics: series we paint a marker for
+    // (e.g. Close) get a colored dot; series that only contribute
+    // to the hi-low envelope (markerSymbol === "none") get a thin
+    // vertical bar in the hi-low ink color, matching what the eye
+    // sees in the plot. Series color is mostly cosmetic on stock
+    // charts — the painter uses gray/black for hi-low/up-down ink
+    // — so we deliberately ignore `s.color` here and let the
+    // swatch ink come from the swatch kind itself.
+    return noMarker ? "verticalBar" : "marker";
+  }
   if (kind === "scatter") {
     // ECMA-376 §21.2.3.40 c:scatterStyle: none/line/lineMarker/marker/
     // smooth/smoothMarker. Default for our extractor is unset = marker-
@@ -387,6 +398,23 @@ function paintLegendSwatch(
     ctx.beginPath();
     ctx.arc(x + w / 2, y, 3, 0, Math.PI * 2);
     ctx.fill();
+    return;
+  }
+  if (kind === "verticalBar") {
+    // Thin vertical bar centered in the swatch box — used for stock-
+    // chart hi-low envelope series. Ink color is fixed to the painter's
+    // hi-low color (`#262626`) since the series color carries no
+    // visual meaning on the plot itself.
+    const prevStroke = ctx.strokeStyle;
+    const prevWidth = ctx.lineWidth;
+    ctx.strokeStyle = "#262626";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2, y - w / 2 + 1);
+    ctx.lineTo(x + w / 2, y + w / 2 - 1);
+    ctx.stroke();
+    ctx.strokeStyle = prevStroke;
+    ctx.lineWidth = prevWidth;
     return;
   }
   // `line` or `lineMarker`: short horizontal stroke spanning the swatch.

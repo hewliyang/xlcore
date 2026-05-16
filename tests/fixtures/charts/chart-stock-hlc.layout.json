@@ -1,0 +1,204 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Sheet1",
+      "maxRow": 6,
+      "maxCol": 4,
+      "defaultColWidthPx": 64.01,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "drawings": [
+        {
+          "kind": "chart",
+          "anchor": {
+            "fromCol": 5,
+            "fromColOffEmu": 0,
+            "fromRow": 1,
+            "fromRowOffEmu": 0,
+            "toCol": 13,
+            "toColOffEmu": 457200,
+            "toRow": 18,
+            "toRowOffEmu": 0
+          },
+          "chart": {
+            "type": "stock",
+            "title": "Stock (HLC)",
+            "series": [
+              {
+                "name": "High",
+                "nameRef": "Sheet1!$B$1",
+                "color": "#4F81BD",
+                "values": [
+                  27.0,
+                  28.0,
+                  30.0,
+                  29.0,
+                  31.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$B$6",
+                "markerSymbol": "none"
+              },
+              {
+                "name": "Low",
+                "nameRef": "Sheet1!$C$1",
+                "color": "#C0504D",
+                "values": [
+                  23.0,
+                  24.0,
+                  26.0,
+                  25.0,
+                  26.0
+                ],
+                "valuesRef": "Sheet1!$C$2:$C$6",
+                "markerSymbol": "none"
+              },
+              {
+                "name": "Close",
+                "nameRef": "Sheet1!$D$1",
+                "color": "#9BBB59",
+                "values": [
+                  25.0,
+                  27.0,
+                  29.0,
+                  26.0,
+                  30.0
+                ],
+                "valuesRef": "Sheet1!$D$2:$D$6",
+                "markerSymbol": "dot"
+              }
+            ],
+            "categories": [
+              "Mon",
+              "Tue",
+              "Wed",
+              "Thu",
+              "Fri"
+            ],
+            "categoriesRef": "Sheet1!$A$2:$A$6",
+            "legendPos": "r",
+            "valueFormat": "General",
+            "showMajorGridlines": true,
+            "stockHiLowLines": true
+          }
+        }
+      ],
+      "cells": {
+        "count": 24,
+        "r": "AQAAAAEAAAABAAAAAQAAAAIAAAACAAAAAgAAAAIAAAADAAAAAwAAAAMAAAADAAAABAAAAAQAAAAEAAAABAAAAAUAAAAFAAAABQAAAAUAAAAGAAAABgAAAAYAAAAGAAAA",
+        "c": "AQAAAAIAAAADAAAABAAAAAEAAAACAAAAAwAAAAQAAAABAAAAAgAAAAMAAAAEAAAAAQAAAAIAAAADAAAABAAAAAEAAAACAAAAAwAAAAQAAAABAAAAAgAAAAMAAAAEAAAA",
+        "kind": "AQEBAQEAAAABAAAAAQAAAAEAAAABAAAA",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAAFAAAACwAAAAwAAAANAAAADgAAAA8AAAAOAAAABwAAAA0AAAAQAAAAEQAAAA0AAAAMAAAA",
+        "formulaIdx": "////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////",
+        "styleIdx": "////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////",
+        "runsIdx": "////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////",
+        "rowPtr": "AAAAAAQAAAAIAAAADAAAABAAAAAUAAAAGAAAAA=="
+      },
+      "rowMeta": {
+        "count": 6,
+        "index": "AQAAAAIAAAADAAAABAAAAAUAAAAGAAAA",
+        "heightPx": "AADAfwAAwH8AAMB/AADAfwAAwH8AAMB/",
+        "styleIdx": "////////////////////////////////",
+        "hidden": "AAAAAAAA"
+      },
+      "valuePool": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "27",
+        "23",
+        "25",
+        "5",
+        "28",
+        "24",
+        "6",
+        "30",
+        "26",
+        "29",
+        "7",
+        "8",
+        "31"
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "color": {
+          "theme": 1
+        },
+        "family": 2,
+        "scheme": "minor"
+      }
+    ],
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0
+  },
+  "sharedStrings": [
+    "Date",
+    "High",
+    "Low",
+    "Close",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri"
+  ],
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  }
+}

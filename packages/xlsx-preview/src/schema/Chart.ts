@@ -97,4 +97,17 @@ export type Chart = {
   dispUnitsLabelSecondary?: string;
   bubbleScale?: number;
   sizeRepresents?: string;
+  /**
+   * Stock-chart decoration toggles (ECMA-376 §21.2.2.207).
+   * `hiLowLines` connect each category's high+low values with a
+   * vertical line; xlsxwriter emits `<c:hiLowLines/>` by default
+   * for HLC/OHLC stock. `upDownBars` paint a column between
+   * open and close (white-fill for up days, black-fill for down)
+   * — only meaningful when series count >= 4 (OHLC). `dropLines`
+   * connect each value point down to the category axis; rarely
+   * authored on stock charts but legal.
+   */
+  stockHiLowLines: boolean;
+  stockUpDownBars: boolean;
+  stockDropLines: boolean;
 };
