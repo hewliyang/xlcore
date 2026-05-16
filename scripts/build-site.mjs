@@ -24,6 +24,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, "..");
 const out = resolve(repo, "site");
 const examples = resolve(repo, "packages/xlsx-preview/examples");
+const pkg = JSON.parse(await readFile(resolve(repo, "packages/xlsx-preview/package.json"), "utf8"));
+const packageVersion = pkg.version;
 // Demo workbook for the landing terminal. Prefer the JPM GOOGL research model
 // from the local fixture stash (not committed — third-party copyright); fall
 // back to the in-repo kitchensink so the build still works on CI / fresh clones.
@@ -492,7 +494,7 @@ const landing = `<!doctype html>
       <p class="tag">Render <code>.xlsx</code> workbooks to a <code>&lt;canvas&gt;</code> or PNG, in the browser, in Node, or straight from your terminal.</p>
     </div>
     <div class="meta">
-      <span class="ver">@hewliyang/xlsx-preview</span>
+      <span class="ver">@hewliyang/xlsx-preview@${packageVersion}</span>
       <span>MIT</span>
     </div>
   </header>

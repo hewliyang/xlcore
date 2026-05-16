@@ -5,6 +5,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.6] - 2026-05-16
+
 ### Fixed
 
 - Avoid freezing/OOMing on sheets whose conditional-formatting ranges extend
