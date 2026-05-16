@@ -52,6 +52,14 @@ async function exists(p) {
   }
 }
 
+async function xlsxPreview(args, opts = {}) {
+  const localCli = resolve(repo, "packages/xlsx-preview/dist/cli.js");
+  if (await exists(localCli)) {
+    return execFileSync(process.execPath, [localCli, ...args], opts);
+  }
+  return execFileSync("xlsx-preview", args, opts);
+}
+
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 
@@ -78,7 +86,7 @@ const preferredSheet = "DCF";
 let demoInfo = null;
 try {
   // Probe sheets first so the fallback (kitchensink) still works.
-  const probe = JSON.parse(execFileSync("xlsx-preview", [fixture, "--info"], { encoding: "utf8" }));
+  const probe = JSON.parse(await xlsxPreview([fixture, "--info"], { encoding: "utf8" }));
   const hasPreferred = probe.sheets?.some((s) => s.name === preferredSheet);
   // Crop to a focused range when rendering the DCF sheet so the image lands
   // wider-than-tall and balances the snippet stack on the left. Falls back to
@@ -87,8 +95,8 @@ try {
   const renderArgs = hasPreferred
     ? [fixture, "-o", demoPng, "--sheet", preferredSheet, "--range", range, "--scale", "2"]
     : [fixture, "-o", demoPng, "--sheet-index", "0", "--scale", "2"];
-  execFileSync("xlsx-preview", renderArgs, { stdio: "inherit" });
-  const infoOut = execFileSync("xlsx-preview", [fixture, "--info"], { encoding: "utf8" });
+  await xlsxPreview(renderArgs, { stdio: "inherit" });
+  const infoOut = await xlsxPreview([fixture, "--info"], { encoding: "utf8" });
   demoInfo = JSON.parse(infoOut);
   console.log(`  /demo/cover.png        (rendered ← ${fixture.split("/").pop()})`);
 } catch (err) {
