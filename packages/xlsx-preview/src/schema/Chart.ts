@@ -52,6 +52,13 @@ export type Chart = {
    */
   scatterStyle?: string;
   /**
+   * Radar style: `standard`, `marker`, `filled`. Only meaningful for
+   * chart_type == radar. ECMA-376 §21.2.2.176; defaults to
+   * `standard` (line, no markers) per the schema, though Excel's UI
+   * default for new radar charts is `marker`.
+   */
+  radarStyle?: string;
+  /**
    * Chart-level `<c:dLbls>` — the per-chart-group default. Series-
    * level `dataLabels` overrides on a per-series basis. None ⇒ no
    * labels (Excel's default for every chart type).

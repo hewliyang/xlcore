@@ -7,10 +7,13 @@ import {
   drawLabel,
   drawPlaceholderPlot,
   effectiveLabels,
+  formatAxisValue,
   formatGeneral,
   niceTicks,
   paintZeroBaseline,
   pointLabel,
+  resolveAxisRange,
+  valueRange,
   withAlpha,
 } from "./chartUtils.js";
 
@@ -440,6 +443,243 @@ export function drawBubbleChart(ctx: CanvasRenderingContext2D, chart: Chart, rec
     }
   }
   paintZeroBaseline(ctx, inner, yMin, yMax);
+}
+
+// ---------- radar ----------
+
+/**
+ * Polar/spider chart. ECMA-376 §21.2.2.155 / §21.2.2.176.
+ *
+ * Layout: one spoke per category, evenly spaced around a center.
+ * Spoke 0 points up (angle = -π/2 in canvas coords) and they advance
+ * clockwise — matches Excel desktop and the radar fixtures in the
+ * AGS corpus. Each series traces a closed polygon whose vertex on
+ * spoke `i` sits at distance `(v[i] - minV) / (maxV - minV) * R` from
+ * the center.
+ *
+ * Gridlines are concentric *polygons* (straight segments between
+ * spokes at each tick level), not circles — matches Excel. The
+ * radar variants honor `chart.radarStyle`:
+ *   - `standard`: stroked polygon only.
+ *   - `marker`:   stroked polygon + circle markers (Excel UI default).
+ *   - `filled`:   semi-transparent filled polygon + stroked outline.
+ */
+export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
+  const series = chart.series.filter((s) => s.values.length > 0);
+  if (series.length === 0) {
+    drawPlaceholderPlot(ctx, chart, rect);
+    return;
+  }
+  const cats = chart.categories ?? [];
+  const categoryCount = Math.max(...series.map((s) => s.values.length), cats.length);
+  if (categoryCount < 3) {
+    // Radar needs >=3 spokes to make sense as a polygon. Two or
+    // fewer categories collapse to a line/point — fall back to
+    // the placeholder rather than emit something misleading.
+    drawPlaceholderPlot(ctx, chart, rect);
+    return;
+  }
+
+  // Padding for category labels around the perimeter. We measure
+  // every label so the longest one drives the inset on its side;
+  // simple cardinal-only inset is good enough for v0.
+  ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  let maxLabelW = 0;
+  for (let i = 0; i < categoryCount; i++) {
+    const t = cats[i] ?? `${i + 1}`;
+    maxLabelW = Math.max(maxLabelW, ctx.measureText(t).width);
+  }
+  const labelPad = 8;
+  const inset = Math.min(rect.w, rect.h) * 0.08 + Math.max(maxLabelW / 2, AXIS_FONT_SIZE);
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2;
+  const R = Math.max(20, Math.min(rect.w, rect.h) / 2 - inset);
+
+  // Data range. Radar doesn't zero-clamp — mirror line-chart
+  // behavior so a band of values like 50..90 doesn't waste 80% of
+  // the radius on empty axis. `<c:scaling>` bounds still win.
+  const rows = series.map((s) => Array.from({ length: categoryCount }, (_, i) => s.values[i] ?? 0));
+  let { minV, maxV } = valueRange(rows);
+  const range = resolveAxisRange(
+    minV,
+    maxV,
+    chart.valueMin,
+    chart.valueMax,
+    /*zeroClamp=*/ false,
+    AXIS_TICK_COUNT,
+    chart.majorUnit,
+  );
+  minV = range.minV;
+  maxV = range.maxV;
+  const ticks = range.ticks;
+
+  // Angle for spoke i (0 = up, clockwise).
+  const angleFor = (i: number) => -Math.PI / 2 + (i / categoryCount) * Math.PI * 2;
+  const radiusFor = (v: number) => {
+    if (!Number.isFinite(v)) return 0;
+    const span = maxV - minV;
+    if (span <= 0) return 0;
+    return Math.max(0, ((v - minV) / span) * R);
+  };
+
+  // 1. Spokes (radial axes).
+  ctx.strokeStyle = "#e5e7eb";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < categoryCount; i++) {
+    const a = angleFor(i);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+    ctx.stroke();
+  }
+
+  // 2. Concentric gridline polygons, one per tick. Skip the
+  // center tick (it's a point). Outermost tick traces the perimeter.
+  ctx.strokeStyle = "#e5e7eb";
+  for (const t of ticks) {
+    const r = radiusFor(t);
+    if (r <= 0.5) continue;
+    ctx.beginPath();
+    for (let i = 0; i < categoryCount; i++) {
+      const a = angleFor(i);
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  // 3. Category labels just outside each spoke endpoint.
+  ctx.fillStyle = AXIS_LABEL_COLOR;
+  ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  for (let i = 0; i < categoryCount; i++) {
+    const a = angleFor(i);
+    const lx = cx + Math.cos(a) * (R + labelPad);
+    const ly = cy + Math.sin(a) * (R + labelPad);
+    // Alignment based on which side of the center the spoke ends on.
+    // Tolerance accounts for spokes that are nearly vertical/horizontal.
+    const TOL = 0.05;
+    let align: CanvasTextAlign = "center";
+    if (Math.cos(a) > TOL) align = "left";
+    else if (Math.cos(a) < -TOL) align = "right";
+    let baseline: CanvasTextBaseline = "middle";
+    if (Math.sin(a) < -TOL) baseline = "bottom";
+    else if (Math.sin(a) > TOL) baseline = "top";
+    ctx.textAlign = align;
+    ctx.textBaseline = baseline;
+    ctx.fillText(cats[i] ?? `${i + 1}`, lx, ly);
+  }
+
+  // 4. Tick labels along the top spoke (angle = -π/2). Skip the
+  // bottom tick (== minV) since its position == center for the
+  // common non-zero-clamped case and labels would overlap.
+  ctx.fillStyle = AXIS_LABEL_COLOR;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  for (let ti = 0; ti < ticks.length; ti++) {
+    if (ti === 0) continue;
+    const t = ticks[ti]!;
+    const r = radiusFor(t);
+    if (r <= 0.5) continue;
+    const text = formatAxisValue(t, chart.valueFormat, chart.dispUnits);
+    ctx.fillText(text, cx - 3, cy - r);
+  }
+
+  // 5. Series polygons. `filled` style gets a semi-transparent fill,
+  // `marker` (Excel UI default) and `standard` are stroke-only.
+  const filled = chart.radarStyle === "filled";
+  const showMarkers = chart.radarStyle !== "standard";
+  for (let si = 0; si < series.length; si++) {
+    const s = series[si]!;
+    const color = s.color ?? "#4472C4";
+    const data = rows[si]!;
+    // Per-point gap handling: if any vertex is non-finite we draw
+    // an open polyline instead of a closed polygon — a gap in the
+    // radar series. Rare but matches Excel's `dispBlanksAs=gap`.
+    const allFinite = data.every((v) => Number.isFinite(v));
+
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < categoryCount; i++) {
+      const v = data[i] ?? 0;
+      if (!Number.isFinite(v)) {
+        started = false;
+        continue;
+      }
+      const a = angleFor(i);
+      const r = radiusFor(v);
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      if (!started) {
+        ctx.moveTo(x, y);
+        started = true;
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    if (allFinite) ctx.closePath();
+
+    if (filled) {
+      ctx.fillStyle = withAlpha(color, 0.45);
+      ctx.fill();
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = filled ? 1.25 : 2;
+    ctx.stroke();
+
+    // Markers. `radarStyle="standard"` suppresses them; explicit
+    // per-series `<c:marker><c:symbol val="none"/>` also wins.
+    if (showMarkers && s.markerSymbol !== "none") {
+      ctx.fillStyle = color;
+      for (let i = 0; i < categoryCount; i++) {
+        const v = data[i] ?? 0;
+        if (!Number.isFinite(v)) continue;
+        const a = angleFor(i);
+        const r = radiusFor(v);
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Data labels (default position `t` — above the marker, away
+    // from the center).
+    const dl = effectiveLabels(chart, s);
+    if (dl) {
+      const PAD = 6;
+      for (let i = 0; i < categoryCount; i++) {
+        const v = s.values[i];
+        if (v == null || !Number.isFinite(v)) continue;
+        const po = pointLabel(dl, i);
+        if (po === null) continue;
+        const edl = po?.dl ?? dl;
+        const text = po?.text ?? buildLabelText(edl, chart, s, i, v, 0);
+        if (!text) continue;
+        const a = angleFor(i);
+        const r = radiusFor(v);
+        // Push the label radially outward from the marker.
+        const lx = cx + Math.cos(a) * (r + PAD);
+        const ly = cy + Math.sin(a) * (r + PAD);
+        const TOL = 0.05;
+        let align: CanvasTextAlign = "center";
+        if (Math.cos(a) > TOL) align = "left";
+        else if (Math.cos(a) < -TOL) align = "right";
+        // Above the center → label above marker; below → below.
+        let baseline: CanvasTextBaseline = "middle";
+        if (Math.sin(a) < -TOL) baseline = "bottom";
+        else if (Math.sin(a) > TOL) baseline = "top";
+        drawLabel(ctx, text, lx, ly, align, baseline);
+      }
+    }
+  }
+  // Silence unused-import lint when drawAxisFrame/niceTicks/formatGeneral/
+  // paintZeroBaseline are unused here. (kept for parity w/ other painters)
+  void drawAxisFrame;
+  void niceTicks;
+  void formatGeneral;
+  void paintZeroBaseline;
 }
 
 export { drawComboChart } from "./chartCombo.js";

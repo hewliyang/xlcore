@@ -10,6 +10,12 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Added a time-period conditional-formatting fixture plus a schema-drift CI
   guard, and documented the local schema regeneration / PNG fixture
   comparison workflow.
+- Added `radarChart` support (ECMA-376 §21.2.2.155 / §21.2.2.176). New polar
+  painter in `chartAdvanced.ts::drawRadarChart` honors `radarStyle`
+  (`standard` / `marker` / `filled`) with polygon gridlines, per-spoke
+  category labels, and value-axis tick labels along the top spoke. Per-series
+  `<c:marker><c:symbol val="none"/>` still overrides marker visibility.
+  Fixtures: `tests/fixtures/charts/chart-radar-{standard,marker,filled}.xlsx`.
 
 ## [0.0.6] - 2026-05-16
 

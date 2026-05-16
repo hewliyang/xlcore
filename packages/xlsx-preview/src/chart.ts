@@ -37,6 +37,7 @@ import {
   drawBubbleChart,
   drawComboChart,
   drawPieChart,
+  drawRadarChart,
   drawScatterChart,
   pieSliceColor,
   resolveBarFill,
@@ -264,6 +265,9 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
         break;
       case "bubble":
         drawBubbleChart(ctx, chart, plotRect);
+        break;
+      case "radar":
+        drawRadarChart(ctx, chart, plotRect);
         break;
       default:
         drawPlaceholderPlot(ctx, chart, plotRect);

@@ -473,6 +473,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
 
     let mut bar_dir: Option<String> = None;
     let mut scatter_style: Option<String> = None;
+    let mut radar_style: Option<String> = None;
     let mut bubble_scale: Option<u32> = None;
     let mut size_represents: Option<String> = None;
     let mut grouping: Option<String> = None;
@@ -752,6 +753,46 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                 group_types.push("pie");
                 break;
             }
+            c::PlotAreaChoice::CRadarChart(rc) => {
+                // ECMA-376 §21.2.2.155 / §21.2.2.176. Radar charts are
+                // category-axis + value-axis the same way line charts
+                // are, so we reuse the line series shape: idx/order/tx/
+                // spPr/cat/val/dPt/dLbls. The renderer wraps the
+                // category axis into a polar layout. `radarStyle`:
+                //   - `standard` — line only
+                //   - `marker`   — line + markers (Excel UI default)
+                //   - `filled`   — filled polygon (semi-transparent)
+                if radar_style.is_none() {
+                    radar_style = Some(
+                        match rc.radar_style.val {
+                            c::RadarStyleValues::Standard => "standard",
+                            c::RadarStyleValues::Marker => "marker",
+                            c::RadarStyleValues::Filled => "filled",
+                        }
+                        .to_string(),
+                    );
+                }
+                if chart_data_labels.is_none() {
+                    chart_data_labels = extract_data_labels(rc.c_d_lbls.as_deref());
+                }
+                let series_before = series.len();
+                extract_chartlike!(&rc.c_ser, "radar", &rc.c_ax_id, true);
+                // RadarChartSeries also carries a top-level `marker`
+                // node (same shape as LineChartSeries); propagate it
+                // so per-series marker symbol overrides survive.
+                for (offset, ser) in rc.c_ser.iter().enumerate() {
+                    let sym = ser
+                        .marker
+                        .as_ref()
+                        .and_then(|m| m.symbol.as_ref())
+                        .map(|s| marker_symbol_str(&s.val));
+                    if let Some(row) = series.get_mut(series_before + offset) {
+                        row.marker_symbol = sym;
+                    }
+                }
+                group_types.push("radar");
+                break;
+            }
             c::PlotAreaChoice::COfPieChart(pc) => {
                 // ECMA-376 §21.2.2.124. `ofPieType` (`pie` | `bar`)
                 // would split the second plot into either a satellite
@@ -902,6 +943,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
         grouping,
         bar_dir,
         scatter_style,
+        radar_style,
         data_labels: chart_data_labels,
         secondary_axis,
         value_format_secondary: secondary_val_fmt,

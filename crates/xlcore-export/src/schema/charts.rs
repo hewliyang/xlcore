@@ -123,6 +123,13 @@ pub struct Chart {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scatter_style: Option<String>,
+    /// Radar style: `standard`, `marker`, `filled`. Only meaningful for
+    /// chart_type == radar. ECMA-376 §21.2.2.176; defaults to
+    /// `standard` (line, no markers) per the schema, though Excel's UI
+    /// default for new radar charts is `marker`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub radar_style: Option<String>,
     /// Chart-level `<c:dLbls>` — the per-chart-group default. Series-
     /// level `dataLabels` overrides on a per-series basis. None ⇒ no
     /// labels (Excel's default for every chart type).

@@ -47,6 +47,7 @@ Example fixtures:
 | `Sheet1` | Stacked color modifiers | `F2:M18` | `chart-stacked-color-modifiers.xlsx`: two stacked column series with distinct fills |
 | `Sheet1` | Combo with secondary axis | `F2:N19` | `chart-combo-secondary-axis.xlsx`: clustered column + line on secondary y-axis |
 | `Sheet1` | Dual-axis lines | `F2:N19` | `chart-dual-axis-lines.xlsx`: two line series on primary/secondary y-axes |
+| `Sheet1` | Radar (standard/marker/filled) | `F2:N20` | `chart-radar-{standard,marker,filled}.xlsx`: one fixture per `radarStyle` value |
 
 ## Bug catalog
 
@@ -71,6 +72,7 @@ Example fixtures:
 | 17 | Phantom legend without `<c:legend>` | xlsx-preview | ✅ fixed | Preserve absent legend vs present-with-default-position. |
 | 18 | Line outline color and marker suppression ignored | xlsx-preview | ✅ fixed | Use outline fill for line/scatter; honor `markerSymbol === "none"`. |
 | 19 | 3D legacy chart variants emitted empty bbox | xlsx-preview | ✅ fixed | `Bar3D` / `Line3D` / `Area3D` / `Pie3D` / `ofPie` plot-area arms dispatch to the 2D painter; depth/perspective dropped. `chart-3d-*`. |
+| 20 | `radarChart` emitted empty bbox | xlsx-preview | ✅ fixed | New `drawRadarChart` (polar painter); polygon gridlines, per-spoke category labels, top-spoke value-axis ticks. `radarStyle` selects standard / marker / filled. `chart-radar-{standard,marker,filled}.xlsx`. |
 
 ## Chart-type coverage
 
@@ -83,7 +85,7 @@ Example fixtures:
 | `c:` | `areaChart` | ✅ | standard/stacked/percentStacked |
 | `c:` | `scatterChart` | ✅ | marker/line/lineMarker/smooth/smoothMarker |
 | `c:` | `bubbleChart` | ✅ | `bubbleScale`, `sizeRepresents` |
-| `c:` | `radarChart` | ❌ | not wired |
+| `c:` | `radarChart` | ✅ | `radarStyle` standard / marker / filled; polygon gridlines + spokes + tick labels along top spoke |
 | `c:` | `stockChart` | ❌ | not wired |
 | `c:` | `surfaceChart` / `surface3DChart` | ❌ | not wired |
 | `c:` | `ofPieChart` | 🟡 | rendered as plain pie (no satellite split) |
@@ -110,7 +112,7 @@ Example fixtures:
 ## Priority order
 
 1. ~~3D legacy chart variants: dispatch to 2D painters.~~ **shipped.** `chart-3d-{bar3d,line3d,area3d,pie3d}.xlsx`.
-2. `radarChart`.
+2. ~~`radarChart`.~~ **shipped.** Polygon spider painter in `chartAdvanced.ts::drawRadarChart`; honors `radarStyle` (`standard` / `marker` / `filled`). `chart-radar-{standard,marker,filled}.xlsx`.
 3. ~~`ofPieChart` as plain pie first.~~ **shipped** (satellite split still deferred). `chart-3d-ofpie.xlsx`.
 4. `stockChart`.
 5. `cx:` waterfall.
