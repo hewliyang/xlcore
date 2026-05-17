@@ -131,8 +131,22 @@ export function computeTableState(
   const filterArrows = new Set<string>();
   const tables = sheet.tables ?? [];
   const pivots = sheet.pivots ?? [];
-  if (tables.length === 0 && pivots.length === 0) {
+  const autoFilterRange = sheet.autoFilterRange;
+  if (tables.length === 0 && pivots.length === 0 && !autoFilterRange) {
     return { tableDxfs, filterArrows };
+  }
+
+  // Worksheet-level Data → Filter (`<worksheet><autoFilter ref="..."/>`).
+  // Table-scoped autoFilters are handled below with table styling. The
+  // saved filtered result itself is just row metadata (`hidden=1`), already
+  // honored by the grid/row-height path.
+  if (autoFilterRange) {
+    const r = autoFilterRange.r1;
+    if (!vis || (r >= vis.firstRow && r <= vis.lastRow)) {
+      const c1 = Math.max(autoFilterRange.c1, vis?.firstCol ?? autoFilterRange.c1);
+      const c2 = Math.min(autoFilterRange.c2, vis?.lastCol ?? autoFilterRange.c2);
+      for (let c = c1; c <= c2; c++) filterArrows.add(`${r}:${c}`);
+    }
   }
 
   for (const t of tables) {

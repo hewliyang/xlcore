@@ -1,0 +1,155 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Filtered",
+      "maxRow": 7,
+      "maxCol": 3,
+      "defaultColWidthPx": 64.01,
+      "defaultRowHeightPx": 20.0,
+      "cols": [
+        {
+          "min": 1,
+          "max": 1,
+          "widthPx": 98.0
+        },
+        {
+          "min": 2,
+          "max": 2,
+          "widthPx": 98.0
+        },
+        {
+          "min": 3,
+          "max": 3,
+          "widthPx": 70.0
+        }
+      ],
+      "merges": [],
+      "autoFilterRange": {
+        "r1": 1,
+        "c1": 1,
+        "r2": 7,
+        "c2": 3
+      },
+      "freeze": {
+        "topRow": 2,
+        "leftCol": 1
+      },
+      "showGridLines": true,
+      "cells": {
+        "count": 21,
+        "r": "AQAAAAEAAAABAAAAAgAAAAIAAAACAAAAAwAAAAMAAAADAAAABAAAAAQAAAAEAAAABQAAAAUAAAAFAAAABgAAAAYAAAAGAAAABwAAAAcAAAAHAAAA",
+        "c": "AQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAAAQAAAAIAAAADAAAA",
+        "kind": "AgICAgIAAgIAAgIAAgIAAgIAAgIA",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAQAAAAHAAAAAwAAAAgAAAAJAAAACgAAAAgAAAALAAAADAAAAAQAAAANAAAAAwAAAA4AAAAPAAAA",
+        "formulaIdx": "////////////////////////////////////////////////////////////////////////////////////////////////////////////////",
+        "styleIdx": "AQAAAAEAAAABAAAA////////////////////////////////////////////////////////////////////////////////////////////////",
+        "runsIdx": "////////////////////////////////////////////////////////////////////////////////////////////////////////////////",
+        "rowPtr": "AAAAAAMAAAAGAAAACQAAAAwAAAAPAAAAEgAAABUAAAA="
+      },
+      "rowMeta": {
+        "count": 7,
+        "index": "AQAAAAIAAAADAAAABAAAAAUAAAAGAAAABwAAAA==",
+        "heightPx": "AADAfwAAwH8AAMB/AADAfwAAwH8AAMB/AADAfw==",
+        "styleIdx": "/////////////////////////////////////w==",
+        "hidden": "AAABAAEBAA=="
+      },
+      "valuePool": [
+        "Region",
+        "Product",
+        "Amount",
+        "North",
+        "Apples",
+        "120",
+        "South",
+        "90",
+        "Pears",
+        "135",
+        "West",
+        "70",
+        "East",
+        "105",
+        "Grapes",
+        "150"
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "color": {
+          "theme": 1
+        },
+        "family": 2,
+        "scheme": "minor"
+      },
+      {
+        "bold": true,
+        "color": {
+          "rgb": "00FFFFFF"
+        }
+      }
+    ],
+    "fills": [
+      {},
+      {
+        "patternType": "gray125"
+      },
+      {
+        "patternType": "solid",
+        "fgColor": {
+          "rgb": "004472C4"
+        }
+      }
+    ],
+    "borders": [
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 0,
+        "numFmtId": 0
+      },
+      {
+        "fontId": 1,
+        "fillId": 2,
+        "borderId": 0,
+        "numFmtId": 0
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0
+  },
+  "sharedStrings": [],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  },
+  "definedNames": [
+    {
+      "name": "_xlnm._FilterDatabase",
+      "formula": "'Filtered'!$A$1:$C$7",
+      "localSheetId": 0
+    }
+  ],
+  "activeSheetIndex": 0
+}

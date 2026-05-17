@@ -44,6 +44,14 @@ export type Sheet = {
    */
   cols: Array<Col>;
   merges: Array<Merge>;
+  /**
+   * Worksheet-level `<autoFilter ref="...">` range. Table-scoped
+   * autoFilters live on `Table.has_auto_filter`; this captures the
+   * plain sheet autoFilter used by Data → Filter. Renderer paints
+   * header dropdown chevrons and relies on serialized row `hidden`
+   * flags for the saved filtered-row result.
+   */
+  autoFilterRange?: Merge;
   freeze?: Freeze;
   showGridLines: boolean;
   /**

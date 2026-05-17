@@ -215,6 +215,14 @@ pub struct Sheet {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub rows: Vec<Row>,
     pub merges: Vec<Merge>,
+    /// Worksheet-level `<autoFilter ref="...">` range. Table-scoped
+    /// autoFilters live on `Table.has_auto_filter`; this captures the
+    /// plain sheet autoFilter used by Data → Filter. Renderer paints
+    /// header dropdown chevrons and relies on serialized row `hidden`
+    /// flags for the saved filtered-row result.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_filter_range: Option<Merge>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     pub freeze: Option<Freeze>,
     pub show_grid_lines: bool,

@@ -91,11 +91,11 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a out of scope.
 
 | Feature | Extract | Render | Notes |
 | --- | --- | --- | --- |
-| Tables / ListObjects | ✅ | ✅ | header, banding, filter glyphs, totals; no filtering. Custom `<tableStyles>` definitions resolved — header / firstRowStripe / totalRow / wholeTable dxfs apply via the same `cfDxfs` pipeline as conditional formatting; built-in `TableStyleMedium*` names still fall back to the accent-from-trailing-digit heuristic. Per-table direct overrides (`headerRowDxfId`, `dataDxfId`) not yet honored. |
+| Tables / ListObjects | ✅ | ✅ | header, banding, filter glyphs, totals; no filter interactivity/re-evaluation. Custom `<tableStyles>` definitions resolved — header / firstRowStripe / totalRow / wholeTable dxfs apply via the same `cfDxfs` pipeline as conditional formatting; built-in `TableStyleMedium*` names still fall back to the accent-from-trailing-digit heuristic. Per-table direct overrides (`headerRowDxfId`, `dataDxfId`) not yet honored. |
 | Pivot tables | 🟡 | 🟡 | static materialized cells + filter chevrons; no refresh/interactivity |
 | Slicers / timelines | ❌ | ❌ | |
 | Data validation | ❌ | ❌ | dropdowns are compositor/interactivity work |
-| AutoFilter hidden rows | ❌ | ❌ | filtered rows should hide |
+| AutoFilter hidden rows | ✅ | ✅ | worksheet-level `<autoFilter ref>` surfaced as `autoFilterRange`; saved filter results collapse via serialized row `hidden` flags; fixture `tables/autofilter-hidden-rows.xlsx` |
 | Chart: column/bar | ✅ | ✅ | clustered/stacked/percent, ticks, legend, theme colors |
 | Chart: line | ✅ | ✅ | stacked/percent, outline colors, marker suppression |
 | Chart: pie/doughnut | ✅ | ✅ | slices, hole, per-slice colors; open leader lines |
@@ -104,7 +104,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a out of scope.
 | Chart: area | ✅ | ✅ | standard/stacked/percent |
 | Chart: combo/secondary axis | ✅ | ✅ | multi-group plotAreas, dual y-axes, axis titles, data labels, `dispUnits` |
 | Chart: data labels | ✅ | ✅ | chart/series/per-point overrides |
-| ChartEx (`cx:`) | ✅ | 🟡 | waterfall / funnel / treemap / sunburst / histogram / pareto / boxWhisker all shipped. regionMap fixture in tree (`tests/fixtures/charts/chart-regionmap-chartex.xlsx`, slimmed Microsoft template) but painter still falls through to placeholder — needs an embedded world-countries dataset + choropleth painter. See `docs/parity-charts.md` priority #8. |
+| ChartEx (`cx:`) | ✅ | ✅ | waterfall / funnel / treemap / sunburst / histogram / pareto / boxWhisker / regionMap all shipped. regionMap uses an embedded Natural Earth 110m countries dataset + choropleth painter; hsx falls back to clustered-column for that layout. See `docs/parity-charts.md`. |
 | Sparklines | ✅ | ✅ | line/column/win-loss; open prefix robustness + marker shape |
 | Raster images | ✅ | ✅ | base64 inline |
 | Cropped/rotated images | 🟡 | 🟡 | transforms ignored |
@@ -132,13 +132,11 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a out of scope.
 | Area | Status |
 | --- | --- |
 | Formula engine / recalc | ❌ |
-| Filtered-row hiding | ❌ |
 | Split panes | ❌ |
 | RTL sheets | ❌ |
 | Data validation UI | ❌ |
 | Slicers / timelines | ❌ |
 | Shapes / SmartArt | 🟡 (shapes v0 shipped — word-wrap + nested pictures inside groups now in; SmartArt still ❌) |
-| chartEx support | ❌ |
 | Image crop/rotation | 🟡 |
 | CF x14 extensions | 🟡 |
 | Area chart gaps for missing points | 🟡 |
@@ -161,7 +159,7 @@ Representative fixtures:
 | Number formats | `numfmt/date-time-formats.xlsx`, `numfmt/custom-section-conditions.xlsx`, `numfmt/fraction-and-scientific.xlsx` |
 | Borders/fills | `borders/every-style.xlsx`, `borders/diagonal.xlsx`, `fills/patterns.xlsx`, `fills/gradients.xlsx` |
 | Conditional formatting | `cf/cell-is.xlsx`, `cf/data-bar.xlsx`, `cf/icon-set.xlsx`, `cf/cf-non-recalc.xlsx`, `cf/stop-if-true.xlsx`, `cf/time-period.xlsx` |
-| Tables/pivots | `tables/table-medium.xlsx`, `pivot/pivot-simple.xlsx` |
+| Tables/pivots | `tables/table-medium.xlsx`, `tables/autofilter-hidden-rows.xlsx`, `pivot/pivot-simple.xlsx` |
 | Charts | `charts/line-pie-area-scatter.xlsx`, `charts/data-labels.xlsx`, `charts/bubble.xlsx`, `charts/chart-*.xlsx` |
 | Layout | `outline/outline-groups.xlsx`, freeze-pane fixtures |
 | Annotations | `annotations/hyperlinks-comments.xlsx` |

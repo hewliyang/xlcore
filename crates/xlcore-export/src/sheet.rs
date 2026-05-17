@@ -141,6 +141,26 @@ pub fn extract(
         })
         .unwrap_or_default();
 
+    // Worksheet-level AutoFilter. Excel serializes the saved result of an
+    // applied filter as ordinary `<row hidden="1"/>` flags; the range here is
+    // for the header dropdown chrome on non-Table filters.
+    let auto_filter_range = ws
+        .x_auto_filter
+        .as_ref()
+        .and_then(|af| af.reference.as_ref())
+        .and_then(|r| {
+            if let Some(((r1, c1), (r2, c2))) = xlcore_io::parse_range(r.as_str()) {
+                Some(Merge { r1, c1, r2, c2 })
+            } else {
+                xlcore_io::parse_a1(r.as_str()).map(|(r, c)| Merge {
+                    r1: r,
+                    c1: c,
+                    r2: r,
+                    c2: c,
+                })
+            }
+        });
+
     // Freeze
     let mut freeze: Option<Freeze> = None;
     let mut show_grid_lines = true;
@@ -218,6 +238,7 @@ pub fn extract(
         cols,
         rows,
         merges,
+        auto_filter_range,
         freeze,
         show_grid_lines,
         conditional_formats,

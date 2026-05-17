@@ -11,6 +11,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   worksheet navigation buttons switches sheets, selects/scrolls to the target
   cell, and resolves bare workbook/sheet defined-name targets such as `Top`,
   `HowTo`, and `Exer1`. External hyperlinks still open in a new tab.
+- Worksheet-level AutoFilter chrome: non-table `<autoFilter ref="...">`
+  ranges now surface as `Sheet.autoFilterRange` and paint header dropdown
+  chevrons. Saved filtered results collapse via Excel's serialized row
+  `hidden` flags; fixture: `tests/fixtures/tables/autofilter-hidden-rows.xlsx`.
 
 ### Fixed
 
