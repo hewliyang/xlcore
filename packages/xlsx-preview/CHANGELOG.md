@@ -5,6 +5,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.7] - 2026-05-17
+
 ### Added
 
 - chartEx (`cx:`) `regionMap` ("Filled Map") painter
