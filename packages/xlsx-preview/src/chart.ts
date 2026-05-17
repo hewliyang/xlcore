@@ -103,13 +103,13 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
             color: pieSliceColor(i, pointColors),
           }));
         })()
-        // chartEx waterfall has a single OOXML series but Excel paints
+      : // chartEx waterfall has a single OOXML series but Excel paints
         // three legend swatches (Increase / Decrease / Total) keyed to
         // the bar colors. Synthesize those entries here so the existing
         // legend code path renders them. Other chartEx layouts fall
         // through to the default `series`-keyed legend (which is
         // typically a no-op since they're also single-series).
-      : chart.type === "chartex" && chart.cxLayout === "waterfall"
+        chart.type === "chartex" && chart.cxLayout === "waterfall"
         ? waterfallLegendEntries(chart)
         : // funnel / treemap / sunburst chartex layouts each have a
           // single OOXML series whose name carries no visual info;

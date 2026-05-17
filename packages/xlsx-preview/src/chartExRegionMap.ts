@@ -91,7 +91,7 @@ const NAME_ALIASES: Record<string, string> = {
   "south korea": "south korea",
   "republic of korea": "south korea",
   "north korea": "north korea",
-  "dprk": "north korea",
+  dprk: "north korea",
   russia: "russia",
   "russian federation": "russia",
   czechia: "czech republic",
@@ -178,7 +178,9 @@ function hexToRgb(hex: string): [number, number, number] {
 
 function rgbToHex(r: number, g: number, b: number): string {
   const c = (n: number) =>
-    Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+    Math.max(0, Math.min(255, Math.round(n)))
+      .toString(16)
+      .padStart(2, "0");
   return `#${c(r)}${c(g)}${c(b)}`;
 }
 
@@ -212,11 +214,7 @@ function buildColorScale(
   //      (matches Excel's default "sequential" presentation).
   let stops: { t: number; rgb: [number, number, number]; hex: string }[];
   if (authored.min && authored.max && authored.mid) {
-    stops = [
-      stopAt(0, authored.min),
-      stopAt(0.5, authored.mid),
-      stopAt(1, authored.max),
-    ];
+    stops = [stopAt(0, authored.min), stopAt(0.5, authored.mid), stopAt(1, authored.max)];
   } else if (authored.min && authored.max) {
     stops = [stopAt(0, authored.min), stopAt(1, authored.max)];
   } else {
@@ -245,10 +243,7 @@ function buildColorScale(
   };
 }
 
-function stopAt(
-  t: number,
-  hex: string,
-): { t: number; rgb: [number, number, number]; hex: string } {
+function stopAt(t: number, hex: string): { t: number; rgb: [number, number, number]; hex: string } {
   const rgb = hexToRgb(hex);
   return { t, rgb, hex };
 }
@@ -256,10 +251,7 @@ function stopAt(
 /** Piecewise-linear interpolation across an arbitrary number of
  *  ascending-`t` color stops. Clamps to the endpoint stops outside
  *  `[stops[0].t, stops[n-1].t]`. */
-function lerpStops(
-  stops: { t: number; rgb: [number, number, number] }[],
-  t: number,
-): string {
+function lerpStops(stops: { t: number; rgb: [number, number, number] }[], t: number): string {
   if (stops.length === 0) return UNMATCHED_FILL;
   if (t <= stops[0]!.t) return rgbToHex(...stops[0]!.rgb);
   for (let i = 1; i < stops.length; i++) {
@@ -276,11 +268,7 @@ function lerpStops(
 
 // ---------- path tracing ----------
 
-function tracePolygon(
-  ctx: CanvasRenderingContext2D,
-  rings: number[][][],
-  proj: Projection,
-): void {
+function tracePolygon(ctx: CanvasRenderingContext2D, rings: number[][][], proj: Projection): void {
   for (const ring of rings) {
     if (ring.length < 2) continue;
     const first = ring[0]!;
@@ -295,11 +283,7 @@ function tracePolygon(
   }
 }
 
-function traceFeature(
-  ctx: CanvasRenderingContext2D,
-  f: World110mFeature,
-  proj: Projection,
-): void {
+function traceFeature(ctx: CanvasRenderingContext2D, f: World110mFeature, proj: Projection): void {
   const g = f.g;
   if (g.type === "Polygon") {
     tracePolygon(ctx, g.coordinates, proj);

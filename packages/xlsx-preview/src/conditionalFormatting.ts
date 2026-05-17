@@ -1,12 +1,4 @@
-import type {
-  Cell,
-  CfvoStop,
-  CfRule,
-  Dxf,
-  Merge,
-  Sheet,
-  WorkbookLayout,
-} from "./types.js";
+import type { Cell, CfvoStop, CfRule, Dxf, Merge, Sheet, WorkbookLayout } from "./types.js";
 import { cellNumericValue, cellTextValue } from "./cellText.js";
 import { colorToCss } from "./color.js";
 import { interpolateStops, resolveColorScaleStops } from "./cfColorScale.js";

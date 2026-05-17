@@ -33,8 +33,7 @@ export function putCachedImage(uri: string, img: DrawableImage): void {
 export function imageHasSize(img: DrawableImage): boolean {
   const measured = img as DrawableImage & { width?: number; height?: number };
   return (
-    (img.naturalWidth ?? measured.width ?? 0) > 0 &&
-    (img.naturalHeight ?? measured.height ?? 0) > 0
+    (img.naturalWidth ?? measured.width ?? 0) > 0 && (img.naturalHeight ?? measured.height ?? 0) > 0
   );
 }
 

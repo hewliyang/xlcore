@@ -17,11 +17,7 @@ import type { Chart } from "./types.js";
 import type { Rect } from "./chart.js";
 import { activeThemeColor } from "./color.js";
 import { DEFAULT_PIE_ACCENTS } from "./chartAdvanced.js";
-import {
-  drawAxisFrame,
-  drawPlaceholderPlot,
-  resolveAxisRange,
-} from "./chartUtils.js";
+import { drawAxisFrame, drawPlaceholderPlot, resolveAxisRange } from "./chartUtils.js";
 
 const AXIS_FONT_SIZE = 10;
 const AXIS_LABEL_COLOR = "#52525b";
@@ -42,7 +38,11 @@ const AXIS_TICK_COUNT = 5;
 // makes each bin right-closed: `(low, high]`. The leftmost bin is
 // also left-closed at the data minimum so the smallest observation
 // isn't dropped.
-export function drawHistogramChartEx(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
+export function drawHistogramChartEx(
+  ctx: CanvasRenderingContext2D,
+  chart: Chart,
+  rect: Rect,
+): void {
   const series = chart.series[0];
   if (!series || series.values.length === 0) {
     drawPlaceholderPlot(ctx, chart, rect);
@@ -78,7 +78,8 @@ export function drawHistogramChartEx(ctx: CanvasRenderingContext2D, chart: Chart
   const endEdge = Math.ceil(maxV / binWidth) * binWidth;
   const binCount = Math.max(1, Math.round((endEdge - startEdge) / binWidth));
   const edges: number[] = [];
-  for (let i = 0; i <= binCount; i++) edges.push(parseFloat((startEdge + i * binWidth).toPrecision(12)));
+  for (let i = 0; i <= binCount; i++)
+    edges.push(parseFloat((startEdge + i * binWidth).toPrecision(12)));
 
   // Count observations per bin. Right-closed intervals; the leftmost
   // bin also includes its left edge so we don't drop the minimum.
@@ -92,7 +93,15 @@ export function drawHistogramChartEx(ctx: CanvasRenderingContext2D, chart: Chart
   }
 
   const maxCount = Math.max(...counts);
-  const range = resolveAxisRange(0, maxCount, undefined, undefined, true, AXIS_TICK_COUNT, undefined);
+  const range = resolveAxisRange(
+    0,
+    maxCount,
+    undefined,
+    undefined,
+    true,
+    AXIS_TICK_COUNT,
+    undefined,
+  );
   const inner = drawAxisFrame(ctx, chart, rect, range.ticks, range.minV, range.maxV, false, false);
 
   // Bin labels along the category axis. Decimate when crowded.
@@ -107,7 +116,8 @@ export function drawHistogramChartEx(ctx: CanvasRenderingContext2D, chart: Chart
     const hi = edges[i + 1]!;
     // Excel-style "(lo, hi]" label, with the leftmost bin shown as
     // "[lo, hi]" to flag its left-closed corner.
-    const label = i === 0 ? `[${fmtBinEdge(lo)}, ${fmtBinEdge(hi)}]` : `(${fmtBinEdge(lo)}, ${fmtBinEdge(hi)}]`;
+    const label =
+      i === 0 ? `[${fmtBinEdge(lo)}, ${fmtBinEdge(hi)}]` : `(${fmtBinEdge(lo)}, ${fmtBinEdge(hi)}]`;
     const tw = ctx.measureText(label).width;
     const cx = inner.x + (i + 0.5) * slotW;
     if (cx - tw / 2 < lastRight + 4) continue;
@@ -177,7 +187,15 @@ export function drawParetoChartEx(ctx: CanvasRenderingContext2D, chart: Chart, r
 
   // Primary axis (count). Standard auto-range with a zero floor.
   const maxCount = Math.max(...values);
-  const primary = resolveAxisRange(0, maxCount, undefined, undefined, true, AXIS_TICK_COUNT, undefined);
+  const primary = resolveAxisRange(
+    0,
+    maxCount,
+    undefined,
+    undefined,
+    true,
+    AXIS_TICK_COUNT,
+    undefined,
+  );
 
   // Reserve a strip on the right for the secondary-axis labels.
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
@@ -278,7 +296,11 @@ export function drawParetoChartEx(ctx: CanvasRenderingContext2D, chart: Chart, r
 // default Excel emits). Outliers are points outside 1.5 × IQR of the
 // hinge; whiskers extend to the most extreme non-outlier values. The
 // mean marker (default-on in chartEx) is painted as an ×.
-export function drawBoxWhiskerChartEx(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
+export function drawBoxWhiskerChartEx(
+  ctx: CanvasRenderingContext2D,
+  chart: Chart,
+  rect: Rect,
+): void {
   const serieses = chart.series.filter((s) => s.values.length > 0);
   if (serieses.length === 0) {
     drawPlaceholderPlot(ctx, chart, rect);
@@ -431,4 +453,3 @@ function computeBoxStats(raw: number[]): BoxStats {
   const mean = n > 0 ? sorted.reduce((a, b) => a + b, 0) / n : 0;
   return { q1, median, q3, whiskerLow, whiskerHigh, mean, outliers };
 }
-

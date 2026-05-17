@@ -70,7 +70,11 @@ impl GroupFrame {
 /// Resolve a `<xdr:grpSp>` to its world-EMU bbox + a child-frame that
 /// nested children can use to map their own xfrm into world space.
 fn group_frame(g: &xdr::GroupShape, parent: Option<GroupFrame>) -> Option<(WorldBox, GroupFrame)> {
-    let xfrm = g.group_shape_properties.as_ref()?.transform_group.as_ref()?;
+    let xfrm = g
+        .group_shape_properties
+        .as_ref()?
+        .transform_group
+        .as_ref()?;
     let off = xfrm.offset.as_ref()?;
     let ext = xfrm.extents.as_ref()?;
     let ch_off = xfrm.child_offset.as_ref()?;
@@ -267,10 +271,26 @@ fn visit_picture(
     // Drop a crop array of all zeros (the no-op case Excel emits a lot).
     let crop = crop.filter(|v| v.iter().any(|n| *n != 0));
 
-    let rel_x = if outer.cx > 0.0 { (world.x - outer.x) / outer.cx } else { 0.0 };
-    let rel_y = if outer.cy > 0.0 { (world.y - outer.y) / outer.cy } else { 0.0 };
-    let rel_w = if outer.cx > 0.0 { world.cx / outer.cx } else { 1.0 };
-    let rel_h = if outer.cy > 0.0 { world.cy / outer.cy } else { 1.0 };
+    let rel_x = if outer.cx > 0.0 {
+        (world.x - outer.x) / outer.cx
+    } else {
+        0.0
+    };
+    let rel_y = if outer.cy > 0.0 {
+        (world.y - outer.y) / outer.cy
+    } else {
+        0.0
+    };
+    let rel_w = if outer.cx > 0.0 {
+        world.cx / outer.cx
+    } else {
+        1.0
+    };
+    let rel_h = if outer.cy > 0.0 {
+        world.cy / outer.cy
+    } else {
+        1.0
+    };
 
     nodes.push(ShapeNode {
         rel_x: rel_x as f32,
@@ -317,8 +337,16 @@ fn visit_shape(
     } else {
         0.0
     };
-    let rel_w = if outer.cx > 0.0 { world.cx / outer.cx } else { 1.0 };
-    let rel_h = if outer.cy > 0.0 { world.cy / outer.cy } else { 1.0 };
+    let rel_w = if outer.cx > 0.0 {
+        world.cx / outer.cx
+    } else {
+        1.0
+    };
+    let rel_h = if outer.cy > 0.0 {
+        world.cy / outer.cy
+    } else {
+        1.0
+    };
 
     let sp = &s.shape_properties;
     let preset = preset_geom_name(sp);
@@ -445,10 +473,7 @@ fn preset_color_hex(variant_dbg: &str) -> Option<&'static str> {
     })
 }
 
-fn outline_info(
-    ln: Option<&a::Outline>,
-    theme: Option<&Theme>,
-) -> (Option<String>, Option<i32>) {
+fn outline_info(ln: Option<&a::Outline>, theme: Option<&Theme>) -> (Option<String>, Option<i32>) {
     let Some(ln) = ln else {
         return (None, None);
     };

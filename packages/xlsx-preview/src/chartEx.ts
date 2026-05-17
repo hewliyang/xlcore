@@ -30,11 +30,7 @@ import {
   paintZeroBaseline,
   resolveAxisRange,
 } from "./chartUtils.js";
-import {
-  drawBoxWhiskerChartEx,
-  drawHistogramChartEx,
-  drawParetoChartEx,
-} from "./chartExStats.js";
+import { drawBoxWhiskerChartEx, drawHistogramChartEx, drawParetoChartEx } from "./chartExStats.js";
 import { drawRegionMapChartEx } from "./chartExRegionMap.js";
 
 const AXIS_FONT_SIZE = 10;

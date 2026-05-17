@@ -76,11 +76,7 @@ function drawShapeNode(
     // OOXML default `<a:ln>` width when unspecified is 9525 EMU (1pt).
     // 0 EMU is a hairline (Excel renders as 0.5px).
     const widthPx =
-      widthEmu == null
-        ? 1.0
-        : widthEmu === 0
-          ? 0.5
-          : Math.max(0.5, widthEmu * PX_PER_EMU);
+      widthEmu == null ? 1.0 : widthEmu === 0 ? 0.5 : Math.max(0.5, widthEmu * PX_PER_EMU);
     ctx.strokeStyle = node.outlineColor;
     ctx.lineWidth = widthPx;
     ctx.stroke();
@@ -517,7 +513,12 @@ function paragraphLineHeight(p: ShapeParagraph): number {
   return Math.ceil((maxPt / PT_PER_PX) * 1.2);
 }
 
-function runFont(r: { size?: number; bold?: boolean; italic?: boolean; fontName?: string }): string {
+function runFont(r: {
+  size?: number;
+  bold?: boolean;
+  italic?: boolean;
+  fontName?: string;
+}): string {
   const pt = r.size ?? DEFAULT_FONT_PT;
   const px = pt / PT_PER_PX;
   const family = r.fontName

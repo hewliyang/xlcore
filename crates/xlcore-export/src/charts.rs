@@ -21,8 +21,7 @@ use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_dra
 /// chartEx graphicData URI (Office 2014+). Distinguishes a `cx:chartSpace`
 /// payload from the legacy `c:chartSpace` (which uses the
 /// `http://schemas.openxmlformats.org/drawingml/2006/chart` URI).
-const CHARTEX_GRAPHIC_DATA_URI: &str =
-    "http://schemas.microsoft.com/office/drawing/2014/chartex";
+const CHARTEX_GRAPHIC_DATA_URI: &str = "http://schemas.microsoft.com/office/drawing/2014/chartex";
 
 /// What kind of drawing the anchor points at, plus the rId we need to
 /// resolve through the drawing-part's relationships.
@@ -1057,7 +1056,11 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
     let title = extract_title(chart.title.as_deref()).or_else(|| {
         if chart.title.is_some() && !auto_title_deleted && series.len() == 1 {
             let n = series[0].name.clone();
-            if n.is_empty() { None } else { Some(n) }
+            if n.is_empty() {
+                None
+            } else {
+                Some(n)
+            }
         } else {
             None
         }
@@ -1175,7 +1178,11 @@ fn extract_chart_ex_title(t: Option<&cx::ChartTitle>) -> Option<String> {
                     }
                 }
             }
-            if out.is_empty() { None } else { Some(out) }
+            if out.is_empty() {
+                None
+            } else {
+                Some(out)
+            }
         }
     }
 }
@@ -1207,16 +1214,18 @@ struct ParsedSeriesData {
 /// under `<cx:chartData>`, then walk the inner dimensions to extract
 /// categories + numeric values. Returns `None` when the chartData
 /// block is missing entirely.
-fn parse_series_data(
-    space: &cx::ChartSpace,
-    series: &cx::Series,
-) -> Option<ParsedSeriesData> {
+fn parse_series_data(space: &cx::ChartSpace, series: &cx::Series) -> Option<ParsedSeriesData> {
     let data_id = series.cx_data_id.as_ref().map(|d| d.val).unwrap_or(0);
     let data_block = space
         .chart_data
         .as_deref()
         .and_then(|cd| cd.cx_data.iter().find(|d| d.id == data_id))
-        .or_else(|| space.chart_data.as_deref().and_then(|cd| cd.cx_data.first()))?;
+        .or_else(|| {
+            space
+                .chart_data
+                .as_deref()
+                .and_then(|cd| cd.cx_data.first())
+        })?;
 
     let mut categories: Vec<String> = Vec::new();
     let mut categories_ref: Option<String> = None;
@@ -1319,11 +1328,7 @@ fn parse_series_name(series: &cx::Series) -> String {
 /// series don't currently surface per-series colors / data labels /
 /// axis-group toggles — those slots stay at defaults for the renderer
 /// to fill in (e.g. boxWhisker accents come from the theme).
-fn make_chart_series(
-    name: String,
-    values: Vec<f64>,
-    values_ref: Option<String>,
-) -> ChartSeries {
+fn make_chart_series(name: String, values: Vec<f64>, values_ref: Option<String>) -> ChartSeries {
     ChartSeries {
         name,
         name_ref: None,

@@ -294,4 +294,3 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     }
   }
 }
-

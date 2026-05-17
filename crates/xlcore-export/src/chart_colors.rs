@@ -573,7 +573,6 @@ mod color_mod_tests {
             Some("#FFF8E1"),
         );
     }
-
 }
 
 /// Resolve `accent{n}` against the workbook theme (slots 4..9 in our

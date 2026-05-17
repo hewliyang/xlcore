@@ -148,20 +148,15 @@ export function computeTableState(
     const accentColor: Color = { rgb: accent.slice(1).toUpperCase() };
     const bandColor: Color = { rgb: bandHex.slice(1).toUpperCase() };
     const whiteColor: Color = { rgb: "FFFFFF" };
-    const headerDxf: Dxf =
-      mergeDxf(wholeTableDxf, resolveDxf(layout, custom?.headerRow)) ?? {
-        fillColor: accentColor,
-        fontColor: whiteColor,
-        bold: true,
-      };
-    const stripeDxf: Dxf =
-      mergeDxf(wholeTableDxf, resolveDxf(layout, custom?.firstRowStripe)) ?? {
-        fillColor: bandColor,
-      };
-    const totalDxf: Dxf | undefined = mergeDxf(
-      wholeTableDxf,
-      resolveDxf(layout, custom?.totalRow),
-    );
+    const headerDxf: Dxf = mergeDxf(wholeTableDxf, resolveDxf(layout, custom?.headerRow)) ?? {
+      fillColor: accentColor,
+      fontColor: whiteColor,
+      bold: true,
+    };
+    const stripeDxf: Dxf = mergeDxf(wholeTableDxf, resolveDxf(layout, custom?.firstRowStripe)) ?? {
+      fillColor: bandColor,
+    };
+    const totalDxf: Dxf | undefined = mergeDxf(wholeTableDxf, resolveDxf(layout, custom?.totalRow));
 
     const headerRows = t.headerRowCount;
     const totalsRows = t.totalsRowCount;
@@ -217,10 +212,7 @@ export function computeTableState(
       for (let c = tc1; c <= tc2; c++) {
         const k = `${totalsR}:${c}`;
         if (tableDxfs.has(k)) continue;
-        tableDxfs.set(
-          k,
-          totalDxf ?? { fillColor: bandColor, bold: true },
-        );
+        tableDxfs.set(k, totalDxf ?? { fillColor: bandColor, bold: true });
       }
     }
   }
