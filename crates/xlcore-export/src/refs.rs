@@ -174,7 +174,37 @@ pub(crate) fn resolve_chart_refs(
                             chart.categories_format = cell_format_code(cell, &styles_snapshot);
                         }
                     }
-                    if chart.categories.is_empty() {
+                    let n_rows = (r2 - r1 + 1) as usize;
+                    let n_cols = (c2 - c1 + 1) as usize;
+                    // Multi-column category ranges are the chartEx
+                    // hierarchy idiom (treemap / sunburst): each row is
+                    // a leaf; each column is a nesting level. SpreadJS
+                    // emits a single `<cx:strDim>` whose definedName
+                    // resolves to e.g. `Sheet1!$A$2:$B$10` (A = parent,
+                    // B = leaf). Split row-major cells into per-column
+                    // arrays so the painter can group leaves under
+                    // shared parents.
+                    if chart.chart_type == "chartex" && n_cols > 1 {
+                        let mut levels: Vec<Vec<String>> = vec![Vec::with_capacity(n_rows); n_cols];
+                        for r in 0..n_rows {
+                            for c in 0..n_cols {
+                                let cell = cells.get(r * n_cols + c).and_then(|c| c.as_ref());
+                                let s = cell
+                                    .and_then(|cc| read_string(&snapshot_sheets, cc, &sst))
+                                    .unwrap_or_default();
+                                levels[c].push(s);
+                            }
+                        }
+                        // `categories` (the legacy 1D field) gets the
+                        // innermost (leaf) column so non-hierarchical
+                        // code paths still see meaningful labels.
+                        if chart.categories.is_empty() {
+                            if let Some(last) = levels.last() {
+                                chart.categories = last.clone();
+                            }
+                        }
+                        chart.cx_category_levels = levels;
+                    } else if chart.categories.is_empty() {
                         chart.categories = cells
                             .into_iter()
                             .map(|cell| {

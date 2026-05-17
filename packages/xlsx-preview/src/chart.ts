@@ -111,7 +111,16 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
         // typically a no-op since they're also single-series).
       : chart.type === "chartex" && chart.cxLayout === "waterfall"
         ? waterfallLegendEntries(chart)
-        : chart.series;
+        : // funnel / treemap / sunburst chartex layouts each have a
+          // single OOXML series whose name carries no visual info;
+          // hsx / Excel suppress their `<cx:legend>` accordingly.
+          // Treemap should ideally show a per-branch legend; deferred.
+          chart.type === "chartex" &&
+            (chart.cxLayout === "funnel" ||
+              chart.cxLayout === "treemap" ||
+              chart.cxLayout === "sunburst")
+          ? []
+          : chart.series;
 
   // ECMA-376 legend positions: t/b/l/r/tr. The extractor surfaces
   // `legendPos = undefined` when the source XML has no `<c:legend>`

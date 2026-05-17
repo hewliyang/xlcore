@@ -7,6 +7,45 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Added chartEx (`cx:` namespace) funnel / treemap / sunburst painters
+  alongside the existing waterfall arm. Three pieces:
+  - **Rust extractor**: `extract_chart_ex` now accepts
+    `<cx:numDim type="size">` alongside `type="val"` (treemap /
+    sunburst encode rectangle / ring area in `size`, not `val`).
+  - **Chart-ref resolver**: multi-column `categories_ref` ranges
+    (e.g. `Sheet1!$A$2:$B$10` for a region→country hierarchy) are
+    materialized into a new `cxCategoryLevels: string[][]` schema
+    field — one inner array per nesting level, parallel to the
+    values vector. The legacy 1D `categories` field gets the
+    innermost (leaf) column for backward compat.
+  - **TS renderer**: new `chartEx.ts` module (carved out of
+    `chartAdvanced.ts` once chartEx surface area passed the per-file
+    LOC budget; `chartStock.ts` likewise split). `drawChartEx`
+    dispatches on `cxLayout`:
+    - **Funnel**: center-aligned horizontal bars, widths scaled to
+      the max value, per-bar value labels (suppressed when they'd
+      overflow), category labels in a left gutter.
+    - **Treemap**: squarified layout (Bruls/Huijsen/van Wijk 2000).
+      Hierarchical mode groups leaves by `cxCategoryLevels[0]`,
+      lays out parents across the full plot, then squarifies
+      children inside each parent rect. Each branch gets one theme
+      accent color; children share parent color, separated by white
+      borders. Parent labels sit in the top-left of each group rect.
+    - **Sunburst**: ring-per-level polar layout (innermost ring =
+      level 0). DFS keeps sibling wedges angularly contiguous; per-
+      branch theme accent with innermost-ring darken; tangentially-
+      rotated slice labels with overflow suppression.
+  - `chart.ts` suppresses the trivial single-series legend
+    (`"Count"` / `"GDP"` / `"Sales"`) for these three layouts —
+    Excel/hsx hide the legend too. Waterfall's synthetic three-swatch
+    legend (Increase / Decrease / Total) is unchanged.
+  - Fixtures: `tests/fixtures/charts/chart-{funnel,treemap,sunburst}-
+    chartex.xlsx`, authored via SpreadJS (`hsx eval`) per
+    `tests/fixtures/charts/build-chartex.sh`. ChartEx pareto /
+    boxWhisker / clusteredColumn (histogram) / regionMap still need
+    Excel-desktop authoring (SpreadJS export round-trip is unreliable
+    for those four — missing `<cx:axis>` blocks, no auto-binning,
+    degenerate render-as-cluster). See `docs/parity-charts.md`.
 - Added chartEx (`cx:` namespace, Office 2016+) waterfall support —
   previously the largest remaining chart-parity gap. End-to-end pipeline:
   - **Rust I/O**: enabled ooxmlsdk's `mce` feature and added a textual

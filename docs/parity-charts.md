@@ -29,7 +29,8 @@ Chart parity corpus: small, public fixtures in `tests/fixtures/charts/`.
 | Negative-range axes | 🟡 rough edges | 🟡 rough edges | tie |
 | `dispUnits` tick scaling + caption | ✅ Excel/spec | ❌ dropped | xlsx-preview |
 | chartEx (`cx:` waterfall) | ✅ (new) | ❌ empty bbox | xlsx-preview |
-| chartEx (`cx:` funnel/treemap/sunburst/pareto/boxWhisker/regionMap) | 🟡 placeholder | ✅ | hsx |
+| chartEx (`cx:` funnel/treemap/sunburst) | ✅ | ✅ | tie |
+| chartEx (`cx:` pareto/boxWhisker/regionMap/histogram) | 🟡 placeholder | ✅ | hsx |
 
 ## Fixture corpus
 
@@ -41,12 +42,22 @@ Chart parity corpus: small, public fixtures in `tests/fixtures/charts/`.
 | `tests/fixtures/charts/chart-*.layout.json` | extracted layout snapshots for debugging |
 | `tests/fixtures/charts/build-chart-regressions.sh` | rebuilds the minimal chart regression fixtures |
 
-chartEx (`cx:`) fixtures are authored in Excel desktop directly rather
-than via a build script — the chartEx XML body Excel writes references
-opaque `_xlchart.vN.X` definedName aliases (resolved through
-`workbook.xml`'s hidden `<definedName>` entries) and pulls colors from a
-chartStyle/colorStyle part pair, both of which are tricky enough to
-synthesize that round-tripping through Excel is the pragmatic path.
+chartEx (`cx:`) fixtures need a real Office-grade authoring path —
+the XML body uses opaque `_xlchart.vN.X` definedName aliases
+(resolved through `workbook.xml`'s hidden `<definedName>` entries) and
+pulls colors from a chartStyle/colorStyle part pair. Two production
+paths are in use:
+
+- Excel desktop directly (waterfall fixture).
+- SpreadJS via `hsx eval`, scripted in
+  `tests/fixtures/charts/build-chartex.sh` — verified for `funnel`,
+  `treemap`, `sunburst` (the three layoutIds where SpreadJS's chartEx
+  serializer round-trips cleanly through Excel and through itself).
+  `paretoLine` / `boxWhisker` / `clusteredColumn` (histogram) /
+  `regionMap` all have known SpreadJS export gaps (missing `<cx:axis>`
+  blocks, no auto-binning, degenerate render-as-cluster) — see the
+  rationale block in `build-chartex.sh`. Those four are still on the
+  Excel-desktop-authored backlog.
 
 Example fixtures:
 
@@ -57,6 +68,9 @@ Example fixtures:
 | `Sheet1` | Combo with secondary axis | `F2:N19` | `chart-combo-secondary-axis.xlsx`: clustered column + line on secondary y-axis |
 | `Sheet1` | Dual-axis lines | `F2:N19` | `chart-dual-axis-lines.xlsx`: two line series on primary/secondary y-axes |
 | `Sheet1` | Radar (standard/marker/filled) | `F2:N20` | `chart-radar-{standard,marker,filled}.xlsx`: one fixture per `radarStyle` value |
+| `Sheet1` | chartEx funnel | `A1:N22` | `chart-funnel-chartex.xlsx`: `cx:` `layoutId="funnel"`; single descending series, `numDim type="val"` |
+| `Sheet1` | chartEx treemap | `A1:N22` | `chart-treemap-chartex.xlsx`: `cx:` `layoutId="treemap"`; region→country hierarchy, `numDim type="size"` |
+| `Sheet1` | chartEx sunburst | `A1:N22` | `chart-sunburst-chartex.xlsx`: `cx:` `layoutId="sunburst"`; quarter→month hierarchy, `numDim type="size"` |
 
 ## Bug catalog
 
@@ -83,6 +97,7 @@ Example fixtures:
 | 19 | 3D legacy chart variants emitted empty bbox | xlsx-preview | ✅ fixed | `Bar3D` / `Line3D` / `Area3D` / `Pie3D` / `ofPie` plot-area arms dispatch to the 2D painter; depth/perspective dropped. `chart-3d-*`. |
 | 20 | `radarChart` emitted empty bbox | xlsx-preview | ✅ fixed | New `drawRadarChart` (polar painter); polygon gridlines, per-spoke category labels, top-spoke value-axis ticks. `radarStyle` selects standard / marker / filled. `chart-radar-{standard,marker,filled}.xlsx`. |
 | 21 | `stockChart` emitted empty bbox | xlsx-preview | ✅ fixed | New `drawStockChart`; series-count infers subtype (3=HLC, 4=OHLC, 5=VOHLC). Honors `<c:hiLowLines/>` (vertical mark), `<c:upDownBars/>` (open→close rect; white-fill up, black-fill down), `<c:dropLines/>`. Volume sub-plot stub for VOHLC. hsx renders empty here. `chart-stock-{hlc,ohlc}.xlsx`. |
+| 23 | chartEx funnel / treemap / sunburst emitted placeholder | xlsx-preview | ✅ fixed | New `chartEx.ts` module. Funnel: center-aligned horizontal bars scaled to max. Treemap: squarified layout (Bruls 2000); parents from `cxCategoryLevels[0]` get the accent, leaves share parent color. Sunburst: ring-per-level polar layout, DFS traversal keeps siblings angularly contiguous, per-branch accent with innermost-ring darken. Three extractor pieces: (1) accept `<cx:numDim type="size">` (treemap/sunburst use size not val); (2) materialize multi-column `categories_ref` ranges as `cxCategoryLevels`; (3) suppress the trivial single-series legend for these three layouts. Fixtures: `chart-{funnel,treemap,sunburst}-chartex.xlsx` (SpreadJS-authored). |
 | 22 | chartEx (`cx:`) drawings emitted empty bbox | xlsx-preview | ✅ fixed for waterfall | Four-part fix: (1) `xmlns_normalize` textually unfolds `<mc:AlternateContent>` blocks in drawing parts to their first `<mc:Choice>` content — Excel always wraps chartEx in MC for old-Excel fallback, and ooxmlsdk's typed `two_cell_anchor_choice` never sees MC contents otherwise. (2) New `cx:` extractor in `charts.rs::extract_chart_ex` surfaces `chart_type="chartex"`, `cx_layout`, and `cx_subtotal_indices`. (3) Chart-ref resolver dereferences Excel's `_xlchart.vN.X` indirection — chartEx bodies use opaque alias formulas (`<cx:f>_xlchart.v1.4</cx:f>`) that resolve through `workbook.xml`'s `<definedName hidden="1">Sheet1!$A$2:$A$7</definedName>` entries. (4) New `chartAdvanced.ts::drawChartEx` dispatches on `cxLayout`; the `waterfall` painter draws cumulative bars (subtotals absolute from the floor), dashed connectors, per-bar value labels, theme-accent fills (accent1=Increase / accent2=Decrease / accent3=Total per the colorStyle part's default `cycle id="10"`), and a synthetic 3-swatch legend. Other layouts (funnel/treemap/sunburst/paretoLine/boxWhisker/regionMap) still fall through to the placeholder pending fixtures. `chart-waterfall-chartex.xlsx` (Excel-authored). |
 
 ## Chart-type coverage
@@ -102,9 +117,9 @@ Example fixtures:
 | `c:` | `ofPieChart` | 🟡 | rendered as plain pie (no satellite split) |
 | `c:` | `bar3DChart` / `line3DChart` / `area3DChart` / `pie3DChart` | ✅ | dispatched to 2D painters; 3D perspective/depth dropped |
 | `cx:` | `waterfall` | ❌ | chartEx unsupported |
-| `cx:` | `funnel` | ❌ | chartEx unsupported |
-| `cx:` | `treemap` | ❌ | chartEx unsupported |
-| `cx:` | `sunburst` | ❌ | chartEx unsupported |
+| `cx:` | `funnel` | ✅ | `chartEx.ts::drawFunnelChartEx`. Center-aligned horizontal bars; widths scaled to max value; per-bar value labels when they fit. Fixture: `chart-funnel-chartex.xlsx` |
+| `cx:` | `treemap` | ✅ | `chartEx.ts::drawTreemapChartEx`. Squarified layout (Bruls et al. 2000); multi-level hierarchies grouped by `cxCategoryLevels[0]` with per-branch theme accent. Fixture: `chart-treemap-chartex.xlsx` |
+| `cx:` | `sunburst` | ✅ | `chartEx.ts::drawSunburstChartEx`. Ring-per-level polar layout from `cxCategoryLevels`; per-branch accent (innermost ring darkened); tangentially-rotated slice labels. Fixture: `chart-sunburst-chartex.xlsx` |
 | `cx:` | `histogram` / `pareto` | ❌ | chartEx unsupported |
 | `cx:` | `boxWhisker` | ❌ | chartEx unsupported |
 | `cx:` | `regionMap` | ❌ | chartEx unsupported |
@@ -127,8 +142,22 @@ Example fixtures:
 3. ~~`ofPieChart` as plain pie first.~~ **shipped** (satellite split still deferred). `chart-3d-ofpie.xlsx`.
 4. ~~`stockChart`.~~ **shipped.** `chartAdvanced.ts::drawStockChart`; HLC (3-series, hi-low marks) and OHLC (4-series, candlestick up/down bars). Volume sub-plot stub for 5-series VOHLC. `chart-stock-{hlc,ohlc}.xlsx`.
 5. ~~`cx:` waterfall.~~ **shipped.** `chart-waterfall-chartex.xlsx`. Pipeline: `xmlns_normalize` unfolds `<mc:AlternateContent>` → chartEx schema parses → `drawChartEx` waterfall painter.
-6. `cx:` funnel / treemap / sunburst / histogram / boxWhisker.
-7. `surfaceChart` / `regionMap`.
+6. ~~`cx:` funnel / treemap / sunburst.~~ **shipped.** Painters in
+   `packages/xlsx-preview/src/chartEx.ts`. Extractor changes: accept
+   `<cx:numDim type="size">` alongside `type="val"`; surface multi-
+   column `categories_ref` ranges as `cxCategoryLevels: Vec<Vec<String>>`
+   in `refs.rs::resolve_chart_refs` (one inner Vec per nesting level,
+   parallel to the values array). Renderer changes: per-layout dispatch
+   from `drawChartEx`; squarified treemap; DFS sunburst with per-branch
+   accent. `chart.ts` suppresses the trivial single-series legend
+   ("Count" / "GDP" / "Sales") for these three layouts. `chartAdvanced.ts`
+   split: `chartEx.ts` (~700 LOC) + `chartStock.ts` (~300 LOC) carved
+   out to fit the per-file LOC budget. Fixtures:
+   `chart-{funnel,treemap,sunburst}-chartex.xlsx`.
+7. `cx:` histogram / boxWhisker / paretoLine — fixtures still need
+   Excel-desktop authoring (SpreadJS export round-trip is unreliable
+   for these four; see `build-chartex.sh` notes).
+8. `surfaceChart` / `regionMap`.
 
 ## Open items
 

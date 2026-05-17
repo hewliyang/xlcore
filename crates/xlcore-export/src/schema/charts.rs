@@ -235,6 +235,15 @@ pub struct Chart {
     /// from the floor (not stacked on the previous cumulative).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cx_subtotal_indices: Vec<u32>,
+    /// Multi-level categories for hierarchical chartEx layouts
+    /// (treemap, sunburst). Outer Vec = depth (column 0 = outermost
+    /// parent, last column = leaf label). Each inner Vec is parallel
+    /// to `series[0].values` (one entry per data point). Populated by
+    /// the chart-ref resolver when `categories_ref` spans more than
+    /// one column. When this is non-empty the (1D) `categories`
+    /// field holds the innermost (leaf) column for backward compat.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cx_category_levels: Vec<Vec<String>>,
     /// Waterfall fill colors: `[increment, decrement, subtotal]`.
     /// Each entry is a CSS color string, or empty when authored
     /// `<cx:layoutPr><cx:{increment,decrement,subtotal}>` is absent

@@ -1064,6 +1064,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
         stock_drop_lines,
         cx_layout: None,
         cx_subtotal_indices: Vec::new(),
+        cx_category_levels: Vec::new(),
         cx_waterfall_increment_color: None,
         cx_waterfall_decrement_color: None,
         cx_waterfall_subtotal_color: None,
@@ -1189,7 +1190,16 @@ fn extract_chart_ex(space: &cx::ChartSpace) -> Option<Chart> {
                 }
             }
             cx::DataChoice::CxNumDim(nd) => {
-                if !matches!(nd.r#type, cx::NumericDimensionType::Val) {
+                // Funnel / waterfall / pareto use `type="val"`; treemap /
+                // sunburst / histogram use `type="size"` (the dimension
+                // encodes rectangle/ring area or histogram-bin count
+                // rather than a y-axis value). Both map to the same
+                // `values` vector — the per-layout painter knows what
+                // the numbers mean.
+                if !matches!(
+                    nd.r#type,
+                    cx::NumericDimensionType::Val | cx::NumericDimensionType::Size
+                ) {
                     continue;
                 }
                 let levels: Vec<&cx::NumericLevel> = match nd.numeric_dimension_choice.as_ref() {
@@ -1297,6 +1307,7 @@ fn extract_chart_ex(space: &cx::ChartSpace) -> Option<Chart> {
         stock_drop_lines: false,
         cx_layout: Some(layout),
         cx_subtotal_indices: subtotal_indices,
+        cx_category_levels: Vec::new(),
         cx_waterfall_increment_color: None,
         cx_waterfall_decrement_color: None,
         cx_waterfall_subtotal_color: None,

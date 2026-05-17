@@ -127,6 +127,16 @@ export type Chart = {
    */
   cxSubtotalIndices: Array<number>;
   /**
+   * Multi-level categories for hierarchical chartEx layouts
+   * (treemap, sunburst). Outer Vec = depth (column 0 = outermost
+   * parent, last column = leaf label). Each inner Vec is parallel
+   * to `series[0].values` (one entry per data point). Populated by
+   * the chart-ref resolver when `categories_ref` spans more than
+   * one column. When this is non-empty the (1D) `categories`
+   * field holds the innermost (leaf) column for backward compat.
+   */
+  cxCategoryLevels: Array<Array<string>>;
+  /**
    * Waterfall fill colors: `[increment, decrement, subtotal]`.
    * Each entry is a CSS color string, or empty when authored
    * `<cx:layoutPr><cx:{increment,decrement,subtotal}>` is absent
