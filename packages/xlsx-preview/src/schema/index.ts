@@ -43,6 +43,7 @@ export type { Styles } from "./Styles.js";
 export type { Table } from "./Table.js";
 export type { TableColumn } from "./TableColumn.js";
 export type { TableStyle } from "./TableStyle.js";
+export type { CustomTableStyle } from "./CustomTableStyle.js";
 export type { TextRun } from "./TextRun.js";
 export type { Theme } from "./Theme.js";
 export type { WorkbookLayout } from "./WorkbookLayout.js";

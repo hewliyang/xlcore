@@ -7,6 +7,57 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Resolved custom `<tableStyles>` definitions. Previously the
+  renderer only understood Excel's built-in style names
+  (`TableStyleMedium2`, etc.) and inferred the accent color from the
+  trailing digit; workbooks authored with a custom-named style — e.g.
+  Microsoft's `Excel_TipsTableStyle` from the public Map Chart
+  template — fell back to accent1 (blue) regardless of what the style
+  actually pointed at, so a green-themed header rendered blue. Three
+  pieces:
+  - **Rust schema**: new `WorkbookLayout.tableStyles:
+    Vec<CustomTableStyle>`. Each entry carries the style `name` plus
+    `dxfId` references for the bands we paint (`wholeTable`,
+    `headerRow`, `totalRow`, `firstRowStripe`, `secondRowStripe`,
+    `firstColumn`, `lastColumn`). Bands we don't render yet (column
+    stripes, subtotal rows, page-field cells) drop on the floor; add
+    fields as the renderer grows.
+  - **Rust extractor**: new `extract_table_styles` in `styles.rs`
+    walks `<x:tableStyles>/<tableStyle>/<tableStyleElement>` and
+    populates the named slots. Wired into `lib.rs` alongside
+    `extract_dxfs`.
+  - **TS renderer**: `computeTableState` now takes the workbook layout
+    and resolves custom styles by name. Resolution order is (1) custom
+    `<tableStyles>` lookup → dxf overlay via the existing `cfDxfs`
+    pipeline, (2) built-in name heuristic fallback. Each band falls
+    back independently — a custom style that only defines `headerRow`
+    still gets synthesized row stripes. New helpers: `mergeDxf`
+    stacks `wholeTable` underneath the band-specific overlay per
+    ECMA-376 §18.8.40.
+  - Fixture: `tests/fixtures/charts/chart-regionmap-chartex.xlsx`
+    (slimmed copy of Microsoft's public "Map Chart samples.xlsx";
+    two ~19MB `<cx:binary>` Bing geoCache blobs stripped — our
+    renderer doesn't consume them). The fixture is primarily there
+    to unblock the chartEx regionMap painter (still TODO) but the
+    table-header bug surfaced as collateral while staging it.
+  - Not yet honored: per-table direct overrides on `<table>` itself
+    (`headerRowDxfId=""`, `dataDxfId=""`). These stack on top of the
+    table style and would be a small follow-up.
+
+- Surfaced a `regionMap` chartEx fixture. Microsoft's public "Map
+  Chart samples.xlsx" template, slimmed from 40MB → 77KB by
+  stripping the two `<cx:binary>` Bing geoCache blobs (our pipeline
+  doesn't decode Bing's proprietary polygon encoding; the geometry
+  will come from an embedded world-countries dataset when we ship
+  the painter). The extractor already routes the layout through
+  `drawChartEx` with `cx_layout="regionMap"`, but the painter still
+  falls through to `drawPlaceholderPlot`. Notably hsx also falls back
+  here — it renders the regionMap as a clustered column chart, not
+  as a real map — so a future choropleth painter would beat hsx on
+  this layout, not just match it. Fixture lives at
+  `tests/fixtures/charts/chart-regionmap-chartex.xlsx`; painter design
+  notes in `docs/parity-charts.md` priority #8.
+
 - Added chartEx (`cx:` namespace) histogram / pareto / boxWhisker
   painters. All three are clear wins over hsx, which mis-renders each
   of them (histogram as raw bars, pareto as duplicated clustered

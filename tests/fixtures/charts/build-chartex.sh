@@ -38,9 +38,13 @@
 #    each observation becomes its own bar, defeating the point of the
 #    histogram layout.
 #  - regionMap: requires Bing Maps geographic resolution; not worth
-#    synthesizing in a minimal fixture.
+#    synthesizing in a minimal fixture. Resolved separately by
+#    importing Microsoft's own public "Map Chart samples.xlsx"
+#    template (with the two ~19MB `<cx:binary>` geoCache blobs
+#    stripped — our renderer doesn't consume Bing's proprietary
+#    polygon encoding); see `chart-regionmap-chartex.xlsx`.
 #
-# These four belong to a future "Excel-desktop-authored chartEx" batch
+# These belong to a future "Excel-desktop-authored chartEx" batch
 # (same path as `chart-waterfall-chartex.xlsx`). Funnel / treemap /
 # sunburst already exercise the chartEx extractor + the
 # `cx:numDim type=size` (treemap/sunburst) and `cx:numDim type=val`

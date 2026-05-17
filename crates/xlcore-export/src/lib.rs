@@ -61,15 +61,16 @@ pub fn extract_doc_with_options(
 ) -> Result<WorkbookLayout> {
     let shared_strings = shared_strings::preload(doc);
 
-    let (styles, dxfs) = {
+    let (styles, dxfs, table_styles) = {
         let wb_part = doc.workbook_part()?;
         if let Some(sp) = wb_part.workbook_styles_part(doc) {
             let sp = sp.clone();
             let s = sp.root_element(doc)?;
             let dxfs = styles::extract_dxfs(s);
-            (styles::extract(s), dxfs)
+            let table_styles = styles::extract_table_styles(s);
+            (styles::extract(s), dxfs, table_styles)
         } else {
-            (Styles::default(), Vec::new())
+            (Styles::default(), Vec::new(), Vec::new())
         }
     };
 
@@ -184,6 +185,7 @@ pub fn extract_doc_with_options(
         shared_strings: shared_strings.0,
         shared_string_runs: shared_strings.1,
         dxfs,
+        table_styles,
         theme,
         active_sheet_index: if options.sheet_index.is_some() || options.sheet_name.is_some() {
             Some(0)

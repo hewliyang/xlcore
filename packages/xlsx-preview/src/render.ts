@@ -89,7 +89,7 @@ export function render(
   const { cfIconReserve, cfIconDraw, cfIconSuppress } = computeCfIconState(sheet, cfLocks);
   for (const k of cfIconSuppress) cfTextSuppress.add(k);
 
-  const { tableDxfs, filterArrows } = computeTableState(sheet, visibleEnvelope(panes));
+  const { tableDxfs, filterArrows } = computeTableState(sheet, layout, visibleEnvelope(panes));
   for (const [k, dxf] of tableDxfs) {
     if (!cfDxfs.has(k)) cfDxfs.set(k, dxf);
   }

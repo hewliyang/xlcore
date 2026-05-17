@@ -96,6 +96,46 @@ pub fn extract_dxfs(s: &x::Stylesheet) -> Vec<crate::schema::Dxf> {
     dxfs.x_dxf.iter().map(extract_dxf).collect()
 }
 
+/// Extract the workbook's `<tableStyles>` block — named custom table
+/// styles (workbooks may ship their own beyond Excel's built-ins).
+/// We resolve each style's element list (`<tableStyleElement type="…"
+/// dxfId="N"/>`) into the named slots on `CustomTableStyle` that the
+/// renderer actually consults. The dxfId references the parallel
+/// `<dxfs>` block surfaced by `extract_dxfs`.
+pub fn extract_table_styles(s: &x::Stylesheet) -> Vec<crate::schema::CustomTableStyle> {
+    let Some(ts) = s.table_styles.as_ref() else {
+        return Vec::new();
+    };
+    ts.x_table_style
+        .iter()
+        .map(|style| {
+            let mut out = crate::schema::CustomTableStyle {
+                name: style.name.as_str().to_string(),
+                ..Default::default()
+            };
+            for el in &style.x_table_style_element {
+                let Some(dxf_id) = el.format_id else { continue };
+                use x::TableStyleValues as T;
+                match el.r#type {
+                    T::WholeTable => out.whole_table = Some(dxf_id),
+                    T::HeaderRow => out.header_row = Some(dxf_id),
+                    T::TotalRow => out.total_row = Some(dxf_id),
+                    T::FirstRowStripe => out.first_row_stripe = Some(dxf_id),
+                    T::SecondRowStripe => out.second_row_stripe = Some(dxf_id),
+                    T::FirstColumn => out.first_column = Some(dxf_id),
+                    T::LastColumn => out.last_column = Some(dxf_id),
+                    // Bands we don't paint yet (column stripes, subtotal
+                    // rows, page-field cells, header/total corner cells)
+                    // are dropped on the floor. Add a field when the
+                    // renderer learns to paint that band.
+                    _ => {}
+                }
+            }
+            out
+        })
+        .collect()
+}
+
 fn extract_dxf(d: &XDxf) -> crate::schema::Dxf {
     let mut out = crate::schema::Dxf::default();
     if let Some(f) = d.font.as_ref() {

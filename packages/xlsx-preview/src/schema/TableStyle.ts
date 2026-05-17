@@ -3,9 +3,11 @@
 /**
  * `<tableStyleInfo>` — picks one of Excel's built-in table styles
  * (e.g. `TableStyleMedium2`) and toggles the four banding axes.
- * Custom user table styles (`<customTableStyles>` in styles.xml) are
- * NOT resolved; the renderer falls back to the default Medium2 look
- * when it doesn't recognize the style name.
+ * Custom user table styles (`<tableStyles>` in styles.xml) ARE
+ * resolved — they're surfaced on `WorkbookLayout.table_styles` and
+ * the renderer looks them up by `name`. When neither a built-in nor
+ * a custom match is found the renderer falls back to the default
+ * Medium2 accent.
  */
 export type TableStyle = {
   /**

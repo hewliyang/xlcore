@@ -39,6 +39,7 @@ export type {
   Color,
   Comment,
   ConditionalFormat,
+  CustomTableStyle,
   Drawing,
   DrawingAnchor,
   Dxf,

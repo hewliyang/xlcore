@@ -29,6 +29,15 @@ pub struct WorkbookLayout {
     /// Indexed by `CfRule.dxf_id`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub dxfs: Vec<Dxf>,
+    /// Custom user-defined table styles (`<tableStyles><tableStyle>`).
+    /// Excel's *built-in* styles (`TableStyleMedium2`, `TableStyleLight1`,
+    /// …) are not enumerated here — the renderer derives those from
+    /// the trailing integer in the style name. Custom styles need the
+    /// per-element `dxfId` references because the fill/font live in
+    /// the workbook's `dxfs` table, not the style name. Look up by
+    /// `TableStyle.name` from `Table.style`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub table_styles: Vec<CustomTableStyle>,
     /// Workbook theme (`xl/theme/theme1.xml`) — color palette + font scheme.
     /// `Color { theme: N }` references resolve against `theme.colors[N]`.
     /// `None` when the workbook ships no theme part (rare); renderer falls
@@ -537,9 +546,11 @@ pub struct TableColumn {
 
 /// `<tableStyleInfo>` — picks one of Excel's built-in table styles
 /// (e.g. `TableStyleMedium2`) and toggles the four banding axes.
-/// Custom user table styles (`<customTableStyles>` in styles.xml) are
-/// NOT resolved; the renderer falls back to the default Medium2 look
-/// when it doesn't recognize the style name.
+/// Custom user table styles (`<tableStyles>` in styles.xml) ARE
+/// resolved — they're surfaced on `WorkbookLayout.table_styles` and
+/// the renderer looks them up by `name`. When neither a built-in nor
+/// a custom match is found the renderer falls back to the default
+/// Medium2 accent.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(
@@ -560,6 +571,57 @@ pub struct TableStyle {
     pub show_row_stripes: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     pub show_column_stripes: bool,
+}
+
+/// One `<tableStyle name="…">` entry from `xl/styles.xml`'s
+/// `<tableStyles>` block. Each style is a bag of
+/// `<tableStyleElement type="…" dxfId="N"/>` references; the renderer
+/// uses the dxf at index N as an overlay for that band of the table
+/// (header row, first/second row stripe, total row, etc.).
+///
+/// We surface the elements we actually paint today. Bands we don't
+/// implement (column stripes, subtotal rows, page-field cells) are
+/// dropped on the floor — add fields as the renderer learns more
+/// bands. ECMA-376 §18.8.40 has the full enumeration.
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomTableStyle {
+    pub name: String,
+    /// `dxfId` for the whole-table overlay (border defaults, base fill).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub whole_table: Option<u32>,
+    /// `dxfId` for the header row band (fill + bold/colored font).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub header_row: Option<u32>,
+    /// `dxfId` for the totals row band.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total_row: Option<u32>,
+    /// `dxfId` for the first row stripe (the tint applied to alternating
+    /// data rows; in Excel's Medium styles this is the accent-tinted band).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_row_stripe: Option<u32>,
+    /// `dxfId` for the second row stripe (the *other* alternating band;
+    /// usually unset — implied as the default "no fill" complement).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub second_row_stripe: Option<u32>,
+    /// `dxfId` for the first column band (typically bold).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_column: Option<u32>,
+    /// `dxfId` for the last column band (typically bold).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_column: Option<u32>,
 }
 
 mod charts;

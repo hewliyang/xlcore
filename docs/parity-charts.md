@@ -33,7 +33,7 @@ Chart parity corpus: small, public fixtures in `tests/fixtures/charts/`.
 | chartEx (`cx:` histogram) | ✅ auto-binned columns | ❌ renders raw values as bars | xlsx-preview |
 | chartEx (`cx:` pareto) | ✅ bars + cumulative line | ❌ renders as clustered duplicate bars | xlsx-preview |
 | chartEx (`cx:` boxWhisker) | ✅ quartile boxes + whiskers + mean | ❌ renders as clustered column | xlsx-preview |
-| chartEx (`cx:` regionMap) | 🟡 placeholder | ✅ | hsx |
+| chartEx (`cx:` regionMap) | 🟡 placeholder | 🟡 column-chart fallback | tie (both fall back) |
 
 ## Fixture corpus
 
@@ -79,6 +79,7 @@ Example fixtures:
 | `Sheet1` | chartEx histogram | `A1:N22` | `chart-histogram-chartex.xlsx`: `cx:` `layoutId="clusteredColumn"` with `<cx:binning>`; Excel-authored histogram fixture |
 | `Sheet1` | chartEx pareto | `A1:N22` | `chart-pareto-chartex.xlsx`: `cx:` primary `layoutId="clusteredColumn"` plus owner `layoutId="paretoLine"`; Excel-authored pareto fixture |
 | `Sheet1` | chartEx box and whisker | `A1:N22` | `chart-boxwhisker-chartex.xlsx`: `cx:` `layoutId="boxWhisker"`; Excel-authored box/whisker fixture |
+| `2-color Map Chart` | chartEx region map | `A1:Y20` | `chart-regionmap-chartex.xlsx`: `cx:` `layoutId="regionMap"`; Microsoft "Map Chart samples.xlsx" template (slimmed — two ~19MB `<cx:binary>` Bing geoCache blobs stripped, our renderer doesn't consume them). Fixture cleared for use; renderer painter still TODO. |
 
 ## Bug catalog
 
@@ -132,7 +133,7 @@ Example fixtures:
 | `cx:` | `histogram` | ✅ | `chartExStats.ts::drawHistogramChartEx`. Sturges bin count → nice-rounded width; right-closed `(low, high]` bin labels with the leftmost bin shown as `[low, high]`. Fixture: `chart-histogram-chartex.xlsx` |
 | `cx:` | `pareto` | ✅ | `chartExStats.ts::drawParetoChartEx`. Primary clusteredColumn bars + cumulative-% line on a synthesized right-hand axis (0”100%). Fixture: `chart-pareto-chartex.xlsx` |
 | `cx:` | `boxWhisker` | ✅ | `chartExStats.ts::drawBoxWhiskerChartEx`. Computes Q1/median/Q3/whiskers/outliers per QUARTILE.EXC; paints box + median rule + whisker caps + mean (×) marker per series. Fixture: `chart-boxwhisker-chartex.xlsx` |
-| `cx:` | `regionMap` | ❌ | chartEx unsupported |
+| `cx:` | `regionMap` | 🟡 | Fixture unblocked (`chart-regionmap-chartex.xlsx`); painter still falls through to `drawPlaceholderPlot`. Extractor already sets `cx_layout="regionMap"`. Painter design notes in priority #8. |
 
 ## Unsupported chartEx
 
@@ -175,8 +176,22 @@ Example fixtures:
    pareto / boxWhisker / histogram via layoutId combination +
    `<cx:binning>` layoutPr. Fixtures:
    `chart-{histogram,pareto,boxwhisker}-chartex.xlsx`.
-8. `cx:` regionMap — still needs Excel desktop authoring with Bing map
-   lookup accepted during fixture generation.
+8. `cx:` regionMap — **fixture unblocked.** Slimmed copy of
+   Microsoft's public "Map Chart samples.xlsx" template lives at
+   `tests/fixtures/charts/chart-regionmap-chartex.xlsx` (77KB; two
+   ~19MB `<cx:binary>` Bing-encoded geoCache blobs stripped — our
+   pipeline doesn't decode Bing's proprietary polygon format, we will
+   bring our own world-country geometry). Extractor already routes
+   the layout through to `drawChartEx` with `cx_layout="regionMap"`;
+   only the painter remains. Painter design: equirectangular
+   projection of an embedded Natural Earth 110m countries dataset
+   (~50KB compact GeoJSON / topojson), country name → polygon
+   lookup, color-scale interpolation per `<cx:numDim type="colorVal">`,
+   gradient legend bar at right. Pick the visible (non-`hidden="1"`)
+   series when Excel authors offers alternatives. Note: HSX also
+   falls back here — it renders a clustered column chart instead
+   of a map — so a real choropleth would beat hsx on this layout,
+   not just match it.
 9. `surfaceChart`.
 
 ## Open items

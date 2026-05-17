@@ -91,7 +91,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a out of scope.
 
 | Feature | Extract | Render | Notes |
 | --- | --- | --- | --- |
-| Tables / ListObjects | ✅ | 🟡 | header, banding, filter glyphs, totals; no filtering |
+| Tables / ListObjects | ✅ | ✅ | header, banding, filter glyphs, totals; no filtering. Custom `<tableStyles>` definitions resolved — header / firstRowStripe / totalRow / wholeTable dxfs apply via the same `cfDxfs` pipeline as conditional formatting; built-in `TableStyleMedium*` names still fall back to the accent-from-trailing-digit heuristic. Per-table direct overrides (`headerRowDxfId`, `dataDxfId`) not yet honored. |
 | Pivot tables | 🟡 | 🟡 | static materialized cells + filter chevrons; no refresh/interactivity |
 | Slicers / timelines | ❌ | ❌ | |
 | Data validation | ❌ | ❌ | dropdowns are compositor/interactivity work |
@@ -104,11 +104,11 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a out of scope.
 | Chart: area | ✅ | ✅ | standard/stacked/percent |
 | Chart: combo/secondary axis | ✅ | ✅ | multi-group plotAreas, dual y-axes, axis titles, data labels, `dispUnits` |
 | Chart: data labels | ✅ | ✅ | chart/series/per-point overrides |
-| ChartEx (`cx:`) | ❌ | ❌ | waterfall/funnel/treemap/sunburst/histogram/boxWhisker/regionMap; see `docs/parity-charts.md` |
+| ChartEx (`cx:`) | ✅ | 🟡 | waterfall / funnel / treemap / sunburst / histogram / pareto / boxWhisker all shipped. regionMap fixture in tree (`tests/fixtures/charts/chart-regionmap-chartex.xlsx`, slimmed Microsoft template) but painter still falls through to placeholder — needs an embedded world-countries dataset + choropleth painter. See `docs/parity-charts.md` priority #8. |
 | Sparklines | ✅ | ✅ | line/column/win-loss; open prefix robustness + marker shape |
 | Raster images | ✅ | ✅ | base64 inline |
 | Cropped/rotated images | 🟡 | 🟡 | transforms ignored |
-| Shapes | ❌ | ❌ | placeholder grey box |
+| Shapes | ❌ | ❌ | `<xdr:sp>` autoshapes (rounded rectangles, callouts, banners, sticky notes, hand-drawn arrows) are completely skipped — the drawing pipeline only handles `<xdr:graphicFrame>` (charts) and `<xdr:pic>` (images). Surfaced as a real gap on Microsoft's Map Chart template (`chart-regionmap-chartex.xlsx`): the worksheet's "1 / 2 / 3 / 4" numbered instruction callouts are `<xdr:sp>` rounded rectangles with text runs, and our render is just blank where they should be. v0 painter: bbox → `<a:solidFill>`/`<a:schemeClr>` fill → optional `<a:ln>` outline → centered text runs honoring `<a:rPr sz="" b=""/>` + paragraph alignment; unknown `<a:prstGeom prst="…"/>` presets fall back to a plain rectangle. Even a "rect + fill + text" v0 would make most decorative chrome legible. |
 | SmartArt | ❌ | ❌ | |
 
 ## Annotations & links

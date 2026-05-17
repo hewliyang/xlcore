@@ -1,4 +1,4 @@
-import type { Color, Dxf, Sheet, WorkbookLayout } from "./types.js";
+import type { Color, CustomTableStyle, Dxf, Sheet, WorkbookLayout } from "./types.js";
 import { activeThemeColor } from "./color.js";
 import { findCell } from "./geometry.js";
 import { HEADER_H, HEADER_W, colLabel } from "./grid.js";
@@ -20,16 +20,29 @@ import type { Pane, Viewport, Visible } from "./renderTypes.js";
 // (header band fill + bold white text, banded data-row tint) which are
 // folded into the same `cfDxfs` map that conditional formatting uses,
 // so the existing fill / text passes pick them up for free. The header
-// row's filter-arrow glyphs paint in their own pass after text. We
-// don't try to model Excel's full built-in table-style catalog — just
-// enough chrome to make a table look like a table:
+// row's filter-arrow glyphs paint in their own pass after text.
 //
-//  - header bg = the workbook's accent color picked by the trailing
-//    integer in the style name (`TableStyleMedium2` → accent1, etc.)
-//  - header fg = white, bold
-//  - banded data rows (when `showRowStripes`) get a 12% tint of the
-//    accent over white
+// Source-of-truth resolution order for the band overlays (header, row
+// stripes, totals row, first/last column):
+//
+//   1. **Custom `<tableStyles>` definition** keyed by `t.style?.name`.
+//      Workbook-level styles authored alongside the data; element
+//      list (`headerRow`, `firstRowStripe`, …) points into the same
+//      `<dxfs>` table CF uses. Excel writes one of these whenever the
+//      table style was customized (themed templates from Microsoft's
+//      gallery, agency template packs, etc.).
+//   2. **Built-in name heuristic.** Excel ships ~60 named built-ins
+//      (`TableStyleLight*`, `TableStyleMedium*`, `TableStyleDark*`).
+//      We don't model the whole catalog — we derive an accent color
+//      from the trailing integer in the name and paint a generic
+//      "Medium"-style band (accent fill + white bold text, 12% tint
+//      stripes). Good enough for the default `TableStyleMedium2`
+//      every freshly-inserted table uses.
+//
+// Other table chrome that runs regardless of style resolution:
+//
 //  - filter arrows paint when `<autoFilter>` was set on the table
+//  - totals row gets bold + the band tint
 
 function tableAccentHex(styleName: string | undefined): string {
   // Default Excel new-table style is `TableStyleMedium2` (accent1).
@@ -44,6 +57,49 @@ function tableAccentHex(styleName: string | undefined): string {
   // varying intensities). `(n - 2 + 6) % 6` gives that.
   const idx = (((n - 2) % 6) + 6) % 6;
   return activeThemeColor(4 + idx, "#4472c4");
+}
+
+/// Look up the workbook's `<tableStyles>` block for an entry matching
+/// the given style name. Returns `undefined` for built-in names
+/// (`TableStyleMedium2`, …) since Excel doesn't enumerate those in
+/// the file.
+function findCustomTableStyle(
+  layout: WorkbookLayout | undefined,
+  name: string | undefined,
+): CustomTableStyle | undefined {
+  if (!name || !layout?.tableStyles?.length) return undefined;
+  return layout.tableStyles.find((s) => s.name === name);
+}
+
+/// Resolve a dxf index against the workbook's `<dxfs>` table. Returns
+/// `undefined` when the id is out of range or the dxf carries no
+/// renderable fields. (Pure-alignment dxfs would return an empty Dxf,
+/// not useful as a band overlay — we don't filter that here, the
+/// `merge` below just ends up a no-op.)
+function resolveDxf(layout: WorkbookLayout | undefined, id: number | undefined): Dxf | undefined {
+  if (id === undefined) return undefined;
+  const dxf = layout?.dxfs?.[id];
+  return dxf;
+}
+
+/// Combine two dxf overlays. `over` wins on each field, `base` fills
+/// in the rest. Used to stack `wholeTable` underneath the band-specific
+/// overlay (Excel's style elements compose this way per ECMA-376
+/// §18.8.40).
+function mergeDxf(base: Dxf | undefined, over: Dxf | undefined): Dxf | undefined {
+  if (!base) return over;
+  if (!over) return base;
+  return {
+    fontColor: over.fontColor ?? base.fontColor,
+    bold: over.bold ?? base.bold,
+    italic: over.italic ?? base.italic,
+    strike: over.strike ?? base.strike,
+    underline: over.underline ?? base.underline,
+    underlineStyle: over.underlineStyle ?? base.underlineStyle,
+    fillColor: over.fillColor ?? base.fillColor,
+    numFmt: over.numFmt ?? base.numFmt,
+    vertAlign: over.vertAlign ?? base.vertAlign,
+  };
 }
 
 function mixHex(hex: string, other: string, t: number): string {
@@ -65,6 +121,7 @@ function mixHex(hex: string, other: string, t: number): string {
 
 export function computeTableState(
   sheet: Sheet,
+  layout: WorkbookLayout | undefined,
   vis?: Visible,
 ): {
   tableDxfs: Map<string, Dxf>;
@@ -79,13 +136,32 @@ export function computeTableState(
   }
 
   for (const t of tables) {
+    const custom = findCustomTableStyle(layout, t.style?.name);
+    const wholeTableDxf = resolveDxf(layout, custom?.wholeTable);
+
+    // Header / band dxfs: prefer the custom-style dxfs when present,
+    // otherwise synthesize the built-in accent look. We let each band
+    // independently fall back — a custom style that defines only
+    // `headerRow` (common) still gets the synthesized row stripes.
     const accent = tableAccentHex(t.style?.name);
-    // Light tint = 12% accent over white. Roughly matches
-    // `TableStyleMedium*` band rows in Excel.
     const bandHex = mixHex("#ffffff", accent, 0.12);
     const accentColor: Color = { rgb: accent.slice(1).toUpperCase() };
     const bandColor: Color = { rgb: bandHex.slice(1).toUpperCase() };
     const whiteColor: Color = { rgb: "FFFFFF" };
+    const headerDxf: Dxf =
+      mergeDxf(wholeTableDxf, resolveDxf(layout, custom?.headerRow)) ?? {
+        fillColor: accentColor,
+        fontColor: whiteColor,
+        bold: true,
+      };
+    const stripeDxf: Dxf =
+      mergeDxf(wholeTableDxf, resolveDxf(layout, custom?.firstRowStripe)) ?? {
+        fillColor: bandColor,
+      };
+    const totalDxf: Dxf | undefined = mergeDxf(
+      wholeTableDxf,
+      resolveDxf(layout, custom?.totalRow),
+    );
 
     const headerRows = t.headerRowCount;
     const totalsRows = t.totalsRowCount;
@@ -97,19 +173,16 @@ export function computeTableState(
     const dataStart = r1 + headerRows;
     const dataEnd = r2 - totalsRows;
 
-    // Header row: accent fill + bold white text; filter arrows on
-    // each header cell when autoFilter is on.
+    // Header row: custom-style headerRow dxf if present, else accent
+    // fill + bold white text. Filter arrows on each header cell when
+    // autoFilter is on.
     if (headerR >= 0) {
       const hc1 = Math.max(c1, vis?.firstCol ?? c1);
       const hc2 = Math.min(c2, vis?.lastCol ?? c2);
       for (let c = hc1; c <= hc2; c++) {
         const k = `${headerR}:${c}`;
         if (!vis || (headerR >= vis.firstRow && headerR <= vis.lastRow)) {
-          tableDxfs.set(k, {
-            fillColor: accentColor,
-            fontColor: whiteColor,
-            bold: true,
-          });
+          tableDxfs.set(k, headerDxf);
         }
         if (t.hasAutoFilter) filterArrows.add(k);
       }
@@ -128,7 +201,7 @@ export function computeTableState(
         for (let c = cc1; c <= cc2; c++) {
           const k = `${r}:${c}`;
           if (tableDxfs.has(k)) continue;
-          tableDxfs.set(k, { fillColor: bandColor });
+          tableDxfs.set(k, stripeDxf);
         }
       }
     }
@@ -144,7 +217,10 @@ export function computeTableState(
       for (let c = tc1; c <= tc2; c++) {
         const k = `${totalsR}:${c}`;
         if (tableDxfs.has(k)) continue;
-        tableDxfs.set(k, { fillColor: bandColor, bold: true });
+        tableDxfs.set(
+          k,
+          totalDxf ?? { fillColor: bandColor, bold: true },
+        );
       }
     }
   }
