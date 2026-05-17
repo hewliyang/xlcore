@@ -57,6 +57,16 @@ fn is_target_part(name: &str) -> bool {
     if name.starts_with("xl/drawings/") && !name.contains("/_rels/") {
         return true;
     }
+    // chartEx parts may carry `<cx:axisId val="N"/>` (attribute form,
+    // which is what Excel desktop actually emits for pareto / boxWhisker
+    // / radial layouts). ooxmlsdk's chartEx schema declares cx:axisId
+    // as a `text_child` (`<cx:axisId>N</cx:axisId>`); the attribute
+    // form parses as text="" and the UInt32 conversion blows the whole
+    // parse up ("invalid field `cx_axis_id` while parsing Series").
+    // We rewrite the attribute form into the text-child form below.
+    if name.starts_with("xl/charts/") && !name.contains("/_rels/") {
+        return true;
+    }
     false
 }
 
@@ -161,6 +171,10 @@ fn rewrite_xml(xml: &[u8]) -> Option<Vec<u8>> {
     }
 
     if unfold_mc_alternate_content(&mut out) {
+        changed = true;
+    }
+
+    if rewrite_cx_axis_id(&mut out) {
         changed = true;
     }
 
@@ -327,6 +341,84 @@ fn extract_mc_container<'a>(s: &'a str, tag: &str) -> Option<&'a str> {
     Some(&after_open[tag_end + 1..close_rel])
 }
 
+/// Rewrite `<cx:axisId val="N"/>` (the attribute form Excel desktop
+/// emits in chartEx parts) into the text-child form
+/// `<cx:axisId>N</cx:axisId>` that ooxmlsdk's chartEx schema expects.
+/// Returns `true` if at least one element was rewritten. Lightweight
+/// scanner: chartEx parts are small and `<cx:axisId` only appears in
+/// this exact shape.
+fn rewrite_cx_axis_id(s: &mut String) -> bool {
+    const TAG: &str = "<cx:axisId";
+    if !s.contains(TAG) {
+        return false;
+    }
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s.as_str();
+    let mut changed = false;
+    while let Some(idx) = rest.find(TAG) {
+        out.push_str(&rest[..idx]);
+        let after = &rest[idx..];
+        // Find element end.
+        let end_rel = match after.find('>') {
+            Some(i) => i,
+            None => {
+                out.push_str(after);
+                rest = "";
+                break;
+            }
+        };
+        let element = &after[..=end_rel];
+        let after_element = &after[end_rel + 1..];
+        // Already in text-child form? Bail out for this element.
+        if !element.ends_with("/>") {
+            out.push_str(element);
+            rest = after_element;
+            continue;
+        }
+        // Extract `val="..."` attribute.
+        let val = extract_attr(element, "val").unwrap_or("");
+        out.push_str("<cx:axisId>");
+        out.push_str(val);
+        out.push_str("</cx:axisId>");
+        rest = after_element;
+        changed = true;
+    }
+    out.push_str(rest);
+    if changed {
+        *s = out;
+    }
+    changed
+}
+
+/// Extract the value of `name="..."` (or `name='...'`) from an element
+/// open-tag string. Returns `None` if the attribute is absent.
+fn extract_attr<'a>(element: &'a str, name: &str) -> Option<&'a str> {
+    let needle = format!("{}=", name);
+    let mut search = element;
+    while let Some(rel) = search.find(&needle) {
+        // Reject substring matches inside other attribute names
+        // (e.g. `interval` contains `val`). Require the byte preceding
+        // the match to be whitespace or `<` (i.e. tag boundary or attr
+        // separator).
+        if rel > 0 {
+            let prev = search.as_bytes()[rel - 1];
+            if !(prev.is_ascii_whitespace() || prev == b'<') {
+                search = &search[rel + needle.len()..];
+                continue;
+            }
+        }
+        let after = &search[rel + needle.len()..];
+        let quote = after.as_bytes().first().copied()?;
+        if quote != b'"' && quote != b'\'' {
+            return None;
+        }
+        let inner = &after[1..];
+        let end = inner.find(quote as char)?;
+        return Some(&inner[..end]);
+    }
+    None
+}
+
 /// Yield `(prefix, uri)` pairs for every `xmlns:PFX="URI"` (or single-quoted)
 /// declaration found in the input. Lightweight scanner; does not try to be a
 /// full XML parser but is sufficient for machine-emitted OOXML parts.
@@ -428,6 +520,21 @@ mod tests {
     fn does_not_match_color_scale_substring() {
         let xml = br#"<x14:dataBar><x14:colorScale/></x14:dataBar>"#;
         // No standalone `<x14:color>`, only `<x14:colorScale>`; leave it alone.
+        assert!(rewrite_xml(xml).is_none());
+    }
+
+    #[test]
+    fn rewrites_cx_axis_id_attribute_to_text_child() {
+        let xml = br#"<?xml version="1.0"?><cx:series><cx:axisId val="2"/></cx:series>"#;
+        let out = rewrite_xml(xml).expect("should rewrite");
+        let s = std::str::from_utf8(&out).unwrap();
+        assert!(s.contains("<cx:axisId>2</cx:axisId>"), "{s}");
+        assert!(!s.contains("<cx:axisId val"));
+    }
+
+    #[test]
+    fn leaves_cx_axis_id_text_child_alone() {
+        let xml = br#"<cx:series><cx:axisId>1</cx:axisId></cx:series>"#;
         assert!(rewrite_xml(xml).is_none());
     }
 

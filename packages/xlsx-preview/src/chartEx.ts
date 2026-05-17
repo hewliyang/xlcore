@@ -2,19 +2,22 @@
 // each layout has its own painter below. The legacy (`c:`) painters
 // live in `chartAdvanced.ts`. Split out of `chartAdvanced.ts` once the
 // chartEx surface (waterfall + funnel + treemap + sunburst) grew past
-// the per-file LOC budget.
+// the per-file LoC budget. The stat-layout painters (histogram /
+// pareto / boxWhisker) live in `chartExStats.ts` for the same reason.
 //
 // Layouts shipped:
 //   - waterfall  (Excel-desktop-authored fixture)
 //   - funnel     (SpreadJS-authored fixture)
 //   - treemap    (SpreadJS-authored fixture, multi-level hierarchy)
 //   - sunburst   (SpreadJS-authored fixture, multi-level hierarchy)
+//   - histogram  (Excel-desktop-authored fixture; auto-binned)
+//   - pareto     (Excel-desktop-authored fixture; bars + cumulative %)
+//   - boxWhisker (Excel-desktop-authored fixture; per-series quartiles)
 //
 // Layouts that still drop to the placeholder:
-//   - paretoLine, boxWhisker, clusteredColumn (histogram), regionMap
-//   See `docs/parity-charts.md` priority #7 and the rationale block in
-//   `tests/fixtures/charts/build-chartex.sh` for why these are blocked
-//   on Excel-desktop authoring.
+//   - regionMap
+//   See `docs/parity-charts.md` priority #8 for the Bing-map lookup
+//   that blocks Excel-desktop authoring of the regionMap fixture.
 
 import type { Chart, ChartSeries } from "./types.js";
 import type { Rect } from "./chart.js";
@@ -28,6 +31,11 @@ import {
   paintZeroBaseline,
   resolveAxisRange,
 } from "./chartUtils.js";
+import {
+  drawBoxWhiskerChartEx,
+  drawHistogramChartEx,
+  drawParetoChartEx,
+} from "./chartExStats.js";
 
 const AXIS_FONT_SIZE = 10;
 const AXIS_LABEL_COLOR = "#52525b";
@@ -49,9 +57,19 @@ export function drawChartEx(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     case "sunburst":
       drawSunburstChartEx(ctx, chart, rect);
       return;
+    case "histogram":
+      drawHistogramChartEx(ctx, chart, rect);
+      return;
+    case "pareto":
+      drawParetoChartEx(ctx, chart, rect);
+      return;
+    case "boxWhisker":
+      drawBoxWhiskerChartEx(ctx, chart, rect);
+      return;
+
     default:
-      // paretoLine / boxWhisker / clusteredColumn (histogram) /
-      // regionMap still pending; surface as placeholder so the user
+      // regionMap still pending (blocked on Excel-desktop authoring
+      // with a Bing map lookup); surface as placeholder so the user
       // sees the chart frame + title instead of an empty bbox.
       drawPlaceholderPlot(ctx, chart, rect);
       return;

@@ -7,6 +7,49 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Added chartEx (`cx:` namespace) histogram / pareto / boxWhisker
+  painters. All three are clear wins over hsx, which mis-renders each
+  of them (histogram as raw bars, pareto as duplicated clustered
+  columns, boxWhisker as a clustered column chart). Three pieces:
+  - **Pre-parse normalization**: `xmlns_normalize` now rewrites
+    `<cx:axisId val="N"/>` (the attribute form Excel desktop emits in
+    chartEx parts to bind series to primary/secondary axes) into the
+    `<cx:axisId>N</cx:axisId>` text-child form ooxmlsdk's chartEx
+    schema expects. Without this, the pareto fixture crashes the
+    chartEx parse entirely (`invalid field 'cx_axis_id' while parsing
+    Series: ""`).
+  - **Rust extractor**: `extract_chart_ex` now walks every
+    `<cx:series>` (not just the first) and detects three multi-series
+    / layoutPr-flagged compositions: any `paretoLine` companion
+    promotes the chart to `cxLayout="pareto"`; an all-`boxWhisker`
+    series list becomes `cxLayout="boxWhisker"`; a single
+    `clusteredColumn` series whose `<cx:layoutPr>` carries
+    `<cx:binning>` becomes `cxLayout="histogram"`.
+  - **TS renderer**: new `chartExStats.ts` module (carved out of
+    `chartEx.ts` to stay under the per-file LoC budget).
+    `drawChartEx` dispatches on the new `cxLayout` values:
+    - **Histogram**: Sturges bin count (`ceil(log2 n) + 1`),
+      width rounded up to a nice `1/2/5 × 10^k` number so labels
+      read as 10/20/50 rather than 9.7-and-change. Bars touch
+      (`gapWidth=0`); right-closed `(low, high]` bin labels with the
+      leftmost bin shown as `[low, high]` to flag its left-closed
+      corner.
+    - **Pareto**: primary `clusteredColumn` bars on the left value
+      axis (accent1) plus a cumulative-% line on a synthesized right
+      0–100% axis (accent2). The line series carries no own data in
+      OOXML — cumulative % is computed from the primary series's
+      values at render time, with the first point anchored at the
+      origin so the line visually starts from the axis baseline.
+    - **boxWhisker**: per-series quartiles computed with
+      `QUARTILE.EXC` semantics (the chartEx default
+      `quartileMethod="exclusive"`), 1.5×IQR whisker fences, outlier
+      dots, median rule, and an × mean marker (default-on for
+      chartEx). Each series renders as one vertical box centered in
+      its slot with the series name as the category label.
+  - Fixtures: `chart-{histogram,pareto,boxwhisker}-chartex.xlsx`
+    (Excel-desktop-authored; SpreadJS round-trip is unreliable for
+    these three layouts — see `build-chartex.sh`).
+
 - Added chartEx (`cx:` namespace) funnel / treemap / sunburst painters
   alongside the existing waterfall arm. Three pieces:
   - **Rust extractor**: `extract_chart_ex` now accepts

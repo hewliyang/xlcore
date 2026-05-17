@@ -1123,32 +1123,27 @@ fn extract_text_data_v(td: &cx::TextData) -> Option<String> {
     }
 }
 
-/// chartEx (cx:) extractor. v1 scope: waterfall + funnel + treemap +
-/// sunburst + paretoLine + boxWhisker layouts surface their categories
-/// + numeric values + layout id + subtotal indices; the TS renderer
-/// chooses what to paint. Returns `Some(Chart)` with `chart_type =
-/// "chartex"` and `cx_layout` set to the layout id.
-fn extract_chart_ex(space: &cx::ChartSpace) -> Option<Chart> {
-    let chart = space.chart.as_ref();
-    let plot_area = chart.plot_area.as_ref();
-    let region = plot_area.plot_area_region.as_ref();
-    let series = region.cx_series.first()?;
-    let layout = cx_layout_name(&series.layout_id).to_string();
+/// One series' parsed data — produced by `parse_series_data`. Captures
+/// the categories from the series's data block (only relevant for the
+/// first/primary series in multi-series chartEx — subsequent series'
+/// own categories are ignored), plus that series's numeric values and
+/// the formula reference used to fill them in via `refs.rs`.
+struct ParsedSeriesData {
+    categories: Vec<String>,
+    categories_ref: Option<String>,
+    values: Vec<f64>,
+    values_ref: Option<String>,
+    value_format: Option<String>,
+}
 
-    // Series name ("text"): plain `<cx:txData><cx:v>...` is the common
-    // shape; rich text falls back to concatenated runs.
-    let series_name = series
-        .text
-        .as_deref()
-        .and_then(|t| t.text_choice.as_ref())
-        .and_then(|c| match c {
-            cx::TextChoice::CxTxData(td) => extract_text_data_v(td),
-            cx::TextChoice::CxRich(_) => None,
-        })
-        .unwrap_or_default();
-
-    // chartData lookup: `<cx:dataId val="N"/>` on the series selects
-    // the `<cx:data id="N">` block under `<cx:chartData>`.
+/// Resolve a chartEx series's `<cx:dataId>` to its `<cx:data>` block
+/// under `<cx:chartData>`, then walk the inner dimensions to extract
+/// categories + numeric values. Returns `None` when the chartData
+/// block is missing entirely.
+fn parse_series_data(
+    space: &cx::ChartSpace,
+    series: &cx::Series,
+) -> Option<ParsedSeriesData> {
     let data_id = series.cx_data_id.as_ref().map(|d| d.val).unwrap_or(0);
     let data_block = space
         .chart_data
@@ -1229,8 +1224,167 @@ fn extract_chart_ex(space: &cx::ChartSpace) -> Option<Chart> {
         }
     }
 
+    Some(ParsedSeriesData {
+        categories,
+        categories_ref,
+        values,
+        values_ref,
+        value_format,
+    })
+}
+
+/// Extract a series's display name from its `<cx:tx><cx:txData><cx:v>`.
+fn parse_series_name(series: &cx::Series) -> String {
+    series
+        .text
+        .as_deref()
+        .and_then(|t| t.text_choice.as_ref())
+        .and_then(|c| match c {
+            cx::TextChoice::CxTxData(td) => extract_text_data_v(td),
+            cx::TextChoice::CxRich(_) => None,
+        })
+        .unwrap_or_default()
+}
+
+/// Build a bare `ChartSeries` carrying just name + values. chartEx
+/// series don't currently surface per-series colors / data labels /
+/// axis-group toggles — those slots stay at defaults for the renderer
+/// to fill in (e.g. boxWhisker accents come from the theme).
+fn make_chart_series(
+    name: String,
+    values: Vec<f64>,
+    values_ref: Option<String>,
+) -> ChartSeries {
+    ChartSeries {
+        name,
+        name_ref: None,
+        color: None,
+        values,
+        values_ref,
+        x_values: Vec::new(),
+        x_values_ref: None,
+        bubble_sizes: Vec::new(),
+        bubble_sizes_ref: None,
+        point_colors: Vec::new(),
+        data_labels: None,
+        axis_group: None,
+        chart_type: None,
+        marker_symbol: None,
+    }
+}
+
+/// True when this series's layoutPr carries a `<cx:binning>` element —
+/// the marker for a clusteredColumn that should render as a histogram
+/// (auto- or explicit-binned columns over a continuous value axis)
+/// rather than as a plain categorical column chart.
+fn series_has_binning(series: &cx::Series) -> bool {
+    series
+        .cx_layout_pr
+        .as_deref()
+        .and_then(|lp| lp.series_layout_properties_choice.as_ref())
+        .is_some_and(|c| matches!(c, cx::SeriesLayoutPropertiesChoice::CxBinning(_)))
+}
+
+/// chartEx (cx:) extractor. Surfaces all series with their values +
+/// `cx_layout` set to a renderer-friendly tag:
+///
+///   - `"waterfall"` / `"funnel"` / `"treemap"` / `"sunburst"` /
+///     `"regionMap"` — single-series layouts (existing v1 scope).
+///   - `"histogram"` — single clusteredColumn series whose layoutPr
+///     carries `<cx:binning>`. The renderer auto-bins the raw values.
+///   - `"pareto"` — two series: a primary clusteredColumn plus a
+///     secondary paretoLine that shares the primary's data (the
+///     cumulative-% line is computed at draw time).
+///   - `"boxWhisker"` — N parallel boxWhisker series; each carries
+///     a column of raw observations. Quartiles / whiskers are
+///     computed at draw time per the layoutPr `quartileMethod`.
+///
+/// Returns `Some(Chart)` with `chart_type = "chartex"`.
+fn extract_chart_ex(space: &cx::ChartSpace) -> Option<Chart> {
+    let chart = space.chart.as_ref();
+    let plot_area = chart.plot_area.as_ref();
+    let region = plot_area.plot_area_region.as_ref();
+    let series_list = &region.cx_series;
+    let first = series_list.first()?;
+
+    // Detect the layout family. Most legacy chartEx layouts are
+    // single-series and map straight from the primary series's
+    // `layoutId`; histogram / pareto / boxWhisker compose multiple
+    // series or signal via layoutPr.
+    let has_pareto_line = series_list
+        .iter()
+        .any(|s| matches!(s.layout_id, cx::SeriesLayout::ParetoLine));
+    let all_box_whisker = !series_list.is_empty()
+        && series_list
+            .iter()
+            .all(|s| matches!(s.layout_id, cx::SeriesLayout::BoxWhisker));
+    let single_histogram = series_list.len() == 1
+        && matches!(first.layout_id, cx::SeriesLayout::ClusteredColumn)
+        && series_has_binning(first);
+    let layout = if has_pareto_line {
+        "pareto".to_string()
+    } else if all_box_whisker {
+        "boxWhisker".to_string()
+    } else if single_histogram {
+        "histogram".to_string()
+    } else {
+        cx_layout_name(&first.layout_id).to_string()
+    };
+
+    // Primary series's parsed data also supplies the chart-level
+    // categories + value format (consumed by axis-tick rendering even
+    // for multi-series layouts).
+    let primary_data = parse_series_data(space, first)?;
+
+    // Build the schema's `series` vector. Pareto + boxWhisker carry
+    // multiple series; everything else surfaces just the primary so
+    // the existing single-series consumers stay backwards compatible.
+    let series: Vec<ChartSeries> = if layout == "boxWhisker" {
+        series_list
+            .iter()
+            .filter_map(|s| {
+                let parsed = parse_series_data(space, s)?;
+                Some(make_chart_series(
+                    parse_series_name(s),
+                    parsed.values,
+                    parsed.values_ref,
+                ))
+            })
+            .collect()
+    } else if layout == "pareto" {
+        // Walk in source order so legend / series indexing stays
+        // predictable. The paretoLine companion shares the primary's
+        // data block (no own `<cx:dataId>`); its values are filled in
+        // at render time as a cumulative percentage.
+        let mut out: Vec<ChartSeries> = Vec::with_capacity(series_list.len());
+        for s in series_list {
+            let name = parse_series_name(s);
+            match s.layout_id {
+                cx::SeriesLayout::ParetoLine => {
+                    let display = if name.is_empty() {
+                        "Cumulative %".to_string()
+                    } else {
+                        name
+                    };
+                    out.push(make_chart_series(display, Vec::new(), None));
+                }
+                _ => {
+                    let parsed = parse_series_data(space, s)?;
+                    out.push(make_chart_series(name, parsed.values, parsed.values_ref));
+                }
+            }
+        }
+        out
+    } else {
+        vec![make_chart_series(
+            parse_series_name(first),
+            primary_data.values.clone(),
+            primary_data.values_ref.clone(),
+        )]
+    };
+
     // Subtotal indices (`<cx:layoutPr><cx:subtotals><cx:idx val="N"/>`).
-    let subtotal_indices: Vec<u32> = series
+    let subtotal_indices: Vec<u32> = first
         .cx_layout_pr
         .as_deref()
         .and_then(|lp| lp.cx_subtotals.as_ref())
@@ -1255,27 +1409,12 @@ fn extract_chart_ex(space: &cx::ChartSpace) -> Option<Chart> {
     Some(Chart {
         chart_type: "chartex".to_string(),
         title,
-        series: vec![ChartSeries {
-            name: series_name,
-            name_ref: None,
-            color: None,
-            values,
-            values_ref,
-            x_values: Vec::new(),
-            x_values_ref: None,
-            bubble_sizes: Vec::new(),
-            bubble_sizes_ref: None,
-            point_colors: Vec::new(),
-            data_labels: None,
-            axis_group: None,
-            chart_type: None,
-            marker_symbol: None,
-        }],
-        categories,
-        categories_ref,
+        series,
+        categories: primary_data.categories,
+        categories_ref: primary_data.categories_ref,
         categories_format: None,
         legend_pos,
-        value_format,
+        value_format: primary_data.value_format,
         grouping: None,
         bar_dir: None,
         scatter_style: None,

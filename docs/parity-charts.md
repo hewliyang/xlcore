@@ -30,7 +30,10 @@ Chart parity corpus: small, public fixtures in `tests/fixtures/charts/`.
 | `dispUnits` tick scaling + caption | ✅ Excel/spec | ❌ dropped | xlsx-preview |
 | chartEx (`cx:` waterfall) | ✅ (new) | ❌ empty bbox | xlsx-preview |
 | chartEx (`cx:` funnel/treemap/sunburst) | ✅ | ✅ | tie |
-| chartEx (`cx:` pareto/boxWhisker/regionMap/histogram) | 🟡 placeholder | ✅ | hsx |
+| chartEx (`cx:` histogram) | ✅ auto-binned columns | ❌ renders raw values as bars | xlsx-preview |
+| chartEx (`cx:` pareto) | ✅ bars + cumulative line | ❌ renders as clustered duplicate bars | xlsx-preview |
+| chartEx (`cx:` boxWhisker) | ✅ quartile boxes + whiskers + mean | ❌ renders as clustered column | xlsx-preview |
+| chartEx (`cx:` regionMap) | 🟡 placeholder | ✅ | hsx |
 
 ## Fixture corpus
 
@@ -56,8 +59,10 @@ paths are in use:
   `paretoLine` / `boxWhisker` / `clusteredColumn` (histogram) /
   `regionMap` all have known SpreadJS export gaps (missing `<cx:axis>`
   blocks, no auto-binning, degenerate render-as-cluster) — see the
-  rationale block in `build-chartex.sh`. Those four are still on the
-  Excel-desktop-authored backlog.
+  rationale block in `build-chartex.sh`. Histogram, pareto, and
+  box/whisker have Excel-desktop-authored fixtures + renderer support
+  (see Bug #24); regionMap still requires a Bing map lookup
+  confirmation during Excel authoring.
 
 Example fixtures:
 
@@ -71,6 +76,9 @@ Example fixtures:
 | `Sheet1` | chartEx funnel | `A1:N22` | `chart-funnel-chartex.xlsx`: `cx:` `layoutId="funnel"`; single descending series, `numDim type="val"` |
 | `Sheet1` | chartEx treemap | `A1:N22` | `chart-treemap-chartex.xlsx`: `cx:` `layoutId="treemap"`; region→country hierarchy, `numDim type="size"` |
 | `Sheet1` | chartEx sunburst | `A1:N22` | `chart-sunburst-chartex.xlsx`: `cx:` `layoutId="sunburst"`; quarter→month hierarchy, `numDim type="size"` |
+| `Sheet1` | chartEx histogram | `A1:N22` | `chart-histogram-chartex.xlsx`: `cx:` `layoutId="clusteredColumn"` with `<cx:binning>`; Excel-authored histogram fixture |
+| `Sheet1` | chartEx pareto | `A1:N22` | `chart-pareto-chartex.xlsx`: `cx:` primary `layoutId="clusteredColumn"` plus owner `layoutId="paretoLine"`; Excel-authored pareto fixture |
+| `Sheet1` | chartEx box and whisker | `A1:N22` | `chart-boxwhisker-chartex.xlsx`: `cx:` `layoutId="boxWhisker"`; Excel-authored box/whisker fixture |
 
 ## Bug catalog
 
@@ -97,6 +105,7 @@ Example fixtures:
 | 19 | 3D legacy chart variants emitted empty bbox | xlsx-preview | ✅ fixed | `Bar3D` / `Line3D` / `Area3D` / `Pie3D` / `ofPie` plot-area arms dispatch to the 2D painter; depth/perspective dropped. `chart-3d-*`. |
 | 20 | `radarChart` emitted empty bbox | xlsx-preview | ✅ fixed | New `drawRadarChart` (polar painter); polygon gridlines, per-spoke category labels, top-spoke value-axis ticks. `radarStyle` selects standard / marker / filled. `chart-radar-{standard,marker,filled}.xlsx`. |
 | 21 | `stockChart` emitted empty bbox | xlsx-preview | ✅ fixed | New `drawStockChart`; series-count infers subtype (3=HLC, 4=OHLC, 5=VOHLC). Honors `<c:hiLowLines/>` (vertical mark), `<c:upDownBars/>` (open→close rect; white-fill up, black-fill down), `<c:dropLines/>`. Volume sub-plot stub for VOHLC. hsx renders empty here. `chart-stock-{hlc,ohlc}.xlsx`. |
+| 24 | chartEx histogram / pareto / boxWhisker emitted placeholder | xlsx-preview | ✅ fixed | Three new painters in `chartExStats.ts` (split out of `chartEx.ts` to stay under the per-file LoC budget). **Extractor changes** — (1) `xmlns_normalize` rewrites `<cx:axisId val="N"/>` (Excel's attribute form for pareto secondary-axis assignment) into the `<cx:axisId>N</cx:axisId>` text-child form ooxmlsdk's chartEx schema expects, otherwise the entire chartEx parse fails with `invalid field 'cx_axis_id' while parsing Series: ""`; (2) `extract_chart_ex` now walks all `<cx:series>` (not just the first) and detects three multi-series / layoutPr-flagged compositions: `paretoLine` companion → `cx_layout="pareto"`, all-`boxWhisker` → `cx_layout="boxWhisker"`, single `clusteredColumn` with `<cx:binning>` → `cx_layout="histogram"`. **Renderer**: histogram auto-bins via Sturges + nice-width rounding with right-closed `(low, high]` bin labels; pareto paints primary `clusteredColumn` bars (left axis) plus a cumulative-% line on a synthesized right axis (the source paretoLine series has no own data); boxWhisker computes Q1/median/Q3/whiskers/outliers per QUARTILE.EXC and paints the box + median rule + whisker caps + mean (×) marker per series. Fixtures: `chart-{histogram,pareto,boxwhisker}-chartex.xlsx`. |
 | 23 | chartEx funnel / treemap / sunburst emitted placeholder | xlsx-preview | ✅ fixed | New `chartEx.ts` module. Funnel: center-aligned horizontal bars scaled to max. Treemap: squarified layout (Bruls 2000); parents from `cxCategoryLevels[0]` get the accent, leaves share parent color. Sunburst: ring-per-level polar layout, DFS traversal keeps siblings angularly contiguous, per-branch accent with innermost-ring darken. Three extractor pieces: (1) accept `<cx:numDim type="size">` (treemap/sunburst use size not val); (2) materialize multi-column `categories_ref` ranges as `cxCategoryLevels`; (3) suppress the trivial single-series legend for these three layouts. Fixtures: `chart-{funnel,treemap,sunburst}-chartex.xlsx` (SpreadJS-authored). |
 | 22 | chartEx (`cx:`) drawings emitted empty bbox | xlsx-preview | ✅ fixed for waterfall | Four-part fix: (1) `xmlns_normalize` textually unfolds `<mc:AlternateContent>` blocks in drawing parts to their first `<mc:Choice>` content — Excel always wraps chartEx in MC for old-Excel fallback, and ooxmlsdk's typed `two_cell_anchor_choice` never sees MC contents otherwise. (2) New `cx:` extractor in `charts.rs::extract_chart_ex` surfaces `chart_type="chartex"`, `cx_layout`, and `cx_subtotal_indices`. (3) Chart-ref resolver dereferences Excel's `_xlchart.vN.X` indirection — chartEx bodies use opaque alias formulas (`<cx:f>_xlchart.v1.4</cx:f>`) that resolve through `workbook.xml`'s `<definedName hidden="1">Sheet1!$A$2:$A$7</definedName>` entries. (4) New `chartAdvanced.ts::drawChartEx` dispatches on `cxLayout`; the `waterfall` painter draws cumulative bars (subtotals absolute from the floor), dashed connectors, per-bar value labels, theme-accent fills (accent1=Increase / accent2=Decrease / accent3=Total per the colorStyle part's default `cycle id="10"`), and a synthetic 3-swatch legend. Other layouts (funnel/treemap/sunburst/paretoLine/boxWhisker/regionMap) still fall through to the placeholder pending fixtures. `chart-waterfall-chartex.xlsx` (Excel-authored). |
 
@@ -120,8 +129,9 @@ Example fixtures:
 | `cx:` | `funnel` | ✅ | `chartEx.ts::drawFunnelChartEx`. Center-aligned horizontal bars; widths scaled to max value; per-bar value labels when they fit. Fixture: `chart-funnel-chartex.xlsx` |
 | `cx:` | `treemap` | ✅ | `chartEx.ts::drawTreemapChartEx`. Squarified layout (Bruls et al. 2000); multi-level hierarchies grouped by `cxCategoryLevels[0]` with per-branch theme accent. Fixture: `chart-treemap-chartex.xlsx` |
 | `cx:` | `sunburst` | ✅ | `chartEx.ts::drawSunburstChartEx`. Ring-per-level polar layout from `cxCategoryLevels`; per-branch accent (innermost ring darkened); tangentially-rotated slice labels. Fixture: `chart-sunburst-chartex.xlsx` |
-| `cx:` | `histogram` / `pareto` | ❌ | chartEx unsupported |
-| `cx:` | `boxWhisker` | ❌ | chartEx unsupported |
+| `cx:` | `histogram` | ✅ | `chartExStats.ts::drawHistogramChartEx`. Sturges bin count → nice-rounded width; right-closed `(low, high]` bin labels with the leftmost bin shown as `[low, high]`. Fixture: `chart-histogram-chartex.xlsx` |
+| `cx:` | `pareto` | ✅ | `chartExStats.ts::drawParetoChartEx`. Primary clusteredColumn bars + cumulative-% line on a synthesized right-hand axis (0”100%). Fixture: `chart-pareto-chartex.xlsx` |
+| `cx:` | `boxWhisker` | ✅ | `chartExStats.ts::drawBoxWhiskerChartEx`. Computes Q1/median/Q3/whiskers/outliers per QUARTILE.EXC; paints box + median rule + whisker caps + mean (×) marker per series. Fixture: `chart-boxwhisker-chartex.xlsx` |
 | `cx:` | `regionMap` | ❌ | chartEx unsupported |
 
 ## Unsupported chartEx
@@ -154,10 +164,20 @@ Example fixtures:
    split: `chartEx.ts` (~700 LOC) + `chartStock.ts` (~300 LOC) carved
    out to fit the per-file LOC budget. Fixtures:
    `chart-{funnel,treemap,sunburst}-chartex.xlsx`.
-7. `cx:` histogram / boxWhisker / paretoLine — fixtures still need
-   Excel-desktop authoring (SpreadJS export round-trip is unreliable
-   for these four; see `build-chartex.sh` notes).
-8. `surfaceChart` / `regionMap`.
+7. ~~`cx:` histogram / boxWhisker / paretoLine.~~ **shipped.**
+   `chartExStats.ts` painters (histogram = Sturges-binned columns,
+   pareto = bars + cumulative-% line on a synthesized right axis,
+   boxWhisker = QUARTILE.EXC boxes + whiskers + mean marker).
+   Extractor pipeline: `xmlns_normalize` rewrites `<cx:axisId val="N"/>`
+   to the text-child form ooxmlsdk's chartEx schema requires (the
+   attribute form Excel actually emits would otherwise crash the
+   parse); `extract_chart_ex` walks all `<cx:series>` and detects
+   pareto / boxWhisker / histogram via layoutId combination +
+   `<cx:binning>` layoutPr. Fixtures:
+   `chart-{histogram,pareto,boxwhisker}-chartex.xlsx`.
+8. `cx:` regionMap — still needs Excel desktop authoring with Bing map
+   lookup accepted during fixture generation.
+9. `surfaceChart`.
 
 ## Open items
 
