@@ -22,6 +22,7 @@ export type { Color } from "./Color.js";
 export type { ColumnarCells } from "./ColumnarCells.js";
 export type { Comment } from "./Comment.js";
 export type { ConditionalFormat } from "./ConditionalFormat.js";
+export type { DefinedName } from "./DefinedName.js";
 export type { Drawing } from "./Drawing.js";
 export type { Dxf } from "./Dxf.js";
 export type { DrawingAnchor } from "./DrawingAnchor.js";

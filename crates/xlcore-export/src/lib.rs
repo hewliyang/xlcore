@@ -180,6 +180,24 @@ pub fn extract_doc_with_options(
         }
     }
 
+    let defined_names_vec: Vec<DefinedName> = workbook
+        .defined_names
+        .as_ref()
+        .map(|dn| {
+            dn.x_defined_name
+                .iter()
+                .filter_map(|d| {
+                    let formula = d.xml_content.as_ref()?.clone();
+                    Some(DefinedName {
+                        name: d.name.as_str().to_string(),
+                        formula,
+                        local_sheet_id: d.local_sheet_id,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
     let mut layout = WorkbookLayout {
         sheets,
         styles,
@@ -188,6 +206,7 @@ pub fn extract_doc_with_options(
         dxfs,
         table_styles,
         theme,
+        defined_names: defined_names_vec.clone(),
         active_sheet_index: if options.sheet_index.is_some() || options.sheet_name.is_some() {
             Some(0)
         } else {
@@ -198,19 +217,10 @@ pub fn extract_doc_with_options(
     // use opaque aliases (Excel's `_xlchart.vN.X` placeholders) can be
     // dereferenced to their real `Sheet!$A$1:$B$2` ranges before the
     // resolver chases them.
-    let defined_names: std::collections::HashMap<String, String> = workbook
-        .defined_names
-        .as_ref()
-        .map(|dn| {
-            dn.x_defined_name
-                .iter()
-                .filter_map(|d| {
-                    let formula = d.xml_content.as_ref()?.clone();
-                    Some((d.name.as_str().to_string(), formula))
-                })
-                .collect()
-        })
-        .unwrap_or_default();
+    let defined_names: std::collections::HashMap<String, String> = defined_names_vec
+        .iter()
+        .map(|d| (d.name.clone(), d.formula.clone()))
+        .collect();
     refs::resolve_chart_refs(&mut layout, &defined_names);
     refs::resolve_sparkline_refs(&mut layout);
     // Final pass: collapse `Sheet.rows: Vec<Row>` (the ergonomic shape

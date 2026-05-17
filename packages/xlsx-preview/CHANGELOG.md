@@ -5,6 +5,25 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Browser previewer now follows in-workbook hyperlinks like Excel: clicking
+  worksheet navigation buttons switches sheets, selects/scrolls to the target
+  cell, and resolves bare workbook/sheet defined-name targets such as `Top`,
+  `HowTo`, and `Exer1`. External hyperlinks still open in a new tab.
+
+### Fixed
+
+- Corrected explicit OOXML column-width conversion so authored widths do not
+  get an extra 5px of padding. This removes accumulated horizontal drift in
+  button-heavy / instruction-style worksheets.
+- Fixed centered/right-aligned text overflow: the clip region may still expand
+  into empty neighboring cells, but alignment remains anchored to the source
+  cell/box rather than the expanded overflow band.
+- Centered single-line button labels with literal leading/trailing spaces now
+  paint using the visible label text, matching Excel-style navigation buttons
+  more closely.
+
 ## [0.0.7] - 2026-05-17
 
 ### Added

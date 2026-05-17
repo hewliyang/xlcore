@@ -671,8 +671,16 @@ export function drawCellText(
     // Total width of the flat text -- for hard-break detection below we
     // also need the widest hard-line in case the cell has \n.
     const flatHasNewline = text.indexOf("\n") >= 0;
+    // `clip` may grow into empty neighbor cells to emulate Excel overflow,
+    // but horizontal alignment is still anchored to the source cell/merge.
+    // Center/right text must not be re-centered/re-right-aligned inside the
+    // enlarged overflow band, or long centered labels drift out of their
+    // authored boxes.
+    const alignRect = { ...ownRect };
     const clip = { ...ownRect };
     if (iconReserve > 0) {
+      alignRect.x += iconReserve;
+      alignRect.w -= iconReserve;
       clip.x += iconReserve;
       clip.w -= iconReserve;
     }
@@ -721,16 +729,27 @@ export function drawCellText(
         } else if (halign === "center" || defaultAlign === "center") {
           let cl = leftCol - 1,
             cr = rightCol + 1;
-          while (clip.w < need && (cl >= 1 || cr <= g.maxCol)) {
-            if (cr <= g.maxCol && !occupied.has(`${cell.r}:${cr}`)) {
-              clip.w += g.colW[cr] ?? 0;
-              cr++;
-            } else if (cl >= 1 && !occupied.has(`${cell.r}:${cl}`)) {
+          let leftAdded = 0;
+          let rightAdded = 0;
+          const sideNeed = Math.max(0, (need - alignRect.w) / 2);
+          while ((leftAdded < sideNeed || rightAdded < sideNeed) && (cl >= 1 || cr <= g.maxCol)) {
+            let progressed = false;
+            if (leftAdded < sideNeed && cl >= 1 && !occupied.has(`${cell.r}:${cl}`)) {
               const w = g.colW[cl] ?? 0;
               clip.x -= w;
               clip.w += w;
+              leftAdded += w;
               cl--;
-            } else break;
+              progressed = true;
+            }
+            if (rightAdded < sideNeed && cr <= g.maxCol && !occupied.has(`${cell.r}:${cr}`)) {
+              const w = g.colW[cr] ?? 0;
+              clip.w += w;
+              rightAdded += w;
+              cr++;
+              progressed = true;
+            }
+            if (!progressed) break;
           }
         }
       }
@@ -752,7 +771,12 @@ export function drawCellText(
       const span = spans[0]!;
       ctx.font = span.font;
       ctx.fillStyle = span.color;
-      let display = span.text;
+      // Many workbook-authored "buttons" are just centered cells padded with
+      // literal leading/trailing spaces. Excel visually centers the label, not
+      // the invisible padding run; canvas includes those spaces in its advance
+      // width, which makes button labels look off-center. For centered
+      // single-line text, drop only outer padding whitespace for painting.
+      let display = halign === "center" ? span.text.trim() || span.text : span.text;
       if (ctx.measureText(display).width > innerW && innerW > 8) {
         const ell = "…";
         let lo = 0,
@@ -768,13 +792,14 @@ export function drawCellText(
       let tx: number;
       switch (halign) {
         case "center":
-          tx = clip.x + (clip.w - tw) / 2;
+          tx = alignRect.x + (alignRect.w - tw) / 2;
           break;
         case "right":
-          tx = clip.x + clip.w - padX - indentRight - tw;
+          tx = alignRect.x + alignRect.w - padX - indentRight - tw;
           break;
         default:
-          if (defaultAlign === "right" && !halign) tx = clip.x + clip.w - padX - indentRight - tw;
+          if (defaultAlign === "right" && !halign)
+            tx = alignRect.x + alignRect.w - padX - indentRight - tw;
           else tx = textOriginX + padX + indentLeft;
       }
       const ascent = span.fontSizePx * 0.8;
@@ -823,14 +848,14 @@ export function drawCellText(
       let lineX: number;
       switch (halign) {
         case "center":
-          lineX = clip.x + (clip.w - line.width) / 2;
+          lineX = alignRect.x + (alignRect.w - line.width) / 2;
           break;
         case "right":
-          lineX = clip.x + clip.w - padX - indentRight - line.width;
+          lineX = alignRect.x + alignRect.w - padX - indentRight - line.width;
           break;
         default:
           if (defaultAlign === "right" && !halign)
-            lineX = clip.x + clip.w - padX - indentRight - line.width;
+            lineX = alignRect.x + alignRect.w - padX - indentRight - line.width;
           else lineX = textOriginX + padX + indentLeft;
       }
       const baseline = lineTop + line.ascent;

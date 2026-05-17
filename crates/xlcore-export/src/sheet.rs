@@ -27,6 +27,10 @@ fn px_per_char(default_font_size_pt: f32) -> f64 {
     scaled.clamp(5.0, 24.0)
 }
 
+fn explicit_width_attr_to_px(width: f64, default_font_size_pt: f32) -> f32 {
+    (width * px_per_char(default_font_size_pt)) as f32
+}
+
 pub fn extract(
     ws: &x::Worksheet,
     index: usize,
@@ -35,6 +39,13 @@ pub fn extract(
     styles: &Styles,
 ) -> Sheet {
     let px_per_char = px_per_char(styles.default_font_size);
+    let width_attr_to_px =
+        |w: f64| -> f32 { explicit_width_attr_to_px(w, styles.default_font_size) };
+    // Excel's built-in default (8.43 chars) visually includes the 5px cell
+    // padding. Widths serialized in OOXML `<col width="...">` and
+    // `sheetFormatPr defaultColWidth` are already in Excel's effective width
+    // units (e.g. 8.00390625 -> 56px with MDW=7), so do not add padding a
+    // second time for explicit XML widths.
     let default_col_width_px_const: f32 =
         (DEFAULT_COL_WIDTH_CHARS * px_per_char + COL_PADDING_PX) as f32;
     // Compute used range
@@ -64,7 +75,7 @@ pub fn extract(
     let mut default_row_height_pt = DEFAULT_ROW_HEIGHT_PT;
     if let Some(fmt) = &ws.sheet_format_properties {
         if let Some(w) = fmt.default_column_width {
-            default_col_width_px = (w * px_per_char + COL_PADDING_PX) as f32;
+            default_col_width_px = width_attr_to_px(w);
         }
         // default_row_height is non-optional in the schema (DoubleValue).
         if fmt.default_row_height > 0.0 {
@@ -79,7 +90,7 @@ pub fn extract(
         for c in &ws.x_cols[0].x_col {
             let width_px = c
                 .width
-                .map(|w| (w * px_per_char + COL_PADDING_PX) as f32)
+                .map(width_attr_to_px)
                 .unwrap_or(default_col_width_px);
             cols.push(Col {
                 min: c.min,
@@ -650,4 +661,19 @@ fn extract_cell(cell: &XCell) -> Option<Cell> {
         style_index: cell.style_index,
         runs: inline_runs,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn explicit_ooxml_widths_do_not_get_padding_added_twice() {
+        // This workbook family serializes widths such that width * MDW is
+        // SpreadJS/Excel's pixel width (MDW=7px for Calibri 11pt). Adding the
+        // 5px UI padding again makes every custom column too wide, shifting
+        // bordered instruction boxes away from their text.
+        assert!((explicit_width_attr_to_px(23.421875, 11.0) - 163.953125).abs() < 0.001);
+        assert!((explicit_width_attr_to_px(8.00390625, 11.0) - 56.027344).abs() < 0.001);
+    }
 }

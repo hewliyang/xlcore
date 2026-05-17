@@ -169,6 +169,10 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.zoomOut.onclick = () => this.setZoom(this.zoom - 0.25);
     this.zoomIn.onclick = () => this.setZoom(this.zoom + 0.25);
     this.stage.addEventListener("scroll", this.scheduleDraw, { passive: true });
+    this.canvas.addEventListener(
+      "xlcore-hyperlink-jump",
+      this.handleHyperlinkJump as EventListener,
+    );
     window.addEventListener("xlcore-image-ready", this.scheduleDraw);
     this.resizeObserver = new ResizeObserver(() => {
       this.updateSpacerSize();
@@ -188,6 +192,10 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.interactHandle = null;
     this.resizeObserver.disconnect();
     this.stage.removeEventListener("scroll", this.scheduleDraw);
+    this.canvas.removeEventListener(
+      "xlcore-hyperlink-jump",
+      this.handleHyperlinkJump as EventListener,
+    );
     window.removeEventListener("xlcore-image-ready", this.scheduleDraw);
     this.root.remove();
   }
@@ -318,6 +326,15 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       this.rafPending = false;
       this.draw();
     });
+  };
+
+  private readonly handleHyperlinkJump = (event: Event) => {
+    const location = (event as CustomEvent<{ location?: string }>).detail?.location;
+    if (!location) return;
+    const target = resolveWorkbookLocation(this.layout, location, this.activeSheetIndex);
+    if (!target) return;
+    this.setActiveSheet(target.sheetIndex);
+    this.selectCell(target.r, target.c, { scroll: true });
   };
 
   private currentState(): SheetState {
@@ -566,6 +583,77 @@ function contrastingTextColor(css: string): string {
   const b = parseInt(css.slice(5, 7), 16);
   const luma = (r * 299 + g * 587 + b * 114) / 1000;
   return luma > 140 ? "#111827" : "#ffffff";
+}
+
+function resolveWorkbookLocation(
+  layout: WorkbookLayout,
+  rawLocation: string,
+  activeSheetIndex: number,
+): { sheetIndex: number; r: number; c: number } | null {
+  const location = rawLocation.trim().replace(/^#/, "");
+  const direct = parseSheetCellLocation(location, layout, activeSheetIndex);
+  if (direct) return direct;
+
+  // Bare defined-name hyperlinks (e.g. `Top`) resolve first against the
+  // current sheet's local names, then against workbook-scoped names.
+  const wanted = location.toLocaleLowerCase();
+  const names = layout.definedNames ?? [];
+  const local = names.find(
+    (n) => n.name.toLocaleLowerCase() === wanted && n.localSheetId === activeSheetIndex,
+  );
+  const global = names.find(
+    (n) => n.name.toLocaleLowerCase() === wanted && n.localSheetId === undefined,
+  );
+  const named = local ?? global;
+  if (!named) return null;
+  return parseSheetCellLocation(named.formula, layout, named.localSheetId ?? activeSheetIndex);
+}
+
+function parseSheetCellLocation(
+  raw: string,
+  layout: WorkbookLayout,
+  fallbackSheetIndex: number,
+): { sheetIndex: number; r: number; c: number } | null {
+  const ref = raw.trim().replace(/^=/, "");
+  const bang = findUnquotedBang(ref);
+  let sheetIndex = fallbackSheetIndex;
+  let addr = ref;
+  if (bang >= 0) {
+    const sheetName = unquoteSheetName(ref.slice(0, bang));
+    const idx = layout.sheets.findIndex((s) => s.name === sheetName);
+    if (idx < 0) return null;
+    sheetIndex = idx;
+    addr = ref.slice(bang + 1);
+  }
+  const m = addr.match(/\$?([A-Za-z]{1,3})\$?(\d+)/);
+  if (!m) return null;
+  return { sheetIndex, r: Number(m[2]), c: colNameToIndex(m[1]!) };
+}
+
+function findUnquotedBang(s: string): number {
+  let quoted = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === "'") {
+      if (quoted && s[i + 1] === "'") i++;
+      else quoted = !quoted;
+    } else if (ch === "!" && !quoted) return i;
+  }
+  return -1;
+}
+
+function unquoteSheetName(s: string): string {
+  const trimmed = s.trim();
+  if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
+    return trimmed.slice(1, -1).replace(/''/g, "'");
+  }
+  return trimmed;
+}
+
+function colNameToIndex(s: string): number {
+  let n = 0;
+  for (const ch of s.toUpperCase()) n = n * 26 + (ch.charCodeAt(0) - 64);
+  return n;
 }
 
 function clamp(v: number, lo: number, hi: number): number {

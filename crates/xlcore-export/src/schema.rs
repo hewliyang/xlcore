@@ -45,12 +45,34 @@ pub struct WorkbookLayout {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub theme: Option<Theme>,
+    /// Workbook and sheet-scoped `<definedName>` entries. Used by
+    /// in-workbook hyperlinks whose `location` is a bare name (e.g. `Top`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub defined_names: Vec<DefinedName>,
     /// Index into `sheets` of the tab that should be focused on initial
     /// render. Mirrors `xl/workbook.xml`'s `<workbookView activeTab="N"/>`.
     /// `None` (or omitted) → renderer defaults to sheet 0.
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub active_sheet_index: Option<u32>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct DefinedName {
+    pub name: String,
+    /// Target formula / reference text, e.g. `'Sheet 1'!$A$1`.
+    pub formula: String,
+    /// Zero-based sheet index for sheet-scoped names. Omitted for workbook
+    /// scope.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub local_sheet_id: Option<u32>,
 }
 /// Workbook theme: a 12-entry color palette plus font scheme names.
 ///
