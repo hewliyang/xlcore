@@ -14,10 +14,9 @@
 //   - pareto     (Excel-desktop-authored fixture; bars + cumulative %)
 //   - boxWhisker (Excel-desktop-authored fixture; per-series quartiles)
 //
-// Layouts that still drop to the placeholder:
-//   - regionMap
-//   See `docs/parity-charts.md` priority #8 for the Bing-map lookup
-//   that blocks Excel-desktop authoring of the regionMap fixture.
+// Layouts shipped (cont'd):
+//   - regionMap  (Excel-authored "2-color Map Chart" fixture; uses an
+//                 embedded Natural Earth 110m countries dataset)
 
 import type { Chart, ChartSeries } from "./types.js";
 import type { Rect } from "./chart.js";
@@ -36,6 +35,7 @@ import {
   drawHistogramChartEx,
   drawParetoChartEx,
 } from "./chartExStats.js";
+import { drawRegionMapChartEx } from "./chartExRegionMap.js";
 
 const AXIS_FONT_SIZE = 10;
 const AXIS_LABEL_COLOR = "#52525b";
@@ -66,11 +66,14 @@ export function drawChartEx(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     case "boxWhisker":
       drawBoxWhiskerChartEx(ctx, chart, rect);
       return;
+    case "regionMap":
+      drawRegionMapChartEx(ctx, chart, rect);
+      return;
 
     default:
-      // regionMap still pending (blocked on Excel-desktop authoring
-      // with a Bing map lookup); surface as placeholder so the user
-      // sees the chart frame + title instead of an empty bbox.
+      // Unknown / future chartEx layout: paint a placeholder frame so
+      // the user still sees the chart's anchor + title instead of an
+      // empty bbox.
       drawPlaceholderPlot(ctx, chart, rect);
       return;
   }

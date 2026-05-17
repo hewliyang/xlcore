@@ -234,7 +234,7 @@ pub fn extract(
                     Ok(s) => s,
                     Err(_) => continue,
                 };
-                let chart = extract_chart_ex(space);
+                let chart = extract_chart_ex(space, theme);
                 out.push(Drawing {
                     kind: "chart".to_string(),
                     anchor,
@@ -1132,6 +1132,9 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
         cx_waterfall_increment_color: None,
         cx_waterfall_decrement_color: None,
         cx_waterfall_subtotal_color: None,
+        cx_region_map_min_color: None,
+        cx_region_map_mid_color: None,
+        cx_region_map_max_color: None,
     })
 }
 
@@ -1250,14 +1253,16 @@ fn parse_series_data(
             }
             cx::DataChoice::CxNumDim(nd) => {
                 // Funnel / waterfall / pareto use `type="val"`; treemap /
-                // sunburst / histogram use `type="size"` (the dimension
-                // encodes rectangle/ring area or histogram-bin count
-                // rather than a y-axis value). Both map to the same
-                // `values` vector — the per-layout painter knows what
-                // the numbers mean.
+                // sunburst / histogram use `type="size"`; regionMap
+                // uses `type="colorVal"` (the dimension drives the
+                // choropleth color scale rather than a y-axis value).
+                // All three map to the same `values` vector — the
+                // per-layout painter knows what the numbers mean.
                 if !matches!(
                     nd.r#type,
-                    cx::NumericDimensionType::Val | cx::NumericDimensionType::Size
+                    cx::NumericDimensionType::Val
+                        | cx::NumericDimensionType::Size
+                        | cx::NumericDimensionType::ColorVal
                 ) {
                     continue;
                 }
@@ -1364,7 +1369,7 @@ fn series_has_binning(series: &cx::Series) -> bool {
 ///     computed at draw time per the layoutPr `quartileMethod`.
 ///
 /// Returns `Some(Chart)` with `chart_type = "chartex"`.
-fn extract_chart_ex(space: &cx::ChartSpace) -> Option<Chart> {
+fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) -> Option<Chart> {
     let chart = space.chart.as_ref();
     let plot_area = chart.plot_area.as_ref();
     let region = plot_area.plot_area_region.as_ref();
@@ -1395,10 +1400,25 @@ fn extract_chart_ex(space: &cx::ChartSpace) -> Option<Chart> {
         cx_layout_name(&first.layout_id).to_string()
     };
 
+    // RegionMap workbooks (Excel's 2-color / 3-color map templates)
+    // often carry several `hidden="1"` placeholder series alongside
+    // the one visible series — Excel uses the hidden ones as alternate
+    // color presets selectable from the chart properties pane. Only
+    // the non-hidden series carries the data the user expects to see;
+    // pick that one as primary so the renderer doesn't pull empty
+    // `_xlchart` aliases.
+    let primary_series: &cx::Series = if layout == "regionMap" {
+        series_list
+            .iter()
+            .find(|s| !s.hidden.unwrap_or(false))
+            .unwrap_or(first)
+    } else {
+        first
+    };
     // Primary series's parsed data also supplies the chart-level
     // categories + value format (consumed by axis-tick rendering even
     // for multi-series layouts).
-    let primary_data = parse_series_data(space, first)?;
+    let primary_data = parse_series_data(space, primary_series)?;
 
     // Build the schema's `series` vector. Pareto + boxWhisker carry
     // multiple series; everything else surfaces just the primary so
@@ -1457,6 +1477,19 @@ fn extract_chart_ex(space: &cx::ChartSpace) -> Option<Chart> {
 
     let title = extract_chart_ex_title(chart.chart_title.as_deref());
 
+    // RegionMap-only: parse the visible series's `<cx:valueColors>`
+    // 2- or 3-stop color palette. Resolved hex strings flow into the
+    // schema's `cx_region_map_{min,mid,max}_color` slots; the renderer
+    // builds either a 2-stop (min→max) or 3-stop (min→mid→max)
+    // diverging palette from those. The 2-color Map Chart fixture has
+    // no `<cx:valueColors>` (Excel defaults the palette); the 3-color
+    // Map Chart fixture authors three explicit stops.
+    let (rm_min, rm_mid, rm_max) = if layout == "regionMap" {
+        extract_region_map_colors(primary_series, theme)
+    } else {
+        (None, None, None)
+    };
+
     // Legend presence: chartEx legends are uncommon for waterfall;
     // honour the same "absent => no paint" rule used for legacy charts.
     let legend_pos = chart.legend.as_ref().map(|l| {
@@ -1514,5 +1547,96 @@ fn extract_chart_ex(space: &cx::ChartSpace) -> Option<Chart> {
         cx_waterfall_increment_color: None,
         cx_waterfall_decrement_color: None,
         cx_waterfall_subtotal_color: None,
+        cx_region_map_min_color: rm_min,
+        cx_region_map_mid_color: rm_mid,
+        cx_region_map_max_color: rm_max,
     })
+}
+
+/// Parse a chartEx `<cx:valueColors>` block into resolved `#RRGGBB`
+/// hex strings. Each of the three slots accepts the same six
+/// DrawingML color choices (`scrgbClr` / `srgbClr` / `hslClr` /
+/// `sysClr` / `schemeClr` / `prstClr`); ooxmlsdk codegen splits those
+/// into three slot-specific enums, so we have three near-identical
+/// resolvers below. The two paths exercised by Excel-authored region
+/// maps are `<a:srgbClr val="FF0000"/>` (literal hex) and `<a:schemeClr
+/// val="accent1"/>` (theme accent); the remaining four DrawingML
+/// color choices fall through to `None` and the renderer substitutes
+/// its default ramp.
+fn extract_region_map_colors(
+    series: &cx::Series,
+    theme: Option<&Theme>,
+) -> (Option<String>, Option<String>, Option<String>) {
+    let vc = match series.value_colors.as_deref() {
+        Some(v) => v,
+        None => return (None, None, None),
+    };
+    let min = vc
+        .min_color_solid_color_fill_properties
+        .as_deref()
+        .and_then(|p| p.min_color_solid_color_fill_properties_choice.as_ref())
+        .and_then(|c| min_color_choice_hex(c, theme));
+    let mid = vc
+        .mid_color_solid_color_fill_properties
+        .as_deref()
+        .and_then(|p| p.mid_color_solid_color_fill_properties_choice.as_ref())
+        .and_then(|c| mid_color_choice_hex(c, theme));
+    let max = vc
+        .max_color_solid_color_fill_properties
+        .as_deref()
+        .and_then(|p| p.max_color_solid_color_fill_properties_choice.as_ref())
+        .and_then(|c| max_color_choice_hex(c, theme));
+    (min, mid, max)
+}
+
+fn min_color_choice_hex(
+    c: &cx::MinColorSolidColorFillPropertiesChoice,
+    theme: Option<&Theme>,
+) -> Option<String> {
+    use cx::MinColorSolidColorFillPropertiesChoice as C;
+    match c {
+        C::ASrgbClr(rgb) => resolve_chartex_srgb(&rgb.val),
+        C::ASchemeClr(sc) => resolve_chartex_scheme(&format!("{:?}", sc), theme),
+        _ => None,
+    }
+}
+
+fn mid_color_choice_hex(
+    c: &cx::MidColorSolidColorFillPropertiesChoice,
+    theme: Option<&Theme>,
+) -> Option<String> {
+    use cx::MidColorSolidColorFillPropertiesChoice as C;
+    match c {
+        C::ASrgbClr(rgb) => resolve_chartex_srgb(&rgb.val),
+        C::ASchemeClr(sc) => resolve_chartex_scheme(&format!("{:?}", sc), theme),
+        _ => None,
+    }
+}
+
+fn max_color_choice_hex(
+    c: &cx::MaxColorSolidColorFillPropertiesChoice,
+    theme: Option<&Theme>,
+) -> Option<String> {
+    use cx::MaxColorSolidColorFillPropertiesChoice as C;
+    match c {
+        C::ASrgbClr(rgb) => resolve_chartex_srgb(&rgb.val),
+        C::ASchemeClr(sc) => resolve_chartex_scheme(&format!("{:?}", sc), theme),
+        _ => None,
+    }
+}
+
+fn resolve_chartex_srgb(val: &str) -> Option<String> {
+    if val.len() == 6 && val.chars().all(|c| c.is_ascii_hexdigit()) {
+        Some(format!("#{}", val))
+    } else {
+        None
+    }
+}
+
+/// Resolve a SchemeColor (already Debug-printed) against the workbook
+/// theme, then apply any authored modifier chain (`lumMod` / `lumOff`
+/// / `shade` / `tint`) via the same path the legacy extractor uses.
+fn resolve_chartex_scheme(debug_block: &str, theme: Option<&Theme>) -> Option<String> {
+    let base = theme_scheme_color(debug_block, theme)?;
+    Some(apply_color_modifiers(&base, debug_block))
 }

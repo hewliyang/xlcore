@@ -118,7 +118,12 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
           chart.type === "chartex" &&
             (chart.cxLayout === "funnel" ||
               chart.cxLayout === "treemap" ||
-              chart.cxLayout === "sunburst")
+              chart.cxLayout === "sunburst" ||
+              // regionMap paints its own gradient legend bar inside
+              // the plot area; suppress the default series-name legend
+              // (which is a single redundant entry like "% of World
+              // Population").
+              chart.cxLayout === "regionMap")
           ? []
           : chart.series;
 

@@ -146,4 +146,15 @@ export type Chart = {
   cxWaterfallIncrementColor?: string;
   cxWaterfallDecrementColor?: string;
   cxWaterfallSubtotalColor?: string;
+  /**
+   * RegionMap (`cx_layout == "regionMap"`) color scale stops.
+   * Excel authors a 2-stop palette via `<cx:valueColors>` with just
+   * `<cx:minColor>` + `<cx:maxColor>`, or a 3-stop diverging palette
+   * with all three. Each entry is a CSS color string resolved through
+   * the workbook theme; absent slots stay `None` and the renderer
+   * substitutes its default ramp (near-white → accent1).
+   */
+  cxRegionMapMinColor?: string;
+  cxRegionMapMidColor?: string;
+  cxRegionMapMaxColor?: string;
 };

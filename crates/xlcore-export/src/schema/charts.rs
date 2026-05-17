@@ -381,6 +381,21 @@ pub struct Chart {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cx_waterfall_subtotal_color: Option<String>,
+    /// RegionMap (`cx_layout == "regionMap"`) color scale stops.
+    /// Excel authors a 2-stop palette via `<cx:valueColors>` with just
+    /// `<cx:minColor>` + `<cx:maxColor>`, or a 3-stop diverging palette
+    /// with all three. Each entry is a CSS color string resolved through
+    /// the workbook theme; absent slots stay `None` and the renderer
+    /// substitutes its default ramp (near-white → accent1).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cx_region_map_min_color: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cx_region_map_mid_color: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cx_region_map_max_color: Option<String>,
 }
 
 /// `<c:dLbls>` — what to print next to each data point. Mirrors the

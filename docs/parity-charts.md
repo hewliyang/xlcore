@@ -33,7 +33,7 @@ Chart parity corpus: small, public fixtures in `tests/fixtures/charts/`.
 | chartEx (`cx:` histogram) | ✅ auto-binned columns | ❌ renders raw values as bars | xlsx-preview |
 | chartEx (`cx:` pareto) | ✅ bars + cumulative line | ❌ renders as clustered duplicate bars | xlsx-preview |
 | chartEx (`cx:` boxWhisker) | ✅ quartile boxes + whiskers + mean | ❌ renders as clustered column | xlsx-preview |
-| chartEx (`cx:` regionMap) | 🟡 placeholder | 🟡 column-chart fallback | tie (both fall back) |
+| chartEx (`cx:` regionMap) | ✅ choropleth (Natural Earth 110m) | ❌ column-chart fallback | xlsx-preview |
 
 ## Fixture corpus
 
@@ -106,6 +106,7 @@ Example fixtures:
 | 19 | 3D legacy chart variants emitted empty bbox | xlsx-preview | ✅ fixed | `Bar3D` / `Line3D` / `Area3D` / `Pie3D` / `ofPie` plot-area arms dispatch to the 2D painter; depth/perspective dropped. `chart-3d-*`. |
 | 20 | `radarChart` emitted empty bbox | xlsx-preview | ✅ fixed | New `drawRadarChart` (polar painter); polygon gridlines, per-spoke category labels, top-spoke value-axis ticks. `radarStyle` selects standard / marker / filled. `chart-radar-{standard,marker,filled}.xlsx`. |
 | 21 | `stockChart` emitted empty bbox | xlsx-preview | ✅ fixed | New `drawStockChart`; series-count infers subtype (3=HLC, 4=OHLC, 5=VOHLC). Honors `<c:hiLowLines/>` (vertical mark), `<c:upDownBars/>` (open→close rect; white-fill up, black-fill down), `<c:dropLines/>`. Volume sub-plot stub for VOHLC. hsx renders empty here. `chart-stock-{hlc,ohlc}.xlsx`. |
+| 25 | chartEx regionMap emitted placeholder | xlsx-preview | ✅ fixed | `chartExRegionMap.ts::drawRegionMapChartEx` using an embedded Natural Earth 110m countries dataset (`world110m.ts`); equirectangular projection, country-name index with alias fallbacks, two-stop near-white→accent1 color scale keyed on `<cx:numDim type="colorVal">`, gradient legend bar. Extractor: `parse_series_data` accepts `ColorVal` numDim type; `extract_chart_ex` picks the first non-`hidden="1"` series for `regionMap` (Excel ships 4 alternate-preset series, only the last visible). hsx falls back to a clustered column for this layout. Fixture: `chart-regionmap-chartex.xlsx`. |
 | 24 | chartEx histogram / pareto / boxWhisker emitted placeholder | xlsx-preview | ✅ fixed | Three new painters in `chartExStats.ts` (split out of `chartEx.ts` to stay under the per-file LoC budget). **Extractor changes** — (1) `xmlns_normalize` rewrites `<cx:axisId val="N"/>` (Excel's attribute form for pareto secondary-axis assignment) into the `<cx:axisId>N</cx:axisId>` text-child form ooxmlsdk's chartEx schema expects, otherwise the entire chartEx parse fails with `invalid field 'cx_axis_id' while parsing Series: ""`; (2) `extract_chart_ex` now walks all `<cx:series>` (not just the first) and detects three multi-series / layoutPr-flagged compositions: `paretoLine` companion → `cx_layout="pareto"`, all-`boxWhisker` → `cx_layout="boxWhisker"`, single `clusteredColumn` with `<cx:binning>` → `cx_layout="histogram"`. **Renderer**: histogram auto-bins via Sturges + nice-width rounding with right-closed `(low, high]` bin labels; pareto paints primary `clusteredColumn` bars (left axis) plus a cumulative-% line on a synthesized right axis (the source paretoLine series has no own data); boxWhisker computes Q1/median/Q3/whiskers/outliers per QUARTILE.EXC and paints the box + median rule + whisker caps + mean (×) marker per series. Fixtures: `chart-{histogram,pareto,boxwhisker}-chartex.xlsx`. |
 | 23 | chartEx funnel / treemap / sunburst emitted placeholder | xlsx-preview | ✅ fixed | New `chartEx.ts` module. Funnel: center-aligned horizontal bars scaled to max. Treemap: squarified layout (Bruls 2000); parents from `cxCategoryLevels[0]` get the accent, leaves share parent color. Sunburst: ring-per-level polar layout, DFS traversal keeps siblings angularly contiguous, per-branch accent with innermost-ring darken. Three extractor pieces: (1) accept `<cx:numDim type="size">` (treemap/sunburst use size not val); (2) materialize multi-column `categories_ref` ranges as `cxCategoryLevels`; (3) suppress the trivial single-series legend for these three layouts. Fixtures: `chart-{funnel,treemap,sunburst}-chartex.xlsx` (SpreadJS-authored). |
 | 22 | chartEx (`cx:`) drawings emitted empty bbox | xlsx-preview | ✅ fixed for waterfall | Four-part fix: (1) `xmlns_normalize` textually unfolds `<mc:AlternateContent>` blocks in drawing parts to their first `<mc:Choice>` content — Excel always wraps chartEx in MC for old-Excel fallback, and ooxmlsdk's typed `two_cell_anchor_choice` never sees MC contents otherwise. (2) New `cx:` extractor in `charts.rs::extract_chart_ex` surfaces `chart_type="chartex"`, `cx_layout`, and `cx_subtotal_indices`. (3) Chart-ref resolver dereferences Excel's `_xlchart.vN.X` indirection — chartEx bodies use opaque alias formulas (`<cx:f>_xlchart.v1.4</cx:f>`) that resolve through `workbook.xml`'s `<definedName hidden="1">Sheet1!$A$2:$A$7</definedName>` entries. (4) New `chartAdvanced.ts::drawChartEx` dispatches on `cxLayout`; the `waterfall` painter draws cumulative bars (subtotals absolute from the floor), dashed connectors, per-bar value labels, theme-accent fills (accent1=Increase / accent2=Decrease / accent3=Total per the colorStyle part's default `cycle id="10"`), and a synthetic 3-swatch legend. Other layouts (funnel/treemap/sunburst/paretoLine/boxWhisker/regionMap) still fall through to the placeholder pending fixtures. `chart-waterfall-chartex.xlsx` (Excel-authored). |
@@ -133,7 +134,7 @@ Example fixtures:
 | `cx:` | `histogram` | ✅ | `chartExStats.ts::drawHistogramChartEx`. Sturges bin count → nice-rounded width; right-closed `(low, high]` bin labels with the leftmost bin shown as `[low, high]`. Fixture: `chart-histogram-chartex.xlsx` |
 | `cx:` | `pareto` | ✅ | `chartExStats.ts::drawParetoChartEx`. Primary clusteredColumn bars + cumulative-% line on a synthesized right-hand axis (0”100%). Fixture: `chart-pareto-chartex.xlsx` |
 | `cx:` | `boxWhisker` | ✅ | `chartExStats.ts::drawBoxWhiskerChartEx`. Computes Q1/median/Q3/whiskers/outliers per QUARTILE.EXC; paints box + median rule + whisker caps + mean (×) marker per series. Fixture: `chart-boxwhisker-chartex.xlsx` |
-| `cx:` | `regionMap` | 🟡 | Fixture unblocked (`chart-regionmap-chartex.xlsx`); painter still falls through to `drawPlaceholderPlot`. Extractor already sets `cx_layout="regionMap"`. Painter design notes in priority #8. |
+| `cx:` | `regionMap` | ✅ | `chartExRegionMap.ts::drawRegionMapChartEx`. Equirectangular projection over an embedded Natural Earth 110m countries dataset (`world110m.ts`, ~170KB; coords rounded to 2dp); country-name index covers NAME / NAME_LONG / ISO_A2 / ISO_A3 plus a small alias table (`USA`, `UK`, `UAE`, `DRC`, `Côte d'Ivoire`, ...). Palette honors authored `<cx:valueColors>`: 3-stop diverging (min/mid/max, e.g. blue→red→green on the "3-color Map Chart" fixture) or 2-stop linear; falls back to a near-white → accent1 sequential ramp when the workbook doesn't author one. Unmatched countries paint UNMATCHED_FILL. Gradient legend bar on the right with min/max labels. Fixture: `chart-regionmap-chartex.xlsx` (carries both 2-color and 3-color sheets). |
 
 ## Unsupported chartEx
 
@@ -176,22 +177,31 @@ Example fixtures:
    pareto / boxWhisker / histogram via layoutId combination +
    `<cx:binning>` layoutPr. Fixtures:
    `chart-{histogram,pareto,boxwhisker}-chartex.xlsx`.
-8. `cx:` regionMap — **fixture unblocked.** Slimmed copy of
-   Microsoft's public "Map Chart samples.xlsx" template lives at
-   `tests/fixtures/charts/chart-regionmap-chartex.xlsx` (77KB; two
-   ~19MB `<cx:binary>` Bing-encoded geoCache blobs stripped — our
-   pipeline doesn't decode Bing's proprietary polygon format, we will
-   bring our own world-country geometry). Extractor already routes
-   the layout through to `drawChartEx` with `cx_layout="regionMap"`;
-   only the painter remains. Painter design: equirectangular
-   projection of an embedded Natural Earth 110m countries dataset
-   (~50KB compact GeoJSON / topojson), country name → polygon
-   lookup, color-scale interpolation per `<cx:numDim type="colorVal">`,
-   gradient legend bar at right. Pick the visible (non-`hidden="1"`)
-   series when Excel authors offers alternatives. Note: HSX also
-   falls back here — it renders a clustered column chart instead
-   of a map — so a real choropleth would beat hsx on this layout,
-   not just match it.
+8. ~~`cx:` regionMap.~~ **shipped.** `chartExRegionMap.ts::drawRegionMapChartEx`.
+   Bring-your-own world geometry: Natural Earth 110m admin_0 countries,
+   slimmed + 2dp-rounded into `packages/xlsx-preview/src/world110m.ts`
+   (~170KB; regeneration snippet in the painter file header). The
+   Bing-encoded `<cx:binary>` geoCache blobs are deliberately ignored.
+   Extractor changes: (1) `parse_series_data` accepts
+   `<cx:numDim type="colorVal">` alongside `val` / `size`; (2)
+   `extract_chart_ex` picks the first non-`hidden="1"` series for
+   `regionMap` layouts (Excel ships up to 4 alternate-preset series);
+   (3) new `extract_region_map_colors` parses `<cx:valueColors>` 2- or
+   3-stop palettes, resolving `<a:srgbClr>` literals + `<a:schemeClr>`
+   theme refs (with modifier-chain support reused from
+   `apply_color_modifiers`) into `cx_region_map_{min,mid,max}_color`.
+   Renderer: equirectangular projection with 1:1 lon/lat aspect, lat
+   clamp to [-58, 84] so the world fills the rect; country-name lookup
+   over NAME / NAME_LONG / ISO_A2 / ISO_A3 plus a small alias table
+   (USA, UK, UAE, DRC, Czechia, Burma → Myanmar, Côte d'Ivoire, ...);
+   palette honors authored 3-stop diverging (e.g. blue→red→green) or
+   2-stop linear from the schema, falling back to near-white → accent1
+   when no `<cx:valueColors>` was authored; gradient legend bar with
+   min/max labels on the right; unmatched countries paint a neutral
+   gray base layer. hsx falls back to a clustered column chart for
+   this layout, so xlsx-preview now wins it outright. Fixture:
+   `chart-regionmap-chartex.xlsx` (covers both 2-color sequential and
+   3-color diverging palettes via its two sheets).
 9. `surfaceChart`.
 
 ## Open items

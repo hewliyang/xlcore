@@ -7,6 +7,41 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- chartEx (`cx:`) `regionMap` ("Filled Map") painter
+  (`chartExRegionMap.ts::drawRegionMapChartEx`). Bring-your-own world
+  geometry: Natural Earth 110m admin_0 countries, slimmed +
+  2-decimal-rounded into `packages/xlsx-preview/src/world110m.ts`
+  (~170KB; regeneration snippet in the painter file header). The
+  Bing-encoded `<cx:binary>` geoCache blobs Excel ships are
+  deliberately ignored. Three pieces:
+  - **Rust extractor** (`crates/xlcore-export/src/charts.rs`):
+    (1) `parse_series_data` accepts `<cx:numDim type="colorVal">`
+    alongside `val` / `size`; (2) `extract_chart_ex` picks the
+    first non-`hidden="1"` series for `regionMap` layouts (Excel
+    ships up to 4 alternate-preset series, only the last is
+    visible); (3) new `extract_region_map_colors` parses
+    `<cx:valueColors>` 2- or 3-stop palettes, resolving
+    `<a:srgbClr>` literals + `<a:schemeClr>` theme refs (with
+    modifier-chain support reused from `apply_color_modifiers`)
+    into `cx_region_map_{min,mid,max}_color`.
+  - **Schema**: `Chart` gains three optional fields
+    (`cx_region_map_{min,mid,max}_color`). TS bindings
+    regenerated via `scripts/regen-schema.sh`.
+  - **TS renderer**: equirectangular projection with 1:1 lon/lat
+    aspect; lat clamped to `[-58, 84]` so the world fills the
+    rect; country-name lookup over NAME / NAME_LONG / ISO_A2 /
+    ISO_A3 plus a small alias table (USA, UK, UAE, DRC, Czechia,
+    Burma → Myanmar, Côte d'Ivoire, ...); palette honors authored
+    3-stop diverging (e.g. blue→red→green) or 2-stop linear from
+    the schema, falling back to a near-white → accent1 sequential
+    ramp when no `<cx:valueColors>` was authored; gradient legend
+    bar on the right with min/max labels; unmatched countries
+    paint a neutral gray base layer. hsx falls back to a
+    clustered column chart for this layout, so xlsx-preview now
+    wins it outright. Fixture:
+    `tests/fixtures/charts/chart-regionmap-chartex.xlsx` (covers
+    both 2-color sequential and 3-color diverging palettes via
+    its two sheets).
 - DrawingML shape parity: word-wrap inside shape text bodies +
   nested pictures inside group shapes. Previously the shape painter
   emitted single-line runs that overflowed the box on anything
