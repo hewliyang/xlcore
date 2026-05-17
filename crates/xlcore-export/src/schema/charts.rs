@@ -22,7 +22,130 @@ pub struct Drawing {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<Image>,
+    /// Vector shape tree (`<xdr:sp>` / `<xdr:grpSp>`). Only set when
+    /// `kind == "shape"`. A drawing anchor wraps a tree of shape nodes
+    /// (one per `<xdr:sp>`) whose positions are stored relative to the
+    /// anchor bbox (0..1). Nested groups are flattened — the extractor
+    /// applies each `<xdr:grpSp>`'s `xfrm/chOff/chExt` mapping during
+    /// the walk so the renderer only ever sees leaf `<xdr:sp>` nodes.
+    /// See ECMA-376 §19.3 for the shape model and §20.1.7.6 for the
+    /// group-transform semantics.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<Shape>,
 }
+
+/// `<xdr:sp>` autoshape (rectangles, callouts, banners, sticky notes,
+/// arrows). v0 paints fill + outline + centered text. Unknown presets
+/// fall back to a plain rectangle — Excel's chrome-shape vocabulary is
+/// vast (~200 presets) and most workbook chrome is rounded-rect or
+/// arrow; we'll grow this as fixtures demand.
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct Shape {
+    /// Leaf shapes in z-order (first painted first; later ones overlay).
+    /// Groups are flattened — children inherit the accumulated transform.
+    pub nodes: Vec<ShapeNode>,
+}
+
+/// One leaf `<xdr:sp>` (or `<xdr:cxnSp>`) positioned inside the drawing
+/// anchor's bbox via fractional coordinates (0..1). The renderer maps
+/// these to the anchor's resolved pixel rect.
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ShapeNode {
+    /// Fractional bbox inside the drawing-anchor's resolved pixel rect.
+    pub rel_x: f32,
+    pub rel_y: f32,
+    pub rel_w: f32,
+    pub rel_h: f32,
+    /// `<a:prstGeom prst="..."/>` token (`rect`, `roundRect`, `ellipse`,
+    /// `leftArrow`, …). None ⇒ no preset (custom geometry); renderer
+    /// falls back to a plain rectangle.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preset: Option<String>,
+    /// Resolved `#RRGGBB` fill color from `<a:solidFill>`. `None` when
+    /// `<a:noFill/>` is authored or no fill is present.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<String>,
+    /// Resolved `#RRGGBB` outline color. `None` when `<a:noFill/>` or
+    /// `<a:ln>` is absent.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outline_color: Option<String>,
+    /// Outline stroke width in EMU. `None` ⇒ Excel default (~9525 EMU
+    /// = 1pt). 0 ⇒ hairline.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outline_width_emu: Option<i32>,
+    /// `<a:bodyPr anchor="..."/>` vertical anchor (`t`/`ctr`/`b`).
+    /// Default `t` (top).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_anchor: Option<String>,
+    /// Rotation in 1/60000 degree units (OOXML's `rot` attr unit).
+    /// `None` ⇒ 0.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rotation: Option<i32>,
+    /// Text paragraphs.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub paragraphs: Vec<ShapeParagraph>,
+    /// `<a:bodyPr wrap="..."/>` token (`square` ⇒ wrap on word
+    /// boundaries; `none` ⇒ no wrap). Default `square` (Excel's
+    /// implicit default when the attr is absent).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_wrap: Option<String>,
+    /// Inline picture node — when this is `Some(...)`, the node
+    /// renders an embedded raster image (`<xdr:pic>` nested inside
+    /// `<xdr:grpSp>`) instead of a `prstGeom` rect. The string is a
+    /// `data:<mime>;base64,...` URI (same encoding the top-level
+    /// `Image.dataUri` uses, sharing the renderer image cache).
+    /// Fill / outline / paragraphs are ignored when this is set.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_data_uri: Option<String>,
+    /// `<a:srcRect l="" t="" r="" b=""/>` crop, in 1/1000 percent of
+    /// the source image dimensions. Length-4 vec: [left, top, right,
+    /// bottom]. Renderer uses these as fractional crop insets when
+    /// painting `image_data_uri`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_src_rect: Option<Vec<i32>>,
+}
+
+/// One `<a:p>` paragraph inside a shape's text body.
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ShapeParagraph {
+    /// `<a:pPr algn="..."/>` — `l`/`ctr`/`r`/`just`. None ⇒ `l`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub align: Option<String>,
+    /// Plain-text runs. We reuse the SST `TextRun` shape since the
+    /// rendered properties overlap (text, bold/italic, size, color,
+    /// font name).
+    pub runs: Vec<crate::schema::TextRun>,
+}
+
 /// Inline-encoded raster image extracted from `xl/media/*`.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]

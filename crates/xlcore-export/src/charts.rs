@@ -33,6 +33,16 @@ enum AnchorTarget {
     /// legacy charts) and rendered by `extract_chart_ex`.
     ChartEx(String),
     Image(String),
+    /// `<xdr:sp>` autoshape or `<xdr:grpSp>` group shape tree.
+    /// Walked by `crate::shapes::extract_shape_tree` into a flattened
+    /// list of fractional-bbox leaves the renderer can paint.
+    Shape(ShapeRoot),
+}
+
+/// In-memory handle for the shape branch of an anchor's choice slot.
+enum ShapeRoot {
+    Sp(std::boxed::Box<xdr::Shape>),
+    GrpSp(std::boxed::Box<xdr::GroupShape>),
 }
 
 /// Extract drawings (charts + images) from this worksheet's drawingsPart.
@@ -93,6 +103,12 @@ pub fn extract(
                         let embed = blip.embed.as_ref()?;
                         AnchorTarget::Image(embed.as_str().to_string())
                     }
+                    xdr::TwoCellAnchorChoice::XdrSp(sp) => {
+                        AnchorTarget::Shape(ShapeRoot::Sp(sp.clone()))
+                    }
+                    xdr::TwoCellAnchorChoice::XdrGrpSp(g) => {
+                        AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone()))
+                    }
                     _ => return None,
                 };
                 Some((anchor, target))
@@ -137,6 +153,12 @@ pub fn extract(
                         let embed = blip.embed.as_ref()?;
                         AnchorTarget::Image(embed.as_str().to_string())
                     }
+                    xdr::OneCellAnchorChoice::XdrSp(sp) => {
+                        AnchorTarget::Shape(ShapeRoot::Sp(sp.clone()))
+                    }
+                    xdr::OneCellAnchorChoice::XdrGrpSp(g) => {
+                        AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone()))
+                    }
                     _ => return None,
                 };
                 Some((anchor, target))
@@ -164,6 +186,22 @@ pub fn extract(
         .filter_map(|p| Some((part_relationship_id_dbg(&p)?, p)))
         .collect();
 
+    // Pre-encode every image part as a `data:` URI keyed by its
+    // relationship id. We hand this to the shape extractor so it can
+    // surface `<xdr:pic>` nodes nested inside groups (e.g. the
+    // screenshot thumbnails inside the Map Chart template's grouped
+    // callouts). Top-level pictures still route through
+    // `AnchorTarget::Image` and use the per-anchor branch below.
+    let image_uri_by_rid: std::collections::HashMap<String, String> = image_by_rid
+        .iter()
+        .filter_map(|(rid, ip)| {
+            let bytes = ip.data(doc)?.to_vec();
+            let mime = sniff_image_mime(&bytes).unwrap_or("image/png");
+            let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+            Some((rid.clone(), format!("data:{};base64,{}", mime, b64)))
+        })
+        .collect();
+
     let mut out = Vec::new();
     for (anchor, target) in anchors_xml {
         match target {
@@ -183,6 +221,7 @@ pub fn extract(
                     anchor,
                     chart,
                     image: None,
+                    shape: None,
                 });
             }
             AnchorTarget::ChartEx(rid) => {
@@ -201,6 +240,30 @@ pub fn extract(
                     anchor,
                     chart,
                     image: None,
+                    shape: None,
+                });
+            }
+            AnchorTarget::Shape(root) => {
+                let resolver = |rid: &str| image_uri_by_rid.get(rid).cloned();
+                let shape_opt = match &root {
+                    ShapeRoot::Sp(s) => crate::shapes::extract_shape_tree(
+                        crate::shapes::ShapeTreeRoot::Sp(s.as_ref()),
+                        theme,
+                        &resolver,
+                    ),
+                    ShapeRoot::GrpSp(g) => crate::shapes::extract_shape_tree(
+                        crate::shapes::ShapeTreeRoot::GrpSp(g.as_ref()),
+                        theme,
+                        &resolver,
+                    ),
+                };
+                let Some(shape) = shape_opt else { continue };
+                out.push(Drawing {
+                    kind: "shape".to_string(),
+                    anchor,
+                    chart: None,
+                    image: None,
+                    shape: Some(shape),
                 });
             }
             AnchorTarget::Image(rid) => {
@@ -222,6 +285,7 @@ pub fn extract(
                     anchor,
                     chart: None,
                     image: Some(Image { data_uri }),
+                    shape: None,
                 });
             }
         }

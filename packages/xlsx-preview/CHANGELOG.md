@@ -7,6 +7,50 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- DrawingML shape parity: word-wrap inside shape text bodies +
+  nested pictures inside group shapes. Previously the shape painter
+  emitted single-line runs that overflowed the box on anything
+  longer than a step number, and `<xdr:pic>` children of
+  `<xdr:grpSp>` were silently dropped — the Microsoft Map Chart
+  template's NOTE paragraph ran off-right and the Maps-ribbon /
+  `+`-button / arrow / columns-collapsed thumbnails inside its
+  grouped callouts were missing entirely. Three pieces:
+  - **Rust schema**: `ShapeNode` gains `text_wrap` (from
+    `<a:bodyPr wrap="square|none"/>`), `image_data_uri`, and
+    `image_src_rect` (4-int `<a:srcRect l t r b/>` crop in 1/1000
+    percent of the source image).
+  - **Rust extractor** (`shapes.rs`): new `visit_picture` arm in
+    the group walker dereferences the picture's `r:embed` through
+    a pre-built `rid → data:` URI map (constructed once per
+    drawing in `charts.rs::extract`) and emits a leaf `ShapeNode`
+    with the data URI plus the optional crop array. Top-level
+    pictures still route through `AnchorTarget::Image`. Also
+    surfaces `<a:bodyPr wrap="...">` via a new `body_wrap_token`
+    helper.
+  - **TS renderer**: new `imageCache.ts` extracted from
+    `drawings.ts` so `shape.ts` can share the decoded-image cache;
+    `drawShapeNode` dispatches image-bearing nodes to a new
+    `drawShapeImage` (honors `srcRect` via the 9-arg
+    `drawImage(s, sx, sy, sw, sh, dx, dy, dw, dh)` form);
+    `drawShapeText` rewritten with proper paragraph word-wrap —
+    tokenizes runs into `\S+\s*|\s+` atoms, measures with the
+    active font, breaks atoms that would overflow inner width,
+    preserves hard `\n` breaks, vertically anchors the wrapped
+    block via `textAnchor`, trims trailing whitespace for
+    center/right alignment. Wrap policy from `node.textWrap`:
+    `square` (Excel default, absent attr) wraps; `none` lets text
+    run on. `preloadDrawingImages` walks shape nodes too so the
+    Node `renderToPng` path sees embedded thumbnails on first
+    paint.
+  - Verified on the existing
+    `tests/fixtures/charts/chart-regionmap-chartex.xlsx` fixture
+    (no new fixture needed — the Microsoft Map Chart template
+    already exercises every code path). `docs/PARITY.md` Shapes
+    row updated; remaining deferred items are gradient/blip/
+    pattern shape fills, `<xdr:cxnSp>` connectors, and `avLst`
+    adjust-value overrides on preset arrows (none triggered by
+    current fixtures).
+
 - Resolved custom `<tableStyles>` definitions. Previously the
   renderer only understood Excel's built-in style names
   (`TableStyleMedium2`, etc.) and inferred the accent color from the

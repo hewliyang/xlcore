@@ -20,6 +20,7 @@ mod columnar;
 mod pivots;
 mod refs;
 mod schema;
+mod shapes;
 mod shared_strings;
 mod sheet;
 mod sparklines;

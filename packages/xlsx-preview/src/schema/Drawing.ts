@@ -2,6 +2,7 @@
 import type { Chart } from "./Chart.js";
 import type { DrawingAnchor } from "./DrawingAnchor.js";
 import type { Image } from "./Image.js";
+import type { Shape } from "./Shape.js";
 
 /**
  * One drawing object placed on the sheet, with its xlsx cell-anchor.
@@ -14,4 +15,15 @@ export type Drawing = {
   anchor: DrawingAnchor;
   chart?: Chart;
   image?: Image;
+  /**
+   * Vector shape tree (`<xdr:sp>` / `<xdr:grpSp>`). Only set when
+   * `kind == "shape"`. A drawing anchor wraps a tree of shape nodes
+   * (one per `<xdr:sp>`) whose positions are stored relative to the
+   * anchor bbox (0..1). Nested groups are flattened — the extractor
+   * applies each `<xdr:grpSp>`'s `xfrm/chOff/chExt` mapping during
+   * the walk so the renderer only ever sees leaf `<xdr:sp>` nodes.
+   * See ECMA-376 §19.3 for the shape model and §20.1.7.6 for the
+   * group-transform semantics.
+   */
+  shape?: Shape;
 };

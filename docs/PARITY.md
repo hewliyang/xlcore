@@ -108,7 +108,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a out of scope.
 | Sparklines | ✅ | ✅ | line/column/win-loss; open prefix robustness + marker shape |
 | Raster images | ✅ | ✅ | base64 inline |
 | Cropped/rotated images | 🟡 | 🟡 | transforms ignored |
-| Shapes | ❌ | ❌ | `<xdr:sp>` autoshapes (rounded rectangles, callouts, banners, sticky notes, hand-drawn arrows) are completely skipped — the drawing pipeline only handles `<xdr:graphicFrame>` (charts) and `<xdr:pic>` (images). Surfaced as a real gap on Microsoft's Map Chart template (`chart-regionmap-chartex.xlsx`): the worksheet's "1 / 2 / 3 / 4" numbered instruction callouts are `<xdr:sp>` rounded rectangles with text runs, and our render is just blank where they should be. v0 painter: bbox → `<a:solidFill>`/`<a:schemeClr>` fill → optional `<a:ln>` outline → centered text runs honoring `<a:rPr sz="" b=""/>` + paragraph alignment; unknown `<a:prstGeom prst="…"/>` presets fall back to a plain rectangle. Even a "rect + fill + text" v0 would make most decorative chrome legible. |
+| Shapes | 🟡 | 🟡 | v0 shipped. `<xdr:sp>` autoshapes and `<xdr:grpSp>` group shapes (with `xfrm`/`chOff`/`chExt` nested-frame mapping) extract via `crates/xlcore-export/src/shapes.rs`; renderer painter lives in `packages/xlsx-preview/src/shape.ts`. Coverage: `prstGeom` rect / roundRect / ellipse / triangle / diamond / leftArrow / rightArrow / upArrow / downArrow (unknown presets fall back to plain rectangle); `<a:solidFill>` with `srgbClr`/`schemeClr`/`prstClr`/`sysClr`; `<a:ln>` outline with width; theme color modifiers via existing `apply_color_modifiers`; text paragraphs with `<a:rPr sz="" b="" i=""/>`, solidFill run color, latin font (incl. `+mn-lt`/`+mj-lt` theme refs), `<a:pPr algn=""/>`, body-anchor (`t`/`ctr`/`b`), word-wrap on `<a:bodyPr wrap="square"/>` (Excel default; `wrap="none"` lets text overflow); `<a:xfrm rot=""/>` rotation; nested `<xdr:pic>` inside `<xdr:grpSp>` surfaces as a shape-node image leaf with `<a:srcRect>` crop (shares the top-level image-decode cache via `imageCache.ts`). Verified against the Microsoft Map Chart template (`chart-regionmap-chartex.xlsx`): the "1 / 2 / 3 / 4" numbered instruction callouts now word-wrap inside their boxes, the NOTE paragraph reflows, the Maps-ribbon / `+`-button / arrow / column-collapsed screenshot thumbnails embedded inside the group shapes paint, and the "Next >" hyperlink button renders. Deferred: gradient / blip / pattern shape fills, `<xdr:cxnSp>` connectors, `avLst` adjust-value overrides on preset arrows. |
 | SmartArt | ❌ | ❌ | |
 
 ## Annotations & links
@@ -137,7 +137,7 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a out of scope.
 | RTL sheets | ❌ |
 | Data validation UI | ❌ |
 | Slicers / timelines | ❌ |
-| Shapes / SmartArt | ❌ |
+| Shapes / SmartArt | 🟡 (shapes v0 shipped — word-wrap + nested pictures inside groups now in; SmartArt still ❌) |
 | chartEx support | ❌ |
 | Image crop/rotation | 🟡 |
 | CF x14 extensions | 🟡 |
