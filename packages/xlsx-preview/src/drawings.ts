@@ -1,4 +1,4 @@
-import type { Drawing, Sheet } from "./types.js";
+import type { Sheet } from "./types.js";
 import { drawChart } from "./chart.js";
 import { drawShape } from "./shape.js";
 import { anchorToRect } from "./grid.js";
