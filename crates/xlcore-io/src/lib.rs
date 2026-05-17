@@ -10,6 +10,10 @@ use std::path::Path;
 
 pub use ooxmlsdk::parts::spreadsheet_document::SpreadsheetDocument;
 pub use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as spreadsheetml;
+use ooxmlsdk::sdk::{
+    FileFormatVersion, MarkupCompatibilityProcessMode, MarkupCompatibilityProcessSettings,
+    OpenSettings,
+};
 
 mod xmlns_normalize;
 
@@ -32,7 +36,26 @@ pub fn open_bytes(bytes: Vec<u8>) -> anyhow::Result<SpreadsheetDocument> {
     // to non-canonical prefixes such as `x18tc`. ooxmlsdk does literal prefix
     // matching against `xltc`/`xltc2`, so we normalize before parsing.
     let bytes = xmlns_normalize::normalize_xlsx(bytes)?;
-    Ok(SpreadsheetDocument::new(std::io::Cursor::new(bytes))?)
+    // Enable markup-compatibility processing so `mc:AlternateContent`
+    // blocks (used by chartEx drawings: `<mc:Choice Requires="cx1">`
+    // wraps the `cx:chart` graphicData with the legacy `c:chart` as
+    // `<mc:Fallback>`) collapse to the highest-version Choice that the
+    // SDK understands. Target Office2016 — the version that introduced
+    // chartEx. Without this, ooxmlsdk silently drops the chartEx
+    // graphicData (it sits inside an unknown `<mc:AlternateContent>`
+    // node, which isn't a valid child of `<a:graphic>`), and our
+    // extractor sees an empty drawing.
+    let settings = OpenSettings {
+        markup_compatibility_process_settings: MarkupCompatibilityProcessSettings {
+            process_mode: MarkupCompatibilityProcessMode::ProcessAllParts,
+            target_file_format_version: FileFormatVersion::Office2016,
+        },
+        ..OpenSettings::default()
+    };
+    Ok(SpreadsheetDocument::new_with_settings(
+        std::io::Cursor::new(bytes),
+        settings,
+    )?)
 }
 
 /// Save an xlsx document to disk.

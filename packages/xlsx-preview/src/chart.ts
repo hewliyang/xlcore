@@ -35,6 +35,7 @@ import {
 
 import {
   drawBubbleChart,
+  drawChartEx,
   drawComboChart,
   drawPieChart,
   drawRadarChart,
@@ -42,6 +43,7 @@ import {
   drawScatterChart,
   pieSliceColor,
   resolveBarFill,
+  waterfallLegendEntries,
 } from "./chartAdvanced.js";
 
 const TITLE_PAD = 8;
@@ -101,7 +103,15 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
             color: pieSliceColor(i, pointColors),
           }));
         })()
-      : chart.series;
+        // chartEx waterfall has a single OOXML series but Excel paints
+        // three legend swatches (Increase / Decrease / Total) keyed to
+        // the bar colors. Synthesize those entries here so the existing
+        // legend code path renders them. Other chartEx layouts fall
+        // through to the default `series`-keyed legend (which is
+        // typically a no-op since they're also single-series).
+      : chart.type === "chartex" && chart.cxLayout === "waterfall"
+        ? waterfallLegendEntries(chart)
+        : chart.series;
 
   // ECMA-376 legend positions: t/b/l/r/tr. The extractor surfaces
   // `legendPos = undefined` when the source XML has no `<c:legend>`
@@ -111,7 +121,10 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
   // "don't paint" to match Excel desktop / hsx — see
   // parity-charts.md Bug #17. `tr` ("top-right overlay") is
   // coerced to `r` below since we don't overlay legends today.
-  const legendPos = chart.series.length > 0 && chart.legendPos ? chart.legendPos : null;
+  const legendPos =
+    (chart.series.length > 0 || legendEntries.length > 0) && chart.legendPos
+      ? chart.legendPos
+      : null;
   const legendVertical = legendPos === "l" || legendPos === "r" || legendPos === "tr";
   let legendW = 0;
   let legendH = 0;
@@ -272,6 +285,9 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
         break;
       case "stock":
         drawStockChart(ctx, chart, plotRect);
+        break;
+      case "chartex":
+        drawChartEx(ctx, chart, plotRect);
         break;
       default:
         drawPlaceholderPlot(ctx, chart, plotRect);

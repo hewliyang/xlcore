@@ -959,3 +959,207 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
 }
 
 export { drawComboChart } from "./chartCombo.js";
+
+// ---------- chartEx (cx:) ----------
+//
+// v0 chartEx renderer. Only `waterfall` is painted today; other
+// layouts (`funnel` / `treemap` / `sunburst` / `paretoLine` /
+// `boxWhisker` / `regionMap` / `clusteredColumn`) fall back to the
+// placeholder plot. Once a fixture lands for each, the dispatch
+// below grows a real painter.
+
+// Office "Waterfall" colors map to the workbook theme via the
+// chartEx color-style part (`xl/charts/colors1.xml` typically cycles
+// `accent1/accent2/accent3` as Increase/Decrement/Subtotal). We don't
+// parse the color-style part yet — it's worth a dedicated extractor
+// once we hit a workbook that uses a non-default cycle — but we follow
+// Excel's documented "first three accents" convention by routing
+// through `activeThemeColor` (indices 4/5/6 in our `theme.colors`
+// layout: lt1/dk1/lt2/dk2 then accent1..accent6). Fallbacks match the
+// Office 2016 default theme accents.
+function waterfallColors() {
+    return {
+        increment: activeThemeColor(4, "#4472C4"), // accent1
+        decrement: activeThemeColor(5, "#ED7D31"), // accent2
+        subtotal: activeThemeColor(6, "#A5A5A5"), // accent3
+    };
+}
+const WATERFALL_CONNECTOR_COLOR = "#a6a6a6";
+
+/// Synthetic legend entries for a waterfall chart — Excel paints three
+/// swatches (Increase / Decrement / Total) even though the chart is a
+/// single OOXML series. Exposed so `chart.ts` can render them through
+/// the existing legend code path.
+export function waterfallLegendEntries(chart: Chart): ChartSeries[] {
+    const c = waterfallColors();
+    const inc = chart.cxWaterfallIncrementColor || c.increment;
+    const dec = chart.cxWaterfallDecrementColor || c.decrement;
+    const sub = chart.cxWaterfallSubtotalColor || c.subtotal;
+    const mk = (name: string, color: string): ChartSeries => ({
+        name,
+        color,
+        values: [],
+        xValues: [],
+        bubbleSizes: [],
+        pointColors: [],
+    });
+    return [mk("Increase", inc), mk("Decrease", dec), mk("Total", sub)];
+}
+
+export function drawChartEx(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
+  if (chart.cxLayout === "waterfall") {
+    drawWaterfallChartEx(ctx, chart, rect);
+    return;
+  }
+  // funnel / treemap / sunburst / paretoLine / boxWhisker / regionMap
+  // still need painters; until then surface as a placeholder so the
+  // user sees the chart frame + title instead of an empty bbox.
+  drawPlaceholderPlot(ctx, chart, rect);
+}
+
+function drawWaterfallChartEx(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
+  const series = chart.series[0];
+  if (!series || series.values.length === 0) {
+    drawPlaceholderPlot(ctx, chart, rect);
+    return;
+  }
+  const values = series.values;
+  const n = values.length;
+  const cats = chart.categories ?? [];
+  const subtotalSet = new Set<number>(chart.cxSubtotalIndices ?? []);
+  // Waterfall bars: each category's bar runs from `start` (the
+  // cumulative running total before this point) to `end` (cumulative
+  // after this point). Subtotal bars are absolute (start = 0,
+  // end = value); the running total is then reset to that value. The
+  // *first* bar is implicitly a subtotal in Excel's waterfall when
+  // the workbook author doesn't flag it — but our fixtures always
+  // flag explicit subtotals, so we trust the indices and treat
+  // unflagged-first as a delta-from-zero (which produces the same
+  // visual: 0 -> value).
+  const bars: { start: number; end: number; subtotal: boolean }[] = [];
+  let running = 0;
+  for (let i = 0; i < n; i++) {
+    const v = values[i]!;
+    const sub = subtotalSet.has(i);
+    if (sub) {
+      bars.push({ start: 0, end: v, subtotal: true });
+      running = v;
+    } else {
+      bars.push({ start: running, end: running + v, subtotal: false });
+      running += v;
+    }
+  }
+
+  // Value-axis range covers all bar floors + tops (clamped to zero
+  // floor on the positive side per Excel waterfall default).
+  let minV = 0;
+  let maxV = 0;
+  for (const b of bars) {
+    minV = Math.min(minV, b.start, b.end);
+    maxV = Math.max(maxV, b.start, b.end);
+  }
+  const range = resolveAxisRange(
+    minV,
+    maxV,
+    chart.valueMin,
+    chart.valueMax,
+    /*zeroClamp=*/ false,
+    AXIS_TICK_COUNT,
+    chart.majorUnit,
+  );
+  minV = range.minV;
+  maxV = range.maxV;
+  const ticks = range.ticks;
+
+  const inner = drawAxisFrame(ctx, chart, rect, ticks, minV, maxV, false, false);
+
+  // Category axis labels (centered under each bar slot).
+  const slotW = inner.w / n;
+  const xFor = (i: number) => inner.x + (i + 0.5) * slotW;
+  const yFor = (v: number) => inner.y + (1 - (v - minV) / (maxV - minV)) * inner.h;
+  ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  ctx.fillStyle = AXIS_LABEL_COLOR;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  let lastRight = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const label = cats[i] ?? `${i + 1}`;
+    const w = ctx.measureText(label).width;
+    const cx = xFor(i);
+    if (cx - w / 2 < lastRight + 8) continue;
+    ctx.fillText(label, cx, inner.y + inner.h + 4);
+    lastRight = cx + w / 2;
+  }
+
+  // Bar widths: same heuristic as the column painter — 70% of slot.
+  const barW = Math.max(2, slotW * 0.7);
+
+  // 1. Connector lines (dashed). Excel draws a thin dashed segment
+  //    from the *right edge* of bar i at its end-y to the *left edge*
+  //    of bar i+1 at its start-y, except subtotal bars (which start
+  //    from zero and don't connect from the prior cumulative).
+  ctx.save();
+  ctx.strokeStyle = WATERFALL_CONNECTOR_COLOR;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 2]);
+  for (let i = 0; i < n - 1; i++) {
+    const next = bars[i + 1]!;
+    if (next.subtotal) continue; // next bar starts from 0; no connector
+    const cur = bars[i]!;
+    const xRight = xFor(i) + barW / 2;
+    const xLeft = xFor(i + 1) - barW / 2;
+    const y = yFor(cur.end);
+    ctx.beginPath();
+    ctx.moveTo(xRight, y);
+    ctx.lineTo(xLeft, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 2. Bars.
+  const palette = waterfallColors();
+  const incColor = chart.cxWaterfallIncrementColor || palette.increment;
+  const decColor = chart.cxWaterfallDecrementColor || palette.decrement;
+  const subColor = chart.cxWaterfallSubtotalColor || palette.subtotal;
+  for (let i = 0; i < n; i++) {
+    const b = bars[i]!;
+    const color = b.subtotal
+      ? subColor
+      : b.end >= b.start
+        ? incColor
+        : decColor;
+    const x = xFor(i) - barW / 2;
+    const yTop = yFor(Math.max(b.start, b.end));
+    const yBot = yFor(Math.min(b.start, b.end));
+    const h = Math.max(1, yBot - yTop);
+    ctx.fillStyle = color;
+    ctx.fillRect(x, yTop, barW, h);
+  }
+
+  // 3. Zero baseline (paints if the axis range straddles zero).
+  paintZeroBaseline(ctx, inner, minV, maxV);
+
+  // 4. Data labels: print each bar's value just outside the bar end.
+  ctx.fillStyle = "#262626";
+  ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  ctx.textAlign = "center";
+  for (let i = 0; i < n; i++) {
+    const b = bars[i]!;
+    const v = values[i]!;
+    // Subtotal bars show the cumulative value; delta bars show the
+    // signed change. Use the chart's valueFormat for both.
+    const labelValue = b.subtotal ? b.end : v;
+    const text = chart.valueFormat
+      ? formatAxisValue(labelValue, chart.valueFormat)
+      : formatGeneral(labelValue);
+    const above = b.end >= b.start;
+    const yEdge = yFor(above ? b.end : b.end);
+    ctx.textBaseline = above ? "bottom" : "top";
+    ctx.fillText(text, xFor(i), yEdge + (above ? -3 : 3));
+  }
+  void buildLabelText;
+  void drawCategoryAxis;
+  void drawLabel;
+  void effectiveLabels;
+  void pointLabel;
+}

@@ -28,7 +28,8 @@ Chart parity corpus: small, public fixtures in `tests/fixtures/charts/`.
 | Marker `symbol="none"` | ✅ | ✅ | tie |
 | Negative-range axes | 🟡 rough edges | 🟡 rough edges | tie |
 | `dispUnits` tick scaling + caption | ✅ Excel/spec | ❌ dropped | xlsx-preview |
-| chartEx (`cx:` waterfall/funnel/treemap/…) | ❌ empty bbox | ✅ | hsx |
+| chartEx (`cx:` waterfall) | ✅ (new) | ❌ empty bbox | xlsx-preview |
+| chartEx (`cx:` funnel/treemap/sunburst/pareto/boxWhisker/regionMap) | 🟡 placeholder | ✅ | hsx |
 
 ## Fixture corpus
 
@@ -39,6 +40,13 @@ Chart parity corpus: small, public fixtures in `tests/fixtures/charts/`.
 | `tests/fixtures/charts/chart-*.hsx.png` | checked-in hsx renders |
 | `tests/fixtures/charts/chart-*.layout.json` | extracted layout snapshots for debugging |
 | `tests/fixtures/charts/build-chart-regressions.sh` | rebuilds the minimal chart regression fixtures |
+
+chartEx (`cx:`) fixtures are authored in Excel desktop directly rather
+than via a build script — the chartEx XML body Excel writes references
+opaque `_xlchart.vN.X` definedName aliases (resolved through
+`workbook.xml`'s hidden `<definedName>` entries) and pulls colors from a
+chartStyle/colorStyle part pair, both of which are tricky enough to
+synthesize that round-tripping through Excel is the pragmatic path.
 
 Example fixtures:
 
@@ -75,6 +83,7 @@ Example fixtures:
 | 19 | 3D legacy chart variants emitted empty bbox | xlsx-preview | ✅ fixed | `Bar3D` / `Line3D` / `Area3D` / `Pie3D` / `ofPie` plot-area arms dispatch to the 2D painter; depth/perspective dropped. `chart-3d-*`. |
 | 20 | `radarChart` emitted empty bbox | xlsx-preview | ✅ fixed | New `drawRadarChart` (polar painter); polygon gridlines, per-spoke category labels, top-spoke value-axis ticks. `radarStyle` selects standard / marker / filled. `chart-radar-{standard,marker,filled}.xlsx`. |
 | 21 | `stockChart` emitted empty bbox | xlsx-preview | ✅ fixed | New `drawStockChart`; series-count infers subtype (3=HLC, 4=OHLC, 5=VOHLC). Honors `<c:hiLowLines/>` (vertical mark), `<c:upDownBars/>` (open→close rect; white-fill up, black-fill down), `<c:dropLines/>`. Volume sub-plot stub for VOHLC. hsx renders empty here. `chart-stock-{hlc,ohlc}.xlsx`. |
+| 22 | chartEx (`cx:`) drawings emitted empty bbox | xlsx-preview | ✅ fixed for waterfall | Four-part fix: (1) `xmlns_normalize` textually unfolds `<mc:AlternateContent>` blocks in drawing parts to their first `<mc:Choice>` content — Excel always wraps chartEx in MC for old-Excel fallback, and ooxmlsdk's typed `two_cell_anchor_choice` never sees MC contents otherwise. (2) New `cx:` extractor in `charts.rs::extract_chart_ex` surfaces `chart_type="chartex"`, `cx_layout`, and `cx_subtotal_indices`. (3) Chart-ref resolver dereferences Excel's `_xlchart.vN.X` indirection — chartEx bodies use opaque alias formulas (`<cx:f>_xlchart.v1.4</cx:f>`) that resolve through `workbook.xml`'s `<definedName hidden="1">Sheet1!$A$2:$A$7</definedName>` entries. (4) New `chartAdvanced.ts::drawChartEx` dispatches on `cxLayout`; the `waterfall` painter draws cumulative bars (subtotals absolute from the floor), dashed connectors, per-bar value labels, theme-accent fills (accent1=Increase / accent2=Decrease / accent3=Total per the colorStyle part's default `cycle id="10"`), and a synthetic 3-swatch legend. Other layouts (funnel/treemap/sunburst/paretoLine/boxWhisker/regionMap) still fall through to the placeholder pending fixtures. `chart-waterfall-chartex.xlsx` (Excel-authored). |
 
 ## Chart-type coverage
 
@@ -117,7 +126,7 @@ Example fixtures:
 2. ~~`radarChart`.~~ **shipped.** Polygon spider painter in `chartAdvanced.ts::drawRadarChart`; honors `radarStyle` (`standard` / `marker` / `filled`). `chart-radar-{standard,marker,filled}.xlsx`.
 3. ~~`ofPieChart` as plain pie first.~~ **shipped** (satellite split still deferred). `chart-3d-ofpie.xlsx`.
 4. ~~`stockChart`.~~ **shipped.** `chartAdvanced.ts::drawStockChart`; HLC (3-series, hi-low marks) and OHLC (4-series, candlestick up/down bars). Volume sub-plot stub for 5-series VOHLC. `chart-stock-{hlc,ohlc}.xlsx`.
-5. `cx:` waterfall.
+5. ~~`cx:` waterfall.~~ **shipped.** `chart-waterfall-chartex.xlsx`. Pipeline: `xmlns_normalize` unfolds `<mc:AlternateContent>` → chartEx schema parses → `drawChartEx` waterfall painter.
 6. `cx:` funnel / treemap / sunburst / histogram / boxWhisker.
 7. `surfaceChart` / `regionMap`.
 

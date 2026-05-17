@@ -220,6 +220,35 @@ pub struct Chart {
     pub stock_up_down_bars: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     pub stock_drop_lines: bool,
+    /// chartEx (`cx:`) series layout id: `waterfall`, `funnel`,
+    /// `treemap`, `sunburst`, `boxWhisker`, `paretoLine`, `regionMap`,
+    /// `clusteredColumn` (histogram). When set, `chart_type` is
+    /// `chartex` and the renderer dispatches on this field. Today
+    /// only `waterfall` is rendered; others fall back to the placeholder
+    /// chart box.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cx_layout: Option<String>,
+    /// Per-point subtotal flags for `cx_layout == "waterfall"` (and
+    /// future pareto/histogram variants). 0-based category indices
+    /// flagged as subtotal/total bars — the renderer paints them
+    /// from the floor (not stacked on the previous cumulative).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cx_subtotal_indices: Vec<u32>,
+    /// Waterfall fill colors: `[increment, decrement, subtotal]`.
+    /// Each entry is a CSS color string, or empty when authored
+    /// `<cx:layoutPr><cx:{increment,decrement,subtotal}>` is absent
+    /// — in which case the renderer uses Office defaults (green /
+    /// red / blue).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cx_waterfall_increment_color: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cx_waterfall_decrement_color: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cx_waterfall_subtotal_color: Option<String>,
 }
 
 /// `<c:dLbls>` — what to print next to each data point. Mirrors the

@@ -73,7 +73,27 @@ fn builtin_num_fmt(id: u32) -> Option<&'static str> {
 /// references in chart series/categories that didn't come with cached
 /// numbers. Office writes the cache most of the time, but not always --
 /// without this, fresh chartsheets render empty.
-pub(crate) fn resolve_chart_refs(layout: &mut WorkbookLayout) {
+pub(crate) fn resolve_chart_refs(
+    layout: &mut WorkbookLayout,
+    defined_names: &std::collections::HashMap<String, String>,
+) {
+    // Helper: dereference Excel's `_xlchart.vN.X` indirection. Excel
+    // emits chartEx data references as bare workbook-scoped definedName
+    // aliases (`<cx:f>_xlchart.v1.4</cx:f>`) hidden in `workbook.xml`
+    // (`<definedName name="_xlchart.v1.4" hidden="1">Sheet1!$A$2:$A$7
+    // </definedName>`). Returns `formula` unchanged when it already
+    // contains a `!` (looks like a direct Sheet!range ref).
+    let deref = |formula: &str| -> String {
+        if formula.contains('!') {
+            return formula.to_string();
+        }
+        // Strip any leading `=` (Excel sometimes wraps name refs).
+        let key = formula.trim_start_matches('=');
+        defined_names
+            .get(key)
+            .cloned()
+            .unwrap_or_else(|| formula.to_string())
+    };
     // Snapshot sheet name -> index so we can lookup cells without aliasing.
     let name_to_idx: std::collections::HashMap<String, usize> = layout
         .sheets
@@ -141,7 +161,8 @@ pub(crate) fn resolve_chart_refs(layout: &mut WorkbookLayout) {
 
             // categories
             if let Some(formula) = &chart.categories_ref {
-                if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
+                let formula = deref(formula);
+                if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(&formula) {
                     let cells = collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
                     // Pick up the format string from the first populated
                     // referenced cell even when chart XML already supplied a
@@ -170,7 +191,8 @@ pub(crate) fn resolve_chart_refs(layout: &mut WorkbookLayout) {
             for ser in chart.series.iter_mut() {
                 if ser.name.is_empty() {
                     if let Some(formula) = &ser.name_ref {
-                        if let Some((sheet_name, r1, c1, _, _)) = parse_chart_ref(formula) {
+                        let formula = deref(formula);
+                        if let Some((sheet_name, r1, c1, _, _)) = parse_chart_ref(&formula) {
                             // Series name is a single-cell ref; just read (r1,c1).
                             let cells =
                                 collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r1, c1);
@@ -184,7 +206,8 @@ pub(crate) fn resolve_chart_refs(layout: &mut WorkbookLayout) {
                 }
                 if ser.values.is_empty() {
                     if let Some(formula) = &ser.values_ref {
-                        if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
+                        let formula = deref(formula);
+                        if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(&formula) {
                             let cells =
                                 collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
                             let opt: Vec<Option<f64>> = cells
@@ -198,7 +221,8 @@ pub(crate) fn resolve_chart_refs(layout: &mut WorkbookLayout) {
                 }
                 if ser.x_values.is_empty() {
                     if let Some(formula) = &ser.x_values_ref {
-                        if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
+                        let formula = deref(formula);
+                        if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(&formula) {
                             let cells =
                                 collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
                             let opt: Vec<Option<f64>> = cells
@@ -212,7 +236,8 @@ pub(crate) fn resolve_chart_refs(layout: &mut WorkbookLayout) {
                 }
                 if ser.bubble_sizes.is_empty() {
                     if let Some(formula) = &ser.bubble_sizes_ref {
-                        if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(formula) {
+                        let formula = deref(formula);
+                        if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(&formula) {
                             let cells =
                                 collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
                             let opt: Vec<Option<f64>> = cells

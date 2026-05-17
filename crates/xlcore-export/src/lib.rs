@@ -191,7 +191,24 @@ pub fn extract_doc_with_options(
             active_sheet_index
         },
     };
-    refs::resolve_chart_refs(&mut layout);
+    // Collect workbook-level `<definedName>` entries so chart refs that
+    // use opaque aliases (Excel's `_xlchart.vN.X` placeholders) can be
+    // dereferenced to their real `Sheet!$A$1:$B$2` ranges before the
+    // resolver chases them.
+    let defined_names: std::collections::HashMap<String, String> = workbook
+        .defined_names
+        .as_ref()
+        .map(|dn| {
+            dn.x_defined_name
+                .iter()
+                .filter_map(|d| {
+                    let formula = d.xml_content.as_ref()?.clone();
+                    Some((d.name.as_str().to_string(), formula))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    refs::resolve_chart_refs(&mut layout, &defined_names);
     refs::resolve_sparkline_refs(&mut layout);
     // Final pass: collapse `Sheet.rows: Vec<Row>` (the ergonomic shape
     // every other extractor pass uses) into the columnar typed-array

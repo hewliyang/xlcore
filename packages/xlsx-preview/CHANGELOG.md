@@ -7,6 +7,34 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Added chartEx (`cx:` namespace, Office 2016+) waterfall support —
+  previously the largest remaining chart-parity gap. End-to-end pipeline:
+  - **Rust I/O**: enabled ooxmlsdk's `mce` feature and added a textual
+    `<mc:AlternateContent>` unfold in `xlcore-io::xmlns_normalize` for
+    drawing parts (Excel always wraps chartEx graphic frames in MC for
+    old-Excel fallback, and ooxmlsdk's typed `two_cell_anchor_choice`
+    never sees MC contents otherwise).
+  - **Rust extractor**: new `xlcore-export::charts::extract_chart_ex`
+    resolves `drawings_part.extended_chart_parts()` and surfaces
+    `chart_type="chartex"`, `cxLayout` (waterfall / funnel / treemap /
+    sunburst / paretoLine / boxWhisker / regionMap), and
+    `cxSubtotalIndices`.
+  - **Chart-ref resolver**: dereferences Excel's `_xlchart.vN.X`
+    indirection — chartEx bodies use opaque alias formulas
+    (`<cx:f>_xlchart.v1.4</cx:f>`) that resolve through
+    `workbook.xml`'s `<definedName hidden="1">Sheet1!$A$2:$A$7
+    </definedName>` entries.
+  - **TS renderer**: new `chartAdvanced.ts::drawChartEx` dispatches on
+    `cxLayout`; waterfall painter draws cumulative bars (subtotal bars
+    are absolute from the floor), dashed connectors between consecutive
+    bars, per-bar value labels, and a synthetic 3-swatch legend
+    (Increase / Decrease / Total) keyed to the workbook theme accents
+    (accent1 / accent2 / accent3, matching the chartEx color-style
+    part's default `cycle id="10"` palette). Other layouts still fall
+    through to the placeholder plot pending fixtures.
+  - Fixture: `tests/fixtures/charts/chart-waterfall-chartex.xlsx`
+    (Excel-authored). hsx renders waterfall similarly; xlsx-preview was
+    previously empty-bbox.
 - Added a time-period conditional-formatting fixture plus a schema-drift CI
   guard, and documented the local schema regeneration / PNG fixture
   comparison workflow.

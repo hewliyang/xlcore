@@ -110,4 +110,30 @@ export type Chart = {
   stockHiLowLines: boolean;
   stockUpDownBars: boolean;
   stockDropLines: boolean;
+  /**
+   * chartEx (`cx:`) series layout id: `waterfall`, `funnel`,
+   * `treemap`, `sunburst`, `boxWhisker`, `paretoLine`, `regionMap`,
+   * `clusteredColumn` (histogram). When set, `chart_type` is
+   * `chartex` and the renderer dispatches on this field. Today
+   * only `waterfall` is rendered; others fall back to the placeholder
+   * chart box.
+   */
+  cxLayout?: string;
+  /**
+   * Per-point subtotal flags for `cx_layout == "waterfall"` (and
+   * future pareto/histogram variants). 0-based category indices
+   * flagged as subtotal/total bars — the renderer paints them
+   * from the floor (not stacked on the previous cumulative).
+   */
+  cxSubtotalIndices: Array<number>;
+  /**
+   * Waterfall fill colors: `[increment, decrement, subtotal]`.
+   * Each entry is a CSS color string, or empty when authored
+   * `<cx:layoutPr><cx:{increment,decrement,subtotal}>` is absent
+   * — in which case the renderer uses Office defaults (green /
+   * red / blue).
+   */
+  cxWaterfallIncrementColor?: string;
+  cxWaterfallDecrementColor?: string;
+  cxWaterfallSubtotalColor?: string;
 };

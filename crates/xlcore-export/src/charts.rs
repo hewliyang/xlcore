@@ -14,13 +14,24 @@ use crate::schema::*;
 use base64::Engine;
 use ooxmlsdk::parts::spreadsheet_document::SpreadsheetDocument;
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
+use ooxmlsdk::schemas::schemas_microsoft_com_office_drawing_2014_chartex as cx;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_chart as c;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_drawing as xdr;
+
+/// chartEx graphicData URI (Office 2014+). Distinguishes a `cx:chartSpace`
+/// payload from the legacy `c:chartSpace` (which uses the
+/// `http://schemas.openxmlformats.org/drawingml/2006/chart` URI).
+const CHARTEX_GRAPHIC_DATA_URI: &str =
+    "http://schemas.microsoft.com/office/drawing/2014/chartex";
 
 /// What kind of drawing the anchor points at, plus the rId we need to
 /// resolve through the drawing-part's relationships.
 enum AnchorTarget {
     Chart(String),
+    /// chartEx (cx:chartSpace) — Microsoft 2014+ part. Resolved via
+    /// `drawings_part.extended_chart_parts()` (different rel type from
+    /// legacy charts) and rendered by `extract_chart_ex`.
+    ChartEx(String),
     Image(String),
 }
 
@@ -42,6 +53,7 @@ pub fn extract(
     };
 
     let chart_parts: Vec<_> = drawings_part.chart_parts(doc).collect();
+    let extended_chart_parts: Vec<_> = drawings_part.extended_chart_parts(doc).collect();
     let image_parts: Vec<_> = drawings_part.image_parts(doc).collect();
 
     let drawing_root = match drawings_part.root_element(doc) {
@@ -68,9 +80,14 @@ pub fn extract(
                     ext_emu_cy: None,
                 };
                 let target = match a.two_cell_anchor_choice.as_ref()? {
-                    xdr::TwoCellAnchorChoice::XdrGraphicFrame(gf) => AnchorTarget::Chart(
-                        find_relationship_id(&gf.graphic.graphic_data.xml_children)?,
-                    ),
+                    xdr::TwoCellAnchorChoice::XdrGraphicFrame(gf) => {
+                        let rid = find_relationship_id(&gf.graphic.graphic_data.xml_children)?;
+                        if gf.graphic.graphic_data.uri.as_str() == CHARTEX_GRAPHIC_DATA_URI {
+                            AnchorTarget::ChartEx(rid)
+                        } else {
+                            AnchorTarget::Chart(rid)
+                        }
+                    }
                     xdr::TwoCellAnchorChoice::XdrPic(pic) => {
                         let blip = pic.blip_fill.blip.as_ref()?;
                         let embed = blip.embed.as_ref()?;
@@ -107,9 +124,14 @@ pub fn extract(
                     ext_emu_cy: Some(ext.cy),
                 };
                 let target = match a.one_cell_anchor_choice.as_ref()? {
-                    xdr::OneCellAnchorChoice::XdrGraphicFrame(gf) => AnchorTarget::Chart(
-                        find_relationship_id(&gf.graphic.graphic_data.xml_children)?,
-                    ),
+                    xdr::OneCellAnchorChoice::XdrGraphicFrame(gf) => {
+                        let rid = find_relationship_id(&gf.graphic.graphic_data.xml_children)?;
+                        if gf.graphic.graphic_data.uri.as_str() == CHARTEX_GRAPHIC_DATA_URI {
+                            AnchorTarget::ChartEx(rid)
+                        } else {
+                            AnchorTarget::Chart(rid)
+                        }
+                    }
                     xdr::OneCellAnchorChoice::XdrPic(pic) => {
                         let blip = pic.blip_fill.blip.as_ref()?;
                         let embed = blip.embed.as_ref()?;
@@ -127,6 +149,13 @@ pub fn extract(
     // relationship_id field is pub(crate) on these structs so the string
     // scan is the pragmatic path; cheap, no maintenance liability.
     let mut chart_by_rid: Vec<(String, ooxmlsdk::parts::chart_part::ChartPart)> = chart_parts
+        .into_iter()
+        .filter_map(|p| Some((part_relationship_id_dbg(&p)?, p)))
+        .collect();
+    let mut chart_ex_by_rid: Vec<(
+        String,
+        ooxmlsdk::parts::extended_chart_part::ExtendedChartPart,
+    )> = extended_chart_parts
         .into_iter()
         .filter_map(|p| Some((part_relationship_id_dbg(&p)?, p)))
         .collect();
@@ -149,6 +178,24 @@ pub fn extract(
                     Err(_) => continue,
                 };
                 let chart = extract_chart(space, theme);
+                out.push(Drawing {
+                    kind: "chart".to_string(),
+                    anchor,
+                    chart,
+                    image: None,
+                });
+            }
+            AnchorTarget::ChartEx(rid) => {
+                let pos = match chart_ex_by_rid.iter().position(|(r, _)| r == &rid) {
+                    Some(i) => i,
+                    None => continue,
+                };
+                let (_, cp) = chart_ex_by_rid.remove(pos);
+                let space = match cp.root_element(doc) {
+                    Ok(s) => s,
+                    Err(_) => continue,
+                };
+                let chart = extract_chart_ex(space);
                 out.push(Drawing {
                     kind: "chart".to_string(),
                     anchor,
@@ -1015,5 +1062,243 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
         stock_hi_low_lines,
         stock_up_down_bars,
         stock_drop_lines,
+        cx_layout: None,
+        cx_subtotal_indices: Vec::new(),
+        cx_waterfall_increment_color: None,
+        cx_waterfall_decrement_color: None,
+        cx_waterfall_subtotal_color: None,
+    })
+}
+
+/// Map a chartEx `SeriesLayout` to the schema's `cx_layout` string.
+fn cx_layout_name(l: &cx::SeriesLayout) -> &'static str {
+    match l {
+        cx::SeriesLayout::Waterfall => "waterfall",
+        cx::SeriesLayout::Funnel => "funnel",
+        cx::SeriesLayout::Treemap => "treemap",
+        cx::SeriesLayout::Sunburst => "sunburst",
+        cx::SeriesLayout::BoxWhisker => "boxWhisker",
+        cx::SeriesLayout::ParetoLine => "paretoLine",
+        cx::SeriesLayout::RegionMap => "regionMap",
+        cx::SeriesLayout::ClusteredColumn => "clusteredColumn",
+    }
+}
+
+/// Extract title text from a chartEx `<cx:title>` element. Mirrors
+/// `extract_title` for legacy charts but walks the chartEx-namespaced
+/// `Text` / `RichTextBody` shape.
+fn extract_chart_ex_title(t: Option<&cx::ChartTitle>) -> Option<String> {
+    let t = t?;
+    let text = t.text.as_deref()?;
+    let choice = text.text_choice.as_ref()?;
+    match choice {
+        cx::TextChoice::CxTxData(td) => extract_text_data_v(td),
+        cx::TextChoice::CxRich(rich) => {
+            // Concatenate `<a:t>` text across each paragraph's runs.
+            // chartEx rich text reuses the regular drawingml namespace
+            // for paragraphs / runs, so we walk the `a:` types from
+            // `ooxmlsdk::schemas::...drawingml_2006_main`.
+            use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
+            let mut out = String::new();
+            for p in &rich.a_p {
+                for ch in &p.paragraph_choice {
+                    if let a::ParagraphChoice::AR(run) = ch {
+                        out.push_str(run.text.as_str());
+                    }
+                }
+            }
+            if out.is_empty() { None } else { Some(out) }
+        }
+    }
+}
+
+/// Pull the inline `<cx:v>` text from a `<cx:txData>` block, whether
+/// the schema picked the bare `CxV` variant or the multi-child
+/// `Sequence` variant.
+fn extract_text_data_v(td: &cx::TextData) -> Option<String> {
+    match td.text_data_choice.as_ref()? {
+        cx::TextDataChoice::CxV(s) => Some(s.clone()),
+        cx::TextDataChoice::Sequence { v_xsdstring, .. } => v_xsdstring.clone(),
+    }
+}
+
+/// chartEx (cx:) extractor. v1 scope: waterfall + funnel + treemap +
+/// sunburst + paretoLine + boxWhisker layouts surface their categories
+/// + numeric values + layout id + subtotal indices; the TS renderer
+/// chooses what to paint. Returns `Some(Chart)` with `chart_type =
+/// "chartex"` and `cx_layout` set to the layout id.
+fn extract_chart_ex(space: &cx::ChartSpace) -> Option<Chart> {
+    let chart = space.chart.as_ref();
+    let plot_area = chart.plot_area.as_ref();
+    let region = plot_area.plot_area_region.as_ref();
+    let series = region.cx_series.first()?;
+    let layout = cx_layout_name(&series.layout_id).to_string();
+
+    // Series name ("text"): plain `<cx:txData><cx:v>...` is the common
+    // shape; rich text falls back to concatenated runs.
+    let series_name = series
+        .text
+        .as_deref()
+        .and_then(|t| t.text_choice.as_ref())
+        .and_then(|c| match c {
+            cx::TextChoice::CxTxData(td) => extract_text_data_v(td),
+            cx::TextChoice::CxRich(_) => None,
+        })
+        .unwrap_or_default();
+
+    // chartData lookup: `<cx:dataId val="N"/>` on the series selects
+    // the `<cx:data id="N">` block under `<cx:chartData>`.
+    let data_id = series.cx_data_id.as_ref().map(|d| d.val).unwrap_or(0);
+    let data_block = space
+        .chart_data
+        .as_deref()
+        .and_then(|cd| cd.cx_data.iter().find(|d| d.id == data_id))
+        .or_else(|| space.chart_data.as_deref().and_then(|cd| cd.cx_data.first()))?;
+
+    let mut categories: Vec<String> = Vec::new();
+    let mut categories_ref: Option<String> = None;
+    let mut values: Vec<f64> = Vec::new();
+    let mut values_ref: Option<String> = None;
+    let mut value_format: Option<String> = None;
+
+    for choice in &data_block.data_choice {
+        match choice {
+            cx::DataChoice::CxStrDim(sd) => {
+                if !matches!(sd.r#type, cx::StringDimensionType::Cat) {
+                    continue;
+                }
+                let levels: Vec<&cx::StringLevel> = match sd.string_dimension_choice.as_ref() {
+                    Some(cx::StringDimensionChoice::Sequence(seq)) => {
+                        if let Some(s) = seq.formula.xml_content.as_ref() {
+                            categories_ref = Some(s.clone());
+                        }
+                        seq.string_level.iter().collect()
+                    }
+                    Some(cx::StringDimensionChoice::CxLvl(lvl)) => vec![lvl.as_ref()],
+                    None => Vec::new(),
+                };
+                if let Some(lvl) = levels.first() {
+                    let n = lvl.pt_count as usize;
+                    categories = vec![String::new(); n];
+                    for pt in &lvl.cx_pt {
+                        let i = pt.index as usize;
+                        if i < n {
+                            categories[i] = pt.xml_content.clone().unwrap_or_default();
+                        }
+                    }
+                }
+            }
+            cx::DataChoice::CxNumDim(nd) => {
+                if !matches!(nd.r#type, cx::NumericDimensionType::Val) {
+                    continue;
+                }
+                let levels: Vec<&cx::NumericLevel> = match nd.numeric_dimension_choice.as_ref() {
+                    Some(cx::NumericDimensionChoice::Sequence(seq)) => {
+                        if let Some(s) = seq.formula.xml_content.as_ref() {
+                            values_ref = Some(s.clone());
+                        }
+                        seq.numeric_level.iter().collect()
+                    }
+                    Some(cx::NumericDimensionChoice::CxLvl(lvl)) => vec![lvl.as_ref()],
+                    None => Vec::new(),
+                };
+                if let Some(lvl) = levels.first() {
+                    let n = lvl.pt_count as usize;
+                    values = vec![0.0; n];
+                    for pt in &lvl.cx_pt {
+                        let i = pt.idx as usize;
+                        if i < n {
+                            values[i] = pt.xml_content.unwrap_or(0.0);
+                        }
+                    }
+                    if let Some(fc) = &lvl.format_code {
+                        value_format = Some(fc.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    // Subtotal indices (`<cx:layoutPr><cx:subtotals><cx:idx val="N"/>`).
+    let subtotal_indices: Vec<u32> = series
+        .cx_layout_pr
+        .as_deref()
+        .and_then(|lp| lp.cx_subtotals.as_ref())
+        .map(|sub| sub.cx_idx.iter().map(|i| i.val).collect())
+        .unwrap_or_default();
+
+    let title = extract_chart_ex_title(chart.chart_title.as_deref());
+
+    // Legend presence: chartEx legends are uncommon for waterfall;
+    // honour the same "absent => no paint" rule used for legacy charts.
+    let legend_pos = chart.legend.as_ref().map(|l| {
+        match l.pos.as_ref() {
+            Some(cx::SidePos::B) => "b",
+            Some(cx::SidePos::T) => "t",
+            Some(cx::SidePos::L) => "l",
+            Some(cx::SidePos::R) => "r",
+            None => "r",
+        }
+        .to_string()
+    });
+
+    Some(Chart {
+        chart_type: "chartex".to_string(),
+        title,
+        series: vec![ChartSeries {
+            name: series_name,
+            name_ref: None,
+            color: None,
+            values,
+            values_ref,
+            x_values: Vec::new(),
+            x_values_ref: None,
+            bubble_sizes: Vec::new(),
+            bubble_sizes_ref: None,
+            point_colors: Vec::new(),
+            data_labels: None,
+            axis_group: None,
+            chart_type: None,
+            marker_symbol: None,
+        }],
+        categories,
+        categories_ref,
+        categories_format: None,
+        legend_pos,
+        value_format,
+        grouping: None,
+        bar_dir: None,
+        scatter_style: None,
+        radar_style: None,
+        data_labels: None,
+        secondary_axis: false,
+        value_format_secondary: None,
+        value_min: None,
+        value_max: None,
+        value_min_secondary: None,
+        value_max_secondary: None,
+        major_unit: None,
+        major_unit_secondary: None,
+        bar_gap_width: None,
+        bar_overlap: None,
+        x_axis_title: None,
+        y_axis_title: None,
+        y_axis_title_secondary: None,
+        show_major_gridlines: None,
+        show_major_gridlines_secondary: None,
+        disp_units: None,
+        disp_units_label: None,
+        disp_units_secondary: None,
+        disp_units_label_secondary: None,
+        bubble_scale: None,
+        size_represents: None,
+        stock_hi_low_lines: false,
+        stock_up_down_bars: false,
+        stock_drop_lines: false,
+        cx_layout: Some(layout),
+        cx_subtotal_indices: subtotal_indices,
+        cx_waterfall_increment_color: None,
+        cx_waterfall_decrement_color: None,
+        cx_waterfall_subtotal_color: None,
     })
 }

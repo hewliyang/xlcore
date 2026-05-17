@@ -45,6 +45,18 @@ fn is_target_part(name: &str) -> bool {
     if name.starts_with("xl/worksheets/") && !name.contains("/_rels/") {
         return true;
     }
+    // Drawing parts may carry `<mc:AlternateContent>` blocks (chartEx /
+    // 2010+ shape extensions). ooxmlsdk's `mce` processing only
+    // flattens unknown other-children, but `<a:graphic>` / `<xdr:graphicFrame>`
+    // — the typical AlternateContent payload — are slotted into typed
+    // choice fields that never see those replacements, so the chartEx
+    // graphic silently disappears. We textually unfold the Choice
+    // content (preferring `Requires="cx1"`, falling back to the
+    // Fallback) here, then let ooxmlsdk parse the result as a plain
+    // graphicFrame.
+    if name.starts_with("xl/drawings/") && !name.contains("/_rels/") {
+        return true;
+    }
     false
 }
 
@@ -148,6 +160,10 @@ fn rewrite_xml(xml: &[u8]) -> Option<Vec<u8>> {
         changed = true;
     }
 
+    if unfold_mc_alternate_content(&mut out) {
+        changed = true;
+    }
+
     if changed {
         Some(out.into_bytes())
     } else {
@@ -226,6 +242,89 @@ fn rewrite_x14_databar_color(s: &mut String) -> bool {
         *s = out;
     }
     changed
+}
+
+/// Unfold every `<mc:AlternateContent>...</mc:AlternateContent>` block in
+/// `s` to its first `<mc:Choice>` content (or `<mc:Fallback>` content when
+/// no Choice is present). Returns `true` if at least one block was
+/// rewritten. Used for drawing parts so chartEx graphics (which Excel
+/// always wraps in `mc:AlternateContent` for old-Excel fallback) become
+/// plain `<xdr:graphicFrame>` children that ooxmlsdk's typed parser can
+/// route into `two_cell_anchor_choice`.
+///
+/// We deliberately pick the first Choice unconditionally rather than
+/// inspecting `Requires="..."`. The set of namespaces this codebase
+/// renders is a superset of what Excel knows about for fallback purposes,
+/// so the Choice payload is always the richer one. If we ever support a
+/// version where Fallback is strictly newer (rare), this can flip.
+fn unfold_mc_alternate_content(s: &mut String) -> bool {
+    const OPEN_PREFIX: &str = "<mc:AlternateContent";
+    const CLOSE: &str = "</mc:AlternateContent>";
+    if !s.contains(OPEN_PREFIX) {
+        return false;
+    }
+    let mut out = String::with_capacity(s.len());
+    let mut rest = s.as_str();
+    let mut changed = false;
+    while let Some(open_idx) = rest.find(OPEN_PREFIX) {
+        out.push_str(&rest[..open_idx]);
+        let after_open = &rest[open_idx..];
+        // Find the matching `</mc:AlternateContent>` (no nesting in real
+        // OOXML, but we still account for empty `<mc:AlternateContent/>`).
+        // First: is it a self-closing empty block?
+        let tag_end = match after_open.find('>') {
+            Some(i) => i,
+            None => {
+                out.push_str(after_open);
+                rest = "";
+                break;
+            }
+        };
+        if after_open.as_bytes()[tag_end.saturating_sub(1)] == b'/' {
+            // Empty `<mc:AlternateContent/>`: drop it.
+            rest = &after_open[tag_end + 1..];
+            changed = true;
+            continue;
+        }
+        let close_rel = match after_open.find(CLOSE) {
+            Some(i) => i,
+            None => {
+                out.push_str(after_open);
+                rest = "";
+                break;
+            }
+        };
+        let inner = &after_open[tag_end + 1..close_rel];
+        // Try `<mc:Choice ...>...</mc:Choice>` first.
+        let chosen = extract_mc_container(inner, "mc:Choice")
+            .or_else(|| extract_mc_container(inner, "mc:Fallback"))
+            .unwrap_or("");
+        out.push_str(chosen);
+        rest = &after_open[close_rel + CLOSE.len()..];
+        changed = true;
+    }
+    out.push_str(rest);
+    if changed {
+        *s = out;
+    }
+    changed
+}
+
+/// Return the inner content of the first `<TAG ...>...</TAG>` block in `s`,
+/// or `None` if no such block is found. `tag` is matched literally (it
+/// must already include the namespace prefix).
+fn extract_mc_container<'a>(s: &'a str, tag: &str) -> Option<&'a str> {
+    let open_token = format!("<{}", tag);
+    let close_token = format!("</{}>", tag);
+    let open_idx = s.find(&open_token)?;
+    let after_open = &s[open_idx..];
+    // Self-closing block carries no content.
+    let tag_end = after_open.find('>')?;
+    if after_open.as_bytes()[tag_end.saturating_sub(1)] == b'/' {
+        return Some("");
+    }
+    let close_rel = after_open.find(&close_token)?;
+    Some(&after_open[tag_end + 1..close_rel])
 }
 
 /// Yield `(prefix, uri)` pairs for every `xmlns:PFX="URI"` (or single-quoted)
