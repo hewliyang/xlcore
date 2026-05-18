@@ -355,21 +355,21 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
     let mut value_max: Option<f64> = None;
     let mut value_min_secondary: Option<f64> = None;
     let mut value_max_secondary: Option<f64> = None;
-    // Axis titles. ECMA-376 §21.2.2.213 — every axis CT carries an
+    // Axis titles. ECMA-376 §21.2.2.210 — every axis CT carries an
     // optional `<c:title>` (same `CT_Title` shape as the chart title).
     // We route by `axPos`: `b`/`t` → x-axis (catAx/dateAx), `l` →
     // y-axis, `r` → secondary y-axis.
     let mut x_axis_title: Option<String> = None;
     let mut y_axis_title: Option<String> = None;
     let mut y_axis_title_secondary: Option<String> = None;
-    // `<c:majorGridlines>` toggle per value axis. ECMA-376 §21.2.2.85:
+    // `<c:majorGridlines>` toggle per value axis. ECMA-376 §21.2.2.100:
     // gridlines paint iff the element is present, and `<a:noFill/>` on
     // its line suppresses the stroke even when present. None ⇒ the
     // value axis is absent on this side; we collapse that to "don't
     // paint" at the renderer.
     let mut show_major_gridlines: Option<bool> = None;
     let mut show_major_gridlines_secondary: Option<bool> = None;
-    // `<c:dispUnits>` per value axis. ECMA-376 §21.2.2.46:
+    // `<c:dispUnits>` per value axis. ECMA-376 §21.2.2.45:
     // tick labels on the axis are divided by `disp_units` before
     // formatting, and `disp_units_label` (if present) is painted near
     // the axis as a caption (e.g. "S$ mn" with `builtInUnit=thousands`).
@@ -377,7 +377,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
     let mut disp_units_label: Option<String> = None;
     let mut disp_units_secondary: Option<f64> = None;
     let mut disp_units_label_secondary: Option<String> = None;
-    // `<c:majorUnit val="N"/>` per value axis (ECMA-376 §21.2.2.121).
+    // `<c:majorUnit val="N"/>` per value axis (ECMA-376 §21.2.2.103).
     // When authored, the renderer steps ticks by exactly N source
     // units instead of niceTicks; lets workbooks pin cadences like
     // 9000 (NWC line chart, dispUnits=thousands → 0/9/18/27/36/45).
@@ -456,7 +456,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
             // token inside the line block (same pragma as the series
             // color resolver). When spPr is absent the default stroke
             // applies, so "present without noFill" ⇒ show. Element
-            // entirely absent ⇒ don't paint (ECMA-376 §21.2.2.85).
+            // entirely absent ⇒ don't paint (ECMA-376 §21.2.2.100).
             //
             // We deliberately always emit `Some(bool)` here instead of
             // mapping through `.map()` — the schema's `Option<bool>` is
@@ -489,7 +489,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                 .and_then(|s| s.max_axis_value.as_ref())
                 .map(|m| m.val);
             // `<c:majorUnit>` sits *outside* `<c:scaling>` directly on
-            // the valAx (per ECMA-376 §21.2.2.120) — not nested like
+            // the valAx (per ECMA-376 §21.2.2.226) — not nested like
             // min/max. Positive-finite values only; OOXML allows any
             // positive double but niceTicks already handles boundary
             // weirdness so we re-validate here for safety.
@@ -587,13 +587,13 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
     let mut bubble_scale: Option<u32> = None;
     let mut size_represents: Option<String> = None;
     let mut grouping: Option<String> = None;
-    // ECMA-376 §21.2.2.75 / §21.2.2.108. Captured from the first
+    // ECMA-376 §21.2.2.75 / §21.2.2.131. Captured from the first
     // `<c:barChart>` group encountered (a chart can technically host
     // multiple bar groups but Excel writes one); combo charts get the
     // bar-side values, line/area groups don't carry these.
     let mut bar_gap_width: Option<u16> = None;
     let mut bar_overlap: Option<i8> = None;
-    // Stock-chart decoration toggles. ECMA-376 §21.2.2.207 lets
+    // Stock-chart decoration toggles. ECMA-376 §21.2.2.198 lets
     // `<c:stockChart>` host `<c:hiLowLines/>`, `<c:upDownBars/>`,
     // `<c:dropLines/>` as optional children.
     let mut stock_hi_low_lines = false;
@@ -738,7 +738,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
             }
             c::PlotAreaChoice::CScatterChart(sc) => {
                 chart_data_labels = extract_data_labels(sc.c_d_lbls.as_deref());
-                // ECMA-376 §21.2.2.193: ScatterStyle val is required
+                // ECMA-376 §21.2.2.162 / §21.2.3.40: scatterStyle / ST_ScatterStyle val is required
                 // (default `line`). Excel's *UI* default for new scatter
                 // charts is `marker`, but a workbook that explicitly
                 // wrote `<c:scatterStyle val="lineMarker"/>` etc. should
@@ -870,7 +870,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                 break;
             }
             c::PlotAreaChoice::CRadarChart(rc) => {
-                // ECMA-376 §21.2.2.155 / §21.2.2.176. Radar charts are
+                // ECMA-376 §21.2.2.153 (radarChart) / §21.2.2.154 (radarStyle). Radar charts are
                 // category-axis + value-axis the same way line charts
                 // are, so we reuse the line series shape: idx/order/tx/
                 // spPr/cat/val/dPt/dLbls. The renderer wraps the
@@ -910,7 +910,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                 break;
             }
             c::PlotAreaChoice::CStockChart(sc) => {
-                // ECMA-376 §21.2.2.207. Stock charts are line-shaped
+                // ECMA-376 §21.2.2.198. Stock charts are line-shaped
                 // series (LineChartSeries) with optional hiLowLines /
                 // upDownBars / dropLines decoration. The series count
                 // implies subtype:
@@ -950,7 +950,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                 break;
             }
             c::PlotAreaChoice::COfPieChart(pc) => {
-                // ECMA-376 §21.2.2.124. `ofPieType` (`pie` | `bar`)
+                // ECMA-376 §21.2.2.127. `ofPieType` (`pie` | `bar`)
                 // would split the second plot into either a satellite
                 // pie or bar of grouped slices; we approximate as a
                 // plain pie until the satellite layout lands.
@@ -960,7 +960,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
                 break;
             }
             c::PlotAreaChoice::CBubbleChart(bc) => {
-                // ECMA-376 §21.2.2.30 / .197: bubbleScale (0..=300,
+                // ECMA-376 §21.2.2.21 (bubbleScale) / §21.2.2.19 (bubble3D): bubbleScale (0..=300,
                 // default 100), sizeRepresents (`area` default or `w`).
                 bubble_scale = bc.c_bubble_scale.as_ref().and_then(|s| s.val);
                 size_represents = bc
@@ -1037,7 +1037,7 @@ fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> 
     }
     let value_format = value_format.or(primary_val_fmt);
 
-    // Title resolution (ECMA-376 §21.2.2.211 + §21.2.2.4):
+    // Title resolution (ECMA-376 §21.2.2.210 title + §21.2.2.7 autoTitleDeleted):
     //   - `<c:title><c:tx>...` explicit text wins.
     //   - `<c:title>` present *without* `<c:tx>` AND `<c:autoTitleDeleted
     //     val="0"/>` (or element absent, which defaults to false) AND

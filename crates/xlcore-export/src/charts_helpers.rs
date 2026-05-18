@@ -147,7 +147,7 @@ pub(crate) fn extract_data_labels(dl: Option<&c::DataLabels>) -> Option<DataLabe
         });
     };
     // OOXML CT_Boolean: element absent ⇒ false; element present with no
-    // val attr ⇒ true (per ECMA-376 part 1, §21.2.2.4 default); element
+    // val attr ⇒ true (CT_Boolean default, e.g. ECMA-376 §21.2.2.3); element
     // present with val="0"/"false" ⇒ false; val="1"/"true" ⇒ true.
     let show_value = seq
         .show_value

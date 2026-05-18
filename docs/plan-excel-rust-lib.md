@@ -77,6 +77,13 @@ feature-by-feature scoreboard.
 
 ## references on this machine
 
+- `./ecma-376/` — **indexed ECMA-376 Parts 1–4**. Always consult via the
+  `./ecma-376/ecma` CLI (`search`, `toc`, `show`) before citing any
+  section number, element name, or attribute semantics. **Do not
+  hallucinate ECMA section IDs / titles** — if you need spec backing,
+  run the CLI and quote the real section. Example:
+  `./ecma-376/ecma search "shared strings"` →
+  `./ecma-376/ecma show p1-18-4-9-sst-shared-string-table`.
 - `/tmp/ooxmlsdk/` — full ooxmlsdk source, 159 schema files
 - `~/.cargo/registry/src/index.crates.io-*/ironcalc{,_base}-0.7.1/` — IronCalc internals; `src/functions/mod.rs` for the function enum
 - `/Users/m1a1/Developer/oai-artifact-tools/examples/browser-workbook-preview/` — OAI's canvas renderer reference (`src/simple-workbook-canvas.mjs`, `FULL_FIDELITY_PLAN.md`)

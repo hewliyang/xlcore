@@ -344,7 +344,7 @@ function legendKindFor(chart: Chart | undefined, s: ChartSeries): LegendSwatchKi
   // For a non-combo chart with unset `s.chartType` we inherit `chart.type`;
   // combo charts always set `s.chartType` per group at extraction time.
   const kind = s.chartType ?? chart.type;
-  // ECMA-376 §21.2.3.10 `<c:marker><c:symbol val="none"/>`: explicitly
+  // ECMA-376 §21.2.2.205 `<c:marker><c:symbol val="none"/>`: explicitly
   // suppress the per-point glyph for this series. Excel still paints
   // the connecting stroke for line series, so the legend swatch drops
   // the marker dot but keeps the line. Source workbook fixture:

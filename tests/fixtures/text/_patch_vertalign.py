@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Rewrite an empty xlsx into a fixture exercising OOXML
-`<vertAlign val="superscript|subscript"/>` (ECMA-376 §18.4.16).
+`<vertAlign val="superscript|subscript"/>` (ECMA-376 §18.4.14).
 
 Two flavors are covered:
 

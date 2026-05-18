@@ -69,7 +69,7 @@ describe("computeBarSlotMetrics — gapWidth / overlap", () => {
 
 describe("formatAxisValue — dispUnits divisor", () => {
   it("divides by 1000 for thousands and keeps the format code", () => {
-    // ECMA-376 §21.2.2.46: tick label = value / dispUnits, then formatted.
+    // ECMA-376 §21.2.2.45: tick label = value / dispUnits, then formatted.
     // 75000 / 1000 = 75 → "75" under General; "75" under "0".
     expect(formatAxisValue(75000, "General", 1000)).toBe("75");
     expect(formatAxisValue(75000, "#,##0", 1000)).toBe("75");
@@ -143,7 +143,7 @@ describe("zeroAxisMetrics — shared zero-baseline helper", () => {
 
 describe("resolveAxisRange — <c:majorUnit> cadence", () => {
   it("AGS NWC: max=45000, majorUnit=9000, positive data → 0/9000/.../45000", () => {
-    // ECMA-376 §21.2.2.121 in source units. dispUnits scaling is the
+    // ECMA-376 §21.2.2.103 in source units. dispUnits scaling is the
     // tick-label formatter's job, not resolveAxisRange's — we just
     // emit the raw tick positions. NWC line chart's authored
     // `<c:max val="45000"/>` + `<c:majorUnit val="9000"/>` over data

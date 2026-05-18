@@ -13,7 +13,7 @@
 //! renderer paints fill + outline + text — unknown `prstGeom` presets
 //! fall back to plain rectangle.
 //!
-//! See ECMA-376 §19.3.1.34 (`<xdr:sp>`) and §20.1.7.6 (group transform
+//! See ECMA-376 §20.5.2.29 (`<xdr:sp>`) and §20.1.7.5 (xfrm group transform
 //! semantics — `xfrm/chOff/chExt` defines the logical→world mapping
 //! for nested children).
 
@@ -534,7 +534,7 @@ fn text_body_to_paragraphs(
 
 fn body_wrap_token(bp: &a::BodyProperties) -> Option<String> {
     // `<a:bodyPr wrap="none"|"square"/>`. Default (attr absent) is
-    // `square` per ECMA-376 §21.1.2.1.41 — we surface `None` for that
+    // `square` per ECMA-376 §21.1.2.1.1 bodyPr — we surface `None` for that
     // default and let the renderer decide. We only need to flag the
     // explicit `none` case (no-wrap, run-on long lines).
     // `bp.wrap` is `Option<TextWrappingValues>`. Absent attr ⇒ outer

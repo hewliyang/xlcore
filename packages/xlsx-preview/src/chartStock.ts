@@ -1,4 +1,4 @@
-// stockChart (`c:stockChart`, ECMA-376 §21.2.2.207) painter. Split
+// stockChart (`c:stockChart`, ECMA-376 §21.2.2.198) painter. Split
 // out of `chartAdvanced.ts` to keep that file under its per-file LOC
 // budget once chartEx layouts landed in `chartEx.ts`.
 
@@ -25,7 +25,7 @@ const AXIS_TICK_COUNT = 5;
 // ---------- stock ----------
 
 /**
- * Stock chart painter (ECMA-376 §21.2.2.207). Series count implies
+ * Stock chart painter (ECMA-376 §21.2.2.198). Series count implies
  * subtype:
  *   3 → High-Low-Close (HLC)        — series [high, low, close]
  *   4 → Open-High-Low-Close (OHLC)  — series [open, high, low, close]

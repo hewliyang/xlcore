@@ -22,8 +22,8 @@ export type Drawing = {
    * anchor bbox (0..1). Nested groups are flattened — the extractor
    * applies each `<xdr:grpSp>`'s `xfrm/chOff/chExt` mapping during
    * the walk so the renderer only ever sees leaf `<xdr:sp>` nodes.
-   * See ECMA-376 §19.3 for the shape model and §20.1.7.6 for the
-   * group-transform semantics.
+   * See ECMA-376 §20.5.2 (SpreadsheetML drawing shapes) and
+   * §20.1.7.5 (xfrm) for the group-transform semantics.
    */
   shape?: Shape;
 };

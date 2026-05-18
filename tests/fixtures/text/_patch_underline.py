@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Rewrite an empty xlsx into a fixture exercising every OOXML
-underline variant (ECMA-376 §18.18.91 ST_UnderlineValues):
+underline variant (ECMA-376 §18.18.85 ST_UnderlineValues):
 
     single, double, singleAccounting, doubleAccounting
 

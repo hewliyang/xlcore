@@ -347,7 +347,7 @@ pub(crate) fn apply_color_modifiers(hex_in: &str, scan_block: &str) -> String {
             // L' = L * val/100000.
             "shade" => l = (l * v).clamp(0.0, 1.0),
             // Tint moves luminance toward 1 (mix with white):
-            // L' = L * (1 - v) + v.  ECMA-376 §20.1.2.3.30.
+            // L' = L * (1 - v) + v.  ECMA-376 §20.1.2.3.34 tint.
             "tint" => l = (l * (1.0 - v) + v).clamp(0.0, 1.0),
             _ => {}
         }

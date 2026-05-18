@@ -224,7 +224,7 @@ export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, re
     ctx.fillText(formatGeneral(t), x, inner.y + inner.h + 4);
   }
 
-  // ECMA-376 §21.2.2.193 ScatterStyle. Excel's UI default for new
+  // ECMA-376 §21.2.2.162 scatterStyle / §21.2.3.40 ST_ScatterStyle. Excel's UI default for new
   // scatter charts is `marker` only; OOXML enum default is `line`.
   // We treat an *unset* style as marker-only (matches the existing
   // visual contract + Excel UI), and only draw connecting lines /

@@ -21,7 +21,7 @@
 //!   (§20.1.2.3.13) — HSL → RGB. Note OOXML HSL is *not* the same as the
 //!   theme-tint HLS curve in `packages/xlsx-preview/src/render.ts`; here we just do
 //!   the standard sRGB conversion.
-//! - `<a:prstClr val="name">` (§20.1.10.47) — lookup against the spec's
+//! - `<a:prstClr val="name">` (§20.1.2.3.22) — lookup against the spec's
 //!   190-entry preset color table (CSS3/X11 names + `dk`/`lt`/`med`
 //!   abbreviations + 2010 aliases for the same names without the prefix
 //!   shorthand). Generated from the schema enum; see `_PRESET_GEN` block
@@ -86,8 +86,9 @@ fn resolve_hsl(c: &a::HslColor) -> String {
     rgb_hex(r, g, b)
 }
 
-/// Lookup table for `<a:prstClr val="name">`. ECMA-376 §20.1.10.47
-/// `ST_PresetColorVal`. 190 entries: CSS3/X11 named colors + the OOXML-
+/// Lookup table for `<a:prstClr val="name">` element (ECMA-376
+/// §20.1.2.3.22); the enum is `ST_PresetColorVal` (DrawingML simple
+/// types in §20.1.10). 190 entries: CSS3/X11 named colors + the OOXML-
 /// specific `dk*`/`lt*`/`med*` abbreviations + 2010-era aliases (the
 /// schema added e.g. `darkBlue` alongside `dkBlue` after 2007 Office
 /// shipped; both resolve to the same value).

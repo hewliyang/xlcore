@@ -424,7 +424,7 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     // routes pure stacked-line/area charts to the single-axis painters).
     type LineLabel = { s: ChartSeries; kind: "line" | "area"; i: number; v: number };
     const pending: LineLabel[] = [];
-    // Excel default `<c:dispBlanksAs val="gap"/>` (ECMA-376 §21.2.2.34):
+    // Excel default `<c:dispBlanksAs val="gap"/>` (ECMA-376 §21.2.2.42):
     // missing values break the line / leave a gap in area fills rather
     // than collapsing to zero. Without this guard a line series shorter
     // than `categoryCount` plots a phantom segment crashing to y(0) —

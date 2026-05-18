@@ -189,7 +189,7 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       plotRect.h = rect.y + rect.h - cursorY - legendH - 4;
       break;
   }
-  // Axis-title bands. ECMA-376 §21.2.2.213 — every axis carries an
+  // Axis-title bands. ECMA-376 §21.2.2.210 — every axis carries an
   // optional `<c:title>`. We reserve a fixed strip (font size + 6px
   // padding) on each occupied edge, then paint inside it. The strips
   // sit *inside* the chart frame but *outside* the plot area so the
@@ -475,7 +475,7 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     }
   }
 
-  // Bars. Slot geometry per ECMA-376 §21.2.2.75 / .108 — see
+  // Bars. Slot geometry per ECMA-376 §21.2.2.75 / .131 — see
   // computeBarSlotMetrics. `gapWidth` defaults to 150 (Excel spec),
   // `overlap` defaults to 100 for stacked / 0 for clustered.
   const groupGap = horizontal ? innerRect.h / categoryCount : innerRect.w / categoryCount;
@@ -767,7 +767,7 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
   const xStep = inner.w / Math.max(1, categoryCount - 1);
   const yFor = (v: number) => inner.y + (1 - (v - minV) / (maxV - minV)) * inner.h;
 
-  // Excel default `<c:dispBlanksAs val="gap"/>` (ECMA-376 §21.2.2.34):
+  // Excel default `<c:dispBlanksAs val="gap"/>` (ECMA-376 §21.2.2.42):
   // missing points break the line. Stacked rows from `buildStackedRows`
   // already fill gaps with 0 by construction (stacking semantics), so
   // this guard only fires for the unstacked path.

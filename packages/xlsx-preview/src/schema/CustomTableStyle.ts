@@ -10,7 +10,7 @@
  * We surface the elements we actually paint today. Bands we don't
  * implement (column stripes, subtotal rows, page-field cells) are
  * dropped on the floor — add fields as the renderer learns more
- * bands. ECMA-376 §18.8.40 has the full enumeration.
+ * bands. ECMA-376 §18.18.77 ST_TableStyleType has the full enumeration.
  */
 export type CustomTableStyle = {
   name: string;

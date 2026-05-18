@@ -612,7 +612,7 @@ pub struct TableStyle {
 /// We surface the elements we actually paint today. Bands we don't
 /// implement (column stripes, subtotal rows, page-field cells) are
 /// dropped on the floor — add fields as the renderer learns more
-/// bands. ECMA-376 §18.8.40 has the full enumeration.
+/// bands. ECMA-376 §18.18.77 ST_TableStyleType has the full enumeration.
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[cfg_attr(

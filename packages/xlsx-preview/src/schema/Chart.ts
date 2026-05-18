@@ -53,7 +53,7 @@ export type Chart = {
   scatterStyle?: string;
   /**
    * Radar style: `standard`, `marker`, `filled`. Only meaningful for
-   * chart_type == radar. ECMA-376 §21.2.2.176; defaults to
+   * chart_type == radar. ECMA-376 §21.2.2.154; defaults to
    * `standard` (line, no markers) per the schema, though Excel's UI
    * default for new radar charts is `marker`.
    */
@@ -98,7 +98,7 @@ export type Chart = {
   bubbleScale?: number;
   sizeRepresents?: string;
   /**
-   * Stock-chart decoration toggles (ECMA-376 §21.2.2.207).
+   * Stock-chart decoration toggles (ECMA-376 §21.2.2.198).
    * `hiLowLines` connect each category's high+low values with a
    * vertical line; xlsxwriter emits `<c:hiLowLines/>` by default
    * for HLC/OHLC stock. `upDownBars` paint a column between

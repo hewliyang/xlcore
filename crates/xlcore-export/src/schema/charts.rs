@@ -28,8 +28,8 @@ pub struct Drawing {
     /// anchor bbox (0..1). Nested groups are flattened — the extractor
     /// applies each `<xdr:grpSp>`'s `xfrm/chOff/chExt` mapping during
     /// the walk so the renderer only ever sees leaf `<xdr:sp>` nodes.
-    /// See ECMA-376 §19.3 for the shape model and §20.1.7.6 for the
-    /// group-transform semantics.
+    /// See ECMA-376 §20.5.2 (SpreadsheetML drawing shapes) and
+    /// §20.1.7.5 (xfrm) for the group-transform semantics.
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub shape: Option<Shape>,
@@ -247,7 +247,7 @@ pub struct Chart {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scatter_style: Option<String>,
     /// Radar style: `standard`, `marker`, `filled`. Only meaningful for
-    /// chart_type == radar. ECMA-376 §21.2.2.176; defaults to
+    /// chart_type == radar. ECMA-376 §21.2.2.154; defaults to
     /// `standard` (line, no markers) per the schema, though Excel's UI
     /// default for new radar charts is `marker`.
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -329,7 +329,7 @@ pub struct Chart {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub size_represents: Option<String>,
-    /// Stock-chart decoration toggles (ECMA-376 §21.2.2.207).
+    /// Stock-chart decoration toggles (ECMA-376 §21.2.2.198).
     /// `hiLowLines` connect each category's high+low values with a
     /// vertical line; xlsxwriter emits `<c:hiLowLines/>` by default
     /// for HLC/OHLC stock. `upDownBars` paint a column between
