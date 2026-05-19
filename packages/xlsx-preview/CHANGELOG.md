@@ -5,6 +5,18 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Cut per-frame redraw cost on large sheets with conditional formatting by
+  ~17× (89ms → 5ms median on a 10k-row workbook with 5 CF rules). Scrolling
+  was previously re-running viewport-independent CF work — `iterAllCells`
+  three times, full-sheet predicate evaluation, color-scale stop resolution,
+  data-bar bounds, and merge-map construction — on every RAF. Now memoized
+  per `(sheet, layout)` (and per `CfRule` for color-scale / data-bar
+  precomputes) via `WeakMap`s so they free with the workbook. Also replaced
+  full-map scans of `cfDxfs` and `cfIconDraw` (10k+ entries) with
+  visible-rect iteration + `Map.get`, so off-screen cells are never visited.
+
 ### Added
 
 - Worksheet-level `<autoFilter ref="...">` chrome: surfaces as

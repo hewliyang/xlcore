@@ -1,6 +1,5 @@
 import type { Sheet } from "./types.js";
-import { iterAllCells } from "./columnar.js";
-import { isCfLocked, resolveCfvoValue } from "./conditionalFormatting.js";
+import { getNumericCellMap, isCfLocked, resolveCfvoValue } from "./conditionalFormatting.js";
 
 const ICON_RESERVE_PX = 18;
 
@@ -18,14 +17,7 @@ export function computeCfIconState(
   const cfs = sheet.conditionalFormats;
   if (!cfs || cfs.length === 0) return { cfIconReserve, cfIconDraw, cfIconSuppress };
 
-  const cellNumeric = new Map<string, number>();
-  iterAllCells(sheet, (cell) => {
-    if (cell.value === undefined) return;
-    if (cell.type === "n" || cell.type === "f") {
-      const n = parseFloat(cell.value);
-      if (!Number.isNaN(n)) cellNumeric.set(`${cell.r}:${cell.c}`, n);
-    }
-  });
+  const cellNumeric = getNumericCellMap(sheet);
 
   for (const cf of cfs) {
     const rule = cf.rules

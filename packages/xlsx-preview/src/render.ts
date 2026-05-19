@@ -19,6 +19,7 @@ import {
   computeCfTextSuppress,
   drawConditionalFormats,
 } from "./conditionalFormatting.js";
+import type { Dxf } from "./types.js";
 import { drawCfIcons } from "./cfIcons.js";
 import { drawSparklines } from "./sparklines.js";
 import {
@@ -77,18 +78,19 @@ export function render(
   const sel = resolveSelection(opts, grid);
   const panes = splitPanes(sheet, grid, vp ?? null, W, H);
 
-  const cfLocks = computeCfStopLocks(sheet, layout);
-  const cfDxfs = computeCfDxfMap(sheet, layout, cfLocks);
-  const cfTextSuppress = computeCfTextSuppress(sheet, cfLocks);
-  const { cfIconReserve, cfIconDraw, cfIconSuppress } = computeCfIconState(sheet, cfLocks);
+  const pre = getCfPrecompute(sheet, layout);
+  const cfLocks = pre.cfLocks;
+  const cfTextSuppress = new Set(pre.cfTextSuppress);
+  const { cfDxfs: precomputedDxfs, cfIconReserve, cfIconDraw, cfIconSuppress } = pre;
   for (const k of cfIconSuppress) cfTextSuppress.add(k);
+  const cfDxfs = new Map(precomputedDxfs);
 
   const { tableDxfs, filterArrows } = computeTableState(sheet, layout, visibleEnvelope(panes));
   for (const [k, dxf] of tableDxfs) {
     if (!cfDxfs.has(k)) cfDxfs.set(k, dxf);
   }
 
-  const hyperlinkDxfs = computeHyperlinkDxfs(sheet, layout);
+  const hyperlinkDxfs = pre.hyperlinkDxfs;
   for (const [k, dxf] of hyperlinkDxfs) {
     if (!cfDxfs.has(k)) cfDxfs.set(k, dxf);
   }
@@ -119,6 +121,43 @@ export function render(
 
   drawFreezeIndicators(ctx, sheet, grid, W, H);
   if (renderHeaders) drawHeaders(ctx, sheet, grid, sel, vp ?? null, W, H, panes);
+}
+
+interface CfPrecompute {
+  cfLocks: Map<string, number>;
+  cfDxfs: Map<string, Dxf>;
+  cfTextSuppress: Set<string>;
+  cfIconReserve: Map<string, number>;
+  cfIconDraw: Map<string, { iconSet: string; idx: number; n: number }>;
+  cfIconSuppress: Set<string>;
+  hyperlinkDxfs: Map<string, Dxf>;
+}
+const cfPrecomputeCache = new WeakMap<Sheet, WeakMap<WorkbookLayout, CfPrecompute>>();
+
+function getCfPrecompute(sheet: Sheet, layout: WorkbookLayout): CfPrecompute {
+  let inner = cfPrecomputeCache.get(sheet);
+  if (!inner) {
+    inner = new WeakMap();
+    cfPrecomputeCache.set(sheet, inner);
+  }
+  const hit = inner.get(layout);
+  if (hit) return hit;
+  const cfLocks = computeCfStopLocks(sheet, layout);
+  const cfDxfs = computeCfDxfMap(sheet, layout, cfLocks);
+  const cfTextSuppress = computeCfTextSuppress(sheet, cfLocks);
+  const iconState = computeCfIconState(sheet, cfLocks);
+  const hyperlinkDxfs = computeHyperlinkDxfs(sheet, layout);
+  const value: CfPrecompute = {
+    cfLocks,
+    cfDxfs,
+    cfTextSuppress,
+    cfIconReserve: iconState.cfIconReserve,
+    cfIconDraw: iconState.cfIconDraw,
+    cfIconSuppress: iconState.cfIconSuppress,
+    hyperlinkDxfs,
+  };
+  inner.set(layout, value);
+  return value;
 }
 
 function visibleEnvelope(panes: Pane[]): Visible {

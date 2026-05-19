@@ -482,17 +482,16 @@ export function drawConditionalFormats(
 ): void {
   if (cfDxfs.size > 0) {
     const { covered, topLeftOf } = buildMergeMaps(sheet);
-    for (const [k, dxf] of cfDxfs) {
-      if (!dxf.fillColor) continue;
-      if (covered.has(k)) continue;
-      const [rs, cs] = k.split(":");
-      const r = parseInt(rs!, 10),
-        c = parseInt(cs!, 10);
-      if (r < vis.firstRow || r > vis.lastRow) continue;
-      if (c < vis.firstCol || c > vis.lastCol) continue;
-      const rect = topLeftOf.has(k) ? mergedRect(g, topLeftOf.get(k)!) : cellRect(g, r, c);
-      ctx.fillStyle = colorToCss(dxf.fillColor, "#ffffff");
-      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    for (let r = vis.firstRow; r <= vis.lastRow; r++) {
+      for (let c = vis.firstCol; c <= vis.lastCol; c++) {
+        const k = `${r}:${c}`;
+        const dxf = cfDxfs.get(k);
+        if (!dxf || !dxf.fillColor) continue;
+        if (covered.has(k)) continue;
+        const rect = topLeftOf.has(k) ? mergedRect(g, topLeftOf.get(k)!) : cellRect(g, r, c);
+        ctx.fillStyle = colorToCss(dxf.fillColor, "#ffffff");
+        ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      }
     }
   }
 
@@ -500,14 +499,7 @@ export function drawConditionalFormats(
   if (!cfs || cfs.length === 0) return;
   const { covered, topLeftOf } = buildMergeMaps(sheet);
 
-  const cellNumeric = new Map<string, number>();
-  iterAllCells(sheet, (cell) => {
-    if (cell.value === undefined) return;
-    if (cell.type === "n" || cell.type === "f") {
-      const n = parseFloat(cell.value);
-      if (!Number.isNaN(n)) cellNumeric.set(`${cell.r}:${cell.c}`, n);
-    }
-  });
+  const cellNumeric = getNumericCellMap(sheet);
 
   for (const cf of cfs) {
     const rule = cf.rules
@@ -515,10 +507,13 @@ export function drawConditionalFormats(
       .sort((a, b) => a.priority - b.priority)[0];
     if (!rule || !rule.colorScale) continue;
 
-    const values = numericValuesInRanges(cellNumeric, cf.ranges);
-    if (values.length === 0) continue;
-
-    const stops = resolveColorScaleStops(rule.colorScale, values);
+    let stops = colorScaleStopsCache.get(rule);
+    if (!stops) {
+      const values = numericValuesInRanges(cellNumeric, cf.ranges);
+      if (values.length === 0) continue;
+      stops = resolveColorScaleStops(rule.colorScale, values);
+      colorScaleStopsCache.set(rule, stops);
+    }
     if (stops.length < 2) continue;
 
     for (const range of cf.ranges) {
@@ -550,14 +545,23 @@ export function drawConditionalFormats(
     if (!rule || !rule.dataBar) continue;
     const db = rule.dataBar;
 
-    const values = numericValuesInRanges(cellNumeric, cf.ranges);
-    if (values.length === 0) continue;
-    const dataMin = Math.min(...values);
-    const dataMax = Math.max(...values);
-    const sorted = [...values].sort((a, b) => a - b);
-    const minVal = resolveCfvoValue(db.min, dataMin, dataMax, sorted, true);
-    const maxVal = resolveCfvoValue(db.max, dataMin, dataMax, sorted, false);
-    if (!isFinite(minVal) || !isFinite(maxVal) || maxVal <= minVal) continue;
+    let bounds = dataBarBoundsCache.get(rule);
+    if (bounds === undefined) {
+      const values = numericValuesInRanges(cellNumeric, cf.ranges);
+      if (values.length === 0) {
+        dataBarBoundsCache.set(rule, null);
+        continue;
+      }
+      const dataMin = Math.min(...values);
+      const dataMax = Math.max(...values);
+      const sorted = [...values].sort((a, b) => a - b);
+      const minVal = resolveCfvoValue(db.min, dataMin, dataMax, sorted, true);
+      const maxVal = resolveCfvoValue(db.max, dataMin, dataMax, sorted, false);
+      bounds = isFinite(minVal) && isFinite(maxVal) && maxVal > minVal ? { minVal, maxVal } : null;
+      dataBarBoundsCache.set(rule, bounds);
+    }
+    if (!bounds) continue;
+    const { minVal, maxVal } = bounds;
 
     const minPct = (db.minLengthPct ?? 10) / 100;
     const maxPct = (db.maxLengthPct ?? 90) / 100;
@@ -634,6 +638,25 @@ export function drawConditionalFormats(
       }
     }
   }
+}
+
+const colorScaleStopsCache = new WeakMap<CfRule, ReturnType<typeof resolveColorScaleStops>>();
+const dataBarBoundsCache = new WeakMap<CfRule, { minVal: number; maxVal: number } | null>();
+
+const numericCellMapCache = new WeakMap<Sheet, Map<string, number>>();
+export function getNumericCellMap(sheet: Sheet): Map<string, number> {
+  const hit = numericCellMapCache.get(sheet);
+  if (hit) return hit;
+  const cellNumeric = new Map<string, number>();
+  iterAllCells(sheet, (cell) => {
+    if (cell.value === undefined) return;
+    if (cell.type === "n" || cell.type === "f") {
+      const n = parseFloat(cell.value);
+      if (!Number.isNaN(n)) cellNumeric.set(`${cell.r}:${cell.c}`, n);
+    }
+  });
+  numericCellMapCache.set(sheet, cellNumeric);
+  return cellNumeric;
 }
 
 export function resolveCfvoValue(

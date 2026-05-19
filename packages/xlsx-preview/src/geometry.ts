@@ -58,10 +58,16 @@ export function mergedRect(
   };
 }
 
-export function buildMergeMaps(sheet: Sheet): {
+type MergeMaps = {
   covered: Set<string>;
   topLeftOf: Map<string, { r1: number; c1: number; r2: number; c2: number }>;
-} {
+};
+
+const mergeMapsCache = new WeakMap<Sheet, MergeMaps>();
+
+export function buildMergeMaps(sheet: Sheet): MergeMaps {
+  const hit = mergeMapsCache.get(sheet);
+  if (hit) return hit;
   const covered = new Set<string>();
   const topLeftOf = new Map<string, { r1: number; c1: number; r2: number; c2: number }>();
   for (const m of sheet.merges) {
@@ -73,7 +79,9 @@ export function buildMergeMaps(sheet: Sheet): {
       }
     }
   }
-  return { covered, topLeftOf };
+  const result: MergeMaps = { covered, topLeftOf };
+  mergeMapsCache.set(sheet, result);
+  return result;
 }
 
 export function rectFor(

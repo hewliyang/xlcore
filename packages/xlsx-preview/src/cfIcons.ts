@@ -14,17 +14,17 @@ export function drawCfIcons(
   const { covered, topLeftOf } = buildMergeMaps(sheet);
   const ICON_PX = 12;
   const INSET_X = 3;
-  for (const [k, info] of cfIconDraw) {
-    if (covered.has(k)) continue;
-    const [rs, cs] = k.split(":");
-    const r = parseInt(rs!, 10),
-      c = parseInt(cs!, 10);
-    if (r < vis.firstRow || r > vis.lastRow) continue;
-    if (c < vis.firstCol || c > vis.lastCol) continue;
-    const rect = topLeftOf.has(k) ? mergedRect(g, topLeftOf.get(k)!) : cellRect(g, r, c);
-    const x = rect.x + INSET_X;
-    const y = rect.y + (rect.h - ICON_PX) / 2;
-    drawIconGlyph(ctx, info.iconSet, info.idx, info.n, x, y, ICON_PX);
+  for (let r = vis.firstRow; r <= vis.lastRow; r++) {
+    for (let c = vis.firstCol; c <= vis.lastCol; c++) {
+      const k = `${r}:${c}`;
+      const info = cfIconDraw.get(k);
+      if (!info) continue;
+      if (covered.has(k)) continue;
+      const rect = topLeftOf.has(k) ? mergedRect(g, topLeftOf.get(k)!) : cellRect(g, r, c);
+      const x = rect.x + INSET_X;
+      const y = rect.y + (rect.h - ICON_PX) / 2;
+      drawIconGlyph(ctx, info.iconSet, info.idx, info.n, x, y, ICON_PX);
+    }
   }
 }
 
