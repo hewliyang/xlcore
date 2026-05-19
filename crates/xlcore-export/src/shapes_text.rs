@@ -3,21 +3,42 @@ use crate::shapes::resolve_solid_fill;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_drawing as xdr;
 
+pub(crate) struct TextBodyOut {
+    pub anchor: Option<String>,
+    pub wrap: Option<String>,
+    pub insets: Option<Vec<i32>>,
+    pub autofit_kind: Option<String>,
+    pub autofit_font_scale: Option<i32>,
+    pub autofit_line_space_reduction: Option<i32>,
+    pub paragraphs: Vec<ShapeParagraph>,
+}
+
+impl TextBodyOut {
+    fn empty() -> Self {
+        Self {
+            anchor: None,
+            wrap: None,
+            insets: None,
+            autofit_kind: None,
+            autofit_font_scale: None,
+            autofit_line_space_reduction: None,
+            paragraphs: Vec::new(),
+        }
+    }
+}
+
 pub(crate) fn text_body_to_paragraphs(
     tb: Option<&xdr::TextBody>,
     theme: Option<&Theme>,
-) -> (
-    Option<String>,
-    Option<String>,
-    Option<Vec<i32>>,
-    Vec<ShapeParagraph>,
-) {
+) -> TextBodyOut {
     let Some(tb) = tb else {
-        return (None, None, None, Vec::new());
+        return TextBodyOut::empty();
     };
     let anchor = body_anchor_token(&tb.body_properties);
     let wrap = body_wrap_token(&tb.body_properties);
     let insets = body_insets_emu(&tb.body_properties);
+    let (autofit_kind, autofit_font_scale, autofit_line_space_reduction) =
+        body_autofit(&tb.body_properties);
 
     let list_style = tb.list_style.as_deref();
 
@@ -78,7 +99,29 @@ pub(crate) fn text_body_to_paragraphs(
             paragraphs.push(ShapeParagraph { align, runs });
         }
     }
-    (anchor, wrap, insets, paragraphs)
+    TextBodyOut {
+        anchor,
+        wrap,
+        insets,
+        autofit_kind,
+        autofit_font_scale,
+        autofit_line_space_reduction,
+        paragraphs,
+    }
+}
+
+fn body_autofit(
+    bp: &a::BodyProperties,
+) -> (Option<String>, Option<i32>, Option<i32>) {
+    match bp.body_properties_choice1.as_ref() {
+        Some(a::BodyPropertiesChoice::ANormAutofit(n)) => {
+            (Some("norm".to_string()), n.font_scale, n.line_space_reduction)
+        }
+        Some(a::BodyPropertiesChoice::ASpAutoFit(_)) => {
+            (Some("shape".to_string()), None, None)
+        }
+        _ => (None, None, None),
+    }
 }
 
 fn pick_align(

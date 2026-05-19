@@ -7,6 +7,30 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- DrawingML text autofit (`<a:normAutofit fontScale lnSpcReduction>` /
+  `<a:spAutoFit/>`) honored end-to-end. `body_autofit` in
+  `crates/xlcore-export/src/shapes_text.rs` decodes `<a:bodyPr>`'s
+  autofit choice into three new `ShapeNode` fields (`textAutofit`,
+  `textFontScale`, `textLineSpaceReduction`); `a:noAutofit` and an
+  absent choice both resolve to `None` (no scaling). The painter
+  (`drawShapeText` in `packages/xlsx-preview/src/shape.ts`) multiplies
+  every run's font size by `textFontScale / 100000` and reduces every
+  line height by `1 - textLineSpaceReduction / 100000` when
+  `textAutofit === "norm"`. `spAutoFit` is recorded for round-trip
+  but doesn't trigger paint-time work — by spec the shape `ext`
+  already reflects the author-time fit. Locked in by
+  `tests/fixtures/shapes/text-autofit.xlsx` (3×2 grid sweeping
+  `100% / 75% / 50%` font scale and `50% + 20% lnSpc / 25% / spAutoFit`).
+  Like `outer-shadow.xlsx`, the `.hsx.png` ground truth intentionally
+  diverges from `.ours.png` — SpreadJS ignores `normAutofit` and
+  renders every box at unscaled 11pt; we render the spec-correct
+  scaled sizes. Closes `parity-shapes.md` P1 #7.
+- DrawingML fixture `tests/fixtures/shapes/text-autofit.xlsx` authored
+  via `hsx eval` + `_patch_text_autofit.py` Python zip-rewrite
+  (SpreadJS only ever emits `<a:noAutofit/>` through its public API,
+  so the patch splices the explicit autofit elements into each
+  shape's `<a:bodyPr>` directly).
+
 - DrawingML `<a:avLst>` adjust values honored on `roundRect`, the four
   cardinal arrows (`leftArrow` / `rightArrow` / `upArrow` /
   `downArrow`), and `leftRightArrow`. `node.adj1` / `node.adj2` were

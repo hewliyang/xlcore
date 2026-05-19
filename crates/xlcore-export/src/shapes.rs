@@ -425,6 +425,9 @@ fn visit_picture(
         elbow_axis: None,
         fill_gradient: None,
         outer_shadow: None,
+        text_autofit: None,
+        text_font_scale: None,
+        text_line_space_reduction: None,
     });
 }
 
@@ -472,8 +475,14 @@ fn visit_shape(
     let mut line_dash: Option<String> = line_dash_token(sp.a_ln.as_deref());
     let mut line_cap: Option<String> = line_cap_token(sp.a_ln.as_deref());
     let mut line_join: Option<String> = line_join_token(sp.a_ln.as_deref());
-    let (text_anchor, text_wrap, text_insets_emu, mut paragraphs) =
-        text_body_to_paragraphs(s.text_body.as_deref(), theme);
+    let tb_out = text_body_to_paragraphs(s.text_body.as_deref(), theme);
+    let text_anchor = tb_out.anchor;
+    let text_wrap = tb_out.wrap;
+    let text_insets_emu = tb_out.insets;
+    let text_autofit = tb_out.autofit_kind;
+    let text_font_scale = tb_out.autofit_font_scale;
+    let text_line_space_reduction = tb_out.autofit_line_space_reduction;
+    let mut paragraphs = tb_out.paragraphs;
     let rotation = merge_rotation(
         parent_rot_rad,
         sp.transform2_d.as_ref().and_then(|x| x.rotation),
@@ -557,6 +566,9 @@ fn visit_shape(
         elbow_axis: None,
         fill_gradient,
         outer_shadow,
+        text_autofit,
+        text_font_scale,
+        text_line_space_reduction,
     });
 }
 
@@ -1121,5 +1133,8 @@ fn visit_connector(
         elbow_axis,
         fill_gradient: None,
         outer_shadow: None,
+        text_autofit: None,
+        text_font_scale: None,
+        text_line_space_reduction: None,
     });
 }

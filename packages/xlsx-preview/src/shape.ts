@@ -538,6 +538,15 @@ function drawShapeText(
   const innerH = Math.max(1, baseH - tPad - bPad);
   const wrap = node.textWrap !== "none";
 
+  const fontScale =
+    node.textAutofit === "norm" && node.textFontScale != null
+      ? Math.max(0.01, Math.min(1, node.textFontScale / 100000))
+      : 1;
+  const lineScale =
+    node.textAutofit === "norm" && node.textLineSpaceReduction != null
+      ? Math.max(0.1, 1 - node.textLineSpaceReduction / 100000)
+      : 1;
+
   type WrappedLine = {
     runs: { r: ShapeParagraph["runs"][number]; width: number; font: string }[];
     align: ShapeParagraph["align"];
@@ -547,13 +556,13 @@ function drawShapeText(
   const lines: WrappedLine[] = [];
   let totalH = 0;
   for (const p of node.paragraphs ?? []) {
-    const wrapped = wrapParagraph(ctx, p, innerW, wrap);
+    const wrapped = wrapParagraph(ctx, p, innerW, wrap, fontScale, lineScale);
     for (const ln of wrapped) {
       lines.push(ln);
       totalH += ln.lineHeight;
     }
     if (wrapped.length === 0) {
-      const lineH = paragraphLineHeight(p);
+      const lineH = paragraphLineHeight(p, fontScale, lineScale);
       lines.push({ runs: [], align: p.align, lineHeight: lineH, width: 0 });
       totalH += lineH;
     }
@@ -653,6 +662,8 @@ function wrapParagraph(
   p: ShapeParagraph,
   maxWidth: number,
   wrap: boolean,
+  fontScale: number = 1,
+  lineScale: number = 1,
 ): {
   runs: { r: ShapeParagraph["runs"][number]; width: number; font: string }[];
   align: ShapeParagraph["align"];
@@ -667,7 +678,7 @@ function wrapParagraph(
   };
   const atoms: Atom[] = [];
   for (const r of p.runs ?? []) {
-    const font = runFont(r);
+    const font = runFont(r, fontScale);
     if (r.text === "\n") {
       atoms.push({ text: "", isBreak: true, r, font });
       continue;
@@ -697,7 +708,7 @@ function wrapParagraph(
 
   const finishLine = () => {
     if (!cur) return;
-    cur.lineHeight = Math.ceil((maxFontPt / PT_PER_PX) * 1.2);
+    cur.lineHeight = Math.ceil((maxFontPt * fontScale / PT_PER_PX) * 1.2 * lineScale);
   };
 
   for (const a of atoms) {
@@ -840,22 +851,29 @@ function drawWrappedLine(
   }
 }
 
-function paragraphLineHeight(p: ShapeParagraph): number {
+function paragraphLineHeight(
+  p: ShapeParagraph,
+  fontScale: number = 1,
+  lineScale: number = 1,
+): number {
   let maxPt = DEFAULT_FONT_PT;
   for (const r of p.runs ?? []) {
     if (r.size && r.size > maxPt) maxPt = r.size;
   }
 
-  return Math.ceil((maxPt / PT_PER_PX) * 1.2);
+  return Math.ceil((maxPt * fontScale / PT_PER_PX) * 1.2 * lineScale);
 }
 
-function runFont(r: {
-  size?: number;
-  bold?: boolean;
-  italic?: boolean;
-  fontName?: string;
-}): string {
-  const pt = r.size ?? DEFAULT_FONT_PT;
+function runFont(
+  r: {
+    size?: number;
+    bold?: boolean;
+    italic?: boolean;
+    fontName?: string;
+  },
+  fontScale: number = 1,
+): string {
+  const pt = (r.size ?? DEFAULT_FONT_PT) * fontScale;
   const px = pt / PT_PER_PX;
   const family = r.fontName
     ? `"${r.fontName}", -apple-system, "Helvetica Neue", Arial, sans-serif`

@@ -33,4 +33,7 @@ export type ShapeNode = {
   elbowAxis?: string;
   fillGradient?: ShapeGradient;
   outerShadow?: ShapeOuterShadow;
+  textAutofit?: string;
+  textFontScale?: number;
+  textLineSpaceReduction?: number;
 };
