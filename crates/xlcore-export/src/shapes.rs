@@ -422,9 +422,10 @@ fn visit_shape(
     let sp = &s.shape_properties;
     let preset = preset_geom_name(sp);
     let mut fill = solid_fill_color(&sp.shape_properties_choice2, theme);
-    let fill_gradient = gradient_fill(&sp.shape_properties_choice2, theme);
-    let outer_shadow = outer_shadow(&sp.shape_properties_choice3, theme);
+    let mut fill_gradient = gradient_fill(&sp.shape_properties_choice2, theme);
+    let mut outer_shadow = outer_shadow(&sp.shape_properties_choice3, theme);
     let (mut outline_color, mut outline_width_emu) = outline_info(sp.a_ln.as_deref(), theme);
+    let mut line_dash: Option<String> = None;
     let (text_anchor, text_wrap, text_insets_emu, mut paragraphs) =
         text_body_to_paragraphs(s.text_body.as_deref(), theme);
     let rotation = sp.transform2_d.as_ref().and_then(|x| x.rotation);
@@ -445,13 +446,23 @@ fn visit_shape(
         .unwrap_or(false);
     if let Some(refs) = resolve_style_refs(s.shape_style.as_deref(), theme) {
         if fill.is_none() && fill_gradient.is_none() && !preset_is_line {
-            fill = refs.fill;
+            if refs.fill_gradient.is_some() {
+                fill_gradient = refs.fill_gradient;
+            } else {
+                fill = refs.fill;
+            }
         }
         if outline_color.is_none() {
             outline_color = refs.outline;
         }
         if outline_width_emu.is_none() {
             outline_width_emu = refs.outline_width_emu;
+        }
+        if line_dash.is_none() {
+            line_dash = refs.line_dash;
+        }
+        if outer_shadow.is_none() {
+            outer_shadow = refs.outer_shadow;
         }
         apply_font_ref_to_runs(&mut paragraphs, &refs.font_name, &refs.font_color);
     }
@@ -480,7 +491,7 @@ fn visit_shape(
         image_src_rect: None,
         flip_h: if flip_h { Some(true) } else { None },
         flip_v: if flip_v { Some(true) } else { None },
-        line_dash: None,
+        line_dash,
         is_connector: None,
         head_end: None,
         tail_end: None,
@@ -955,7 +966,8 @@ fn visit_connector(
     let preset = preset_geom_name(sp);
     let ln_box = sp.a_ln.as_deref();
     let (mut outline_color, mut outline_width_emu) = outline_info(ln_box, theme);
-    if outline_color.is_none() || outline_width_emu.is_none() {
+    let mut dash = line_dash_token(ln_box);
+    if outline_color.is_none() || outline_width_emu.is_none() || dash.is_none() {
         if let Some(refs) = resolve_style_refs(c.shape_style.as_deref(), theme) {
             if outline_color.is_none() {
                 outline_color = refs.outline;
@@ -963,9 +975,11 @@ fn visit_connector(
             if outline_width_emu.is_none() {
                 outline_width_emu = refs.outline_width_emu;
             }
+            if dash.is_none() {
+                dash = refs.line_dash;
+            }
         }
     }
-    let dash = line_dash_token(ln_box);
     let head_end = ln_box
         .and_then(|ln| ln.a_head_end.as_ref())
         .and_then(|e| line_end_to_schema(e.r#type.as_ref(), e.width.as_ref(), e.length.as_ref()));

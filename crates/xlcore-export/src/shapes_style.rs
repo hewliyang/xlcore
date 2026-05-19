@@ -60,8 +60,15 @@ fn resolve_ref_color_debug<T: std::fmt::Debug>(
 
 pub(crate) struct StyleRefPaint {
     pub(crate) fill: Option<String>,
+    pub(crate) fill_gradient: Option<ShapeGradient>,
     pub(crate) outline: Option<String>,
     pub(crate) outline_width_emu: Option<i32>,
+    pub(crate) line_dash: Option<String>,
+    #[allow(dead_code)]
+    pub(crate) line_cap: Option<String>,
+    #[allow(dead_code)]
+    pub(crate) line_join: Option<String>,
+    pub(crate) outer_shadow: Option<ShapeOuterShadow>,
     pub(crate) font_name: Option<String>,
     pub(crate) font_color: Option<String>,
 }
@@ -80,21 +87,62 @@ pub(crate) fn resolve_style_refs(
     theme: Option<&Theme>,
 ) -> Option<StyleRefPaint> {
     let style = style?;
+    let fmt = theme.and_then(|t| t.fmt_scheme.as_ref());
 
     let fill_idx: u32 = style.fill_reference.index;
-    let fill = if fill_idx == 0 {
-        None
-    } else {
-        resolve_ref_color_debug(style.fill_reference.fill_reference_choice.as_ref(), theme)
-    };
+    let ph_fill =
+        resolve_ref_color_debug(style.fill_reference.fill_reference_choice.as_ref(), theme);
+    let (mut fill, mut fill_gradient): (Option<String>, Option<ShapeGradient>) = (None, None);
+    if fill_idx >= 1 {
+        let entry = fmt.and_then(|fs| fmt_entry(&fs.fills, fill_idx));
+        if let (Some(entry), Some(ph)) = (entry, ph_fill.as_ref()) {
+            let (s, g) = crate::fmt_scheme::realize_fill(entry, ph, theme);
+            fill = s;
+            fill_gradient = g;
+        }
+        if fill.is_none() && fill_gradient.is_none() {
+            fill = ph_fill;
+        }
+    }
 
     let ln_idx: u32 = style.line_reference.index;
-    let (outline, outline_width_emu) = if ln_idx == 0 {
-        (None, None)
-    } else {
-        let c = resolve_ref_color_debug(style.line_reference.line_reference_choice.as_ref(), theme);
-        (c, Some(default_ln_ref_width(ln_idx)))
-    };
+    let ph_ln =
+        resolve_ref_color_debug(style.line_reference.line_reference_choice.as_ref(), theme);
+    let mut outline: Option<String> = None;
+    let mut outline_width_emu: Option<i32> = None;
+    let mut line_dash: Option<String> = None;
+    let mut line_cap: Option<String> = None;
+    let mut line_join: Option<String> = None;
+    if ln_idx >= 1 {
+        let entry = fmt.and_then(|fs| fmt_entry(&fs.lines, ln_idx));
+        if let Some(entry) = entry {
+            outline_width_emu = entry.width_emu;
+            line_dash = entry.dash.clone();
+            line_cap = entry.cap.clone();
+            line_join = entry.join.clone();
+            if let (Some(fill), Some(ph)) = (entry.fill.as_ref(), ph_ln.as_ref()) {
+                let (s, _g) = crate::fmt_scheme::realize_fill(fill, ph, theme);
+                outline = s;
+            }
+        }
+        if outline.is_none() {
+            outline = ph_ln;
+        }
+        if outline_width_emu.is_none() {
+            outline_width_emu = Some(default_ln_ref_width(ln_idx));
+        }
+    }
+
+    let effect_idx: u32 = style.effect_reference.index;
+    let ph_eff =
+        resolve_ref_color_debug(style.effect_reference.effect_reference_choice.as_ref(), theme);
+    let mut outer_shadow: Option<ShapeOuterShadow> = None;
+    if effect_idx >= 1 {
+        let entry = fmt.and_then(|fs| fmt_entry(&fs.effects, effect_idx));
+        if let (Some(entry), Some(ph)) = (entry, ph_eff.as_ref()) {
+            outer_shadow = crate::fmt_scheme::realize_outer_shadow(entry, ph, theme);
+        }
+    }
 
     let font_name = match style.font_reference.index {
         a::FontCollectionIndexValues::Major => theme.and_then(|t| t.major_font.clone()),
@@ -106,11 +154,24 @@ pub(crate) fn resolve_style_refs(
 
     Some(StyleRefPaint {
         fill,
+        fill_gradient,
         outline,
         outline_width_emu,
+        line_dash,
+        line_cap,
+        line_join,
+        outer_shadow,
         font_name,
         font_color,
     })
+}
+
+fn fmt_entry<T>(list: &[T], idx: u32) -> Option<&T> {
+    let i = if idx >= 1000 { idx - 1000 } else { idx };
+    if i == 0 {
+        return None;
+    }
+    list.get((i - 1) as usize)
 }
 
 pub(crate) fn apply_font_ref_to_runs(
@@ -164,6 +225,7 @@ mod tests {
             ],
             major_font: Some("Calibri Light".into()),
             minor_font: Some("Calibri".into()),
+            fmt_scheme: None,
         }
     }
 

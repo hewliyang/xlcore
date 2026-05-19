@@ -457,6 +457,7 @@ mod color_mod_tests {
             ],
             major_font: None,
             minor_font: None,
+            fmt_scheme: None,
         };
         let block = block_with_val("Background1");
         assert_eq!(

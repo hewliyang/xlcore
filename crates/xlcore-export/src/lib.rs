@@ -5,6 +5,7 @@ mod charts_ex;
 mod charts_helpers;
 mod charts_legacy;
 mod columnar;
+mod fmt_scheme;
 mod pivots;
 mod refs;
 mod schema;

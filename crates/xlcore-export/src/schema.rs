@@ -70,6 +70,10 @@ pub struct Theme {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub minor_font: Option<String>,
+
+    #[cfg_attr(feature = "typescript", ts(skip))]
+    #[serde(skip)]
+    pub fmt_scheme: Option<crate::fmt_scheme::FmtScheme>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

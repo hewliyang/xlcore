@@ -282,10 +282,13 @@ pub fn extract(theme: &a::Theme) -> Theme {
         .map(|t| t.as_str().to_string())
         .filter(|s| !s.is_empty());
 
+    let fmt_scheme = Some(crate::fmt_scheme::extract(theme));
+
     Theme {
         colors,
         major_font,
         minor_font,
+        fmt_scheme,
     }
 }
 

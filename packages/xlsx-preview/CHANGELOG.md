@@ -21,6 +21,26 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   applies `ctx.scale(±1,±1)` around shape centre and unflips before
   text so captions stay readable. Text body rect doesn't follow the
   flip yet (caption sits on the un-flipped half on asymmetric presets).
+- Group rotation (`<a:xfrm rot>` on `<xdr:grpSpPr>`) propagates to
+  children as a rigid body: extractor replaced `GroupFrame`
+  (axis-aligned bbox + chOff/chExt) with a 2D affine `Frame` that maps
+  a group's child-coord-space directly to world EMU and composes
+  through nested groups; `shape_world` / `connector_world` /
+  `visit_picture` / `visit_shape` / `visit_connector` now return
+  `(WorldBox, parent_rot_rad)` and merge the parent rotation into each
+  node's `rotation` via `merge_rotation()`. Single-level rotation is
+  exact; nested rotated groups approximate (composition of two non-
+  cocentric rotations is collapsed to a single rotation around the
+  inner pivot). Group `flipH`/`flipV` is parsed but not yet propagated.
+  Locked in by `shapes/groups-rotated.xlsx` (rot 0°/30°/90°).
+- Shape text body rect follows `flipH`/`flipV`: `drawShapeText` now
+  mirrors `presetTextRect` within the shape bbox before placing
+  paragraphs, so captions on asymmetric presets (right-arrow, pentagon,
+  callouts) sit over the visually-correct half after a flip. Glyphs
+  themselves stay un-mirrored by design (captions remain readable).
+  Locked in by the regenerated `shapes/shape-flips.ours.png` baseline
+  (`right flipH` label moved from over the arrowhead to over the
+  tail, matching HSX). Closes `parity-shapes.md` P1 #4.
 - Cut per-frame redraw cost on large sheets with conditional formatting by
   ~17× (89ms → 5ms median on a 10k-row workbook with 5 CF rules). Scrolling
   was previously re-running viewport-independent CF work — `iterAllCells`
@@ -33,6 +53,23 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Shape style-ref matrix walk: extractor now parses the theme's
+  `<a:fmtScheme>` (`<a:fillStyleLst>` / `<a:lnStyleLst>` /
+  `<a:effectStyleLst>`) into a Rust-side `FmtScheme` and threads it
+  through `resolve_style_refs` so `fillRef idx≥1` resolves to the
+  themed solid/gradient (idx=2 = subtle, idx=3 = strong on the
+  standard Office theme — previously flattened to flat `phClr`),
+  `lnRef idx≥1` picks up per-style width + dash (cap/join extracted
+  but not yet consumed by the painter), and `effectRef idx≥1`
+  resolves a themed `<a:outerShdw>` (previously a no-op). The `phClr`
+  placeholder inside each matrix entry is substituted with the shape's
+  own `<*Ref>` color and modifiers (tint / shade / lumMod / lumOff /
+  satMod / satOff / alpha) are applied via the existing
+  `apply_color_modifiers` path. Locked in by
+  `shapes/style-refs-matrix.xlsx` (rows 2 and 3 paint themed gradients
+  + drop shadows; if the matrix walk regresses they collapse to flat
+  solids matching row 1). Closes `parity-shapes.md` P1 #3 / shortcut
+  #6.
 - DrawingML `<a:effectLst><a:outerShdw>` on shapes: extractor parses
   `blurRad` / `dist` / `dir` plus the color (`srgbClr` / `schemeClr` /
   `prstClr` / `sysClr` resolved through the same theme + color-modifier
