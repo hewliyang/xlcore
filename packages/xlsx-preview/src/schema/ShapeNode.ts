@@ -23,6 +23,8 @@ export type ShapeNode = {
   flipH?: boolean;
   flipV?: boolean;
   lineDash?: string;
+  lineCap?: string;
+  lineJoin?: string;
   isConnector?: boolean;
   headEnd?: LineEnd;
   tailEnd?: LineEnd;

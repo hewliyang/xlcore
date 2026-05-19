@@ -166,17 +166,10 @@ fn extract_line(ln: &a::Outline) -> FmtLine {
         a::OutlineChoice3::AMiter(_) => Some("miter".to_string()),
     });
     let dash = ln.outline_choice2.as_ref().and_then(|c| match c {
-        a::OutlineChoice2::APrstDash(d) => {
-            let dbg = format!("{:?}", d.val);
-            if !dbg.starts_with("Some(") {
-                return None;
-            }
-            let inner = dbg.trim_start_matches("Some(").trim_end_matches(')');
-            let mut chars = inner.chars();
-            let first = chars.next()?;
-            let rest: String = chars.collect();
-            Some(format!("{}{}", first.to_ascii_lowercase(), rest))
-        }
+        a::OutlineChoice2::APrstDash(d) => d
+            .val
+            .as_ref()
+            .map(|v| crate::shapes::prst_dash_token(v).to_string()),
         _ => None,
     });
     let fill = ln.outline_choice1.as_ref().and_then(|c| match c {

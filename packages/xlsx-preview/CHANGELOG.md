@@ -7,6 +7,19 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- DrawingML preset dash tokens for the long-variant family (`lgDash`,
+  `lgDashDot`, `lgDashDotDot`, and the `sysDash*` siblings) were
+  extracted with the wrong spelling and silently fell through the
+  painter's `dashPattern` switch. `line_dash_token` (in `shapes.rs`)
+  and its twin in `fmt_scheme::extract_line` derived the OOXML token
+  by lower-casing the Rust enum's `Debug` name — but the ooxmlsdk
+  enum variants are `LargeDash` / `SystemDash*` etc., renamed via
+  `#[sdk(rename = "lgDash")]` for serialization. So `LargeDash` came
+  out as `"largeDash"`, never matched the painter, and rendered
+  solid. Short tokens (`dot`, `dash`, `sysDot`, `sysDash`) happened to
+  round-trip correctly which is why the connector-dash path looked
+  fine. Replaced with an explicit `prst_dash_token` matcher over the
+  rust enum, shared between `shapes.rs` and `fmt_scheme.rs`.
 - Browser preview virtualization now keeps merged-cell extents in the
   grid even when the merge runs beyond the current viewport. This fixes
   wrapped text disappearing in visible merged cells such as `CoverSheet!B28:N28`
@@ -53,6 +66,25 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- DrawingML line `cap` / `join` / `prstDash` honored on non-connector
+  shape outlines. The extractor previously read `prstDash` only on the
+  connector / line path (`visit_connector`) and never touched
+  `a:ln@cap` / `<a:round>` / `<a:bevel>` / `<a:miter>` at all; the
+  painter hardcoded `ctx.lineCap = "butt", lineJoin = "miter"` on
+  connectors and inherited whatever the previous draw left behind for
+  shapes. Now `visit_shape` and `visit_connector` both call
+  `line_dash_token` / `line_cap_token` / `line_join_token` on the
+  direct `<a:ln>` and fall back to the style-ref matrix walk (which
+  already extracted these via `fmt_scheme::extract_line` but had no
+  consumer). New `ShapeNode.lineCap` + `ShapeNode.lineJoin` flow
+  through to `drawShape` / `drawConnector`, mapped to the canvas
+  enums by `mapLineCap` (`flat`→butt, `sq`→square, `rnd`→round) and
+  `mapLineJoin` (passthrough). Brace-like presets keep their forced
+  `round` cap+join as a fallback only when no explicit value is set.
+  Locked in by `tests/fixtures/shapes/line-cap-join-dash.xlsx` — 7
+  dash variants on rectangles, 3 cap variants on thick dashed lines,
+  3 join variants on thick-stroked rectangles, 3 dash variants on
+  `roundRect`. Closes `parity-shapes.md` P1 #5 and shortcuts #8 / #9.
 - Shape style-ref matrix walk: extractor now parses the theme's
   `<a:fmtScheme>` (`<a:fillStyleLst>` / `<a:lnStyleLst>` /
   `<a:effectStyleLst>`) into a Rust-side `FmtScheme` and threads it

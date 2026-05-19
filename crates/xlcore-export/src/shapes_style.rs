@@ -64,9 +64,7 @@ pub(crate) struct StyleRefPaint {
     pub(crate) outline: Option<String>,
     pub(crate) outline_width_emu: Option<i32>,
     pub(crate) line_dash: Option<String>,
-    #[allow(dead_code)]
     pub(crate) line_cap: Option<String>,
-    #[allow(dead_code)]
     pub(crate) line_join: Option<String>,
     pub(crate) outer_shadow: Option<ShapeOuterShadow>,
     pub(crate) font_name: Option<String>,

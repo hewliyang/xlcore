@@ -415,6 +415,8 @@ fn visit_picture(
         flip_h: None,
         flip_v: None,
         line_dash: None,
+        line_cap: None,
+        line_join: None,
         is_connector: None,
         head_end: None,
         tail_end: None,
@@ -467,7 +469,9 @@ fn visit_shape(
     let mut fill_gradient = gradient_fill(&sp.shape_properties_choice2, theme);
     let mut outer_shadow = outer_shadow(&sp.shape_properties_choice3, theme);
     let (mut outline_color, mut outline_width_emu) = outline_info(sp.a_ln.as_deref(), theme);
-    let mut line_dash: Option<String> = None;
+    let mut line_dash: Option<String> = line_dash_token(sp.a_ln.as_deref());
+    let mut line_cap: Option<String> = line_cap_token(sp.a_ln.as_deref());
+    let mut line_join: Option<String> = line_join_token(sp.a_ln.as_deref());
     let (text_anchor, text_wrap, text_insets_emu, mut paragraphs) =
         text_body_to_paragraphs(s.text_body.as_deref(), theme);
     let rotation = merge_rotation(
@@ -506,6 +510,12 @@ fn visit_shape(
         if line_dash.is_none() {
             line_dash = refs.line_dash;
         }
+        if line_cap.is_none() {
+            line_cap = refs.line_cap;
+        }
+        if line_join.is_none() {
+            line_join = refs.line_join;
+        }
         if outer_shadow.is_none() {
             outer_shadow = refs.outer_shadow;
         }
@@ -537,6 +547,8 @@ fn visit_shape(
         flip_h: if flip_h { Some(true) } else { None },
         flip_v: if flip_v { Some(true) } else { None },
         line_dash,
+        line_cap,
+        line_join,
         is_connector: None,
         head_end: None,
         tail_end: None,
@@ -821,24 +833,47 @@ fn outline_info(ln: Option<&a::Outline>, theme: Option<&Theme>) -> (Option<Strin
     (color, width)
 }
 
+pub(crate) fn prst_dash_token(v: &a::PresetLineDashValues) -> &'static str {
+    use a::PresetLineDashValues as P;
+    match v {
+        P::Solid => "solid",
+        P::Dot => "dot",
+        P::Dash => "dash",
+        P::LargeDash => "lgDash",
+        P::DashDot => "dashDot",
+        P::LargeDashDot => "lgDashDot",
+        P::LargeDashDotDot => "lgDashDotDot",
+        P::SystemDash => "sysDash",
+        P::SystemDot => "sysDot",
+        P::SystemDashDot => "sysDashDot",
+        P::SystemDashDotDot => "sysDashDotDot",
+    }
+}
+
 fn line_dash_token(ln: Option<&a::Outline>) -> Option<String> {
     let ln = ln?;
     use a::OutlineChoice2;
     match ln.outline_choice2.as_ref()? {
-        OutlineChoice2::APrstDash(d) => {
-            let dbg = format!("{:?}", d.val);
-
-            if !dbg.starts_with("Some(") {
-                return None;
-            }
-            let inner = dbg.trim_start_matches("Some(").trim_end_matches(')');
-            let mut chars = inner.chars();
-            let first = chars.next()?;
-            let rest: String = chars.collect();
-            Some(format!("{}{}", first.to_ascii_lowercase(), rest))
-        }
+        OutlineChoice2::APrstDash(d) => d.val.as_ref().map(|v| prst_dash_token(v).to_string()),
         _ => None,
     }
+}
+
+fn line_cap_token(ln: Option<&a::Outline>) -> Option<String> {
+    let cap = ln?.cap_type.as_ref()?;
+    enum_token(&format!("{:?}", cap))
+}
+
+fn line_join_token(ln: Option<&a::Outline>) -> Option<String> {
+    let c = ln?.outline_choice3.as_ref()?;
+    Some(
+        match c {
+            a::OutlineChoice3::ARound => "round",
+            a::OutlineChoice3::ABevel => "bevel",
+            a::OutlineChoice3::AMiter(_) => "miter",
+        }
+        .to_string(),
+    )
 }
 
 fn line_end_to_schema(
@@ -1012,7 +1047,14 @@ fn visit_connector(
     let ln_box = sp.a_ln.as_deref();
     let (mut outline_color, mut outline_width_emu) = outline_info(ln_box, theme);
     let mut dash = line_dash_token(ln_box);
-    if outline_color.is_none() || outline_width_emu.is_none() || dash.is_none() {
+    let mut line_cap = line_cap_token(ln_box);
+    let mut line_join = line_join_token(ln_box);
+    if outline_color.is_none()
+        || outline_width_emu.is_none()
+        || dash.is_none()
+        || line_cap.is_none()
+        || line_join.is_none()
+    {
         if let Some(refs) = resolve_style_refs(c.shape_style.as_deref(), theme) {
             if outline_color.is_none() {
                 outline_color = refs.outline;
@@ -1022,6 +1064,12 @@ fn visit_connector(
             }
             if dash.is_none() {
                 dash = refs.line_dash;
+            }
+            if line_cap.is_none() {
+                line_cap = refs.line_cap;
+            }
+            if line_join.is_none() {
+                line_join = refs.line_join;
             }
         }
     }
@@ -1063,6 +1111,8 @@ fn visit_connector(
         flip_h: if flip_h { Some(true) } else { None },
         flip_v: if flip_v { Some(true) } else { None },
         line_dash: dash,
+        line_cap,
+        line_join,
         is_connector: Some(true),
         head_end,
         tail_end,

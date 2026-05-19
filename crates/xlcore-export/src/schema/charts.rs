@@ -107,6 +107,14 @@ pub struct ShapeNode {
 
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line_cap: Option<String>,
+
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line_join: Option<String>,
+
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub is_connector: Option<bool>,
 
     #[cfg_attr(feature = "typescript", ts(optional))]

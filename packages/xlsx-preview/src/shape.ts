@@ -93,15 +93,25 @@ function drawShapeNode(
       widthEmu == null ? 1.0 : widthEmu === 0 ? 0.5 : Math.max(0.5, widthEmu * PX_PER_EMU);
     ctx.strokeStyle = node.outlineColor;
     ctx.lineWidth = widthPx;
-    const cap = ctx.lineCap;
-    const join = ctx.lineJoin;
-    if (isBraceLikePreset(preset)) {
+    const savedCap = ctx.lineCap;
+    const savedJoin = ctx.lineJoin;
+    const explicitCap = mapLineCap(node.lineCap);
+    const explicitJoin = mapLineJoin(node.lineJoin);
+    if (explicitCap) {
+      ctx.lineCap = explicitCap;
+    } else if (isBraceLikePreset(preset)) {
       ctx.lineCap = "round";
+    }
+    if (explicitJoin) {
+      ctx.lineJoin = explicitJoin;
+    } else if (isBraceLikePreset(preset)) {
       ctx.lineJoin = "round";
     }
+    ctx.setLineDash(dashPattern(node.lineDash, widthPx));
     ctx.stroke();
-    ctx.lineCap = cap;
-    ctx.lineJoin = join;
+    ctx.setLineDash([]);
+    ctx.lineCap = savedCap;
+    ctx.lineJoin = savedJoin;
   }
 
   if (flipH || flipV) {
@@ -119,7 +129,13 @@ function drawShapeNode(
 
 function applyShadow(
   ctx: CanvasRenderingContext2D,
-  shadow: { color: string; alpha: number; blurEmu: number; distEmu: number; dirDeg: number },
+  shadow: {
+    color: string;
+    alpha: number;
+    blurEmu: number;
+    distEmu: number;
+    dirDeg: number;
+  },
 ): void {
   const blurPx = (shadow.blurEmu ?? 0) * PX_PER_EMU;
   const distPx = (shadow.distEmu ?? 0) * PX_PER_EMU;
@@ -267,8 +283,8 @@ function drawConnector(
   const color = node.outlineColor ?? "#000000";
   ctx.strokeStyle = color;
   ctx.lineWidth = widthPx;
-  ctx.lineCap = "butt";
-  ctx.lineJoin = "miter";
+  ctx.lineCap = mapLineCap(node.lineCap) ?? "butt";
+  ctx.lineJoin = mapLineJoin(node.lineJoin) ?? "miter";
   ctx.setLineDash(dashPattern(node.lineDash, widthPx));
   ctx.beginPath();
   ctx.moveTo(pts[0]![0], pts[0]![1]);
@@ -285,6 +301,34 @@ function drawConnector(
   if (node.tailEnd) {
     const last = pts.length - 1;
     drawArrowEnd(ctx, node.tailEnd, pts[last - 1]!, pts[last]!, color, widthPx);
+  }
+}
+
+function mapLineCap(token: string | undefined | null): CanvasLineCap | undefined {
+  switch (token) {
+    case "round":
+    case "rnd":
+      return "round";
+    case "square":
+    case "sq":
+      return "square";
+    case "flat":
+      return "butt";
+    default:
+      return undefined;
+  }
+}
+
+function mapLineJoin(token: string | undefined | null): CanvasLineJoin | undefined {
+  switch (token) {
+    case "round":
+      return "round";
+    case "bevel":
+      return "bevel";
+    case "miter":
+      return "miter";
+    default:
+      return undefined;
   }
 }
 
@@ -687,7 +731,11 @@ function wrapParagraph(
           last.r = { ...last.r, text: last.r.text + buf };
           last.width += bufW;
         } else {
-          cur!.runs.push({ r: { ...a.r, text: buf }, width: bufW, font: a.font });
+          cur!.runs.push({
+            r: { ...a.r, text: buf },
+            width: bufW,
+            font: a.font,
+          });
         }
         cur!.width += bufW;
         buf = "";
