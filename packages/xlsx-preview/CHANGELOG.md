@@ -5,7 +5,102 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- DrawingML `<a:fld>` (text field) runs are now extracted alongside
+  `<a:r>`. Previously the `ParagraphChoice` match in
+  `shapes.rs::text_body_to_paragraphs` only handled `AR` / `ABr` and
+  fell through `_ => {}` for everything else — silently dropping every
+  `<a:fld type="TxLink">` text run on the floor. Field runs are how
+  Excel caches the displayed value of shape text bound to a cell via
+  the `textlink="$T$51"` attribute, and dashboard / SOTP-style diagrams
+  use them constantly: on `e-007_input-4.xlsx :: SOTP Summary`, every
+  numeric cell (`$252.0B`, `+13%`, `$163.8B`, `16.0x '27E EBITDA`, …),
+  every period header (`'26E` / `'27E`), and the entire bottom red
+  banner ("Alphabet SOTP Enterprise Value = $4.17T …") were emitted
+  via `<a:fld>`. New `AFld` arm builds a `TextRun` from `field.text` +
+  `field.run_properties` and runs it through the same lstStyle → lvl →
+  pPr/defRPr → rPr cascade we already use for regular runs.
+- DrawingML `<a:rPr u="...">` / `strike="..."` are enums, not bools.
+  `apply_run_properties` and `apply_default_run_properties` previously
+  set `tr.underline = rp.underline.is_some()`, but `u="none"` parses to
+  `Some(TextUnderlineValues::None)` — so every run that explicitly
+  turned underline OFF still rendered underlined (same trap for
+  `strike="noStrike"`). Now gated through two new helpers
+  (`underline_is_visible` / `strike_is_visible`) that pattern-match on
+  the enum variant. This was invisible until the `<a:fld>` fix landed
+  and exposed it on the SOTP sheet, where every field rPr sets
+  `u="none" strike="noStrike"`.
+- Wrapped shape text past line 1 was being dropped on centered short
+  boxes. The clip rule in `shape.ts::drawShapeText` was
+  `cursorY + lineHeight > innerY + innerH + 0.5 → break`, which
+  discarded line 2 of any `anchor="ctr"` box whose two wrapped lines
+  were ~1px taller than the body — killing the `SUBSCRIPTIONS,
+  PLATFORMS, & DEVICES`, `PLAY, DEVICES, GOOGLE ONE, ETC.`,
+  `YOUTUBE ADS`, and `YOUTUBE SUBS` labels on the SOTP sheet. Replaced
+  with the spec-default `vertOverflow="overflow"` behavior: a wrapped
+  line paints as long as its TOP starts inside the body rect, so the
+  last line may spill slightly past the bottom (matching Excel's
+  default) while genuinely-too-tall paragraphs still stop clipping at
+  roughly the right place. Explicit `vertOverflow="clip"` modeling
+  remains TODO.
+
 ### Added
+
+- `<xdr:cxnSp>` connector endpoints now resolve `<a:stCxn id=N idx=I/>`
+  and `<a:endCxn>` against the actual target shapes.
+  `extract_shape_tree` does a pre-pass collecting `cNvPr/@id → world
+  bbox` for every `xdr:sp` (including nested in groups), and
+  `visit_connector` looks up each end via a new `connection_site()`
+  helper that maps the four cardinal OOXML indices
+  (`0/1/2/3 = top/right/bottom/left center`) onto the target bbox.
+  When BOTH ends resolve, the connector's world bbox is rebuilt to
+  span the two resolved points; `flipH`/`flipV` are derived from
+  start-vs-end position; and the xfrm's `rot` is zeroed (the new bbox
+  is already axis-aligned). Also surfaces a new `elbowAxis` field on
+  `ShapeNode` (`"vertical"` when both sites are top/bottom,
+  `"horizontal"` when both are left/right) so the `bentConnector3`
+  painter overrides its w/h-ratio heuristic and picks the correct path
+  orientation — without this, two arrows that share an `endCxn`
+  (e.g. YOUTUBE ADS + YOUTUBE SUBS → YOUTUBE top on the SOTP sheet)
+  would still meet at the same point but their last segments would
+  approach horizontally in opposite directions and form a `▶◀` bowtie
+  of arrowheads instead of merging into a single visual head.
+  Preset-aware connection sites (chevron tip, star points, flowchart
+  shape sides at non-cardinal positions) and the shape's own
+  `<a:cxnLst>` are still TODO; today we fall back to bbox center for
+  any `idx` outside `0..=3`.
+- Brace and bracket presets: `leftBrace`, `rightBrace`, `leftBracket`,
+  `rightBracket`. Stroked open paths with each outer corner traced as
+  a 90° quadratic-bezier quarter-arc and (for braces only) a matching
+  central cusp pointing toward the tip. Reads `adj1` (corner curl
+  size, as 1/100000 of h) and `adj2` (tip Y, as 1/100000 of h),
+  clamped per ECMA: curl in `[0, h/2]`, tip in `[curl, h-curl]`.
+  `lineCap` / `lineJoin` switch to `round` while painting any
+  brace-like preset so the arc joins don't show as right-angled tips.
+  The horizontal `‿` brace that sits between the segment grid and the
+  SOTP banner on `e-007_input-4.xlsx :: SOTP Summary` (a `leftBrace`
+  rotated 270°) was the motivating case — it used to fall through the
+  preset switch and render as a plain rectangle. `bracePair`,
+  `bracketPair`, and the curly-brace diagonal variants are still
+  unmodeled.
+- `adj2` is now extracted on every `xdr:sp` (previously connectors
+  only, and only `adj1`). The new `preset_adj_n` helper consolidates
+  the attribute walk so `adj1` / `adj2` / future named adjusts can
+  share one implementation. `roundRect`, arrow heads / tails,
+  callouts, stars, and arcs still ignore their `avLst` and use
+  hardcoded defaults.
+
+### Changed
+
+- Split `crates/xlcore-export/src/shapes.rs` into `shapes` / `shapes_style`
+  / `shapes_text` and `packages/xlsx-preview/src/shape.ts` into
+  `shape.ts` + `shapePaths.ts` to keep every file under the
+  900-LoC `check:loc` ceiling. No behavior change — pure code motion
+  (style-ref color resolution + run/paragraph property cascade moved
+  out of `shapes.rs`; preset path construction + brace/line predicates
+  moved out of `shape.ts`). `check-loc.ts` now skips `world110m.ts`
+  (13k-line generated TopoJSON atlas).
 
 - DrawingML `<a:lstStyle>` + paragraph-`<a:pPr><a:defRPr>` run/paragraph
   inheritance. `shapes.rs::text_body_to_paragraphs` now cascades run +
