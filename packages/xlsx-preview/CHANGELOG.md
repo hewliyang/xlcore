@@ -7,6 +7,12 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Suppress a cell's `left` / `right` border when its own centered or
+  aligned text overflows past that edge into an empty neighbour, so
+  author-painted vertical border styles no longer cut through
+  overflowing glyphs. New `computeOverflowSuppressedSides` pre-pass
+  in `textRenderer.ts`; `drawCellBorders` takes an optional suppressed
+  set. Merged / rotated / wrapped / multi-line cells unaffected.
 - DrawingML `<a:fld>` (text field) runs are now extracted alongside
   `<a:r>`. Previously the `ParagraphChoice` match in
   `shapes.rs::text_body_to_paragraphs` only handled `AR` / `ABr` and

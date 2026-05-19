@@ -715,3 +715,98 @@ function hasContent(cell: Cell, sheet: Sheet, layout: WorkbookLayout): boolean {
   const { text } = resolveCellText(cell, layout, xf);
   return text.length > 0;
 }
+
+export function computeOverflowSuppressedSides(
+  ctx: CanvasRenderingContext2D,
+  sheet: Sheet,
+  layout: WorkbookLayout,
+  g: Grid,
+  vis: Visible,
+): Set<string> {
+  const out = new Set<string>();
+  const { covered, topLeftOf } = buildMergeMaps(sheet);
+  const styles = layout.styles;
+
+  const overflowFirstCol = Math.max(1, vis.firstCol - 8);
+  const overflowLastCol = Math.min(g.maxCol, vis.lastCol + 8);
+
+  const occupied = occupiedCellsInRange(
+    sheet,
+    layout,
+    vis.firstRow,
+    vis.lastRow,
+    overflowFirstCol,
+    overflowLastCol,
+  );
+  for (const k of covered) occupied.add(k);
+
+  const prevFont = ctx.font;
+  iterCellsInRange(sheet, vis.firstRow, vis.lastRow, overflowFirstCol, overflowLastCol, (cell) => {
+    const k = `${cell.r}:${cell.c}`;
+    if (covered.has(k)) return;
+    if (topLeftOf.has(k)) return;
+
+    const xf = resolveCellXf(cell, sheet, layout);
+    const resolved = resolveCellText(cell, layout, xf);
+    const { text, defaultAlign } = resolved;
+    if (!text) return;
+    const textRot = xf?.textRotation ?? 0;
+    if (textRot !== 0) return;
+    if (xf?.wrapText) return;
+    if (text.indexOf("\n") >= 0) return;
+
+    const ownRect = rectFor(sheet, g, cell.r, cell.c, topLeftOf);
+    if (ownRect.w <= 0 || ownRect.h <= 0) return;
+
+    const baseFontEntry = xf?.fontId !== undefined ? styles.fonts[xf.fontId] : undefined;
+    const spans = resolveCellSpans(
+      cell,
+      text,
+      layout,
+      baseFontEntry,
+      "#000000",
+      styles.defaultFont,
+      styles.defaultFontSize,
+    );
+    if (spans.length === 0) return;
+
+    let measured = 0;
+    for (const s of spans) {
+      ctx.font = s.font;
+      measured += ctx.measureText(s.text.replace(/\u0001/g, "")).width;
+    }
+
+    const halign = xf?.horizontalAlignment ?? defaultAlign;
+    const padX = 4;
+    const need = measured + padX * 2;
+    if (need <= ownRect.w) return;
+
+    const align: "left" | "right" | "center" =
+      halign === "center"
+        ? "center"
+        : halign === "right"
+          ? "right"
+          : halign === "left"
+            ? "left"
+            : defaultAlign === "right"
+              ? "right"
+              : defaultAlign === "center"
+                ? "center"
+                : "left";
+
+    const leftEmpty = cell.c > 1 && !occupied.has(`${cell.r}:${cell.c - 1}`);
+    const rightEmpty = cell.c < g.maxCol && !occupied.has(`${cell.r}:${cell.c + 1}`);
+
+    if (align === "left" && rightEmpty) {
+      out.add(`${cell.r}:${cell.c}:right`);
+    } else if (align === "right" && leftEmpty) {
+      out.add(`${cell.r}:${cell.c}:left`);
+    } else if (align === "center") {
+      const sideNeed = (need - ownRect.w) / 2;
+      if (sideNeed > 0 && leftEmpty) out.add(`${cell.r}:${cell.c}:left`);
+      if (sideNeed > 0 && rightEmpty) out.add(`${cell.r}:${cell.c}:right`);
+    }
+  });
+  ctx.font = prevFont;
+  return out;
+}

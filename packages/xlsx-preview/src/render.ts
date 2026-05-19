@@ -11,7 +11,7 @@ import { resolveSelection, drawSelection } from "./selection.js";
 import { drawDrawings } from "./drawings.js";
 import { drawCellBackgrounds, drawCellBorders, drawDefaultFills } from "./cellPaint.js";
 import { drawFreezeIndicators } from "./freezeIndicators.js";
-import { drawCellText } from "./textRenderer.js";
+import { computeOverflowSuppressedSides, drawCellText } from "./textRenderer.js";
 import {
   computeCfDxfMap,
   computeCfIconState,
@@ -104,7 +104,8 @@ export function render(
     drawDefaultFills(ctx, sheet, layout, grid, pane.vis);
     drawCellBackgrounds(ctx, sheet, layout, grid, pane.vis);
     drawConditionalFormats(ctx, sheet, layout, grid, pane.vis, cfDxfs, cfLocks);
-    drawCellBorders(ctx, sheet, layout, grid, pane.vis);
+    const overflowSuppressed = computeOverflowSuppressedSides(ctx, sheet, layout, grid, pane.vis);
+    drawCellBorders(ctx, sheet, layout, grid, pane.vis, overflowSuppressed);
     drawCellText(ctx, sheet, layout, grid, pane.vis, cfDxfs, cfTextSuppress, cfIconReserve);
     drawCfIcons(ctx, sheet, grid, pane.vis, cfIconDraw);
     drawSparklines(ctx, sheet, grid, pane.vis);

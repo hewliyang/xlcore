@@ -389,6 +389,7 @@ export function drawCellBorders(
   layout: WorkbookLayout,
   g: Grid,
   vis: Visible,
+  suppressed?: Set<string>,
 ): void {
   const styles = layout.styles;
   const { covered, topLeftOf } = buildMergeMaps(sheet);
@@ -436,10 +437,12 @@ export function drawCellBorders(
     if (merge) return;
     const rect = cellRect(g, cell.r, cell.c);
     const { x, y, w, h } = rect;
+    const sLeft = suppressed?.has(`${cell.r}:${cell.c}:left`) ?? false;
+    const sRight = suppressed?.has(`${cell.r}:${cell.c}:right`) ?? false;
     if (b.top) drawBorderLine(ctx, x, y, x + w, y, b.top);
     if (b.bottom) drawBorderLine(ctx, x, y + h, x + w, y + h, b.bottom);
-    if (b.left) drawBorderLine(ctx, x, y, x, y + h, b.left);
-    if (b.right) drawBorderLine(ctx, x + w, y, x + w, y + h, b.right);
+    if (b.left && !sLeft) drawBorderLine(ctx, x, y, x, y + h, b.left);
+    if (b.right && !sRight) drawBorderLine(ctx, x + w, y, x + w, y + h, b.right);
     drawDiagonalBorders(ctx, x, y, w, h, b);
   });
 }
