@@ -378,6 +378,7 @@ fn visit_picture(
         adj1: None,
         adj2: None,
         elbow_axis: None,
+        fill_gradient: None,
     });
 }
 
@@ -420,6 +421,7 @@ fn visit_shape(
     let sp = &s.shape_properties;
     let preset = preset_geom_name(sp);
     let mut fill = solid_fill_color(&sp.shape_properties_choice2, theme);
+    let fill_gradient = gradient_fill(&sp.shape_properties_choice2, theme);
     let (mut outline_color, mut outline_width_emu) = outline_info(sp.a_ln.as_deref(), theme);
     let (text_anchor, text_wrap, text_insets_emu, mut paragraphs) =
         text_body_to_paragraphs(s.text_body.as_deref(), theme);
@@ -440,7 +442,7 @@ fn visit_shape(
         .map(|p| matches!(p, "line" | "lineInv"))
         .unwrap_or(false);
     if let Some(refs) = resolve_style_refs(s.shape_style.as_deref(), theme) {
-        if fill.is_none() && !preset_is_line {
+        if fill.is_none() && fill_gradient.is_none() && !preset_is_line {
             fill = refs.fill;
         }
         if outline_color.is_none() {
@@ -452,7 +454,7 @@ fn visit_shape(
         apply_font_ref_to_runs(&mut paragraphs, &refs.font_name, &refs.font_color);
     }
 
-    let has_paint = fill.is_some() || outline_color.is_some();
+    let has_paint = fill.is_some() || fill_gradient.is_some() || outline_color.is_some();
     let has_text = !paragraphs.is_empty();
     if !has_paint && !has_text {
         return;
@@ -483,6 +485,7 @@ fn visit_shape(
         adj1: preset_adj1(sp),
         adj2: preset_adj2(sp),
         elbow_axis: None,
+        fill_gradient,
     });
 }
 
@@ -503,6 +506,113 @@ fn solid_fill_color(
         ShapePropertiesChoice2::ASolidFill(sf) => resolve_solid_fill(sf, theme),
 
         _ => None,
+    }
+}
+
+fn resolve_gradient_stop_color(
+    c: &a::GradientStopChoice,
+    theme: Option<&Theme>,
+) -> Option<String> {
+    use a::GradientStopChoice as G;
+    match c {
+        G::ASrgbClr(c) => {
+            let dbg = format!("{:?}", c);
+            let v: &str = &c.val;
+            if v.len() == 6 {
+                Some(crate::chart_colors::apply_color_modifiers(
+                    &format!("#{}", v),
+                    &dbg,
+                ))
+            } else {
+                None
+            }
+        }
+        G::ASchemeClr(c) => {
+            let dbg = format!("{:?}", c);
+            crate::chart_colors::theme_scheme_color(&dbg, theme)
+                .map(|base| crate::chart_colors::apply_color_modifiers(&base, &dbg))
+        }
+        G::APrstClr(c) => {
+            let dbg = format!("{:?}", c.val);
+            preset_color_hex(&dbg).map(|s| s.to_string())
+        }
+        G::ASysClr(c) => c.last_color.as_deref().map(|s| format!("#{}", s)),
+        _ => None,
+    }
+}
+
+fn rect_pct(v: Option<i32>) -> f64 {
+    (v.unwrap_or(0) as f64) / 100_000.0
+}
+
+fn gradient_fill(
+    choice: &Option<xdr::ShapePropertiesChoice2>,
+    theme: Option<&Theme>,
+) -> Option<ShapeGradient> {
+    use xdr::ShapePropertiesChoice2;
+    let gf = match choice.as_ref()? {
+        ShapePropertiesChoice2::AGradFill(g) => g,
+        _ => return None,
+    };
+    let mut stops: Vec<ShapeGradientStop> = Vec::new();
+    if let Some(gs_lst) = gf.gradient_stop_list.as_ref() {
+        for gs in &gs_lst.a_gs {
+            let pos = (gs.position as f32) / 100_000.0;
+            let color = match gs.gradient_stop_choice.as_ref() {
+                Some(c) => resolve_gradient_stop_color(c, theme),
+                None => None,
+            };
+            if let Some(color) = color {
+                stops.push(ShapeGradientStop { pos, color });
+            }
+        }
+    }
+    if stops.len() < 2 {
+        return None;
+    }
+
+    use a::GradientFillChoice as GC;
+    match gf.gradient_fill_choice.as_ref() {
+        Some(GC::ALin(lin)) => {
+            let ang = lin.angle.unwrap_or(0);
+
+            let angle_deg = (ang as f64) / 60_000.0;
+            Some(ShapeGradient {
+                stops,
+                kind: "linear".to_string(),
+                angle_deg: Some(angle_deg),
+                path: None,
+                fill_to_rect: None,
+            })
+        }
+        Some(GC::APath(p)) => {
+            let path = p
+                .path
+                .as_ref()
+                .map(|v| format!("{:?}", v).to_ascii_lowercase());
+            let ftr = p.fill_to_rectangle.as_ref().map(|r| {
+                vec![
+                    rect_pct(r.left),
+                    rect_pct(r.top),
+                    rect_pct(r.right),
+                    rect_pct(r.bottom),
+                ]
+            });
+            Some(ShapeGradient {
+                stops,
+                kind: "path".to_string(),
+                angle_deg: None,
+                path,
+                fill_to_rect: ftr,
+            })
+        }
+        None => Some(ShapeGradient {
+            stops,
+            kind: "linear".to_string(),
+            angle_deg: Some(0.0),
+            path: None,
+            fill_to_rect: None,
+        }),
     }
 }
 
@@ -811,5 +921,6 @@ fn visit_connector(
         adj1,
         adj2: None,
         elbow_axis,
+        fill_gradient: None,
     });
 }

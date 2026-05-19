@@ -122,7 +122,7 @@ Consolidated list of deliberate carve-outs. Most landed under e-007. Each item i
 | `scrgbClr`, `hslClr` | ❌ | ❌ | P2 | Already solved for cells/charts; reuse conversion. |
 | Alpha / transparency | 🟡 | 🟡 | P1 | Some alpha parses via theme path; renderer does not generally model opacity on shapes. |
 | Full color modifier set | 🟡 | 🟡 | P1 | §20.1.2.3. Cell-side resolver covers most; verify shape path uses it end-to-end. |
-| Gradient fills `gradFill` | ❌ | ❌ | P1 | Biggest visible gap on themed shapes. Reuse cell/chart gradient logic. |
+| Gradient fills `gradFill` | ✅ | ✅ | P1 | Linear (`lin@ang`) + path (`path@path` w/ `fillToRect`); `gsLst` stops resolved through the same theme/color-modifier path as solid fills. Painter mirrors cell-side gradient math. Locked in by `shapes/gradient-fills.xlsx`. Tile flip, `tileRect`, `rotWithShape` still unmodeled. |
 | Pattern fills `pattFill` | ❌ | ❌ | P2 | Reuse cell pattern tile renderer. |
 | Blip fills `blipFill` | ❌ | ❌ | P1 | Shape-as-image-fill; distinct from `xdr:pic`. Textured buttons/banners. |
 | Group fill `grpFill` | ❌ | ❌ | P2 | Inherit/transform from parent group. |
@@ -190,9 +190,9 @@ Ordered by impact × cost. Pick from the top.
 
 ### P1 — visual fidelity that real workbooks need
 
-1. **Gradient fills (`gradFill`)** — biggest visible gap on themed shapes. Reuse cell/chart gradient logic.
-2. **Outer shadow (`outerShdw`)** — second-biggest visible omission on themed buttons/cards.
-3. **Style-ref matrix walk** — read `<a:fmtScheme><a:fillStyleLst>` / `<a:lnStyleLst>`. Unlocks themed gradient idx 2/3 + per-style line dashes "for free" once #1 lands. Resolves shortcut #6.
+1. ~~**Gradient fills (`gradFill`)**~~ — **shipped.** Linear + path painters reuse the cell-side gradient math; stop colors resolve through the same theme + color-modifier path as solid fills. Locked in by `shapes/gradient-fills.xlsx`. Remaining: tile flip, `tileRect`, `rotWithShape`.
+2. **Outer shadow (`outerShdw`)** — now the biggest visible omission on themed buttons/cards.
+3. **Style-ref matrix walk** — read `<a:fmtScheme><a:fillStyleLst>` / `<a:lnStyleLst>`. Unlocks themed gradient idx 2/3 + per-style line dashes "for free" now that #1 has landed. Resolves shortcut #6.
 4. **Group rotation + body-rect-follows-flip** — the non-connector `flipH/V` painter shipped; remaining gaps are (a) `<a:xfrm rot="..."/>` on `<xdr:grpSpPr>` (children should rotate as a rigid body), (b) flipping the shape's text body rect so captions on asymmetric presets (arrows, callouts) sit on the visually-correct side.
 5. **Preset dash + line cap/join on non-connector outlines** — small surface, fixes thin-line shape appearance. Resolves shortcuts #8, #9.
 6. **`avLst` for `roundRect` / arrows / callouts** — small surface, fixes already-supported presets. Resolves shortcut #3.
@@ -219,4 +219,4 @@ Ordered by impact × cost. Pick from the top.
 
 ## Suggested PARITY.md one-line status
 
-Shapes remain 🟡 until gradient fills, outer shadow, and the style-ref matrix walk land (P1 items 1–3). Current v0 is good for basic callouts/buttons, grouped screenshot chrome, and Office-authored org-chart / SOTP diagrams; not yet broad DrawingML parity.
+Shapes remain 🟡 until outer shadow and the style-ref matrix walk land (P1 items 2–3; gradient fills shipped in P1 #1). Current v0 is good for basic callouts/buttons, themed gradients on direct `<a:gradFill>` shapes, grouped screenshot chrome, and Office-authored org-chart / SOTP diagrams; not yet broad DrawingML parity.

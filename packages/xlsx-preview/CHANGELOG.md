@@ -33,6 +33,16 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- DrawingML `<a:gradFill>` for shape fills: extractor reads `gsLst`
+  stops (resolving `srgbClr`/`schemeClr`/`prstClr`/`sysClr` + color
+  modifiers via the existing theme path), the `lin@ang` linear angle
+  (1/60000 deg) or `path@path` + `fillToRect` for path gradients;
+  painter materialises them via `createLinearGradient` /
+  `createRadialGradient` mirroring the cell-side gradient math. Locked
+  in by `shapes/gradient-fills.xlsx` (linear horizontal / 45deg /
+  vertical, radial with `fillToRect`, and a 3-stop linear). Closes
+  the biggest visible gap on themed shapes from `parity-shapes.md`
+  P1 #1.
 - Worksheet-level `<autoFilter ref="...">` chrome: surfaces as
   `Sheet.autoFilterRange`, paints header dropdown chevrons, and honors
   row `hidden` flags for saved filtered results.

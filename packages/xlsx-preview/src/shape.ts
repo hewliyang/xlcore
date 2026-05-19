@@ -1,4 +1,4 @@
-import type { Shape, ShapeNode, ShapeParagraph } from "./types.js";
+import type { Shape, ShapeGradient, ShapeNode, ShapeParagraph } from "./types.js";
 import { getOrLoadImage } from "./imageCache.js";
 
 import { isBraceLikePreset, isLinePreset, pathForPreset } from "./shapePaths.js";
@@ -64,7 +64,10 @@ function drawShapeNode(
   const preset = node.preset ?? "rect";
   pathForPreset(ctx, preset, x, y, w, h, node);
 
-  if (node.fill) {
+  if (node.fillGradient && node.fillGradient.stops.length >= 2) {
+    ctx.fillStyle = gradientFillStyle(ctx, node.fillGradient, x, y, w, h);
+    ctx.fill();
+  } else if (node.fill) {
     ctx.fillStyle = node.fill;
     ctx.fill();
   }
@@ -98,6 +101,62 @@ function drawShapeNode(
   }
 
   ctx.restore();
+}
+
+function gradientFillStyle(
+  ctx: CanvasRenderingContext2D,
+  g: ShapeGradient,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): CanvasGradient | string {
+  const stops = g.stops;
+  const first = stops[0]!.color;
+  if (g.kind === "path") {
+    const r = g.fillToRect ?? [0, 0, 0, 0];
+    const li = r[0] ?? 0;
+    const ti = r[1] ?? 0;
+    const ri = r[2] ?? 0;
+    const bi = r[3] ?? 0;
+    const ix = x + li * w;
+    const iy = y + ti * h;
+    const iw = Math.max(0, w * Math.max(0, 1 - li - ri));
+    const ih = Math.max(0, h * Math.max(0, 1 - ti - bi));
+    const cx = ix + iw / 2;
+    const cy = iy + ih / 2;
+    const r0 = Math.hypot(iw, ih) / 2;
+    const corners: Array<[number, number]> = [
+      [x, y],
+      [x + w, y],
+      [x, y + h],
+      [x + w, y + h],
+    ];
+    const r1 = Math.max(...corners.map(([px, py]) => Math.hypot(px - cx, py - cy)));
+    if (r1 <= r0 + 0.5) return first;
+    const grad = ctx.createRadialGradient(cx, cy, r0, cx, cy, r1);
+    for (const s of stops) {
+      grad.addColorStop(Math.max(0, Math.min(1, s.pos)), s.color);
+    }
+    return grad;
+  }
+  const deg = g.angleDeg ?? 0;
+  const theta = (deg * Math.PI) / 180;
+  const dx = Math.cos(theta);
+  const dy = Math.sin(theta);
+  const projs = [0, w * dx, h * dy, w * dx + h * dy];
+  const pmin = Math.min(...projs);
+  const pmax = Math.max(...projs);
+  const x0 = x + pmin * dx;
+  const y0 = y + pmin * dy;
+  const x1 = x + pmax * dx;
+  const y1 = y + pmax * dy;
+  if (Math.hypot(x1 - x0, y1 - y0) < 0.5) return first;
+  const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+  for (const s of stops) {
+    grad.addColorStop(Math.max(0, Math.min(1, s.pos)), s.color);
+  }
+  return grad;
 }
 
 function drawConnector(

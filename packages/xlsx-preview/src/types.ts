@@ -41,6 +41,8 @@ export type {
   OutlinePr,
   Pivot,
   Shape,
+  ShapeGradient,
+  ShapeGradientStop,
   ShapeNode,
   ShapeParagraph,
   Sparkline,
