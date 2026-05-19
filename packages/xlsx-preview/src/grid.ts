@@ -47,6 +47,10 @@ export function buildGrid(
     minCols = 1;
     minRows = 1;
   }
+  for (const m of sheet.merges) {
+    minCols = Math.max(minCols, m.c2);
+    minRows = Math.max(minRows, m.r2);
+  }
   if (sheet.drawings) {
     for (const d of sheet.drawings) {
       minCols = Math.max(minCols, d.anchor.toCol + 2);

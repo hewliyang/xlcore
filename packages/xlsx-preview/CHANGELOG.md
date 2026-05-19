@@ -7,6 +7,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Browser preview virtualization now keeps merged-cell extents in the
+  grid even when the merge runs beyond the current viewport. This fixes
+  wrapped text disappearing in visible merged cells such as `CoverSheet!B28:N28`
+  in `e-007_input-4.xlsx` at high zoom.
 - Shapes with no `<a:xfrm>` (or `<a:xfrm>` carrying only flip/rot attrs
   and no off+ext) were silently dropped — EPPlus, OpenXML SDK, and
   Excel itself emit this shape for plainly-anchored shapes. `shape_world`
