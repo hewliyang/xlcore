@@ -9,7 +9,7 @@ export interface PreviewerOptions {
   initialSheet?: number | string;
   initialZoom?: number;
   className?: string;
-  /** Show hidden sheets in the tab strip; veryHidden stays omitted. */
+
   showHidden?: boolean;
 }
 
@@ -422,7 +422,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       const active = i === this.activeSheetIndex;
       button.classList.toggle("active", active);
       button.style.fontWeight = active ? "600" : "400";
-      // Excel tabColor: inactive fill, active text.
+
       const tab = button.dataset.tabColor;
       if (active) {
         button.style.background = "#fff";
@@ -594,8 +594,6 @@ function resolveWorkbookLocation(
   const direct = parseSheetCellLocation(location, layout, activeSheetIndex);
   if (direct) return direct;
 
-  // Bare defined-name hyperlinks (e.g. `Top`) resolve first against the
-  // current sheet's local names, then against workbook-scoped names.
   const wanted = location.toLocaleLowerCase();
   const names = layout.definedNames ?? [];
   const local = names.find(

@@ -18,8 +18,6 @@ export function computeCfIconState(
   const cfs = sheet.conditionalFormats;
   if (!cfs || cfs.length === 0) return { cfIconReserve, cfIconDraw, cfIconSuppress };
 
-  // Numeric values for cfvo resolution. Same plumbing as data-bar /
-  // color-scale paths.
   const cellNumeric = new Map<string, number>();
   iterAllCells(sheet, (cell) => {
     if (cell.value === undefined) return;
@@ -38,24 +36,19 @@ export function computeCfIconState(
     const n = is.cfvos.length;
     if (n < 3) continue;
 
-    // Gather values inside this rule's ranges to drive percent /
-    // percentile / min / max thresholds.
     const values = numericValuesInRanges(cellNumeric, cf.ranges);
     if (values.length === 0) continue;
     const dataMin = Math.min(...values);
     const dataMax = Math.max(...values);
     const sorted = [...values].sort((a, b) => a - b);
 
-    // Resolve every cfvo to a numeric threshold. cfvos[0] is the
-    // implicit anchor (low icon); thresholds[k] for k>=1 govern when
-    // icon k applies (value >= thresholds[k]).
     const thresholds: number[] = is.cfvos.map((s, i) =>
       resolveCfvoValue(s, dataMin, dataMax, sorted, i === 0),
     );
 
     for (const [k, v] of cellsInNumericRanges(cellNumeric, cf.ranges)) {
       if (isCfLocked(locks, k, rule.priority)) continue;
-      // Largest k such that v >= thresholds[k]; default 0 (low icon).
+
       let idx = 0;
       for (let i = 1; i < n; i++) {
         if (v >= thresholds[i]!) idx = i;

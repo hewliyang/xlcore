@@ -1,6 +1,5 @@
 use crate::*;
 
-/// excluded so they don't silently coerce to 0/1.
 fn chart_cell_to_number(target: &Cell) -> Option<f64> {
     match target.kind.as_str() {
         "n" | "f" => target.value.as_ref().and_then(|v| v.parse::<f64>().ok()),
@@ -8,10 +7,6 @@ fn chart_cell_to_number(target: &Cell) -> Option<f64> {
     }
 }
 
-/// Trim trailing `None`s off a value vector. Common with Google
-/// Sheets-style array formulas (`IF(B28:B2218="","",...)`) that pad an
-/// unbounded chart reference with empty strings; without this the
-/// renderer sees `[v1, ..., vN, 0, 0, ..., 0]` and flatlines.
 fn trim_trailing_empties<T>(mut values: Vec<Option<T>>) -> Vec<Option<T>> {
     if let Some(last) = values.iter().rposition(Option::is_some) {
         values.truncate(last + 1);
@@ -21,9 +16,6 @@ fn trim_trailing_empties<T>(mut values: Vec<Option<T>>) -> Vec<Option<T>> {
     }
 }
 
-/// Resolve the effective number-format code for a cell, walking
-/// `cell.style_index -> cell_xfs[i].num_fmt_id -> num_fmts[].format_code`
-/// and falling back to the built-in OOXML format table (ids 0..49).
 fn cell_format_code(cell: &Cell, styles: &Styles) -> Option<String> {
     let style_idx = cell.style_index? as usize;
     let xf = styles.cell_xfs.get(style_idx)?;
@@ -34,9 +26,6 @@ fn cell_format_code(cell: &Cell, styles: &Styles) -> Option<String> {
     builtin_num_fmt(fmt_id).map(str::to_string)
 }
 
-/// ECMA-376 Part 1 §18.8.30 — built-in number-format ids. Only the
-/// subset that's actually useful for chart axis labels; unknown ids
-/// fall back to `None` and the renderer renders the raw value.
 fn builtin_num_fmt(id: u32) -> Option<&'static str> {
     Some(match id {
         0 => "General",
@@ -69,32 +58,22 @@ fn builtin_num_fmt(id: u32) -> Option<&'static str> {
     })
 }
 
-/// After all sheets are extracted, resolve any `Sheet!$A$1:$B$2`-style
-/// references in chart series/categories that didn't come with cached
-/// numbers. Office writes the cache most of the time, but not always --
-/// without this, fresh chartsheets render empty.
 pub(crate) fn resolve_chart_refs(
     layout: &mut WorkbookLayout,
     defined_names: &std::collections::HashMap<String, String>,
 ) {
-    // Helper: dereference Excel's `_xlchart.vN.X` indirection. Excel
-    // emits chartEx data references as bare workbook-scoped definedName
-    // aliases (`<cx:f>_xlchart.v1.4</cx:f>`) hidden in `workbook.xml`
-    // (`<definedName name="_xlchart.v1.4" hidden="1">Sheet1!$A$2:$A$7
-    // </definedName>`). Returns `formula` unchanged when it already
-    // contains a `!` (looks like a direct Sheet!range ref).
     let deref = |formula: &str| -> String {
         if formula.contains('!') {
             return formula.to_string();
         }
-        // Strip any leading `=` (Excel sometimes wraps name refs).
+
         let key = formula.trim_start_matches('=');
         defined_names
             .get(key)
             .cloned()
             .unwrap_or_else(|| formula.to_string())
     };
-    // Snapshot sheet name -> index so we can lookup cells without aliasing.
+
     let name_to_idx: std::collections::HashMap<String, usize> = layout
         .sheets
         .iter()
@@ -114,7 +93,6 @@ pub(crate) fn resolve_chart_refs(
             _ => target.value.clone(),
         }
         .or_else(|| {
-            // suppress unused warning on `sheets`
             let _ = sheets;
             None
         })
@@ -122,7 +100,6 @@ pub(crate) fn resolve_chart_refs(
 
     let read_number = chart_cell_to_number;
 
-    // Helpers: resolve range -> Vec of cells in row-major order.
     let collect_cells = |sheets: &[Sheet],
                          sheet_name: &str,
                          r1: u32,
@@ -159,16 +136,11 @@ pub(crate) fn resolve_chart_refs(
                 continue;
             };
 
-            // categories
             if let Some(formula) = &chart.categories_ref {
                 let formula = deref(formula);
                 if let Some((sheet_name, r1, c1, r2, c2)) = parse_chart_ref(&formula) {
                     let cells = collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r2, c2);
-                    // Pick up the format string from the first populated
-                    // referenced cell even when chart XML already supplied a
-                    // value cache. Producers often cache numeric category
-                    // values but omit <c:formatCode>, and date serial labels
-                    // need the source-cell style to render correctly.
+
                     if chart.categories_format.is_none() {
                         if let Some(Some(cell)) = cells.iter().find(|c| c.is_some()) {
                             chart.categories_format = cell_format_code(cell, &styles_snapshot);
@@ -176,14 +148,7 @@ pub(crate) fn resolve_chart_refs(
                     }
                     let n_rows = (r2 - r1 + 1) as usize;
                     let n_cols = (c2 - c1 + 1) as usize;
-                    // Multi-column category ranges are the chartEx
-                    // hierarchy idiom (treemap / sunburst): each row is
-                    // a leaf; each column is a nesting level. SpreadJS
-                    // emits a single `<cx:strDim>` whose definedName
-                    // resolves to e.g. `Sheet1!$A$2:$B$10` (A = parent,
-                    // B = leaf). Split row-major cells into per-column
-                    // arrays so the painter can group leaves under
-                    // shared parents.
+
                     if chart.chart_type == "chartex" && n_cols > 1 {
                         let mut levels: Vec<Vec<String>> = vec![Vec::with_capacity(n_rows); n_cols];
                         for r in 0..n_rows {
@@ -195,9 +160,7 @@ pub(crate) fn resolve_chart_refs(
                                 level.push(s);
                             }
                         }
-                        // `categories` (the legacy 1D field) gets the
-                        // innermost (leaf) column so non-hierarchical
-                        // code paths still see meaningful labels.
+
                         if chart.categories.is_empty() {
                             if let Some(last) = levels.last() {
                                 chart.categories = last.clone();
@@ -217,13 +180,11 @@ pub(crate) fn resolve_chart_refs(
                 }
             }
 
-            // series name + values
             for ser in chart.series.iter_mut() {
                 if ser.name.is_empty() {
                     if let Some(formula) = &ser.name_ref {
                         let formula = deref(formula);
                         if let Some((sheet_name, r1, c1, _, _)) = parse_chart_ref(&formula) {
-                            // Series name is a single-cell ref; just read (r1,c1).
                             let cells =
                                 collect_cells(&snapshot_sheets, &sheet_name, r1, c1, r1, c1);
                             if let Some(Some(cell)) = cells.first() {
@@ -282,10 +243,6 @@ pub(crate) fn resolve_chart_refs(
                 }
             }
 
-            // Categories are read 1:1 from their ref but the parallel
-            // value series may have been trimmed. Excel pairs them by
-            // index, so trim categories down to the longest series so
-            // we don't render N extra ghost points along the x-axis.
             let max_series_len = chart
                 .series
                 .iter()
@@ -299,11 +256,6 @@ pub(crate) fn resolve_chart_refs(
     }
 }
 
-/// Walk every sparkline group, resolve `formula` -> numeric value
-/// vector against the (already-extracted) sheet data, and compute the
-/// shared `group_min`/`group_max` when `min/maxAxisType == "group"`.
-/// Falls back to using the host sheet's name when the formula has no
-/// explicit sheet prefix (Excel's UI defaults to the anchor sheet).
 pub(crate) fn resolve_sparkline_refs(layout: &mut WorkbookLayout) {
     let name_to_idx: std::collections::HashMap<String, usize> = layout
         .sheets
@@ -318,9 +270,7 @@ pub(crate) fn resolve_sparkline_refs(layout: &mut WorkbookLayout) {
         let sheet = sheets.get(idx)?;
         let row = sheet.rows.iter().find(|row| row.index == r)?;
         let cell = row.cells.iter().find(|cc| cc.r == r && cc.c == c)?;
-        // Only numeric kinds count for sparkline plotting; text / errors
-        // / booleans become None ("empty") so the renderer can honor
-        // displayEmptyCellsAs.
+
         match cell.kind.as_str() {
             "n" | "f" => cell.value.as_ref().and_then(|v| v.parse::<f64>().ok()),
             _ => None,
@@ -345,8 +295,7 @@ pub(crate) fn resolve_sparkline_refs(layout: &mut WorkbookLayout) {
                     continue;
                 };
                 let mut vals: Vec<Option<f64>> = Vec::new();
-                // Walk row-major (rows then cols). For typical 1xN or Nx1
-                // ranges this is just the source order.
+
                 for r in r1..=r2 {
                     for c in c1..=c2 {
                         let v = read_number(&snapshot, &sheet_name, r, c);
@@ -358,7 +307,7 @@ pub(crate) fn resolve_sparkline_refs(layout: &mut WorkbookLayout) {
                 }
                 layout.sheets[sheet_idx].sparkline_groups[gi].sparklines[si].values = vals;
             }
-            // Group-axis resolution.
+
             let g = &mut layout.sheets[sheet_idx].sparkline_groups[gi];
             if !all_values.is_empty() {
                 if g.min_axis_type == "group" {
@@ -373,11 +322,6 @@ pub(crate) fn resolve_sparkline_refs(layout: &mut WorkbookLayout) {
     }
 }
 
-/// Parse a sparkline data ref. Accepts:
-///   - `Sheet1!B2:G2`
-///   - `'My Sheet'!$A$1:$F$1`
-///   - `B2:G2` (no sheet prefix ⇒ use the anchor sheet)
-///   - `B2` (single cell)
 fn parse_sparkline_ref(formula: &str, host_sheet: &str) -> Option<(String, u32, u32, u32, u32)> {
     let (sheet, range_part) = if let Some((s, r)) = formula.split_once('!') {
         (s.trim_matches('\'').to_string(), r)
@@ -393,11 +337,9 @@ fn parse_sparkline_ref(formula: &str, host_sheet: &str) -> Option<(String, u32, 
     Some((sheet, r1.min(r2), c1.min(c2), r1.max(r2), c1.max(c2)))
 }
 
-/// Parse a chart-style reference like `Sheet1!$B$2:$E$2` or
-/// `'My Sheet'!$A$1` into (sheet, r1, c1, r2, c2).
 fn parse_chart_ref(formula: &str) -> Option<(String, u32, u32, u32, u32)> {
     let (sheet_part, range_part) = formula.split_once('!')?;
-    // Strip surrounding quotes if present.
+
     let sheet = sheet_part.trim_matches('\'').to_string();
     let cleaned: String = range_part.chars().filter(|c| *c != '$').collect();
     let (a, b) = cleaned
@@ -410,15 +352,10 @@ fn parse_chart_ref(formula: &str) -> Option<(String, u32, u32, u32, u32)> {
     Some((sheet, r1, c1, r2, c2))
 }
 
-// Returns `(plain_text_per_si, runs_per_si)`, the two parallel arrays
-// indexed by SharedStringItem position. `runs_per_si[i]` is empty when
-// the SST entry is plain text (single `<t>`); otherwise it carries the
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// Build a `Cell` containing the fields used by the chart helpers.
     fn cell(kind: &str, value: Option<&str>, style_index: Option<u32>) -> Cell {
         Cell {
             r: 1,
@@ -442,9 +379,6 @@ mod tests {
             Some(-3.0)
         );
 
-        // Regression: `t="s"` cells store the SST index in <v>; treating
-        // that as a number turns header strings into bogus data points
-        // (notably the doughnut header that came back as a 50% slice).
         assert_eq!(chart_cell_to_number(&cell("s", Some("23"), None)), None);
         assert_eq!(
             chart_cell_to_number(&cell("inline", Some("12"), None)),

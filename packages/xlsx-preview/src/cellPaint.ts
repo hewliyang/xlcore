@@ -9,9 +9,6 @@ import { makeOffscreenCanvas } from "./canvasFactory.js";
 import type { CellRect } from "./geometry.js";
 import type { Visible } from "./renderTypes.js";
 
-// 8x8 binary tiles for OOXML hatch patterns. Each row is an 8-bit mask;
-// LSB = leftmost pixel, MSB = rightmost. Sources: OOXML §18.18.55 +
-// the GDI+ HatchStyle reference Excel uses to render these.
 const PATTERN_TILES_8X8: Record<string, number[]> = {
   gray125: [0x88, 0x00, 0x22, 0x00, 0x88, 0x00, 0x22, 0x00],
   gray0625: [0x88, 0x00, 0x00, 0x00, 0x22, 0x00, 0x00, 0x00],
@@ -32,8 +29,6 @@ const PATTERN_TILES_8X8: Record<string, number[]> = {
   darkTrellis: [0xc3, 0x66, 0x3c, 0x18, 0x18, 0x3c, 0x66, 0xc3],
 };
 
-// Cache CanvasPatterns by (type|fg|bg). Built lazily; cleared per render via
-// `patternCache.clear()` so the underlying ctx isn't kept across frames.
 const patternCache = new Map<string, CanvasPattern | null>();
 
 function buildPattern(
@@ -50,9 +45,7 @@ function buildPattern(
     patternCache.set(key, null);
     return null;
   }
-  // Use a small offscreen canvas. Don't scale to DPR — letting the
-  // browser nearest-neighbor a 1:1 tile keeps the look crisp and matches
-  // Excel's pixel-quantized hatch.
+
   const off = makeOffscreenCanvas(8, 8);
   const octx = off.getContext("2d")!;
   if (bgCss) {
@@ -71,22 +64,13 @@ function buildPattern(
   return pat;
 }
 
-// Build the linear/path gradient for a `<gradientFill>` element. Spec:
-// ECMA-376 §18.8.24. Two flavors:
-//   linear: gradient runs along an axis rotated `degree` degrees clockwise
-//           from the cell's left→right vector. Stops at fractional positions
-//           along that axis (clamped to the cell). 0° = L→R, 90° = T→B.
-//   path:   stops radiate from a rectangular `inner` region (defined by
-//           `left`/`right`/`top`/`bottom` insets, each a fraction of the
-//           cell's width/height) outward to the cell rect. Position 0 paints
-//           inside the inner rect; position 1 paints at the cell edge.
 function collectStops(fill: Fill): Array<{ pos: number; css: string }> {
   const stops = (fill.gradientStops ?? []).map((s) => ({
     pos: Math.max(0, Math.min(1, s.position ?? 0)),
     css: colorToCss(s.color, "#ffffff"),
   }));
   if (stops.length >= 2) return stops;
-  // Pre-schema gradients only carried fg/bg; preserve that fallback.
+
   const c1 = fill.fgColor ? colorToCss(fill.fgColor, "#ffffff") : null;
   const c2 = fill.bgColor ? colorToCss(fill.bgColor, "#ffffff") : c1;
   if (!c1 || !c2) return [];
@@ -105,7 +89,6 @@ function paintGradientFill(ctx: CanvasRenderingContext2D, rect: CellRect, fill: 
   if (stops.length === 0) return;
   const type = fill.gradientType ?? "linear";
   if (type === "path") {
-    // Inner convergence rect (clamped + ordered).
     const li = Math.max(0, Math.min(1, fill.gradientLeft ?? 0));
     const ri = Math.max(0, Math.min(1, fill.gradientRight ?? 0));
     const ti = Math.max(0, Math.min(1, fill.gradientTop ?? 0));
@@ -114,23 +97,14 @@ function paintGradientFill(ctx: CanvasRenderingContext2D, rect: CellRect, fill: 
     const iy = rect.y + ti * rect.h;
     const iw = Math.max(0, rect.w * Math.max(0, 1 - li - ri));
     const ih = Math.max(0, rect.h * Math.max(0, 1 - ti - bi));
-    // Excel paints the innermost color uniformly across the inner rect,
-    // then radiates outward. Canvas only gives us an elliptical radial
-    // gradient so we approximate: fill the cell with the innermost stop
-    // first, then overlay the radial transition from the inner rect's
-    // bounding circle out to a circle that covers the farthest cell
-    // corner. This matches Excel for non-degenerate insets and degrades
-    // gracefully when one or more sides are 0 (collapses to the matching
-    // cell corner / edge midpoint).
+
     ctx.fillStyle = stops[0]!.css;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     const cx = ix + iw / 2;
     const cy = iy + ih / 2;
-    // Inner radius: half of the inner rect's diagonal (so the inner
-    // color reaches every corner of the inner rect).
+
     const r0 = Math.hypot(iw, ih) / 2;
-    // Outer radius: distance from inner-rect center to the farthest
-    // cell corner.
+
     const corners = [
       [rect.x, rect.y],
       [rect.x + rect.w, rect.y],
@@ -138,29 +112,23 @@ function paintGradientFill(ctx: CanvasRenderingContext2D, rect: CellRect, fill: 
       [rect.x + rect.w, rect.y + rect.h],
     ] as const;
     const r1 = Math.max(...corners.map(([x, y]) => Math.hypot(x - cx, y - cy)));
-    if (r1 <= r0 + 0.5) return; // degenerate; inner fill is enough
+    if (r1 <= r0 + 0.5) return;
     const grad = ctx.createRadialGradient(cx, cy, r0, cx, cy, r1);
     for (const s of stops) grad.addColorStop(s.pos, s.css);
     ctx.fillStyle = grad;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     return;
   }
-  // Linear. `degree` rotates the L→R axis clockwise (in screen space).
-  // We compute the projection of the cell rect onto the rotated axis,
-  // then place start/end at the rect's projected extents so that
-  // position 0 = first "hit" pixel and position 1 = last. This matches
-  // CSS `linear-gradient(<degree>+90deg, ...)` style intuition while
-  // staying in canvas's two-point gradient API.
+
   const deg = fill.gradientDegree ?? 0;
   const theta = (deg * Math.PI) / 180;
   const dx = Math.cos(theta);
   const dy = Math.sin(theta);
-  // Project the four corners onto the unit axis (relative to rect origin).
+
   const projs = [0, rect.w * dx, rect.h * dy, rect.w * dx + rect.h * dy];
   const pmin = Math.min(...projs);
   const pmax = Math.max(...projs);
-  // Starting point is the corner whose projection equals pmin; end is the
-  // pmax corner. Computed by stepping from rect origin along (dx, dy).
+
   const x0 = rect.x + pmin * dx;
   const y0 = rect.y + pmin * dy;
   const x1 = rect.x + pmax * dx;
@@ -188,7 +156,6 @@ export function paintFill(ctx: CanvasRenderingContext2D, rect: CellRect, fill: F
     return;
   }
   if (PATTERN_TILES_8X8[pt]) {
-    // Defaults match Excel: missing fg=black, missing bg=transparent.
     const fgCss = colorToCss(fill.fgColor, "#000000");
     const bgCss = fill.bgColor ? colorToCss(fill.bgColor, "#ffffff") : null;
     if (bgCss) {
@@ -197,7 +164,7 @@ export function paintFill(ctx: CanvasRenderingContext2D, rect: CellRect, fill: F
     }
     const pat = buildPattern(ctx, pt, fgCss, bgCss);
     if (!pat) return;
-    // Align tile origin to the cell so adjacent same-pattern cells line up.
+
     ctx.save();
     ctx.translate(rect.x, rect.y);
     ctx.fillStyle = pat;
@@ -206,10 +173,6 @@ export function paintFill(ctx: CanvasRenderingContext2D, rect: CellRect, fill: F
   }
 }
 
-/// Per-sheet column-style lookup (1-based, like `Col.min`/`Col.max`).
-/// Mirror of the map in `cellText.ts` but keyed 1-based so the paint
-/// loops below can use Excel-style col indices directly. Cached on
-/// the sheet so we build it once.
 const COL_STYLE_1BASED = new WeakMap<Sheet, Map<number, number>>();
 function colStyleMap1Based(sheet: Sheet): Map<number, number> {
   let m = COL_STYLE_1BASED.get(sheet);
@@ -223,26 +186,6 @@ function colStyleMap1Based(sheet: Sheet): Map<number, number> {
   return m;
 }
 
-/// Paint row-level and column-level default fills across the visible
-/// viewport, *before* per-cell backgrounds. OOXML §18.3.1.4 says a
-/// cell without its own xf inherits `row.s → col.style → xf 0`; the
-/// rest of the renderer applies this fallback for text/border via
-/// `resolveCellXf`, but the fill path used to silently skip cells
-/// that simply didn't exist in `sheetData` — leaving empty rows like
-/// Cover!7 (which carries a solid-blue `<row s=N>` with no children)
-/// completely unpainted.
-///
-/// Strategy:
-///   * Column fills first (lowest priority of the two), per column
-///     `c` in `[1, maxCol]` ∩ visible, painted across all visible rows.
-///   * Row fills second (higher priority), per styled `rowMeta` row
-///     `r` in vis, painted across cols `[1, sheet.maxCol]`.
-///
-/// Per-cell xf fills paint on top in `drawCellBackgrounds`, so this
-/// only fills the truly-empty cells. The horizontal extent of row
-/// fills is clipped to `sheet.maxCol` so the gray "sheet-area" of a
-/// cover page stops at the last styled column instead of bleeding
-/// out to infinity (matches hsx/Excel).
 export function drawDefaultFills(
   ctx: CanvasRenderingContext2D,
   sheet: Sheet,
@@ -258,7 +201,6 @@ export function drawDefaultFills(
     return xf.fillId !== undefined ? styles.fills[xf.fillId] : undefined;
   };
 
-  // Column fills (lowest priority of the two).
   const colMap = colStyleMap1Based(sheet);
   if (colMap.size > 0) {
     const colFirst = Math.max(1, vis.firstCol);
@@ -284,7 +226,6 @@ export function drawDefaultFills(
     }
   }
 
-  // Row fills (higher priority — paint over col fills).
   const meta = sheet.decodedRowMeta;
   if (meta.count > 0 && sheet.maxCol >= 1) {
     const colFirst = Math.max(1, vis.firstCol);
@@ -320,10 +261,7 @@ export function drawCellBackgrounds(
 ): void {
   const styles = layout.styles;
   const { covered, topLeftOf } = buildMergeMaps(sheet);
-  // Pass 1: paint merges whose extent overlaps `vis`. This handles merges
-  // crossing a freeze split, where the merge's top-left cell may live in a
-  // different pane than the rest of the merge. Pane clipping ensures each
-  // pane only paints the slice of the merge it owns.
+
   for (const m of sheet.merges) {
     if (m.r2 < vis.firstRow || m.r1 > vis.lastRow) continue;
     if (m.c2 < vis.firstCol || m.c1 > vis.lastCol) continue;
@@ -335,11 +273,11 @@ export function drawCellBackgrounds(
     if (!fill) continue;
     paintFill(ctx, mergedRect(g, m), fill);
   }
-  // Pass 2: regular (non-merge) cells.
+
   iterCellsInRange(sheet, vis.firstRow, vis.lastRow, vis.firstCol, vis.lastCol, (cell) => {
     const k = `${cell.r}:${cell.c}`;
     if (covered.has(k)) return;
-    if (topLeftOf.has(k)) return; // handled by pass 1
+    if (topLeftOf.has(k)) return;
     const xf = resolveCellXf(cell, sheet, layout);
     if (!xf) return;
     const fill = xf.fillId !== undefined ? styles.fills[xf.fillId] : undefined;
@@ -366,14 +304,12 @@ function borderWidth(line: BorderLine): number {
     case "thick":
       return 3;
     case "double":
-      return 1; // simplified; double-render handled below
+      return 1;
     default:
       return 1;
   }
 }
 
-// Per-style dash pattern (in pixels). `null` means solid.
-// Patterns chosen to roughly match Excel's visual cadence.
 function borderDash(style: string): number[] | null {
   switch (style) {
     case "dotted":
@@ -427,12 +363,6 @@ function drawBorderLine(
   ctx.setLineDash([]);
 }
 
-/// Draw the diagonal segment(s) for a cell rect. OOXML `diagonalDown`
-/// = top-left → bottom-right slash; `diagonalUp` = bottom-left →
-/// top-right slash. Both share one `<diagonal>` style+color. Clipped
-/// to the cell rect so the diagonal never bleeds into neighbors. For
-/// a merged region pass the merged rect; the diagonal spans the full
-/// merge.
 function drawDiagonalBorders(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -444,7 +374,7 @@ function drawDiagonalBorders(
   if (!b.diagonal) return;
   if (!b.diagonalUp && !b.diagonalDown) return;
   ctx.save();
-  // Clip strictly to the cell so wide stroke widths don't escape.
+
   ctx.beginPath();
   ctx.rect(x, y, w, h);
   ctx.clip();
@@ -462,14 +392,7 @@ export function drawCellBorders(
 ): void {
   const styles = layout.styles;
   const { covered, topLeftOf } = buildMergeMaps(sheet);
-  // Pass 1: paint merged-rect borders for any merge whose extent overlaps
-  // `vis`. This handles merges that cross a freeze split — the top-left
-  // cell may sit in a different pane than the rest of the merge, and its
-  // pane's clip would otherwise cut off the right/bottom edges. Pane
-  // clipping ensures each pane only paints its own slice of the long edges.
-  // Perimeter `covered` cells in pass 2 may double-paint their segments;
-  // for solid lines this is a no-op and matches Excel's perimeter-borders
-  // model where each perimeter cell carries its own border defs.
+
   for (const m of sheet.merges) {
     if (m.r2 < vis.firstRow || m.r1 > vis.lastRow) continue;
     if (m.c2 < vis.firstCol || m.c1 > vis.lastCol) continue;
@@ -486,7 +409,7 @@ export function drawCellBorders(
     if (b.right) drawBorderLine(ctx, x + w, y, x + w, y + h, b.right);
     drawDiagonalBorders(ctx, x, y, w, h, b);
   }
-  // Pass 2: per-cell borders.
+
   iterCellsInRange(sheet, vis.firstRow, vis.lastRow, vis.firstCol, vis.lastCol, (cell) => {
     const k = `${cell.r}:${cell.c}`;
     const xf = resolveCellXf(cell, sheet, layout);
@@ -494,18 +417,9 @@ export function drawCellBorders(
     const b = styles.borders[xf.borderId];
     if (!b) return;
 
-    // Excel/SpreadJS quirk: when a range has a border applied around it,
-    // the right/bottom edges of a *merged* region are stored on the cells
-    // along the merge perimeter, not on the merge's top-left cell. Those
-    // perimeter cells are "covered" by the merge and thus normally hidden
-    // from the renderer — but their border definitions still need to
-    // paint, otherwise the merged box looks open on the right/bottom.
     const merge = topLeftOf.get(k);
     const isCovered = covered.has(k);
     if (isCovered && merge) {
-      // Draw only the side(s) that lie on the merge boundary, using this
-      // cell's *own* (small) rect so each cell paints just its segment of
-      // the long edge. Adjacent cells stitch into a continuous line.
       const cr = cellRect(g, cell.r, cell.c);
       const { x, y, w, h } = cr;
       const onTop = cell.r === merge.r1;
@@ -519,7 +433,6 @@ export function drawCellBorders(
       return;
     }
 
-    // Regular (non-merged) cell. Merge top-lefts are handled by pass 1.
     if (merge) return;
     const rect = cellRect(g, cell.r, cell.c);
     const { x, y, w, h } = rect;

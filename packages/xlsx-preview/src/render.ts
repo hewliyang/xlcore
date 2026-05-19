@@ -1,6 +1,3 @@
-// Canvas renderer for xlcore WorkbookLayout.
-// Main orchestration entrypoint; rendering passes live in focused modules.
-
 import type { Sheet, WorkbookLayout } from "./types.js";
 import { setActiveTheme } from "./color.js";
 export { applyTint } from "./color.js";
@@ -80,10 +77,6 @@ export function render(
   const sel = resolveSelection(opts, grid);
   const panes = splitPanes(sheet, grid, vp ?? null, W, H);
 
-  // Cross-kind stopIfTrue locks: a higher-priority rule with
-  // stopIfTrue=true masks every lower-priority CF rule on the same
-  // cell, regardless of kind (cellIs vs colorScale vs dataBar vs
-  // iconSet). Compute once and thread through every CF pass.
   const cfLocks = computeCfStopLocks(sheet, layout);
   const cfDxfs = computeCfDxfMap(sheet, layout, cfLocks);
   const cfTextSuppress = computeCfTextSuppress(sheet, cfLocks);

@@ -1,7 +1,3 @@
-// stockChart (`c:stockChart`, ECMA-376 §21.2.2.198) painter. Split
-// out of `chartAdvanced.ts` to keep that file under its per-file LOC
-// budget once chartEx layouts landed in `chartEx.ts`.
-
 import type { Chart } from "./types.js";
 import type { Rect } from "./chart.js";
 import {
@@ -22,28 +18,6 @@ const AXIS_FONT_SIZE = 10;
 const AXIS_LABEL_COLOR = "#52525b";
 const AXIS_TICK_COUNT = 5;
 
-// ---------- stock ----------
-
-/**
- * Stock chart painter (ECMA-376 §21.2.2.198). Series count implies
- * subtype:
- *   3 → High-Low-Close (HLC)        — series [high, low, close]
- *   4 → Open-High-Low-Close (OHLC)  — series [open, high, low, close]
- *      (also Volume-High-Low-Close if a parallel `<c:barChart>` carries
- *      volume; the combo path handles that case, not this painter)
- *   5 → Volume-Open-High-Low-Close  — series [volume, open, high, low, close]
- *
- * Decoration toggles (extracted from `<c:hiLowLines/>` / `<c:upDownBars/>`):
- *   - `stockHiLowLines`: vertical line from category low to high.
- *   - `stockUpDownBars`: rectangle between open and close, white-filled
- *     for up days (close ≥ open), black-filled for down days. Only
- *     meaningful for OHLC/VOHLC (need open + close).
- *
- * Per-series `<c:spPr><a:ln><a:noFill/></a:ln></c:spPr>` on high/low
- * (xlsxwriter's default) means we should *not* connect those points
- * with a line. We honor that by simply never drawing a per-series
- * polyline — the hi-low lines + markers carry the visual.
- */
 export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   const series = chart.series.filter((s) => s.values.length > 0);
   if (series.length < 2) {
@@ -54,10 +28,6 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
   const categoryCount = Math.max(...series.map((s) => s.values.length), cats.length);
   if (categoryCount === 0) return;
 
-  // Subtype dispatch by series count. We assume the OOXML series order
-  // matches Excel's convention (xlsxwriter / Excel both emit in this
-  // order). When the workbook authored a parallel `<c:barChart>` for
-  // volume, those series ride the combo path instead.
   let openIdx = -1;
   let highIdx = -1;
   let lowIdx = -1;
@@ -70,13 +40,9 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
   } else if (series.length >= 5) {
     [volumeIdx, openIdx, highIdx, lowIdx, closeIdx] = [0, 1, 2, 3, 4];
   } else {
-    // 2 series — treat as High/Low only.
     [highIdx, lowIdx] = [0, 1];
   }
 
-  // If we have a volume series, carve off a bottom band (≈22% of the
-  // plot rect) for it so price + volume don't share a y-scale. Excel
-  // does this with two value axes; we approximate with a split rect.
   let priceRect: Rect = rect;
   let volumeRect: Rect | null = null;
   if (volumeIdx >= 0) {
@@ -87,9 +53,6 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     volumeRect = { x: rect.x, y: rect.y + rect.h - volH, w: rect.w, h: volH };
   }
 
-  // Build value rows for the price-axis range. Price uses all
-  // non-volume series. We don't zero-clamp — stocks rarely touch
-  // zero, and forcing it wastes most of the band.
   const priceSeries = series.filter((_, i) => i !== volumeIdx);
   const priceRows = priceSeries.map((s) =>
     Array.from({ length: categoryCount }, (_, i) => s.values[i] ?? NaN),
@@ -100,7 +63,7 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     maxV,
     chart.valueMin,
     chart.valueMax,
-    /*zeroClamp=*/ false,
+    false,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );
@@ -108,25 +71,12 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
   maxV = range.maxV;
   const ticks = range.ticks;
 
-  const inner = drawAxisFrame(
-    ctx,
-    chart,
-    priceRect,
-    ticks,
-    minV,
-    maxV,
-    /*horizontal=*/ false,
-    /*percent=*/ false,
-  );
+  const inner = drawAxisFrame(ctx, chart, priceRect, ticks, minV, maxV, false, false);
 
-  // Stock charts use bar-style category placement (Excel centers the
-  // hi-low marks on the category, not on the boundary). Mirror the
-  // bar painter's denom: `i + 0.5` over `n` slots.
   const slotW = inner.w / categoryCount;
   const xFor = (i: number) => inner.x + (i + 0.5) * slotW;
   const yFor = (v: number) => inner.y + (1 - (v - minV) / (maxV - minV)) * inner.h;
 
-  // Category axis labels (bar-style: i+0.5 / n centers).
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   ctx.fillStyle = AXIS_LABEL_COLOR;
   ctx.textAlign = "center";
@@ -152,14 +102,11 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     }
   }
 
-  // Clip to plot area; up/down bars and hi-low lines outside the
-  // value range get cropped instead of bleeding into the axis.
   ctx.save();
   ctx.beginPath();
   ctx.rect(inner.x, inner.y, inner.w, inner.h);
   ctx.clip();
 
-  // 1. Hi-low lines (one vertical segment per category).
   if (chart.stockHiLowLines && highIdx >= 0 && lowIdx >= 0) {
     ctx.strokeStyle = "#262626";
     ctx.lineWidth = 1;
@@ -175,10 +122,6 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     }
   }
 
-  // 2. Up/down bars (open→close), white-filled when close ≥ open
-  // ("up day") and black-filled when close < open ("down day").
-  // Excel's default bar width is 150% of the gap — we use 55% of
-  // the slot, which reads well across category counts.
   if (chart.stockUpDownBars && openIdx >= 0 && closeIdx >= 0) {
     const barW = Math.max(2, slotW * 0.55);
     for (let i = 0; i < categoryCount; i++) {
@@ -198,9 +141,6 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     }
   }
 
-  // 3. Drop lines (rare): connect each value point straight down to
-  // the category axis. Authored via `<c:dropLines/>`. We draw them
-  // from each series's value at i down to the inner baseline.
   if (chart.stockDropLines) {
     ctx.strokeStyle = "#a3a3a3";
     ctx.lineWidth = 0.5;
@@ -219,9 +159,6 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     }
   }
 
-  // 4. Per-series markers. xlsxwriter authors `<c:marker><c:symbol
-  // val="none"/></c:marker>` on high/low and `<c:symbol val="dot"/>`
-  // on close — markerSymbol=="none" suppresses, anything else paints.
   for (let si = 0; si < series.length; si++) {
     if (si === volumeIdx) continue;
     const s = series[si]!;
@@ -236,7 +173,6 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     }
   }
 
-  // 5. Data labels (optional). Same default position as line: above.
   for (let si = 0; si < series.length; si++) {
     if (si === volumeIdx) continue;
     const s = series[si]!;
@@ -257,9 +193,6 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
   ctx.restore();
   paintZeroBaseline(ctx, inner, minV, maxV);
 
-  // 6. Volume sub-plot (when series.length >= 5). Painted as a column
-  // chart sharing the price-chart's category axis. Color: theme accent
-  // 1 at low alpha so it visually subordinates to price.
   if (volumeIdx >= 0 && volumeRect) {
     const volSeries = series[volumeIdx]!;
     const volRows = [
@@ -269,7 +202,7 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
       }),
     ];
     const { maxV: vMax } = valueRange(volRows);
-    const vRange = resolveAxisRange(0, vMax, 0, undefined, /*zeroClamp=*/ true, 2);
+    const vRange = resolveAxisRange(0, vMax, 0, undefined, true, 2);
     const vInner = drawAxisFrame(
       ctx,
       chart,
@@ -277,8 +210,8 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
       vRange.ticks,
       vRange.minV,
       vRange.maxV,
-      /*horizontal=*/ false,
-      /*percent=*/ false,
+      false,
+      false,
     );
     const vSlotW = vInner.w / categoryCount;
     const vBarW = Math.max(2, vSlotW * 0.7);

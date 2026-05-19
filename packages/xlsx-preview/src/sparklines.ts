@@ -1,14 +1,3 @@
-// Sparkline painter. One mini-chart per anchored cell; layout/colors
-// come from the parent SparklineGroup. Three OOXML types: line / column
-// / stacked (win-loss). All three respect the group's marker toggles
-// (high/low/first/last/negative + plain markers for line) and color
-// overrides.
-//
-// We render strictly inside `cellRect(r,c)` with a 2px margin on all
-// sides so the chart doesn't kiss the cell border. Tiny cells (< ~20px
-// in either axis) just suppress drawing — Excel itself bails at that
-// scale.
-
 import type { Sheet, SparklineGroup, Sparkline } from "./types.js";
 
 import type { Grid } from "./grid.js";
@@ -20,10 +9,7 @@ const PAD = 2;
 const MIN_CELL_W = 14;
 const MIN_CELL_H = 10;
 
-// Defaults that match Excel's "out of the box" sparkline look on a
-// freshly-inserted sparkline (single accent series, no markers, no
-// negative-color override).
-const DEFAULT_SERIES = "#376092"; // Excel's default sparkline blue
+const DEFAULT_SERIES = "#376092";
 const DEFAULT_NEGATIVE = "#FF0000";
 const DEFAULT_AXIS = "#000000";
 const DEFAULT_MARKERS = "#D00000";
@@ -43,12 +29,11 @@ export function drawSparklines(
 
   for (const group of groups) {
     for (const sp of group.sparklines) {
-      // Cull off-screen (cheap reject).
       if (sp.r < vis.firstRow || sp.r > vis.lastRow) continue;
       if (sp.c < vis.firstCol || sp.c > vis.lastCol) continue;
       const rect = cellRect(g, sp.r, sp.c);
       if (rect.w < MIN_CELL_W || rect.h < MIN_CELL_H) continue;
-      // Header strips never host sparklines, but defend anyway.
+
       if (rect.y < g.originY || rect.x < g.originX) continue;
 
       const inner: CellRect = {
@@ -59,8 +44,7 @@ export function drawSparklines(
       };
 
       ctx.save();
-      // Clip strictly to the cell rect so a long line/column never
-      // bleeds into the next cell.
+
       ctx.beginPath();
       ctx.rect(rect.x, rect.y, rect.w, rect.h);
       ctx.clip();
@@ -83,9 +67,6 @@ export function drawSparklines(
   }
 }
 
-// ---------------------------------------------------------------------
-// Axis resolution
-
 interface AxisRange {
   min: number;
   max: number;
@@ -93,7 +74,7 @@ interface AxisRange {
 
 function resolveRange(group: SparklineGroup, values: ReadonlyArray<number | null>): AxisRange {
   const present = values.filter((v): v is number => v != null);
-  // Per-cell defaults from the values themselves.
+
   let lo = present.length ? Math.min(...present) : 0;
   let hi = present.length ? Math.max(...present) : 1;
 
@@ -104,7 +85,6 @@ function resolveRange(group: SparklineGroup, values: ReadonlyArray<number | null
     case "custom":
       if (group.manualMin != null) lo = group.manualMin;
       break;
-    // "individual" (default): use per-cell min already computed.
   }
   switch (group.maxAxisType) {
     case "group":
@@ -114,22 +94,16 @@ function resolveRange(group: SparklineGroup, values: ReadonlyArray<number | null
       if (group.manualMax != null) hi = group.manualMax;
       break;
   }
-  // If the axis crosses zero, Excel auto-extends so 0 is included.
-  // (Otherwise the negative-color column trick wouldn't have an axis
-  // to flip across.) Only do this when the range came from data, not
-  // when the user pinned both ends.
+
   if (lo > 0 && group.minAxisType === "individual") lo = 0;
   if (hi < 0 && group.maxAxisType === "individual") hi = 0;
-  // Degenerate range (all same value): expand by 1 so the line shows.
+
   if (hi - lo < 1e-12) {
     hi = lo + 0.5;
     lo = lo - 0.5;
   }
   return { min: lo, max: hi };
 }
-
-// ---------------------------------------------------------------------
-// Line sparklines
 
 function drawLineSparkline(
   ctx: CanvasRenderingContext2D,
@@ -140,11 +114,10 @@ function drawLineSparkline(
   const values = sp.values ?? [];
   if (values.length === 0) return;
 
-  // Build x/y points; honor displayEmptyCellsAs.
   const range = resolveRange(group, values);
   const yOf = (v: number) => {
     const t = (v - range.min) / (range.max - range.min);
-    // Note: y axis flipped (canvas y grows downward).
+
     return rect.y + (1 - t) * rect.h;
   };
   const xOf = (i: number) => {
@@ -156,8 +129,6 @@ function drawLineSparkline(
   ctx.lineWidth = Math.max(0.5, group.lineWeight ?? 0.75);
   ctx.strokeStyle = seriesColor;
 
-  // Stroke segments. "gap" => break the line at nulls; "zero" =>
-  // draw at zero; "span" => skip the null and connect across it.
   const empty = group.displayEmptyCellsAs || "gap";
   ctx.beginPath();
   let prevDrawn = false;
@@ -173,7 +144,7 @@ function drawLineSparkline(
       } else if (empty === "gap") {
         prevDrawn = false;
       }
-      // "span": just skip; next non-null lineTo() bridges across.
+
       continue;
     }
     const x = xOf(i);
@@ -184,7 +155,6 @@ function drawLineSparkline(
   }
   ctx.stroke();
 
-  // Optional axis line at zero, only when the data crosses zero.
   if (group.displayXAxis && range.min < 0 && range.max > 0) {
     const y = yOf(0);
     ctx.strokeStyle = group.colorAxis ? `#${group.colorAxis}` : DEFAULT_AXIS;
@@ -195,10 +165,6 @@ function drawLineSparkline(
     ctx.stroke();
   }
 
-  // Markers. The OOXML spec lets six marker categories light up
-  // independently: plain markers (every point), high, low, first,
-  // last, negative. Plain markers paint first so the special-case
-  // colored markers overpaint cleanly.
   const markerR = Math.max(1.25, Math.min(rect.w, rect.h) * 0.08);
   if (group.markers) {
     paintLineMarkers(
@@ -277,9 +243,6 @@ function paintExtremaMarkers(
   }
 }
 
-// ---------------------------------------------------------------------
-// Column sparklines
-
 function drawColumnSparkline(
   ctx: CanvasRenderingContext2D,
   group: SparklineGroup,
@@ -289,7 +252,7 @@ function drawColumnSparkline(
   const values = sp.values ?? [];
   if (values.length === 0) return;
   const range = resolveRange(group, values);
-  // Baseline = max(0, range.min); columns grow from there.
+
   const baseline = Math.max(range.min, Math.min(0, range.max));
   const yOf = (v: number) => {
     const t = (v - range.min) / (range.max - range.min);
@@ -297,14 +260,12 @@ function drawColumnSparkline(
   };
   const yBase = yOf(baseline);
 
-  // 1px gap between bars; bar width adapts.
   const total = values.length;
   const slotW = rect.w / total;
   const barW = Math.max(1, Math.floor(slotW) - 1);
   const seriesColor = group.colorSeries ? `#${group.colorSeries}` : DEFAULT_SERIES;
   const negColor = group.colorNegative ? `#${group.colorNegative}` : DEFAULT_NEGATIVE;
 
-  // Compute extrema indices for high/low/first/last paint
   let hiIdx = -1;
   let loIdx = -1;
   let firstIdx = -1;
@@ -347,13 +308,6 @@ function drawColumnSparkline(
   }
 }
 
-// ---------------------------------------------------------------------
-// Win/loss sparklines (OOXML "stacked")
-//
-// All positive values become identical-height up-bars; all negatives
-// become identical-height down-bars; zero/empty becomes a gap. Color
-// override comes from `colorNegative` for the down-bars.
-
 function drawWinLossSparkline(
   ctx: CanvasRenderingContext2D,
   group: SparklineGroup,
@@ -364,7 +318,7 @@ function drawWinLossSparkline(
   if (values.length === 0) return;
   const slotW = rect.w / values.length;
   const barW = Math.max(1, Math.floor(slotW) - 1);
-  // Bar height = ~45% of the rect, drawn from the vertical center.
+
   const halfH = Math.max(1, Math.floor(rect.h * 0.45));
   const midY = rect.y + rect.h / 2;
   const seriesColor = group.colorSeries ? `#${group.colorSeries}` : DEFAULT_SERIES;

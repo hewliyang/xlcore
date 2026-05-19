@@ -2,26 +2,14 @@ import type { Sheet } from "./types.js";
 import { HEADER_H, HEADER_W, OUTLINE_GUTTER_PAD, OUTLINE_GUTTER_STEP } from "./grid.js";
 import type { Grid } from "./grid.js";
 
-// ---------- outline runs (axis-agnostic) ----------
-//
-// A `run` is a maximal contiguous range of rows / columns at a given
-// outline level. The summary row/col sits one slot before or after the
-// run depending on `outlinePr.summaryBelow` / `summaryRight`. We need
-// runs in two places:
-//   1. The painter — to draw `[`-shaped brackets and the +/- button.
-//   2. The interaction layer — to hit-test the +/- button and toggle
-//      the run's detail rows/cols.
-// `computeOutlineRuns` is the shared source of truth.
-
 export interface OutlineRun {
   axis: "row" | "col";
   level: number;
-  /// First detail index (inclusive, 1-based).
+
   start: number;
-  /// Last detail index (inclusive, 1-based).
+
   end: number;
-  /// Summary row/col index (`end + 1` when summaryBelow/summaryRight,
-  /// else `start - 1`).
+
   summary: number;
 }
 
@@ -79,9 +67,6 @@ export function computeOutlineRuns(sheet: Sheet, g: Grid): OutlineRun[] {
   return runs;
 }
 
-/// Run is collapsed when every detail row/col has been hidden (zero
-/// height/width). Used by the painter to pick `+`/`-` glyph and by
-/// the interact layer to know which way to flip the toggle.
 export function isOutlineRunCollapsed(run: OutlineRun, g: Grid): boolean {
   if (run.axis === "row") {
     for (let r = run.start; r <= run.end; r++) {
@@ -96,30 +81,27 @@ export function isOutlineRunCollapsed(run: OutlineRun, g: Grid): boolean {
 }
 
 export interface OutlineGutterView {
-  /// Scroll offset on the data axis (px, pre-zoom).
   sx: number;
   sy: number;
-  /// First scrolling row/col index (>= 1). Indices below the split are pinned.
+
   splitX: number;
   splitY: number;
-  /// Pinned segment widths/heights (canvas-local px).
+
   pcw: number;
   prh: number;
-  /// Total canvas extent (canvas-local px).
+
   canvasW: number;
   canvasH: number;
 }
 
 export interface OutlineButtonHit {
   run: OutlineRun;
-  /// Canvas-local center of the button.
+
   cx: number;
   cy: number;
   collapsed: boolean;
 }
 
-/// Compute canvas-local positions of every visible +/- button. Painter
-/// and interact share this so a click lands exactly on the glyph drawn.
 export function outlineButtonHits(
   sheet: Sheet,
   g: Grid,
@@ -162,30 +144,15 @@ export function outlineButtonHits(
 
 export interface OutlineCornerHit {
   axis: "row" | "col";
-  /// 1-based level: clicking N means "collapse everything at level >= N".
-  /// The final track (level = depth + 1) is the "expand all" affordance.
+
   level: number;
   cx: number;
   cy: number;
 }
 
-/// Corner-numeral buttons (1, 2, …, depth+1) per axis.
-///
-/// * `axis: "col"` numerals ("collapse cols to depth N"): vertical
-///   stack centered in the row-label section of the corner box
-///   (x = midpoint between rowGutterW and originX), one numeral per
-///   col-gutter track. Same y as the col-track centers so each label
-///   visually points at "its" track.
-/// * `axis: "row"` numerals ("collapse rows to depth N"): horizontal
-///   row centered in the col-letter section of the corner box
-///   (y = midpoint between colGutterH and originY), one numeral per
-///   row-gutter track. Same x as the row-track centers.
 export function outlineCornerHits(g: Grid): OutlineCornerHit[] {
   const out: OutlineCornerHit[] = [];
   if (g.colOutlineDepth > 0) {
-    // Numerals in the row-label column section of the corner box.
-    // When the row gutter is absent fall back to a small column
-    // straddling the inner edge of the col-gutter.
     const cx = g.rowGutterW > 0 ? (g.rowGutterW + g.originX) / 2 : g.originX - HEADER_W / 2;
     for (let lvl = 1; lvl <= g.colOutlineDepth + 1; lvl++) {
       const cy = OUTLINE_GUTTER_PAD + (lvl - 1) * OUTLINE_GUTTER_STEP + OUTLINE_GUTTER_STEP / 2;
@@ -193,7 +160,6 @@ export function outlineCornerHits(g: Grid): OutlineCornerHit[] {
     }
   }
   if (g.rowOutlineDepth > 0) {
-    // Numerals in the col-letter row section of the corner box.
     const cy = g.colGutterH > 0 ? (g.colGutterH + g.originY) / 2 : g.originY - HEADER_H / 2;
     for (let lvl = 1; lvl <= g.rowOutlineDepth + 1; lvl++) {
       const cx = OUTLINE_GUTTER_PAD + (lvl - 1) * OUTLINE_GUTTER_STEP + OUTLINE_GUTTER_STEP / 2;
@@ -205,10 +171,6 @@ export function outlineCornerHits(g: Grid): OutlineCornerHit[] {
 
 export const OUTLINE_BUTTON_HIT_RADIUS = 7;
 
-/// Paint every visible +/- button in one pass. Picks `+` glyph for
-/// runs whose detail rows/cols are all hidden, `-` otherwise. Same
-/// `outlineButtonHits` source the interact layer uses for hit-tests,
-/// so a click is guaranteed to land on the rendered glyph.
 export function drawOutlineButtons(
   ctx: CanvasRenderingContext2D,
   sheet: Sheet,
@@ -229,29 +191,7 @@ export function drawOutlineButtons(
   ctx.restore();
 }
 
-// ---------- outline gutter ----------
-//
-// Outline brackets live in dedicated gutter strips outside the row/col
-// header label bands (Excel-style):
-//
-//   ┌──┬───────────┬──────────────────────────┐
-//   │NN│ col-gutter│        column letters    │  (col-gutter row, height = colGutterH)
-//   ├──┼───────────┼──────────────────────────┤
-//   │ N│           │                          │
-//   │ N│  row-     │          grid            │  (row-gutter column, width = rowGutterW)
-//   │ N│  gutter   │                          │
-//   └──┴───────────┴──────────────────────────┘
-//
-// Each level reserves one OUTLINE_GUTTER_STEP-wide track inside the
-// gutter. Level 1 sits at the outer edge (closest to the canvas), level
-// N at the inner edge (closest to the row labels / col letters); this
-// matches Excel desktop. Each row/col group renders a `[`-shaped
-// bracket in its level's track over the detail-cell extent, with a
-// small +/- button at the summary side (per `outlinePr.summaryBelow`
-// / `summaryRight`, both default true). No interactivity — the button
-// is a cosmetic glyph today; clicks fall through to header-selection.
-
-const OUTLINE_STROKE = "#9aa0a6"; // mid-gray, matches Excel's gutter color
+const OUTLINE_STROKE = "#9aa0a6";
 const OUTLINE_BUTTON_SIZE = 10;
 const OUTLINE_BUTTON_BG = "#ffffff";
 const OUTLINE_BUTTON_BORDER = "#6b7280";
@@ -260,11 +200,6 @@ const OUTLINE_BUTTON_GLYPH = "#374151";
 const COLLAPSED_TICK_STROKE = "#137333";
 const COLLAPSED_TICK_WIDTH = 2;
 
-/// Paint a green tick on the top edge of every visible row whose
-/// immediate predecessor row is hidden (rowH == 0). The tick spans the
-/// row-label band — width HEADER_W, positioned at x = rowGutterW —
-/// so it reads as a clear divider on the row-number strip. Mirrors
-/// Excel's "click here to expand" affordance for collapsed groups.
 export function drawCollapsedRowTicks(
   ctx: CanvasRenderingContext2D,
   g: Grid,
@@ -369,11 +304,6 @@ export function drawCollapsedColTicks(
   ctx.restore();
 }
 
-/// X-coordinate of the vertical bracket stroke for row-outline level
-/// `lvl` (1-based). Tracks are laid out left-to-right with level 1
-/// nearest the canvas edge and level N nearest the row-label band;
-/// matches Excel desktop. Track count = depth + 1 (final track reserved
-/// for the level-(N+1) corner numeral — see `drawOutlineCornerButtons`).
 function rowGutterTrackX(g: Grid, lvl: number): number {
   return OUTLINE_GUTTER_PAD + (lvl - 1) * OUTLINE_GUTTER_STEP + OUTLINE_GUTTER_STEP / 2;
 }
@@ -398,7 +328,7 @@ function drawOutlineButton(
   ctx.strokeRect(x, y, s - 1, s - 1);
   ctx.strokeStyle = OUTLINE_BUTTON_GLYPH;
   ctx.beginPath();
-  // Horizontal stroke (always)
+
   const mx1 = x + 2;
   const mx2 = x + s - 3;
   const my = y + (s - 1) / 2;
@@ -414,16 +344,6 @@ function drawOutlineButton(
   ctx.stroke();
 }
 
-/// Level-numeral buttons in the gutter corner. Excel splits these by
-/// axis:
-///   * Col-axis numerals ("collapse all cols to depth N") sit in the
-///     row-gutter column of the corner, vertically stacked, each
-///     aligned with its col-gutter horizontal track.
-///   * Row-axis numerals ("collapse all rows to depth N") sit in the
-///     col-gutter row of the corner, horizontally laid out, each
-///     aligned with its row-gutter vertical track.
-/// When only one axis has groups we paint just that axis. Geometry
-/// matches Excel desktop and the screenshot reference.
 export function drawOutlineCornerButtons(ctx: CanvasRenderingContext2D, g: Grid): void {
   ctx.save();
   ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
@@ -476,11 +396,11 @@ export function drawRowOutlineGutter(
       x,
       g,
       summaryBelow,
-      /*rowFrom*/ 1,
-      /*rowTo*/ Math.max(0, splitY - 1),
-      /*offsetY*/ 0,
-      /*clipY1*/ g.originY,
-      /*clipY2*/ g.originY + prh,
+      1,
+      Math.max(0, splitY - 1),
+      0,
+      g.originY,
+      g.originY + prh,
     );
     paintRowRunsForLevel(
       ctx,
@@ -489,11 +409,11 @@ export function drawRowOutlineGutter(
       x,
       g,
       summaryBelow,
-      /*rowFrom*/ Math.max(1, splitY),
-      /*rowTo*/ g.maxRow,
-      /*offsetY*/ -sy,
-      /*clipY1*/ g.originY + prh,
-      /*clipY2*/ canvasH,
+      Math.max(1, splitY),
+      g.maxRow,
+      -sy,
+      g.originY + prh,
+      canvasH,
     );
   }
   ctx.restore();
@@ -526,19 +446,12 @@ function paintRowRunsForLevel(
       const runEnd = r - 1;
       const y1 = (g.rowY[runStart] ?? g.originY) + offsetY;
       const y2 = (g.rowY[runEnd + 1] ?? g.originY) + offsetY;
-      // Fully hidden run → skip; we'd just stack tick caps on top of
-      // each other into a stray notch.
+
       if (y2 - y1 < 3) {
         runStart = -1;
         continue;
       }
       if (y2 > clipY1 && y1 < clipY2) {
-        // Bracket: vertical line over the detail rows, with a short
-        // horizontal hook at the non-summary end. Hook points RIGHT
-        // (toward the row-label band) to match Excel desktop's `[`
-        // shape. The +/- button is painted in a separate pass via
-        // `drawOutlineButtons` so collapsed runs (zero bracket
-        // extent) still get their +.
         const hookY = summaryBelow ? y1 : y2;
         ctx.beginPath();
         ctx.moveTo(xLine, y1);
@@ -584,11 +497,11 @@ export function drawColOutlineGutter(
       y,
       g,
       summaryRight,
-      /*colFrom*/ 1,
-      /*colTo*/ Math.max(0, splitX - 1),
-      /*offsetX*/ 0,
-      /*clipX1*/ g.originX,
-      /*clipX2*/ g.originX + pcw,
+      1,
+      Math.max(0, splitX - 1),
+      0,
+      g.originX,
+      g.originX + pcw,
     );
     paintColRunsForLevel(
       ctx,
@@ -597,11 +510,11 @@ export function drawColOutlineGutter(
       y,
       g,
       summaryRight,
-      /*colFrom*/ Math.max(1, splitX),
-      /*colTo*/ g.maxCol,
-      /*offsetX*/ -sx,
-      /*clipX1*/ g.originX + pcw,
-      /*clipX2*/ canvasW,
+      Math.max(1, splitX),
+      g.maxCol,
+      -sx,
+      g.originX + pcw,
+      canvasW,
     );
   }
   ctx.restore();
@@ -639,9 +552,6 @@ function paintColRunsForLevel(
         continue;
       }
       if (x2 > clipX1 && x1 < clipX2) {
-        // Hook always points DOWN (toward the column-letter band) to
-        // match the `┐` shape Excel desktop draws over column groups.
-        // Buttons paint in a separate pass.
         const hookX = summaryRight ? x1 : x2;
         ctx.beginPath();
         ctx.moveTo(x1, yLine);

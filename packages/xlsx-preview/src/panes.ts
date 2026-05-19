@@ -3,10 +3,6 @@ import type { Sheet } from "./types.js";
 import type { Grid } from "./grid.js";
 import type { Pane, Viewport, Visible } from "./renderTypes.js";
 
-// ---------- panes ----------
-
-// How wide the pinned-column strip is, and how tall the pinned-row strip
-// is, in logical CSS px. 0 when that axis is unfrozen.
 function frozenExtent(
   sheet: Sheet,
   g: Grid,
@@ -34,7 +30,6 @@ export function splitPanes(
 
   const panes: Pane[] = [];
 
-  // BR (always present) — covers everything past both splits.
   {
     const cx = g.originX + pcw;
     const cy = g.originY + prh;
@@ -48,7 +43,6 @@ export function splitPanes(
     panes.push({ cx, cy, cw, ch, tx, ty, vis, kind: "br" });
   }
   if (hasV) {
-    // TR — pinned rows, scrolling cols.
     const cx = g.originX + pcw;
     const cy = g.originY;
     const cw = Math.max(0, canvasW - cx);
@@ -62,7 +56,6 @@ export function splitPanes(
     panes.push({ cx, cy, cw, ch, tx, ty, vis, kind: "tr" });
   }
   if (hasH) {
-    // BL — pinned cols, scrolling rows.
     const cx = g.originX;
     const cy = g.originY + prh;
     const cw = pcw;
@@ -76,7 +69,6 @@ export function splitPanes(
     panes.push({ cx, cy, cw, ch, tx, ty, vis, kind: "bl" });
   }
   if (hasH && hasV) {
-    // TL — fully pinned corner.
     const cx = g.originX;
     const cy = g.originY;
     const cw = pcw;
@@ -101,16 +93,11 @@ function paneVisible(
   tx: number,
   ty: number,
 ): Visible {
-  // Inverse of the canvas transform: absX = cx - tx (since canvasX = absX + tx).
   const ax1 = cx - tx;
   const ay1 = cy - ty;
   return visibleRange(g, ax1, ay1, ax1 + cw, ay1 + ch);
 }
 
-/// Public for interact.ts — given a canvas-local point, returns the pane
-/// whose clip rect contains it (so callers can convert to absolute logical
-/// coords). Returns null if the point lies in a header strip or outside any
-/// pane.
 export function paneAtPoint(
   sheet: Sheet,
   g: Grid,
@@ -129,9 +116,6 @@ export function paneAtPoint(
   return null;
 }
 
-/// Public for interact.ts — exposes the frozen-strip widths so the resize
-/// hit-tester can know which segment of the header (pinned vs scrolling) a
-/// pointer is in.
 export function frozenDims(
   sheet: Sheet,
   g: Grid,
@@ -139,9 +123,6 @@ export function frozenDims(
   return frozenExtent(sheet, g);
 }
 
-// Find the first/last column and row whose extent intersects the rect
-// [x1,y1] - [x2,y2]. Uses a linear scan; grid sizes are small (<= a few
-// thousand virtual cols/rows in practice).
 function visibleRange(
   g: Grid,
   x1: number,

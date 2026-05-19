@@ -1,14 +1,3 @@
-// Shared decoded-image cache, used by both the top-level image-anchor
-// painter (drawings.ts) and the nested-picture-inside-shape painter
-// (shape.ts). Keyed by `data:` URI so identical embeds share a single
-// HTMLImageElement.
-//
-// Decoding is async in the browser path; we hand back `null` until
-// the image has dimensions and fire a `xlcore-image-ready` event so
-// the preview shell can request a repaint. The Node path
-// (`renderToPng`) preloads everything via `preloadDrawingImages`
-// before the first paint, so the cache lookup is synchronous there.
-
 export type DrawableImage = {
   complete?: boolean;
   naturalWidth?: number;

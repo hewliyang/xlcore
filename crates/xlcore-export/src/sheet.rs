@@ -1,28 +1,14 @@
-//! Per-worksheet extraction.
-
 use crate::schema::*;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as x;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main::Cell as XCell;
 use xlcore_io::parse_a1;
 
-// Unit conversions. Excel's exact column-width formula is
-// `truncate((char_width * w + 5) / char_width * 256) / 256 * char_width`,
-// where `char_width` is the maximum digit width (MDW) of the workbook's
-// default font in pixels. We approximate MDW from the default font size:
-// Calibri/Aptos at 11pt give MDW ≈ 7px, and digit width scales roughly
-// linearly with font size for sans-serif fonts of that family.
-//
-// Without this scaling, an Aptos-20pt workbook (the default in Office
-// 2024+) renders every column at ~half its true pixel width, which makes
-// the whole sheet look squashed compared to SpreadJS / real Excel.
 const PT_PER_PX: f64 = 72.0 / 96.0;
 const DEFAULT_COL_WIDTH_CHARS: f64 = 8.43;
 const COL_PADDING_PX: f64 = 5.0;
 const DEFAULT_ROW_HEIGHT_PT: f64 = 15.0;
 
 fn px_per_char(default_font_size_pt: f32) -> f64 {
-    // Calibri 11pt baseline: MDW = 7px. Scale linearly with size.
-    // Clamp to sane bounds so a corrupt font entry can't blow up layout.
     let scaled = (default_font_size_pt as f64) * 7.0 / 11.0;
     scaled.clamp(5.0, 24.0)
 }
@@ -41,14 +27,10 @@ pub fn extract(
     let px_per_char = px_per_char(styles.default_font_size);
     let width_attr_to_px =
         |w: f64| -> f32 { explicit_width_attr_to_px(w, styles.default_font_size) };
-    // Excel's built-in default (8.43 chars) visually includes the 5px cell
-    // padding. Widths serialized in OOXML `<col width="...">` and
-    // `sheetFormatPr defaultColWidth` are already in Excel's effective width
-    // units (e.g. 8.00390625 -> 56px with MDW=7), so do not add padding a
-    // second time for explicit XML widths.
+
     let default_col_width_px_const: f32 =
         (DEFAULT_COL_WIDTH_CHARS * px_per_char + COL_PADDING_PX) as f32;
-    // Compute used range
+
     let mut max_row = 0u32;
     let mut max_col = 0u32;
     for row in &ws.x_sheet_data.x_row {
@@ -70,21 +52,19 @@ pub fn extract(
         }
     }
 
-    // Sheet format defaults
     let mut default_col_width_px = default_col_width_px_const;
     let mut default_row_height_pt = DEFAULT_ROW_HEIGHT_PT;
     if let Some(fmt) = &ws.sheet_format_properties {
         if let Some(w) = fmt.default_column_width {
             default_col_width_px = width_attr_to_px(w);
         }
-        // default_row_height is non-optional in the schema (DoubleValue).
+
         if fmt.default_row_height > 0.0 {
             default_row_height_pt = fmt.default_row_height;
         }
     }
     let default_row_height_px = (default_row_height_pt / PT_PER_PX) as f32;
 
-    // Columns
     let mut cols: Vec<Col> = Vec::new();
     if !ws.x_cols.is_empty() {
         for c in &ws.x_cols[0].x_col {
@@ -103,7 +83,6 @@ pub fn extract(
         }
     }
 
-    // Rows
     let mut rows: Vec<Row> = Vec::with_capacity(ws.x_sheet_data.x_row.len());
     for r in &ws.x_sheet_data.x_row {
         let row_index = r.row_index.unwrap_or(0);
@@ -126,7 +105,6 @@ pub fn extract(
         });
     }
 
-    // Merges
     let merges: Vec<Merge> = ws
         .x_merge_cells
         .as_ref()
@@ -141,9 +119,6 @@ pub fn extract(
         })
         .unwrap_or_default();
 
-    // Worksheet-level AutoFilter. Excel serializes the saved result of an
-    // applied filter as ordinary `<row hidden="1"/>` flags; the range here is
-    // for the header dropdown chrome on non-Table filters.
     let auto_filter_range = ws
         .x_auto_filter
         .as_ref()
@@ -161,7 +136,6 @@ pub fn extract(
             }
         });
 
-    // Freeze
     let mut freeze: Option<Freeze> = None;
     let mut show_grid_lines = true;
     if let Some(sv) = &ws.sheet_views {
@@ -184,7 +158,6 @@ pub fn extract(
 
     let conditional_formats = extract_conditional_formats(ws);
 
-    // <sheetPr><tabColor .../></sheetPr>
     let tab_color = ws
         .sheet_properties
         .as_ref()
@@ -205,10 +178,6 @@ pub fn extract(
             }
         });
 
-    // <sheetPr><outlinePr summaryBelow=... summaryRight=.../></sheetPr>.
-    // Default-true matches Excel and the OOXML spec; we only emit the
-    // struct when at least one default is overridden so the wire stays
-    // small (and the renderer can short-circuit on `outlinePr === undefined`).
     let outline_pr = ws
         .sheet_properties
         .as_ref()
@@ -229,7 +198,7 @@ pub fn extract(
     Sheet {
         index: index as u32,
         name,
-        state: None, // filled from workbook.xml in lib.rs
+        state: None,
         tab_color,
         max_row,
         max_col,
@@ -243,14 +212,13 @@ pub fn extract(
         show_grid_lines,
         conditional_formats,
         outline_pr,
-        drawings: Vec::new(),         // populated by lib.rs after sheet extract
-        tables: Vec::new(),           // populated by lib.rs after sheet extract
-        pivots: Vec::new(),           // populated by lib.rs after sheet extract
-        hyperlinks: Vec::new(),       // populated by lib.rs after sheet extract
-        comments: Vec::new(),         // populated by lib.rs after sheet extract
-        sparkline_groups: Vec::new(), // populated by lib.rs after sheet extract
-        // Columnar blobs are filled by `columnar::compactify` after every
-        // other pass has run; until then they're empty defaults.
+        drawings: Vec::new(),
+        tables: Vec::new(),
+        pivots: Vec::new(),
+        hyperlinks: Vec::new(),
+        comments: Vec::new(),
+        sparkline_groups: Vec::new(),
+
         cells: Default::default(),
         row_meta: Default::default(),
         value_pool: Vec::new(),
@@ -262,12 +230,8 @@ pub fn extract(
 fn extract_conditional_formats(ws: &x::Worksheet) -> Vec<ConditionalFormat> {
     let mut out = Vec::new();
     for cf in &ws.x_conditional_formatting {
-        // sqref is a space-separated list of A1 ranges.
         let mut ranges: Vec<Merge> = Vec::new();
         if let Some(sqref) = &cf.sequence_of_references {
-            // ListValue<StringValue>: stringify and split. Just take the
-            // textual representation; ooxmlsdk gives us the inner Vec via
-            // .items in some versions, but we go through Debug/Display safely.
             let s = format!("{}", sqref);
             for part in s.split_whitespace() {
                 if let Some(((r1, c1), (r2, c2))) = xlcore_io::parse_range(part) {
@@ -332,8 +296,6 @@ fn extract_conditional_formats(ws: &x::Worksheet) -> Vec<ConditionalFormat> {
 }
 
 fn normalize_cf_operator(dbg: &str) -> String {
-    // ooxmlsdk's enum Debug repr is e.g. `GreaterThan` / `LessThanOrEqual`.
-    // Lowercase first letter to match the ECMA-376 attribute spelling.
     let lower = dbg.to_ascii_lowercase();
     if lower.contains("greaterthanorequal") {
         "greaterThanOrEqual"
@@ -381,9 +343,7 @@ fn normalize_cf_kind(dbg: &str) -> String {
         "top10"
     } else if lower.contains("aboveaverage") {
         "aboveAverage"
-    }
-    // Order matters: `notContainsText` must precede `containsText`.
-    else if lower.contains("notcontainstext") {
+    } else if lower.contains("notcontainstext") {
         "notContainsText"
     } else if lower.contains("containstext") {
         "containsText"
@@ -461,11 +421,7 @@ fn extract_data_bar(db: &x::DataBar) -> Option<CfDataBar> {
     };
     let min = mk_stop(&db.x_cfvo[0]);
     let max = mk_stop(&db.x_cfvo[1]);
-    // Legacy `<dataBar>` always has the bar fill color. Some writers
-    // (notably SpreadJS / hsx) round-trip the CF rule without the
-    // `<color>` child — the canonical color lives in the x14 extension
-    // we don't parse yet. Fall back to Excel's default blue so the
-    // renderer can paint something coherent regardless.
+
     let color = {
         let c = &db.x_color;
         if c.rgb.is_none() && c.theme.is_none() && c.indexed.is_none() {
@@ -489,24 +445,16 @@ fn extract_data_bar(db: &x::DataBar) -> Option<CfDataBar> {
         max,
         color,
         negative_color: None,
-        // The OOXML legacy schema defaults are `minLength=10` / `maxLength=90`,
-        // but every real-world writer (Excel, SpreadJS, LibreOffice) emits an
-        // x14 extension with `0`/`100` and ignores the legacy attrs. Until we
-        // parse the x14 ext, default to `0`/`100` so renders match what users
-        // see in Excel. The bug-for-bug spec defaults are tracked in TRIAGE.
+
         min_length_pct: db.min_length.unwrap_or(0),
         max_length_pct: db.max_length.unwrap_or(100),
         show_value: db.show_value.unwrap_or(true),
-        // `gradient` lives only in the x14 extension; until we parse
-        // that, default to true — every modern writer (Excel,
-        // SpreadJS, LibreOffice) authors gradient bars by default.
+
         gradient: true,
     })
 }
 
 fn extract_icon_set(is: &x::IconSet) -> Option<CfIconSet> {
-    // Default ooxml `iconSet` enum value is `3Arrows`. Some writers
-    // omit the attribute and rely on the default.
     let icon_set_name = match &is.icon_set_value {
         Some(v) => normalize_icon_set_name(&format!("{v:?}")),
         None => "3Arrows".to_string(),
@@ -530,9 +478,6 @@ fn extract_icon_set(is: &x::IconSet) -> Option<CfIconSet> {
     })
 }
 
-/// `ooxmlsdk` Debug for `IconSetValues` looks like `ThreeTrafficLights1`,
-/// `FourArrowsGray`, etc. Translate back to the spec spellings
-/// (`3TrafficLights1`, `4ArrowsGray`).
 fn normalize_icon_set_name(dbg: &str) -> String {
     let lower = dbg.to_ascii_lowercase();
     let prefix = if lower.starts_with("three") {
@@ -581,7 +526,7 @@ fn extract_color_scale(cs: &x::ColorScale) -> Option<CfColorScale> {
             indexed: color.indexed,
             tint: color.tint,
         };
-        // Skip stops without any color info.
+
         if col.rgb.is_none() && col.theme.is_none() && col.indexed.is_none() {
             continue;
         }
@@ -617,8 +562,6 @@ fn extract_cell(cell: &XCell) -> Option<Cell> {
         .as_ref()
         .map(|d| format!("{d:?}").to_ascii_lowercase());
 
-    // Rich-text runs for inline strings (set below if cell is `inline` and
-    // carries `<r>` children). Shared-string runs live on the SST table.
     let mut inline_runs: Vec<TextRun> = Vec::new();
 
     let (kind, value): (&str, Option<String>) = if formula.is_some() {
@@ -627,10 +570,6 @@ fn extract_cell(cell: &XCell) -> Option<Cell> {
         if dt.contains("sharedstring") {
             ("s", raw_v.map(str::to_string))
         } else if dt.contains("inlinestring") {
-            // Two encodings: a single `<t>` (plain text) or a sequence of
-            // `<r>` runs (rich text). When runs are present we concatenate
-            // their `<t>` content for the flat `value`, *and* preserve the
-            // per-run styling for the renderer.
             let (s, runs) = if let Some(is) = cell.inline_string.as_ref() {
                 if !is.x_r.is_empty() {
                     let mut s = String::new();
@@ -667,7 +606,6 @@ fn extract_cell(cell: &XCell) -> Option<Cell> {
     } else if let Some(v) = raw_v {
         ("n", Some(v.to_string()))
     } else if cell.style_index.is_some() {
-        // Empty styled cell — keep so the renderer paints background/borders.
         ("n", None)
     } else {
         return None;
@@ -690,10 +628,6 @@ mod tests {
 
     #[test]
     fn explicit_ooxml_widths_do_not_get_padding_added_twice() {
-        // This workbook family serializes widths such that width * MDW is
-        // SpreadJS/Excel's pixel width (MDW=7px for Calibri 11pt). Adding the
-        // 5px UI padding again makes every custom column too wide, shifting
-        // bordered instruction boxes away from their text.
         assert!((explicit_width_attr_to_px(23.421875, 11.0) - 163.953_13).abs() < 0.001);
         assert!((explicit_width_attr_to_px(8.00390625, 11.0) - 56.027344).abs() < 0.001);
     }

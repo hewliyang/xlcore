@@ -39,17 +39,14 @@ interface DateParts {
   mi: number;
   s: number;
   ms: number;
-  weekday: number; // 0=Sun
-  totalHours: number; // for [h]
+  weekday: number;
+  totalHours: number;
   totalMinutes: number;
   totalSeconds: number;
   isPM: boolean;
 }
 
 function serialToParts(serial: number): DateParts {
-  // Excel epoch: 1899-12-30 (handles 1900 bogus-leap-year for serial >= 61).
-  // For serial 0..59 the resulting date is off by one day from Excel; we
-  // accept the discrepancy (real workbooks rarely store dates that early).
   const totalSeconds = serial * 86400;
   const totalMs = Math.round(serial * 86400 * 1000);
   const date = new Date(Date.UTC(1899, 11, 30) + totalMs);
@@ -85,9 +82,7 @@ export function renderDate(value: number, sec: Section): string {
   const p = serialToParts(value);
   const has12h = sec.tokens.some((t) => t.kind === "ampm");
   let s = "";
-  // For context-sensitive `m` vs minutes: a `m`/`mm` token means MINUTES
-  // when it follows an h/hh/[h] token (skipping non-date literals) OR is
-  // immediately followed by an s/ss token. Otherwise it means month.
+
   for (let i = 0; i < sec.tokens.length; i++) {
     const t = sec.tokens[i]!;
     if (t.kind === "lit") {
@@ -126,7 +121,6 @@ export function renderDate(value: number, sec: Section): string {
           break;
         case "mm":
         case "m": {
-          // context: minutes if surrounded by h/s tokens
           const isMinutes = isMinuteContext(sec.tokens, i);
           if (isMinutes) s += t.field === "mm" ? pad2(p.mi) : p.mi.toString();
           else s += t.field === "mm" ? pad2(p.mo) : p.mo.toString();
@@ -156,14 +150,8 @@ export function renderDate(value: number, sec: Section): string {
         }
         case "ss":
         case "s": {
-          // Sub-second precision via trailing ".0" / ".00" — handled by
-          // the literal+digit pair "ss.0" tokenizing as ["ss", ".", "0"].
-          // We only emit the integer seconds here; the dot/digits in the
-          // surrounding tokens come from the adjacent number-flavor
-          // placeholders, which we render in the literal pass below.
-          // For now: just integer seconds, plus optional ".x" lookahead.
           let sec1 = t.field === "ss" ? pad2(p.s) : p.s.toString();
-          // Look ahead for `.` + digits → sub-second.
+
           if (sec.tokens[i + 1]?.kind === "dot") {
             const digitToks: Tok[] = [];
             let j = i + 2;
@@ -174,7 +162,7 @@ export function renderDate(value: number, sec: Section): string {
             if (digitToks.length > 0) {
               const f = (p.ms / 1000).toFixed(digitToks.length).slice(2);
               sec1 += "." + f;
-              i = j - 1; // consume dot + digits
+              i = j - 1;
             }
           }
           s += sec1;
@@ -183,21 +171,18 @@ export function renderDate(value: number, sec: Section): string {
       }
       continue;
     }
-    // digit / dot / comma / percent / slash / exp / text shouldn't appear
-    // inside a date section at the top level — ignore defensively.
   }
   return s;
 }
 
 function isMinuteContext(tokens: Tok[], idx: number): boolean {
-  // Scan backwards for the nearest date/elapsed token; if it's h/hh/[h], minutes.
   for (let i = idx - 1; i >= 0; i--) {
     const t = tokens[i]!;
     if (t.kind === "date" && /^h{1,2}$/.test(t.field)) return true;
     if (t.kind === "elapsed" && t.field === "h") return true;
     if (t.kind === "date" || t.kind === "elapsed") break;
   }
-  // Scan forward for s/ss
+
   for (let i = idx + 1; i < tokens.length; i++) {
     const t = tokens[i]!;
     if (t.kind === "date" && /^s{1,2}$/.test(t.field)) return true;

@@ -1,12 +1,6 @@
-//! Styles extraction from `<x:styleSheet>`.
-//!
-//! ooxmlsdk uses distinct types per border side (LeftBorder/RightBorder/...)
-//! so we can't share a single helper without traits — repeat ourselves and
-//! keep it readable.
-
 use crate::schema::*;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as x;
-// Disambiguate ooxmlsdk types from our schema types of the same name.
+
 use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main::{
     Border as XBorder, CellFormat as XCellFormat, DifferentialFormat as XDxf, Fill as XFill,
     Font as XFont,
@@ -31,12 +25,6 @@ pub fn extract(s: &x::Stylesheet) -> Styles {
         .map(|b| b.x_border.iter().map(extract_border).collect())
         .unwrap_or_default();
 
-    // Parse `<cellStyleXfs>` first — these are the "named style" parents
-    // (e.g. "Normal", "Title", "Heading 1") that cell xfs inherit from
-    // when they set `applyFont="0"` / `applyFill="0"` / etc. and point
-    // back via `xfId`. ECMA-376 §18.8.10. They're never referenced
-    // directly by cells — only through inheritance — so we don't expose
-    // them on `Styles`; we just resolve and discard.
     let cell_style_xfs: Vec<CellFormat> = s
         .cell_style_formats
         .as_ref()
@@ -85,10 +73,6 @@ pub fn extract(s: &x::Stylesheet) -> Styles {
     }
 }
 
-/// Extract the workbook's `<dxfs>` block (differential formats). These
-/// are referenced by `CfRule.dxf_id` and table styles. We only carry the
-/// subset the renderer actually uses today: font color/bold/italic/
-/// underline/strike, solid fill foreground, and num-format override.
 pub fn extract_dxfs(s: &x::Stylesheet) -> Vec<crate::schema::Dxf> {
     let Some(dxfs) = s.differential_formats.as_ref() else {
         return Vec::new();
@@ -96,12 +80,6 @@ pub fn extract_dxfs(s: &x::Stylesheet) -> Vec<crate::schema::Dxf> {
     dxfs.x_dxf.iter().map(extract_dxf).collect()
 }
 
-/// Extract the workbook's `<tableStyles>` block — named custom table
-/// styles (workbooks may ship their own beyond Excel's built-ins).
-/// We resolve each style's element list (`<tableStyleElement type="…"
-/// dxfId="N"/>`) into the named slots on `CustomTableStyle` that the
-/// renderer actually consults. The dxfId references the parallel
-/// `<dxfs>` block surfaced by `extract_dxfs`.
 pub fn extract_table_styles(s: &x::Stylesheet) -> Vec<crate::schema::CustomTableStyle> {
     let Some(ts) = s.table_styles.as_ref() else {
         return Vec::new();
@@ -124,10 +102,7 @@ pub fn extract_table_styles(s: &x::Stylesheet) -> Vec<crate::schema::CustomTable
                     T::SecondRowStripe => out.second_row_stripe = Some(dxf_id),
                     T::FirstColumn => out.first_column = Some(dxf_id),
                     T::LastColumn => out.last_column = Some(dxf_id),
-                    // Bands we don't paint yet (column stripes, subtotal
-                    // rows, page-field cells, header/total corner cells)
-                    // are dropped on the floor. Add a field when the
-                    // renderer learns to paint that band.
+
                     _ => {}
                 }
             }
@@ -171,10 +146,6 @@ fn extract_dxf(d: &XDxf) -> crate::schema::Dxf {
     }
     if let Some(fill) = d.fill.as_ref() {
         if let Some(x::FillChoice::XPatternFill(pf)) = &fill.fill_choice {
-            // dxf fills are weird: when the pattern is `solid` Excel
-            // stores the visible color in `bgColor`, not `fgColor`.
-            // (Same quirk SpreadJS works around in convertDxfToStyle.)
-            // Try fg first, then bg, so non-solid patterns still resolve.
             let fg = pf.foreground_color.as_ref().and_then(|c| {
                 extract_color_x(&x::Color {
                     auto: c.auto,
@@ -203,10 +174,6 @@ fn extract_dxf(d: &XDxf) -> crate::schema::Dxf {
 }
 
 fn extract_font(f: &XFont) -> Font {
-    // CT_BooleanProperty: element present with no `val` attr defaults to
-    // true; `val="0"`/`val="false"` *unsets* the property. ooxmlsdk parses
-    // BooleanValue via Display/Debug; convert through string compare since
-    // the inner repr isn't part of the public API.
     Font {
         name: f.font_name.as_ref().map(|n| n.val.as_str().to_string()),
         size: f.font_size.as_ref().map(|s| s.val as f32),
@@ -304,13 +271,10 @@ fn extract_fill(f: &XFill) -> Fill {
                 Some(x::GradientValues::Path) => Some("path".to_string()),
                 _ => Some("linear".to_string()),
             };
-            // OOXML `degree` is required by the schema but optional in our
-            // model; we omit it (defaults to 0 = left→right) when missing.
+
             let gradient_degree = gf.degree;
             let conv = |v: &Option<ooxmlsdk::simple_type::DoubleValue>| *v;
-            // The path-convergence attrs (left/right/top/bottom) only make
-            // sense for `path` gradients; suppress them otherwise so the
-            // JSON stays clean.
+
             let is_path = matches!(gf.r#type, Some(x::GradientValues::Path));
             Fill {
                 pattern_type: Some("gradient".to_string()),
@@ -429,12 +393,7 @@ fn extract_border(b: &XBorder) -> Border {
 fn border_style_str(dbg: Option<&str>) -> Option<String> {
     let dbg = dbg?;
     let lower = dbg.to_ascii_lowercase();
-    // Order matters: longer / more-specific names must be tested
-    // before any shorter substring they contain. Notably
-    // `slantDashDot` contains `dashDot`, and `mediumDashDotDot`
-    // contains `mediumDashDot` which contains `mediumDashed` is
-    // false but contains `mediumDash` (not a real value). The
-    // ordering below is the topological sort.
+
     let s = if lower.contains("none") {
         return None;
     } else if lower.contains("slantdashdot") {
@@ -469,10 +428,6 @@ fn border_style_str(dbg: Option<&str>) -> Option<String> {
     Some(s.to_string())
 }
 
-/// Apply `apply*="0"` inheritance from the cell xf's parent
-/// `cellStyleXf` (resolved via `xfId`). When the flag is missing or
-/// `"1"`, the cell xf's own value wins; when `"0"`, the parent style's
-/// value is used. ECMA-376 §18.8.45.
 fn extract_xf_with_inheritance(xf: &XCellFormat, parents: &[CellFormat]) -> CellFormat {
     let mut cf = extract_xf(xf);
     let parent = xf.format_id.and_then(|id| parents.get(id as usize));

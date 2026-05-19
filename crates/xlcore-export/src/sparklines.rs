@@ -1,13 +1,3 @@
-//! Sparkline extraction.
-//!
-//! Sparklines live under the worksheet's `<extLst>` in the Office 2010
-//! `x14` namespace (ext URI `{05C60535-1F16-4fd2-B633-F4F36F0B64E0}`).
-//! Each `<x14:sparklineGroup>` carries shared chrome (type, axis colors,
-//! marker toggles) plus N `<x14:sparkline>` children, where each
-//! sparkline is anchored at one cell (`<xne:sqref>`) and pulls its
-//! data from a range (`<xne:f>`). Values are resolved later in
-//! `lib.rs::resolve_sparkline_refs` once every sheet is in hand.
-
 use crate::schema::{Sparkline, SparklineGroup};
 use ooxmlsdk::schemas::schemas_microsoft_com_office_spreadsheetml_2009_9_main as x14;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as xspread;
@@ -60,13 +50,11 @@ fn extract_group(g: &x14::SparklineGroup) -> SparklineGroup {
 
     let mut sparklines = Vec::new();
     for sp in &g.sparklines.x14_sparkline {
-        // sqref is "A1" or sometimes a range; we anchor on the
-        // top-left cell. Empty sqref = drop.
         let sqref = sp.reference_sequence.as_str().trim();
         if sqref.is_empty() {
             continue;
         }
-        // Take first whitespace-separated token, then first ":" half.
+
         let first_token = sqref.split_whitespace().next().unwrap_or("");
         let first_cell = first_token.split(':').next().unwrap_or("");
         let Some((r, c)) = parse_a1(first_cell) else {
@@ -76,7 +64,7 @@ fn extract_group(g: &x14::SparklineGroup) -> SparklineGroup {
             r,
             c,
             formula: sp.formula.as_ref().map(|s| s.as_str().to_string()),
-            values: Vec::new(), // resolved post-pass in lib.rs
+            values: Vec::new(),
         });
     }
 
@@ -96,7 +84,7 @@ fn extract_group(g: &x14::SparklineGroup) -> SparklineGroup {
         max_axis_type: axis_kind(g.max_axis_type),
         manual_min: g.manual_min,
         manual_max: g.manual_max,
-        group_min: None, // resolved post-pass
+        group_min: None,
         group_max: None,
         color_series: g
             .series_color
@@ -134,10 +122,6 @@ fn extract_group(g: &x14::SparklineGroup) -> SparklineGroup {
     }
 }
 
-/// Strip the leading alpha byte from an OOXML `aRRGGBB` hex string.
-/// Theme/indexed/auto color resolution is intentionally skipped here:
-/// Excel writes literal RGB on sparkline color elements in the vast
-/// majority of files, and the renderer has a sensible accent fallback.
 fn color_hex(rgb: Option<&str>) -> Option<String> {
     let s = rgb?;
     let trimmed = s.trim_start_matches('#');

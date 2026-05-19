@@ -1,7 +1,5 @@
 import type { Color, WorkbookLayout } from "./types.js";
 
-// Legacy indexed-color palette per ECMA-376 §18.8.27 (the default
-// `indexedColors` table).
 const INDEXED_PALETTE: Record<number, string> = {
   0: "#000000",
   1: "#ffffff",

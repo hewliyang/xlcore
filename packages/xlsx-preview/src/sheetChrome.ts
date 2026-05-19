@@ -14,55 +14,17 @@ import {
 } from "./renderConstants.js";
 import type { Pane, Viewport, Visible } from "./renderTypes.js";
 
-// ---------- tables (`<table>` ListObjects) ----------
-//
-// Render strategy: tables get translated into per-cell dxf overlays
-// (header band fill + bold white text, banded data-row tint) which are
-// folded into the same `cfDxfs` map that conditional formatting uses,
-// so the existing fill / text passes pick them up for free. The header
-// row's filter-arrow glyphs paint in their own pass after text.
-//
-// Source-of-truth resolution order for the band overlays (header, row
-// stripes, totals row, first/last column):
-//
-//   1. **Custom `<tableStyles>` definition** keyed by `t.style?.name`.
-//      Workbook-level styles authored alongside the data; element
-//      list (`headerRow`, `firstRowStripe`, …) points into the same
-//      `<dxfs>` table CF uses. Excel writes one of these whenever the
-//      table style was customized (themed templates from Microsoft's
-//      gallery, agency template packs, etc.).
-//   2. **Built-in name heuristic.** Excel ships ~60 named built-ins
-//      (`TableStyleLight*`, `TableStyleMedium*`, `TableStyleDark*`).
-//      We don't model the whole catalog — we derive an accent color
-//      from the trailing integer in the name and paint a generic
-//      "Medium"-style band (accent fill + white bold text, 12% tint
-//      stripes). Good enough for the default `TableStyleMedium2`
-//      every freshly-inserted table uses.
-//
-// Other table chrome that runs regardless of style resolution:
-//
-//  - filter arrows paint when `<autoFilter>` was set on the table
-//  - totals row gets bold + the band tint
-
 function tableAccentHex(styleName: string | undefined): string {
-  // Default Excel new-table style is `TableStyleMedium2` (accent1).
   let n = 2;
   if (styleName) {
     const m = styleName.match(/(\d+)$/);
     if (m) n = parseInt(m[1]!, 10);
   }
-  // (n - 1) % 6 → 0..5 mapping `Medium2..Medium7` to accent1..accent6.
-  // `Medium1` (and Light1 / Dark1) maps to accent1 in real Excel
-  // (it's the "first style" in each row, all using accent1 with
-  // varying intensities). `(n - 2 + 6) % 6` gives that.
+
   const idx = (((n - 2) % 6) + 6) % 6;
   return activeThemeColor(4 + idx, "#4472c4");
 }
 
-/// Look up the workbook's `<tableStyles>` block for an entry matching
-/// the given style name. Returns `undefined` for built-in names
-/// (`TableStyleMedium2`, …) since Excel doesn't enumerate those in
-/// the file.
 function findCustomTableStyle(
   layout: WorkbookLayout | undefined,
   name: string | undefined,
@@ -71,21 +33,12 @@ function findCustomTableStyle(
   return layout.tableStyles.find((s) => s.name === name);
 }
 
-/// Resolve a dxf index against the workbook's `<dxfs>` table. Returns
-/// `undefined` when the id is out of range or the dxf carries no
-/// renderable fields. (Pure-alignment dxfs would return an empty Dxf,
-/// not useful as a band overlay — we don't filter that here, the
-/// `merge` below just ends up a no-op.)
 function resolveDxf(layout: WorkbookLayout | undefined, id: number | undefined): Dxf | undefined {
   if (id === undefined) return undefined;
   const dxf = layout?.dxfs?.[id];
   return dxf;
 }
 
-/// Combine two dxf overlays. `over` wins on each field, `base` fills
-/// in the rest. Used to stack `wholeTable` underneath the band-specific
-/// overlay (Excel's style elements compose this way per ECMA-376
-/// §18.8.40).
 function mergeDxf(base: Dxf | undefined, over: Dxf | undefined): Dxf | undefined {
   if (!base) return over;
   if (!over) return base;
@@ -103,7 +56,6 @@ function mergeDxf(base: Dxf | undefined, over: Dxf | undefined): Dxf | undefined
 }
 
 function mixHex(hex: string, other: string, t: number): string {
-  // t = 0 → hex, 1 → other.
   const h = hex.startsWith("#") ? hex.slice(1) : hex;
   const o = other.startsWith("#") ? other.slice(1) : other;
   const r1 = parseInt(h.slice(0, 2), 16),
@@ -136,10 +88,6 @@ export function computeTableState(
     return { tableDxfs, filterArrows };
   }
 
-  // Worksheet-level Data → Filter (`<worksheet><autoFilter ref="..."/>`).
-  // Table-scoped autoFilters are handled below with table styling. The
-  // saved filtered result itself is just row metadata (`hidden=1`), already
-  // honored by the grid/row-height path.
   if (autoFilterRange) {
     const r = autoFilterRange.r1;
     if (!vis || (r >= vis.firstRow && r <= vis.lastRow)) {
@@ -153,10 +101,6 @@ export function computeTableState(
     const custom = findCustomTableStyle(layout, t.style?.name);
     const wholeTableDxf = resolveDxf(layout, custom?.wholeTable);
 
-    // Header / band dxfs: prefer the custom-style dxfs when present,
-    // otherwise synthesize the built-in accent look. We let each band
-    // independently fall back — a custom style that defines only
-    // `headerRow` (common) still gets the synthesized row stripes.
     const accent = tableAccentHex(t.style?.name);
     const bandHex = mixHex("#ffffff", accent, 0.12);
     const accentColor: Color = { rgb: accent.slice(1).toUpperCase() };
@@ -182,9 +126,6 @@ export function computeTableState(
     const dataStart = r1 + headerRows;
     const dataEnd = r2 - totalsRows;
 
-    // Header row: custom-style headerRow dxf if present, else accent
-    // fill + bold white text. Filter arrows on each header cell when
-    // autoFilter is on.
     if (headerR >= 0) {
       const hc1 = Math.max(c1, vis?.firstCol ?? c1);
       const hc2 = Math.min(c2, vis?.lastCol ?? c2);
@@ -197,8 +138,6 @@ export function computeTableState(
       }
     }
 
-    // Banded data rows: every other data row (1-indexed from data
-    // start) gets the band tint. Skip when stripes are off.
     if (t.style?.showRowStripes !== false) {
       const rr1 = Math.max(dataStart, vis?.firstRow ?? dataStart);
       const rr2 = Math.min(dataEnd, vis?.lastRow ?? dataEnd);
@@ -215,9 +154,6 @@ export function computeTableState(
       }
     }
 
-    // Totals row: bold + a 1-pixel-feeling top border via a darker
-    // band. We don't have border-style overrides in dxf, so just
-    // bold the text + give it the band tint.
     if (totalsRows > 0) {
       const totalsR = r2;
       if (vis && (totalsR < vis.firstRow || totalsR > vis.lastRow)) continue;
@@ -231,11 +167,6 @@ export function computeTableState(
     }
   }
 
-  // Pivot-table filter chevrons. We treat pivots as cosmetic chrome
-  // only — the cells themselves are already styled by Excel. The
-  // extractor pre-computes `filterArrowCells` from `<location>` +
-  // `<rowFields>` / `<colFields>` so we just register them here in
-  // the same set the table chrome uses.
   for (const p of pivots) {
     for (const cell of p.filterArrowCells) {
       filterArrows.add(`${cell.r}:${cell.c}`);
@@ -244,8 +175,6 @@ export function computeTableState(
   return { tableDxfs, filterArrows };
 }
 
-/// Paint a small downward-arrow glyph in a rounded box at the right
-/// edge of each header cell with `<autoFilter>`. No interactivity.
 export function drawFilterArrows(
   ctx: CanvasRenderingContext2D,
   sheet: Sheet,
@@ -266,13 +195,13 @@ export function drawFilterArrows(
     const rect = cellRect(g, r, c);
     const x = rect.x + rect.w - BOX_W - INSET_X;
     const y = rect.y + (rect.h - BOX_H) / 2;
-    // Box: translucent white over accent header so it reads.
+
     ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
     ctx.fillRect(x, y, BOX_W, BOX_H);
     ctx.strokeStyle = "rgba(0, 0, 0, 0.25)";
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, y + 0.5, BOX_W - 1, BOX_H - 1);
-    // Down-arrow triangle, centered.
+
     ctx.fillStyle = "#374151";
     ctx.beginPath();
     const ax = x + BOX_W / 2;
@@ -299,49 +228,38 @@ export function drawHeaders(
   const sy = vp ? vp.y : 0;
   const { splitX, splitY, pcw, prh } = frozenDims(sheet, g);
 
-  // Column-label visible ranges. Pinned cols [1..splitX-1] always visible;
-  // scrolling cols pulled from whichever pane covers them (TR if pinned
-  // rows exist, otherwise BR).
   const scrollPane = panes.find((p) => p.kind === "br")!;
   const topPinPane = panes.find((p) => p.kind === "tr");
   const leftPinPane = panes.find((p) => p.kind === "bl");
   const colScrollVis = (topPinPane ?? scrollPane).vis;
   const rowScrollVis = (leftPinPane ?? scrollPane).vis;
 
-  // Header strips run from the gutter band edge to the canvas edge;
-  // the gutter strips (when present) get their own background.
-  const headerLeft = g.rowGutterW; // left edge of row-number column
-  const headerTop = g.colGutterH; // top edge of column-letter row
-  const originX = g.originX; // = HEADER_W + rowGutterW; right edge of row headers
-  const originY = g.originY; // = HEADER_H + colGutterH; bottom edge of col headers
+  const headerLeft = g.rowGutterW;
+  const headerTop = g.colGutterH;
+  const originX = g.originX;
+  const originY = g.originY;
 
   ctx.save();
   ctx.fillStyle = HEADER_BG;
-  // Column-header band (everything in the top originY px) + row-header
-  // band (everything in the left originX px). Painting both as one
-  // L-shape would overlap the corner; doing it in two rects is cheaper
-  // than masking.
+
   ctx.fillRect(0, 0, canvasW, originY);
   ctx.fillRect(0, 0, originX, canvasH);
 
-  // Faint inter-tab rules. Pinned segments don't translate; scrolling
-  // segments pan with the BR viewport.
   ctx.strokeStyle = HEADER_BORDER;
   ctx.lineWidth = 1;
 
-  // --- column-header rules ---
   ctx.save();
   ctx.beginPath();
   ctx.rect(originX, headerTop, canvasW - originX, HEADER_H);
   ctx.clip();
   ctx.beginPath();
-  // Pinned col rules.
+
   for (let c = 2; c < splitX; c++) {
     const x = Math.round(g.colX[c] ?? 0) + 0.5;
     ctx.moveTo(x, headerTop);
     ctx.lineTo(x, originY);
   }
-  // Scrolling col rules.
+
   const firstScrollCol = Math.max(splitX, colScrollVis.firstCol);
   for (let c = Math.max(2, firstScrollCol); c <= colScrollVis.lastCol + 1; c++) {
     const x = Math.round((g.colX[c] ?? 0) - sx) + 0.5;
@@ -352,7 +270,6 @@ export function drawHeaders(
   ctx.stroke();
   ctx.restore();
 
-  // --- row-header rules ---
   ctx.save();
   ctx.beginPath();
   ctx.rect(headerLeft, originY, HEADER_W, canvasH - originY);
@@ -373,13 +290,9 @@ export function drawHeaders(
   ctx.stroke();
   ctx.restore();
 
-  // --- selection tint ---
   if (sel) {
     ctx.fillStyle = HEADER_HIGHLIGHT;
-    // Column-header tint: split into pinned segment (cols < splitX) and
-    // scrolling segment (cols >= splitX) so the tint stays glued to the
-    // correct cells regardless of scroll. Tint covers only the label
-    // band [headerTop..originY], not the gutter strip above it.
+
     const cAbsX1 = g.colX[sel.c1] ?? 0;
     const cAbsX2 = g.colX[sel.c2 + 1] ?? cAbsX1;
     if (cAbsX2 > cAbsX1) {
@@ -419,8 +332,6 @@ export function drawHeaders(
     }
   }
 
-  // Gutter line. Draws the bottom edge of the column-header strip and
-  // the right edge of the row-header strip, both in the darker GUTTER_LINE.
   ctx.strokeStyle = GUTTER_LINE;
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -429,8 +340,7 @@ export function drawHeaders(
   ctx.moveTo(originX, 0);
   ctx.lineTo(originX, canvasH);
   ctx.stroke();
-  // Faint inner separators between gutter strip and header label strip
-  // when a gutter is present.
+
   if (g.rowGutterW > 0 || g.colGutterH > 0) {
     ctx.strokeStyle = HEADER_BORDER;
     ctx.lineWidth = 1;
@@ -453,7 +363,6 @@ export function drawHeaders(
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
 
-  // --- column labels (pinned + scrolling) ---
   const colLabelMidY = headerTop + HEADER_H / 2;
   if (splitX > 1) {
     ctx.save();
@@ -480,7 +389,6 @@ export function drawHeaders(
   }
   ctx.restore();
 
-  // --- row labels ---
   const rowLabelMidX = headerLeft + HEADER_W / 2;
   if (splitY > 1) {
     ctx.save();
@@ -507,21 +415,9 @@ export function drawHeaders(
   }
   ctx.restore();
 
-  // --- collapsed-group boundary ticks ---
-  // When a contiguous run of rows (or columns) is hidden, Excel paints a
-  // short green bar on the header of the *next visible* row/column to
-  // signal "click here to expand the hidden range". We approximate that
-  // with a 2px stroke on the leading edge (top edge for rows, left edge
-  // for columns) of the first visible row/col after any hidden run.
   drawCollapsedRowTicks(ctx, g, sy, splitY, prh, canvasH, rowScrollVis);
   drawCollapsedColTicks(ctx, g, sx, splitX, pcw, canvasW, colScrollVis);
 
-  // --- outline gutter strips ---
-  // Excel paints group brackets in dedicated strips outside the row/col
-  // header bands: a horizontal strip above the col letters for column
-  // groupings, and a vertical strip left of the row numbers for row
-  // groupings. The shared top-left corner shows level-numeral buttons
-  // (1, 2, 3, ...) so you can collapse to a given depth.
   if (g.rowGutterW > 0 || g.colGutterH > 0) {
     drawOutlineCornerButtons(ctx, g);
   }
@@ -531,9 +427,7 @@ export function drawHeaders(
   if (g.colGutterH > 0) {
     drawColOutlineGutter(ctx, sheet, g, sx, splitX, pcw, canvasW);
   }
-  // Buttons paint last so they sit on top of any bracket strokes that
-  // would otherwise occlude them. Single pass over both axes; collapsed
-  // runs (zero bracket extent) still get their + glyph here.
+
   if (g.rowGutterW > 0 || g.colGutterH > 0) {
     drawOutlineButtons(ctx, sheet, g, {
       sx,
@@ -561,27 +455,11 @@ import {
   drawRowOutlineGutter,
 } from "./outlineGutter.js";
 
-/// Hyperlinks: cells covered by any `<hyperlink>` range get a `Dxf`
-/// overlay — `theme[10]` (hlink color, default Office blue `#0563C1`)
-/// + `underline: true`. Same plumbing as table chrome, just emitted
-/// from the sheet's `hyperlinks` array. We don't try to override an
-/// already-present CF or table dxf — caller checks that.
-///
-/// **Yields to explicit cell formatting.** When the cell's resolved
-/// xf points to a non-default fontId, that author chose a font
-/// deliberately and Excel/hsx honors it (e.g. `e-007_input-3.xlsx`
-/// has a stale `mailto:` rel pointing at a cell whose displayed text
-/// was later edited to a plain phone number formatted in Arial 9
-/// black — hsx renders that plain, not as a blue+underlined link).
-/// We mirror the same rule: skip emitting the overlay when the
-/// cell carries its own non-default fontId.
 export function computeHyperlinkDxfs(sheet: Sheet, layout: WorkbookLayout): Map<string, Dxf> {
   const out = new Map<string, Dxf>();
   const hyperlinks = sheet.hyperlinks ?? [];
   if (hyperlinks.length === 0) return out;
-  // Color { theme: 10 } resolves through `setActiveTheme` to whatever
-  // the workbook's `<a:hlink>` slot points at; falls back to Office's
-  // 0563C1 default when the theme is missing or the slot is unset.
+
   const hlinkColor: Color = { theme: 10 };
   for (const h of hyperlinks) {
     const { r1, c1, r2, c2 } = h.range;
@@ -589,12 +467,7 @@ export function computeHyperlinkDxfs(sheet: Sheet, layout: WorkbookLayout): Map<
       for (let c = c1; c <= c2; c++) {
         const k = `${r}:${c}`;
         if (out.has(k)) continue;
-        // Check the cell's explicit xf.fontId. The default font is
-        // index 0 in `styles.fonts`; anything else means the author
-        // chose a specific font and the hyperlink overlay should
-        // yield. We only check `cell.styleIndex` (not the row/col
-        // fallback) because OOXML's hyperlink-style overlay applies
-        // when the cell hasn't been re-styled away from the default.
+
         const cell = findCell(sheet, r, c);
         if (cell && cell.styleIndex !== undefined) {
           const xf = layout.styles.cellXfs[cell.styleIndex];
@@ -607,10 +480,6 @@ export function computeHyperlinkDxfs(sheet: Sheet, layout: WorkbookLayout): Map<
   return out;
 }
 
-/// Comment markers: small red right-triangle clipped to the top-right
-/// corner of each commented cell. Matches Excel's classic "this cell
-/// has a comment" affordance. The marker draws over text since it sits
-/// just inside the cell's border.
 export function drawCommentMarkers(
   ctx: CanvasRenderingContext2D,
   sheet: Sheet,
@@ -620,9 +489,7 @@ export function drawCommentMarkers(
   const comments = sheet.comments ?? [];
   if (comments.length === 0) return;
   const { topLeftOf } = buildMergeMaps(sheet);
-  // Triangle leg length in CSS pixels. Excel's marker is ~6px on a
-  // 100% zoom row of the default 15pt height; we keep a constant
-  // size so it stays legible at small zooms.
+
   const SIZE = 6;
   ctx.save();
   ctx.fillStyle = "#C81E1E";

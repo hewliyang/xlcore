@@ -1,16 +1,3 @@
-// Canvas chart renderer. v0 covers:
-//   - column / bar (clustered + stacked)
-//   - line (standard / stacked / percentStacked) with optional markers
-//   - area (standard / stacked / percentStacked)
-//   - pie / doughnut (one series, slice-per-category)
-//   - scatter (xy points, optional connecting lines)
-// Other types fall back to a placeholder box+title.
-//
-// Geometry: the host calls `drawChart(ctx, chart, rect)` with a logical-
-// pixel rectangle; we lay out the title, plot area, value-axis ticks, x-axis
-// labels, bars and legend inside it.
-//
-// Number formatting reuses the same subset as the cell renderer, so axis labels match cell formats.
 import type { Chart, ChartSeries } from "./types.js";
 import { drawAreaChart } from "./chartArea.js";
 import {
@@ -65,14 +52,12 @@ export interface Rect {
 }
 
 export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
-  // Frame: white fill + faint border (matches Excel default chart frame).
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   ctx.strokeStyle = "#d4d4d8";
   ctx.lineWidth = 1;
   ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
 
-  // Title strip
   let cursorY = rect.y + TITLE_PAD;
   if (chart.title) {
     ctx.fillStyle = TITLE_COLOR;
@@ -83,13 +68,6 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     cursorY += TITLE_FONT_SIZE + TITLE_PAD;
   }
 
-  // Build the legend entry list up front so we can measure the side
-  // strip width when positioning at `l` / `r` / `tr`. Pie/doughnut
-  // legends are slice-keyed (one entry per category); everything else
-  // is series-keyed.
-  // `categories` / `pointColors` get `skip_serializing_if = Vec::is_empty`
-  // on the wire, so the renderer must treat them as optional even though
-  // the TS type calls them required arrays.
   const cats = chart.categories ?? [];
   const legendEntries: ChartSeries[] =
     (chart.type === "pie" || chart.type === "doughnut") && chart.series.length > 0
@@ -103,38 +81,16 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
             color: pieSliceColor(i, pointColors),
           }));
         })()
-      : // chartEx waterfall has a single OOXML series but Excel paints
-        // three legend swatches (Increase / Decrease / Total) keyed to
-        // the bar colors. Synthesize those entries here so the existing
-        // legend code path renders them. Other chartEx layouts fall
-        // through to the default `series`-keyed legend (which is
-        // typically a no-op since they're also single-series).
-        chart.type === "chartex" && chart.cxLayout === "waterfall"
+      : chart.type === "chartex" && chart.cxLayout === "waterfall"
         ? waterfallLegendEntries(chart)
-        : // funnel / treemap / sunburst chartex layouts each have a
-          // single OOXML series whose name carries no visual info;
-          // hsx / Excel suppress their `<cx:legend>` accordingly.
-          // Treemap should ideally show a per-branch legend; deferred.
-          chart.type === "chartex" &&
+        : chart.type === "chartex" &&
             (chart.cxLayout === "funnel" ||
               chart.cxLayout === "treemap" ||
               chart.cxLayout === "sunburst" ||
-              // regionMap paints its own gradient legend bar inside
-              // the plot area; suppress the default series-name legend
-              // (which is a single redundant entry like "% of World
-              // Population").
               chart.cxLayout === "regionMap")
           ? []
           : chart.series;
 
-  // ECMA-376 legend positions: t/b/l/r/tr. The extractor surfaces
-  // `legendPos = undefined` when the source XML has no `<c:legend>`
-  // element (Excel: "no legend") and a concrete position string
-  // when the element is present (defaulting to `"r"` per Excel
-  // when `<c:legendPos>` itself is absent). We treat absent as
-  // "don't paint" to match Excel desktop / hsx — see
-  // parity-charts.md Bug #17. `tr` ("top-right overlay") is
-  // coerced to `r` below since we don't overlay legends today.
   const legendPos =
     (chart.series.length > 0 || legendEntries.length > 0) && chart.legendPos
       ? chart.legendPos
@@ -189,13 +145,7 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       plotRect.h = rect.y + rect.h - cursorY - legendH - 4;
       break;
   }
-  // Axis-title bands. ECMA-376 §21.2.2.210 — every axis carries an
-  // optional `<c:title>`. We reserve a fixed strip (font size + 6px
-  // padding) on each occupied edge, then paint inside it. The strips
-  // sit *inside* the chart frame but *outside* the plot area so the
-  // axis tick labels still have room. We don't reserve when the
-  // corresponding side hosts no title — keeps unaffected charts
-  // pixel-stable.
+
   const AXIS_TITLE_FONT_SIZE = 11;
   const AXIS_TITLE_PAD = 6;
   const AXIS_TITLE_BAND = AXIS_TITLE_FONT_SIZE + AXIS_TITLE_PAD;
@@ -234,16 +184,6 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     plotRect.w -= AXIS_TITLE_BAND;
   }
 
-  // `<c:dispUnitsLbl>` caption band. ECMA-376 §21.2.2.46: when an axis
-  // is authored with `<c:dispUnits>` (e.g. `builtInUnit=thousands`)
-  // and a sibling `<c:dispUnitsLbl>` (e.g. `"S$ mn"`), the caption
-  // paints near the axis to call out the scale factor applied to the
-  // tick labels. Excel's default rotation is along the axis (-5400000
-  // EMU = -90°) but the placement is also commonly horizontal at the
-  // top of the axis depending on theme. We paint horizontal,
-  // left-aligned to the y-axis on the primary side and right-aligned
-  // on the secondary side, in a narrow reserved band right above the
-  // plot area (i.e. between the chart title and the topmost tick).
   const DISP_UNITS_FONT_SIZE = 10;
   const DISP_UNITS_BAND = DISP_UNITS_FONT_SIZE + 4;
   const duLabel = chart.dispUnits != null ? chart.dispUnitsLabel : undefined;
@@ -265,11 +205,6 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
 
   if (plotRect.w <= 20 || plotRect.h <= 20) return;
 
-  // Combo charts (`<c:barChart>` + `<c:lineChart>` in one plotArea) or
-  // any chart with a secondary axis (right-hand y-axis) route through
-  // the dual-scale path so both series groups land on the same plot
-  // with their own y-scale. Per-series `chartType` lets us mix
-  // column/bar/line/area within a single chart.
   if (chart.type === "combo" || chart.secondaryAxis) {
     drawComboChart(ctx, chart, plotRect);
   } else {
@@ -312,10 +247,6 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     drawLegend(ctx, legendEntries, legendRect, legendVertical ? "vertical" : "horizontal", chart);
   }
 
-  // Paint axis titles on top — done last so they sit above any
-  // overflow from the plot painters. Y-axis titles rotate -90°
-  // (Excel convention: text reads bottom-to-top on the left edge,
-  // top-to-bottom on the right edge).
   if (xTitleRect && xTitle) {
     ctx.fillStyle = TITLE_COLOR;
     ctx.font = `${AXIS_TITLE_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
@@ -340,15 +271,13 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     ctx.font = `${AXIS_TITLE_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    // Right-side rotation: text reads top-to-bottom, matching Excel.
+
     ctx.translate(yTitle2Rect.x + yTitle2Rect.w / 2, yTitle2Rect.y + yTitle2Rect.h / 2);
     ctx.rotate(Math.PI / 2);
     ctx.fillText(yTitle2, 0, 0);
     ctx.restore();
   }
-  // `<c:dispUnitsLbl>` caption(s). Painted last so they sit above any
-  // gridline / fill bleed. Left caption hugs the left edge of the
-  // plot (right above the y-axis), right caption hugs the right edge.
+
   if (duBandRect && (duLabel || duLabel2)) {
     ctx.save();
     ctx.fillStyle = AXIS_LABEL_COLOR;
@@ -366,8 +295,6 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
   }
 }
 
-// ---------- bar/column ----------
-
 function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   const horizontal = chart.type === "bar";
   const stacked = chart.grouping === "stacked" || chart.grouping === "percentstacked";
@@ -383,10 +310,6 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   );
   if (categoryCount === 0) return;
 
-  // Compute value range. Seed with +/-Infinity so the data extremes
-  // win for entirely-positive data; the subsequent `resolveAxisRange`
-  // call applies the zero-clamp when no `<c:scaling>` override is
-  // present.
   let minV = Number.POSITIVE_INFINITY,
     maxV = Number.NEGATIVE_INFINITY;
   if (stacked) {
@@ -411,16 +334,13 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   }
   if (!Number.isFinite(minV)) minV = 0;
   if (!Number.isFinite(maxV)) maxV = 1;
-  // Resolve the axis range, honoring any explicit `<c:scaling><c:min>`
-  // / `<c:max>` from the workbook. Bars/columns zero-clamp by default;
-  // an explicit min or max flips the axis into user-scaled mode
-  // (matches Excel).
+
   const _bcRange = resolveAxisRange(
     minV,
     maxV,
     chart.valueMin,
     chart.valueMax,
-    /*zeroClamp=*/ true,
+    true,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );
@@ -428,7 +348,6 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   maxV = _bcRange.maxV;
   const ticks = _bcRange.ticks;
 
-  // Measure the value-axis label width so we can carve out a y-axis gutter.
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   const labelStrings = ticks.map((t) => formatAxisValue(t, chart.valueFormat, chart.dispUnits));
   const yAxisW = Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
@@ -438,10 +357,6 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     ? { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH }
     : { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH };
 
-  // Gridlines + value-axis labels. Gridline pass honors
-  // `chart.showMajorGridlines` per parity-charts.md Bug #12; tick
-  // labels always paint (Excel keeps labels even when gridlines
-  // are hidden via "Line Color: No Line").
   const showGridlines = chart.showMajorGridlines !== false;
   ctx.fillStyle = AXIS_LABEL_COLOR;
   ctx.strokeStyle = GRIDLINE_COLOR;
@@ -451,8 +366,7 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   for (let ti = 0; ti < ticks.length; ti++) {
     const t = ticks[ti]!;
     const frac = (t - minV) / (maxV - minV);
-    // Bug #13 step 1: skip the lighter gridline at t==0 when the axis
-    // straddles zero — we'll overlay the heavier baseline after fills.
+
     const isZeroLine = isZeroTickInside(t, minV, maxV);
     if (horizontal) {
       const x = innerRect.x + frac * innerRect.w;
@@ -475,9 +389,6 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     }
   }
 
-  // Bars. Slot geometry per ECMA-376 §21.2.2.75 / .131 — see
-  // computeBarSlotMetrics. `gapWidth` defaults to 150 (Excel spec),
-  // `overlap` defaults to 100 for stacked / 0 for clustered.
   const groupGap = horizontal ? innerRect.h / categoryCount : innerRect.w / categoryCount;
   const slot = computeBarSlotMetrics(
     groupGap,
@@ -488,15 +399,10 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   );
   const barSize = slot.barW;
 
-  // Precompute zero baseline (parity-charts.md Bug #13 step 3:
-  // shared `zeroAxisMetrics` so the bar geometry, the gridline-skip
-  // pass, and the post-fill heavier baseline all consult one source
-  // of truth).
   const zMetrics = zeroAxisMetrics(innerRect, minV, maxV);
   const zeroY = zMetrics.zeroY;
   const zeroX = zMetrics.zeroX;
 
-  // Category labels along axis.
   ctx.fillStyle = AXIS_LABEL_COLOR;
   ctx.textAlign = "center";
   ctx.textBaseline = horizontal ? "middle" : "top";
@@ -514,13 +420,6 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   }
   ctx.textAlign = "left";
 
-  // Excel clips bar fills to the plot area when stacked totals (or
-  // individual values) exceed the value-axis range — e.g. workbooks
-  // that pin `<c:max val="100"/>` on a stacked chart whose category
-  // sums reach 141. Without clipping, the fillRect paints past the
-  // top of the inner rect and bars visibly overshoot the topmost
-  // gridline. We clip the fill rect only (not labels) so out-of-range
-  // dLbls (e.g. `outEnd`) still render at their natural position.
   const plotTop = innerRect.y;
   const plotBot = innerRect.y + innerRect.h;
   const plotLeft = innerRect.x;
@@ -533,7 +432,6 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     return { x: x1, y: y1, w: Math.max(0, x2 - x1), h: Math.max(0, y2 - y1) };
   };
 
-  // Draw bars
   if (stacked) {
     for (let i = 0; i < categoryCount; i++) {
       const groupCenter = horizontal
@@ -541,17 +439,14 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
         : innerRect.x + (i + 0.5) * groupGap;
       let pos = 0,
         neg = 0;
-      // Per-category total for showPercent (positive contributions only,
-      // matching Excel for stacked bars).
+
       let catTotal = 0;
       for (const s of series) catTotal += Math.max(0, s.values[i] ?? 0);
       for (const s of series) {
         const v = s.values[i] ?? 0;
         const start = v >= 0 ? pos : neg;
         const end = v >= 0 ? pos + v : neg + v;
-        // Always advance the stack accumulator — transparent dPts
-        // (resolveBarFill skip=true) still occupy their slot so
-        // subsequent series float above the prior contributions.
+
         if (v >= 0) pos += v;
         else neg += v;
         const fill = resolveBarFill(s, i);
@@ -576,11 +471,11 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
           bw = barSize;
           bh = Math.abs(yb - ya);
         }
-        if (fill.skip) continue; // transparent dPt — no fill, no label
+        if (fill.skip) continue;
         ctx.fillStyle = fill.color;
         const c = clampFill(bx, by, bw, bh);
         if (c.w > 0 && c.h > 0) ctx.fillRect(c.x, c.y, c.w, c.h);
-        // Stacked label: position default `ctr` (in-bar center).
+
         const dl = effectiveLabels(chart, s);
         if (dl) {
           const po = pointLabel(dl, i);
@@ -622,23 +517,22 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
           bw = barSize;
           bh = Math.abs(yBot - yTop);
         }
-        if (fill.skip) continue; // transparent dPt — no fill, no label
+        if (fill.skip) continue;
         ctx.fillStyle = fill.color;
         const c = clampFill(bx, by, bw, bh);
         if (c.w > 0 && c.h > 0) ctx.fillRect(c.x, c.y, c.w, c.h);
         const dl = effectiveLabels(chart, s);
         if (dl) {
           const po = pointLabel(dl, i);
-          if (po === null) continue; // suppressed via per-point delete
+          if (po === null) continue;
           const edl = po?.dl ?? dl;
-          const text = po?.text ?? buildLabelText(edl, chart, s, i, v, /*catTotal=*/ 0);
-          // Default position: outEnd. `inEnd`/`ctr`/`inBase` honored.
+          const text = po?.text ?? buildLabelText(edl, chart, s, i, v, 0);
+
           const pos = edl.position ?? "outEnd";
           let lx = bx + bw / 2,
             ly = by + bh / 2;
           const PAD = 3;
           if (horizontal) {
-            // value axis runs left-right.
             if (pos === "outEnd") {
               lx = v >= 0 ? bx + bw + PAD : bx - PAD;
             } else if (pos === "inEnd") {
@@ -662,7 +556,6 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
                     : "center";
             drawLabel(ctx, text, lx, ly, align, "middle");
           } else {
-            // value axis runs top-bottom.
             if (pos === "outEnd") {
               ly = v >= 0 ? by - PAD : by + bh + PAD;
             } else if (pos === "inEnd") {
@@ -691,14 +584,6 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     }
   }
 
-  // Axis baselines. The horizontal stroke sits at the zero baseline
-  // (== bottom of inner rect when the axis is entirely non-negative;
-  // somewhere inside when the axis straddles zero). For the
-  // straddles-zero case we upgrade it to the heavier `paintZeroBaseline`
-  // stroke per parity-charts.md Bug #13 step 1, drawn *after* bar fills
-  // so it reads as a conceptual divider. When the axis doesn't straddle
-  // zero we keep the original light `#9ca3af` frame stroke since it's
-  // serving as the x-axis frame, not as a zero marker.
   if (zMetrics.straddlesZero) {
     paintZeroBaseline(ctx, innerRect, minV, maxV);
   } else {
@@ -708,7 +593,7 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     ctx.lineTo(innerRect.x + innerRect.w, Math.round(zeroY) + 0.5);
     ctx.stroke();
   }
-  // Left y-axis frame edge (unchanged).
+
   ctx.strokeStyle = "#9ca3af";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -716,12 +601,6 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   ctx.lineTo(Math.round(innerRect.x) + 0.5, innerRect.y + innerRect.h);
   ctx.stroke();
 }
-
-// ---------- line ----------
-//
-// Standard / stacked / percentStacked. Stacked is per-category cumulative;
-// percentStacked normalises each category column to 100. Categories are
-// equispaced on the x-axis.
 
 function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   const series = chart.series.filter((s) => s.values.length > 0);
@@ -738,20 +617,18 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
   const stacked = chart.grouping === "stacked" || chart.grouping === "percentstacked";
   const percent = chart.grouping === "percentstacked";
 
-  // Cumulative per-category stacks (only used for stacked / percentStacked).
   const stackedSeries: number[][] = stacked
     ? buildStackedRows(series, categoryCount, percent)
     : series.map((s) => Array.from({ length: categoryCount }, (_, i) => s.values[i] ?? 0));
 
   let { minV, maxV } = valueRange(stackedSeries);
-  // Line charts don't zero-clamp by default (Excel auto-scales to
-  // data range), but explicit `<c:scaling>` bounds still override.
+
   const _lRange = resolveAxisRange(
     minV,
     maxV,
     chart.valueMin,
     chart.valueMax,
-    /*zeroClamp=*/ false,
+    false,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );
@@ -759,18 +636,13 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
   maxV = _lRange.maxV;
   const ticks = _lRange.ticks;
 
-  const inner = drawAxisFrame(ctx, chart, rect, ticks, minV, maxV, /*horizontal=*/ false, percent);
+  const inner = drawAxisFrame(ctx, chart, rect, ticks, minV, maxV, false, percent);
 
-  // Category x-axis labels.
-  drawCategoryAxis(ctx, chart, inner, categoryCount, /*horizontal=*/ false);
+  drawCategoryAxis(ctx, chart, inner, categoryCount, false);
 
   const xStep = inner.w / Math.max(1, categoryCount - 1);
   const yFor = (v: number) => inner.y + (1 - (v - minV) / (maxV - minV)) * inner.h;
 
-  // Excel default `<c:dispBlanksAs val="gap"/>` (ECMA-376 §21.2.2.42):
-  // missing points break the line. Stacked rows from `buildStackedRows`
-  // already fill gaps with 0 by construction (stacking semantics), so
-  // this guard only fires for the unstacked path.
   const hasPointL = (s: ChartSeries, i: number): boolean => {
     if (stacked) return true;
     if (i >= s.values.length) return false;
@@ -778,10 +650,6 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     return v != null && Number.isFinite(v);
   };
 
-  // Excel clips line strokes, markers and labels to the plot rect when
-  // values exceed the value-axis bounds (e.g. workbooks that pin a
-  // `<c:max>` below an outlier). Without clipping, line segments shoot
-  // past the topmost gridline. Restore after all series are drawn.
   ctx.save();
   ctx.beginPath();
   ctx.rect(inner.x, inner.y, inner.w, inner.h);
@@ -809,9 +677,7 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
       }
     }
     ctx.stroke();
-    // Markers (small circles) — only at real data points. Skipped
-    // when `<c:marker><c:symbol val="none"/>` was authored on the
-    // series (e.g. chart32.xml's Technology line).
+
     if (s.markerSymbol !== "none") {
       ctx.fillStyle = s.color ?? "#4472C4";
       for (let i = 0; i < categoryCount; i++) {
@@ -823,7 +689,7 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
         ctx.fill();
       }
     }
-    // Data labels (default position `t` above the marker).
+
     const dl = effectiveLabels(chart, s);
     if (dl) {
       const PAD = 5;
@@ -863,6 +729,6 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
   }
   ctx.restore();
   ctx.lineWidth = 1;
-  // Bug #13 step 1: heavier zero baseline when the axis straddles zero.
+
   paintZeroBaseline(ctx, inner, minV, maxV);
 }

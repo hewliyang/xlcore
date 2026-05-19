@@ -1,31 +1,16 @@
 import { FILL_SENTINEL, type Tok } from "./numfmt.js";
 
 export function renderIntegerTokens(tokens: Tok[], intDigits: string, grouping: boolean): string {
-  // Strip leading zeros that exceed the actual int magnitude (we'll add
-  // zero-padding via the placeholder loop instead).
   let digits = intDigits.replace(/^0+(?=\d)/, "");
   if (digits === "") digits = "0";
 
-  // Excel zero-suppression for `?`/`#`-only int sides: when the value's
-  // integer part is exactly 0 AND the format provides no `0` placeholder
-  // to anchor the digit, treat the int part as empty so `?` placeholders
-  // emit spaces and `#` placeholders emit nothing. This is what makes
-  // the standard Accounting format's zero section `_("$"* "-"??_)` render
-  // as `"-  "` (dash + two blanks) instead of `"- 0"` for absolute zero.
   if (digits === "0") {
     const hasZeroPlaceholder = tokens.some((t) => t.kind === "digit" && t.ch === "0");
     if (!hasZeroPlaceholder) digits = "";
   }
 
-  // Apply grouping commas onto `digits`. The grouping commas in the
-  // FORMAT string (lit "," tokens between digit placeholders) are
-  // grouping markers — we drop them at render time and replace with the
-  // commas baked into `digits`. This way `#,##0` and `#,###,##0` both
-  // produce the same correct output regardless of placeholder count.
   if (grouping) digits = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-  // Find digit-placeholder positions; mark lit "," tokens that sit
-  // strictly between them as grouping markers (to be skipped on emit).
   const placeholders: number[] = [];
   for (let i = 0; i < tokens.length; i++) if (tokens[i]!.kind === "digit") placeholders.push(i);
   const firstDigit = placeholders[0] ?? -1;
@@ -35,16 +20,12 @@ export function renderIntegerTokens(tokens: Tok[], intDigits: string, grouping: 
     return idx > firstDigit && idx < lastDigit;
   };
 
-  // Right-to-left placeholder fill from `digits` (which already contains
-  // grouping commas where appropriate).
   const out: string[] = new Array(tokens.length);
   let di = digits.length - 1;
   for (let pi = placeholders.length - 1; pi >= 0; pi--) {
     const tIdx = placeholders[pi]!;
     const t = tokens[tIdx] as Extract<Tok, { kind: "digit" }>;
     if (pi === 0) {
-      // Leftmost: flush everything that's left (preserves overflow digits +
-      // their grouping commas).
       const rest = di >= 0 ? digits.slice(0, di + 1) : "";
       if (rest) out[tIdx] = rest;
       else if (t.ch === "0") out[tIdx] = "0";
@@ -72,7 +53,7 @@ export function renderIntegerTokens(tokens: Tok[], intDigits: string, grouping: 
     const t = tokens[i]!;
     if (t.kind === "digit") s += out[i] ?? "";
     else if (t.kind === "lit") {
-      if (isGroupingMarker(i, t)) continue; // already baked into digits
+      if (isGroupingMarker(i, t)) continue;
       s += t.s;
     } else if (t.kind === "percent") s += "%";
     else if (t.kind === "fill") s += FILL_SENTINEL;
@@ -81,7 +62,6 @@ export function renderIntegerTokens(tokens: Tok[], intDigits: string, grouping: 
 }
 
 export function renderFractionalTokens(tokens: Tok[], fracDigits: string): string {
-  // Walk placeholders left-to-right.
   let s = "";
   let di = 0;
   for (const t of tokens) {
@@ -91,7 +71,6 @@ export function renderFractionalTokens(tokens: Tok[], fracDigits: string): strin
         di++;
       } else if (t.ch === "0") s += "0";
       else if (t.ch === "?") s += " ";
-      // "#" → emit nothing
     } else if (t.kind === "lit") {
       s += t.s;
     } else if (t.kind === "percent") {
@@ -99,7 +78,6 @@ export function renderFractionalTokens(tokens: Tok[], fracDigits: string): strin
     } else if (t.kind === "fill") {
       s += FILL_SENTINEL;
     }
-    // ignore other kinds in this slice
   }
   return s;
 }

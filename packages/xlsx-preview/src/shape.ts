@@ -1,23 +1,8 @@
 import type { Shape, ShapeNode, ShapeParagraph } from "./types.js";
 import { getOrLoadImage } from "./imageCache.js";
 
-// ---------- shape painter ----------
-//
-// v0 paints DrawingML autoshapes (`<xdr:sp>`) extracted by the Rust side
-// as a flat list of nodes positioned in fractional bbox-of-the-anchor
-// coordinates. Each leaf carries:
-//   - fill / outline color and width
-//   - prstGeom token (rect / roundRect / ellipse / leftArrow / ...)
-//   - paragraphs with text runs (bold / size / color / font)
-//
-// Unknown presets fall back to a plain rectangle. Excel's preset
-// vocabulary is huge (~200 shapes) — we only special-case the common
-// ones (rect, roundRect, ellipse, arrows). The remit per PARITY.md is
-// "a rect + fill + text v0 would make most decorative chrome legible";
-// we go slightly past that.
-
 const DEFAULT_FONT_PT = 11;
-const PT_PER_PX = 0.75; // 1pt ≈ 1.333px at 96dpi → px = pt / 0.75
+const PT_PER_PX = 0.75;
 const PX_PER_EMU = 1 / 9525;
 
 export function drawShape(
@@ -30,11 +15,7 @@ export function drawShape(
     const ny = rect.y + node.relY * rect.h;
     const nw = node.relW * rect.w;
     const nh = node.relH * rect.h;
-    // Connectors (and bare line presets) are allowed to have a
-    // degenerate axis — a purely horizontal connector has h=0, a
-    // purely vertical one has w=0. We still need to draw them; the
-    // connector path uses the (possibly zero) extent to compute
-    // direction. For everything else, drop sub-pixel ghosts.
+
     const isLine = node.isConnector === true || isLinePreset(node.preset);
     if (!isLine && (nw < 1 || nh < 1)) continue;
     if (isLine && nw < 0.5 && nh < 0.5) continue;
@@ -50,10 +31,7 @@ function drawShapeNode(
   w: number,
   h: number,
 ): void {
-  // Honor `<a:xfrm rot="...">`. Excel stores rotation in 1/60000°.
-  const rotation = node.rotation
-    ? (node.rotation / 60000) * (Math.PI / 180)
-    : 0;
+  const rotation = node.rotation ? (node.rotation / 60000) * (Math.PI / 180) : 0;
   ctx.save();
   if (rotation) {
     ctx.translate(x + w / 2, y + h / 2);
@@ -62,26 +40,18 @@ function drawShapeNode(
     y = -h / 2;
   }
 
-  // Inline picture node (nested `<xdr:pic>` inside `<xdr:grpSp>`).
-  // Bypass fill / outline / text — just paint the bitmap (honoring
-  // `<a:srcRect>` crop if present) and we're done.
   if (node.imageDataUri) {
     drawShapeImage(ctx, node, x, y, w, h);
     ctx.restore();
     return;
   }
 
-  // Connectors (and bare line presets) are stroked-path-only and need
-  // arrowheads + dash patterns + flips applied to the path itself, not
-  // a bbox-and-fill. They take a separate branch so we never accidentally
-  // fill or text-paint a 1px-tall line.
   if (node.isConnector || isLinePreset(node.preset)) {
     drawConnector(ctx, node, x, y, w, h);
     ctx.restore();
     return;
   }
 
-  // Path geometry by preset.
   const preset = node.preset ?? "rect";
   pathForPreset(ctx, preset, x, y, w, h);
 
@@ -92,14 +62,9 @@ function drawShapeNode(
 
   if (node.outlineColor) {
     const widthEmu = node.outlineWidthEmu;
-    // OOXML default `<a:ln>` width when unspecified is 9525 EMU (1pt).
-    // 0 EMU is a hairline (Excel renders as 0.5px).
+
     const widthPx =
-      widthEmu == null
-        ? 1.0
-        : widthEmu === 0
-          ? 0.5
-          : Math.max(0.5, widthEmu * PX_PER_EMU);
+      widthEmu == null ? 1.0 : widthEmu === 0 ? 0.5 : Math.max(0.5, widthEmu * PX_PER_EMU);
     ctx.strokeStyle = node.outlineColor;
     ctx.lineWidth = widthPx;
     ctx.stroke();
@@ -128,8 +93,6 @@ function pathForPreset(
       break;
     }
     case "roundRect": {
-      // Excel's default rounded-rect adjust value is ~16.7% of the
-      // shorter side (`adj1=16667` in OOXML's per-mil units).
       const r = Math.min(w, h) * 0.16;
       roundRectPath(ctx, x, y, w, h, r);
       break;
@@ -160,7 +123,6 @@ function pathForPreset(
       ctx.closePath();
       break;
     default:
-      // Unknown / `rect` / any custom geometry: plain rectangle.
       ctx.rect(x, y, w, h);
   }
 }
@@ -193,9 +155,6 @@ function arrowPath(
   h: number,
   dir: "left" | "right" | "up" | "down",
 ): void {
-  // OOXML adj1 default ~50000 (head depth = 50% of shape on the arrow
-  // axis); adj2 default ~50000 (tail thickness = 50% of cross-axis).
-  // We hardcode these; per-shape avLst overrides aren't extracted yet.
   if (dir === "left" || dir === "right") {
     const head = w * 0.5;
     const tail = h * 0.5;
@@ -247,8 +206,6 @@ function arrowPath(
   }
 }
 
-// ---------- connectors ----------
-
 function isLinePreset(preset: string | undefined): boolean {
   if (!preset) return false;
   return (
@@ -268,18 +225,10 @@ function drawConnector(
   w: number,
   h: number,
 ): void {
-  // Compute the polyline as a sequence of [px,py] points inside the
-  // shape's local bbox. straightConnector / line: 2 points; bentConnector3:
-  // 4 points (Z route). flipH / flipV mirror the points across the
-  // bbox center.
   const preset = node.preset ?? "line";
-  const adj1 = (node.adj1 ?? 50000) / 100000; // per-mil → [0,1]
+  const adj1 = (node.adj1 ?? 50000) / 100000;
   let pts: Array<[number, number]>;
   if (preset === "bentConnector3") {
-    // Default geometry: Z-shape with one bend at adj1 along the
-    // dominant axis. We bend horizontally when w ≥ h; otherwise the
-    // bend is vertical. (Matches the LibreOffice / Excel resolution
-    // of the spec's adj1 guide direction on this preset.)
     if (w >= h) {
       const bx = w * adj1;
       pts = [
@@ -298,34 +247,26 @@ function drawConnector(
       ];
     }
   } else {
-    // straightConnector1 / line / lineInv / unknown connector →
-    // diagonal between the bbox corners.
     pts = [
       [0, 0],
       [w, h],
     ];
     if (preset === "lineInv") {
-      // lineInv runs from top-right to bottom-left.
       pts = [
         [w, 0],
         [0, h],
       ];
     }
   }
-  // Apply flips. flipH mirrors X about w/2; flipV mirrors Y about h/2.
+
   if (node.flipH) pts = pts.map(([px, py]) => [w - px, py]);
   if (node.flipV) pts = pts.map(([px, py]) => [px, h - py]);
-  // Translate into world space.
+
   pts = pts.map(([px, py]) => [x + px, y + py]);
 
-  // Stroke width / color: same defaults as `drawShapeNode` outline.
   const widthEmu = node.outlineWidthEmu;
   const widthPx =
-    widthEmu == null
-      ? 1.0
-      : widthEmu === 0
-        ? 0.75
-        : Math.max(0.5, widthEmu * PX_PER_EMU);
+    widthEmu == null ? 1.0 : widthEmu === 0 ? 0.75 : Math.max(0.5, widthEmu * PX_PER_EMU);
   const color = node.outlineColor ?? "#000000";
   ctx.strokeStyle = color;
   ctx.lineWidth = widthPx;
@@ -338,39 +279,18 @@ function drawConnector(
     ctx.lineTo(pts[i]![0], pts[i]![1]);
   }
   ctx.stroke();
-  // Reset dash so subsequent paths aren't affected.
+
   ctx.setLineDash([]);
 
-  // Arrowheads sit at the line endpoints; they're solid-filled
-  // (arrowhead fills aren't dashed), pointing along the tangent of
-  // the adjoining segment.
   if (node.headEnd) {
-    drawArrowEnd(
-      ctx,
-      node.headEnd,
-      pts[1]!, // segment direction goes FROM pts[1] TO pts[0]
-      pts[0]!,
-      color,
-      widthPx,
-    );
+    drawArrowEnd(ctx, node.headEnd, pts[1]!, pts[0]!, color, widthPx);
   }
   if (node.tailEnd) {
     const last = pts.length - 1;
-    drawArrowEnd(
-      ctx,
-      node.tailEnd,
-      pts[last - 1]!, // tangent from previous-to-last point
-      pts[last]!,
-      color,
-      widthPx,
-    );
+    drawArrowEnd(ctx, node.tailEnd, pts[last - 1]!, pts[last]!, color, widthPx);
   }
 }
 
-/// Convert `<a:prstDash val="..."/>` to a canvas dash pattern, scaled
-/// by stroke width to look the same at any line weight. Numbers are in
-/// stroke-width multiples (Excel's measured ratios). Returns [] for
-/// solid / unknown.
 function dashPattern(token: string | undefined, w: number): number[] {
   if (!token) return [];
   switch (token) {
@@ -407,8 +327,7 @@ function drawArrowEnd(
 ): void {
   const kind = end.kind ?? "none";
   if (kind === "none") return;
-  // Size scale per OOXML enum: sm ≈ 2, med ≈ 3, lg ≈ 5 multiples of
-  // stroke width (empirically matches Excel's rendering).
+
   const sizeMul = (tok: string | undefined): number => {
     switch (tok) {
       case "sm":
@@ -416,12 +335,10 @@ function drawArrowEnd(
       case "lg":
         return 5;
       default:
-        return 3.5; // "med" or absent
+        return 3.5;
     }
   };
-  // Floor the per-stroke-width multiplier so very thin lines (hairline
-  // straightConnector1, common in Excel-authored shapes) still get a
-  // visible arrowhead.
+
   const baseStroke = Math.max(strokeW, 1);
   const lenPx = sizeMul(end.len) * baseStroke + 2;
   const widPx = sizeMul(end.w) * baseStroke + 1;
@@ -431,10 +348,10 @@ function drawArrowEnd(
   if (len < 0.01) return;
   const ux = dx / len;
   const uy = dy / len;
-  // Perp vector.
+
   const px = -uy;
   const py = ux;
-  // Base point (tip pulled back along the line by lenPx).
+
   const baseX = tip[0] - ux * lenPx;
   const baseY = tip[1] - uy * lenPx;
   const halfW = widPx / 2;
@@ -446,7 +363,6 @@ function drawArrowEnd(
   ctx.setLineDash([]);
   switch (kind) {
     case "oval": {
-      // Oval marker centered on tip, axes aligned to line.
       const cx = tip[0] - ux * (lenPx / 2);
       const cy = tip[1] - uy * (lenPx / 2);
       const angle = Math.atan2(uy, ux);
@@ -468,7 +384,6 @@ function drawArrowEnd(
       break;
     }
     case "stealth": {
-      // Stealth: like triangle but base concaves toward tip.
       const concaveX = baseX + ux * lenPx * 0.35;
       const concaveY = baseY + uy * lenPx * 0.35;
       ctx.beginPath();
@@ -481,7 +396,6 @@ function drawArrowEnd(
       break;
     }
     case "arrow": {
-      // Open arrowhead (two strokes forming a V at the tip), not filled.
       ctx.beginPath();
       ctx.moveTo(baseX + px * halfW, baseY + py * halfW);
       ctx.lineTo(tip[0], tip[1]);
@@ -515,7 +429,6 @@ function drawShapeImage(
   if (!uri) return;
   const img = getOrLoadImage(uri);
   if (!img) {
-    // Faint placeholder while we decode.
     ctx.fillStyle = "#f4f4f5";
     ctx.fillRect(x, y, w, h);
     return;
@@ -526,9 +439,7 @@ function drawShapeImage(
     ctx.drawImage(img as CanvasImageSource, x, y, w, h);
     return;
   }
-  // `<a:srcRect l t r b/>` crop, in 1/1000 percent of natural size.
-  // l/t inset the source from top-left, r/b inset from the opposite
-  // edge — i.e. source rect = [l*W..(1-r)*W, t*H..(1-b)*H].
+
   let sx = 0,
     sy = 0,
     sw = naturalW,
@@ -560,17 +471,6 @@ function drawShapeText(
   w: number,
   h: number,
 ): void {
-  // Paragraph stack with per-paragraph word-wrap. Wrap policy follows
-  // `<a:bodyPr wrap="..."/>`: `square` (default) wraps on word
-  // boundaries to fit the inner width; `none` lets text overflow
-  // horizontally. Vertical clipping at innerH is honored regardless.
-  //
-  // Inset policy follows `<a:bodyPr lIns/tIns/rIns/bIns/>` when
-  // present; otherwise we apply the DrawingML defaults (lIns/rIns =
-  // 91440 EMU ≈ 9.6px @ 96dpi; tIns/bIns = 45720 EMU ≈ 4.8px). The
-  // old fallback was a 4%-of-shape magic margin which both bled
-  // unevenly across small shapes (narrow text boxes lost almost all
-  // their inner width) and didn't match Excel's measured padding.
   const DEFAULT_LR_EMU = 91440;
   const DEFAULT_TB_EMU = 45720;
   const ins = node.textInsetsEmu;
@@ -588,8 +488,6 @@ function drawShapeText(
   const innerH = Math.max(1, h - tPad - bPad);
   const wrap = node.textWrap !== "none";
 
-  // Pre-wrap each paragraph into visual lines so we can vertically
-  // anchor the whole block correctly when `textAnchor` is `ctr`/`b`.
   type WrappedLine = {
     runs: { r: ShapeParagraph["runs"][number]; width: number; font: string }[];
     align: ShapeParagraph["align"];
@@ -605,7 +503,6 @@ function drawShapeText(
       totalH += ln.lineHeight;
     }
     if (wrapped.length === 0) {
-      // Empty paragraph still occupies a line height (matches Excel).
       const lineH = paragraphLineHeight(p);
       lines.push({ runs: [], align: p.align, lineHeight: lineH, width: 0 });
       totalH += lineH;
@@ -643,10 +540,6 @@ function wrapParagraph(
   lineHeight: number;
   width: number;
 }[] {
-  // Tokenize each run into (text, isSpace, isBreak) atoms. Hard line
-  // breaks (`\n`, surfaced from `<a:br/>`) force a new line. Within a
-  // run, we split on whitespace runs but keep the spaces attached to
-  // the preceding word so adjacent runs don't lose their join.
   type Atom = {
     text: string;
     isBreak: boolean;
@@ -660,9 +553,7 @@ function wrapParagraph(
       atoms.push({ text: "", isBreak: true, r, font });
       continue;
     }
-    // Split into segments at every whitespace boundary, keeping the
-    // whitespace at the END of each segment. `[^\s]+\s*|\s+` handles
-    // both leading-space and trailing-space cases.
+
     const segs = r.text.match(/\S+\s*|\s+/g) ?? [];
     for (const seg of segs) {
       atoms.push({ text: seg, isBreak: false, r, font });
@@ -702,21 +593,14 @@ function wrapParagraph(
     const segW = ctx.measureText(a.text).width;
     const pt = a.r.size ?? DEFAULT_FONT_PT;
     if (pt > maxFontPt) maxFontPt = pt;
-    // Decide whether to break before this atom. Don't break on the
-    // first atom of a line (avoids infinite-narrow-box loops), and
-    // skip the break check when wrapping is disabled.
-    if (
-      wrap &&
-      cur!.runs.length > 0 &&
-      cur!.width + segW > maxWidth &&
-      !/^\s+$/.test(a.text) // pure-whitespace seg — keep on this line so it collapses at EOL
-    ) {
+
+    if (wrap && cur!.runs.length > 0 && cur!.width + segW > maxWidth && !/^\s+$/.test(a.text)) {
       finishLine();
       startLine();
-      ctx.font = a.font; // restart in case font changed (it didn't, but cheap)
+      ctx.font = a.font;
       if (pt > maxFontPt) maxFontPt = pt;
     }
-    // Merge with previous run on the same line if identical font.
+
     const last = cur!.runs[cur!.runs.length - 1];
     if (last && last.font === a.font && last.r === a.r) {
       last.r = { ...last.r, text: last.r.text + a.text };
@@ -731,7 +615,7 @@ function wrapParagraph(
     cur!.width += segW;
   }
   finishLine();
-  // Drop trailing empty line caused by a final `\n`.
+
   if (lines.length > 0 && lines[lines.length - 1]!.runs.length === 0) {
     lines.pop();
   }
@@ -751,8 +635,7 @@ function drawWrappedLine(
   w: number,
 ): void {
   if (ln.runs.length === 0) return;
-  // Trim trailing-whitespace width from the alignment measurement so
-  // right/center-aligned lines don't visually drift by half a space.
+
   const last = ln.runs[ln.runs.length - 1]!;
   const trailingMatch = last.r.text.match(/\s+$/);
   let alignWidth = ln.width;
@@ -804,7 +687,7 @@ function paragraphLineHeight(p: ShapeParagraph): number {
   for (const r of p.runs ?? []) {
     if (r.size && r.size > maxPt) maxPt = r.size;
   }
-  // Line height ≈ 1.2 × font px height.
+
   return Math.ceil((maxPt / PT_PER_PX) * 1.2);
 }
 

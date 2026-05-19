@@ -6,7 +6,6 @@ import type { Grid } from "./grid.js";
 import { GRID_COLOR } from "./renderConstants.js";
 import type { Visible } from "./renderTypes.js";
 
-// Draw default faint grid lines across the data area.
 export function drawGridLines(
   ctx: CanvasRenderingContext2D,
   sheet: Sheet,
@@ -88,8 +87,4 @@ export function rectFor(
   return m ? mergedRect(g, m) : cellRect(g, r, c);
 }
 
-// Find the cell at (r,c) — O(log rowCount + log cellsInRow) via the
-// columnar `rowPtr` index. Returns a freshly-materialized POJO from
-// the sheet's typed-array storage; callers that ask for the same cell
-// in a hot loop should cache the result.
 export { findCell } from "./columnar.js";

@@ -1,18 +1,3 @@
-// chartEx (`cx:`) stat-layout painters split out of `chartEx.ts` to fit
-// the per-file LoC budget. Three layouts:
-//
-//   - histogram   — single clusteredColumn + `<cx:binning>`; we auto-bin
-//                   raw observations using a Sturges-derived nice width.
-//   - pareto      — primary clusteredColumn + secondary paretoLine; the
-//                   line points are computed from cumulative-% at draw
-//                   time (the OOXML line series carries no own data).
-//   - boxWhisker  — N parallel boxWhisker series; we compute Q1/median/
-//                   Q3/whiskers/outliers per `QUARTILE.EXC` semantics
-//                   (Excel chartEx default `quartileMethod="exclusive"`).
-//
-// All three are charted by `drawChartEx` in `chartEx.ts`; this module
-// only exports the three painters.
-
 import type { Chart } from "./types.js";
 import type { Rect } from "./chart.js";
 import { activeThemeColor } from "./color.js";
@@ -23,21 +8,6 @@ const AXIS_FONT_SIZE = 10;
 const AXIS_LABEL_COLOR = "#52525b";
 const AXIS_TICK_COUNT = 5;
 
-// ---------- histogram ----------
-//
-// Excel chartEx histogram is a `<cx:series layoutId="clusteredColumn">`
-// whose `<cx:layoutPr>` carries `<cx:binning>`. The series's data
-// dimension is the raw observation list (not pre-binned counts);
-// Excel auto-bins at render time using Scott's normal-reference rule
-// (bin width = 3.5 * sigma / n^(1/3)) by default, or honours explicit
-// `<cx:binCount>` / `<cx:binSize>` / `<cx:overflow>` / `<cx:underflow>`.
-// We don't surface those overrides yet — the Excel-authored fixture
-// uses default auto-binning, so we follow Scott's rule for parity.
-//
-// `intervalClosed="r"` (the fixture's setting, also Excel's default)
-// makes each bin right-closed: `(low, high]`. The leftmost bin is
-// also left-closed at the data minimum so the smallest observation
-// isn't dropped.
 export function drawHistogramChartEx(
   ctx: CanvasRenderingContext2D,
   chart: Chart,
@@ -61,19 +31,13 @@ export function drawHistogramChartEx(
     return;
   }
 
-  // Pick a bin count via Sturges (ceil(log2 n) + 1) — conservative
-  // for small datasets where Scott's rule rounds up too aggressively
-  // and squashes us into one or two bins. Then derive the raw bin
-  // width from the data span and round up to a "nice" number (1/2/5
-  // × 10^k) so labels read as 10 / 20 / 50 rather than 9.7-and-change.
   const sturges = Math.max(2, Math.ceil(Math.log2(Math.max(2, n)) + 1));
   let binWidth = (maxV - minV) / sturges;
   if (!Number.isFinite(binWidth) || binWidth <= 0) {
     binWidth = Math.max(1, (maxV - minV) / Math.max(1, Math.ceil(Math.sqrt(n))));
   }
   binWidth = niceBinWidth(binWidth);
-  // Anchor on a multiple of binWidth at or below minV so bin edges
-  // are visually sensible (40/50/60 rather than 42/52/62).
+
   const startEdge = Math.floor(minV / binWidth) * binWidth;
   const endEdge = Math.ceil(maxV / binWidth) * binWidth;
   const binCount = Math.max(1, Math.round((endEdge - startEdge) / binWidth));
@@ -81,12 +45,10 @@ export function drawHistogramChartEx(
   for (let i = 0; i <= binCount; i++)
     edges.push(parseFloat((startEdge + i * binWidth).toPrecision(12)));
 
-  // Count observations per bin. Right-closed intervals; the leftmost
-  // bin also includes its left edge so we don't drop the minimum.
   const counts = new Array<number>(binCount).fill(0);
   for (const v of obs) {
     let idx = Math.floor((v - startEdge) / binWidth);
-    if (v === edges[idx]! && idx > 0) idx -= 1; // right-closed
+    if (v === edges[idx]! && idx > 0) idx -= 1;
     if (idx < 0) idx = 0;
     if (idx >= binCount) idx = binCount - 1;
     counts[idx]! += 1;
@@ -104,7 +66,6 @@ export function drawHistogramChartEx(
   );
   const inner = drawAxisFrame(ctx, chart, rect, range.ticks, range.minV, range.maxV, false, false);
 
-  // Bin labels along the category axis. Decimate when crowded.
   const slotW = inner.w / binCount;
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   ctx.fillStyle = AXIS_LABEL_COLOR;
@@ -114,8 +75,7 @@ export function drawHistogramChartEx(
   for (let i = 0; i < binCount; i++) {
     const lo = edges[i]!;
     const hi = edges[i + 1]!;
-    // Excel-style "(lo, hi]" label, with the leftmost bin shown as
-    // "[lo, hi]" to flag its left-closed corner.
+
     const label =
       i === 0 ? `[${fmtBinEdge(lo)}, ${fmtBinEdge(hi)}]` : `(${fmtBinEdge(lo)}, ${fmtBinEdge(hi)}]`;
     const tw = ctx.measureText(label).width;
@@ -125,8 +85,6 @@ export function drawHistogramChartEx(
     lastRight = cx + tw / 2;
   }
 
-  // Bars touch (gapWidth=0 in the fixture; Excel histogram default).
-  // A 1px white stroke between bars keeps adjacent counts legible.
   const fill = activeThemeColor(4, "#4472C4");
   for (let i = 0; i < binCount; i++) {
     const c = counts[i]!;
@@ -142,7 +100,6 @@ export function drawHistogramChartEx(
   }
 }
 
-/** Round a bin width up to the next "nice" number (1/2/5 * 10^k). */
 function niceBinWidth(raw: number): number {
   if (raw <= 0) return 1;
   const exp = Math.floor(Math.log10(raw));
@@ -156,20 +113,11 @@ function niceBinWidth(raw: number): number {
   return nf * base;
 }
 
-/** Format a bin edge: integer when whole, else two-decimal. */
 function fmtBinEdge(v: number): string {
   if (Number.isInteger(v)) return v.toString();
   return v.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
 }
 
-// ---------- pareto ----------
-//
-// Bars + cumulative-percentage line. The bars come from the primary
-// `clusteredColumn` series (already sorted descending in the source
-// workbook — Excel sorts at chart-creation time and stores the
-// post-sort order); the line series carries no own data and we
-// compute the cumulative percentage at render time. Two y-axes: the
-// primary (left) shows raw counts, the secondary (right) shows 0..100%.
 export function drawParetoChartEx(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   const bars = chart.series[0];
   if (!bars || bars.values.length === 0) {
@@ -185,7 +133,6 @@ export function drawParetoChartEx(ctx: CanvasRenderingContext2D, chart: Chart, r
     return;
   }
 
-  // Primary axis (count). Standard auto-range with a zero floor.
   const maxCount = Math.max(...values);
   const primary = resolveAxisRange(
     0,
@@ -197,7 +144,6 @@ export function drawParetoChartEx(ctx: CanvasRenderingContext2D, chart: Chart, r
     undefined,
   );
 
-  // Reserve a strip on the right for the secondary-axis labels.
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   const secAxisLabels = ["0%", "25%", "50%", "75%", "100%"];
   const secAxisW = Math.max(...secAxisLabels.map((s) => ctx.measureText(s).width)) + 10;
@@ -213,7 +159,6 @@ export function drawParetoChartEx(ctx: CanvasRenderingContext2D, chart: Chart, r
     false,
   );
 
-  // Paint secondary y-axis baseline + ticks on the right.
   ctx.strokeStyle = "#9ca3af";
   ctx.beginPath();
   ctx.moveTo(Math.round(inner.x + inner.w) + 0.5, inner.y);
@@ -228,7 +173,6 @@ export function drawParetoChartEx(ctx: CanvasRenderingContext2D, chart: Chart, r
     ctx.fillText(secAxisLabels[ti]!, inner.x + inner.w + 4, y);
   }
 
-  // Category labels along the x-axis.
   const slotW = inner.w / n;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
@@ -243,7 +187,6 @@ export function drawParetoChartEx(ctx: CanvasRenderingContext2D, chart: Chart, r
     lastRight = cx + w / 2;
   }
 
-  // Bars (touching: pareto gapWidth=0 in the fixture).
   const barColor = activeThemeColor(4, "#4472C4");
   const lineColor = activeThemeColor(5, "#ED7D31");
   ctx.fillStyle = barColor;
@@ -260,10 +203,6 @@ export function drawParetoChartEx(ctx: CanvasRenderingContext2D, chart: Chart, r
     ctx.strokeRect(x + 0.5, yTop + 0.5, slotW - 1, yBot - yTop - 1);
   }
 
-  // Cumulative-% line: each point sits at the right edge of its bar
-  // at y = cumulative/total on the secondary scale. The first point
-  // anchors at the *left* edge of the first bar (cumulative = 0) so
-  // the line visually starts from the axis baseline, matching Excel.
   ctx.strokeStyle = lineColor;
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -276,7 +215,7 @@ export function drawParetoChartEx(ctx: CanvasRenderingContext2D, chart: Chart, r
     ctx.lineTo(x, yForPct(cum / total));
   }
   ctx.stroke();
-  // Markers on each cumulative point.
+
   cum = 0;
   ctx.fillStyle = lineColor;
   for (let i = 0; i < n; i++) {
@@ -289,13 +228,6 @@ export function drawParetoChartEx(ctx: CanvasRenderingContext2D, chart: Chart, r
   }
 }
 
-// ---------- box & whisker ----------
-//
-// One vertical box-and-whisker per series. Quartiles are computed at
-// draw time per `<cx:statistics quartileMethod="exclusive"/>` (the
-// default Excel emits). Outliers are points outside 1.5 × IQR of the
-// hinge; whiskers extend to the most extreme non-outlier values. The
-// mean marker (default-on in chartEx) is painted as an ×.
 export function drawBoxWhiskerChartEx(
   ctx: CanvasRenderingContext2D,
   chart: Chart,
@@ -306,9 +238,9 @@ export function drawBoxWhiskerChartEx(
     drawPlaceholderPlot(ctx, chart, rect);
     return;
   }
-  // Compute stats per series.
+
   const stats = serieses.map((s) => computeBoxStats(s.values));
-  // Value-axis range covers every observed value (including outliers).
+
   let minObs = Infinity;
   let maxObs = -Infinity;
   for (const s of serieses) {
@@ -327,13 +259,12 @@ export function drawBoxWhiskerChartEx(
     maxObs,
     chart.valueMin,
     chart.valueMax,
-    /*zeroClamp=*/ false,
+    false,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );
   const inner = drawAxisFrame(ctx, chart, rect, range.ticks, range.minV, range.maxV, false, false);
 
-  // Category labels = series names.
   const slotW = inner.w / serieses.length;
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   ctx.fillStyle = AXIS_LABEL_COLOR;
@@ -355,14 +286,13 @@ export function drawBoxWhiskerChartEx(
     const cx = inner.x + (i + 0.5) * slotW;
     const xLeft = cx - boxW / 2;
 
-    // Whiskers: vertical line from low to high.
     ctx.strokeStyle = "#333333";
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(Math.round(cx) + 0.5, yFor(st.whiskerLow));
     ctx.lineTo(Math.round(cx) + 0.5, yFor(st.whiskerHigh));
     ctx.stroke();
-    // Whisker caps.
+
     const capW = Math.max(4, boxW * 0.4);
     ctx.beginPath();
     ctx.moveTo(cx - capW / 2, yFor(st.whiskerLow));
@@ -371,7 +301,6 @@ export function drawBoxWhiskerChartEx(
     ctx.lineTo(cx + capW / 2, yFor(st.whiskerHigh));
     ctx.stroke();
 
-    // Box: Q1 -> Q3.
     const yQ1 = yFor(st.q1);
     const yQ3 = yFor(st.q3);
     const yTop = Math.min(yQ1, yQ3);
@@ -382,7 +311,6 @@ export function drawBoxWhiskerChartEx(
     ctx.lineWidth = 1;
     ctx.strokeRect(xLeft + 0.5, yTop + 0.5, boxW - 1, Math.max(2, yBot - yTop) - 1);
 
-    // Median line.
     const yMed = yFor(st.median);
     ctx.beginPath();
     ctx.moveTo(xLeft, Math.round(yMed) + 0.5);
@@ -390,7 +318,6 @@ export function drawBoxWhiskerChartEx(
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Mean marker (× at the mean). Default-on for Excel boxWhisker.
     const yMean = yFor(st.mean);
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = "#111827";
@@ -402,7 +329,6 @@ export function drawBoxWhiskerChartEx(
     ctx.lineTo(cx + r, yMean - r);
     ctx.stroke();
 
-    // Outliers as small filled dots.
     ctx.fillStyle = "#111827";
     for (const o of st.outliers) {
       ctx.beginPath();
@@ -422,11 +348,6 @@ interface BoxStats {
   outliers: number[];
 }
 
-/// Quartile method = "exclusive" (Excel default for chartEx
-/// boxWhisker; QUARTILE.EXC semantics). Position p in [0,1] is
-/// interpolated at index `p * (N + 1) - 1` in the sorted observations.
-/// Whiskers extend to the most extreme observation within 1.5 × IQR
-/// of the hinge; everything beyond is an outlier.
 function computeBoxStats(raw: number[]): BoxStats {
   const sorted = raw.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
   const n = sorted.length;

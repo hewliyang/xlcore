@@ -3,10 +3,7 @@ import { iterRows } from "./columnar.js";
 
 export const HEADER_H = 22;
 export const HEADER_W = 44;
-// Width per outline level when an outline gutter strip is shown next to
-// the row/col header strips. Excel's gutter is ~12px wide per level; we
-// match that. Includes 4px outer padding on each side of the bracket
-// column so the +/- button glyph isn't flush against the edges.
+
 export const OUTLINE_GUTTER_STEP = 12;
 export const OUTLINE_GUTTER_PAD = 4;
 
@@ -19,19 +16,17 @@ export interface Grid {
   totalH: number;
   maxCol: number;
   maxRow: number;
-  /// Width of the row-grouping gutter strip painted to the left of the
-  /// row-number column. 0 when the sheet has no row groupings.
+
   rowGutterW: number;
-  /// Height of the column-grouping gutter strip painted above the
-  /// column-letter row. 0 when the sheet has no column groupings.
+
   colGutterH: number;
-  /// Left edge of column A on canvas = HEADER_W + rowGutterW.
+
   originX: number;
-  /// Top edge of row 1 on canvas = HEADER_H + colGutterH.
+
   originY: number;
-  /// Deepest row-outline level seen on the sheet (0 when none).
+
   rowOutlineDepth: number;
-  /// Deepest col-outline level seen on the sheet (0 when none).
+
   colOutlineDepth: number;
 }
 
@@ -77,10 +72,6 @@ export function buildGrid(
   if (rowOverrides) for (const [r, h] of rowOverrides) rowSpecH.set(r, Math.max(0, h));
   const heightOf = (r: number) => rowSpecH.get(r) ?? sheet.defaultRowHeightPx;
 
-  // Outline gutter widths. We compute these up front from sheet meta
-  // and then shift the grid origin so every downstream coordinate
-  // (panes, geometry, hit-testing) lands on the right pixel without
-  // each call site having to know the gutter exists.
   let rowOutlineDepth = 0;
   if (sheet.decodedRowMeta && sheet.decodedRowMeta.outlineLevel.length > 0) {
     for (let i = 0; i < sheet.decodedRowMeta.outlineLevel.length; i++) {
@@ -93,15 +84,7 @@ export function buildGrid(
     const v = c.outlineLevel ?? 0;
     if (v > colOutlineDepth) colOutlineDepth = v;
   }
-  // Either axis having groups also reserves the perpendicular gutter so
-  // the level-numeral buttons at the corner have somewhere to live.
-  // Excel renders the corner box (with 1/2/.../N buttons) only when at
-  // least one axis is grouped; we follow suit by sizing each gutter
-  // strip from its own axis depth and showing both numerals in the
-  // shared corner when either is set.
-  // We reserve `depth + 1` tracks: one per bracket level plus a final
-  // track at the inner edge for the level-(N+1) corner numeral (which
-  // Excel uses for "expand all"). Outline depth 1 → 2 tracks → 28px.
+
   const rowGutterW =
     rowOutlineDepth > 0 ? OUTLINE_GUTTER_PAD * 2 + (rowOutlineDepth + 1) * OUTLINE_GUTTER_STEP : 0;
   const colGutterH =
@@ -182,9 +165,7 @@ export function anchorToRect(
   const a = d.anchor;
   const fromX = colEdge(g, a.fromCol + 1) + a.fromColOffEmu * PX_PER_EMU;
   const fromY = rowEdge(g, a.fromRow + 1) + a.fromRowOffEmu * PX_PER_EMU;
-  // `oneCellAnchor` (and any anchor that ships an explicit extent)
-  // wins over the resolved `to_*` cell — the producer measured the
-  // size in EMU and we render to that exact pixel size.
+
   const toX =
     a.extEmuCx != null && a.extEmuCx > 0
       ? fromX + a.extEmuCx * PX_PER_EMU
@@ -195,12 +176,8 @@ export function anchorToRect(
       : rowEdge(g, a.toRow + 1) + a.toRowOffEmu * PX_PER_EMU;
   const w = toX - fromX;
   const h = toY - fromY;
-  // Connectors / line shapes are allowed to be axis-degenerate (a
-  // horizontal connector has h == 0; vertical has w == 0). Drop only
-  // when both axes collapse, or when the anchor is too small for any
-  // non-line drawing.
-  const isShapeOnly =
-    d.kind === "shape" && d.shape != null && d.image == null && d.chart == null;
+
+  const isShapeOnly = d.kind === "shape" && d.shape != null && d.image == null && d.chart == null;
   if (isShapeOnly) {
     if (w <= 0.25 && h <= 0.25) return null;
   } else if (w <= 1 || h <= 1) {

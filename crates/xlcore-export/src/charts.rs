@@ -1,12 +1,3 @@
-//! Extract drawings (charts) from a worksheet's DrawingsPart.
-//!
-//! v0 covers clustered/stacked column + bar charts. The data we need lives in
-//! the chart part's `numCache`/`strCache` blocks, which Office writes any
-//! time it saves the workbook -- so we can render charts without recalc.
-//!
-//! Pie/line/area/scatter/etc. are recognised but rendered as a placeholder
-//! box with title for now.
-
 use crate::charts_ex::extract_chart_ex;
 use crate::charts_legacy::extract_chart;
 use crate::schema::*;
@@ -15,40 +6,23 @@ use ooxmlsdk::parts::spreadsheet_document::SpreadsheetDocument;
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_drawing as xdr;
 
-/// chartEx graphicData URI (Office 2014+). Distinguishes a `cx:chartSpace`
-/// payload from the legacy `c:chartSpace` (which uses the
-/// `http://schemas.openxmlformats.org/drawingml/2006/chart` URI).
 const CHARTEX_GRAPHIC_DATA_URI: &str = "http://schemas.microsoft.com/office/drawing/2014/chartex";
 
-/// What kind of drawing the anchor points at, plus the rId we need to
-/// resolve through the drawing-part's relationships.
 enum AnchorTarget {
     Chart(String),
-    /// chartEx (cx:chartSpace) — Microsoft 2014+ part. Resolved via
-    /// `drawings_part.extended_chart_parts()` (different rel type from
-    /// legacy charts) and rendered by `extract_chart_ex`.
+
     ChartEx(String),
     Image(String),
-    /// `<xdr:sp>` autoshape or `<xdr:grpSp>` group shape tree.
-    /// Walked by `crate::shapes::extract_shape_tree` into a flattened
-    /// list of fractional-bbox leaves the renderer can paint.
+
     Shape(ShapeRoot),
 }
 
-/// In-memory handle for the shape branch of an anchor's choice slot.
 enum ShapeRoot {
     Sp(std::boxed::Box<xdr::Shape>),
     GrpSp(std::boxed::Box<xdr::GroupShape>),
     CxnSp(std::boxed::Box<xdr::ConnectionShape>),
 }
 
-/// Extract drawings (charts + images) from this worksheet's drawingsPart.
-///
-/// `theme` is the workbook's parsed theme (or `None` to use Office
-/// 2007+ defaults). It's needed because chart series colors can be
-/// stored as scheme refs (`<a:schemeClr val="accent1"/>`) and Office's
-/// auto-cycling defaults map series order to accent1..accent6 — in
-/// both cases we want the workbook's actual theme palette.
 pub fn extract(
     doc: &mut SpreadsheetDocument,
     ws_part: &WorksheetPart,
@@ -114,13 +88,6 @@ pub fn extract(
                 Some((anchor, target))
             }
             xdr::WorksheetDrawingChoice::XdrOneCellAnchor(a) => {
-                // `oneCellAnchor` pins the upper-left to a cell + offset
-                // and sizes the drawing via a fixed EMU extent. We keep
-                // the exact extent in `ext_emu_*` for pixel-accurate
-                // rendering; the `to_*` fields are filled with a coarse
-                // cell-count approximation (default col 64px / row 20px)
-                // so grid expansion (minCols/minRows) still reserves
-                // roughly enough space for the chart.
                 let from = a.from_marker.as_ref()?;
                 let ext = a.extent.as_ref()?;
                 const EMU_PER_DEFAULT_COL: i64 = 64 * 9525;
@@ -170,9 +137,6 @@ pub fn extract(
         })
         .collect();
 
-    // Build (rid -> Part) maps by scraping each part's Debug repr. The
-    // relationship_id field is pub(crate) on these structs so the string
-    // scan is the pragmatic path; cheap, no maintenance liability.
     let mut chart_by_rid: Vec<(String, ooxmlsdk::parts::chart_part::ChartPart)> = chart_parts
         .into_iter()
         .filter_map(|p| Some((part_relationship_id_dbg(&p)?, p)))
@@ -189,12 +153,6 @@ pub fn extract(
         .filter_map(|p| Some((part_relationship_id_dbg(&p)?, p)))
         .collect();
 
-    // Pre-encode every image part as a `data:` URI keyed by its
-    // relationship id. We hand this to the shape extractor so it can
-    // surface `<xdr:pic>` nodes nested inside groups (e.g. the
-    // screenshot thumbnails inside the Map Chart template's grouped
-    // callouts). Top-level pictures still route through
-    // `AnchorTarget::Image` and use the per-anchor branch below.
     let image_uri_by_rid: std::collections::HashMap<String, String> = image_by_rid
         .iter()
         .filter_map(|(rid, ip)| {
@@ -284,7 +242,7 @@ pub fn extract(
                     Some(b) => b.to_vec(),
                     None => continue,
                 };
-                // ImagePart's CONTENT_TYPE is empty; sniff from the bytes.
+
                 let mime = sniff_image_mime(&bytes).unwrap_or("image/png");
                 let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
                 let data_uri = format!("data:{};base64,{}", mime, b64);
@@ -301,8 +259,6 @@ pub fn extract(
     out
 }
 
-/// Cheap magic-byte sniff: PNG / JPEG / GIF / BMP / WebP / SVG. Falls back
-/// to None and lets the caller default.
 fn sniff_image_mime(b: &[u8]) -> Option<&'static str> {
     if b.len() >= 8 && b[..8] == [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A] {
         return Some("image/png");

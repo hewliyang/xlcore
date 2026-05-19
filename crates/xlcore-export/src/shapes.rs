@@ -1,30 +1,7 @@
-//! Extract `<xdr:sp>` autoshapes and `<xdr:grpSp>` group shapes from
-//! a drawing anchor.
-//!
-//! Excel emits a fair amount of chrome as DrawingML shapes: rounded-
-//! rect callouts (the "1 / 2 / 3 / 4" instruction boxes on
-//! Microsoft's Map Chart sample template), banners, arrows, sticky
-//! notes, "Next >" hyperlink buttons. These show up as `<xdr:sp>`
-//! children of `<xdr:twoCellAnchor>` (sometimes wrapped in
-//! `<xdr:grpSp>` groups).
-//!
-//! v0 produces a flattened list of leaf shapes positioned via
-//! fractional (0..1) coordinates inside the anchor's bbox. The
-//! renderer paints fill + outline + text — unknown `prstGeom` presets
-//! fall back to plain rectangle.
-//!
-//! See ECMA-376 §20.5.2.29 (`<xdr:sp>`) and §20.1.7.5 (xfrm group transform
-//! semantics — `xfrm/chOff/chExt` defines the logical→world mapping
-//! for nested children).
-
 use crate::schema::*;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_drawing as xdr;
 
-/// World-space EMU bbox built up by accumulating `xfrm` transforms
-/// down a `<xdr:grpSp>` chain. Root frame is the outer-most group's
-/// own `xfrm`; if the outer-most container is an `<xdr:sp>` we just
-/// use its `spPr/xfrm` directly.
 #[derive(Clone, Copy, Debug)]
 struct WorldBox {
     x: f64,
@@ -33,9 +10,6 @@ struct WorldBox {
     cy: f64,
 }
 
-/// One step of the parent group's logical→world mapping.
-/// `parent_world` is the parent group's resolved world-EMU bbox;
-/// `child_off / child_ext` is its logical-space origin / size.
 #[derive(Clone, Copy, Debug)]
 struct GroupFrame {
     parent_world: WorldBox,
@@ -46,7 +20,6 @@ struct GroupFrame {
 }
 
 impl GroupFrame {
-    /// Map a child's logical-space `(off, ext)` to world-EMU.
     fn map(&self, off_x: f64, off_y: f64, ext_cx: f64, ext_cy: f64) -> WorldBox {
         let sx = if self.child_ext_cx > 0.0 {
             self.parent_world.cx / self.child_ext_cx
@@ -67,8 +40,6 @@ impl GroupFrame {
     }
 }
 
-/// Resolve a `<xdr:grpSp>` to its world-EMU bbox + a child-frame that
-/// nested children can use to map their own xfrm into world space.
 fn group_frame(g: &xdr::GroupShape, parent: Option<GroupFrame>) -> Option<(WorldBox, GroupFrame)> {
     let xfrm = g
         .group_shape_properties
@@ -83,8 +54,7 @@ fn group_frame(g: &xdr::GroupShape, parent: Option<GroupFrame>) -> Option<(World
     let own_off_y = off.y as f64;
     let own_ext_cx = ext.cx as f64;
     let own_ext_cy = ext.cy as f64;
-    // Resolve own world bbox: either via parent's frame, or take own
-    // xfrm directly when this is the outer-most group (root anchor).
+
     let world = match parent {
         Some(p) => p.map(own_off_x, own_off_y, own_ext_cx, own_ext_cy),
         None => WorldBox {
@@ -104,10 +74,6 @@ fn group_frame(g: &xdr::GroupShape, parent: Option<GroupFrame>) -> Option<(World
     Some((world, frame))
 }
 
-/// Resolve an `<xdr:sp>` to its world-EMU bbox. When the shape sits
-/// inside a `<xdr:grpSp>`, the parent's `GroupFrame` maps it from
-/// logical space; at the top level its own `<a:xfrm>` is already in
-/// world coords.
 fn shape_world(s: &xdr::Shape, parent: Option<GroupFrame>) -> Option<WorldBox> {
     let xfrm = s.shape_properties.transform2_d.as_ref()?;
     let off = xfrm.offset.as_ref()?;
@@ -127,32 +93,6 @@ fn shape_world(s: &xdr::Shape, parent: Option<GroupFrame>) -> Option<WorldBox> {
     })
 }
 
-/// Public entry: walk a `<xdr:twoCellAnchor>` or `<xdr:oneCellAnchor>`
-/// shape child (`<xdr:sp>` or `<xdr:grpSp>`) and produce a `Shape`
-/// with fractional bbox children relative to the anchor's resolved
-/// pixel rect.
-///
-/// `anchor_world` is the anchor's EMU bbox derived from the
-/// from/to (or from + ext) markers. We need it to normalize world
-/// coords back to 0..1 — the renderer's `anchorToRect` is the source
-/// of truth for the absolute pixel rect.
-/// Walk a top-level shape (or group) and emit a flattened `Shape`
-/// with leaf nodes positioned relative to the root shape's own bbox.
-///
-/// We deliberately use the *shape*'s own xfrm as the outer frame —
-/// not the drawing-anchor's cell-anchor bbox — because shape xfrms
-/// are stored in world-EMU on the worksheet canvas, and the
-/// chart-style cell anchor would require column-width lookup to
-/// compute its world bbox here. The renderer maps the resulting
-/// fractional coordinates back to the anchor's pixel bbox, which is
-/// Excel's effective visual rect for a `twoCellAnchor`-wrapped
-/// shape (Excel snaps the shape to the anchor on every save).
-/// Resolver from drawing-relationship-id (`r:embed`) to a fully
-/// encoded `data:<mime>;base64,...` URI. Caller pre-builds this from
-/// the drawings part's image parts. Used so we can surface
-/// `<xdr:pic>` nodes nested inside `<xdr:grpSp>` as inline shape
-/// children — top-level pictures still route through
-/// `AnchorTarget::Image`.
 pub(crate) type ImageUriResolver<'a> = &'a dyn Fn(&str) -> Option<String>;
 
 pub(crate) fn extract_shape_tree(
@@ -161,17 +101,13 @@ pub(crate) fn extract_shape_tree(
     images: ImageUriResolver<'_>,
 ) -> Option<Shape> {
     let mut nodes: Vec<ShapeNode> = Vec::new();
-    // Connectors are special: their world bbox is degenerate when the
-    // connector is purely horizontal (cy=0) or vertical (cx=0), but
-    // the painter still needs the diagonal. Force a minimum 1-EMU
-    // extent so the fractional bbox math doesn't divide by zero;
-    // the renderer paints the connector path inside that rect.
+
     let outer = match &root {
         ShapeTreeRoot::Sp(s) => shape_world(s, None)?,
         ShapeTreeRoot::GrpSp(g) => group_frame(g, None).map(|(w, _)| w)?,
         ShapeTreeRoot::CxnSp(c) => connector_world(&c.shape_properties, None)?,
     };
-    // Allow degenerate-axis connectors (horizontal / vertical lines).
+
     if outer.cx <= 0.0 && outer.cy <= 0.0 {
         return None;
     }
@@ -199,10 +135,6 @@ pub(crate) enum ShapeTreeRoot<'a> {
     CxnSp(&'a xdr::ConnectionShape),
 }
 
-/// World-EMU bbox for a `<xdr:cxnSp>` derived from its `spPr/xfrm`.
-/// Identical to `shape_world` modulo the connector-specific guard
-/// that lets `cx == 0` or `cy == 0` through (straight axis-aligned
-/// connectors are common and their bbox really is degenerate).
 fn connector_world(sp: &xdr::ShapeProperties, parent: Option<GroupFrame>) -> Option<WorldBox> {
     let xfrm = sp.transform2_d.as_ref()?;
     let off = xfrm.offset.as_ref()?;
@@ -248,8 +180,7 @@ fn visit_group(
             xdr::GroupShapeChoice::XdrCxnSp(c) => {
                 visit_connector(c, Some(frame), outer, nodes, theme);
             }
-            // graphicFrame inside groups: still out of scope (chart /
-            // diagram / table-style graphics embedded in a group).
+
             _ => {}
         }
     }
@@ -262,7 +193,6 @@ fn visit_picture(
     nodes: &mut Vec<ShapeNode>,
     images: ImageUriResolver<'_>,
 ) {
-    // World rect from the picture's own xfrm.
     let xfrm = match pic.shape_properties.transform2_d.as_ref() {
         Some(x) => x,
         None => return,
@@ -304,7 +234,7 @@ fn visit_picture(
             r.bottom.unwrap_or(0),
         ]
     });
-    // Drop a crop array of all zeros (the no-op case Excel emits a lot).
+
     let crop = crop.filter(|v| v.iter().any(|n| *n != 0));
 
     let rel_x = if outer.cx > 0.0 {
@@ -363,9 +293,7 @@ fn visit_shape(
 ) {
     let world = match shape_world(s, parent) {
         Some(w) => w,
-        // No xfrm at all — Excel usually fills these in even when 0
-        // (chartEx fallback shape uses 0/0 ext). Skip the silent
-        // "invisible" case rather than rendering a 0×0 rect.
+
         None => return,
     };
     if world.cx <= 0.0 || world.cy <= 0.0 {
@@ -400,8 +328,6 @@ fn visit_shape(
         text_body_to_paragraphs(s.text_body.as_deref(), theme);
     let rotation = sp.transform2_d.as_ref().and_then(|x| x.rotation);
 
-    // Skip ornamental nodes that have nothing visible AND no text
-    // (Excel emits empty `<xdr:txBox>` shapes as group spacers).
     let has_paint = fill.is_some() || outline_color.is_some();
     let has_text = !paragraphs.is_empty();
     if !has_paint && !has_text {
@@ -438,10 +364,6 @@ fn preset_geom_name(sp: &xdr::ShapeProperties) -> Option<String> {
     use xdr::ShapePropertiesChoice;
     match sp.shape_properties_choice1.as_ref()? {
         ShapePropertiesChoice::APrstGeom(g) => {
-            // ooxmlsdk's preset enum has ~200 variants — Debug derives
-            // the Pascal-case variant name (e.g. `Rect`, `RoundRect`,
-            // `LeftArrow`). Lowercase the first char to match OOXML's
-            // camelCase token form.
             let dbg = format!("{:?}", g.preset);
             let mut chars = dbg.chars();
             let first = chars.next()?;
@@ -459,10 +381,7 @@ fn solid_fill_color(
     use xdr::ShapePropertiesChoice2;
     match choice.as_ref()? {
         ShapePropertiesChoice2::ASolidFill(sf) => resolve_solid_fill(sf, theme),
-        // gradFill / pattFill / blipFill / grpFill / noFill: dropped.
-        // gradFill could be solved via center-stop fallback but v0
-        // just falls through to no fill (matches the "rect + fill +
-        // text" remit in PARITY.md).
+
         _ => None,
     }
 }
@@ -479,17 +398,11 @@ fn resolve_solid_fill(sf: &a::SolidFill, theme: Option<&Theme>) -> Option<String
             }
         }
         SolidFillChoice::ASchemeClr(c) => {
-            // Reuse the chart color resolver via Debug repr. The
-            // SchemeColor's variant Debug name is `Accent1` etc.,
-            // which `theme_scheme_color` already handles.
             let dbg = format!("{:?}", c);
             crate::chart_colors::theme_scheme_color(&dbg, theme)
                 .map(|base| crate::chart_colors::apply_color_modifiers(&base, &dbg))
         }
         SolidFillChoice::APrstClr(c) => {
-            // PresetColorValues — use Debug variant for the well-known
-            // English names. We resolve via a tiny table; unknowns
-            // return None.
             let dbg = format!("{:?}", c.val);
             preset_color_hex(&dbg).map(|s| s.to_string())
         }
@@ -497,14 +410,11 @@ fn resolve_solid_fill(sf: &a::SolidFill, theme: Option<&Theme>) -> Option<String
             let last: Option<&str> = c.last_color.as_deref();
             last.map(|s| format!("#{}", s))
         }
-        // scrgb / hsl: deferred (rare in shape fills).
+
         _ => None,
     }
 }
 
-/// Minimal English preset-color table. Covers what Excel's UI exposes
-/// (the "Standard Colors" row) plus the named colors that appear in
-/// the fallback markup of chartEx alternateContent blocks.
 fn preset_color_hex(variant_dbg: &str) -> Option<&'static str> {
     Some(match variant_dbg {
         "Black" => "#000000",
@@ -539,20 +449,13 @@ fn outline_info(ln: Option<&a::Outline>, theme: Option<&Theme>) -> (Option<Strin
     (color, width)
 }
 
-/// Extract `<a:prstDash val="..."/>` (DrawingML dash preset) from an
-/// `<a:ln>`. Returns lowercase token (e.g. `dash`, `dashDot`, `dot`,
-/// `lgDash`, `sysDash`). `None` for solid / custom / absent.
 fn line_dash_token(ln: Option<&a::Outline>) -> Option<String> {
     let ln = ln?;
     use a::OutlineChoice2;
     match ln.outline_choice2.as_ref()? {
         OutlineChoice2::APrstDash(d) => {
-            // PresetLineDashValues Debug yields PascalCase variant
-            // names matching the OOXML camelCase tokens after
-            // lowercasing the first char.
             let dbg = format!("{:?}", d.val);
-            // Inner is `Option<PresetLineDashValues>` → strip the
-            // `Some(...)` / `None` wrapper.
+
             if !dbg.starts_with("Some(") {
                 return None;
             }
@@ -566,7 +469,6 @@ fn line_dash_token(ln: Option<&a::Outline>) -> Option<String> {
     }
 }
 
-/// Common shape for HeadEnd / TailEnd attribute trios.
 fn line_end_to_schema(
     kind: Option<&a::LineEndValues>,
     w: Option<&a::LineEndWidthValues>,
@@ -575,8 +477,7 @@ fn line_end_to_schema(
     let kind_tok = kind.and_then(|v| enum_token(&format!("{:?}", v)));
     let w_tok = w.and_then(|v| enum_token(&format!("{:?}", v)));
     let len_tok = len.and_then(|v| enum_token(&format!("{:?}", v)));
-    // Drop the entire end if it's authored as `type="none"` with no
-    // other distinguishing attrs (the OOXML default; common noise).
+
     if matches!(kind_tok.as_deref(), Some("none")) && w_tok.is_none() && len_tok.is_none() {
         return None;
     }
@@ -590,9 +491,6 @@ fn line_end_to_schema(
     })
 }
 
-/// Lowercase-first the Pascal-case enum variant name Rust's Debug
-/// gives us. Returns None for `None_` (the OOXML `none` reserved-word
-/// rename used by ooxmlsdk's codegen → still maps to `"none"`).
 fn enum_token(dbg: &str) -> Option<String> {
     let trimmed = dbg.trim_end_matches('_');
     if trimmed.is_empty() {
@@ -604,10 +502,6 @@ fn enum_token(dbg: &str) -> Option<String> {
     Some(format!("{}{}", first.to_ascii_lowercase(), rest))
 }
 
-/// Read `<a:avLst><a:gd name="adj1" fmla="val NNNN"/></a:avLst>` and
-/// return adj1 in DrawingML per-mil (e.g. 50000 = 50%). Returns None
-/// when the geometry has no avLst, no adj1 guide, or the formula is
-/// not a plain `val NNNN` literal (we don't evaluate guide formulas).
 fn preset_adj1(sp: &xdr::ShapeProperties) -> Option<i32> {
     use xdr::ShapePropertiesChoice;
     let geom = match sp.shape_properties_choice1.as_ref()? {
@@ -630,7 +524,6 @@ fn preset_adj1(sp: &xdr::ShapeProperties) -> Option<i32> {
     None
 }
 
-/// Walk a `<xdr:cxnSp>` into a single connector `ShapeNode`.
 fn visit_connector(
     c: &xdr::ConnectionShape,
     parent: Option<GroupFrame>,
@@ -643,10 +536,7 @@ fn visit_connector(
         Some(w) => w,
         None => return,
     };
-    // Map world → fractional bbox relative to outer. Outer can be
-    // axis-degenerate (cx==0 or cy==0) for axis-aligned root
-    // connectors; fall back to 0 / 1 in those slots so the renderer
-    // still has a usable diagonal frame.
+
     let rel_x = if outer.cx > 0.0 {
         (world.x - outer.x) / outer.cx
     } else {
@@ -684,10 +574,6 @@ fn visit_connector(
     let rotation = xfrm.and_then(|x| x.rotation);
     let adj1 = preset_adj1(sp);
 
-    // A connector with no resolvable outline color (e.g. style-only
-    // ref via <xdr:style>) still deserves to be drawn; fall back to
-    // black so it's visible. Style-ref resolution is tracked as a
-    // separate P1 item in parity-shapes.md.
     let outline_color = outline_color.or_else(|| Some("#000000".to_string()));
 
     nodes.push(ShapeNode {
@@ -767,11 +653,6 @@ fn text_body_to_paragraphs(
     (anchor, wrap, insets, paragraphs)
 }
 
-/// Read `<a:bodyPr lIns/tIns/rIns/bIns/>` insets in EMU. Returns
-/// `None` when *all four* attrs are absent (so the renderer can
-/// apply the DrawingML defaults wholesale). When at least one is
-/// present, missing slots are filled with their respective default
-/// (91440 / 45720 / 91440 / 45720 EMU per ECMA-376 §21.1.2.1.1).
 fn body_insets_emu(bp: &a::BodyProperties) -> Option<Vec<i32>> {
     let l = bp.left_inset;
     let t = bp.top_inset;
@@ -791,14 +672,6 @@ fn body_insets_emu(bp: &a::BodyProperties) -> Option<Vec<i32>> {
 }
 
 fn body_wrap_token(bp: &a::BodyProperties) -> Option<String> {
-    // `<a:bodyPr wrap="none"|"square"/>`. Default (attr absent) is
-    // `square` per ECMA-376 §21.1.2.1.1 bodyPr — we surface `None` for that
-    // default and let the renderer decide. We only need to flag the
-    // explicit `none` case (no-wrap, run-on long lines).
-    // `bp.wrap` is `Option<TextWrappingValues>`. Absent attr ⇒ outer
-    // `None` (Debug "None") — we just return None (use renderer
-    // default). Explicit `none` ⇒ `Some(None_)` (Debug "Some(None_)");
-    // explicit `square` ⇒ `Some(Square)`.
     let dbg = format!("{:?}", bp.wrap);
     if !dbg.starts_with("Some(") {
         return None;
@@ -814,7 +687,7 @@ fn body_wrap_token(bp: &a::BodyProperties) -> Option<String> {
 
 fn body_anchor_token(bp: &a::BodyProperties) -> Option<String> {
     let dbg = format!("{:?}", bp.anchor);
-    // `Option<TextAnchoringTypeValues>` Debug e.g. `Some(Center)`.
+
     if dbg.contains("Center") {
         Some("ctr".to_string())
     } else if dbg.contains("Bottom") {
@@ -829,7 +702,7 @@ fn body_anchor_token(bp: &a::BodyProperties) -> Option<String> {
 fn paragraph_align_token(pp: Option<&a::ParagraphProperties>) -> Option<String> {
     let pp = pp?;
     let dbg = format!("{:?}", pp.alignment);
-    // ECMA-376 alignment tokens: `l`/`ctr`/`r`/`just`/`justLow`/`dist`/`thaiDist`.
+
     if dbg.contains("Center") {
         Some("ctr".to_string())
     } else if dbg.contains("Right") {
@@ -845,7 +718,6 @@ fn paragraph_align_token(pp: Option<&a::ParagraphProperties>) -> Option<String> 
 
 fn apply_run_properties(rp: &a::RunProperties, tr: &mut TextRun, theme: Option<&Theme>) {
     if let Some(sz) = rp.font_size {
-        // OOXML stores size in 1/100pt; TextRun.size is points.
         tr.size = Some((sz as f32) / 100.0);
     }
     if let Some(b) = rp.bold {
@@ -858,14 +730,11 @@ fn apply_run_properties(rp: &a::RunProperties, tr: &mut TextRun, theme: Option<&
         tr.underline = true;
     }
     if let Some(_s) = rp.strike.as_ref() {
-        // Any `strike` attr (sng/dbl) → on. Renderer doesn't yet
-        // distinguish single vs double strike for shapes.
         tr.strike = true;
     }
-    // Color: `<a:solidFill>` inside the run properties.
+
     if let Some(a::RunPropertiesChoice::ASolidFill(sf)) = rp.run_properties_choice1.as_ref() {
         if let Some(hex) = resolve_solid_fill(sf, theme) {
-            // Strip leading '#' — the schema Color::rgb is 6-char hex.
             let stripped = hex.trim_start_matches('#');
             if stripped.len() == 6 {
                 tr.color = Some(Color {
@@ -877,12 +746,10 @@ fn apply_run_properties(rp: &a::RunProperties, tr: &mut TextRun, theme: Option<&
             }
         }
     }
-    // Latin font face.
+
     if let Some(latin) = rp.a_latin.as_ref() {
         let tf: &str = latin.typeface.as_deref().unwrap_or("");
         if !tf.is_empty() && !tf.starts_with('+') {
-            // `+mn-lt` / `+mj-lt` are theme references; resolve to the
-            // workbook's minor/major font when possible.
             tr.font_name = Some(tf.to_string());
         } else if tf == "+mn-lt" {
             if let Some(t) = theme {

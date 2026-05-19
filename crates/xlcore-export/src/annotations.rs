@@ -1,17 +1,3 @@
-//! Hyperlinks + cell comments. Both live next to the worksheet and need
-//! a tiny relationship lookup, so they share one extractor module to
-//! keep `lib.rs` clean.
-//!
-//! Hyperlinks: the worksheet's `<hyperlinks>` block holds `<hyperlink>`
-//! children with a cell `ref`, an optional `r:id` (external rel id),
-//! and optional `location` / `tooltip` / `display`. We resolve `r:id`
-//! to an absolute URL via `WorksheetPart::get_hyperlink_relationship`.
-//!
-//! Comments: there's a `WorksheetCommentsPart` (`xl/comments<N>.xml`)
-//! with `<authors>` + `<commentList>`. Each `<comment ref="A1"
-//! authorId="0">` carries a rich-text body in `<text>` (same `<r>`
-//! shape as SST entries).
-
 use crate::schema::*;
 use ooxmlsdk::parts::spreadsheet_document::SpreadsheetDocument;
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
@@ -40,9 +26,7 @@ pub fn extract_hyperlinks(
         } else {
             continue;
         };
-        // Resolve `r:id` to the rel target (an absolute URL for external
-        // links). The SDK exposes hyperlink rels separately from the
-        // internal-part rels charts use.
+
         let target =
             h.id.as_ref()
                 .and_then(|rid| ws_part.get_hyperlink_relationship(doc, rid.as_str()))
@@ -82,8 +66,7 @@ pub fn extract_comments(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) 
             .get(cmt.author_id as usize)
             .cloned()
             .unwrap_or_default();
-        // CommentText is the same `<r>`-list shape as SST rich-text. Build
-        // the flat string + per-run styling in lock-step.
+
         let mut text = String::new();
         let mut runs: Vec<TextRun> = Vec::new();
         if !cmt.comment_text.x_r.is_empty() {
@@ -92,8 +75,7 @@ pub fn extract_comments(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) 
                 text.push_str(&txt);
                 runs.push(crate::text_run_from(run, txt));
             }
-            // Collapse trivially-styled run lists; renderer falls back to
-            // its default comment font in that case.
+
             if runs.iter().all(is_unstyled_run) {
                 runs.clear();
             }

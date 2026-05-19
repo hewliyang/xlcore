@@ -44,17 +44,12 @@ export interface ResolvedText {
   text: string;
   defaultAlign: "left" | "right" | "center";
   formatColor?: string;
-  /** Accounting `*x` fill chars (see `FormatResult.fills`). Each `\u0001`
-   *  in `text` is a placeholder the caller must expand against the cell
-   *  width. Undefined when the format had no `*x` token. */
+
   fills?: string[];
 }
 
 const NUMFMT_CODE_CACHE = new WeakMap<WorkbookLayout, Map<number, string>>();
 
-// Per-sheet column-style lookup. Built lazily once per sheet from
-// `sheet.cols[].styleIndex`, since column-level styles rarely overlap and
-// most workbooks have <100 col specs. Map<colIndex 0-based, xfId>.
 const COL_STYLE_CACHE = new WeakMap<Sheet, Map<number, number>>();
 
 function colStyleMap(sheet: Sheet): Map<number, number> {
@@ -63,25 +58,13 @@ function colStyleMap(sheet: Sheet): Map<number, number> {
   m = new Map<number, number>();
   for (const col of sheet.cols) {
     if (col.styleIndex === undefined) continue;
-    // OOXML `<col min/max>` are 1-based, inclusive. Cell.c is 0-based.
+
     for (let i = col.min - 1; i <= col.max - 1; i++) m.set(i, col.styleIndex);
   }
   COL_STYLE_CACHE.set(sheet, m);
   return m;
 }
 
-/** Resolve the effective `CellFormat` (xf) for a cell, applying the
- *  OOXML §18.3.1.4 fallback chain:
- *
- *    cell.s → row.s → col.style → xf 0
- *
- *  Excel writes formula cells (`<c><f/><v/></c>`) without an `s`
- *  attribute when their style matches xf 0; we used to fall through
- *  to `undefined` and then render with the `formatGeneral()` default,
- *  which dropped thousands separators / accounting parens / decimal
- *  precision on every formula cell whose author left the format on
- *  the default xf. Walking the row/col fallbacks first matches what
- *  Excel and SpreadJS do. */
 export function resolveCellXf(
   cell: Cell,
   sheet: Sheet,
@@ -97,7 +80,7 @@ export function resolveCellXf(
   }
   const colXf = colStyleMap(sheet).get(cell.c);
   if (colXf !== undefined) return xfs[colXf];
-  // Spec default: every cell without explicit/inherited style uses xf 0.
+
   return xfs[0];
 }
 
@@ -133,16 +116,7 @@ export function resolveCellText(
     case "f":
     case "n": {
       if (!v) return { text: "", defaultAlign: "right" };
-      // Use `Number(v)` (strict) instead of `parseFloat(v)` — the latter
-      // happily parses `"1Q24"` as `1` and silently strips the suffix,
-      // which breaks formula cells whose cached `<v>` is a string
-      // result (e.g. `=TEXT(...)` producing `"1Q24"`). Excel writes
-      // those as `<c t="str">` but plenty of authoring tools —
-      // including SpreadJS round-trips of analyst models like
-      // `e-007_input-3.xlsx` — leave the original `<c t="f">` tag
-      // intact with a non-numeric `<v>`. `Number("1Q24")` returns
-      // `NaN`, falling through to the left-aligned string branch
-      // below, which then renders the cached text verbatim.
+
       const n = Number(v);
       if (Number.isNaN(n)) return { text: v, defaultAlign: "left" };
       const numFmtId = xf?.numFmtId;

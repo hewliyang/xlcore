@@ -1,19 +1,10 @@
-//! `<table>` (ListObject) extraction.
-//!
-//! Each worksheet can reference 0..N `xl/tables/tableN.xml` parts via
-//! `<tablePart>` rels. We pull the range, header/totals row counts, the
-//! column metadata, and the `tableStyleInfo` (style name + four banding
-//! flags). The renderer turns this into the visible chrome (header
-//! band, banded data rows, filter-arrow glyphs); no interactivity.
-
 use crate::schema::{Merge, Table, TableColumn, TableStyle};
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
 use xlcore_io::{parse_range, SpreadsheetDocument};
 
 pub fn extract(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) -> Vec<Table> {
     let mut out = Vec::new();
-    // Snapshot the part refs so we can `root_element(doc)` per part
-    // without holding an iterator borrow on the document.
+
     let table_parts: Vec<_> = ws_part.table_definition_parts(doc).collect();
 
     for tp in &table_parts {

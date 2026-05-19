@@ -21,8 +21,6 @@ const AXIS_FONT_SIZE = 10;
 const AXIS_LABEL_COLOR = "#52525b";
 const AXIS_TICK_COUNT = 5;
 
-// ---------- pie / doughnut ----------
-
 export const DEFAULT_PIE_ACCENTS = [
   "#4472C4",
   "#ED7D31",
@@ -34,29 +32,12 @@ export const DEFAULT_PIE_ACCENTS = [
 
 export function pieSliceColor(index: number, pointColors: readonly (string | undefined)[]): string {
   const explicit = pointColors[index];
-  // `"none"` is the schema sentinel for `<c:dPt><c:spPr><a:noFill/>`
-  // (explicit transparent). Pie/doughnut treat it as "fall back to
-  // palette" — a transparent slice in a pie is nonsensical, and the
-  // AGS corpus only exercises it on stacked columns. The bar painter
-  // below has the real branch.
+
   if (explicit && explicit.length > 0 && explicit !== "none") return explicit;
   const accentIndex = 4 + (index % 6);
   return activeThemeColor(accentIndex, DEFAULT_PIE_ACCENTS[index % DEFAULT_PIE_ACCENTS.length]!);
 }
 
-/**
- * Resolve the per-bar fill for a series at category `i`, honoring
- * `<c:dPt>` overrides (parity-charts.md Bug #3 follow-up). Returns:
- * - `{ skip: true }` when the source XML carries
- *   `<c:dPt><c:spPr><a:noFill/></c:spPr>` for this index — the
- *   caller must not paint geometry OR data labels for this point,
- *   but should still advance any stacked-axis offset (the
- *   transparent point still occupies its slot in the stack so the
- *   next series floats above it; that's the waterfall-bar idiom
- *   AGS Chart_Chart_2 uses).
- * - `{ skip: false, color }` otherwise, with `color` resolved as:
- *   explicit dPt hex → series color → fallback `#4472C4`.
- */
 export function resolveBarFill(
   s: ChartSeries,
   i: number,
@@ -68,7 +49,6 @@ export function resolveBarFill(
 }
 
 export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
-  // Pie uses series[0] only; data points become slices, one per category.
   const ser = chart.series[0];
   if (!ser || ser.values.length === 0) {
     drawPlaceholderPlot(ctx, chart, rect);
@@ -86,17 +66,11 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
   const r = Math.min(rect.w, rect.h) / 2 - 8;
   const innerR = chart.type === "doughnut" ? r * 0.55 : 0;
 
-  // Excel cycles accents per slice, not per series. When the workbook
-  // serialises explicit `<c:dPt>` fills we use those (extractor surfaces
-  // them as `series.pointColors[i]`); otherwise we cycle the workbook
-  // theme accents (theme indexes 4..9).
   const pointColors = ser.pointColors ?? [];
 
-  // First pass: paint slices. Second pass: paint labels (so labels
-  // never sit beneath the next slice's fill on overlap).
   type SliceGeom = { mid: number; idx: number; v: number };
   const slices: SliceGeom[] = [];
-  let start = -Math.PI / 2; // 12 o'clock
+  let start = -Math.PI / 2;
   for (let i = 0; i < ser.values.length; i++) {
     const v = Math.max(0, ser.values[i] ?? 0);
     if (v <= 0) continue;
@@ -108,7 +82,7 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
     ctx.arc(cx, cy, r, start, end);
     ctx.closePath();
     ctx.fill();
-    // Slice border for separation.
+
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1.5;
     ctx.stroke();
@@ -117,7 +91,6 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
   }
 
   if (innerR > 0) {
-    // Punch out the center for a doughnut.
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
     ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
@@ -125,11 +98,6 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
   }
   ctx.lineWidth = 1;
 
-  // Data labels per slice. `outEnd` (default for pie) places the label
-  // just outside the arc; `ctr` / `inEnd` place it inside.
-  // Per-slice <c:dLbl> overrides can change position / show* / numFmt /
-  // literal text for individual slices (common in Excel pies that label
-  // only one or two slices).
   const dl = effectiveLabels(chart, ser);
   if (dl) {
     for (const sl of slices) {
@@ -138,7 +106,7 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
       const edl = po?.dl ?? dl;
       const pos = edl.position ?? "outEnd";
       const labelR =
-        pos === "outEnd" || pos === "bestFit" ? r + 12 : pos === "ctr" ? (innerR + r) / 2 : r - 12; // inEnd
+        pos === "outEnd" || pos === "bestFit" ? r + 12 : pos === "ctr" ? (innerR + r) / 2 : r - 12;
       const text = po?.text ?? buildLabelText(edl, chart, ser, sl.idx, sl.v, total);
       if (!text) continue;
       const lx = cx + Math.cos(sl.mid) * labelR;
@@ -154,8 +122,6 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
   }
 }
 
-// ---------- scatter ----------
-
 export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   const series = chart.series.filter((s) => s.values.length > 0);
   if (series.length === 0) {
@@ -163,12 +129,10 @@ export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, re
     return;
   }
 
-  // X data: prefer per-series xValues; else parse the chart-level
-  // categories array (first series's xVal cache in our extractor).
   const xCache: number[][] = series.map((s) => {
     const xs = (s.xValues ?? []) as number[];
     if (xs.length > 0) return xs.slice();
-    // Fallback: index labels from chart.categories, parsed as numbers.
+
     return s.values.map((_, i) => {
       const c = (chart.categories ?? [])[i];
       const n = c == null ? i + 1 : parseFloat(c);
@@ -210,10 +174,8 @@ export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, re
   yMin = yTicks[0]!;
   yMax = yTicks[yTicks.length - 1]!;
 
-  // Y-axis frame + gridlines.
-  const inner = drawAxisFrame(ctx, chart, rect, yTicks, yMin, yMax, /*horizontal=*/ false, false);
+  const inner = drawAxisFrame(ctx, chart, rect, yTicks, yMin, yMax, false, false);
 
-  // Numeric x-axis labels (scatter has them; bar/line/area pull from categories).
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   ctx.fillStyle = AXIS_LABEL_COLOR;
   ctx.textAlign = "center";
@@ -224,18 +186,12 @@ export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, re
     ctx.fillText(formatGeneral(t), x, inner.y + inner.h + 4);
   }
 
-  // ECMA-376 §21.2.2.162 scatterStyle / §21.2.3.40 ST_ScatterStyle. Excel's UI default for new
-  // scatter charts is `marker` only; OOXML enum default is `line`.
-  // We treat an *unset* style as marker-only (matches the existing
-  // visual contract + Excel UI), and only draw connecting lines /
-  // smooth curves when the workbook explicitly asked for one.
   const style = chart.scatterStyle;
   const drawLines = style === "line" || style === "lineMarker";
   const drawSmooth = style === "smooth" || style === "smoothMarker";
   const drawMarkers =
     style == null || style === "marker" || style === "lineMarker" || style === "smoothMarker";
 
-  // Plot points (and optional connecting lines).
   for (let si = 0; si < series.length; si++) {
     const s = series[si]!;
     const xs = xCache[si]!;
@@ -247,7 +203,6 @@ export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, re
     ctx.strokeStyle = color;
     const dl = effectiveLabels(chart, s);
 
-    // Project points to canvas space once.
     const pts: { x: number; y: number; v: number; i: number }[] = [];
     for (let i = 0; i < n; i++) {
       const px = inner.x + ((xs[i]! - xMin) / (xMax - xMin)) * inner.w;
@@ -255,17 +210,12 @@ export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, re
       pts.push({ x: px, y: py, v: ys[i]!, i });
     }
 
-    // Lines connect points in x-sorted order (Excel sorts xy series
-    // before stroking; otherwise back-and-forth x produces a tangled
-    // path).
     if ((drawLines || drawSmooth) && pts.length >= 2) {
       const sorted = pts.slice().sort((a, b) => a.x - b.x);
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(sorted[0]!.x, sorted[0]!.y);
       if (drawSmooth) {
-        // Catmull-Rom -> Bezier (tension 0.5). Robust + monotone in x
-        // because input is already x-sorted.
         for (let k = 0; k < sorted.length - 1; k++) {
           const p0 = sorted[Math.max(0, k - 1)]!;
           const p1 = sorted[k]!;
@@ -285,8 +235,6 @@ export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, re
       ctx.stroke();
     }
 
-    // Markers + per-point labels. `<c:marker><c:symbol val="none"/>`
-    // overrides the chart-level scatter style for this series.
     const noMarker = s.markerSymbol === "none";
     for (const p of pts) {
       if (drawMarkers && !noMarker) {
@@ -304,24 +252,9 @@ export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, re
       }
     }
   }
-  // Bug #13 step 1: heavier zero baseline when the y-axis straddles zero.
+
   paintZeroBaseline(ctx, inner, yMin, yMax);
 }
-
-// ---------- bubble ----------
-//
-// Bubble charts are scatter plots whose marker radius is driven by a
-// third value (`<c:bubbleSize>`, ECMA-376 §21.2.2.30). The largest
-// bubble's diameter is capped at a fraction of the plot's smaller
-// dimension; everything else scales relative to that. Two sizing
-// modes per `<c:sizeRepresents>` (§21.2.2.197): `area` (default,
-// bubble area is proportional to the value) and `w` (bubble width
-// is proportional to the value). `<c:bubbleScale val="N"/>` (0..=300,
-// default 100) is a final multiplier on the cap.
-//
-// Negative bubble sizes are skipped (matches Excel's default; the
-// `<c:showNegBubbles>` toggle for hatch-rendered negative bubbles is
-// not yet honored).
 
 export function drawBubbleChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   const series = chart.series.filter((s) => s.values.length > 0);
@@ -330,16 +263,12 @@ export function drawBubbleChart(ctx: CanvasRenderingContext2D, chart: Chart, rec
     return;
   }
 
-  // X data: per-series `xValues`, else 1..N indices.
   const xCache: number[][] = series.map((s) => {
     const xs = (s.xValues ?? []) as number[];
     if (xs.length > 0) return xs.slice();
     return s.values.map((_, i) => i + 1);
   });
-  // Bubble-size data: per-series `bubbleSizes`. Falls back to a
-  // constant 1 if the source workbook authored a bubble chart with
-  // no size data (rare but well-defined — Excel renders identical-
-  // sized bubbles).
+
   const sCache: number[][] = series.map((s) => {
     const bs = (s.bubbleSizes ?? []) as number[];
     if (bs.length > 0) return bs.slice();
@@ -381,9 +310,8 @@ export function drawBubbleChart(ctx: CanvasRenderingContext2D, chart: Chart, rec
   yMin = yTicks[0]!;
   yMax = yTicks[yTicks.length - 1]!;
 
-  const inner = drawAxisFrame(ctx, chart, rect, yTicks, yMin, yMax, /*horizontal=*/ false, false);
+  const inner = drawAxisFrame(ctx, chart, rect, yTicks, yMin, yMax, false, false);
 
-  // Numeric x-axis labels.
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   ctx.fillStyle = AXIS_LABEL_COLOR;
   ctx.textAlign = "center";
@@ -394,17 +322,11 @@ export function drawBubbleChart(ctx: CanvasRenderingContext2D, chart: Chart, rec
     ctx.fillText(formatGeneral(t), x, inner.y + inner.h + 4);
   }
 
-  // Max bubble *diameter* (not radius) is ~22% of the plot's smaller
-  // dimension on Excel desktop / hsx; multiplied by `bubbleScale`/100.
-  // Working backwards from a paired observation (hsx renders the
-  // largest size=85 bubble at ~50px diameter inside a ~225px plot
-  // → 0.22 ratio); we land at the same cap.
   const scalePct = chart.bubbleScale ?? 100;
   const baseR = Math.min(inner.w, inner.h) * 0.11 * (scalePct / 100);
-  // Minimum visible radius so a tiny non-zero bubble doesn't vanish.
+
   const minR = 2;
-  // `area` (default): r = baseR * sqrt(size / maxSize)
-  // `w`            : r = baseR *      (size / maxSize)
+
   const byArea = (chart.sizeRepresents ?? "area") !== "w";
 
   for (let si = 0; si < series.length; si++) {
@@ -421,8 +343,7 @@ export function drawBubbleChart(ctx: CanvasRenderingContext2D, chart: Chart, rec
       const xv = xs[i]!,
         yv = ys[i]!;
       const bs = sz[i] ?? 0;
-      // Negative / zero bubbles drop (Excel default; `showNegBubbles`
-      // would hatch-fill them, deferred).
+
       if (!Number.isFinite(bs) || bs <= 0) continue;
       const frac = bs / maxSize;
       const r = Math.max(minR, baseR * (byArea ? Math.sqrt(frac) : frac));
@@ -431,8 +352,7 @@ export function drawBubbleChart(ctx: CanvasRenderingContext2D, chart: Chart, rec
 
       ctx.beginPath();
       ctx.arc(px, py, r, 0, Math.PI * 2);
-      // Translucent fill so overlapping bubbles read; matches Excel's
-      // default bubble appearance.
+
       ctx.fillStyle = withAlpha(color, 0.6);
       ctx.fill();
       ctx.strokeStyle = color;
@@ -452,25 +372,6 @@ export function drawBubbleChart(ctx: CanvasRenderingContext2D, chart: Chart, rec
   paintZeroBaseline(ctx, inner, yMin, yMax);
 }
 
-// ---------- radar ----------
-
-/**
- * Polar/spider chart. ECMA-376 §21.2.2.155 / §21.2.2.176.
- *
- * Layout: one spoke per category, evenly spaced around a center.
- * Spoke 0 points up (angle = -π/2 in canvas coords) and they advance
- * clockwise — matches Excel desktop and the radar fixtures in the
- * AGS corpus. Each series traces a closed polygon whose vertex on
- * spoke `i` sits at distance `(v[i] - minV) / (maxV - minV) * R` from
- * the center.
- *
- * Gridlines are concentric *polygons* (straight segments between
- * spokes at each tick level), not circles — matches Excel. The
- * radar variants honor `chart.radarStyle`:
- *   - `standard`: stroked polygon only.
- *   - `marker`:   stroked polygon + circle markers (Excel UI default).
- *   - `filled`:   semi-transparent filled polygon + stroked outline.
- */
 export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   const series = chart.series.filter((s) => s.values.length > 0);
   if (series.length === 0) {
@@ -480,16 +381,10 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
   const cats = chart.categories ?? [];
   const categoryCount = Math.max(...series.map((s) => s.values.length), cats.length);
   if (categoryCount < 3) {
-    // Radar needs >=3 spokes to make sense as a polygon. Two or
-    // fewer categories collapse to a line/point — fall back to
-    // the placeholder rather than emit something misleading.
     drawPlaceholderPlot(ctx, chart, rect);
     return;
   }
 
-  // Padding for category labels around the perimeter. We measure
-  // every label so the longest one drives the inset on its side;
-  // simple cardinal-only inset is good enough for v0.
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   let maxLabelW = 0;
   for (let i = 0; i < categoryCount; i++) {
@@ -502,9 +397,6 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
   const cy = rect.y + rect.h / 2;
   const R = Math.max(20, Math.min(rect.w, rect.h) / 2 - inset);
 
-  // Data range. Radar doesn't zero-clamp — mirror line-chart
-  // behavior so a band of values like 50..90 doesn't waste 80% of
-  // the radius on empty axis. `<c:scaling>` bounds still win.
   const rows = series.map((s) => Array.from({ length: categoryCount }, (_, i) => s.values[i] ?? 0));
   let { minV, maxV } = valueRange(rows);
   const range = resolveAxisRange(
@@ -512,7 +404,7 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     maxV,
     chart.valueMin,
     chart.valueMax,
-    /*zeroClamp=*/ false,
+    false,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );
@@ -520,7 +412,6 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
   maxV = range.maxV;
   const ticks = range.ticks;
 
-  // Angle for spoke i (0 = up, clockwise).
   const angleFor = (i: number) => -Math.PI / 2 + (i / categoryCount) * Math.PI * 2;
   const radiusFor = (v: number) => {
     if (!Number.isFinite(v)) return 0;
@@ -529,7 +420,6 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     return Math.max(0, ((v - minV) / span) * R);
   };
 
-  // 1. Spokes (radial axes).
   ctx.strokeStyle = "#e5e7eb";
   ctx.lineWidth = 1;
   for (let i = 0; i < categoryCount; i++) {
@@ -540,8 +430,6 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     ctx.stroke();
   }
 
-  // 2. Concentric gridline polygons, one per tick. Skip the
-  // center tick (it's a point). Outermost tick traces the perimeter.
   ctx.strokeStyle = "#e5e7eb";
   for (const t of ticks) {
     const r = radiusFor(t);
@@ -558,15 +446,13 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     ctx.stroke();
   }
 
-  // 3. Category labels just outside each spoke endpoint.
   ctx.fillStyle = AXIS_LABEL_COLOR;
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   for (let i = 0; i < categoryCount; i++) {
     const a = angleFor(i);
     const lx = cx + Math.cos(a) * (R + labelPad);
     const ly = cy + Math.sin(a) * (R + labelPad);
-    // Alignment based on which side of the center the spoke ends on.
-    // Tolerance accounts for spokes that are nearly vertical/horizontal.
+
     const TOL = 0.05;
     let align: CanvasTextAlign = "center";
     if (Math.cos(a) > TOL) align = "left";
@@ -579,9 +465,6 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     ctx.fillText(cats[i] ?? `${i + 1}`, lx, ly);
   }
 
-  // 4. Tick labels along the top spoke (angle = -π/2). Skip the
-  // bottom tick (== minV) since its position == center for the
-  // common non-zero-clamped case and labels would overlap.
   ctx.fillStyle = AXIS_LABEL_COLOR;
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
@@ -594,17 +477,13 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     ctx.fillText(text, cx - 3, cy - r);
   }
 
-  // 5. Series polygons. `filled` style gets a semi-transparent fill,
-  // `marker` (Excel UI default) and `standard` are stroke-only.
   const filled = chart.radarStyle === "filled";
   const showMarkers = chart.radarStyle !== "standard";
   for (let si = 0; si < series.length; si++) {
     const s = series[si]!;
     const color = s.color ?? "#4472C4";
     const data = rows[si]!;
-    // Per-point gap handling: if any vertex is non-finite we draw
-    // an open polyline instead of a closed polygon — a gap in the
-    // radar series. Rare but matches Excel's `dispBlanksAs=gap`.
+
     const allFinite = data.every((v) => Number.isFinite(v));
 
     ctx.beginPath();
@@ -636,8 +515,6 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     ctx.lineWidth = filled ? 1.25 : 2;
     ctx.stroke();
 
-    // Markers. `radarStyle="standard"` suppresses them; explicit
-    // per-series `<c:marker><c:symbol val="none"/>` also wins.
     if (showMarkers && s.markerSymbol !== "none") {
       ctx.fillStyle = color;
       for (let i = 0; i < categoryCount; i++) {
@@ -651,8 +528,6 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
       }
     }
 
-    // Data labels (default position `t` — above the marker, away
-    // from the center).
     const dl = effectiveLabels(chart, s);
     if (dl) {
       const PAD = 6;
@@ -666,14 +541,14 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
         if (!text) continue;
         const a = angleFor(i);
         const r = radiusFor(v);
-        // Push the label radially outward from the marker.
+
         const lx = cx + Math.cos(a) * (r + PAD);
         const ly = cy + Math.sin(a) * (r + PAD);
         const TOL = 0.05;
         let align: CanvasTextAlign = "center";
         if (Math.cos(a) > TOL) align = "left";
         else if (Math.cos(a) < -TOL) align = "right";
-        // Above the center → label above marker; below → below.
+
         let baseline: CanvasTextBaseline = "middle";
         if (Math.sin(a) < -TOL) baseline = "bottom";
         else if (Math.sin(a) > TOL) baseline = "top";
@@ -681,22 +556,15 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
       }
     }
   }
-  // Silence unused-import lint when drawAxisFrame/niceTicks/formatGeneral/
-  // paintZeroBaseline are unused here. (kept for parity w/ other painters)
+
   void drawAxisFrame;
   void niceTicks;
   void formatGeneral;
   void paintZeroBaseline;
 }
 
-// stockChart (`c:stockChart`) lives in its own module to keep this
-// file under the workspace LOC budget. Re-exported so existing
-// importers don't have to change their paths.
 export { drawStockChart } from "./chartStock.js";
 
 export { drawComboChart } from "./chartCombo.js";
 
-// chartEx (`cx:` namespace) painters live in their own module since
-// they grew past this file's LOC budget. Re-exported here so existing
-// importers (`chart.ts`, etc.) don't have to change.
 export { drawChartEx, waterfallLegendEntries } from "./chartEx.js";

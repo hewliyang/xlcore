@@ -12,7 +12,6 @@ export function renderFraction(value: number, sec: Section): string {
     den = sec.fractionDenom;
     num = Math.round(fracPart * den);
     if (num === den) {
-      // round-up: bump int part, zero out fraction
       if (sec.fractionIntPlaces > 0) {
         return formatFractionFinal(sign, intPart + 1, 0, den, sec);
       } else {
@@ -20,7 +19,6 @@ export function renderFraction(value: number, sec: Section): string {
       }
     }
   } else {
-    // Variable denominator with fractionDenomQs digits of precision.
     const maxDen = Math.pow(10, Math.max(1, sec.fractionDenomQs)) - 1;
     [num, den] = bestFraction(fracPart, maxDen);
   }
@@ -36,8 +34,6 @@ function formatFractionFinal(
   sec: Section,
 ): string {
   if (sec.fractionIntPlaces > 0) {
-    // `#` placeholders hide a zero integer ("5/8" not "0 5/8");
-    // `0` / `?` placeholders keep it.
     const hideInt = intPart === 0 && sec.fractionHideZeroInt;
     if (num === 0) return hideInt ? sign + "0" : sign + String(intPart);
     if (hideInt) return sign + String(num) + "/" + String(den);
@@ -46,8 +42,6 @@ function formatFractionFinal(
   return sign + String(num) + "/" + String(den);
 }
 
-/** Best p/q approximation of `x` in [0,1) with q <= maxDen.
- *  Stern–Brocot walk; returns [num, den]. */
 function bestFraction(x: number, maxDen: number): [number, number] {
   if (x === 0) return [0, 1];
   let lo: [number, number] = [0, 1];

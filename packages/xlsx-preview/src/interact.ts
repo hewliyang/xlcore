@@ -1,13 +1,3 @@
-// Interactive layer for the xlcore canvas renderer.
-//
-// Adds:
-//   * Pinch-to-zoom (ctrl+wheel; trackpad pinches arrive as ctrl+wheel in
-//     every modern browser). Cmd/Ctrl + wheel works as a fallback.
-//   * Column/row resize by dragging the boundary in the header strip.
-//
-// Interaction state (zoom value, width/height overrides) lives outside the
-// renderer; the host owns it and calls `redraw()` whenever interact updates
-// the maps. This keeps the layout JSON immutable.
 import type { Sheet, WorkbookLayout } from "./types.js";
 import { buildGrid, frozenDims } from "./render.js";
 import { createAnnotationLayer } from "./interactAnnotations.js";
@@ -19,51 +9,37 @@ import {
   OUTLINE_BUTTON_HIT_RADIUS,
 } from "./outlineGutter.js";
 
-const RESIZE_TOL = 4; // px on either side of a boundary that's draggable
+const RESIZE_TOL = 4;
 const MIN_COL_W = 8;
 const MIN_ROW_H = 4;
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 4;
 
 export interface InteractHandle {
-  /** Detach all listeners. */
   destroy(): void;
 }
 
 export interface InteractOptions {
   getSheet(): Sheet;
   getLayout(): WorkbookLayout;
-  /** Read/write mailbox for the current zoom factor (1 = 100%). */
+
   zoom: { get(): number; set(value: number): void };
-  /** 1-based column index → width in CSS px. Mutated in place on resize. */
+
   colOverrides: Map<number, number>;
-  /** 1-based row index → height in CSS px. Mutated in place on resize. */
+
   rowOverrides: Map<number, number>;
-  /**
-   * Read/write mailbox for the active cell (1-based). `null` means no
-   * selection. Updated by clicks and arrow keys; the host can also push
-   * external selections in.
-   */
+
   activeCell: {
     get(): { r: number; c: number } | null;
     set(v: { r: number; c: number } | null): void;
   };
-  /**
-   * Read/write mailbox for the multi-cell selection range (1-based,
-   * inclusive). When omitted the renderer falls back to a 1×1 range at
-   * `activeCell`. Header clicks expand it to whole columns / rows.
-   */
+
   selection?: { get(): Selection | null; set(v: Selection | null): void };
-  /** Optional element to scroll-anchor zoom around and to auto-scroll on arrow-key navigation. */
+
   scrollContainer?: HTMLElement;
-  /**
-   * Current viewport offset (logical px, pre-zoom). When provided, the
-   * interaction layer assumes the canvas is virtualized: pointer coords get
-   * `viewport.x/y` added before being mapped onto the sheet, headers pan
-   * with scroll, etc.
-   */
+
   getViewport?: () => { x: number; y: number; w: number; h: number } | null;
-  /** Called whenever interact mutates state and the canvas should re-paint. */
+
   redraw(): void;
 }
 
@@ -86,19 +62,12 @@ interface HitRow {
 }
 type Hit = HitCol | HitRow | null;
 
-/**
- * Wire up interactivity on `canvas`. Idempotent per-canvas: call `destroy()`
- * on the returned handle before reattaching.
- */
 export function attachInteractivity(
   canvas: HTMLCanvasElement,
   opts: InteractOptions,
 ): InteractHandle {
   let drag: { hit: HitCol | HitRow; startPx: number; original: number } | null = null;
-  // Active drag-selection. `anchor` is the cell where the pointer went down
-  // (resolved through merges); we use it as the fixed corner while the
-  // opposite corner tracks the pointer. `kind` distinguishes data-area
-  // rectangle drags from header-strip column/row range drags.
+
   let selDrag: {
     kind: "cell" | "col" | "row";
     anchor: { r: number; c: number };
@@ -132,9 +101,6 @@ export function attachInteractivity(
 
   const annotations = createAnnotationLayer(canvas, opts.getSheet);
 
-  // Resolve a cell to its merge top-left when applicable. Hyperlinks and
-  // comments anchor on the merge's top-left in OOXML, so a click inside
-  // a merged region needs to look there before checking the maps.
   function resolveAnchor(r: number, c: number): { r: number; c: number } {
     const sheet = opts.getSheet();
     for (const m of sheet.merges) {
@@ -143,16 +109,12 @@ export function attachInteractivity(
     return { r, c };
   }
 
-  // Cell at canvas-local logical position, or null when in a header /
-  // outside the grid. Used by hyperlink + comment hit-testing.
   function cellAtLogical(p: { x: number; y: number }): { r: number; c: number } | null {
     const grid = getGrid();
     if (p.x < grid.originX || p.y < grid.originY) return null;
     return cellAt(grid, p.x, p.y);
   }
 
-  // Convert client coords → *canvas-local* logical px (pre-zoom). Header
-  // strips live in this space (always pinned to canvas edges).
   function toCanvasLocal(ev: { clientX: number; clientY: number }): { x: number; y: number } {
     const r = canvas.getBoundingClientRect();
     const z = opts.zoom.get();
@@ -162,28 +124,18 @@ export function attachInteractivity(
     };
   }
 
-  // Convert client coords → *sheet* logical px (data area). Per-pane: a
-  // click in a pinned pane has no scroll offset on the pinned axis, while
-  // a click in BR adds the viewport offset on both axes. Returns null if
-  // the point is in a header strip / outside any pane.
   function toLogical(ev: { clientX: number; clientY: number }): { x: number; y: number } {
     const p = toCanvasLocal(ev);
     const vp = opts.getViewport?.() ?? null;
     const sheet = opts.getSheet();
     const grid = getGrid();
     const { pcw, prh } = frozenDims(sheet, grid);
-    // Per-axis: only the scrolling segment past the freeze split picks up
-    // the viewport offset. Pinned col-header / row-header clicks and
-    // clicks inside pinned panes map directly to absolute grid coords.
+
     const sx = vp && p.x > grid.originX + pcw ? vp.x : 0;
     const sy = vp && p.y > grid.originY + prh ? vp.y : 0;
     return { x: p.x + sx, y: p.y + sy };
   }
 
-  // x/y here are *canvas-local*. The header strip is split into a pinned
-  // segment (cols [1..splitX-1] / rows [1..splitY-1]) that doesn't pan and
-  // a scrolling segment that does — we hit-test each separately so resize
-  // handles line up exactly with the rendered tab boundaries.
   function hitTest(cx: number, cy: number): Hit {
     const vp = opts.getViewport?.() ?? null;
     const sx = vp?.x ?? 0;
@@ -193,14 +145,12 @@ export function attachInteractivity(
     const { splitX, splitY, pcw, prh } = frozenDims(sheet, grid);
 
     if (cy >= grid.colGutterH && cy <= grid.originY && cx > grid.originX) {
-      // Pinned col-header segment: canvas x maps directly to absolute grid x.
       if (cx <= grid.originX + pcw) {
         const edgeIndex = nearestEdgeIndex(grid.colX, cx, 2, splitX);
         if (edgeIndex !== null) {
           return { kind: "col", index: edgeIndex - 1, edgeX: grid.colX[edgeIndex] ?? 0 };
         }
       } else {
-        // Scrolling segment: cx + sx → absolute grid x.
         const x = cx + sx;
         const edgeIndex = nearestEdgeIndex(grid.colX, x, Math.max(splitX + 1, 2), grid.maxCol + 1);
         if (edgeIndex !== null) {
@@ -225,8 +175,6 @@ export function attachInteractivity(
     return null;
   }
 
-  // Show pointer cursor when hovering an outline button so users know
-  // it's clickable. Called from onPointerMove below.
   function maybeOutlineCursor(cp: { x: number; y: number }): boolean {
     if (outlineButtonAt(cp) || outlineCornerAt(cp)) {
       canvas.style.cursor = "pointer";
@@ -255,9 +203,7 @@ export function attachInteractivity(
     if (selDrag) {
       const grid = getGrid();
       const lp = toLogical(ev);
-      // Clamp pointer to the data area so dragging into a header still
-      // extends the selection to the nearest in-grid row/column instead of
-      // bailing out.
+
       const cx = Math.max(grid.originX + 0.5, lp.x);
       const cy = Math.max(grid.originY + 0.5, lp.y);
       const cell = cellAt(grid, cx, cy);
@@ -289,7 +235,6 @@ export function attachInteractivity(
       return;
     }
 
-    // No resize hit — check annotations on the cell under the cursor.
     annotations.ensureMaps();
     const lp = toLogical(ev);
     const cell = cellAtLogical(lp);
@@ -305,9 +250,6 @@ export function attachInteractivity(
     canvas.style.cursor = link ? "pointer" : savedCursor;
 
     if (cmt) {
-      // Position the popover relative to the cell's on-screen rect.
-      // Map sheet logical coords → client coords through the same
-      // pinned/scrolled split that `toLogical` uses in reverse.
       const grid = getGrid();
       const z = opts.zoom.get();
       const r = canvas.getBoundingClientRect();
@@ -321,8 +263,7 @@ export function attachInteractivity(
       const left = r.left + (cx - sx) * z;
       const top = r.top + (cy - sy) * z;
       const right = left + cw * z;
-      // Keep pinned-frozen-pane comments visible: the rect's still on screen.
-      // No-op for the regular case.
+
       void splitX;
       void splitY;
       void pcw;
@@ -338,9 +279,6 @@ export function attachInteractivity(
     opts.selection?.set(range);
   }
 
-  // Resolve a cell through any covering merge to the merge's bounding box.
-  // Used when extending a selection so that landing inside a merged region
-  // pulls in the entire merge rather than slicing it in half.
   function expandThroughMerge(
     r: number,
     c: number,
@@ -359,13 +297,6 @@ export function attachInteractivity(
     return { r1: r, c1: c, r2: r, c2: c };
   }
 
-  // ---- outline gutter [-]/[+] buttons ----
-  //
-  // Hit-test against the same `outlineButtonHits` the painter uses;
-  // toggling collapses or expands every detail row/col in the run by
-  // mutating the row/col override maps that `buildGrid` already
-  // consumes. Expand restores by deleting the override (falls back
-  // to the sheet's schema height/width).
   function outlineButtonAt(cp: { x: number; y: number }): {
     run: OutlineRun;
     collapsed: boolean;
@@ -382,9 +313,7 @@ export function attachInteractivity(
       splitY,
       pcw,
       prh,
-      // The hit-tester doesn't actually clip on canvas extent here; we
-      // use the document-side rect of the canvas so off-screen buttons
-      // get culled by `outlineButtonHits` itself.
+
       canvasW: canvas.clientWidth || canvas.width,
       canvasH: canvas.clientHeight || canvas.height,
     };
@@ -407,7 +336,7 @@ export function attachInteractivity(
   }): { axis: "row" | "col"; level: number } | null {
     const grid = getGrid();
     if (grid.rowGutterW === 0 && grid.colGutterH === 0) return null;
-    // Corner is the top-left intersection of both gutters.
+
     if (cp.x > Math.max(grid.rowGutterW, grid.originX)) return null;
     if (cp.y > Math.max(grid.colGutterH, grid.originY)) return null;
     const hits = outlineCornerHits(grid);
@@ -423,10 +352,6 @@ export function attachInteractivity(
     return best ? { axis: best.axis, level: best.level } : null;
   }
 
-  /// Schema-level row height for `r`, ignoring `<row hidden="1"/>` so
-  /// expand can force a hidden row visible. Falls back to the sheet
-  /// default when the row has no explicit height. Linear scan over
-  /// `decodedRowMeta` since it's only called on click, not in paint.
   function naturalRowHeight(sheet: Sheet, r: number): number {
     const meta = sheet.decodedRowMeta;
     if (meta) {
@@ -448,12 +373,6 @@ export function attachInteractivity(
     return sheet.defaultColWidthPx;
   }
 
-  /// Collapse a run (set every detail row/col override to 0) or expand
-  /// it. Expand has to **force** a positive size into the override map
-  /// rather than just deleting the entry, because real-world workbooks
-  /// emit `<row hidden="1"/>` / `<col hidden="1"/>` for groups that
-  /// were saved while collapsed. Deleting the override would let the
-  /// schema's `hidden=1` win and the click would visibly do nothing.
   function setRunCollapsed(run: OutlineRun, collapsed: boolean) {
     const sheet = opts.getSheet();
     if (run.axis === "row") {
@@ -469,10 +388,6 @@ export function attachInteractivity(
     }
   }
 
-  /// Corner-numeral click: "collapse `axis` to depth N" — runs on the
-  /// clicked axis whose `level >= N` collapse; runs at lower levels
-  /// expand. Level `depth + 1` therefore expands everything on that
-  /// axis (Excel's "show all"). The other axis is untouched.
   function applyCornerCollapse(target: { axis: "row" | "col"; level: number }) {
     const sheet = opts.getSheet();
     const grid = getGrid();
@@ -492,9 +407,6 @@ export function attachInteractivity(
     const p = toLogical(ev);
     const shift = ev.shiftKey;
 
-    // Outline-gutter buttons take precedence over header-resize and
-    // header-select hit-tests — they live in the gutter strip outside
-    // the row/col header bands.
     const ob = outlineButtonAt(cp);
     if (ob) {
       ev.preventDefault();
@@ -526,12 +438,10 @@ export function attachInteractivity(
     }
 
     const grid = getGrid();
-    // Header hit-test uses canvas-local because the header strips don't pan
-    // on their pinned axis.
+
     const inColHeader = cp.y >= grid.colGutterH && cp.y < grid.originY;
     const inRowHeader = cp.x >= grid.rowGutterW && cp.x < grid.originX;
 
-    // Top-left gutter intersection: select-all.
     if (inColHeader && inRowHeader) {
       ev.preventDefault();
       setSelection({ r: 1, c: 1 }, { r1: 1, c1: 1, r2: grid.maxRow, c2: grid.maxCol });
@@ -539,7 +449,7 @@ export function attachInteractivity(
       canvas.focus({ preventScroll: true });
       return;
     }
-    // Column header (excluding resize zones, handled above): select entire column.
+
     if (inColHeader && cp.x >= grid.originX) {
       const cell = cellAt(grid, p.x, grid.originY + 1);
       if (cell) {
@@ -560,7 +470,7 @@ export function attachInteractivity(
       }
       return;
     }
-    // Row header: select entire row.
+
     if (inRowHeader && cp.y >= grid.originY) {
       const cell = cellAt(grid, grid.originX + 1, p.y);
       if (cell) {
@@ -582,7 +492,6 @@ export function attachInteractivity(
       return;
     }
 
-    // Click landed in the data area: select that cell.
     if (cp.x >= grid.originX && cp.y >= grid.originY) {
       const cell = cellAt(grid, p.x, p.y);
       if (cell) {
@@ -590,9 +499,6 @@ export function attachInteractivity(
         canvas.setPointerCapture(ev.pointerId);
         const cur = opts.activeCell.get();
         if (shift && cur) {
-          // Extend selection from the existing active cell to the clicked
-          // cell. Active cell stays put; bounding box covers both, expanded
-          // through merges at either corner.
           const anc = expandThroughMerge(cur.r, cur.c);
           const tgt = expandThroughMerge(cell.r, cell.c);
           const r1 = Math.min(anc.r1, tgt.r1);
@@ -606,8 +512,6 @@ export function attachInteractivity(
           return;
         }
 
-        // Resolve merge: clicks anywhere inside a merged region select the
-        // merge's top-left and the selection rect spans the whole merge.
         const sheet = opts.getSheet();
         let anchor = cell;
         for (const m of sheet.merges) {
@@ -620,15 +524,11 @@ export function attachInteractivity(
         if (anchor === cell) {
           setSelection(cell, { r1: cell.r, c1: cell.c, r2: cell.r, c2: cell.c });
         }
-        // Begin a drag-select rooted at the anchor (merge top-left when the
-        // click landed inside a merge, otherwise the clicked cell).
+
         selDrag = { kind: "cell", anchor };
         opts.redraw();
         canvas.focus({ preventScroll: true });
 
-        // Hyperlink: open after the selection update so the cell still
-        // gets the focus ring before the new tab steals attention.
-        // Excel matches single-click-opens for cells with a hyperlink.
         annotations.ensureMaps();
         const link = annotations.hyperlinkAt(anchor);
         if (link) annotations.openHyperlink(link);
@@ -704,9 +604,7 @@ export function attachInteractivity(
     const y = (grid.rowY[cell.r] ?? 0) * z;
     const w = (grid.colW[cell.c] ?? 0) * z;
     const h = (grid.rowH[cell.r] ?? 0) * z;
-    // Pinned cells are always visible — frozen panes guarantee it.
-    // Otherwise the BR pane starts at (HEADER_W + pcw) * z on canvas, so
-    // that's the left/top padding the cell must clear before we scroll.
+
     const padX = (grid.originX + pcw) * z;
     const padY = (grid.originY + prh) * z;
     if (cell.c >= splitX) {
@@ -748,10 +646,7 @@ export function attachInteractivity(
     }
     ev.preventDefault();
     const grid = getGrid();
-    // Shift + arrow extends the selection from the active cell. The moving
-    // corner is whichever corner of the current selection isn't the active
-    // cell; we infer it by axis so a column-selected range still extends
-    // correctly along rows (and vice versa).
+
     if (ev.shiftKey && (dr !== 0 || dc !== 0) && opts.selection) {
       const sel = opts.selection.get() ?? {
         r1: cur.r,
@@ -776,8 +671,7 @@ export function attachInteractivity(
       r: clamp(cur.r + dr, 1, grid.maxRow),
       c: clamp(cur.c + dc, 1, grid.maxCol),
     };
-    // Arrow-key navigation always collapses any expanded selection back to a
-    // single cell, matching Excel.
+
     setSelection(next, { r1: next.r, c1: next.c, r2: next.r, c2: next.c });
     ensureVisible(next);
     opts.redraw();
@@ -787,9 +681,7 @@ export function attachInteractivity(
     if (drag || selDrag) {
       try {
         canvas.releasePointerCapture(ev.pointerId);
-      } catch {
-        /* noop */
-      }
+      } catch {}
       drag = null;
       selDrag = null;
     }
@@ -800,41 +692,29 @@ export function attachInteractivity(
     annotations.hidePopover();
   }
 
-  // Trackpad pinch arrives as wheel + ctrlKey. Cmd/Ctrl + wheel is the
-  // keyboard-zoom fallback. We swallow these only when a modifier is active
-  // so plain scroll continues to work.
   function onWheel(ev: WheelEvent) {
     if (!ev.ctrlKey && !ev.metaKey) return;
     ev.preventDefault();
     const cur = opts.zoom.get();
-    // Pinch deltas are small per tick; use exponential scaling so it feels
-    // proportional regardless of starting zoom.
+
     const next = clamp(cur * Math.exp(-ev.deltaY * 0.01), ZOOM_MIN, ZOOM_MAX);
     if (next === cur) return;
 
-    // Anchor: keep the sheet logical point under the cursor stationary on
-    // screen. With a virtualized canvas the scroll container hosts a sized
-    // spacer (CSS px = logical * zoom), so scrollLeft = viewport.x * zoom.
     const sc = opts.scrollContainer;
     const vp = opts.getViewport?.();
     if (sc && vp) {
       const r = canvas.getBoundingClientRect();
       const cssX = ev.clientX - r.left;
       const cssY = ev.clientY - r.top;
-      // newVp.x = vp.x + cssX * (1/cur - 1/next) keeps the same sheet point
-      // under the cursor after the zoom change.
+
       const newVpX = vp.x + cssX * (1 / cur - 1 / next);
       const newVpY = vp.y + cssY * (1 / cur - 1 / next);
       opts.zoom.set(next);
       sc.scrollLeft = Math.max(0, newVpX * next);
       sc.scrollTop = Math.max(0, newVpY * next);
-      // Setting scroll dispatches a 'scroll' event which the host uses to
-      // recompute viewport + redraw; we still call redraw() in case the
-      // host doesn't listen.
+
       opts.redraw();
     } else if (sc) {
-      // Legacy non-virtualized path: canvas itself spans the sheet, so
-      // anchoring on canvas-local logical px is correct.
       const r = canvas.getBoundingClientRect();
       const px = ev.clientX - r.left;
       const py = ev.clientY - r.top;
@@ -852,10 +732,8 @@ export function attachInteractivity(
     }
   }
 
-  // Make the canvas keyboard-focusable so arrow keys reach onKeyDown.
   if (!canvas.hasAttribute("tabindex")) canvas.tabIndex = 0;
-  // Suppress the default focus ring; the active-cell highlight is the
-  // affordance and a halo around the whole canvas would be noisy.
+
   const savedOutline = canvas.style.outline;
   canvas.style.outline = "none";
 
@@ -865,7 +743,7 @@ export function attachInteractivity(
   canvas.addEventListener("pointercancel", onPointerUp);
   canvas.addEventListener("pointerleave", onPointerLeave);
   canvas.addEventListener("keydown", onKeyDown);
-  // wheel must be non-passive to call preventDefault on pinch events.
+
   canvas.addEventListener("wheel", onWheel, { passive: false });
 
   return {

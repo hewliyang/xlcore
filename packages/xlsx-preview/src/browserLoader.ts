@@ -10,9 +10,8 @@ export interface WorkbookLoadProgress {
 }
 
 export interface WorkbookLoaderOptions {
-  /** URL of `xlcore_wasm_bg.wasm`; defaults to the package asset. */
   wasmBinaryUrl?: string;
-  /** URL of `xlsxWorker.js`; defaults to the package worker. */
+
   workerUrl?: string;
   onProgress?: (progress: WorkbookLoadProgress) => void;
 }

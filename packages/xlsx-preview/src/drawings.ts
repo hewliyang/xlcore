@@ -14,11 +14,6 @@ import {
 
 export type { DrawableImage } from "./imageCache.js";
 
-// ---------- drawings (charts/images) ----------
-//
-// Image decoding cache lives in `./imageCache.ts` so shape.ts (which
-// paints `<xdr:pic>` nodes nested inside group shapes) can share it.
-
 export async function preloadDrawingImages(
   sheet: Sheet,
   load: (bytes: Uint8Array) => Promise<DrawableImage>,
@@ -28,9 +23,6 @@ export async function preloadDrawingImages(
     if (drawing.kind === "image" && drawing.image) {
       uris.push(drawing.image.dataUri);
     } else if (drawing.kind === "shape" && drawing.shape) {
-      // Nested `<xdr:pic>` inside a group surfaces as a shape node
-      // carrying its own `imageDataUri` — preload those too so the
-      // node path's synchronous paint doesn't drop them.
       for (const node of drawing.shape.nodes) {
         if (node.imageDataUri) uris.push(node.imageDataUri);
       }
@@ -62,12 +54,10 @@ export function drawDrawings(ctx: CanvasRenderingContext2D, sheet: Sheet, g: Gri
       if (img) {
         ctx.drawImage(img as CanvasImageSource, rect.x, rect.y, rect.w, rect.h);
       } else {
-        // Faint placeholder while we decode — keeps layout stable.
         ctx.fillStyle = "#f4f4f5";
         ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
       }
     } else {
-      // Placeholder for non-chart, non-image drawings.
       ctx.fillStyle = "#f4f4f5";
       ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
       ctx.strokeStyle = "#d4d4d8";

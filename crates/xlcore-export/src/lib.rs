@@ -1,17 +1,3 @@
-//! xlcore-export: xlsx → `WorkbookLayout` (structured JSON for the TS canvas renderer).
-//!
-//! v0 covers: shared strings, default + custom column widths, default + custom row
-//! heights, fonts (name/size/bold/italic/color), pattern-solid fills, per-side borders,
-//! basic alignment, merged cells, freeze panes, number formats (built-ins + custom),
-//! cell values (numeric / shared string / inline string / boolean / error / formula).
-//!
-//! Out of scope (engine preserves XML, renderer skips): charts, drawings, CF,
-//! pivot tables, slicers, theme color resolution, rich-text runs, gradient fills.
-//! Those land milestone-by-milestone.
-//!
-//! No formulas are recomputed here — we emit the source-cached `<v>`. Recalc is
-//! `xlcore-bridge`'s job (future).
-
 mod annotations;
 mod chart_colors;
 mod charts;
@@ -40,7 +26,6 @@ use ooxmlsdk::sdk::SdkPart;
 use std::collections::HashMap;
 use std::path::Path;
 
-/// One-shot: read an xlsx file, extract its `WorkbookLayout`.
 pub fn extract<P: AsRef<Path>>(path: P) -> Result<WorkbookLayout> {
     let mut doc = xlcore_io::open(path)?;
     extract_doc(&mut doc)
@@ -52,12 +37,10 @@ pub struct ExtractOptions {
     pub sheet_name: Option<String>,
 }
 
-/// Extract from an already-open document.
 pub fn extract_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<WorkbookLayout> {
     extract_doc_with_options(doc, &ExtractOptions::default())
 }
 
-/// Extract from an already-open document, optionally narrowing to one sheet.
 pub fn extract_doc_with_options(
     doc: &mut xlcore_io::SpreadsheetDocument,
     options: &ExtractOptions,
@@ -81,9 +64,7 @@ pub fn extract_doc_with_options(
         let wb_part = doc.workbook_part()?;
         if let Some(tp) = wb_part.theme_part(doc) {
             let tp = tp.clone();
-            // Theme XML can fail to parse (rare — corrupt drawingml); fall
-            // back to the default palette rather than failing the whole
-            // extract.
+
             tp.root_element(doc).ok().map(theme::extract)
         } else {
             None
@@ -93,9 +74,7 @@ pub fn extract_doc_with_options(
     let wb_part = doc.workbook_part()?;
     let workbook = wb_part.root_element(doc)?.clone();
     let workbook_sheets = workbook.sheets.x_sheet.clone();
-    // `<bookViews><workbookView activeTab="N"/></bookViews>`. Excel only
-    // ever writes one `workbookView`; if there are multiple we just take
-    // the first (matches what `hsx`/Office do on open).
+
     let active_sheet_index = workbook
         .book_views
         .as_ref()
@@ -128,9 +107,6 @@ pub fn extract_doc_with_options(
         }
         let ws_part = ws_parts_by_rel_id
             .get(wb_sheet.id.as_str())
-            // Fallback for malformed packages or SDKs that don't expose child
-            // relationship ids; preserves the old behavior rather than
-            // dropping a sheet.
             .or_else(|| ws_parts.get(idx))
             .cloned();
         let Some(ws_part) = ws_part else {
@@ -143,17 +119,13 @@ pub fn extract_doc_with_options(
         let comments = annotations::extract_comments(doc, &ws_part);
         let ws_for_sparks = ws_part.root_element(doc)?.clone();
         let sparkline_groups = sparklines::extract(&ws_for_sparks);
-        // Hyperlinks need both the worksheet XML (for the `<hyperlinks>`
-        // block) and the worksheet part (to resolve `r:id` rels). Borrow
-        // the XML once, then drop before annotations::extract_comments
-        // mutates `doc` again. We do hyperlinks last so the &Worksheet
-        // borrow doesn't outlive the comments call above.
+
         let ws_clone = ws_part.root_element(doc)?.clone();
         let hyperlinks = annotations::extract_hyperlinks(doc, &ws_part, &ws_clone);
         let ws = ws_part.root_element(doc)?;
         let name = wb_sheet.name.as_str().to_string();
         let mut sheet = sheet::extract(ws, idx, name, &shared_strings.0, &styles);
-        // Sheet visibility lives in workbook.xml, not the worksheet part.
+
         sheet.state = wb_sheet.state.as_ref().and_then(|s| {
             let d = format!("{s:?}").to_ascii_lowercase();
             if d.contains("veryhidden") {
@@ -215,20 +187,14 @@ pub fn extract_doc_with_options(
             active_sheet_index
         },
     };
-    // Collect workbook-level `<definedName>` entries so chart refs that
-    // use opaque aliases (Excel's `_xlchart.vN.X` placeholders) can be
-    // dereferenced to their real `Sheet!$A$1:$B$2` ranges before the
-    // resolver chases them.
+
     let defined_names: std::collections::HashMap<String, String> = defined_names_vec
         .iter()
         .map(|d| (d.name.clone(), d.formula.clone()))
         .collect();
     refs::resolve_chart_refs(&mut layout, &defined_names);
     refs::resolve_sparkline_refs(&mut layout);
-    // Final pass: collapse `Sheet.rows: Vec<Row>` (the ergonomic shape
-    // every other extractor pass uses) into the columnar typed-array
-    // blobs that actually ship in the JSON. After this point the
-    // `rows` field is empty and must not be read.
+
     columnar::compactify(&mut layout);
     Ok(layout)
 }

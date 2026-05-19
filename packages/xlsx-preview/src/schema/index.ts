@@ -1,7 +1,3 @@
-// Generated. Re-exports the WorkbookLayout types so the renderer can
-// import everything from one place. Regenerate the per-type files with:
-//   cargo test --release -p xlcore-export export_bindings
-
 export type { Border } from "./Border.js";
 export type { BorderLine } from "./BorderLine.js";
 export type { Cell } from "./Cell.js";

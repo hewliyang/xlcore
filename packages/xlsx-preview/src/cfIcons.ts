@@ -28,11 +28,6 @@ export function drawCfIcons(
   }
 }
 
-/// Draw one icon at (x, y) of size `s`. Glyphs are painted as canvas
-/// paths — no asset bundle needed. Unknown sets fall back to a colored
-/// circle that smoothly scales by index (red→yellow→green for 3,
-/// red→orange→yellow→green for 4, etc.) so renders look reasonable
-/// even before every preset gets a hand-drawn shape.
 function drawIconGlyph(
   ctx: CanvasRenderingContext2D,
   iconSet: string,
@@ -42,8 +37,6 @@ function drawIconGlyph(
   y: number,
   s: number,
 ): void {
-  // Color ramps. `redYelGreen` = 3-stop classic; `redToBlack` for the
-  // monochrome 4-set. Colors picked from Excel's stock palette.
   const redYelGreen = (i: number, total: number): string => {
     if (total <= 1) return "#63BE7B";
     const stops = ["#F8696B", "#FCB14E", "#FFEB84", "#B1D580", "#63BE7B"];
@@ -62,14 +55,11 @@ function drawIconGlyph(
 
   ctx.save();
   ctx.translate(x, y);
-  // Local coordinate: drawing happens in [0..s, 0..s].
+
   const cx = s / 2,
     cy = s / 2;
 
   if (setLower.includes("arrow")) {
-    // Arrows: direction depends on idx. For 3-set: down/side/up.
-    // For 4: down/down-right/up-right/up. For 5: down/down-right/right/up-right/up.
-    // Angle in degrees from "up" (0°=up, 90°=right, 180°=down).
     const angleFor = (i: number, total: number): number => {
       if (total === 3) return [180, 90, 0][i] ?? 90;
       if (total === 4) return [180, 135, 45, 0][i] ?? 90;
@@ -79,7 +69,7 @@ function drawIconGlyph(
     ctx.translate(cx, cy);
     ctx.rotate(ang);
     ctx.fillStyle = colorAt(idx);
-    // Up-pointing arrow inside [-s/2..s/2].
+
     const h = s * 0.45,
       w = s * 0.35,
       stem = s * 0.18;
@@ -102,7 +92,6 @@ function drawIconGlyph(
     setLower.includes("signs") ||
     setLower.includes("flag")
   ) {
-    // Filled circle (lights) / diamond (signs) / pennant (flag).
     ctx.fillStyle = colorAt(idx);
     if (setLower.includes("flag")) {
       ctx.beginPath();
@@ -111,7 +100,7 @@ function drawIconGlyph(
       ctx.lineTo(s * 0.2, s * 0.7);
       ctx.closePath();
       ctx.fill();
-      // pole
+
       ctx.fillRect(s * 0.15, s * 0.1, s * 0.08, s * 0.8);
     } else if (setLower.includes("signs")) {
       ctx.beginPath();
@@ -122,7 +111,6 @@ function drawIconGlyph(
       ctx.closePath();
       ctx.fill();
     } else {
-      // light
       ctx.beginPath();
       ctx.arc(cx, cy, s * 0.42, 0, Math.PI * 2);
       ctx.fill();
@@ -137,7 +125,6 @@ function drawIconGlyph(
   }
 
   if (setLower.includes("symbol")) {
-    // Circled or plain check / exclamation / cross. 3-set only.
     const circled = setLower === "3symbols";
     ctx.fillStyle = colorAt(idx);
     if (circled) {
@@ -150,12 +137,10 @@ function drawIconGlyph(
     ctx.lineCap = "round";
     ctx.beginPath();
     if (idx === 2) {
-      // check
       ctx.moveTo(s * 0.27, cy);
       ctx.lineTo(s * 0.45, s * 0.65);
       ctx.lineTo(s * 0.75, s * 0.32);
     } else if (idx === 1) {
-      // exclamation
       ctx.moveTo(cx, s * 0.25);
       ctx.lineTo(cx, s * 0.58);
       ctx.stroke();
@@ -166,7 +151,6 @@ function drawIconGlyph(
       ctx.restore();
       return;
     } else {
-      // cross
       ctx.moveTo(s * 0.3, s * 0.3);
       ctx.lineTo(s * 0.7, s * 0.7);
       ctx.moveTo(s * 0.7, s * 0.3);
@@ -178,7 +162,6 @@ function drawIconGlyph(
   }
 
   if (setLower.includes("rating") || setLower.includes("redtoblack")) {
-    // Bars: idx+1 of N filled. RedToBlack is monochrome.
     const filled = idx + 1;
     const gap = s * 0.08;
     const totalW = s * 0.9;
@@ -196,8 +179,6 @@ function drawIconGlyph(
   }
 
   if (setLower.includes("quarter")) {
-    // 5Quarters: 0=empty circle, 1=NE, 2=NE+SE, 3=NE+SE+SW, 4=full.
-    // We approximate with N pie wedges filled.
     ctx.strokeStyle = "#333";
     ctx.fillStyle = "#333";
     ctx.lineWidth = 1;
@@ -208,7 +189,7 @@ function drawIconGlyph(
       ctx.restore();
       return;
     }
-    // Quadrants in CCW order starting from "up-right".
+
     const wedges: [number, number][] = [
       [-Math.PI / 2, 0],
       [0, Math.PI / 2],
@@ -228,7 +209,6 @@ function drawIconGlyph(
   }
 
   if (setLower.includes("box")) {
-    // 5Boxes: idx+1 squares filled (color stays muted).
     const filled = idx + 1;
     const gap = s * 0.08;
     const totalW = s * 0.9;
@@ -247,11 +227,9 @@ function drawIconGlyph(
   }
 
   if (setLower.includes("triangle")) {
-    // 3Triangles: down/dash/up.
     ctx.fillStyle = colorAt(idx);
     ctx.beginPath();
     if (idx === 0) {
-      // down red
       ctx.moveTo(s * 0.15, s * 0.25);
       ctx.lineTo(s * 0.85, s * 0.25);
       ctx.lineTo(cx, s * 0.8);
@@ -271,14 +249,12 @@ function drawIconGlyph(
   }
 
   if (setLower.includes("star")) {
-    // 3Stars: empty / half / full.
     const fill = idx / Math.max(1, n - 1);
     drawStarFill(ctx, cx, cy, s * 0.42, fill);
     ctx.restore();
     return;
   }
 
-  // Fallback: filled colored circle.
   ctx.fillStyle = colorAt(idx);
   ctx.beginPath();
   ctx.arc(cx, cy, s * 0.4, 0, Math.PI * 2);
@@ -299,7 +275,7 @@ function drawStarFill(
     const rr = i % 2 === 0 ? r : r * 0.45;
     pts.push([cx + rr * Math.cos(ang), cy + rr * Math.sin(ang)]);
   }
-  // Outline
+
   ctx.beginPath();
   pts.forEach(([x, y], i) => {
     if (i === 0) ctx.moveTo(x, y);
@@ -327,5 +303,3 @@ function drawStarFill(
   ctx.fillRect(cx - r, cy - r, 2 * r * fillFrac, 2 * r);
   ctx.restore();
 }
-
-/// Cells whose `dataBar` rule has `showValue=false` — their text is

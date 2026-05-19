@@ -17,8 +17,6 @@ import type { Rect } from "./chart.js";
 
 const AXIS_TICK_COUNT = 5;
 
-// ---------- area ----------
-
 export function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   const series = chart.series.filter((s) => s.values.length > 0);
   if (series.length === 0) {
@@ -31,29 +29,25 @@ export function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect:
   );
   if (categoryCount === 0) return;
 
-  const stacked = chart.grouping !== "standard"; // default for area is stacked in Excel
+  const stacked = chart.grouping !== "standard";
   const percent = chart.grouping === "percentstacked";
 
-  // For stacked area we want per-series cumulative top edges; for unstacked
-  // we just plot raw y values from a baseline of 0.
   const tops: number[][] = stacked
     ? buildStackedRows(series, categoryCount, percent)
     : series.map((s) => Array.from({ length: categoryCount }, (_, i) => s.values[i] ?? 0));
-  // Bottom of each series's polygon: 0 for the first stacked series; the
-  // previous series's top otherwise. Unstacked: always 0.
+
   const bottoms: number[][] = stacked
     ? series.map((_, si) => (si === 0 ? new Array(categoryCount).fill(0) : tops[si - 1]!.slice()))
     : series.map((_) => new Array(categoryCount).fill(0));
 
   let { minV, maxV } = valueRange([...tops, ...bottoms]);
-  // Area uses zero baseline by convention, so zero-clamp unless the
-  // workbook overrode with explicit scaling bounds.
+
   const _aRange = resolveAxisRange(
     minV,
     maxV,
     chart.valueMin,
     chart.valueMax,
-    /*zeroClamp=*/ true,
+    true,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );
@@ -61,15 +55,12 @@ export function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect:
   maxV = _aRange.maxV;
   const ticks = _aRange.ticks;
 
-  const inner = drawAxisFrame(ctx, chart, rect, ticks, minV, maxV, /*horizontal=*/ false, percent);
-  drawCategoryAxis(ctx, chart, inner, categoryCount, /*horizontal=*/ false);
+  const inner = drawAxisFrame(ctx, chart, rect, ticks, minV, maxV, false, percent);
+  drawCategoryAxis(ctx, chart, inner, categoryCount, false);
 
   const xStep = inner.w / Math.max(1, categoryCount - 1);
   const yFor = (v: number) => inner.y + (1 - (v - minV) / (maxV - minV)) * inner.h;
 
-  // Clip area fills + outline strokes to the plot rect so out-of-range
-  // peaks (data > pinned `<c:max>`) don't spill above the topmost
-  // gridline. Matches Excel's behavior; mirrors the line/bar paths.
   ctx.save();
   ctx.beginPath();
   ctx.rect(inner.x, inner.y, inner.w, inner.h);
@@ -94,7 +85,7 @@ export function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect:
     }
     ctx.closePath();
     ctx.fill();
-    // Outline along the top edge.
+
     ctx.strokeStyle = s.color ?? "#4472C4";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -105,7 +96,7 @@ export function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect:
       else ctx.lineTo(x, y);
     }
     ctx.stroke();
-    // Data labels for area: print at the top edge of each segment.
+
     const dl = effectiveLabels(chart, s);
     if (dl) {
       const PAD = 4;
@@ -124,6 +115,6 @@ export function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect:
   }
   ctx.restore();
   ctx.lineWidth = 1;
-  // Bug #13 step 1: heavier zero baseline when the axis straddles zero.
+
   paintZeroBaseline(ctx, inner, minV, maxV);
 }

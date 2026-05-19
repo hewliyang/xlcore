@@ -2,7 +2,6 @@ use crate::chart_colors::*;
 use crate::schema::*;
 use ooxmlsdk::schemas::schemas_microsoft_com_office_drawing_2014_chartex as cx;
 
-/// Map a chartEx `SeriesLayout` to the schema's `cx_layout` string.
 fn cx_layout_name(l: &cx::SeriesLayout) -> &'static str {
     match l {
         cx::SeriesLayout::Waterfall => "waterfall",
@@ -16,9 +15,6 @@ fn cx_layout_name(l: &cx::SeriesLayout) -> &'static str {
     }
 }
 
-/// Extract title text from a chartEx `<cx:title>` element. Mirrors
-/// `extract_title` for legacy charts but walks the chartEx-namespaced
-/// `Text` / `RichTextBody` shape.
 fn extract_chart_ex_title(t: Option<&cx::ChartTitle>) -> Option<String> {
     let t = t?;
     let text = t.text.as_deref()?;
@@ -26,10 +22,6 @@ fn extract_chart_ex_title(t: Option<&cx::ChartTitle>) -> Option<String> {
     match choice {
         cx::TextChoice::CxTxData(td) => extract_text_data_v(td),
         cx::TextChoice::CxRich(rich) => {
-            // Concatenate `<a:t>` text across each paragraph's runs.
-            // chartEx rich text reuses the regular drawingml namespace
-            // for paragraphs / runs, so we walk the `a:` types from
-            // `ooxmlsdk::schemas::...drawingml_2006_main`.
             use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
             let mut out = String::new();
             for p in &rich.a_p {
@@ -48,9 +40,6 @@ fn extract_chart_ex_title(t: Option<&cx::ChartTitle>) -> Option<String> {
     }
 }
 
-/// Pull the inline `<cx:v>` text from a `<cx:txData>` block, whether
-/// the schema picked the bare `CxV` variant or the multi-child
-/// `Sequence` variant.
 fn extract_text_data_v(td: &cx::TextData) -> Option<String> {
     match td.text_data_choice.as_ref()? {
         cx::TextDataChoice::CxV(s) => Some(s.clone()),
@@ -58,11 +47,6 @@ fn extract_text_data_v(td: &cx::TextData) -> Option<String> {
     }
 }
 
-/// One series' parsed data — produced by `parse_series_data`. Captures
-/// the categories from the series's data block (only relevant for the
-/// first/primary series in multi-series chartEx — subsequent series'
-/// own categories are ignored), plus that series's numeric values and
-/// the formula reference used to fill them in via `refs.rs`.
 struct ParsedSeriesData {
     categories: Vec<String>,
     categories_ref: Option<String>,
@@ -71,10 +55,6 @@ struct ParsedSeriesData {
     value_format: Option<String>,
 }
 
-/// Resolve a chartEx series's `<cx:dataId>` to its `<cx:data>` block
-/// under `<cx:chartData>`, then walk the inner dimensions to extract
-/// categories + numeric values. Returns `None` when the chartData
-/// block is missing entirely.
 fn parse_series_data(space: &cx::ChartSpace, series: &cx::Series) -> Option<ParsedSeriesData> {
     let data_id = series.cx_data_id.as_ref().map(|d| d.val).unwrap_or(0);
     let data_block = space
@@ -122,12 +102,6 @@ fn parse_series_data(space: &cx::ChartSpace, series: &cx::Series) -> Option<Pars
                 }
             }
             cx::DataChoice::CxNumDim(nd) => {
-                // Funnel / waterfall / pareto use `type="val"`; treemap /
-                // sunburst / histogram use `type="size"`; regionMap
-                // uses `type="colorVal"` (the dimension drives the
-                // choropleth color scale rather than a y-axis value).
-                // All three map to the same `values` vector — the
-                // per-layout painter knows what the numbers mean.
                 if !matches!(
                     nd.r#type,
                     cx::NumericDimensionType::Val
@@ -172,7 +146,6 @@ fn parse_series_data(space: &cx::ChartSpace, series: &cx::Series) -> Option<Pars
     })
 }
 
-/// Extract a series's display name from its `<cx:tx><cx:txData><cx:v>`.
 fn parse_series_name(series: &cx::Series) -> String {
     series
         .text
@@ -185,10 +158,6 @@ fn parse_series_name(series: &cx::Series) -> String {
         .unwrap_or_default()
 }
 
-/// Build a bare `ChartSeries` carrying just name + values. chartEx
-/// series don't currently surface per-series colors / data labels /
-/// axis-group toggles — those slots stay at defaults for the renderer
-/// to fill in (e.g. boxWhisker accents come from the theme).
 fn make_chart_series(name: String, values: Vec<f64>, values_ref: Option<String>) -> ChartSeries {
     ChartSeries {
         name,
@@ -208,10 +177,6 @@ fn make_chart_series(name: String, values: Vec<f64>, values_ref: Option<String>)
     }
 }
 
-/// True when this series's layoutPr carries a `<cx:binning>` element —
-/// the marker for a clusteredColumn that should render as a histogram
-/// (auto- or explicit-binned columns over a continuous value axis)
-/// rather than as a plain categorical column chart.
 fn series_has_binning(series: &cx::Series) -> bool {
     series
         .cx_layout_pr
@@ -220,21 +185,6 @@ fn series_has_binning(series: &cx::Series) -> bool {
         .is_some_and(|c| matches!(c, cx::SeriesLayoutPropertiesChoice::CxBinning(_)))
 }
 
-/// chartEx (cx:) extractor. Surfaces all series with their values +
-/// `cx_layout` set to a renderer-friendly tag:
-///
-///   - `"waterfall"` / `"funnel"` / `"treemap"` / `"sunburst"` /
-///     `"regionMap"` — single-series layouts (existing v1 scope).
-///   - `"histogram"` — single clusteredColumn series whose layoutPr
-///     carries `<cx:binning>`. The renderer auto-bins the raw values.
-///   - `"pareto"` — two series: a primary clusteredColumn plus a
-///     secondary paretoLine that shares the primary's data (the
-///     cumulative-% line is computed at draw time).
-///   - `"boxWhisker"` — N parallel boxWhisker series; each carries
-///     a column of raw observations. Quartiles / whiskers are
-///     computed at draw time per the layoutPr `quartileMethod`.
-///
-/// Returns `Some(Chart)` with `chart_type = "chartex"`.
 pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) -> Option<Chart> {
     let chart = space.chart.as_ref();
     let plot_area = chart.plot_area.as_ref();
@@ -242,10 +192,6 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
     let series_list = &region.cx_series;
     let first = series_list.first()?;
 
-    // Detect the layout family. Most legacy chartEx layouts are
-    // single-series and map straight from the primary series's
-    // `layoutId`; histogram / pareto / boxWhisker compose multiple
-    // series or signal via layoutPr.
     let has_pareto_line = series_list
         .iter()
         .any(|s| matches!(s.layout_id, cx::SeriesLayout::ParetoLine));
@@ -266,13 +212,6 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
         cx_layout_name(&first.layout_id).to_string()
     };
 
-    // RegionMap workbooks (Excel's 2-color / 3-color map templates)
-    // often carry several `hidden="1"` placeholder series alongside
-    // the one visible series — Excel uses the hidden ones as alternate
-    // color presets selectable from the chart properties pane. Only
-    // the non-hidden series carries the data the user expects to see;
-    // pick that one as primary so the renderer doesn't pull empty
-    // `_xlchart` aliases.
     let primary_series: &cx::Series = if layout == "regionMap" {
         series_list
             .iter()
@@ -281,14 +220,9 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
     } else {
         first
     };
-    // Primary series's parsed data also supplies the chart-level
-    // categories + value format (consumed by axis-tick rendering even
-    // for multi-series layouts).
+
     let primary_data = parse_series_data(space, primary_series)?;
 
-    // Build the schema's `series` vector. Pareto + boxWhisker carry
-    // multiple series; everything else surfaces just the primary so
-    // the existing single-series consumers stay backwards compatible.
     let series: Vec<ChartSeries> = if layout == "boxWhisker" {
         series_list
             .iter()
@@ -302,10 +236,6 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
             })
             .collect()
     } else if layout == "pareto" {
-        // Walk in source order so legend / series indexing stays
-        // predictable. The paretoLine companion shares the primary's
-        // data block (no own `<cx:dataId>`); its values are filled in
-        // at render time as a cumulative percentage.
         let mut out: Vec<ChartSeries> = Vec::with_capacity(series_list.len());
         for s in series_list {
             let name = parse_series_name(s);
@@ -333,7 +263,6 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
         )]
     };
 
-    // Subtotal indices (`<cx:layoutPr><cx:subtotals><cx:idx val="N"/>`).
     let subtotal_indices: Vec<u32> = first
         .cx_layout_pr
         .as_deref()
@@ -343,21 +272,12 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
 
     let title = extract_chart_ex_title(chart.chart_title.as_deref());
 
-    // RegionMap-only: parse the visible series's `<cx:valueColors>`
-    // 2- or 3-stop color palette. Resolved hex strings flow into the
-    // schema's `cx_region_map_{min,mid,max}_color` slots; the renderer
-    // builds either a 2-stop (min→max) or 3-stop (min→mid→max)
-    // diverging palette from those. The 2-color Map Chart fixture has
-    // no `<cx:valueColors>` (Excel defaults the palette); the 3-color
-    // Map Chart fixture authors three explicit stops.
     let (rm_min, rm_mid, rm_max) = if layout == "regionMap" {
         extract_region_map_colors(primary_series, theme)
     } else {
         (None, None, None)
     };
 
-    // Legend presence: chartEx legends are uncommon for waterfall;
-    // honour the same "absent => no paint" rule used for legacy charts.
     let legend_pos = chart.legend.as_ref().map(|l| {
         match l.pos.as_ref() {
             Some(cx::SidePos::B) => "b",
@@ -419,16 +339,6 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
     })
 }
 
-/// Parse a chartEx `<cx:valueColors>` block into resolved `#RRGGBB`
-/// hex strings. Each of the three slots accepts the same six
-/// DrawingML color choices (`scrgbClr` / `srgbClr` / `hslClr` /
-/// `sysClr` / `schemeClr` / `prstClr`); ooxmlsdk codegen splits those
-/// into three slot-specific enums, so we have three near-identical
-/// resolvers below. The two paths exercised by Excel-authored region
-/// maps are `<a:srgbClr val="FF0000"/>` (literal hex) and `<a:schemeClr
-/// val="accent1"/>` (theme accent); the remaining four DrawingML
-/// color choices fall through to `None` and the renderer substitutes
-/// its default ramp.
 fn extract_region_map_colors(
     series: &cx::Series,
     theme: Option<&Theme>,
@@ -499,9 +409,6 @@ fn resolve_chartex_srgb(val: &str) -> Option<String> {
     }
 }
 
-/// Resolve a SchemeColor (already Debug-printed) against the workbook
-/// theme, then apply any authored modifier chain (`lumMod` / `lumOff`
-/// / `shade` / `tint`) via the same path the legacy extractor uses.
 fn resolve_chartex_scheme(debug_block: &str, theme: Option<&Theme>) -> Option<String> {
     let base = theme_scheme_color(debug_block, theme)?;
     Some(apply_color_modifiers(&base, debug_block))

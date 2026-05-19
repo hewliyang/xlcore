@@ -16,13 +16,6 @@ pub(crate) fn built_in_unit_factor(b: &c::BuiltInUnitValues) -> f64 {
     }
 }
 
-/// English label for a built-in display-unit value. Excel emits these as
-/// the default `<c:dispUnitsLbl>` caption text when the workbook authored
-/// `<c:dispUnitsLbl>` without an explicit `<c:tx>` child — the label band
-/// still renders, but with the localized unit name. We hard-code the
-/// en-US strings to match Excel desktop's default UI; full localization
-/// would require a per-workbook locale + a translation table, which is
-/// out of scope here.
 pub(crate) fn built_in_unit_default_label(b: &c::BuiltInUnitValues) -> &'static str {
     match b {
         c::BuiltInUnitValues::Hundreds => "Hundreds",
@@ -37,19 +30,6 @@ pub(crate) fn built_in_unit_default_label(b: &c::BuiltInUnitValues) -> &'static 
     }
 }
 
-/// Extract `<c:dispUnits>` into `(divisor, optional label text)`.
-/// Returns `None` when the block is absent or carries no usable choice.
-///
-/// Label resolution priority (per ECMA-376 §21.2.2.46):
-///   1. `<c:dispUnitsLbl><c:tx>...` explicit text — use as-is.
-///   2. `<c:dispUnitsLbl>` present *without* `<c:tx>` AND the unit is a
-///      built-in — fall back to the localized name of the built-in
-///      ("Thousands", "Millions", …). Excel paints this default caption
-///      even though the XML carries no text node. Without this fallback
-///      we drop the entire "Thousands" caption on charts that scale to
-///      thousands via `<c:builtInUnit val="thousands"/>` without an
-///      explicit `<c:tx>` (e.g. AGS Metrics Model NWC line chart).
-///   3. No `<c:dispUnitsLbl>` element at all — no caption.
 pub(crate) fn extract_disp_units(du: Option<&c::DisplayUnits>) -> Option<(f64, Option<String>)> {
     let du = du?;
     let choice = du.display_units_choice.as_ref()?;
@@ -76,7 +56,7 @@ pub(crate) fn extract_disp_units(du: Option<&c::DisplayUnits>) -> Option<(f64, O
                 )
                 .to_string(),
             ),
-            // CustUnit with no text — nothing sensible to default to.
+
             c::DisplayUnitsChoice::CCustUnit(_) => None,
         },
         None => None,
@@ -84,8 +64,6 @@ pub(crate) fn extract_disp_units(du: Option<&c::DisplayUnits>) -> Option<(f64, O
     Some((factor, label))
 }
 
-/// Pull the text out of a `<c:dispUnitsLbl>`'s inner `<c:tx>` — same
-/// shape as a chart `<c:title>` so we mirror `extract_title`'s body.
 pub(crate) fn extract_disp_units_lbl_text(lbl: &c::DisplayUnitsLabel) -> Option<String> {
     let txt = lbl.chart_text.as_ref()?;
     match txt.chart_text_choice.as_ref()? {
@@ -116,15 +94,9 @@ pub(crate) fn extract_disp_units_lbl_text(lbl: &c::DisplayUnitsLabel) -> Option<
     }
 }
 
-/// Convert an OOXML `<c:dLbls>` block into our flat `DataLabels` shape.
-/// Returns `None` when the block is fully absent or carries `<c:delete
-/// val="1"/>` (Excel's "labels suppressed" marker), or when no show*
-/// flag is enabled — there's nothing to render in that case.
 pub(crate) fn extract_data_labels(dl: Option<&c::DataLabels>) -> Option<DataLabels> {
     let dl = dl?;
-    // Per-point overrides first — they may carry the only renderable
-    // content even when the parent block has zero show* flags (e.g.
-    // pies that label only one slice).
+
     let point_overrides: Vec<PointDataLabel> = dl
         .c_d_lbl
         .iter()
@@ -136,8 +108,6 @@ pub(crate) fn extract_data_labels(dl: Option<&c::DataLabels>) -> Option<DataLabe
         None => None,
     };
     let Some(seq) = seq else {
-        // No parent sequence at all; surface the block only if some
-        // point override exists so the renderer has something to paint.
         if point_overrides.is_empty() {
             return None;
         }
@@ -146,9 +116,7 @@ pub(crate) fn extract_data_labels(dl: Option<&c::DataLabels>) -> Option<DataLabe
             ..Default::default()
         });
     };
-    // OOXML CT_Boolean: element absent ⇒ false; element present with no
-    // val attr ⇒ true (CT_Boolean default, e.g. ECMA-376 §21.2.2.3); element
-    // present with val="0"/"false" ⇒ false; val="1"/"true" ⇒ true.
+
     let show_value = seq
         .show_value
         .as_ref()
@@ -204,9 +172,6 @@ pub(crate) fn extract_data_labels(dl: Option<&c::DataLabels>) -> Option<DataLabe
     })
 }
 
-/// Map one `<c:dLbl>` (per-data-point override inside `<c:dLbls>`) to
-/// our `PointDataLabel`. `<c:idx val="N"/>` is required by the schema
-/// but defensively treated as 0 when missing.
 pub(crate) fn extract_point_data_label(dl: &c::DataLabel) -> Option<PointDataLabel> {
     let idx: u32 = dl.index.as_ref().map(|i| i.val).unwrap_or(0);
     match dl.data_label_choice.as_ref() {
@@ -241,9 +206,7 @@ pub(crate) fn extract_point_data_label(dl: &c::DataLabel) -> Option<PointDataLab
                 .map(|b| b.val.unwrap_or(true));
             let show_series_name = seq.show_series_name.as_ref().map(|b| b.val.unwrap_or(true));
             let show_percent = seq.show_percent.as_ref().map(|b| b.val.unwrap_or(true));
-            // Literal text via `<c:tx>` — same shape as a chart title /
-            // dispUnitsLbl, so we mirror `extract_disp_units_lbl_text`'s
-            // body inline. Flattens rich-text runs into a plain String.
+
             let text = seq.chart_text.as_deref().and_then(|txt| {
                 match txt.chart_text_choice.as_ref()? {
                     c::ChartTextChoice::CStrRef(sr) => sr.string_cache.as_ref().and_then(
@@ -266,9 +229,7 @@ pub(crate) fn extract_point_data_label(dl: &c::DataLabel) -> Option<PointDataLab
                         .map(|p| p.numeric_value.as_str().to_string()),
                 }
             });
-            // Skip overrides that don't actually override anything
-            // (some authors write `<c:dLbl><c:idx/></c:dLbl>` as a
-            // no-op) so the wire stays tight.
+
             if position.is_none()
                 && num_fmt.is_none()
                 && show_value.is_none()
@@ -295,8 +256,6 @@ pub(crate) fn extract_point_data_label(dl: &c::DataLabel) -> Option<PointDataLab
     }
 }
 
-/// Common per-series extraction shared by bar/line/area/pie. Reads name,
-/// color, and y-values from the standard `c:tx` / `c:spPr` / `c:val` slots.
 pub(crate) fn common_series(
     order: &c::Order,
     tx: Option<&c::SeriesText>,
@@ -307,17 +266,7 @@ pub(crate) fn common_series(
 ) -> ChartSeries {
     let (name, name_ref) = series_text_or_ref(tx);
     let (values, values_ref) = number_reference_values(val);
-    // Series color resolution order:
-    //   1. `<c:spPr><a:solidFill>` (the shape fill — typical for
-    //      bar/area/pie series and any bar with an outline+fill).
-    //   2. `<c:spPr><a:ln><a:solidFill>` (the *outline* color —
-    //      typical for line series authored outline-only, e.g.
-    //      `<a:ln><a:solidFill><a:srgbClr val="002060"/></a:ln>`
-    //      on chart32.xml's Technology line). Without this fallback
-    //      every outline-only series falls through to the theme
-    //      accent and renders in the wrong color.
-    //   3. Theme accent cycle keyed on series order (matches
-    //      Excel's auto-assignment for unstyled series).
+
     let color = series_color_via_debug(sp_pr, theme)
         .or_else(|| line_color_via_debug(sp_pr, theme))
         .or_else(|| {
@@ -343,7 +292,6 @@ pub(crate) fn common_series(
     }
 }
 
-/// Same as `common_series` but takes the scatter-only `YValues` shape.
 pub(crate) fn common_series_scatter(
     order: &c::Order,
     tx: Option<&c::SeriesText>,
@@ -379,16 +327,6 @@ pub(crate) fn common_series_scatter(
     }
 }
 
-/// Build a `point_colors` Vec from `<c:dPt>` children. Returns an empty
-/// Vec when no data point carries an explicit fill (the common case),
-/// so the renderer can cheaply fall back to its per-slice palette /
-/// series color. When at least one `<c:dPt>` does have a fill, the
-/// returned Vec is sized to `max(values_len, max_dpt_idx + 1)` and
-/// indexed by the data point's `c:idx` value; missing entries are
-/// empty strings. We can't always trust `values_len` because pie/line
-/// series load their numbers from `<c:numRef>` formulas that are only
-/// resolved post-sheet-extract — at chart-extract time `values` is
-/// commonly empty even though the dPts are present.
 pub(crate) fn extract_point_colors(
     d_pts: &[c::DataPoint],
     values_len: usize,
@@ -417,9 +355,6 @@ pub(crate) fn extract_point_colors(
             out[idx] = c;
             any = true;
         } else if shape_has_no_fill(sp) {
-            // Explicit `<a:noFill/>` at the fill level — transparent.
-            // The sentinel "none" is never a valid CSS hex so the
-            // renderer can branch on it cleanly.
             out[idx] = "none".to_string();
             any = true;
         }
@@ -431,8 +366,6 @@ pub(crate) fn extract_point_colors(
     }
 }
 
-/// Read string/number values out of a CategoryAxisData slot (used by both
-/// `c:cat` on bar/line/area/pie and `c:xVal` on scatter).
 pub(crate) fn ax_data_values(
     cat: Option<&c::CategoryAxisData>,
 ) -> (Vec<String>, Option<String>, Option<String>) {
@@ -546,8 +479,6 @@ pub(crate) fn y_values_values(v: Option<&c::YValues>) -> (Vec<f64>, Option<Strin
     }
 }
 
-/// Same shape as `y_values_values` for the `<c:bubbleSize>` element
-/// (`CT_NumDataSource` again, just a different enum tag).
 pub(crate) fn bubble_size_values(v: Option<&c::BubbleSize>) -> (Vec<f64>, Option<String>) {
     let Some(v) = v else {
         return (Vec::new(), None);
@@ -661,8 +592,6 @@ pub(crate) fn x_axis_values(
     }
 }
 
-/// Numeric x-values for a scatter series. Returns parsed f64s when
-/// available, plus the underlying formula ref.
 pub(crate) fn scatter_x_values(x: Option<&c::XValues>) -> (Vec<f64>, Option<String>) {
     let Some(x) = x else {
         return (Vec::new(), None);
@@ -799,12 +728,6 @@ mod tests {
 
     #[test]
     fn built_in_unit_labels_match_excel_ui() {
-        // English fallback caption used by extract_disp_units when the
-        // workbook authored `<c:dispUnitsLbl>` without an explicit
-        // `<c:tx>` child. Regression guard for the AGS NWC line chart,
-        // where `<c:builtInUnit val="thousands"/>` + empty
-        // `<c:dispUnitsLbl>` should still paint "Thousands" on the
-        // y-axis.
         assert_eq!(
             built_in_unit_default_label(&c::BuiltInUnitValues::Thousands),
             "Thousands",
@@ -825,7 +748,6 @@ mod tests {
 
     #[test]
     fn built_in_unit_factors_powers_of_ten() {
-        // Sanity: the factor must match the label's order of magnitude.
         assert_eq!(built_in_unit_factor(&c::BuiltInUnitValues::Thousands), 1e3);
         assert_eq!(built_in_unit_factor(&c::BuiltInUnitValues::Millions), 1e6);
         assert_eq!(built_in_unit_factor(&c::BuiltInUnitValues::Billions), 1e9);

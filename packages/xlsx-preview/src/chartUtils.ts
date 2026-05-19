@@ -5,33 +5,15 @@ const AXIS_FONT_SIZE = 10;
 const LEGEND_FONT_SIZE = 11;
 const GRIDLINE_COLOR = "#e5e7eb";
 const AXIS_LABEL_COLOR = "#52525b";
-/** Heavier than `GRIDLINE_COLOR`; used for the zero baseline when an axis
- *  straddles zero. Painted after fills so it reads as the conceptual zero
- *  line, distinct from the lighter niceTick gridlines. See parity-charts.md
- *  Bug #13 step 1. */
+
 const ZERO_BASELINE_COLOR = "#7a7a7a";
 const ZERO_BASELINE_WIDTH = 1.5;
 const ZERO_EPS = 1e-9;
 
-/// True iff the value axis straddles zero (zero falls strictly inside
-/// the data range). When false, the chart frame's bottom edge already
-/// IS the zero baseline and no extra line is needed.
 export function axisStraddlesZero(minV: number, maxV: number): boolean {
   return minV < -ZERO_EPS && maxV > ZERO_EPS;
 }
 
-/// Shared zero-baseline metrics for a value-axis-on-`inner` projection.
-/// Returns the fraction of the axis range that lies at or below zero
-/// (`zeroFrac`), and the actual canvas coordinates of the zero line
-/// projected onto `inner` for both vertical (`zeroY`, value axis runs
-/// up-down) and horizontal (`zeroX`, value axis runs left-right) bar
-/// layouts. `straddlesZero` is true iff zero falls strictly inside
-/// `[minV, maxV]`; when false, `zeroFrac` is clamped to 0/1 so callers
-/// that read `zeroY` / `zeroX` unconditionally still get a sensible
-/// edge coordinate (matches Excel: a non-negative axis treats its
-/// bottom edge as the conceptual zero). Consolidates the duplicated
-/// math that previously lived in every bar/line/area/scatter/combo
-/// painter; see parity-charts.md Bug #13 step 3.
 export interface ZeroAxisMetrics {
   straddlesZero: boolean;
   zeroFrac: number;
@@ -40,9 +22,7 @@ export interface ZeroAxisMetrics {
 }
 export function zeroAxisMetrics(inner: Rect, minV: number, maxV: number): ZeroAxisMetrics {
   const range = maxV - minV;
-  // Guard against a zero/NaN range (entirely-constant data); the painter
-  // is responsible for never indexing into such a chart but we still
-  // return a defined coordinate (the bottom edge) for completeness.
+
   const rawFrac = range > 0 ? (0 - minV) / range : 0;
   const zeroFrac = Math.max(0, Math.min(1, rawFrac));
   return {
@@ -53,12 +33,6 @@ export function zeroAxisMetrics(inner: Rect, minV: number, maxV: number): ZeroAx
   };
 }
 
-/// Paint the dedicated heavier zero-baseline stroke when an axis
-/// straddles zero. No-op otherwise. Callers should invoke this *after*
-/// fills so the baseline reads as a conceptual divider on top of
-/// negative/positive bars; for line/area painters the call order doesn't
-/// matter since the line strokes are thin enough not to obscure the
-/// baseline. See parity-charts.md Bug #13 step 1.
 export function paintZeroBaseline(
   ctx: CanvasRenderingContext2D,
   inner: Rect,
@@ -73,9 +47,7 @@ export function paintZeroBaseline(
   ctx.strokeStyle = ZERO_BASELINE_COLOR;
   ctx.lineWidth = ZERO_BASELINE_WIDTH;
   ctx.beginPath();
-  // 1.5px stroke: skip the +0.5 nudge — at non-integer width the canvas
-  // anti-aliases either way; centering on an integer keeps both edges
-  // sharp-ish.
+
   ctx.moveTo(inner.x, Math.round(y));
   ctx.lineTo(inner.x + inner.w, Math.round(y));
   ctx.stroke();
@@ -83,44 +55,12 @@ export function paintZeroBaseline(
   ctx.lineWidth = prevWidth;
 }
 
-/// True iff a tick value lies on the zero baseline of an axis that
-/// straddles zero. Used to suppress the lighter niceTick gridline at
-/// exactly 0 so it doesn't double-paint with `paintZeroBaseline`.
 export function isZeroTickInside(t: number, minV: number, maxV: number): boolean {
   return Math.abs(t) < ZERO_EPS && axisStraddlesZero(minV, maxV);
 }
 const DATA_LABEL_FONT_SIZE = 9;
 const DATA_LABEL_COLOR = "#1f2937";
 
-// ---------- shared helpers ----------
-
-/**
- * Compute clustered/stacked bar geometry inside a single category slot.
- *
- * ECMA-376 §21.2.2.75 (`<c:gapWidth>`) + §21.2.2.108 (`<c:overlap>`):
- * - `gapWidth` = % of *bar width* left as space *between category groups*.
- *   Default 150 (per spec). Range 0..500.
- * - `overlap`  = % adjacent series in the same category overlap each other.
- *   Range -100..100. Default 0 for clustered, 100 for stacked (Excel writes
- *   it explicitly either way).
- *
- * Slot geometry given group count `N` and slot width `slotW`:
- *   - Each subsequent bar is shifted by `barW * (1 - overlap/100)` instead
- *     of `barW` (so positive overlap shrinks the per-bar shift).
- *   - Total span occupied by N bars = `barW * (1 + (N-1) * (1 - overlap/100))`.
- *   - Required free space = `barW * gapWidth/100`.
- *   - Solve: `barW = slotW / (1 + (N-1) * (1 - overlap/100) + gapWidth/100)`.
- *
- * For stacked (or N=1), the formula collapses to `barW = slotW / (1 + gapWidth/100)`.
- *
- * Returns:
- *   - `barW`: width of a single bar in CSS px.
- *   - `firstBarLeftOffset`: offset from the slot's *left edge* to the
- *     left edge of bar index 0. Bar `i` sits at
- *     `slotLeft + firstBarLeftOffset + i * barShift`.
- *   - `barShift`: per-series center-to-center shift = `barW * (1 - overlap/100)`.
- *     For stacked all bars sit at the same x (caller can ignore this).
- */
 export interface BarSlotMetrics {
   barW: number;
   firstBarLeftOffset: number;
@@ -133,13 +73,10 @@ export function computeBarSlotMetrics(
   gapWidthPct: number | undefined,
   overlapPct: number | undefined,
 ): BarSlotMetrics {
-  // Spec defaults. Excel-emitted XML almost always carries explicit values
-  // (e.g. `<c:gapWidth val="150"/>` + `<c:overlap val="100"/>` for stacked),
-  // so this branch only fires for hand-rolled or sparse files.
   const gw = Math.max(0, Math.min(500, gapWidthPct ?? 150));
   const ov = stacked ? 100 : Math.max(-100, Math.min(100, overlapPct ?? 0));
   const N = stacked ? 1 : Math.max(1, seriesCount);
-  const shiftFactor = 1 - ov / 100; // 0 when fully stacked, 1 when no overlap
+  const shiftFactor = 1 - ov / 100;
   const denom = 1 + (N - 1) * shiftFactor + gw / 100;
   const barW = slotW / denom;
   const totalSpan = barW * (1 + (N - 1) * shiftFactor);
@@ -148,14 +85,7 @@ export function computeBarSlotMetrics(
   return { barW, firstBarLeftOffset, barShift };
 }
 
-/// Compute (minV, maxV) over a set of parallel rows (each row already at
-/// the same x positions; useful for stacked tops + bottoms).
 export function valueRange(rows: number[][]): { minV: number; maxV: number } {
-  // Seed with +/-Infinity so entirely-positive (or entirely-negative)
-  // data isn't silently zero-clamped here. Callers route through
-  // `resolveAxisRange`, which handles the bars-default-to-zero rule
-  // explicitly. Pre-`resolveAxisRange` line/area charts used to rely
-  // on this clamp; the helper now does the same thing in one place.
   let minV = Number.POSITIVE_INFINITY,
     maxV = Number.NEGATIVE_INFINITY;
   for (const r of rows) {
@@ -169,8 +99,6 @@ export function valueRange(rows: number[][]): { minV: number; maxV: number } {
   return { minV, maxV };
 }
 
-/// Build per-series cumulative-top arrays for a stacked plot. For
-/// percentStacked each per-category column normalises to 100.
 export function buildStackedRows(
   series: ChartSeries[],
   categoryCount: number,
@@ -194,9 +122,6 @@ export function buildStackedRows(
   return tops;
 }
 
-/// Draw the value-axis tick labels + gridlines and return the inner
-/// (plot) rectangle. Shared by line / area / scatter (and conceptually
-/// bar/column, though that one inlines a similar block).
 export function drawAxisFrame(
   ctx: CanvasRenderingContext2D,
   chart: Chart,
@@ -217,11 +142,6 @@ export function drawAxisFrame(
     ? { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH }
     : { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH };
 
-  // Per parity-charts.md Bug #12: only paint gridlines when
-  // `<c:majorGridlines>` was present on the value axis (and not
-  // explicitly hidden via `<a:noFill/>` on its line). Tick labels
-  // always paint; suppressing gridlines doesn't suppress labels in
-  // Excel.
   const showGridlines = chart.showMajorGridlines !== false;
   ctx.fillStyle = AXIS_LABEL_COLOR;
   ctx.strokeStyle = GRIDLINE_COLOR;
@@ -231,9 +151,7 @@ export function drawAxisFrame(
   for (let ti = 0; ti < ticks.length; ti++) {
     const t = ticks[ti]!;
     const frac = (t - minV) / (maxV - minV);
-    // Bug #13 step 1: when the axis straddles zero, suppress the
-    // lighter niceTick gridline at t==0 — the caller will overlay the
-    // heavier `paintZeroBaseline` stroke at the same coord after fills.
+
     const isZeroLine = isZeroTickInside(t, minV, maxV);
     if (horizontal) {
       const x = inner.x + frac * inner.w;
@@ -255,7 +173,7 @@ export function drawAxisFrame(
       ctx.fillText(labelStrings[ti]!, inner.x - 4, y);
     }
   }
-  // Axis baselines.
+
   ctx.strokeStyle = "#9ca3af";
   ctx.beginPath();
   ctx.moveTo(inner.x, Math.round(inner.y + inner.h) + 0.5);
@@ -277,13 +195,9 @@ export function drawCategoryAxis(
   ctx.fillStyle = AXIS_LABEL_COLOR;
   ctx.textAlign = "center";
   ctx.textBaseline = horizontal ? "middle" : "top";
-  // Line/area put points on the cat boundaries (i / (n-1)); bar puts
-  // them on cat centers ((i+0.5)/n). The horizontal=false path here is
-  // only used by line/area today.
+
   const denom = Math.max(1, categoryCount - 1);
-  // Decimate labels so they don't overlap into an unreadable bar.
-  // Walk forward, drawing a label only when the previous one's right
-  // edge is comfortably past the new one's left edge.
+
   const fmt = chart.categoriesFormat;
   const labels = Array.from({ length: categoryCount }, (_, i) => {
     const raw = chart.categories[i] ?? `${i + 1}`;
@@ -309,8 +223,6 @@ export function drawCategoryAxis(
   }
 }
 
-/// Lightly translucent variant of a CSS hex color, for area fills.
-/// Pass-through for non-hex; alpha is multiplied into the existing color.
 export function withAlpha(color: string, alpha: number): string {
   const m = /^#([0-9a-f]{6})$/i.exec(color);
   if (!m) return color;
@@ -321,53 +233,21 @@ export function withAlpha(color: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-// Import lazily so chartUtils remains a leaf module for callers that do not
-// need category-axis number formatting.
 import { formatValue } from "./numfmt.js";
 
-// ---------- legend ----------
-
-/// Legend-swatch kind, per series. Mirrors what the painter draws so
-/// the legend reads at a glance:
-///   - `swatch`     filled square    (column / bar / area / pie / doughnut)
-///   - `line`       horizontal stroke (line/scatter with no markers)
-///   - `marker`     filled circle    (scatter marker-only)
-///   - `lineMarker` stroke + circle  (line, lineMarker, smoothMarker)
-///
-/// `chart` is optional so callers that don't have the chart context
-/// (e.g. ad-hoc preview tooling) still get the old square behavior.
 export type LegendSwatchKind = "swatch" | "line" | "marker" | "lineMarker" | "verticalBar";
 
 function legendKindFor(chart: Chart | undefined, s: ChartSeries): LegendSwatchKind {
   if (!chart) return "swatch";
-  // Mirror `seriesKind` in chart.ts: per-series override > chart-level.
-  // For a non-combo chart with unset `s.chartType` we inherit `chart.type`;
-  // combo charts always set `s.chartType` per group at extraction time.
+
   const kind = s.chartType ?? chart.type;
-  // ECMA-376 §21.2.2.205 `<c:marker><c:symbol val="none"/>`: explicitly
-  // suppress the per-point glyph for this series. Excel still paints
-  // the connecting stroke for line series, so the legend swatch drops
-  // the marker dot but keeps the line. Source workbook fixture:
-  // chart32.xml (Charts_1__Chart_11) where the Technology line series
-  // sets `<c:marker><c:symbol val="none"/>` and Excel renders a bare
-  // navy stroke with no glyphs.
+
   const noMarker = s.markerSymbol === "none";
   if (kind === "line") return noMarker ? "line" : "lineMarker";
   if (kind === "stock") {
-    // Stock-chart legend semantics: series we paint a marker for
-    // (e.g. Close) get a colored dot; series that only contribute
-    // to the hi-low envelope (markerSymbol === "none") get a thin
-    // vertical bar in the hi-low ink color, matching what the eye
-    // sees in the plot. Series color is mostly cosmetic on stock
-    // charts — the painter uses gray/black for hi-low/up-down ink
-    // — so we deliberately ignore `s.color` here and let the
-    // swatch ink come from the swatch kind itself.
     return noMarker ? "verticalBar" : "marker";
   }
   if (kind === "scatter") {
-    // ECMA-376 §21.2.3.40 c:scatterStyle: none/line/lineMarker/marker/
-    // smooth/smoothMarker. Default for our extractor is unset = marker-
-    // only (matches the drawScatterChart treatment).
     const style = chart.scatterStyle;
     if (style === "line" || style === "smooth") return "line";
     if (style === "lineMarker" || style === "smoothMarker") {
@@ -378,9 +258,6 @@ function legendKindFor(chart: Chart | undefined, s: ChartSeries): LegendSwatchKi
   return "swatch";
 }
 
-/// Paint one legend swatch in the budget `[x, x+w] x [y - w/2, y + w/2]`
-/// (width matches the historical 10px square so the legend layout math is
-/// pixel-stable regardless of per-series kind).
 function paintLegendSwatch(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -401,10 +278,6 @@ function paintLegendSwatch(
     return;
   }
   if (kind === "verticalBar") {
-    // Thin vertical bar centered in the swatch box — used for stock-
-    // chart hi-low envelope series. Ink color is fixed to the painter's
-    // hi-low color (`#262626`) since the series color carries no
-    // visual meaning on the plot itself.
     const prevStroke = ctx.strokeStyle;
     const prevWidth = ctx.lineWidth;
     ctx.strokeStyle = "#262626";
@@ -417,7 +290,7 @@ function paintLegendSwatch(
     ctx.lineWidth = prevWidth;
     return;
   }
-  // `line` or `lineMarker`: short horizontal stroke spanning the swatch.
+
   const prevStroke = ctx.strokeStyle;
   const prevWidth = ctx.lineWidth;
   ctx.strokeStyle = color;
@@ -446,7 +319,6 @@ export function drawLegend(
   ctx.textBaseline = "middle";
   const swatchW = 10;
   if (orientation === "vertical") {
-    // Stack one entry per line beside the plot area.
     const lineH = LEGEND_FONT_SIZE + 6;
     const totalH = series.length * lineH;
     let y = rect.y + Math.max(0, (rect.h - totalH) / 2) + lineH / 2;
@@ -462,7 +334,7 @@ export function drawLegend(
     return;
   }
   const itemPad = 16;
-  // Measure total width to center.
+
   const widths = series.map((s) => swatchW + 6 + ctx.measureText(s.name || "").width);
   const totalW = widths.reduce((a, b) => a + b, 0) + itemPad * (series.length - 1);
   let x = rect.x + (rect.w - totalW) / 2;
@@ -477,8 +349,6 @@ export function drawLegend(
   }
 }
 
-/// Measure the width needed by a vertical legend column, including the
-/// swatch, gap, and widest label.
 export function measureVerticalLegendWidth(
   ctx: CanvasRenderingContext2D,
   series: ChartSeries[],
@@ -494,8 +364,6 @@ export function measureVerticalLegendWidth(
   return Math.ceil(swatchW + 4 + maxLabel + 4);
 }
 
-// ---------- placeholder ----------
-
 export function drawPlaceholderPlot(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   ctx.fillStyle = "#f4f4f5";
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
@@ -507,23 +375,10 @@ export function drawPlaceholderPlot(ctx: CanvasRenderingContext2D, chart: Chart,
   ctx.fillText(label, rect.x + rect.w / 2, rect.y + rect.h / 2);
 }
 
-// ---------- data labels ----------
-
-/// Pick the per-series effective DataLabels block (series wins over chart).
 export function effectiveLabels(chart: Chart, s: ChartSeries): DataLabels | undefined {
   return s.dataLabels ?? chart.dataLabels;
 }
 
-/// Per-data-point resolution of a `DataLabels` block. Returns:
-///   - `undefined` — paint the parent block as-is (no override).
-///   - `null`       — this point is suppressed (`<c:dLbl><c:delete/>`).
-///   - `{ dl, text }` — paint with `dl` (parent merged with point
-///                       override) and optional literal `text`.
-/// Callers can do:
-///   const o = pointLabel(dl, i);
-///   if (o === null) continue;
-///   const effective = o?.dl ?? dl;
-///   const text = o?.text ?? buildLabelText(effective, ...);
 export function pointLabel(
   base: DataLabels,
   i: number,
@@ -544,8 +399,6 @@ export function pointLabel(
   return { dl: merged, text: po.text };
 }
 
-/// Build the label string for a single (series, category, value) tuple.
-/// Concatenates the enabled show* fields with `dl.separator` (default `", "`).
 export function buildLabelText(
   dl: DataLabels,
   chart: Chart,
@@ -558,15 +411,11 @@ export function buildLabelText(
   const parts: string[] = [];
   if (dl.showSeriesName && series.name) parts.push(series.name);
   if (dl.showCategory) {
-    // chart.categories is `skip_serializing_if = Vec::is_empty` on the
-    // Rust side, so the JSON omits it for pie/etc. with no cat axis.
-    // Bare-array access would throw "cannot read [i] of undefined" and
-    // silently kill the rest of the chart's render.
     const cats = chart.categories ?? [];
     const c = cats[categoryIdx];
     if (c != null && c !== "") parts.push(c);
   }
-  // showPercent and showValue can both be on; Excel honors both.
+
   if (dl.showPercent && categoryTotal > 0) {
     const pct = (value / categoryTotal) * 100;
     parts.push(`${Math.round(pct)}%`);
@@ -578,8 +427,6 @@ export function buildLabelText(
   return parts.join(sep);
 }
 
-/// Paint a single label centered at (x, y) with a soft white halo so it
-/// stays readable against bar fills / line series colors.
 export function drawLabel(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -592,7 +439,7 @@ export function drawLabel(
   ctx.font = `${DATA_LABEL_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   ctx.textAlign = align;
   ctx.textBaseline = baseline;
-  // Halo for legibility on top of colored fills.
+
   ctx.lineWidth = 3;
   ctx.strokeStyle = "rgba(255,255,255,0.85)";
   ctx.lineJoin = "round";
@@ -602,24 +449,6 @@ export function drawLabel(
   ctx.fillText(text, x, y);
 }
 
-// ---------- helpers ----------
-
-/// Resolve a chart axis range, honoring optional explicit min/max from
-/// `<c:scaling>`. Behavior:
-///
-/// - If neither bound is forced, falls back to the data range; when
-///   `zeroClamp` is true we additionally pull the floor to 0 (for
-///   bars/columns) or the ceiling to 0 (for negative-only data),
-///   matching Excel's default for bar/column charts.
-/// - If either bound is forced, the axis is treated as "manually
-///   scaled" — zero-clamping is suppressed (Excel does the same when
-///   the user sets a min or max in the chart pane). The forced
-///   endpoint becomes the exact axis terminus; niceTicks fills in
-///   round intermediate ticks toward the other (auto) end and the
-///   forced endpoint is appended/prepended as the final tick.
-///
-/// Returns the resolved `[minV, maxV]` plus the tick list ready for
-/// gridline + label rendering.
 export function resolveAxisRange(
   dataMin: number,
   dataMax: number,
@@ -639,13 +468,7 @@ export function resolveAxisRange(
   }
   if (lo === hi) hi = lo + 1;
   const EPS = 1e-9;
-  // `<c:majorUnit>` path: step ticks exactly by the authored unit
-  // (ECMA-376 §21.2.2.121). Anchor the cadence on the *forced* min if
-  // the workbook pinned one, else on a multiple of majorUnit below
-  // dataMin so the bottom tick still lands cleanly; mirror the same
-  // logic on the top so a pinned max remains the last tick. Skips
-  // pathological cases (non-finite or implausibly tiny step that
-  // would produce hundreds of ticks) and falls back to niceTicks.
+
   let t: number[];
   if (
     forcedMajorUnit !== undefined &&
@@ -654,19 +477,9 @@ export function resolveAxisRange(
     (hi - lo) / forcedMajorUnit < 1000
   ) {
     const step = forcedMajorUnit;
-    // Anchor the cadence on `forcedMin` when set, else 0 — matches
-    // Excel's behaviour where major-unit ticks land on multiples of
-    // step counted from the forced bound (or from zero).
+
     const anchor = forcedMin !== undefined ? forcedMin : 0;
-    // When no `forcedMin` was authored, Excel walks the step grid
-    // down to zero (or just past dataMin if data straddles zero) so
-    // long as the resulting tick count is reasonable — a positive
-    // series like 18..43 with `<c:max val="45000"/>` +
-    // `<c:majorUnit val="9000"/>` renders 0/9/18/27/36/45, not just
-    // 9..45. We cap the implicit extension at 14 ticks total so we
-    // don't blow up axes where step is tiny relative to the data
-    // (e.g. data 100..200 with step=1 — keep niceTicks-style floor
-    // at dataMin instead of dropping all the way to 0).
+
     let niceMin: number;
     if (forcedMin !== undefined) {
       niceMin = forcedMin;
@@ -730,14 +543,6 @@ export function niceNum(range: number, round: boolean): number {
   return nf * Math.pow(10, exp);
 }
 
-// Inline copy of the simple axis formatter used by cells. Keep it small;
-// the Chart only ever passes through `valueFormat` from the value-axis.
-//
-// `divisor` lowers `<c:dispUnits>` (ECMA-376 §21.2.2.46) onto the tick
-// labels: when an axis is authored with `builtInUnit=thousands` (or a
-// custom unit), every tick label is divided before formatting so a
-// 75,000 axis terminus reads as `75` with an `S$ mn` caption painted
-// near the axis. Pass `undefined` (or omit) for the no-op case.
 export function formatAxisValue(
   v: number,
   fmt: string | undefined,

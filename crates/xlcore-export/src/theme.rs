@@ -1,51 +1,11 @@
-//! Theme extraction from `xl/theme/theme1.xml`.
-//!
-//! OOXML stores a `<a:clrScheme>` with 12 named slots (lt1/dk1/lt2/dk2/
-//! accent1..6/hlink/folHlink). The spreadsheet's `theme="N"` references
-//! a *different* index order — the first two pairs are swapped — so we
-//! emit `colors[]` in the spreadsheet order:
-//!
-//!   0:lt1  1:dk1  2:lt2  3:dk2  4:accent1 .. 9:accent6  10:hlink  11:folHlink
-//!
-//! Reference: ECMA-376, §18.8.27 colors / §20.1.6.2 clrScheme; LibreOffice
-//! `oox/source/drawingml/themefragmenthandler.cxx::ThemeFragmentHandler`.
-//!
-//! We resolve all five OOXML color choices:
-//!
-//! - `<a:srgbClr val="RRGGBB">` — direct.
-//! - `<a:sysClr lastClr="RRGGBB">` — `lastClr` fallback (always present
-//!   when Office writes the theme).
-//! - `<a:scrgbClr r="% * 1000" g=… b=…>` — RGB percentages in 1000ths
-//!   (ECMA-376 §20.1.2.3.30); converted to 0..255 bytes.
-//! - `<a:hslClr hue="deg * 60000" sat="% * 1000" lum="% * 1000">`
-//!   (§20.1.2.3.13) — HSL → RGB. Note OOXML HSL is *not* the same as the
-//!   theme-tint HLS curve in `packages/xlsx-preview/src/render.ts`; here we just do
-//!   the standard sRGB conversion.
-//! - `<a:prstClr val="name">` (§20.1.2.3.22) — lookup against the spec's
-//!   190-entry preset color table (CSS3/X11 names + `dk`/`lt`/`med`
-//!   abbreviations + 2010 aliases for the same names without the prefix
-//!   shorthand). Generated from the schema enum; see `_PRESET_GEN` block
-//!   below.
-//!
-//! Color modifier children (`<a:tint>`, `<a:shade>`, `<a:lumMod>`,
-//! `<a:satMod>`, `<a:alpha>`, …) are intentionally ignored at the theme
-//! level — themes ship raw scheme colors; the cell-level tint handling
-//! lives in `packages/xlsx-preview/src/render.ts::applyTint` and operates on the
-//! resolved hex we emit here.
 use crate::schema::Theme;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
 
-/// Convert an scRGB component (0..100000, in 1000ths of a percent) to a
-/// 0..255 byte. Values out of range are clamped — Office occasionally
-/// emits 100001 for "100%".
 fn scrgb_byte(v: i32) -> u8 {
     let pct = (v.clamp(0, 100_000) as f64) / 100_000.0;
     (pct * 255.0).round() as u8
 }
 
-/// HSL → RGB per CSS Color 3 / W3C, the same conversion OOXML uses for
-/// `<a:hslClr>` per §20.1.2.3.13. `h` in degrees [0,360), `s`/`l` in
-/// [0,1].
 fn hsl_to_rgb(h: f64, s: f64, l: f64) -> (u8, u8, u8) {
     let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
     let h_prime = (h.rem_euclid(360.0)) / 60.0;
@@ -79,22 +39,16 @@ fn resolve_scrgb(c: &a::RgbColorModelPercentage) -> String {
 }
 
 fn resolve_hsl(c: &a::HslColor) -> String {
-    let h = (c.hue_value as f64) / 60_000.0; // degrees
+    let h = (c.hue_value as f64) / 60_000.0;
     let s = (c.sat_value as f64) / 100_000.0;
     let l = (c.lum_value as f64) / 100_000.0;
     let (r, g, b) = hsl_to_rgb(h, s.clamp(0.0, 1.0), l.clamp(0.0, 1.0));
     rgb_hex(r, g, b)
 }
 
-/// Lookup table for `<a:prstClr val="name">` element (ECMA-376
-/// §20.1.2.3.22); the enum is `ST_PresetColorVal` (DrawingML simple
-/// types in §20.1.10). 190 entries: CSS3/X11 named colors + the OOXML-
-/// specific `dk*`/`lt*`/`med*` abbreviations + 2010-era aliases (the
-/// schema added e.g. `darkBlue` alongside `dkBlue` after 2007 Office
-/// shipped; both resolve to the same value).
 fn resolve_preset(c: &a::PresetColor) -> String {
     use a::PresetColorValues as Pcv;
-    // _PRESET_GEN: regenerate via the Python snippet in the test below.
+
     let hex = match c.val {
         Pcv::AliceBlue => "F0F8FF",
         Pcv::AntiqueWhite => "FAEBD7",
@@ -277,8 +231,7 @@ fn resolve_preset(c: &a::PresetColor) -> String {
         Pcv::LightGrey => "D3D3D3",
         Pcv::LightSlateGrey => "778899",
         Pcv::SlateGrey => "708090",
-        // 2010-aliased Medium* variants — schema added these alongside the
-        // pre-existing un-suffixed Medium* without changing the values.
+
         Pcv::MediumAquamarine2010 => "66CDAA",
         Pcv::MediumBlue2010 => "0000CD",
         Pcv::MediumOrchid2010 => "BA55D3",
@@ -336,31 +289,24 @@ pub fn extract(theme: &a::Theme) -> Theme {
     }
 }
 
-/// Office 2007+ default theme color for spreadsheet-index slot N. Mirrors
-/// the legacy `THEME_PALETTE` constant in the renderer; kept here as a
-/// fallback for color slots we can't resolve.
 fn default_for(slot: usize) -> &'static str {
     match slot {
-        0 => "FFFFFF",  // lt1
-        1 => "000000",  // dk1
-        2 => "E7E6E6",  // lt2
-        3 => "44546A",  // dk2
-        4 => "4472C4",  // accent1
-        5 => "ED7D31",  // accent2
-        6 => "A5A5A5",  // accent3
-        7 => "FFC000",  // accent4
-        8 => "5B9BD5",  // accent5
-        9 => "70AD47",  // accent6
-        10 => "0563C1", // hlink
-        11 => "954F72", // folHlink
+        0 => "FFFFFF",
+        1 => "000000",
+        2 => "E7E6E6",
+        3 => "44546A",
+        4 => "4472C4",
+        5 => "ED7D31",
+        6 => "A5A5A5",
+        7 => "FFC000",
+        8 => "5B9BD5",
+        9 => "70AD47",
+        10 => "0563C1",
+        11 => "954F72",
         _ => "000000",
     }
 }
 
-// ooxmlsdk generates a per-slot wrapper struct + per-slot choice enum
-// (Light1Color/Light1ColorChoice, Dark1Color/Dark1ColorChoice, …) instead
-// of a shared `CT_Color2`. They have identical shape; we resolve each via
-// a tiny adapter so the per-variant pattern matches stay readable.
 macro_rules! resolve_slot {
     ($fn_name:ident, $wrapper:ty, $field:ident, $choice_path:path) => {
         fn $fn_name(c: &$wrapper) -> Option<String> {
@@ -457,23 +403,22 @@ mod tests {
     fn scrgb_full_range() {
         assert_eq!(scrgb_byte(0), 0);
         assert_eq!(scrgb_byte(100_000), 255);
-        // 50% → 128 (round half up).
+
         assert_eq!(scrgb_byte(50_000), 128);
-        // Out-of-range clamps.
+
         assert_eq!(scrgb_byte(-50), 0);
         assert_eq!(scrgb_byte(110_000), 255);
     }
 
     #[test]
     fn hsl_primaries() {
-        // Pure red: hue 0°, sat 100%, lum 50%.
         assert_eq!(hsl_to_rgb(0.0, 1.0, 0.5), (255, 0, 0));
         assert_eq!(hsl_to_rgb(120.0, 1.0, 0.5), (0, 255, 0));
         assert_eq!(hsl_to_rgb(240.0, 1.0, 0.5), (0, 0, 255));
-        // Black & white via lum extremes.
+
         assert_eq!(hsl_to_rgb(0.0, 0.0, 0.0), (0, 0, 0));
         assert_eq!(hsl_to_rgb(0.0, 0.0, 1.0), (255, 255, 255));
-        // Mid-gray: 0% sat, 50% lum.
+
         assert_eq!(hsl_to_rgb(180.0, 0.0, 0.5), (128, 128, 128));
     }
 
@@ -481,6 +426,6 @@ mod tests {
     fn rgb_hex_format() {
         assert_eq!(rgb_hex(0, 0, 0), "000000");
         assert_eq!(rgb_hex(255, 255, 255), "FFFFFF");
-        assert_eq!(rgb_hex(0x44, 0x72, 0xC4), "4472C4"); // accent1
+        assert_eq!(rgb_hex(0x44, 0x72, 0xC4), "4472C4");
     }
 }

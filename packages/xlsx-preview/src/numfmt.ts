@@ -1,54 +1,19 @@
-// Excel/OOXML number-format evaluator.
-//
-// Replaces the stub regex-based formatter that landed in v0. Targets the
-// four fixtures in `tests/fixtures/numfmt/`:
-//   - date / time (built-in 14..22 + custom y/m/d/h/s tokens, [h], am/pm)
-//   - currency / accounting ($, [$€-407], _("$"* …), padding tokens)
-//   - multi-section pos;neg;zero;text + [color][cond] gates
-//   - fractions # ?/?, # ??/??, # ?/8, and scientific 0.00E+00, ##0.0E+0
-//
-// Spec references:
-//   - ECMA-376 part 1, §18.8.31 ("numFmt") — token grammar
-//   - LibreOffice sc/source/core/tool/zformat.cxx — battle-tested runtime
-//
-// Out of scope (tracked in PARITY.md):
-//   - Locale-aware separator selection (we always use "." and ",")
-//   - Real font-metric padding for `_x` and `*x` (we emit a single space)
-//   - Asian / lunar calendar tokens (`g`, `e`, `b1`, `b2`, etc.)
-
 import { renderDate } from "./numfmtDate.js";
 import { renderFraction } from "./numfmtFraction.js";
 import { renderScientific } from "./numfmtScientific.js";
 
-// ---------- public API ----------
-
 export interface FormatResult {
   text: string;
-  /** CSS color from `[Red]` / `[Color12]` etc., if the matched section
-   *  carried one. The renderer uses it as a font-color override. */
+
   color?: string;
-  /** Fill chars (one per `*x` token), in left-to-right order in the
-   *  rendered text. Each occurrence is marked in `text` with the
-   *  sentinel `\u0001` (`FILL_SENTINEL`). The renderer expands each
-   *  sentinel to N copies of the matching fill char where N is sized
-   *  to make the whole string fill the cell's inner width — this needs
-   *  font metrics + a cell rect, which numfmt doesn't have. */
+
   fills?: string[];
 }
 
-/** Placeholder char emitted at each `*x` fill point in `FormatResult.text`.
- *  Renderer measures the rest of the text and expands the sentinel. */
 export const FILL_SENTINEL = "\u0001";
 
 const FORMAT_CACHE = new Map<string, Section[]>();
 
-/** Format a numeric value through an OOXML format code.
- *
- *  `fmt` is the raw format code as it appears in `<numFmt formatCode="…"/>`
- *  or one of the built-in IDs (resolved by the caller before this hits).
- *
- *  Returns `{ text }` on the happy path; falls back to `formatGeneral` if
- *  the format is missing, "General", or the parser bails. Never throws. */
 export function formatValue(value: number, fmt: string | undefined): FormatResult {
   const f = (fmt ?? "").trim();
   if (!f || f.toLowerCase() === "general") return { text: formatGeneral(value) };
@@ -63,12 +28,6 @@ export function formatValue(value: number, fmt: string | undefined): FormatResul
   if (!picked) return { text: formatGeneral(value) };
   const { sec, isNegSlot } = picked;
   try {
-    // When the section was chosen because the value is negative AND
-    // there's a dedicated negative slot, the slot itself encodes the
-    // sign (e.g. `0.0;(0.0)` or `0.0;General`). Per OOXML, the value
-    // rendered through the slot is |value| — the slot's literals supply
-    // any minus / parens. Single-section formats keep the signed value
-    // (renderNumber auto-prefixes "-").
     const renderValue = isNegSlot ? Math.abs(value) : value;
     const text = renderSection(renderValue, sec);
     const fills = sec.tokens.flatMap((t) => (t.kind === "fill" ? [t.ch] : []));
@@ -80,54 +39,46 @@ export function formatValue(value: number, fmt: string | undefined): FormatResul
   }
 }
 
-/** "General" rendering — used when no format is set or as a fallback. */
 export function formatGeneral(v: number): string {
   if (!isFinite(v)) return String(v);
   if (Number.isInteger(v) && Math.abs(v) < 1e15) return v.toString();
   return parseFloat(v.toPrecision(11)).toString();
 }
 
-// ---------- token model ----------
-
-// `,` and `/` stay as literals (`lit`) — they are context-sensitive
-// (grouping vs date separator vs fraction divider) and we resolve them
-// during section classification, not tokenization.
 export type Tok =
   | { kind: "lit"; s: string }
   | { kind: "digit"; ch: "0" | "#" | "?" }
   | { kind: "dot" }
   | { kind: "percent" }
   | { kind: "exp"; sign: "+" | "-" | ""; upper: boolean }
-  | { kind: "date"; field: string } // "y","yy","yyyy","m","mm","mmm","mmmm","mmmmm","d","dd","ddd","dddd","h","hh","s","ss"
-  | { kind: "elapsed"; field: "h" | "m" | "s"; width: number } // [h], [hh], [mm]:..., etc.
+  | { kind: "date"; field: string }
+  | { kind: "elapsed"; field: "h" | "m" | "s"; width: number }
   | { kind: "ampm"; upper: boolean; abbreviated: boolean }
-  | { kind: "fill"; ch: string } // *x — pad with `x` to fill cell width
-  | { kind: "general" } // unquoted "General" — splice formatGeneral(value) here
-  | { kind: "text" }; // @
+  | { kind: "fill"; ch: string }
+  | { kind: "general" }
+  | { kind: "text" };
 
 export interface Section {
   tokens: Tok[];
   color?: string;
   condition?: { op: ">" | "<" | ">=" | "<=" | "=" | "<>"; value: number };
-  /** kind of section, picked from the token mix */
+
   flavor: "number" | "date" | "fraction" | "scientific" | "text" | "literal";
-  // number-flavor pre-computed bits
-  intPlaces: number; // digit placeholders before "."
-  fracPlaces: number; // digit placeholders after "."
+
+  intPlaces: number;
+  fracPlaces: number;
   hasGrouping: boolean;
-  scale: number; // 1, 100 (percent), 1e-3 (per trailing comma)
-  // fraction-flavor
-  fractionDenom: number; // 0 = variable, else fixed (e.g. 8 for "?/8")
-  fractionDenomQs: number; // count of "?" in denominator placeholder run
-  fractionIntPlaces: number; // placeholders in integer part before " "
-  fractionHideZeroInt: boolean; // true if every int placeholder is `#` — hide leading 0
-  // scientific-flavor
+  scale: number;
+
+  fractionDenom: number;
+  fractionDenomQs: number;
+  fractionIntPlaces: number;
+  fractionHideZeroInt: boolean;
+
   expSign: "+" | "-" | "";
-  expDigits: number; // digit placeholders after E
+  expDigits: number;
   expUpper: boolean;
 }
-
-// ---------- parsing ----------
 
 function parseFormat(fmt: string): Section[] {
   const rawSections = splitTopLevel(fmt, ";");
@@ -141,7 +92,6 @@ function splitTopLevel(s: string, sep: string): string[] {
   while (i < s.length) {
     const c = s[i]!;
     if (c === '"') {
-      // consume quoted literal
       cur += c;
       i++;
       while (i < s.length && s[i] !== '"') {
@@ -199,11 +149,6 @@ const COLOR_NAMES: Record<string, string> = {
   cyan: "#00ffff",
 };
 
-// Excel `[Color1]` .. `[Color56]` map onto the legacy indexed palette
-// (ECMA-376 §18.8.27 default `indexedColors`), 1-based. Indices here
-// are shifted by +1 vs render.ts's 0-based INDEXED_PALETTE: Excel's
-// `[Color1]` is the first user-visible palette slot (black), which is
-// stored as indexedColors[0] in styles.xml.
 const COLOR_BY_INDEX: Record<number, string> = {
   1: "#000000",
   2: "#ffffff",
@@ -264,15 +209,10 @@ const COLOR_BY_INDEX: Record<number, string> = {
 };
 
 function parseSection(raw: string): Section {
-  // Strip leading [color]/[cond]/[$cur-loc] tags off the front; embed
-  // currency/literal tags as `lit` tokens; everything else flows through
-  // a per-character tokenizer.
   let s = raw;
   let color: string | undefined;
   let condition: Section["condition"];
 
-  // Eat leading [..] runs that are color or condition. Currency ([$..])
-  // can appear anywhere, so we handle it inside the main loop.
   while (true) {
     const m = /^\[([^\]]+)\]/.exec(s);
     if (!m) break;
@@ -299,13 +239,12 @@ function parseSection(raw: string): Section {
       s = s.slice(m[0].length);
       continue;
     }
-    // Not a leading meta-tag (e.g. `[$€-407]`, `[h]`, `[hh]`, `[mm]`).
+
     break;
   }
 
   const tokens = tokenize(s);
 
-  // Classify and pre-compute counts.
   let flavor: Section["flavor"] = "literal";
   let intPlaces = 0,
     fracPlaces = 0;
@@ -319,10 +258,8 @@ function parseSection(raw: string): Section {
   let expDigits = 0;
   let expUpper = true;
 
-  // Helpers to find structural indices.
   const dotIdx = tokens.findIndex((t) => t.kind === "dot");
-  // Fraction marker: a `/` literal flanked by digit placeholders or by
-  // run-of-digits literals (for fixed denoms like `?/8`).
+
   const slashIdx = findFractionSlash(tokens);
   const expIdx = tokens.findIndex((t) => t.kind === "exp");
   const hasDate = tokens.some(
@@ -336,23 +273,18 @@ function parseSection(raw: string): Section {
   else if (slashIdx >= 0 && hasDigit) flavor = "fraction";
   else if (expIdx >= 0 && hasDigit) flavor = "scientific";
   else if (hasDigit) flavor = "number";
-  else if (hasGeneral)
-    flavor = "literal"; // rendered via litOrFill switch
+  else if (hasGeneral) flavor = "literal";
   else if (hasText) flavor = "text";
   else flavor = "literal";
 
   if (flavor === "number") {
-    // intPlaces = digits before dot; fracPlaces = digits after.
     const before = dotIdx < 0 ? tokens : tokens.slice(0, dotIdx);
     const after = dotIdx < 0 ? [] : tokens.slice(dotIdx + 1);
     intPlaces = before.filter((t) => t.kind === "digit").length;
     fracPlaces = after.filter((t) => t.kind === "digit").length;
-    // Grouping: a `,` literal sits between two digit placeholders.
+
     hasGrouping = hasGroupingComma(before);
-    // Trailing commas (in literal tokens) after the last digit-placeholder
-    // each scale the value by 1/1000. We also strip those `,` chars from
-    // the literals so they don't render as text. Stops at the first non-`,`
-    // character within a lit (any text after, like `K`, stays as-is).
+
     const lastDigitIdx = lastIndexWhere(tokens, (t) => t.kind === "digit");
     if (lastDigitIdx >= 0) {
       let commaScale = 0;
@@ -363,7 +295,7 @@ function parseSection(raw: string): Section {
           while (stripped < t.s.length && t.s[stripped] === ",") stripped++;
           if (stripped > 0) {
             commaScale += stripped;
-            // Mutate the token — we own it, parseFormat just made it.
+
             t.s = t.s.slice(stripped);
           }
           if (t.s.length > 0) break;
@@ -374,10 +306,6 @@ function parseSection(raw: string): Section {
     }
     if (tokens.some((t) => t.kind === "percent")) scale *= 100;
   } else if (flavor === "fraction") {
-    // Layout: [int-digits] [space] num-digits "/" denom-digits-or-fixed.
-    // The slash is a `lit` token whose `.s` contains "/". If that lit
-    // has trailing chars (fixed denom like `?/8` → lit "/8"), peel them
-    // off into a synthetic lit for the after-slash side.
     const slashTok = tokens[slashIdx] as Extract<Tok, { kind: "lit" }>;
     const slashPos = slashTok.s.indexOf("/");
     const beforeSlashStr = slashTok.s.slice(0, slashPos);
@@ -387,8 +315,7 @@ function parseSection(raw: string): Section {
     const after: Tok[] = [];
     if (afterSlashStr) after.push({ kind: "lit", s: afterSlashStr });
     after.push(...tokens.slice(slashIdx + 1));
-    // Integer placeholders sit before the last whitespace-bearing lit in
-    // `before`; if no whitespace, there's no integer part.
+
     let lastSpaceIdx = -1;
     for (let i = 0; i < before.length; i++) {
       const t = before[i]!;
@@ -396,14 +323,14 @@ function parseSection(raw: string): Section {
     }
     if (lastSpaceIdx >= 0) {
       fractionIntPlaces = before.slice(0, lastSpaceIdx).filter((t) => t.kind === "digit").length;
-      // Track whether every int placeholder is `#` (hide zeros) vs `0`/`?`.
+
       const intPHs = before.slice(0, lastSpaceIdx).filter((t) => t.kind === "digit") as Extract<
         Tok,
         { kind: "digit" }
       >[];
       fractionHideZeroInt = intPHs.length > 0 && intPHs.every((t) => t.ch === "#");
     }
-    // Denominator: either a fixed number (digit chars in a lit) or `?` count.
+
     let fixedNum = "";
     let qCount = 0;
     for (const t of after) {
@@ -420,7 +347,7 @@ function parseSection(raw: string): Section {
     const expTok = tokens[expIdx] as Extract<Tok, { kind: "exp" }>;
     expSign = expTok.sign;
     expUpper = expTok.upper;
-    // intPlaces / fracPlaces come from the mantissa portion.
+
     const before =
       dotIdx < 0 || dotIdx > expIdx ? tokens.slice(0, expIdx) : tokens.slice(0, dotIdx);
     const after = dotIdx >= 0 && dotIdx < expIdx ? tokens.slice(dotIdx + 1, expIdx) : [];
@@ -453,8 +380,6 @@ function lastIndexWhere<T>(arr: T[], pred: (t: T) => boolean): number {
   return -1;
 }
 
-/** True if any `lit` between two digit placeholders contains `,`.
- *  Trailing commas (after the last digit) are scale markers, not grouping. */
 function hasGroupingComma(toks: Tok[]): boolean {
   let firstDigit = -1,
     lastDigit = -1;
@@ -472,9 +397,6 @@ function hasGroupingComma(toks: Tok[]): boolean {
   return false;
 }
 
-/** Find the index of a `lit` token whose `.s` contains `/` and which is
- *  flanked (skipping other lits) by a digit placeholder on the left and a
- *  digit placeholder OR a digit-bearing lit on the right. -1 if none. */
 function findFractionSlash(toks: Tok[]): number {
   for (let i = 0; i < toks.length; i++) {
     const t = toks[i]!;
@@ -490,9 +412,7 @@ function findFractionSlash(toks: Tok[]): number {
       break;
     }
     if (!leftOk) continue;
-    // Right side: digits can live (a) inside this same lit (chars after
-    // the `/`, e.g. `/8`), (b) in a later digit placeholder, or (c) in a
-    // later digit-bearing lit.
+
     let rightOk = false;
     const afterSlash = t.s.slice(t.s.indexOf("/") + 1);
     if (/^[0-9]/.test(afterSlash)) rightOk = true;
@@ -523,7 +443,7 @@ function tokenize(s: string): Tok[] {
   let i = 0;
   while (i < s.length) {
     const c = s[i]!;
-    // Quoted literal
+
     if (c === '"') {
       let lit = "";
       i++;
@@ -531,11 +451,11 @@ function tokenize(s: string): Tok[] {
         lit += s[i];
         i++;
       }
-      if (i < s.length) i++; // closing quote
+      if (i < s.length) i++;
       if (lit) out.push({ kind: "lit", s: lit });
       continue;
     }
-    // Backslash escape: next char is literal
+
     if (c === "\\") {
       if (i + 1 < s.length) {
         out.push({ kind: "lit", s: s[i + 1]! });
@@ -543,25 +463,20 @@ function tokenize(s: string): Tok[] {
       } else i++;
       continue;
     }
-    // _x — render width of x (we emit a space; close enough for v0)
+
     if (c === "_") {
       i += i + 1 < s.length ? 2 : 1;
       out.push({ kind: "lit", s: " " });
       continue;
     }
-    // *x — fill char. We don't know the cell width here, so emit a
-    // `fill` token. `renderSection` lowers it to the FILL_SENTINEL char
-    // in the output text; the renderer (which has font metrics + the
-    // cell rect) measures the rest of the text and substitutes N copies
-    // of the fill char so the whole string lands flush against the cell
-    // edges (Excel accounting convention).
+
     if (c === "*") {
       const ch = i + 1 < s.length ? s[i + 1]! : " ";
       i += i + 1 < s.length ? 2 : 1;
       out.push({ kind: "fill", ch });
       continue;
     }
-    // Bracketed run: currency, elapsed-time, or stray (unhandled) tag
+
     if (c === "[") {
       let inner = "";
       i++;
@@ -569,24 +484,24 @@ function tokenize(s: string): Tok[] {
         inner += s[i];
         i++;
       }
-      if (i < s.length) i++; // closing
-      // [$sym-locale]  →  literal sym
+      if (i < s.length) i++;
+
       if (inner.startsWith("$")) {
         const sym = inner.slice(1).split("-")[0]!;
         if (sym) out.push({ kind: "lit", s: sym });
         continue;
       }
-      // [h], [hh], [m], [mm], [s], [ss] → elapsed time
+
       const em = /^([hms])\1*$/i.exec(inner);
       if (em) {
         const field = inner[0]!.toLowerCase() as "h" | "m" | "s";
         out.push({ kind: "elapsed", field, width: inner.length });
         continue;
       }
-      // Otherwise: ignore (unhandled — locale tags etc.)
+
       continue;
     }
-    // Date / time runs: yyyy/yy/y, mmmm/mmm/mm/m, dddd/ddd/dd/d, hh/h, ss/s
+
     const dm = /^(yyyy|yyy|yy|y|mmmmm|mmmm|mmm|mm|m|dddd|ddd|dd|d|hh|h|ss|s)/i.exec(s.slice(i));
     if (dm) {
       const tok = dm[0]!.toLowerCase();
@@ -594,7 +509,7 @@ function tokenize(s: string): Tok[] {
       i += tok.length;
       continue;
     }
-    // AM/PM  (also A/P)
+
     if (/^am\/pm/i.test(s.slice(i))) {
       out.push({ kind: "ampm", upper: s[i] === "A", abbreviated: false });
       i += 5;
@@ -605,9 +520,7 @@ function tokenize(s: string): Tok[] {
       i += 3;
       continue;
     }
-    // Unquoted, unescaped "General" — render value through formatGeneral
-    // and splice it in here. Surrounding literals (e.g. `General\E`) are
-    // kept verbatim. Case-insensitive per Excel.
+
     if ((c === "G" || c === "g") && /^general/i.test(s.slice(i))) {
       out.push({ kind: "general" });
       i += 7;
@@ -628,7 +541,7 @@ function tokenize(s: string): Tok[] {
       i++;
       continue;
     }
-    // `,` and `/` are literals; semantics resolved per-section.
+
     if (c === "," || c === "/") {
       out.push({ kind: "lit", s: c });
       i++;
@@ -647,11 +560,11 @@ function tokenize(s: string): Tok[] {
       i++;
       continue;
     }
-    // Anything else is a literal char.
+
     out.push({ kind: "lit", s: c });
     i++;
   }
-  // Coalesce adjacent literals — makes downstream walkers tidier.
+
   const merged: Tok[] = [];
   for (const t of out) {
     const prev = merged[merged.length - 1];
@@ -661,15 +574,12 @@ function tokenize(s: string): Tok[] {
   return merged;
 }
 
-// ---------- section selection ----------
-
 function pickSection(
   sections: Section[],
   value: number,
 ): { sec: Section; isNegSlot: boolean } | undefined {
   if (sections.length === 0) return undefined;
-  // If any section has an explicit [cond], interpret per OOXML:
-  // section[0]'s cond, section[1]'s cond, section[2] = "everything else".
+
   const hasExplicitConds = sections.some((s) => s.condition);
   if (hasExplicitConds) {
     for (let i = 0; i < Math.min(2, sections.length); i++) {
@@ -680,9 +590,7 @@ function pickSection(
     const fallback = sections[2] ?? sections[sections.length - 1]!;
     return { sec: fallback, isNegSlot: false };
   }
-  // Sign-based: pos / neg / zero / text (we don't get text values here).
-  // Single-section formats handle their own sign (renderNumber auto-prefixes
-  // "-"); the "neg slot" concept only applies when sections.length >= 2.
+
   if (sections.length === 1) return { sec: sections[0]!, isNegSlot: false };
   if (value > 0) return { sec: sections[0]!, isNegSlot: false };
   if (value < 0) {
@@ -690,7 +598,7 @@ function pickSection(
     if (neg) return { sec: neg, isNegSlot: true };
     return { sec: sections[0]!, isNegSlot: false };
   }
-  // value == 0
+
   return { sec: sections[2] ?? sections[0]!, isNegSlot: false };
 }
 
@@ -711,11 +619,7 @@ function matchesCond(v: number, c: NonNullable<Section["condition"]>): boolean {
   }
 }
 
-// ---------- rendering ----------
-
 function renderSection(value: number, sec: Section): string {
-  // For non-numeric flavors we still need to expose `*x` fill points so
-  // the renderer can pad them; lower fill tokens to the sentinel char.
   const litOrFill = (t: Tok): string =>
     t.kind === "lit"
       ? t.s
@@ -728,9 +632,6 @@ function renderSection(value: number, sec: Section): string {
     case "literal":
       return sec.tokens.map(litOrFill).join("");
     case "text":
-      // `@` substitutes the cell's string value; for a numeric cell
-      // Excel falls back to general formatting rather than emitting
-      // nothing.
       return sec.tokens
         .map((t) => (t.kind === "text" ? formatGeneral(value) : litOrFill(t)))
         .join("");
@@ -745,42 +646,27 @@ function renderSection(value: number, sec: Section): string {
   }
 }
 
-// ----- number -----
-
 function renderNumber(value: number, sec: Section): string {
-  // Whether the section itself represents the absolute value (negative
-  // section already encodes the sign via parens or a leading "-").
-  // OOXML rule: when only ONE section is given, negatives auto-prefix "-".
-  // When the section is index 1 (the "neg" slot), the value is rendered
-  // as |value| because the section contains the formatting for negatives.
   const sign = value < 0 ? "-" : "";
   const v = value * sec.scale;
-  // Round to fracPlaces.
+
   const absStr = Math.abs(v).toFixed(sec.fracPlaces);
   const dotPos = absStr.indexOf(".");
   const intDigits = dotPos < 0 ? absStr : absStr.slice(0, dotPos);
   const fracDigits = dotPos < 0 ? "" : absStr.slice(dotPos + 1);
 
-  // Walk tokens: integer side right-to-left, fractional side left-to-right.
   const dotIdx = sec.tokens.findIndex((t) => t.kind === "dot");
   const beforeDot = dotIdx < 0 ? sec.tokens : sec.tokens.slice(0, dotIdx);
   const afterDot = dotIdx < 0 ? [] : sec.tokens.slice(dotIdx + 1);
 
   const intRendered = renderIntegerTokens(beforeDot, intDigits, sec.hasGrouping);
   const fracRendered = renderFractionalTokens(afterDot, fracDigits);
-  void sec.intPlaces; // currently unused; kept for future shrink-to-fit
+  void sec.intPlaces;
 
-  // Determine if section already encodes sign (parens or leading "-").
   const sectionEncodesNeg = sec.tokens.some(
     (t) => t.kind === "lit" && (t.s.includes("(") || t.s.includes("-")),
   );
-  // A section with a leading "-" in its literals (or wrapped in parens)
-  // is "the negative formatter" — emit |value| through it.
-  // We approximate: if the parser is rendering this section as part of a
-  // multi-section format (caller picked it because value < 0), the sign is
-  // already encoded by literals. We can't tell here whether this is the
-  // neg-slot or the only-slot; so we suppress our auto-sign whenever the
-  // section contains literals that look sign-bearing.
+
   const finalSign = sectionEncodesNeg ? "" : sign;
 
   let out = "";

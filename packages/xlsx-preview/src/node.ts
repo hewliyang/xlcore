@@ -11,9 +11,7 @@ import type { Sheet as RuntimeSheet, WorkbookLayout } from "./types.js";
 export interface RenderPngOptions extends RenderOptions {
   sheetIndex?: number;
   sheetName?: string;
-  /// A1 range to render, e.g. `A1:H20` or `'Cover'!B3:E12`.
-  /// Range renders include row/column headers, matching the normal sheet
-  /// viewport framing.
+
   range?: string;
 }
 

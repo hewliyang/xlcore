@@ -3,11 +3,6 @@ import { computeOutlineRuns, isOutlineRunCollapsed, outlineButtonHits } from "./
 import type { Grid } from "./grid";
 import type { Sheet } from "./types";
 
-// Build a synthetic grid + sheet for outline-runs tests. Geometry is
-// deliberately simple: 10 rows × 5 cols, every row 20px, every col 80px.
-// Mirrors the `outline-groups.xlsx` fixture (rows 3-4 grouped, rows 7-8
-// grouped, cols B-D grouped — all at level 1, summaryBelow/right=true).
-
 function makeGrid(opts: {
   rowOutlineDepth: number;
   colOutlineDepth: number;
@@ -22,7 +17,7 @@ function makeGrid(opts: {
     rowY[r + 1] = (rowY[r] ?? 0) + h;
   }
   const colW: number[] = [0];
-  const colX: number[] = [0, 76]; // originX = HEADER_W(44) + rowGutterW(32)
+  const colX: number[] = [0, 76];
   for (let c = 1; c <= 5; c++) {
     const w = opts.hiddenCols?.has(c) ? 0 : 80;
     colW[c] = w;
@@ -138,9 +133,9 @@ test("outlineButtonHits emits a button at the summary row, in the correct level 
     canvasH: 1000,
   });
   expect(hits.length).toBe(1);
-  // summary row 5 → y = 50 (originY) + 4*20 (rows 1..4) + 10 (row 5 / 2) = 140
+
   expect(hits[0]!.cy).toBe(140);
-  // level-1 track: OUTLINE_GUTTER_PAD(4) + 0*12 + 12/2 = 10
+
   expect(hits[0]!.cx).toBe(10);
   expect(hits[0]!.collapsed).toBe(false);
 });
@@ -164,8 +159,7 @@ test("outlineButtonHits still emits a button when the run is fully collapsed", (
   });
   expect(hits.length).toBe(1);
   expect(hits[0]!.collapsed).toBe(true);
-  // After rows 3-4 collapse, summary row 5 starts at y=50+2*20=90 (only rows 1-2 above it),
-  // center = 90 + 10 = 100.
+
   expect(hits[0]!.cy).toBe(100);
 });
 

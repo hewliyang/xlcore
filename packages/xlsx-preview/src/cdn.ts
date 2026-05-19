@@ -1,5 +1,3 @@
-// CDN asset URLs for environments that do not bundle package assets.
-
 export interface CdnAssetUrls {
   wasmBinaryUrl: string;
   workerUrl: string;

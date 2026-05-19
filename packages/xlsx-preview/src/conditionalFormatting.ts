@@ -8,13 +8,6 @@ import type { Grid } from "./grid.js";
 import { buildMergeMaps, cellRect, mergedRect } from "./geometry.js";
 import type { Visible } from "./renderTypes.js";
 
-// ---------- conditional formatting ----------
-
-// Kinds whose match set is value-driven (the rule only "applies" to
-// cells whose value satisfies the predicate). All other kinds
-// (colorScale / dataBar / iconSet / expression) either always apply
-// across their full sqref (the visual passes paint a no-op for cells
-// whose value isn't numeric) or need a formula engine.
 const PREDICATE_KINDS = new Set([
   "cellIs",
   "top10",
@@ -28,20 +21,6 @@ const PREDICATE_KINDS = new Set([
   "timePeriod",
 ]);
 
-/// Walk every CF rule across the whole sheet in priority order and
-/// collect the cells "locked" by a `stopIfTrue` rule. Returns a map
-/// from cellKey (`"r:c"`) to the priority value at which that cell is
-/// locked — any subsequent rule with priority strictly greater than
-/// the recorded value must be masked.
-///
-/// Cross-kind masking is the whole point: in Excel, a higher-priority
-/// `cellIs` rule with stopIfTrue=true will suppress a lower-priority
-/// colorScale on the same cell, and vice-versa. We treat colorScale /
-/// dataBar / iconSet rules as matching every cell in their `sqref`
-/// (Excel's UI doesn't let you set stopIfTrue on these, but the OOXML
-/// schema allows it and writers in the wild do produce it).
-/// `expression` rules need recalc to evaluate so they don't lock
-/// anything today (better to under-mask than over-mask).
 export function computeCfStopLocks(sheet: Sheet, layout: WorkbookLayout): Map<string, number> {
   const locks = new Map<string, number>();
   const cfs = sheet.conditionalFormats;
@@ -52,8 +31,6 @@ export function computeCfStopLocks(sheet: Sheet, layout: WorkbookLayout): Map<st
     cellByKey.set(`${cell.r}:${cell.c}`, cell);
   });
 
-  // Flatten rules across all CF blocks with their parent ranges, then
-  // sort globally by priority (low = high precedence).
   const entries: { rule: CfRule; ranges: Merge[] }[] = [];
   for (const cf of cfs) for (const rule of cf.rules) entries.push({ rule, ranges: cf.ranges });
   entries.sort((a, b) => a.rule.priority - b.rule.priority);
@@ -65,9 +42,7 @@ export function computeCfStopLocks(sheet: Sheet, layout: WorkbookLayout): Map<st
       matched = computeRuleMatchSet(rule, ranges, cellByKey, layout);
     } else if (rule.kind === "colorScale" || rule.kind === "dataBar" || rule.kind === "iconSet") {
       const all: string[] = [];
-      // CF sqrefs in real workbooks are often whole-row/whole-column or
-      // extend to XFD/1048576 even when the sheet's used range is tiny.
-      // Never expand beyond the renderer's effective grid bounds.
+
       for (const range of ranges) {
         const r1 = Math.max(1, range.r1);
         const r2 = Math.min(sheet.maxRow, range.r2);
@@ -79,7 +54,6 @@ export function computeCfStopLocks(sheet: Sheet, layout: WorkbookLayout): Map<st
       }
       matched = all;
     } else {
-      // expression / unknown: skip without locking.
       continue;
     }
     for (const k of matched) {
@@ -90,8 +64,6 @@ export function computeCfStopLocks(sheet: Sheet, layout: WorkbookLayout): Map<st
   return locks;
 }
 
-/// `true` if `rulePriority` should be masked at `cellKey` by some
-/// higher-priority stopIfTrue rule.
 export function isCfLocked(
   locks: Map<string, number> | undefined,
   cellKey: string,
@@ -102,12 +74,6 @@ export function isCfLocked(
   return at !== undefined && at < rulePriority;
 }
 
-/// Walk every CF rule once and build the merged dxf overlay per cell.
-/// Today: only `cellIs` (with literal-numeric/literal-string operands) is
-/// evaluated; `expression` and friends need a formula engine and are
-/// skipped. Honors rule priority (lower number wins) and `stopIfTrue`,
-/// including cross-kind masking via `locks` (e.g. a higher-priority
-/// stopIfTrue colorScale will suppress a lower-priority dxf overlay).
 export function computeCfDxfMap(
   sheet: Sheet,
   layout: WorkbookLayout,
@@ -124,14 +90,9 @@ export function computeCfDxfMap(
     cellByKey.set(`${cell.r}:${cell.c}`, cell);
   });
 
-  // In-pass dxf-overlay locks layered on top of the cross-kind locks.
-  // The cross-kind `locks` only contains stopIfTrue rules; an in-pass
-  // match by a non-stopping higher-priority rule still wins per-field
-  // against same-cell overlaps via mergeDxf.
   const locallyLocked = new Set<string>();
 
   for (const cf of cfs) {
-    // Walk this block's rules in priority order (low number = high prio).
     const sortedRules = [...cf.rules].sort((a, b) => a.priority - b.priority);
     for (const rule of sortedRules) {
       if (!PREDICATE_KINDS.has(rule.kind)) continue;
@@ -183,8 +144,6 @@ function cellInRanges(r: number, c: number, ranges: Merge[]): boolean {
   return false;
 }
 
-/// Walk every cell covered by `ranges` and return the keys (`"r:c"`)
-/// that satisfy the rule. Caller handles priority + stopIfTrue.
 function computeRuleMatchSet(
   rule: CfRule,
   ranges: Merge[],
@@ -193,9 +152,6 @@ function computeRuleMatchSet(
 ): Set<string> {
   const out = new Set<string>();
 
-  // Collect actual cells covered by this rule. Do not materialize blank
-  // grid cells from the sqref: some workbooks contain CF ranges like
-  // A299:XFD1048576, which would otherwise allocate billions of entries.
   const covered = actualCellsInRanges(cellByKey, ranges);
 
   switch (rule.kind) {
@@ -206,7 +162,6 @@ function computeRuleMatchSet(
       break;
     }
     case "top10": {
-      // Rank numeric cells; non-numerics never match.
       const nums: { k: string; v: number }[] = [];
       for (const { k, cell } of covered) {
         if (!cell) continue;
@@ -217,15 +172,14 @@ function computeRuleMatchSet(
       const rankRaw = rule.rank ?? 10;
       let n: number;
       if (rule.percent) {
-        // Excel: ceil(count * pct/100), clamped to [1, count].
         const pct = Math.max(0, Math.min(100, rankRaw));
         n = Math.max(1, Math.min(nums.length, Math.ceil((nums.length * pct) / 100)));
       } else {
         n = Math.max(1, Math.min(nums.length, rankRaw));
       }
-      // Sort: bottom=true → ascending (smallest N), else descending.
+
       nums.sort((a, b) => (rule.bottom ? a.v - b.v : b.v - a.v));
-      // Tie at the cutoff value also matches (Excel includes ties).
+
       const cutoff = nums[n - 1]!.v;
       for (const { k, v } of nums) {
         if (rule.bottom ? v <= cutoff : v >= cutoff) out.add(k);
@@ -244,7 +198,6 @@ function computeRuleMatchSet(
       const mean = nums.reduce((s, x) => s + x.v, 0) / nums.length;
       let threshold = mean;
       if (rule.stdDev !== undefined && rule.stdDev !== null) {
-        // Population stdev (Excel uses N, not N-1, for CF aboveAverage).
         const variance = nums.reduce((s, x) => s + (x.v - mean) ** 2, 0) / nums.length;
         const sd = Math.sqrt(variance);
         const k = Math.abs(rule.stdDev);
@@ -263,8 +216,6 @@ function computeRuleMatchSet(
     }
     case "duplicateValues":
     case "uniqueValues": {
-      // Bucket on a normalized value (text vs number kept distinct so
-      // "1" and 1 don't collide; mirrors Excel behavior).
       const counts = new Map<string, number>();
       const keyOf: { k: string; bucket: string | null }[] = [];
       for (const { k, cell } of covered) {
@@ -289,14 +240,10 @@ function computeRuleMatchSet(
     case "notContainsText":
     case "beginsWith":
     case "endsWith": {
-      // Excel does case-insensitive substring/prefix/suffix match on the
-      // displayed text. Empty needle ⇒ never matches (Excel won't let you
-      // create such a rule, but be defensive).
       const needle = (rule.text ?? "").toLowerCase();
       if (needle.length === 0) break;
       for (const { k, cell } of covered) {
         if (!cell) {
-          // Empty cells: notContainsText matches them; others don't.
           if (rule.kind === "notContainsText") out.add(k);
           continue;
         }
@@ -321,7 +268,6 @@ function computeRuleMatchSet(
       break;
     }
     case "timePeriod": {
-      // Match against today (real wall-clock at render time).
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const period = rule.timePeriod ?? "today";
@@ -340,13 +286,9 @@ function computeRuleMatchSet(
   return out;
 }
 
-/// Convert an Excel serial date (days since 1900-01-00, with the
-/// Lotus 1900-leap-year bug) to a JS Date. Returns null for negative
-/// or NaN inputs. Mirrors the simple formula used elsewhere in the
-/// renderer; we only need day-precision for `timePeriod`.
 function excelSerialToDate(serial: number): Date | null {
   if (!isFinite(serial) || serial < 0) return null;
-  // Excel epoch: 1899-12-30 (accounts for the fictitious 1900-02-29).
+
   const ms = (serial - 25569) * 86400 * 1000;
   const d = new Date(ms);
   return Number.isNaN(d.getTime()) ? null : d;
@@ -365,8 +307,7 @@ function matchesTimePeriod(cellDay: Date, today: Date, period: string): boolean 
     case "last7Days":
       return diffDays <= 0 && diffDays >= -6;
     case "thisWeek": {
-      // Excel weeks: Sunday–Saturday.
-      const tow = today.getDay(); // 0=Sun
+      const tow = today.getDay();
       const start = new Date(today);
       start.setDate(today.getDate() - tow);
       const end = new Date(start);
@@ -405,8 +346,6 @@ function matchesTimePeriod(cellDay: Date, today: Date, period: string): boolean 
   return false;
 }
 
-/// Field-by-field merge: `base` (higher-priority) wins; `overlay` fills
-/// any gaps. Used when multiple non-stopping rules cover the same cell.
 function mergeDxf(base: Dxf, overlay: Dxf): Dxf {
   return {
     fontColor: base.fontColor ?? overlay.fontColor,
@@ -420,11 +359,6 @@ function mergeDxf(base: Dxf, overlay: Dxf): Dxf {
   };
 }
 
-/// Evaluate one `cellIs` rule against a cell. Operands are CF formulas;
-/// without a recalc engine we only handle the cases that don't need one:
-/// literal numbers (`5`, `-1.5`) and double-quoted strings (`"foo"`).
-/// Anything else (e.g. `A1`, `SUM(B:B)`) returns false — better to skip
-/// the highlight than guess wrong.
 function evaluateCellIs(
   cell: Cell | undefined,
   operator: string | undefined,
@@ -438,17 +372,10 @@ function evaluateCellIs(
   const b = operands.length > 1 ? parseCfOperand(operands[1]!) : undefined;
   if (a === null) return false;
 
-  // Excel ordering quirk: when comparing text against a numeric operand,
-  // text always sorts "greater than" any number. So `notEqual 50` matches
-  // a "foo" cell, `greaterThan 50` matches "foo", `lessThan 50` does not,
-  // `between 10 100` does not include "foo", `notBetween` does.
   const cellIsText = cellNum === null && cellStr.length > 0;
   const aNum = typeof a === "number" ? a : NaN;
   const bNum = b !== undefined && typeof b === "number" ? b : NaN;
 
-  // For numeric operators against a text cell vs numeric operand, treat
-  // the text as +Infinity (Excel's text > number rule). String operands
-  // against text cells use lexicographic compare.
   const cmp = (
     lhsNum: number | null,
     lhsStr: string,
@@ -458,8 +385,6 @@ function evaluateCellIs(
     rhsStr: string,
   ): boolean | null => {
     if (rhsIsStr) {
-      // Operand is a string — only equal/notEqual make semantic sense; for
-      // ordered ops fall through using lexicographic compare on text cells.
       if (lhsNum !== null) return op === "notEqual";
       switch (op) {
         case "equal":
@@ -477,7 +402,7 @@ function evaluateCellIs(
       }
       return false;
     }
-    // Numeric operand. Text cells get the +Infinity treatment.
+
     const lhs = lhsNum !== null ? lhsNum : lhsStr.length > 0 ? Infinity : null;
     if (lhs === null) return null;
     switch (op) {
@@ -517,11 +442,11 @@ function evaluateCellIs(
     case "between":
     case "notBetween": {
       if (b === undefined) return false;
-      // Both bounds must parse to numbers for between to make sense.
+
       if (typeof a !== "number" || typeof b !== "number") return false;
       const lo = Math.min(aNum, bNum),
         hi = Math.max(aNum, bNum);
-      // Text cells are +Infinity — outside any numeric range.
+
       if (cellIsText) return operator === "notBetween";
       if (cellNum === null) return false;
       const inside = cellNum >= lo && cellNum <= hi;
@@ -531,17 +456,13 @@ function evaluateCellIs(
   return false;
 }
 
-/// CF operands come in as raw formula text. Recognize:
-///   `5`, `-1.5`, `1e3` → number
-///   `"foo"`            → string (un-escape `""` per OOXML)
-/// Everything else (cell refs, function calls) returns `null`.
 function parseCfOperand(s: string): number | string | null {
   const t = s.trim();
   if (t.length === 0) return null;
   if (t.startsWith('"') && t.endsWith('"')) {
     return t.slice(1, -1).replace(/""/g, '"');
   }
-  // Strip a leading `=` some writers emit.
+
   const body = t.startsWith("=") ? t.slice(1).trim() : t;
   if (/^-?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(body)) {
     const n = parseFloat(body);
@@ -559,8 +480,6 @@ export function drawConditionalFormats(
   cfDxfs: Map<string, Dxf>,
   locks?: Map<string, number>,
 ): void {
-  // First pass: paint dxf fill rects for cellIs / expression matches.
-  // (Color-scale fills paint below from their own min/max plumbing.)
   if (cfDxfs.size > 0) {
     const { covered, topLeftOf } = buildMergeMaps(sheet);
     for (const [k, dxf] of cfDxfs) {
@@ -581,8 +500,6 @@ export function drawConditionalFormats(
   if (!cfs || cfs.length === 0) return;
   const { covered, topLeftOf } = buildMergeMaps(sheet);
 
-  // Index numeric values so each color-scale rule only computes its range
-  // bounds once.
   const cellNumeric = new Map<string, number>();
   iterAllCells(sheet, (cell) => {
     if (cell.value === undefined) return;
@@ -593,13 +510,11 @@ export function drawConditionalFormats(
   });
 
   for (const cf of cfs) {
-    // Highest-priority color-scale rule wins (lower number = higher priority).
     const rule = cf.rules
       .filter((r) => r.kind === "colorScale" && r.colorScale)
       .sort((a, b) => a.priority - b.priority)[0];
     if (!rule || !rule.colorScale) continue;
 
-    // Gather all numeric values inside this CF's ranges to compute min/max.
     const values = numericValuesInRanges(cellNumeric, cf.ranges);
     if (values.length === 0) continue;
 
@@ -628,10 +543,6 @@ export function drawConditionalFormats(
     }
   }
 
-  // Data-bar pass. Paints horizontal bars proportional to value within
-  // each rule's CFVO-derived [min,max] window. When the data range
-  // straddles zero the axis sits at |min|/(|min|+max) and negatives
-  // paint left of the axis in red.
   for (const cf of cfs) {
     const rule = cf.rules
       .filter((r) => r.kind === "dataBar" && r.dataBar)
@@ -639,14 +550,13 @@ export function drawConditionalFormats(
     if (!rule || !rule.dataBar) continue;
     const db = rule.dataBar;
 
-    // Numeric values inside the rule's ranges drive the auto min/max.
     const values = numericValuesInRanges(cellNumeric, cf.ranges);
     if (values.length === 0) continue;
     const dataMin = Math.min(...values);
     const dataMax = Math.max(...values);
     const sorted = [...values].sort((a, b) => a - b);
-    const minVal = resolveCfvoValue(db.min, dataMin, dataMax, sorted, /*isMin*/ true);
-    const maxVal = resolveCfvoValue(db.max, dataMin, dataMax, sorted, /*isMin*/ false);
+    const minVal = resolveCfvoValue(db.min, dataMin, dataMax, sorted, true);
+    const maxVal = resolveCfvoValue(db.max, dataMin, dataMax, sorted, false);
     if (!isFinite(minVal) || !isFinite(maxVal) || maxVal <= minVal) continue;
 
     const minPct = (db.minLengthPct ?? 10) / 100;
@@ -654,10 +564,6 @@ export function drawConditionalFormats(
     const posCss = colorToCss(db.color, "#638EC6");
     const negCss = db.negativeColor ? colorToCss(db.negativeColor, "#FF0000") : "#FF0000";
 
-    // Split-axis when range straddles zero. axisFrac is where the zero
-    // line sits as a fraction of the bar's length (0 = leftmost, 1 =
-    // rightmost). We confine the bar to the cell's available width and
-    // place the axis at axisFrac inside that.
     const straddles = minVal < 0 && maxVal > 0;
     const axisFrac = straddles ? -minVal / (maxVal - minVal) : 0;
 
@@ -674,7 +580,7 @@ export function drawConditionalFormats(
           const v = cellNumeric.get(k);
           if (v === undefined) continue;
           const rect = topLeftOf.has(k) ? mergedRect(g, topLeftOf.get(k)!) : cellRect(g, r, c);
-          // Inset 1px so the bar sits inside grid lines.
+
           const inset = 1;
           const bx = rect.x + inset;
           const by = rect.y + inset;
@@ -682,14 +588,6 @@ export function drawConditionalFormats(
           const bh = Math.max(0, rect.h - inset * 2);
           if (bw <= 0 || bh <= 0) continue;
 
-          // `gradient` (Excel 2010+ default) paints a `linear-gradient(
-          // color, color->transparent)` from the bar's anchor edge to
-          // its outer tip; solid mode paints a flat fill of the same
-          // color across the whole bar. Excel's gradient stops aren't
-          // documented; visually-matched approximation: full-opacity at
-          // the anchor end, ~5% opacity at the tip, with the curve held
-          // mostly flat (~80% opacity at 70% of the bar) so the bar
-          // still reads as solid color from a distance.
           const fillBar = (
             x: number,
             y: number,
@@ -724,11 +622,10 @@ export function drawConditionalFormats(
               const len = bw * axisFrac * (minPct + t * (maxPct - minPct));
               fillBar(axisX - len, by, len, bh, negCss, "right");
             }
-            // Thin axis tick (Excel paints a 1px black line at zero).
+
             ctx.fillStyle = "#000000";
             ctx.fillRect(Math.round(axisX) - 0.5, by, 1, bh);
           } else {
-            // Single-direction bar from the left edge.
             const t = Math.max(0, Math.min(1, (v - minVal) / (maxVal - minVal)));
             const len = bw * (minPct + t * (maxPct - minPct));
             fillBar(bx, by, len, bh, posCss, "left");
@@ -739,14 +636,6 @@ export function drawConditionalFormats(
   }
 }
 
-/// Resolve a `<cfvo>` stop to a numeric threshold against the data range.
-/// `min`/`max` map to "Lowest Value"/"Highest Value" in Excel's UI; the
-/// canonical x14 extension records these as `automin`/`automax`, which
-/// per ECMA-376 anchor at zero (a positive-only range starts the bar from
-/// 0, not from the actual data min). We don't parse x14 yet, so we apply
-/// the same zero-clamp to the legacy `min`/`max` types: a strict reading
-/// of the spec would skip this clamp, but every Excel/SpreadJS-authored
-/// file we've seen uses x14, so this matches what users actually see.
 export function resolveCfvoValue(
   s: CfvoStop,
   dataMin: number,
@@ -778,15 +667,6 @@ export function resolveCfvoValue(
       return isMin ? dataMin : dataMax;
   }
 }
-
-/// CF iconSet pre-pass. For each cell covered by an iconSet rule:
-///   - decide which icon (0..N-1) to draw, based on the value vs the
-///     resolved CFVO thresholds;
-///   - reserve `ICON_RESERVE_PX` at the cell's left for the glyph;
-///   - if `showValue=false`, mark the cell text-suppressed.
-///
-/// Multiple iconSet rules on the same cell are resolved by `priority`
-/// (lower = higher precedence), matching `dataBar` / `colorScale`.
 
 export { computeCfIconState } from "./cfIconState.js";
 

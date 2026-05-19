@@ -34,7 +34,7 @@ export function resolveColorScaleStops(cs: CfColorScale, values: number[]): Reso
           v = sorted[idx] ?? min;
           break;
         }
-        // formula CFVOs need an evaluator; punt for v0.
+
         default:
           v = min;
       }

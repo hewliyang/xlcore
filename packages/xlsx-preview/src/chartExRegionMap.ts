@@ -1,50 +1,3 @@
-// chartEx (`cx:`) regionMap painter — Excel's "Filled Map" chart.
-//
-// Excel authors choose a Bing-backed geographic projection for region
-// maps and ship the resolved polygons inside the workbook as opaque
-// `<cx:binary>` geoCache blobs (gzipped Bing-proprietary polygon
-// streams that our extractor doesn't decode). To paint the chart we
-// bring our own world geometry: Natural Earth 110m admin_0 countries,
-// slimmed and 2-decimal-rounded into
-// `packages/xlsx-preview/src/world110m.ts`.
-//
-// Behaviour:
-//   - Equirectangular projection of the visible plot rect, lat
-//     clipped to roughly Mercator-friendly bounds so Antarctica
-//     doesn't dominate the bottom strip.
-//   - Country name normalisation maps each `<cx:strDim type="cat">`
-//     label to a single Natural Earth feature. Two-letter ISO codes
-//     are checked too so abbreviated workbooks (e.g. "US", "GB")
-//     still resolve.
-//   - Two-stop linear color scale: minimum → near-white; maximum →
-//     theme accent1. Workbooks that author a `<cx:valueColors>` 2-
-//     or 3-stop palette will use Excel defaults until we wire that
-//     through the extractor; the current heuristic matches Excel's
-//     out-of-the-box "Sequential" presentation.
-//   - Unmatched countries paint a soft neutral gray so the map still
-//     reads as a world frame.
-//   - Gradient legend bar on the right edge of the plot rect.
-//
-// To regenerate the geometry table after a Natural Earth release:
-//   curl -sL https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson -o /tmp/ne.json
-//   python3 - <<'PY'
-//   import json
-//   d = json.load(open('/tmp/ne.json'))
-//   def r(c):
-//       if isinstance(c, list):
-//           if c and isinstance(c[0], (int, float)):
-//               return [round(c[0],2), round(c[1],2)]
-//           return [r(x) for x in c]
-//       return c
-//   feats=[{'n':f['properties'].get('NAME'),
-//           'nl':f['properties'].get('NAME_LONG'),
-//           'a2':f['properties'].get('ISO_A2'),
-//           'a3':f['properties'].get('ISO_A3'),
-//           'g':{'type':f['geometry']['type'],
-//                'coordinates':r(f['geometry']['coordinates'])}}
-//          for f in d['features'] if f.get('geometry')]
-//   PY
-
 import type { Chart } from "./types.js";
 import type { Rect } from "./chart.js";
 import { activeThemeColor } from "./color.js";
@@ -57,25 +10,13 @@ const UNMATCHED_FILL = "#e5e7eb";
 const COUNTRY_STROKE = "#ffffff";
 const COUNTRY_STROKE_WIDTH = 0.5;
 
-// Lat clamp: Natural Earth ranges full -90..90, but populated areas
-// only stretch to ~83°N (northern Greenland) and Antarctica below
-// -60° is mostly unused. Clamp to [-58, 84] so the bulk of land mass
-// fills the rect instead of leaving big polar voids.
 const LAT_MIN = -58;
 const LAT_MAX = 84;
 const LON_MIN = -180;
 const LON_MAX = 180;
 
-// ---------- name index ----------
-//
-// Maps every candidate label (lower-cased) to its `World110mFeature`.
-// Built lazily on first chart paint, then memoized.
 let NAME_INDEX: Map<string, World110mFeature> | null = null;
 
-// Hand-curated aliases for the common Excel/workbook labels that
-// don't match any Natural Earth NAME / NAME_LONG / ISO code variant.
-// Add sparingly — Natural Earth's NAME column already covers ~95%
-// of mainstream workbook spellings.
 const NAME_ALIASES: Record<string, string> = {
   usa: "united states of america",
   "u.s.a.": "united states of america",
@@ -96,7 +37,7 @@ const NAME_ALIASES: Record<string, string> = {
   "russian federation": "russia",
   czechia: "czech republic",
   "czech republic": "czech republic",
-  "ivory coast": "ivory coast", // NE uses "Ivory Coast" verbatim
+  "ivory coast": "ivory coast",
   "côte d'ivoire": "ivory coast",
   "viet nam": "vietnam",
   burma: "myanmar",
@@ -127,9 +68,7 @@ function buildNameIndex(): Map<string, World110mFeature> {
     put(f.a2, f);
     put(f.a3, f);
   }
-  // Apply aliases. Each alias points at a canonical lower-cased key
-  // already in the index; if the canonical key is missing (e.g. a
-  // future Natural Earth release renamed it) we skip the alias.
+
   for (const [alias, canon] of Object.entries(NAME_ALIASES)) {
     const target = idx.get(canon);
     if (target && !idx.has(alias)) idx.set(alias, target);
@@ -143,8 +82,6 @@ function lookupCountry(label: string): World110mFeature | undefined {
   return NAME_INDEX.get(k);
 }
 
-// ---------- projection ----------
-
 interface Projection {
   fwd: (lon: number, lat: number) => [number, number];
 }
@@ -154,8 +91,7 @@ function makeEquirectangular(rect: Rect): Projection {
   const h = rect.h;
   const sx = w / (LON_MAX - LON_MIN);
   const sy = h / (LAT_MAX - LAT_MIN);
-  // Preserve 1:1 lon/lat aspect so countries don't squash. Letterbox
-  // by centring the world inside the plot rect.
+
   const s = Math.min(sx, sy);
   const worldW = (LON_MAX - LON_MIN) * s;
   const worldH = (LAT_MAX - LAT_MIN) * s;
@@ -166,9 +102,6 @@ function makeEquirectangular(rect: Rect): Projection {
   };
 }
 
-// ---------- color scale ----------
-
-/** Parse `#rrggbb` to `[r, g, b]` (0..255). */
 function hexToRgb(hex: string): [number, number, number] {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
   if (!m) return [68, 114, 196];
@@ -189,12 +122,10 @@ function lerpColor(a: [number, number, number], b: [number, number, number], t: 
 }
 
 interface ColorScale {
-  /** Map a raw data value to a CSS color (or undefined when NaN). */
   color: (v: number) => string;
   min: number;
   max: number;
-  /** Color stops as `(t in [0,1], hex)` pairs in ascending t order;
-   *  used to paint the gradient legend bar. */
+
   stops: { t: number; hex: string }[];
 }
 
@@ -207,11 +138,6 @@ function buildColorScale(
   const min = Math.min(...finite);
   const max = Math.max(...finite);
 
-  // Three palette flavors:
-  //   1. authored 3-stop (min + mid + max)  → diverging
-  //   2. authored 2-stop (min + max only)   → linear
-  //   3. nothing authored                   → near-white → accent1
-  //      (matches Excel's default "sequential" presentation).
   let stops: { t: number; rgb: [number, number, number]; hex: string }[];
   if (authored.min && authored.max && authored.mid) {
     stops = [stopAt(0, authored.min), stopAt(0.5, authored.mid), stopAt(1, authored.max)];
@@ -248,9 +174,6 @@ function stopAt(t: number, hex: string): { t: number; rgb: [number, number, numb
   return { t, rgb, hex };
 }
 
-/** Piecewise-linear interpolation across an arbitrary number of
- *  ascending-`t` color stops. Clamps to the endpoint stops outside
- *  `[stops[0].t, stops[n-1].t]`. */
 function lerpStops(stops: { t: number; rgb: [number, number, number] }[], t: number): string {
   if (stops.length === 0) return UNMATCHED_FILL;
   if (t <= stops[0]!.t) return rgbToHex(...stops[0]!.rgb);
@@ -265,8 +188,6 @@ function lerpStops(stops: { t: number; rgb: [number, number, number] }[], t: num
   }
   return rgbToHex(...stops[stops.length - 1]!.rgb);
 }
-
-// ---------- path tracing ----------
 
 function tracePolygon(ctx: CanvasRenderingContext2D, rings: number[][][], proj: Projection): void {
   for (const ring of rings) {
@@ -292,8 +213,6 @@ function traceFeature(ctx: CanvasRenderingContext2D, f: World110mFeature, proj: 
   }
 }
 
-// ---------- main entry ----------
-
 export function drawRegionMapChartEx(
   ctx: CanvasRenderingContext2D,
   chart: Chart,
@@ -317,9 +236,6 @@ export function drawRegionMapChartEx(
     return;
   }
 
-  // Reserve a strip on the right for the gradient legend (only when
-  // the chart actually has a `<cx:legend>` — chart.legendPos is the
-  // signal). Width is fixed at 60px (swatch + label band).
   const showLegend = !!chart.legendPos && chart.legendPos !== "n";
   const LEGEND_W = 64;
   const LEGEND_PAD = 8;
@@ -329,8 +245,6 @@ export function drawRegionMapChartEx(
 
   const proj = makeEquirectangular(mapRect);
 
-  // Build a quick lookup: matched feature -> data value. We rely on
-  // object identity in the feature table for keys.
   const matched = new Map<World110mFeature, number>();
   for (let i = 0; i < cats.length; i++) {
     const label = cats[i];
@@ -340,8 +254,6 @@ export function drawRegionMapChartEx(
     if (f) matched.set(f, v);
   }
 
-  // Paint base layer (unmatched countries) first, then matched on top.
-  // Stroke each country with a thin white seam.
   ctx.save();
   ctx.lineJoin = "round";
   ctx.lineWidth = COUNTRY_STROKE_WIDTH;
@@ -363,7 +275,6 @@ export function drawRegionMapChartEx(
   }
   ctx.restore();
 
-  // Gradient legend bar.
   if (showLegend) {
     drawGradientLegend(ctx, chart, rect, mapRect, scale, LEGEND_W, LEGEND_PAD);
   }
@@ -380,15 +291,10 @@ function drawGradientLegend(
 ): void {
   const barW = 14;
   const barX = mapRect.x + mapRect.w + pad;
-  // Keep the legend bar within the vertical span of the map (looks
-  // tidier than spanning the full rect when the map is letterboxed).
+
   const barH = Math.min(rect.h * 0.7, 240);
   const barY = rect.y + (rect.h - barH) / 2;
 
-  // The bar paints bottom-to-top (low value at the bottom). Map each
-  // scale stop's `t` into a gradient stop position; the gradient's 0
-  // coordinate is `barY + barH` (bottom), 1 is `barY` (top), so the
-  // stop position is simply the same `t`.
   const grad = ctx.createLinearGradient(0, barY + barH, 0, barY);
   for (const stop of scale.stops) grad.addColorStop(stop.t, stop.hex);
   ctx.fillStyle = grad;
@@ -397,9 +303,6 @@ function drawGradientLegend(
   ctx.lineWidth = 1;
   ctx.strokeRect(barX + 0.5, barY + 0.5, barW - 1, barH - 1);
 
-  // Min / max labels at the bar's ends. Format with the chart's value
-  // format when present (e.g. percent for the World Population fixture)
-  // so the legend reads in the same units as the workbook data.
   ctx.font = `${LABEL_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   ctx.fillStyle = LABEL_COLOR;
   ctx.textAlign = "left";
@@ -410,7 +313,5 @@ function drawGradientLegend(
   ctx.textBaseline = "bottom";
   ctx.fillText(fmt(scale.min), barX + barW + 4, barY + barH);
 
-  // Suppress the unused-binding lint without taking out the slot
-  // (`legendW` is part of the public layout contract for this fn).
   void legendW;
 }
