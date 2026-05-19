@@ -1,0 +1,211 @@
+# Shape / DrawingML parity triage
+
+Status of SpreadsheetML DrawingML shapes in `xlcore` vs Excel / `hsx`.
+
+Legend: ✅ done · 🟡 partial · ❌ missing · n/a out of scope.
+
+## Spec map
+
+Primary ECMA-376 Part 1 clauses / schema areas:
+
+| Area | Spec hook | Notes |
+| --- | --- | --- |
+| Spreadsheet drawing host | §20.5 `DrawingML - SpreadsheetML Drawing` | Worksheet drawing part (`xl/drawings/drawing*.xml`) positions DrawingML objects on sheets. |
+| Anchor types | §20.5.2.33 `twoCellAnchor`, §20.5.2.1 `absoluteAnchor`; schema `CT_OneCellAnchor` | `twoCellAnchor` moves/resizes with cells (`editAs` default `twoCell`); `oneCellAnchor` uses start marker + EMU extent; `absoluteAnchor` uses absolute EMU pos + extent. |
+| Object choices | schema `EG_ObjectChoices` | `sp`, `grpSp`, `graphicFrame`, `cxnSp`, `pic`, `contentPart`. |
+| Shape | §20.5.2.29 `sp`; schema `CT_Shape` | `nvSpPr`, `spPr`, optional `style`, optional `txBody`, attrs `macro`, `textlink`, `fLocksText`, `fPublished`. |
+| Group shape | §20.5.2.17 `grpSp`, §20.5.2.18 `grpSpPr`; schema `CT_GroupShape` | Groups can nest `sp`, `grpSp`, `graphicFrame`, `cxnSp`, `pic`; `xfrm/off/ext/chOff/chExt` maps child logical coordinates. |
+| Connectors | §20.5.2.19 `nvCxnSpPr`; schema `CT_Connector` | Connector shape with normal shape properties and connection non-visual props. |
+| Shape properties | §20.5.2.30 `spPr`; main schema `CT_ShapeProperties` | `xfrm`, geometry, fill, line, effects, 3D. |
+| Geometry | §20.1.9.18 `prstGeom`, §20.1.10.56 `ST_ShapeType` | 187 preset shape types in strict schema; `custGeom` supports explicit paths. `OfficeOpenXML-DrawingMLGeometries.zip` contains informative preset path definitions. |
+| Fills / lines | §20.1.8.54 `solidFill`; schema `EG_FillProperties`, `CT_LineProperties` | Fill choices: `noFill`, `solidFill`, `gradFill`, `blipFill`, `pattFill`, `grpFill`. Line has fill, dash, join, head/tail ends, width/cap/compound/alignment. |
+| Text body | §20.5.2.34 `txBody`; main schema `CT_TextBody`, `CT_TextBodyProperties` | `bodyPr`, optional list style, one or more paragraphs; `bodyPr` covers wrap (`none`/`square`), margins, rotation, vertical text, overflow, autofit, anchor. |
+
+Useful commands used for this audit:
+
+```bash
+cd ecma-376
+./ecma show p1-20-5-drawingml-spreadsheetml-drawing
+./ecma show p1-20-5-2-29-sp-shape
+./ecma search prstGeom
+./ecma search ST_ShapeType
+```
+
+## Current implementation snapshot
+
+| Layer | Status | Files / notes |
+| --- | --- | --- |
+| Extraction | 🟡 | `crates/xlcore-export/src/charts.rs` surfaces top-level `xdr:sp` and `xdr:grpSp` from `twoCellAnchor` / `oneCellAnchor`. Top-level `cxnSp`, `absoluteAnchor`, `contentPart` ignored. |
+| Shape tree | 🟡 | `crates/xlcore-export/src/shapes.rs` flattens `sp` / nested `grpSp`; maps group `xfrm/off/ext/chOff/chExt`; nested `xdr:pic` inside groups becomes image nodes. |
+| Schema | 🟡 | JSON model is intentionally painter-oriented (`Shape { nodes }`), not a full DrawingML AST. Good for preview; not enough for round-trip editing. |
+| Rendering | 🟡 | `packages/xlsx-preview/src/shape.ts` paints a small preset subset, solid fills, basic outlines, text, rotation, nested pictures. Unknown presets fall back to rectangle. |
+| Fixtures | 🟡 | Initial corpus landed under `tests/fixtures/shapes/`: `basic-autoshapes.xlsx`, `textbox-wrap-align.xlsx`, `connectors.xlsx`. Each ships with `.hsx.png` (ground truth) and `.ours.png` (current regression baseline). Still missing per the P0 list below: `groups-and-pictures.xlsx`, `style-refs-themed.xlsx` (partially exercised already by the boxes in `connectors.xlsx`, whose `<xdr:style>` blocks reference `lnRef`/`fillRef`/`fontRef`/`effectRef`). |
+
+## Parity matrix
+
+### Anchoring / object model
+
+| Feature | Extract | Render | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| `twoCellAnchor` | ✅ | ✅ | P0 | Main path. `editAs` behavior (`twoCell` default, `oneCell`, `absolute`) is not modeled; current renderer effectively uses resolved anchor rect. Matters for any agent edit flow that inserts rows/columns. |
+| `oneCellAnchor` | ✅ | ✅ | P0 | Uses EMU extents for pixel-accurate render. |
+| `absoluteAnchor` | ❌ | ❌ | P1 | Spec has absolute EMU `pos` + `ext`; likely rare but easy to surface. |
+| `clientData` flags | ❌ | n/a | P2 | `fLocksWithSheet`, `fPrintsWithSheet` on every anchor (§20.5.2.3). No preview impact, but needed for round-trip + sheet-protection semantics. |
+| `editAs` round-trip | ❌ | n/a | P1 | Pass-through is fine for preview; the engine/bridge layer will need it once shape moves are part of the agent mutation API. |
+| Top-level `sp` | ✅ | 🟡 | P0 | Geometry/fill/text coverage partial. |
+| Top-level `grpSp` | ✅ | 🟡 | P0 | Nested `sp` / `grpSp` / `pic` supported; nested `cxnSp` / `graphicFrame` ignored. |
+| Top-level `pic` | ✅ | ✅ | P0 | Separate image path; top-level image crop/rotation tracked in `PARITY.md`. |
+| Nested `pic` in groups | ✅ | ✅ | P0 | Includes `<a:srcRect>` crop. |
+| `cxnSp` connectors | ❌ | ❌ | P0 | High-value next shape feature: arrows/lines/callout connectors are common in worksheets. |
+| `graphicFrame` in groups | ❌ | ❌ | P2 | Could contain chart/diagram/table-like graphics inside group. |
+| `contentPart` | ❌ | ❌ | P3 | Extension payload; low preview value initially. |
+| Non-visual props / alt text | ❌ | n/a | P2 | `cNvPr name/descr/title`, locks, hidden metadata not surfaced. |
+| `cNvPr/hlinkClick` + `hlinkHover` | ❌ | ❌ | P1 | Click-the-shape hyperlinks (separate from in-text `a:hlinkClick` on a run). Common for navigation buttons; should reuse the existing workbook hyperlink event channel. |
+| `macro`, `textlink` attrs | ❌ | ❌ | P2 | `textlink` can bind shape text to a cell formula. Macro click actions are non-preview. |
+| Connection sites `cxnLst` | ❌ | ❌ | P1 | Required for routing connector endpoints (`stCxn`/`endCxn` ids on `cNvCxnSpPr`) instead of falling back to bbox-center attach. Pairs with connector work. |
+| Adjust handles `ahLst` (`ahPolar` / `ahXY`) | ❌ | n/a | P3 | Authoring-time UI only; no preview impact. |
+| Shape locks (`spLocks`, `cxnSpLocks`, `picLocks`, `grpSpLocks`) | ❌ | n/a | P3 | Edit-time gates; not relevant for preview but needed for round-trip fidelity. |
+| Legacy VML drawings (`xl/drawings/vmlDrawing*.vml`) | ❌ | ❌ | P1 | Comment indicators, form controls, and legacy autoshapes still ship as VML in many workbooks. Out of scope for pure DrawingML parity, but worth a callout — `legacyDrawing` r:id on the sheet is currently ignored. |
+| Form controls / OLE (`<controls>`, `<oleObjects>`) | ❌ | ❌ | P2 | Anchored via `xdr:from/to` like drawings; rendered as static placeholder is sufficient for v0. |
+
+### Transforms / z-order
+
+| Feature | Extract | Render | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| Shape offset / extent | ✅ | ✅ | P0 | EMU bbox normalized into node-relative coords. |
+| Group `chOff` / `chExt` mapping | ✅ | ✅ | P0 | Important for Office-authored groups. |
+| Shape rotation `xfrm@rot` | ✅ | ✅ | P0 | Stored as 1/60000 degrees; renderer rotates node around center. |
+| Group rotation | ❌ | ❌ | P1 | `CT_GroupTransform2D` has `rot`; current frame mapping ignores it. |
+| Flip H/V | ❌ | ❌ | P1 | Both `CT_Transform2D` and group transform have `flipH` / `flipV`. |
+| Z-order | ✅ | ✅ | P0 | XML traversal order is preserved for emitted nodes/drawings. Add fixture to lock this down. |
+| Clipping to group/shape | ❌ | ❌ | P2 | Current flattened model does not clip children to group bounds. |
+| `bwMode` (black/white render mode) | ❌ | ❌ | P3 | `spPr@bwMode`; rare in spreadsheets. |
+
+### Geometry
+
+| Feature | Extract | Render | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| `prstGeom`: `rect` | ✅ | ✅ | P0 | |
+| `roundRect` | ✅ | ✅ | P0 | Uses hardcoded default radius; ignores `avLst`. |
+| `ellipse` / `circle` | ✅ | ✅ | P0 | |
+| `triangle`, `diamond` | ✅ | ✅ | P0 | |
+| Basic block arrows | ✅ | ✅ | P0 | `leftArrow`, `rightArrow`, `upArrow`, `downArrow`; hardcoded default adjusts. |
+| Lines (`prstGeom=line` / `lineInv`) | 🟡 | ❌ | P0 | Usually should become connector/line primitives, not rectangle fallback. |
+| More common presets | 🟡 | ❌ | P1 | Chevron, pentagon/hexagon, stars, callouts, braces/brackets, flowchart symbols, action buttons. Spec lists 187 presets. |
+| `avLst` adjust values | ❌ | ❌ | P1 | Needed for arrow head/tail size, rounded rect radius, callout pointers, stars, arcs. |
+| `custGeom` paths | ❌ | ❌ | P2 | Requires DrawingML path interpreter (`moveTo`, `lnTo`, `arcTo`, bezier, close) and guide formulas. |
+| Informative preset path corpus | n/a | n/a | P2 | `OfficeOpenXML-DrawingMLGeometries.zip/presetShapeDefinitions.xml` can seed preset rendering instead of hand-writing 187 shapes. |
+
+### Fill / outline / effects
+
+| Feature | Extract | Render | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| `noFill` | ✅ | ✅ | P0 | Falls through to no fill. |
+| `solidFill` `srgbClr` | ✅ | ✅ | P0 | Basic hex. Audit color modifiers / alpha. |
+| `solidFill` `schemeClr` | ✅ | ✅ | P0 | Uses workbook theme + existing modifier resolver. |
+| `solidFill` `prstClr`, `sysClr` | 🟡 | ✅ | P1 | Small preset table / `lastClr`; expand preset color coverage and modifiers. |
+| `scrgbClr`, `hslClr` | ❌ | ❌ | P2 | Already solved for cells/charts elsewhere; can reuse color conversion. |
+| Alpha / transparency | 🟡 | 🟡 | P1 | Color modifiers may parse some alpha in theme path; shape renderer does not generally model opacity. |
+| Full color modifier set | 🟡 | 🟡 | P1 | Spec §20.1.2.3 lists `lumMod/lumOff`, `shade`, `tint`, `satMod/satOff`, `alpha`, `alphaMod`, `alphaOff`, `gamma`/`invGamma`, `comp`, `inv`, `gray`, `hueMod/Off`, `red/green/blueMod/Off`. Cell-side resolver covers most; verify the shape path uses the same one end-to-end. |
+| Gradient fills `gradFill` | ❌ | ❌ | P1 | Reuse cell/chart gradient logic where possible. Common in themed shapes. |
+| Pattern fills `pattFill` | ❌ | ❌ | P2 | Reuse cell pattern tile renderer. |
+| Blip fills `blipFill` | ❌ | ❌ | P1 | Shape-as-image-fill; distinct from `xdr:pic`. Common for textured buttons/banners. |
+| Group fill `grpFill` | ❌ | ❌ | P2 | Inherit/transform fill from parent group. |
+| Basic line color + width | ✅ | ✅ | P0 | `a:ln` solid/noFill + width. |
+| Line dash/cap/join | ❌ | ❌ | P1 | `prstDash`, `custDash`, cap, round/bevel/miter. |
+| Compound lines / alignment | ❌ | ❌ | P2 | `cmpd`, `algn`. |
+| Arrowheads (`headEnd` / `tailEnd`) | ❌ | ❌ | P0 | Especially important for connectors and line shapes. Type / width / length enums per §20.1.10.33–34. |
+| Outer shadow (`outerShdw`) | ❌ | ❌ | P1 | Most visually impactful effect on themed buttons/cards. |
+| Inner shadow (`innerShdw`) | ❌ | ❌ | P2 | |
+| Glow (`glow`) | ❌ | ❌ | P2 | |
+| Soft edge (`softEdge`) | ❌ | ❌ | P2 | |
+| Reflection (`reflection`) | ❌ | ❌ | P3 | |
+| Blur (`blur`) | ❌ | ❌ | P3 | |
+| `effectLst` vs `effectDag` | ❌ | ❌ | P2 | List form vs DAG form (§20.1.8.26 effectLst / §20.1.8.25 effectDag); only `effectLst` realistically needed first. |
+| Blip image effects on shape-as-image (`alphaModFix`, `lum`, `clrChange`, `duotone`, `biLevel`, `grayscl`) | ❌ | ❌ | P2 | Apply to `blipFill` and to `xdr:pic`. Reuse the shared decode cache plus a post-process layer. |
+| 3D / scene3d / sp3d | ❌ | ❌ | P3 | Defer; preview can stay 2D. |
+
+### Shape text
+
+| Feature | Extract | Render | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| Paragraphs + runs | ✅ | ✅ | P0 | Multiple paragraphs and runs. |
+| Run font size / bold / italic | ✅ | ✅ | P0 | `a:rPr sz b i`. |
+| Run underline / strike | ✅ | ✅ | P1 | Extracted; renderer support should be verified with fixture. |
+| Run color solidFill | ✅ | ✅ | P0 | Partial color choice support follows shape solidFill. |
+| Latin font + theme refs | ✅ | ✅ | P0 | `+mn-lt` / `+mj-lt` resolve via theme. |
+| Paragraph alignment | ✅ | 🟡 | P0 | `l/ctr/r/just` mapped; `dist`, `thaiDist`, low-just not. |
+| Body vertical anchor | ✅ | ✅ | P0 | `t/ctr/b`; default top. |
+| Word wrap | ✅ | ✅ | P0 | `wrap=square` / default wraps; `wrap=none` overflows. |
+| Body margins/insets | ✅ | ✅ | P0 | `<a:bodyPr lIns/tIns/rIns/bIns/>` extracted as `ShapeNode.textInsetsEmu` (length-4 EMU vec, missing slots back-filled with the DrawingML defaults 91440 / 45720 / 91440 / 45720 EMU). Renderer in `shape.ts` consumes them at `PX_PER_EMU` and falls back to those same defaults when the field is `None` — replacing the old 4%-of-shape magic margin. Locked in by `tests/fixtures/shapes/textbox-wrap-align.xlsx` (row 3: default / tight / loose / asym). |
+| Text autofit | ❌ | ❌ | P1 | `noAutofit`, `normAutofit` (with `fontScale` / `lnSpcReduction`), `spAutoFit`; affects cramped boxes. |
+| Text overflow | ❌ | ❌ | P1 | `vertOverflow`, `horzOverflow`. |
+| Text rotation / vertical text | ❌ | ❌ | P1 | `bodyPr@rot`, `vert` enum (`horz`, `vert`, `vert270`, `eaVert`, `mongolianVert`, `wordArtVert`, `wordArtVertRtl`), `upright`; separate from shape rotation. |
+| Text columns | ❌ | ❌ | P2 | `bodyPr@numCol`, `spcCol`, `rtlCol`. |
+| Text rect override (`a:rect`, `useSpRect`) | ❌ | ❌ | P2 | Custom text box inside the shape; matters for callouts and presets whose preset path defines its own text rect. |
+| Preset text warp (`prstTxWarp`) | ❌ | ❌ | P2 | WordArt-style geometry warp on `bodyPr`. Low priority for spreadsheets but cheap to detect/skip. |
+| `lstStyle` paragraph defaults | ❌ | ❌ | P1 | `defPPr`, `lvl1pPr`–`lvl9pPr` inside `txBody`; runs / paragraphs inherit run/paragraph props from here when not specified locally. Currently we read direct rPr only — this is a real fidelity gap on themed templates. |
+| Bullets / numbering | ❌ | ❌ | P2 | `buChar`, `buAutoNum`, `buBlip`, `buNone`, `buClr`, `buSzPct/Pts`, `buFont`, `buFontTx`. |
+| Paragraph spacing / indents / tabs | ❌ | ❌ | P2 | `lnSpc`, `spcBef`, `spcAft`, `marL`, `marR`, `indent`, `defTabSz`, `tabLst`, `fontAlgn`, `algn=dist`/`thaiDist`, `lvl`. |
+| Run extras | ❌ | ❌ | P2 | `kern`, `spc` (char spacing), `baseline`, `cap` (none/small/all), `lang`/`altLang`, `dirty`, `err`, `noProof`, `smtClean`/`smtId`, `highlight`. |
+| Hyperlinks in shape text (`rPr/hlinkClick` + `hlinkMouseOver`) | ❌ | ❌ | P2 | Could reuse workbook hyperlink event plumbing. |
+| RTL paragraph (`pPr@rtl`) | ❌ | ❌ | P2 | Tied to broader RTL sheet work. |
+| `textlink` formula text | ❌ | ❌ | P2 | Needs formula/cell display integration; gated on the engine. |
+
+### Picture / blip details (shapes + nested pics)
+
+| Feature | Extract | Render | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| `srcRect` crop | ✅ | ✅ | P0 | Nested-pic path shipped. Confirm top-level pic path too. |
+| `stretch` vs `tile` blip fill | 🟡 | 🟡 | P1 | Currently effectively stretch; `tile@tx/ty/sx/sy/flip/algn` and `tileRect` not modeled. |
+| `rotWithShape`, `dpi` | ❌ | ❌ | P2 | Affects rotated picture fills and high-DPI sources. |
+| SVG sidecar (`asvg:svgBlip`) | ❌ | ❌ | P1 | Modern Office stores both `r:embed` (raster fallback) + SVG. We pick raster today; SVG would render crisper at scale. Sits inside `blip/extLst` (`a14`/`asvg` namespaces). |
+| Modern blip extensions (`a14:useLocalDpi`, `a:duotone`, ink, model3d, camera) | ❌ | ❌ | P3 | Long-tail. |
+
+### Theme / style inheritance
+
+| Feature | Extract | Render | Priority | Notes |
+| --- | --- | --- | --- | --- |
+| Direct `spPr` | 🟡 | 🟡 | P0 | Current implementation is mostly direct-properties only. |
+| Shape `style` refs | ❌ | ❌ | P1 | `lnRef`, `fillRef`, `effectRef`, `fontRef` into theme format scheme. Office often emits style refs instead of direct fill/line. |
+| Default shape definitions | ❌ | ❌ | P2 | `themeElements/objectDefaults/spDef`, `lnDef`, `txDef`. |
+| Group property inheritance | ❌ | ❌ | P2 | Spec says individual shape props take precedence over group props; current flattening does not inherit group fill/effects. |
+
+## Recommended implementation plan
+
+### P0 — make common worksheet chrome dependable
+
+1. **Add fixture corpus first**: `tests/fixtures/shapes/basic-autoshapes.xlsx`, `shapes/groups-and-pictures.xlsx`, `shapes/textbox-wrap-align.xlsx`, `shapes/connectors.xlsx`, `shapes/style-refs-themed.xlsx` with committed `hsx` references. **Status:** `basic-autoshapes` / `textbox-wrap-align` / `connectors` landed (with `.hsx.png` + `.ours.png` baselines). `groups-and-pictures` and `style-refs-themed` still TODO (the latter is partially exercised by the node boxes in `connectors.xlsx`).
+2. **Connectors / line primitives**: surface top-level and nested `xdr:cxnSp`, plus `prstGeom=line/lineInv`, as a `ShapeNode` line kind with stroke, dash, arrowheads. Capture `stCxn`/`endCxn` ids even if we initially route bbox-to-bbox.
+3. **Text insets**: ~~extract `bodyPr lIns/tIns/rIns/bIns`; renderer should use EMU→px padding instead of a fixed magic value.~~ **Shipped.** Schema gained `ShapeNode.textInsetsEmu`; extractor reads `BodyProperties.{left,top,right,bottom}_inset`; renderer applies them in `drawShapeText` with DrawingML-default fallback. Visible win: text inside narrow shapes (triangle / chevron / decision in `basic-autoshapes.xlsx`) no longer fragments into single-character vertical strips, and the inset row of `textbox-wrap-align.xlsx` produces four distinct paintings.
+4. **Style refs minimal resolver**: resolve `a:style/fillRef/lnRef/fontRef`/`effectRef` against theme format scheme for cases without direct `solidFill` / `ln`. Office-authored shapes lean on this heavily.
+5. **`lstStyle` paragraph inheritance**: pull `defPPr` / `lvl1pPr` rPr defaults inside `txBody` so themed text boxes don’t fall back to wrong size/font when local `rPr` is absent.
+6. **Lock in z-order and group mapping** with visual tests; current group mapping is valuable and should not regress.
+
+### P1 — noticeably improve visual fidelity
+
+1. `absoluteAnchor` support in `charts.rs` / drawing extraction.
+2. Transform flips and group rotation.
+3. Line dash/cap/join + arrowheads.
+4. Gradient fills and blip fills (incl. `srcRect`/`stretch` on shape fill path).
+5. `avLst` adjust values for the already-supported presets, then add the next 20 common presets: `line`, `chevron`, `pentagon`, `hexagon`, `star5`, `leftRightArrow`, arrow callouts, braces/brackets, cloud/callout, flowchart process/decision/data.
+6. Text autofit (`normAutofit` font scaling), overflow, body rotation / vertical text.
+7. Outer shadow effect — by far the most visible omitted effect on themed buttons/cards.
+8. Click-the-shape hyperlinks (`cNvPr/hlinkClick`) wired through the existing workbook hyperlink event channel.
+9. SVG sidecar pick (`asvg:svgBlip`) for crisp rendering of modern icon pictures.
+
+### P2+ — long tail / full DrawingML
+
+- Generic `custGeom` and preset path interpreter driven by `presetShapeDefinitions.xml`.
+- Pattern/group fills and the rest of the effect stack (inner shadow / glow / reflection / softEdge / blur / `effectDag`).
+- Blip image effects (`alphaModFix`, `lum`, `clrChange`, `duotone`, `biLevel`, `grayscl`).
+- Group property inheritance and default shape definitions (`objectDefaults/spDef|lnDef|txDef`).
+- Rich list typography: bullets, numbering, line spacing, tabs, paragraph defaults, run kerning/spacing, columns.
+- Connection sites (`cxnLst`) for shape-attached connectors.
+- Legacy VML drawings (`xl/drawings/vmlDrawing*.vml`) so comment indicators / form controls / pre-2007 shapes render.
+- Form controls + OLE objects (`<oleObjects>`, `<controls>`) as static placeholders.
+- `contentPart`, nested `graphicFrame`, `prstTxWarp` / WordArt, SmartArt/diagrams (`dgm`) remain separate larger work.
+
+## Suggested PARITY.md one-line status
+
+Shapes should remain 🟡 until at least connectors, style refs, text insets, and a dedicated fixture corpus land. Current v0 is good for basic callouts/buttons and grouped screenshot chrome, but it is not yet broad DrawingML parity.
