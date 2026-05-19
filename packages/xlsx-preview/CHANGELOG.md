@@ -5,256 +5,93 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Fixed
-
-- Suppress a cell's `left` / `right` border when its own centered or
-  aligned text overflows past that edge into an empty neighbour, so
-  author-painted vertical border styles no longer cut through
-  overflowing glyphs. New `computeOverflowSuppressedSides` pre-pass
-  in `textRenderer.ts`; `drawCellBorders` takes an optional suppressed
-  set. Merged / rotated / wrapped / multi-line cells unaffected.
-- DrawingML `<a:fld>` (text field) runs are now extracted alongside
-  `<a:r>`. Previously the `ParagraphChoice` match in
-  `shapes.rs::text_body_to_paragraphs` only handled `AR` / `ABr` and
-  fell through `_ => {}` for everything else — silently dropping every
-  `<a:fld type="TxLink">` text run on the floor. Field runs are how
-  Excel caches the displayed value of shape text bound to a cell via
-  the `textlink="$T$51"` attribute, and dashboard / SOTP-style diagrams
-  use them constantly: on `e-007_input-4.xlsx :: SOTP Summary`, every
-  numeric cell (`$252.0B`, `+13%`, `$163.8B`, `16.0x '27E EBITDA`, …),
-  every period header (`'26E` / `'27E`), and the entire bottom red
-  banner ("Alphabet SOTP Enterprise Value = $4.17T …") were emitted
-  via `<a:fld>`. New `AFld` arm builds a `TextRun` from `field.text` +
-  `field.run_properties` and runs it through the same lstStyle → lvl →
-  pPr/defRPr → rPr cascade we already use for regular runs.
-- DrawingML `<a:rPr u="...">` / `strike="..."` are enums, not bools.
-  `apply_run_properties` and `apply_default_run_properties` previously
-  set `tr.underline = rp.underline.is_some()`, but `u="none"` parses to
-  `Some(TextUnderlineValues::None)` — so every run that explicitly
-  turned underline OFF still rendered underlined (same trap for
-  `strike="noStrike"`). Now gated through two new helpers
-  (`underline_is_visible` / `strike_is_visible`) that pattern-match on
-  the enum variant. This was invisible until the `<a:fld>` fix landed
-  and exposed it on the SOTP sheet, where every field rPr sets
-  `u="none" strike="noStrike"`.
-- Wrapped shape text past line 1 was being dropped on centered short
-  boxes. The clip rule in `shape.ts::drawShapeText` was
-  `cursorY + lineHeight > innerY + innerH + 0.5 → break`, which
-  discarded line 2 of any `anchor="ctr"` box whose two wrapped lines
-  were ~1px taller than the body — killing the `SUBSCRIPTIONS,
-  PLATFORMS, & DEVICES`, `PLAY, DEVICES, GOOGLE ONE, ETC.`,
-  `YOUTUBE ADS`, and `YOUTUBE SUBS` labels on the SOTP sheet. Replaced
-  with the spec-default `vertOverflow="overflow"` behavior: a wrapped
-  line paints as long as its TOP starts inside the body rect, so the
-  last line may spill slightly past the bottom (matching Excel's
-  default) while genuinely-too-tall paragraphs still stop clipping at
-  roughly the right place. Explicit `vertOverflow="clip"` modeling
-  remains TODO.
-
 ### Added
 
-- `<xdr:cxnSp>` connector endpoints now resolve `<a:stCxn id=N idx=I/>`
-  and `<a:endCxn>` against the actual target shapes.
-  `extract_shape_tree` does a pre-pass collecting `cNvPr/@id → world
-  bbox` for every `xdr:sp` (including nested in groups), and
-  `visit_connector` looks up each end via a new `connection_site()`
-  helper that maps the four cardinal OOXML indices
-  (`0/1/2/3 = top/right/bottom/left center`) onto the target bbox.
-  When BOTH ends resolve, the connector's world bbox is rebuilt to
-  span the two resolved points; `flipH`/`flipV` are derived from
-  start-vs-end position; and the xfrm's `rot` is zeroed (the new bbox
-  is already axis-aligned). Also surfaces a new `elbowAxis` field on
-  `ShapeNode` (`"vertical"` when both sites are top/bottom,
-  `"horizontal"` when both are left/right) so the `bentConnector3`
-  painter overrides its w/h-ratio heuristic and picks the correct path
-  orientation — without this, two arrows that share an `endCxn`
-  (e.g. YOUTUBE ADS + YOUTUBE SUBS → YOUTUBE top on the SOTP sheet)
-  would still meet at the same point but their last segments would
-  approach horizontally in opposite directions and form a `▶◀` bowtie
-  of arrowheads instead of merging into a single visual head.
-  Preset-aware connection sites (chevron tip, star points, flowchart
-  shape sides at non-cardinal positions) and the shape's own
-  `<a:cxnLst>` are still TODO; today we fall back to bbox center for
-  any `idx` outside `0..=3`.
-- Brace and bracket presets: `leftBrace`, `rightBrace`, `leftBracket`,
-  `rightBracket`. Stroked open paths with each outer corner traced as
-  a 90° quadratic-bezier quarter-arc and (for braces only) a matching
-  central cusp pointing toward the tip. Reads `adj1` (corner curl
-  size, as 1/100000 of h) and `adj2` (tip Y, as 1/100000 of h),
-  clamped per ECMA: curl in `[0, h/2]`, tip in `[curl, h-curl]`.
-  `lineCap` / `lineJoin` switch to `round` while painting any
-  brace-like preset so the arc joins don't show as right-angled tips.
-  The horizontal `‿` brace that sits between the segment grid and the
-  SOTP banner on `e-007_input-4.xlsx :: SOTP Summary` (a `leftBrace`
-  rotated 270°) was the motivating case — it used to fall through the
-  preset switch and render as a plain rectangle. `bracePair`,
-  `bracketPair`, and the curly-brace diagonal variants are still
-  unmodeled.
-- `adj2` is now extracted on every `xdr:sp` (previously connectors
-  only, and only `adj1`). The new `preset_adj_n` helper consolidates
-  the attribute walk so `adj1` / `adj2` / future named adjusts can
-  share one implementation. `roundRect`, arrow heads / tails,
-  callouts, stars, and arcs still ignore their `avLst` and use
-  hardcoded defaults.
+- Worksheet-level `<autoFilter ref="...">` chrome: surfaces as
+  `Sheet.autoFilterRange`, paints header dropdown chevrons, and honors
+  row `hidden` flags for saved filtered results.
+- Browser previewer follows in-workbook hyperlinks: navigation buttons
+  switch sheets, select / scroll to the target cell, and resolve bare
+  workbook/sheet defined-name targets. External links still open in a
+  new tab.
+- DrawingML shape fixture corpus under `tests/fixtures/shapes/`
+  (`basic-autoshapes`, `textbox-wrap-align`, `connectors`,
+  `style-refs-themed`, `groups-and-pictures`,
+  `list-style-inheritance`), each with committed `.hsx.png` +
+  `.ours.png` baselines.
+- DrawingML `<xdr:cxnSp>` connectors + bare `prstGeom=line`/`lineInv`:
+  end-to-end extract + render. Honors `flipH`/`flipV`, `prstDash`
+  patterns, five arrowhead kinds (triangle / stealth / diamond / oval
+  / open) with `w`/`len` sizing, and straight / `bentConnector3` Z /
+  diagonal routing.
+- `<xdr:cxnSp>` `<a:stCxn>` / `<a:endCxn>` endpoint resolution against
+  target shape bboxes (cardinal indices `0..=3` only). New
+  `ShapeNode.elbowAxis` lets `bentConnector3` pick the correct bend
+  orientation when multiple connectors share an endpoint.
+- DrawingML brace/bracket presets (`leftBrace`, `rightBrace`,
+  `leftBracket`, `rightBracket`) with quadratic-bezier corner arcs;
+  reads `adj1` (corner curl) and `adj2` (tip Y).
+- `adj2` extraction on every `xdr:sp` via new `preset_adj_n` helper
+  (previously connectors + `adj1` only).
+- DrawingML shape text honors `<a:bodyPr lIns/tIns/rIns/bIns/>` insets
+  (new `ShapeNode.textInsetsEmu`), replacing the old 4%-of-shape magic
+  margin. Fixes single-character vertical-strip text inside narrow
+  autoshapes.
+- DrawingML `<a:lstStyle>` + paragraph `<a:pPr><a:defRPr>` cascade for
+  run + paragraph properties in spec precedence order (lstStyle/defPPr
+  → lstStyle/lvl{N+1}pPr → pPr/defRPr → rPr). Same cascade applied to
+  paragraph alignment via new `pick_align`. Scope v0: size, bold,
+  italic, underline, strike, solidFill, latin font.
+- DrawingML `<a:fld>` (text field) runs extracted alongside `<a:r>`,
+  going through the same property cascade. Field runs are how Excel
+  caches values for shape text bound to a cell via `textlink`.
 
 ### Changed
 
-- Split `crates/xlcore-export/src/shapes.rs` into `shapes` / `shapes_style`
-  / `shapes_text` and `packages/xlsx-preview/src/shape.ts` into
-  `shape.ts` + `shapePaths.ts` to keep every file under the
-  900-LoC `check:loc` ceiling. No behavior change — pure code motion
-  (style-ref color resolution + run/paragraph property cascade moved
-  out of `shapes.rs`; preset path construction + brace/line predicates
-  moved out of `shape.ts`). `check-loc.ts` now skips `world110m.ts`
-  (13k-line generated TopoJSON atlas).
-
-- DrawingML `<a:lstStyle>` + paragraph-`<a:pPr><a:defRPr>` run/paragraph
-  inheritance. `shapes.rs::text_body_to_paragraphs` now cascades run +
-  paragraph properties in OOXML-spec precedence order, lowest → highest:
-  (1) `<a:lstStyle><a:defPPr><a:defRPr>`, (2)
-  `<a:lstStyle><a:lvl{N+1}pPr><a:defRPr>` matching the paragraph's
-  `pPr@lvl` (default 0 → `lvl1pPr`; clamped to 0…8), (3)
-  `<a:p><a:pPr><a:defRPr>` (previously ignored — this was the real
-  fidelity gap on themed templates, since SpreadJS-emitted shape XML
-  always writes pPr/defRPr and only sometimes echoes it on the run
-  rPr), (4) `<a:r><a:rPr>`. Same cascade applied to paragraph alignment
-  via the new `pick_align` helper. The existing `apply_run_properties`
-  was refactored into a field-wise `apply_run_fields` core + an
-  `apply_default_run_properties` sibling so the cascade can chain
-  `RunProperties` (`<a:rPr>`) and `DefaultRunProperties`
-  (`<a:defRPr>`) — the SDK generates parallel types with identical
-  fields but differently-named choice enums. Scope (v0): font size,
-  bold, italic, underline-present, strike-present, solidFill color,
-  latin font — same fields the rPr path already supports. Still TODO:
-  `marL`/`indent`, line spacing, `spcBef`/`spcAft`, kerning, baseline,
-  `<a:rPr u="none">` to clear inherited underline, and the bullet list.
-  Locked in by `tests/fixtures/shapes/list-style-inheritance.xlsx`
-  (4 panels: control / lstStyle-defPPr / lstStyle-lvl1pPr /
-  cascade-precedence). Pixel-identical to all existing committed shape
-  baselines (basic-autoshapes / textbox-wrap-align / style-refs-themed /
-  connectors / groups-and-pictures all `bbox=None totaldiff=0` at
-  scale 1) since the cascade only changes behavior when a run is
-  missing fields. Divergence vs HSX: HSX doesn't honor
-  `<a:lstStyle><a:defPPr>` at all and only partially honors
-  `<a:lvl1pPr>` (size doesn't inherit), so on synthetic lstStyle-only
-  fixtures we render more spec-correctly than HSX. On real
-  Excel-authored workbooks (which always set rPr explicitly) we never
-  render LESS than HSX.
-- Dedicated z-order + grouping + picture regression baseline fixture
-  `tests/fixtures/shapes/groups-and-pictures.xlsx` (+ `.hsx.png` /
-  `.ours.png` + `build-groups-and-pictures.sh`). Five labelled panels
-  exercising features already shipped in the extractor + renderer:
-  (A) three overlapping shapes (rect / oval / diamond) at the same
-  anchor emitted in that XML order — the diamond paints on top,
-  locking in "z-order = XML traversal order"; (B) standalone pictures
-  via both `sheet.pictures.add` (the loose `<xdr:pic>` path with
-  `<a:xfrm>` zero-extent + anchor-derived geometry) and
-  `sheet.shapes.addPictureShape` (the `<xdr:pic>` path with explicit
-  `<a:xfrm>`); (C) a 3-shape group exercising `<xdr:grpSp>` flattening
-  + `chOff/chExt`; (D) a label rect + nested picture grouped together
-  — the "nested `<xdr:pic>` inside `<xdr:grpSp>`" extractor path in
-  `shapes::visit_group`; (E) a nested group (outer `{ rect, inner
-  { triangle, oval } }`) exercising the recursive `visit_shapes` walk
-  + compounded `chOff/chExt`. Hsx and ours match pixel-for-pixel on
-  every panel — this is a pure regression baseline, not a known gap.
-  Drawings emitted: 4 `<xdr:grpSp>`, 4 `<xdr:pic>`, 10 `<xdr:sp>`.
-- DrawingML `<xdr:cxnSp>` connectors (and bare `prstGeom=line`/`lineInv`
-  shapes) now extract and render end-to-end. New schema fields on
-  `ShapeNode`: `isConnector`, `flipH`, `flipV`, `lineDash`, `headEnd` /
-  `tailEnd` (new `LineEnd` struct — `kind`/`w`/`len`), `adj1`. Extractor
-  (`shapes::visit_connector`) walks `cxnSp` at root and inside groups,
-  reading `<a:xfrm flipH/flipV>`, `<a:prstDash val="…"/>`,
-  `<a:headEnd>/<a:tailEnd>` (type / `w` / `len` enums), and
-  `<a:avLst>/<a:gd name="adj1" fmla="val …"/>`. `charts.rs` wires
-  `XdrCxnSp` through `twoCellAnchor` and `oneCellAnchor`. Renderer
-  (`shape.ts::drawConnector`) paints straight connectors,
-  `bentConnector3` Z-routes (with horizontal vs vertical bend chosen
-  by the dominant axis), and `line`/`lineInv` diagonals — honoring
-  flips, dash patterns scaled to stroke width
-  (`dash`/`dot`/`dashDot`/`lgDash`/`sysDash`/…), and five OOXML
-  arrowhead kinds (triangle / stealth / diamond / oval / open `arrow`)
-  whose size scales from the `w`/`len` enum + stroke width.
-  `anchorToRect` (`grid.ts`) relaxed so axis-degenerate connector
-  anchors (horizontal lines with `h==0`, vertical with `w==0`) survive
-  layout instead of being filtered as zero-area drawings. Locked in by
-  `tests/fixtures/shapes/connectors.xlsx` (all five connectors now
-  visible against the HSX reference). Bonus side-effect: the
-  `prstGeom=line` diagonal in `tests/fixtures/shapes/basic-autoshapes.xlsx`
-  is no longer painted as a blue rect.
-- DrawingML shape text now honors `<a:bodyPr lIns/tIns/rIns/bIns/>`
-  insets. New schema field `ShapeNode.textInsetsEmu` (length-4 EMU
-  vector); extractor reads `BodyProperties.{left,top,right,bottom}_inset`
-  and back-fills missing slots with the ECMA-376 §21.1.2.1.1 defaults
-  (91440 / 45720 / 91440 / 45720 EMU). Renderer (`shape.ts::drawShapeText`)
-  applies them at `PX_PER_EMU`, replacing the old 4%-of-shape magic
-  margin. Visible fix: text inside narrow autoshapes (triangle / chevron /
-  hexagon / flowchartDecision) no longer fragments into single-character
-  vertical strips.
-- Initial DrawingML shape fixture corpus under `tests/fixtures/shapes/`,
-  each shipping the `.xlsx` plus committed `.hsx.png` (ground truth) and
-  `.ours.png` (current baseline):
-  - `basic-autoshapes.xlsx` — 19 `prstGeom` presets (rect, roundRect,
-    oval, triangle, diamond, 5 block arrows, chevron, pentagon, hexagon,
-    star5, two flowchart symbols, line, lineInverse) plus 30°/90° rotated
-    copies. Exercises preset dispatch, text label paths, z-order, and
-    `xfrm@rot`.
-  - `textbox-wrap-align.xlsx` — 4×4 grid covering h-alignment
-    (`l`/`ctr`/`r`/`just`), vertical anchor (`t`/`ctr`/`b`), wrap
-    (`square`/`none`), and four inset variants (default / tight / loose /
-    asymmetric). Built via `hsx eval` + a Python zip-patch
-    (`_patch_textbox.py`) that splices in attrs SpreadJS won't emit
-    (`algn="just"`, `wrap="none"`, explicit `lIns`/`tIns`/`rIns`/`bIns`).
-  - `connectors.xlsx` — four labelled node boxes with five real
-    `<xdr:cxnSp>` connectors between them (straight, straight-diagonal
-    with arrowhead, elbow with both-end arrowheads, dashed thick red
-    straight, vertical elbow). Today's renderer paints zero of them —
-    this is the wedge fixture for the upcoming connector milestone
-    tracked in `docs/parity-shapes.md`. Bonus: the node boxes carry
-    `<xdr:style>` blocks with `lnRef`/`fillRef`/`fontRef`/`effectRef`,
-    so this fixture also exercises the upcoming style-refs resolver.
-
-- Browser previewer now follows in-workbook hyperlinks like Excel: clicking
-  worksheet navigation buttons switches sheets, selects/scrolls to the target
-  cell, and resolves bare workbook/sheet defined-name targets such as `Top`,
-  `HowTo`, and `Exer1`. External hyperlinks still open in a new tab.
-- Worksheet-level AutoFilter chrome: non-table `<autoFilter ref="...">`
-  ranges now surface as `Sheet.autoFilterRange` and paint header dropdown
-  chevrons. Saved filtered results collapse via Excel's serialized row
-  `hidden` flags; fixture: `tests/fixtures/tables/autofilter-hidden-rows.xlsx`.
+- Split `crates/xlcore-export/src/shapes.rs` into `shapes` /
+  `shapes_style` / `shapes_text` and
+  `packages/xlsx-preview/src/shape.ts` into `shape.ts` +
+  `shapePaths.ts` to stay under the 900-LoC ceiling. Pure code motion.
+  `check-loc.ts` skips the generated `world110m.ts` atlas.
 
 ### Fixed
 
-- DrawingML preset names now come from the SDK's `as_xml_str()` instead of
-  Rust enum variant debug names, so `roundRect`, `lineInv`, `homePlate`,
-  `hexagon`, `star5`, `leftRightArrow`, `flowChartDecision`, etc. actually
-  reach the renderer instead of being seen as `RoundRectangle` /
-  `LineInverse` / … and falling through to a plain rect.
-  (`crates/xlcore-export/src/shapes.rs::preset_geom_name`.)
-- `shape.ts::pathForPreset` gained paths for the presets that previously
-  fell back to rect: `roundRect` (now actually hit), `chevron`,
-  `homePlate` / `pentagon`, `hexagon` / `octagon`, `star4` / `star5` /
-  `star6` / `star8`, `leftRightArrow`, and `flowChartDecision`
-  (aliased to diamond). New helpers `polygonPath`, `starPath`,
-  `leftRightArrowPath`.
-- Shape text now uses a per-preset text rect (`presetTextRect`) for
-  non-rect shapes (triangle, diamond / flowChartDecision, ellipse,
-  chevron, pentagon, hexagon, star, the four block arrows) so labels
-  sit inside the painted region instead of overhanging it.
-- `wrapParagraph` now falls back to char-by-char breaking when a single
-  non-space token exceeds the line width, matching Office's wrap inside
-  narrow shapes (chevron, hexagon, triangle, decision).
-- Locked in by regenerated `tests/fixtures/shapes/*.ours.png` baselines
-  (`basic-autoshapes`, `textbox-wrap-align`, `connectors`,
-  `style-refs-themed`).
-- Corrected explicit OOXML column-width conversion so authored widths do not
-  get an extra 5px of padding. This removes accumulated horizontal drift in
-  button-heavy / instruction-style worksheets.
-- Fixed centered/right-aligned text overflow: the clip region may still expand
-  into empty neighboring cells, but alignment remains anchored to the source
-  cell/box rather than the expanded overflow band.
-- Centered single-line button labels with literal leading/trailing spaces now
-  paint using the visible label text, matching Excel-style navigation buttons
-  more closely.
+- Cell `left` / `right` borders no longer cut through the source cell's
+  own overflowing centered/aligned text. New
+  `computeOverflowSuppressedSides` pre-pass; `drawCellBorders` takes
+  an optional suppressed set. Merged / rotated / wrapped / multi-line
+  cells unaffected.
+- DrawingML preset names now come from the SDK's `as_xml_str()`
+  instead of Rust enum variant debug names, so `roundRect`, `lineInv`,
+  `homePlate`, `hexagon`, `star5`, `leftRightArrow`,
+  `flowChartDecision`, etc. reach the renderer instead of falling
+  through to plain rect.
+- `shape.ts::pathForPreset` adds paths for `roundRect`, `chevron`,
+  `homePlate`/`pentagon`, `hexagon`/`octagon`,
+  `star4`/`star5`/`star6`/`star8`, `leftRightArrow`, and
+  `flowChartDecision`.
+- Shape text uses a per-preset text rect (`presetTextRect`) for
+  non-rect shapes so labels sit inside the painted region.
+- `wrapParagraph` falls back to char-by-char breaking when a single
+  non-space token exceeds the line width — needed for narrow shapes
+  (chevron, hexagon, triangle, decision).
+- Wrapped shape text past line 1 was dropped on centered short boxes
+  whose two lines were ~1px taller than the body. Replaced the strict
+  clip with spec-default `vertOverflow="overflow"`: a line paints as
+  long as its top starts inside the body rect.
+- `<a:rPr u="..."/>` and `strike="..."` treated as enums, not bools.
+  `u="none"` / `strike="noStrike"` no longer render underlined /
+  struck-through. New `underline_is_visible` / `strike_is_visible`
+  helpers.
+- Explicit OOXML column-width conversion no longer adds ~5px of
+  padding, removing horizontal drift in button-heavy / instruction
+  worksheets.
+- Centered / right-aligned text overflow stays anchored to the source
+  cell/box; the clip region may still grow into empty neighbours, but
+  alignment is no longer recentered inside the expanded band.
+- Centered single-line labels with literal leading/trailing spaces
+  paint using the trimmed visible text, matching Excel-style nav
+  buttons.
 
 ## [0.0.7] - 2026-05-17
 
