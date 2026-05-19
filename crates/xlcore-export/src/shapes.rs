@@ -13,36 +13,83 @@ struct WorldBox {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct GroupFrame {
-    parent_world: WorldBox,
-    child_off_x: f64,
-    child_off_y: f64,
-    child_ext_cx: f64,
-    child_ext_cy: f64,
+struct Frame {
+    a: f64,
+    b: f64,
+    c: f64,
+    d: f64,
+    tx: f64,
+    ty: f64,
 }
 
-impl GroupFrame {
-    fn map(&self, off_x: f64, off_y: f64, ext_cx: f64, ext_cy: f64) -> WorldBox {
-        let sx = if self.child_ext_cx > 0.0 {
-            self.parent_world.cx / self.child_ext_cx
+impl Frame {
+    const IDENTITY: Frame = Frame { a: 1.0, b: 0.0, c: 0.0, d: 1.0, tx: 0.0, ty: 0.0 };
+
+    fn apply(&self, x: f64, y: f64) -> (f64, f64) {
+        (
+            self.a * x + self.c * y + self.tx,
+            self.b * x + self.d * y + self.ty,
+        )
+    }
+
+    fn compose(self, other: Frame) -> Frame {
+        Frame {
+            a: self.a * other.a + self.c * other.b,
+            b: self.b * other.a + self.d * other.b,
+            c: self.a * other.c + self.c * other.d,
+            d: self.b * other.c + self.d * other.d,
+            tx: self.a * other.tx + self.c * other.ty + self.tx,
+            ty: self.b * other.tx + self.d * other.ty + self.ty,
+        }
+    }
+
+    fn translation(tx: f64, ty: f64) -> Frame {
+        Frame { a: 1.0, b: 0.0, c: 0.0, d: 1.0, tx, ty }
+    }
+
+    fn rotation(theta_rad: f64) -> Frame {
+        let (sn, cs) = theta_rad.sin_cos();
+        Frame { a: cs, b: sn, c: -sn, d: cs, tx: 0.0, ty: 0.0 }
+    }
+
+    fn scale(sx: f64, sy: f64) -> Frame {
+        Frame { a: sx, b: 0.0, c: 0.0, d: sy, tx: 0.0, ty: 0.0 }
+    }
+
+    fn scale_x_mag(&self) -> f64 {
+        (self.a * self.a + self.b * self.b).sqrt()
+    }
+
+    fn scale_y_mag(&self) -> f64 {
+        (self.c * self.c + self.d * self.d).sqrt()
+    }
+
+    fn rotation_rad(&self) -> f64 {
+        if self.scale_x_mag() < 1e-9 {
+            0.0
         } else {
-            1.0
-        };
-        let sy = if self.child_ext_cy > 0.0 {
-            self.parent_world.cy / self.child_ext_cy
-        } else {
-            1.0
-        };
-        WorldBox {
-            x: self.parent_world.x + (off_x - self.child_off_x) * sx,
-            y: self.parent_world.y + (off_y - self.child_off_y) * sy,
-            cx: ext_cx * sx,
-            cy: ext_cy * sy,
+            self.b.atan2(self.a)
         }
     }
 }
 
-fn group_frame(g: &xdr::GroupShape, parent: Option<GroupFrame>) -> Option<(WorldBox, GroupFrame)> {
+fn frame_or_identity(f: Option<Frame>) -> Frame {
+    f.unwrap_or(Frame::IDENTITY)
+}
+
+fn rad_to_xfrm_rot(rad: f64) -> i32 {
+    let deg = rad.to_degrees();
+    (deg * 60000.0).round() as i32
+}
+
+fn merge_rotation(parent_rad: f64, own: Option<i32>) -> Option<i32> {
+    let own_v = own.unwrap_or(0);
+    let parent_v = rad_to_xfrm_rot(parent_rad);
+    let total = own_v.wrapping_add(parent_v);
+    if total == 0 { None } else { Some(total) }
+}
+
+fn group_frame(g: &xdr::GroupShape, parent: Option<Frame>) -> Option<(WorldBox, Frame)> {
     let xfrm = g
         .group_shape_properties
         .as_ref()?
@@ -56,27 +103,40 @@ fn group_frame(g: &xdr::GroupShape, parent: Option<GroupFrame>) -> Option<(World
     let own_off_y = off.y as f64;
     let own_ext_cx = ext.cx as f64;
     let own_ext_cy = ext.cy as f64;
+    let ch_off_x = ch_off.x as f64;
+    let ch_off_y = ch_off.y as f64;
+    let ch_ext_cx = ch_ext.cx as f64;
+    let ch_ext_cy = ch_ext.cy as f64;
+    let sx = if ch_ext_cx > 0.0 { own_ext_cx / ch_ext_cx } else { 1.0 };
+    let sy = if ch_ext_cy > 0.0 { own_ext_cy / ch_ext_cy } else { 1.0 };
+    let rot_rad = xfrm
+        .rotation
+        .map(|r| (r as f64 / 60000.0).to_radians())
+        .unwrap_or(0.0);
 
-    let world = match parent {
-        Some(p) => p.map(own_off_x, own_off_y, own_ext_cx, own_ext_cy),
-        None => WorldBox {
-            x: own_off_x,
-            y: own_off_y,
-            cx: own_ext_cx,
-            cy: own_ext_cy,
-        },
+    let local = Frame::translation(own_off_x + own_ext_cx / 2.0, own_off_y + own_ext_cy / 2.0)
+        .compose(Frame::rotation(rot_rad))
+        .compose(Frame::translation(-own_ext_cx / 2.0, -own_ext_cy / 2.0))
+        .compose(Frame::scale(sx, sy))
+        .compose(Frame::translation(-ch_off_x, -ch_off_y));
+    let frame = match parent {
+        Some(p) => p.compose(local),
+        None => local,
     };
-    let frame = GroupFrame {
-        parent_world: world,
-        child_off_x: ch_off.x as f64,
-        child_off_y: ch_off.y as f64,
-        child_ext_cx: ch_ext.cx as f64,
-        child_ext_cy: ch_ext.cy as f64,
+
+    let bbox_parent_local = match parent {
+        Some(p) => {
+            let (x, y) = p.apply(own_off_x, own_off_y);
+            let dx = p.scale_x_mag();
+            let dy = p.scale_y_mag();
+            WorldBox { x, y, cx: own_ext_cx * dx, cy: own_ext_cy * dy }
+        }
+        None => WorldBox { x: own_off_x, y: own_off_y, cx: own_ext_cx, cy: own_ext_cy },
     };
-    Some((world, frame))
+    Some((bbox_parent_local, frame))
 }
 
-fn shape_world(s: &xdr::Shape, parent: Option<GroupFrame>) -> Option<WorldBox> {
+fn shape_world(s: &xdr::Shape, parent: Option<Frame>) -> Option<(WorldBox, f64)> {
     let xfrm_opt = s.shape_properties.transform2_d.as_ref();
     let (off_opt, ext_opt) = match xfrm_opt {
         Some(x) => (x.offset.as_ref(), x.extents.as_ref()),
@@ -88,27 +148,29 @@ fn shape_world(s: &xdr::Shape, parent: Option<GroupFrame>) -> Option<WorldBox> {
             if parent.is_some() {
                 return None;
             }
-            return Some(WorldBox {
-                x: 0.0,
-                y: 0.0,
-                cx: 1.0,
-                cy: 1.0,
-            });
+            return Some((WorldBox { x: 0.0, y: 0.0, cx: 1.0, cy: 1.0 }, 0.0));
         }
     };
-    let ox = off.x as f64;
-    let oy = off.y as f64;
-    let cx = ext.cx as f64;
-    let cy = ext.cy as f64;
-    Some(match parent {
-        Some(p) => p.map(ox, oy, cx, cy),
-        None => WorldBox {
-            x: ox,
-            y: oy,
-            cx,
-            cy,
-        },
-    })
+    Some(transform_local_box(parent, off.x as f64, off.y as f64, ext.cx as f64, ext.cy as f64))
+}
+
+fn transform_local_box(
+    parent: Option<Frame>,
+    off_x: f64,
+    off_y: f64,
+    ext_cx: f64,
+    ext_cy: f64,
+) -> (WorldBox, f64) {
+    let f = frame_or_identity(parent);
+    let (cx_world, cy_world) = f.apply(off_x + ext_cx / 2.0, off_y + ext_cy / 2.0);
+    let sx = f.scale_x_mag();
+    let sy = f.scale_y_mag();
+    let w = ext_cx * sx;
+    let h = ext_cy * sy;
+    (
+        WorldBox { x: cx_world - w / 2.0, y: cy_world - h / 2.0, cx: w, cy: h },
+        f.rotation_rad(),
+    )
 }
 
 pub(crate) type ImageUriResolver<'a> = &'a dyn Fn(&str) -> Option<String>;
@@ -133,10 +195,10 @@ fn collect_shape_anchors(
 
 fn collect_from_shape(
     s: &xdr::Shape,
-    parent: Option<GroupFrame>,
+    parent: Option<Frame>,
     out: &mut std::collections::HashMap<u32, ShapeAnchor>,
 ) {
-    let Some(world) = shape_world(s, parent) else {
+    let Some((world, _rot)) = shape_world(s, parent) else {
         return;
     };
     let id = s
@@ -154,7 +216,7 @@ fn collect_from_shape(
 
 fn collect_from_group(
     g: &xdr::GroupShape,
-    parent: Option<GroupFrame>,
+    parent: Option<Frame>,
     out: &mut std::collections::HashMap<u32, ShapeAnchor>,
 ) {
     let Some((_, frame)) = group_frame(g, parent) else {
@@ -177,9 +239,9 @@ pub(crate) fn extract_shape_tree(
     let mut nodes: Vec<ShapeNode> = Vec::new();
 
     let outer = match &root {
-        ShapeTreeRoot::Sp(s) => shape_world(s, None)?,
+        ShapeTreeRoot::Sp(s) => shape_world(s, None).map(|(w, _)| w)?,
         ShapeTreeRoot::GrpSp(g) => group_frame(g, None).map(|(w, _)| w)?,
-        ShapeTreeRoot::CxnSp(c) => connector_world(&c.shape_properties, None)?,
+        ShapeTreeRoot::CxnSp(c) => connector_world(&c.shape_properties, None).map(|(w, _)| w)?,
     };
 
     if outer.cx <= 0.0 && outer.cy <= 0.0 {
@@ -213,7 +275,7 @@ pub(crate) enum ShapeTreeRoot<'a> {
     CxnSp(&'a xdr::ConnectionShape),
 }
 
-fn connector_world(sp: &xdr::ShapeProperties, parent: Option<GroupFrame>) -> Option<WorldBox> {
+fn connector_world(sp: &xdr::ShapeProperties, parent: Option<Frame>) -> Option<(WorldBox, f64)> {
     let xfrm_opt = sp.transform2_d.as_ref();
     let (off_opt, ext_opt) = match xfrm_opt {
         Some(x) => (x.offset.as_ref(), x.extents.as_ref()),
@@ -225,32 +287,15 @@ fn connector_world(sp: &xdr::ShapeProperties, parent: Option<GroupFrame>) -> Opt
             if parent.is_some() {
                 return None;
             }
-            return Some(WorldBox {
-                x: 0.0,
-                y: 0.0,
-                cx: 1.0,
-                cy: 1.0,
-            });
+            return Some((WorldBox { x: 0.0, y: 0.0, cx: 1.0, cy: 1.0 }, 0.0));
         }
     };
-    let ox = off.x as f64;
-    let oy = off.y as f64;
-    let cx = ext.cx as f64;
-    let cy = ext.cy as f64;
-    Some(match parent {
-        Some(p) => p.map(ox, oy, cx, cy),
-        None => WorldBox {
-            x: ox,
-            y: oy,
-            cx,
-            cy,
-        },
-    })
+    Some(transform_local_box(parent, off.x as f64, off.y as f64, ext.cx as f64, ext.cy as f64))
 }
 
 fn visit_group(
     g: &xdr::GroupShape,
-    parent: Option<GroupFrame>,
+    parent: Option<Frame>,
     outer: WorldBox,
     nodes: &mut Vec<ShapeNode>,
     theme: Option<&Theme>,
@@ -283,7 +328,7 @@ fn visit_group(
 
 fn visit_picture(
     pic: &xdr::Picture,
-    parent: Option<GroupFrame>,
+    parent: Option<Frame>,
     outer: WorldBox,
     nodes: &mut Vec<ShapeNode>,
     images: ImageUriResolver<'_>,
@@ -296,15 +341,13 @@ fn visit_picture(
         (Some(o), Some(e)) => (o, e),
         _ => return,
     };
-    let world = match parent {
-        Some(p) => p.map(off.x as f64, off.y as f64, ext.cx as f64, ext.cy as f64),
-        None => WorldBox {
-            x: off.x as f64,
-            y: off.y as f64,
-            cx: ext.cx as f64,
-            cy: ext.cy as f64,
-        },
-    };
+    let (world, parent_rot_rad) = transform_local_box(
+        parent,
+        off.x as f64,
+        off.y as f64,
+        ext.cx as f64,
+        ext.cy as f64,
+    );
     if world.cx <= 0.0 || world.cy <= 0.0 {
         return;
     }
@@ -363,7 +406,7 @@ fn visit_picture(
         outline_color: None,
         outline_width_emu: None,
         text_anchor: None,
-        rotation: xfrm.rotation,
+        rotation: merge_rotation(parent_rot_rad, xfrm.rotation),
         paragraphs: Vec::new(),
         text_wrap: None,
         text_insets_emu: None,
@@ -385,14 +428,13 @@ fn visit_picture(
 
 fn visit_shape(
     s: &xdr::Shape,
-    parent: Option<GroupFrame>,
+    parent: Option<Frame>,
     outer: WorldBox,
     nodes: &mut Vec<ShapeNode>,
     theme: Option<&Theme>,
 ) {
-    let world = match shape_world(s, parent) {
-        Some(w) => w,
-
+    let (world, parent_rot_rad) = match shape_world(s, parent) {
+        Some(v) => v,
         None => return,
     };
     if world.cx <= 0.0 || world.cy <= 0.0 {
@@ -428,7 +470,10 @@ fn visit_shape(
     let mut line_dash: Option<String> = None;
     let (text_anchor, text_wrap, text_insets_emu, mut paragraphs) =
         text_body_to_paragraphs(s.text_body.as_deref(), theme);
-    let rotation = sp.transform2_d.as_ref().and_then(|x| x.rotation);
+    let rotation = merge_rotation(
+        parent_rot_rad,
+        sp.transform2_d.as_ref().and_then(|x| x.rotation),
+    );
     let flip_h = sp
         .transform2_d
         .as_ref()
@@ -881,15 +926,15 @@ fn connection_site(bbox: WorldBox, idx: u32) -> (f64, f64) {
 
 fn visit_connector(
     c: &xdr::ConnectionShape,
-    parent: Option<GroupFrame>,
+    parent: Option<Frame>,
     outer: WorldBox,
     nodes: &mut Vec<ShapeNode>,
     theme: Option<&Theme>,
     anchors: &std::collections::HashMap<u32, ShapeAnchor>,
 ) {
     let sp = &c.shape_properties;
-    let xfrm_world = match connector_world(sp, parent) {
-        Some(w) => w,
+    let (xfrm_world, parent_rot_rad) = match connector_world(sp, parent) {
+        Some(v) => v,
         None => return,
     };
 
@@ -991,7 +1036,10 @@ fn visit_connector(
         override_flip_h.unwrap_or_else(|| xfrm.and_then(|x| x.horizontal_flip).unwrap_or(false));
     let flip_v =
         override_flip_v.unwrap_or_else(|| xfrm.and_then(|x| x.vertical_flip).unwrap_or(false));
-    let rotation = override_rotation.or_else(|| xfrm.and_then(|x| x.rotation));
+    let rotation = match override_rotation {
+        Some(r) => merge_rotation(parent_rot_rad, Some(r)),
+        None => merge_rotation(parent_rot_rad, xfrm.and_then(|x| x.rotation)),
+    };
     let adj1 = preset_adj1(sp);
 
     let outline_color = outline_color.or_else(|| Some("#000000".to_string()));

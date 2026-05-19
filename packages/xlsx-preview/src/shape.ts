@@ -111,7 +111,7 @@ function drawShapeNode(
   }
 
   if ((node.paragraphs?.length ?? 0) > 0) {
-    drawShapeText(ctx, node, x, y, w, h);
+    drawShapeText(ctx, node, x, y, w, h, flipH, flipV);
   }
 
   ctx.restore();
@@ -467,6 +467,8 @@ function drawShapeText(
   y: number,
   w: number,
   h: number,
+  flipH: boolean = false,
+  flipV: boolean = false,
 ): void {
   const DEFAULT_LR_EMU = 91440;
   const DEFAULT_TB_EMU = 45720;
@@ -480,6 +482,8 @@ function drawShapeText(
   const rPad = rEmu * PX_PER_EMU;
   const bPad = bEmu * PX_PER_EMU;
   const textRect = presetTextRect(node.preset, w, h);
+  if (flipH) textRect.x = w - textRect.x - textRect.w;
+  if (flipV) textRect.y = h - textRect.y - textRect.h;
   const baseX = x + textRect.x;
   const baseY = y + textRect.y;
   const baseW = textRect.w;
