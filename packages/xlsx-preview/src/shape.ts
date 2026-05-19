@@ -109,6 +109,9 @@ function pathForPreset(
     case "downArrow":
       arrowPath(ctx, x, y, w, h, "down");
       break;
+    case "leftRightArrow":
+      leftRightArrowPath(ctx, x, y, w, h);
+      break;
     case "triangle":
       ctx.moveTo(x + w / 2, y);
       ctx.lineTo(x + w, y + h);
@@ -116,15 +119,129 @@ function pathForPreset(
       ctx.closePath();
       break;
     case "diamond":
+    case "flowChartDecision":
       ctx.moveTo(x + w / 2, y);
       ctx.lineTo(x + w, y + h / 2);
       ctx.lineTo(x + w / 2, y + h);
       ctx.lineTo(x, y + h / 2);
       ctx.closePath();
       break;
+    case "chevron": {
+      const inset = h * 0.5;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + w - inset, y);
+      ctx.lineTo(x + w, y + h / 2);
+      ctx.lineTo(x + w - inset, y + h);
+      ctx.lineTo(x, y + h);
+      ctx.lineTo(x + inset, y + h / 2);
+      ctx.closePath();
+      break;
+    }
+    case "homePlate":
+    case "pentagon": {
+      const pt = Math.min(w * 0.5, h * 0.5);
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + w - pt, y);
+      ctx.lineTo(x + w, y + h / 2);
+      ctx.lineTo(x + w - pt, y + h);
+      ctx.lineTo(x, y + h);
+      ctx.closePath();
+      break;
+    }
+    case "hexagon":
+      polygonPath(ctx, x, y, w, h, 6, 0);
+      break;
+    case "octagon":
+      polygonPath(ctx, x, y, w, h, 8, Math.PI / 8);
+      break;
+    case "star5":
+      starPath(ctx, x, y, w, h, 5, 0.38);
+      break;
+    case "star4":
+      starPath(ctx, x, y, w, h, 4, 0.38);
+      break;
+    case "star6":
+      starPath(ctx, x, y, w, h, 6, 0.38);
+      break;
+    case "star8":
+      starPath(ctx, x, y, w, h, 8, 0.38);
+      break;
     default:
       ctx.rect(x, y, w, h);
   }
+}
+
+function leftRightArrowPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void {
+  const head = Math.min(w * 0.25, h * 0.5);
+  const tail = h * 0.5;
+  const tailY1 = y + (h - tail) / 2;
+  const tailY2 = tailY1 + tail;
+  ctx.moveTo(x, y + h / 2);
+  ctx.lineTo(x + head, y);
+  ctx.lineTo(x + head, tailY1);
+  ctx.lineTo(x + w - head, tailY1);
+  ctx.lineTo(x + w - head, y);
+  ctx.lineTo(x + w, y + h / 2);
+  ctx.lineTo(x + w - head, y + h);
+  ctx.lineTo(x + w - head, tailY2);
+  ctx.lineTo(x + head, tailY2);
+  ctx.lineTo(x + head, y + h);
+  ctx.closePath();
+}
+
+function polygonPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  sides: number,
+  rotation: number,
+): void {
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const rx = w / 2;
+  const ry = h / 2;
+  for (let i = 0; i < sides; i++) {
+    const a = rotation + (i * 2 * Math.PI) / sides;
+    const px = cx + rx * Math.cos(a);
+    const py = cy + ry * Math.sin(a);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+function starPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  points: number,
+  innerRatio: number,
+): void {
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const rx = w / 2;
+  const ry = h / 2;
+  const start = -Math.PI / 2;
+  const step = Math.PI / points;
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? 1 : innerRatio;
+    const a = start + i * step;
+    const px = cx + rx * r * Math.cos(a);
+    const py = cy + ry * r * Math.sin(a);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
 }
 
 function roundRectPath(
@@ -482,10 +599,15 @@ function drawShapeText(
   const tPad = tEmu * PX_PER_EMU;
   const rPad = rEmu * PX_PER_EMU;
   const bPad = bEmu * PX_PER_EMU;
-  const innerX = x + lPad;
-  const innerY = y + tPad;
-  const innerW = Math.max(1, w - lPad - rPad);
-  const innerH = Math.max(1, h - tPad - bPad);
+  const textRect = presetTextRect(node.preset, w, h);
+  const baseX = x + textRect.x;
+  const baseY = y + textRect.y;
+  const baseW = textRect.w;
+  const baseH = textRect.h;
+  const innerX = baseX + lPad;
+  const innerY = baseY + tPad;
+  const innerW = Math.max(1, baseW - lPad - rPad);
+  const innerH = Math.max(1, baseH - tPad - bPad);
   const wrap = node.textWrap !== "none";
 
   type WrappedLine = {
@@ -526,6 +648,75 @@ function drawShapeText(
     if (cursorY + ln.lineHeight > innerY + innerH + 0.5) break;
     drawWrappedLine(ctx, ln, innerX, cursorY, innerW);
     cursorY += ln.lineHeight;
+  }
+}
+
+function presetTextRect(
+  preset: string | undefined,
+  w: number,
+  h: number,
+): { x: number; y: number; w: number; h: number } {
+  switch (preset) {
+    case "triangle": {
+      const tw = w * 0.5;
+      const th = h * 0.5;
+      return { x: (w - tw) / 2, y: h * 0.5, w: tw, h: th };
+    }
+    case "diamond":
+    case "flowChartDecision": {
+      const tw = w * 0.5;
+      const th = h * 0.5;
+      return { x: (w - tw) / 2, y: (h - th) / 2, w: tw, h: th };
+    }
+    case "ellipse":
+    case "circle": {
+      const k = 0.7071;
+      const tw = w * k;
+      const th = h * k;
+      return { x: (w - tw) / 2, y: (h - th) / 2, w: tw, h: th };
+    }
+    case "chevron": {
+      const inset = h * 0.5;
+      return { x: inset, y: 0, w: Math.max(1, w - inset * 2), h };
+    }
+    case "homePlate":
+    case "pentagon": {
+      const pt = Math.min(w * 0.5, h * 0.5);
+      return { x: 0, y: 0, w: Math.max(1, w - pt), h };
+    }
+    case "hexagon": {
+      const inset = w * 0.25;
+      return { x: inset, y: 0, w: Math.max(1, w - inset * 2), h };
+    }
+    case "star5":
+    case "star4":
+    case "star6":
+    case "star8": {
+      const k = 0.5;
+      const tw = w * k;
+      const th = h * k;
+      return { x: (w - tw) / 2, y: (h - th) / 2, w: tw, h: th };
+    }
+    case "leftArrow":
+    case "rightArrow": {
+      const head = w * 0.5;
+      const ty = h * 0.25;
+      if (preset === "rightArrow") {
+        return { x: 0, y: ty, w: Math.max(1, w - head), h: h * 0.5 };
+      }
+      return { x: head, y: ty, w: Math.max(1, w - head), h: h * 0.5 };
+    }
+    case "upArrow":
+    case "downArrow": {
+      const head = h * 0.5;
+      const tx = w * 0.25;
+      if (preset === "downArrow") {
+        return { x: tx, y: 0, w: w * 0.5, h: Math.max(1, h - head) };
+      }
+      return { x: tx, y: head, w: w * 0.5, h: Math.max(1, h - head) };
+    }
+    default:
+      return { x: 0, y: 0, w, h };
   }
 }
 
@@ -599,6 +790,41 @@ function wrapParagraph(
       startLine();
       ctx.font = a.font;
       if (pt > maxFontPt) maxFontPt = pt;
+    }
+
+    if (wrap && segW > maxWidth && !/^\s+$/.test(a.text)) {
+      const chars = Array.from(a.text);
+      let buf = "";
+      let bufW = 0;
+      const flushBuf = () => {
+        if (!buf) return;
+        const last = cur!.runs[cur!.runs.length - 1];
+        if (last && last.font === a.font && last.r === a.r) {
+          last.r = { ...last.r, text: last.r.text + buf };
+          last.width += bufW;
+        } else {
+          cur!.runs.push({ r: { ...a.r, text: buf }, width: bufW, font: a.font });
+        }
+        cur!.width += bufW;
+        buf = "";
+        bufW = 0;
+      };
+      for (const ch of chars) {
+        const cw = ctx.measureText(ch).width;
+        if (cur!.runs.length > 0 || buf.length > 0) {
+          if (cur!.width + bufW + cw > maxWidth) {
+            flushBuf();
+            finishLine();
+            startLine();
+            ctx.font = a.font;
+            if (pt > maxFontPt) maxFontPt = pt;
+          }
+        }
+        buf += ch;
+        bufW += cw;
+      }
+      flushBuf();
+      continue;
     }
 
     const last = cur!.runs[cur!.runs.length - 1];

@@ -73,6 +73,28 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- DrawingML preset names now come from the SDK's `as_xml_str()` instead of
+  Rust enum variant debug names, so `roundRect`, `lineInv`, `homePlate`,
+  `hexagon`, `star5`, `leftRightArrow`, `flowChartDecision`, etc. actually
+  reach the renderer instead of being seen as `RoundRectangle` /
+  `LineInverse` / … and falling through to a plain rect.
+  (`crates/xlcore-export/src/shapes.rs::preset_geom_name`.)
+- `shape.ts::pathForPreset` gained paths for the presets that previously
+  fell back to rect: `roundRect` (now actually hit), `chevron`,
+  `homePlate` / `pentagon`, `hexagon` / `octagon`, `star4` / `star5` /
+  `star6` / `star8`, `leftRightArrow`, and `flowChartDecision`
+  (aliased to diamond). New helpers `polygonPath`, `starPath`,
+  `leftRightArrowPath`.
+- Shape text now uses a per-preset text rect (`presetTextRect`) for
+  non-rect shapes (triangle, diamond / flowChartDecision, ellipse,
+  chevron, pentagon, hexagon, star, the four block arrows) so labels
+  sit inside the painted region instead of overhanging it.
+- `wrapParagraph` now falls back to char-by-char breaking when a single
+  non-space token exceeds the line width, matching Office's wrap inside
+  narrow shapes (chevron, hexagon, triangle, decision).
+- Locked in by regenerated `tests/fixtures/shapes/*.ours.png` baselines
+  (`basic-autoshapes`, `textbox-wrap-align`, `connectors`,
+  `style-refs-themed`).
 - Corrected explicit OOXML column-width conversion so authored widths do not
   get an extra 5px of padding. This removes accumulated horizontal drift in
   button-heavy / instruction-style worksheets.

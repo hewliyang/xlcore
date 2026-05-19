@@ -2,6 +2,162 @@ use crate::schema::*;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_drawing as xdr;
 
+/// Resolve any DrawingML color *choice* (the `<a:srgbClr>` / `<a:schemeClr>`
+/// / `<a:sysClr>` / `<a:prstClr>` etc. directly under a ref element such as
+/// `<a:fillRef>` / `<a:lnRef>` / `<a:fontRef>`) into a `#RRGGBB` hex string.
+///
+/// Reuses the same Debug-string-driven path that `chart_colors` uses for
+/// chart series, so theme scheme resolution + color modifier application
+/// (`shade` / `tint` / `lumMod` / `lumOff` / …) stays consistent across
+/// shapes, charts, and runs.
+fn resolve_ref_color_debug<T: std::fmt::Debug>(
+    choice_opt: Option<&T>,
+    theme: Option<&Theme>,
+) -> Option<String> {
+    let dbg = format!("{:?}", choice_opt?);
+
+    if let Some(p) = dbg.find("RgbColorModelHex {") {
+        let scope = crate::chart_colors::scope_from_open_brace(&dbg[p..]);
+        if let Some(v) = scope.find("val: \"") {
+            let body = &scope[v + 6..];
+            if let Some(e) = body.find('"') {
+                let hex = &body[..e];
+                if hex.len() == 6 {
+                    return Some(crate::chart_colors::apply_color_modifiers(
+                        &format!("#{}", hex),
+                        scope,
+                    ));
+                }
+            }
+        }
+    }
+    if let Some(p) = dbg.find("SchemeColor {") {
+        let scope = crate::chart_colors::scope_from_open_brace(&dbg[p..]);
+        if let Some(base) = crate::chart_colors::theme_scheme_color(scope, theme) {
+            return Some(crate::chart_colors::apply_color_modifiers(&base, scope));
+        }
+    }
+    if let Some(p) = dbg.find("SystemColor {") {
+        let scope = crate::chart_colors::scope_from_open_brace(&dbg[p..]);
+        if let Some(v) = scope.find("last_color: Some(\"") {
+            let body = &scope[v + 18..];
+            if let Some(e) = body.find('"') {
+                let hex = &body[..e];
+                if hex.len() == 6 {
+                    return Some(format!("#{}", hex));
+                }
+            }
+        }
+    }
+    if let Some(p) = dbg.find("PresetColor {") {
+        let scope = crate::chart_colors::scope_from_open_brace(&dbg[p..]);
+        if let Some(v) = scope.find("val: ") {
+            let tail = &scope[v + 5..];
+            // PresetColorValues variant is bare-ident, e.g. `Red,` or `Red }`.
+            let end = tail
+                .find(|ch: char| ch == ',' || ch == ' ' || ch == '}')
+                .unwrap_or(tail.len());
+            if let Some(hex) = preset_color_hex(&tail[..end]) {
+                return Some(hex.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// Resolved theme-scheme paint contributed by an `<xdr:style>` block.
+/// Used as a fallback when the shape has no direct `<a:solidFill>` / `<a:ln>`
+/// (Office writes style-only shapes when the user picks a quick-style preset).
+struct StyleRefPaint {
+    fill: Option<String>,
+    outline: Option<String>,
+    outline_width_emu: Option<i32>,
+    font_name: Option<String>,
+    font_color: Option<String>,
+}
+
+/// Default line widths for `<a:lnRef idx="1|2|3">` per the standard theme
+/// `<a:lnStyleLst>` (subtle / moderate / intense). Values in EMU.
+fn default_ln_ref_width(idx: u32) -> i32 {
+    match idx {
+        1 => 6_350,
+        2 => 12_700,
+        3 => 19_050,
+        _ => 12_700,
+    }
+}
+
+fn resolve_style_refs(
+    style: Option<&xdr::ShapeStyle>,
+    theme: Option<&Theme>,
+) -> Option<StyleRefPaint> {
+    let style = style?;
+
+    let fill_idx: u32 = style.fill_reference.index;
+    let fill = if fill_idx == 0 {
+        None
+    } else {
+        resolve_ref_color_debug(
+            style.fill_reference.fill_reference_choice.as_ref(),
+            theme,
+        )
+    };
+
+    let ln_idx: u32 = style.line_reference.index;
+    let (outline, outline_width_emu) = if ln_idx == 0 {
+        (None, None)
+    } else {
+        let c = resolve_ref_color_debug(
+            style.line_reference.line_reference_choice.as_ref(),
+            theme,
+        );
+        (c, Some(default_ln_ref_width(ln_idx)))
+    };
+
+    let font_name = match style.font_reference.index {
+        a::FontCollectionIndexValues::Major => theme.and_then(|t| t.major_font.clone()),
+        a::FontCollectionIndexValues::Minor => theme.and_then(|t| t.minor_font.clone()),
+        a::FontCollectionIndexValues::None => None,
+    };
+    let font_color = resolve_ref_color_debug(
+        style.font_reference.font_reference_choice.as_ref(),
+        theme,
+    );
+
+    Some(StyleRefPaint {
+        fill,
+        outline,
+        outline_width_emu,
+        font_name,
+        font_color,
+    })
+}
+
+fn apply_font_ref_to_runs(paragraphs: &mut [ShapeParagraph], font_name: &Option<String>, font_color: &Option<String>) {
+    for p in paragraphs.iter_mut() {
+        for r in p.runs.iter_mut() {
+            if r.font_name.is_none() {
+                if let Some(n) = font_name {
+                    r.font_name = Some(n.clone());
+                }
+            }
+            if r.color.is_none() {
+                if let Some(hex) = font_color {
+                    let stripped = hex.trim_start_matches('#');
+                    if stripped.len() == 6 {
+                        r.color = Some(Color {
+                            rgb: Some(stripped.to_string()),
+                            theme: None,
+                            indexed: None,
+                            tint: None,
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 struct WorldBox {
     x: f64,
@@ -322,11 +478,38 @@ fn visit_shape(
 
     let sp = &s.shape_properties;
     let preset = preset_geom_name(sp);
-    let fill = solid_fill_color(&sp.shape_properties_choice2, theme);
-    let (outline_color, outline_width_emu) = outline_info(sp.a_ln.as_deref(), theme);
-    let (text_anchor, text_wrap, text_insets_emu, paragraphs) =
+    let mut fill = solid_fill_color(&sp.shape_properties_choice2, theme);
+    let (mut outline_color, mut outline_width_emu) = outline_info(sp.a_ln.as_deref(), theme);
+    let (text_anchor, text_wrap, text_insets_emu, mut paragraphs) =
         text_body_to_paragraphs(s.text_body.as_deref(), theme);
     let rotation = sp.transform2_d.as_ref().and_then(|x| x.rotation);
+
+    // Style-ref fallback: if the shape has no direct paint, resolve through
+    // <xdr:style>'s fill/line/font refs against the theme format scheme.
+    // Also fills in missing font name/color on runs that don't override them.
+    //
+    // EXCEPTION: line-shaped presets (`line` / `lineInv`) are routed through
+    // the connector painter on the TS side and must NOT take a fill —
+    // otherwise an unfilled line preset (which Office leaves with no
+    // `<a:solidFill>`) would paint as a filled rectangle through the
+    // accent-color fallback. Connector presets emitted as `xdr:sp` are rare
+    // (Office uses `xdr:cxnSp` for those) but `line`/`lineInv` are normal.
+    let preset_is_line = preset
+        .as_deref()
+        .map(|p| matches!(p, "line" | "lineInv"))
+        .unwrap_or(false);
+    if let Some(refs) = resolve_style_refs(s.shape_style.as_deref(), theme) {
+        if fill.is_none() && !preset_is_line {
+            fill = refs.fill;
+        }
+        if outline_color.is_none() {
+            outline_color = refs.outline;
+        }
+        if outline_width_emu.is_none() {
+            outline_width_emu = refs.outline_width_emu;
+        }
+        apply_font_ref_to_runs(&mut paragraphs, &refs.font_name, &refs.font_color);
+    }
 
     let has_paint = fill.is_some() || outline_color.is_some();
     let has_text = !paragraphs.is_empty();
@@ -363,13 +546,7 @@ fn visit_shape(
 fn preset_geom_name(sp: &xdr::ShapeProperties) -> Option<String> {
     use xdr::ShapePropertiesChoice;
     match sp.shape_properties_choice1.as_ref()? {
-        ShapePropertiesChoice::APrstGeom(g) => {
-            let dbg = format!("{:?}", g.preset);
-            let mut chars = dbg.chars();
-            let first = chars.next()?;
-            let rest: String = chars.collect();
-            Some(format!("{}{}", first.to_ascii_lowercase(), rest))
-        }
+        ShapePropertiesChoice::APrstGeom(g) => Some(g.preset.as_xml_str().to_string()),
         ShapePropertiesChoice::ACustGeom(_) => None,
     }
 }
@@ -560,7 +737,17 @@ fn visit_connector(
 
     let preset = preset_geom_name(sp);
     let ln_box = sp.a_ln.as_deref();
-    let (outline_color, outline_width_emu) = outline_info(ln_box, theme);
+    let (mut outline_color, mut outline_width_emu) = outline_info(ln_box, theme);
+    if outline_color.is_none() || outline_width_emu.is_none() {
+        if let Some(refs) = resolve_style_refs(c.shape_style.as_deref(), theme) {
+            if outline_color.is_none() {
+                outline_color = refs.outline;
+            }
+            if outline_width_emu.is_none() {
+                outline_width_emu = refs.outline_width_emu;
+            }
+        }
+    }
     let dash = line_dash_token(ln_box);
     let head_end = ln_box
         .and_then(|ln| ln.a_head_end.as_ref())
@@ -760,5 +947,92 @@ fn apply_run_properties(rp: &a::RunProperties, tr: &mut TextRun, theme: Option<&
                 tr.font_name = t.major_font.clone();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_theme() -> Theme {
+        Theme {
+            colors: vec![
+                "FFFFFF".into(), "000000".into(), "E7E6E6".into(), "44546A".into(),
+                "4472C4".into(), "ED7D31".into(), "A5A5A5".into(), "FFC000".into(),
+                "5B9BD5".into(), "70AD47".into(), "0563C1".into(), "954F72".into(),
+            ],
+            major_font: Some("Calibri Light".into()),
+            minor_font: Some("Calibri".into()),
+        }
+    }
+
+    // The ref-color resolver runs off the Debug-string of the choice enum,
+    // mirroring what chart_colors does. Build the SDK structs by hand so the
+    // test stays decoupled from XML parsing.
+    fn rgb_choice(hex: &str) -> a::FillReferenceChoice {
+        a::FillReferenceChoice::ASrgbClr(Box::new(a::RgbColorModelHex {
+            val: hex.into(),
+            ..Default::default()
+        }))
+    }
+
+    fn scheme_choice(name: &str) -> a::FillReferenceChoice {
+        let mut sc = a::SchemeColor::default();
+        // Set val via Debug-roundtrip-friendly construction.
+        sc.val = match name {
+            "accent1" => a::SchemeColorValues::Accent1,
+            "accent2" => a::SchemeColorValues::Accent2,
+            "accent3" => a::SchemeColorValues::Accent3,
+            "accent4" => a::SchemeColorValues::Accent4,
+            "accent5" => a::SchemeColorValues::Accent5,
+            "accent6" => a::SchemeColorValues::Accent6,
+            "bg1" | "lt1" => a::SchemeColorValues::Light1,
+            "dk1" | "tx1" => a::SchemeColorValues::Dark1,
+            _ => a::SchemeColorValues::Accent1,
+        };
+        a::FillReferenceChoice::ASchemeClr(Box::new(sc))
+    }
+
+    #[test]
+    fn ref_color_resolves_srgb() {
+        let c = rgb_choice("ABCDEF");
+        let out = resolve_ref_color_debug(Some(&c), Some(&test_theme()));
+        assert_eq!(out.as_deref(), Some("#ABCDEF"));
+    }
+
+    #[test]
+    fn ref_color_resolves_accent_scheme() {
+        let c = scheme_choice("accent1");
+        let out = resolve_ref_color_debug(Some(&c), Some(&test_theme()));
+        // accent1 in our test theme = 4472C4
+        assert_eq!(out.as_deref(), Some("#4472C4"));
+    }
+
+    #[test]
+    fn ref_color_each_accent_picks_correct_slot() {
+        let theme = test_theme();
+        let cases = [
+            ("accent1", "#4472C4"),
+            ("accent2", "#ED7D31"),
+            ("accent3", "#A5A5A5"),
+            ("accent4", "#FFC000"),
+            ("accent5", "#5B9BD5"),
+            ("accent6", "#70AD47"),
+        ];
+        for (name, expect) in cases {
+            let c = scheme_choice(name);
+            let out = resolve_ref_color_debug(Some(&c), Some(&theme));
+            assert_eq!(out.as_deref(), Some(expect), "{name}");
+        }
+    }
+
+    #[test]
+    fn default_ln_ref_width_matches_standard_theme() {
+        // From the standard Office theme's <a:lnStyleLst>: subtle/moderate/intense.
+        assert_eq!(default_ln_ref_width(1), 6_350);
+        assert_eq!(default_ln_ref_width(2), 12_700);
+        assert_eq!(default_ln_ref_width(3), 19_050);
+        // Unknown index falls back to "moderate".
+        assert_eq!(default_ln_ref_width(99), 12_700);
     }
 }
