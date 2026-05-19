@@ -4,33 +4,20 @@ import type { CfIconSet } from "./CfIconSet.js";
 
 export type CfRule = {
   priority: number;
-
   kind: string;
   colorScale?: CfColorScale;
   dataBar?: CfDataBar;
   iconSet?: CfIconSet;
-
   operator?: string;
-
   operands: Array<string>;
-
   dxfId?: number;
-
   stopIfTrue: boolean;
-
   rank?: number;
-
   bottom: boolean;
-
   percent: boolean;
-
   aboveAverage?: boolean;
-
   equalAverage: boolean;
-
   stdDev?: number;
-
   text?: string;
-
   timePeriod?: string;
 };

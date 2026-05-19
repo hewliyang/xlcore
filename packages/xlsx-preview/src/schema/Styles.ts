@@ -8,7 +8,6 @@ export type Styles = {
   fonts: Array<Font>;
   fills: Array<Fill>;
   borders: Array<Border>;
-
   cellXfs: Array<CellFormat>;
   numFmts: Array<NumberFormat>;
   defaultFont: string;

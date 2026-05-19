@@ -6,6 +6,5 @@ export type Row = {
   cells: Array<Cell>;
   styleIndex?: number;
   hidden: boolean;
-
   outlineLevel: number;
 };

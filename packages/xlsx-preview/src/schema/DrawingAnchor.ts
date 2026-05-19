@@ -7,8 +7,6 @@ export type DrawingAnchor = {
   toColOffEmu: number;
   toRow: number;
   toRowOffEmu: number;
-
   extEmuCx?: number | null;
-
   extEmuCy?: number | null;
 };

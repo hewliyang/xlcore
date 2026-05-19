@@ -1,3 +1,1 @@
-export type Image = {
-  dataUri: string;
-};
+export type Image = { dataUri: string };

@@ -4,6 +4,5 @@ export type Col = {
   widthPx: number;
   styleIndex?: number;
   hidden: boolean;
-
   outlineLevel: number;
 };

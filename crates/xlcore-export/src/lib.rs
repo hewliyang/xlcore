@@ -9,6 +9,8 @@ mod pivots;
 mod refs;
 mod schema;
 mod shapes;
+mod shapes_style;
+mod shapes_text;
 mod shared_strings;
 mod sheet;
 mod sparklines;

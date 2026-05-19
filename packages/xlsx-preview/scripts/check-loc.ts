@@ -20,11 +20,12 @@ const CHECK_TARGETS = [
 ];
 
 const SKIP_DIRS = new Set(["dist", "node_modules", "pkg", "target"]);
+const SKIP_FILES = new Set(["world110m.ts"]);
 
 function walk(dir: string, extensions: Set<string>): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
-    if (SKIP_DIRS.has(entry)) continue;
+    if (SKIP_DIRS.has(entry) || SKIP_FILES.has(entry)) continue;
 
     const path = join(dir, entry);
     const stat = statSync(path);

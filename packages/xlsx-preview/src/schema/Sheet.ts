@@ -17,48 +17,28 @@ import type { TextRun } from "./TextRun.js";
 export type Sheet = {
   index: number;
   name: string;
-
   state?: string;
-
   tabColor?: Color;
-
   maxRow: number;
   maxCol: number;
-
   defaultColWidthPx: number;
-
   defaultRowHeightPx: number;
-
   cols: Array<Col>;
   merges: Array<Merge>;
-
   autoFilterRange?: Merge;
   freeze?: Freeze;
   showGridLines: boolean;
-
   conditionalFormats: Array<ConditionalFormat>;
-
   drawings: Array<Drawing>;
-
   tables: Array<Table>;
-
   cells: ColumnarCells;
-
   rowMeta: RowMetaBlob;
-
   valuePool: Array<string>;
-
   formulaPool: Array<string>;
-
   inlineRuns: Array<Array<TextRun>>;
-
   hyperlinks: Array<Hyperlink>;
-
   comments: Array<Comment>;
-
   pivots: Array<Pivot>;
-
   outlinePr?: OutlinePr;
-
   sparklineGroups: Array<SparklineGroup>;
 };

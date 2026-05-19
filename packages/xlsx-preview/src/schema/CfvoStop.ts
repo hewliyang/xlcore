@@ -1,4 +1,1 @@
-export type CfvoStop = {
-  type: string;
-  val?: string;
-};
+export type CfvoStop = { type: string; val?: string };

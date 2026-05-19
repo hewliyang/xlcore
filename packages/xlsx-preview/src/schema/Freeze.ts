@@ -1,5 +1,1 @@
-export type Freeze = {
-  topRow: number;
-
-  leftCol: number;
-};
+export type Freeze = { topRow: number; leftCol: number };

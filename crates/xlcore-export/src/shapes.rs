@@ -1,149 +1,8 @@
 use crate::schema::*;
+use crate::shapes_style::{apply_font_ref_to_runs, resolve_style_refs};
+use crate::shapes_text::text_body_to_paragraphs;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_drawing as xdr;
-
-fn resolve_ref_color_debug<T: std::fmt::Debug>(
-    choice_opt: Option<&T>,
-    theme: Option<&Theme>,
-) -> Option<String> {
-    let dbg = format!("{:?}", choice_opt?);
-
-    if let Some(p) = dbg.find("RgbColorModelHex {") {
-        let scope = crate::chart_colors::scope_from_open_brace(&dbg[p..]);
-        if let Some(v) = scope.find("val: \"") {
-            let body = &scope[v + 6..];
-            if let Some(e) = body.find('"') {
-                let hex = &body[..e];
-                if hex.len() == 6 {
-                    return Some(crate::chart_colors::apply_color_modifiers(
-                        &format!("#{}", hex),
-                        scope,
-                    ));
-                }
-            }
-        }
-    }
-    if let Some(p) = dbg.find("SchemeColor {") {
-        let scope = crate::chart_colors::scope_from_open_brace(&dbg[p..]);
-        if let Some(base) = crate::chart_colors::theme_scheme_color(scope, theme) {
-            return Some(crate::chart_colors::apply_color_modifiers(&base, scope));
-        }
-    }
-    if let Some(p) = dbg.find("SystemColor {") {
-        let scope = crate::chart_colors::scope_from_open_brace(&dbg[p..]);
-        if let Some(v) = scope.find("last_color: Some(\"") {
-            let body = &scope[v + 18..];
-            if let Some(e) = body.find('"') {
-                let hex = &body[..e];
-                if hex.len() == 6 {
-                    return Some(format!("#{}", hex));
-                }
-            }
-        }
-    }
-    if let Some(p) = dbg.find("PresetColor {") {
-        let scope = crate::chart_colors::scope_from_open_brace(&dbg[p..]);
-        if let Some(v) = scope.find("val: ") {
-            let tail = &scope[v + 5..];
-
-            let end = tail
-                .find(|ch: char| ch == ',' || ch == ' ' || ch == '}')
-                .unwrap_or(tail.len());
-            if let Some(hex) = preset_color_hex(&tail[..end]) {
-                return Some(hex.to_string());
-            }
-        }
-    }
-    None
-}
-
-struct StyleRefPaint {
-    fill: Option<String>,
-    outline: Option<String>,
-    outline_width_emu: Option<i32>,
-    font_name: Option<String>,
-    font_color: Option<String>,
-}
-
-fn default_ln_ref_width(idx: u32) -> i32 {
-    match idx {
-        1 => 6_350,
-        2 => 12_700,
-        3 => 19_050,
-        _ => 12_700,
-    }
-}
-
-fn resolve_style_refs(
-    style: Option<&xdr::ShapeStyle>,
-    theme: Option<&Theme>,
-) -> Option<StyleRefPaint> {
-    let style = style?;
-
-    let fill_idx: u32 = style.fill_reference.index;
-    let fill = if fill_idx == 0 {
-        None
-    } else {
-        resolve_ref_color_debug(
-            style.fill_reference.fill_reference_choice.as_ref(),
-            theme,
-        )
-    };
-
-    let ln_idx: u32 = style.line_reference.index;
-    let (outline, outline_width_emu) = if ln_idx == 0 {
-        (None, None)
-    } else {
-        let c = resolve_ref_color_debug(
-            style.line_reference.line_reference_choice.as_ref(),
-            theme,
-        );
-        (c, Some(default_ln_ref_width(ln_idx)))
-    };
-
-    let font_name = match style.font_reference.index {
-        a::FontCollectionIndexValues::Major => theme.and_then(|t| t.major_font.clone()),
-        a::FontCollectionIndexValues::Minor => theme.and_then(|t| t.minor_font.clone()),
-        a::FontCollectionIndexValues::None => None,
-    };
-    let font_color = resolve_ref_color_debug(
-        style.font_reference.font_reference_choice.as_ref(),
-        theme,
-    );
-
-    Some(StyleRefPaint {
-        fill,
-        outline,
-        outline_width_emu,
-        font_name,
-        font_color,
-    })
-}
-
-fn apply_font_ref_to_runs(paragraphs: &mut [ShapeParagraph], font_name: &Option<String>, font_color: &Option<String>) {
-    for p in paragraphs.iter_mut() {
-        for r in p.runs.iter_mut() {
-            if r.font_name.is_none() {
-                if let Some(n) = font_name {
-                    r.font_name = Some(n.clone());
-                }
-            }
-            if r.color.is_none() {
-                if let Some(hex) = font_color {
-                    let stripped = hex.trim_start_matches('#');
-                    if stripped.len() == 6 {
-                        r.color = Some(Color {
-                            rgb: Some(stripped.to_string()),
-                            theme: None,
-                            indexed: None,
-                            tint: None,
-                        });
-                    }
-                }
-            }
-        }
-    }
-}
 
 #[derive(Clone, Copy, Debug)]
 struct WorldBox {
@@ -238,6 +97,62 @@ fn shape_world(s: &xdr::Shape, parent: Option<GroupFrame>) -> Option<WorldBox> {
 
 pub(crate) type ImageUriResolver<'a> = &'a dyn Fn(&str) -> Option<String>;
 
+#[derive(Clone, Copy, Debug)]
+struct ShapeAnchor {
+    world: WorldBox,
+    #[allow(dead_code)]
+    preset: Option<&'static str>,
+}
+
+fn collect_shape_anchors(
+    root: &ShapeTreeRoot<'_>,
+    out: &mut std::collections::HashMap<u32, ShapeAnchor>,
+) {
+    match root {
+        ShapeTreeRoot::Sp(s) => collect_from_shape(s, None, out),
+        ShapeTreeRoot::GrpSp(g) => collect_from_group(g, None, out),
+        ShapeTreeRoot::CxnSp(_) => {}
+    }
+}
+
+fn collect_from_shape(
+    s: &xdr::Shape,
+    parent: Option<GroupFrame>,
+    out: &mut std::collections::HashMap<u32, ShapeAnchor>,
+) {
+    let Some(world) = shape_world(s, parent) else {
+        return;
+    };
+    let id = s
+        .non_visual_shape_properties
+        .non_visual_drawing_properties
+        .id;
+    out.insert(
+        id,
+        ShapeAnchor {
+            world,
+            preset: None,
+        },
+    );
+}
+
+fn collect_from_group(
+    g: &xdr::GroupShape,
+    parent: Option<GroupFrame>,
+    out: &mut std::collections::HashMap<u32, ShapeAnchor>,
+) {
+    let Some((_, frame)) = group_frame(g, parent) else {
+        return;
+    };
+    for choice in &g.group_shape_choice {
+        match choice {
+            xdr::GroupShapeChoice::XdrSp(s) => collect_from_shape(s, Some(frame), out),
+            xdr::GroupShapeChoice::XdrGrpSp(inner) => collect_from_group(inner, Some(frame), out),
+            _ => {}
+        }
+    }
+}
+
 pub(crate) fn extract_shape_tree(
     root: ShapeTreeRoot<'_>,
     theme: Option<&Theme>,
@@ -254,15 +169,19 @@ pub(crate) fn extract_shape_tree(
     if outer.cx <= 0.0 && outer.cy <= 0.0 {
         return None;
     }
+
+    let mut anchors: std::collections::HashMap<u32, ShapeAnchor> = std::collections::HashMap::new();
+    collect_shape_anchors(&root, &mut anchors);
+
     match root {
         ShapeTreeRoot::Sp(s) => {
             visit_shape(s, None, outer, &mut nodes, theme);
         }
         ShapeTreeRoot::GrpSp(g) => {
-            visit_group(g, None, outer, &mut nodes, theme, images);
+            visit_group(g, None, outer, &mut nodes, theme, images, &anchors);
         }
         ShapeTreeRoot::CxnSp(c) => {
-            visit_connector(c, None, outer, &mut nodes, theme);
+            visit_connector(c, None, outer, &mut nodes, theme, &anchors);
         }
     }
     if nodes.is_empty() {
@@ -304,6 +223,7 @@ fn visit_group(
     nodes: &mut Vec<ShapeNode>,
     theme: Option<&Theme>,
     images: ImageUriResolver<'_>,
+    anchors: &std::collections::HashMap<u32, ShapeAnchor>,
 ) {
     let (_, frame) = match group_frame(g, parent) {
         Some(v) => v,
@@ -315,13 +235,13 @@ fn visit_group(
                 visit_shape(s, Some(frame), outer, nodes, theme);
             }
             xdr::GroupShapeChoice::XdrGrpSp(inner) => {
-                visit_group(inner, Some(frame), outer, nodes, theme, images);
+                visit_group(inner, Some(frame), outer, nodes, theme, images, anchors);
             }
             xdr::GroupShapeChoice::XdrPic(pic) => {
                 visit_picture(pic, Some(frame), outer, nodes, images);
             }
             xdr::GroupShapeChoice::XdrCxnSp(c) => {
-                visit_connector(c, Some(frame), outer, nodes, theme);
+                visit_connector(c, Some(frame), outer, nodes, theme, anchors);
             }
 
             _ => {}
@@ -424,6 +344,8 @@ fn visit_picture(
         head_end: None,
         tail_end: None,
         adj1: None,
+        adj2: None,
+        elbow_axis: None,
     });
 }
 
@@ -516,7 +438,9 @@ fn visit_shape(
         is_connector: None,
         head_end: None,
         tail_end: None,
-        adj1: None,
+        adj1: preset_adj1(sp),
+        adj2: preset_adj2(sp),
+        elbow_axis: None,
     });
 }
 
@@ -540,7 +464,7 @@ fn solid_fill_color(
     }
 }
 
-fn resolve_solid_fill(sf: &a::SolidFill, theme: Option<&Theme>) -> Option<String> {
+pub(crate) fn resolve_solid_fill(sf: &a::SolidFill, theme: Option<&Theme>) -> Option<String> {
     use a::SolidFillChoice;
     match sf.solid_fill_choice.as_ref()? {
         SolidFillChoice::ASrgbClr(c) => {
@@ -569,7 +493,7 @@ fn resolve_solid_fill(sf: &a::SolidFill, theme: Option<&Theme>) -> Option<String
     }
 }
 
-fn preset_color_hex(variant_dbg: &str) -> Option<&'static str> {
+pub(crate) fn preset_color_hex(variant_dbg: &str) -> Option<&'static str> {
     Some(match variant_dbg {
         "Black" => "#000000",
         "White" => "#FFFFFF",
@@ -656,7 +580,7 @@ fn enum_token(dbg: &str) -> Option<String> {
     Some(format!("{}{}", first.to_ascii_lowercase(), rest))
 }
 
-fn preset_adj1(sp: &xdr::ShapeProperties) -> Option<i32> {
+fn preset_adj_n(sp: &xdr::ShapeProperties, target: &[&str]) -> Option<i32> {
     use xdr::ShapePropertiesChoice;
     let geom = match sp.shape_properties_choice1.as_ref()? {
         ShapePropertiesChoice::APrstGeom(g) => g,
@@ -665,7 +589,7 @@ fn preset_adj1(sp: &xdr::ShapeProperties) -> Option<i32> {
     let avl = geom.adjust_value_list.as_ref()?;
     for gd in &avl.a_gd {
         let name: &str = &gd.name;
-        if name != "adj1" && name != "adj" {
+        if !target.iter().any(|t| *t == name) {
             continue;
         }
         let fmla: &str = &gd.formula;
@@ -678,17 +602,95 @@ fn preset_adj1(sp: &xdr::ShapeProperties) -> Option<i32> {
     None
 }
 
+fn preset_adj1(sp: &xdr::ShapeProperties) -> Option<i32> {
+    preset_adj_n(sp, &["adj1", "adj"])
+}
+
+fn preset_adj2(sp: &xdr::ShapeProperties) -> Option<i32> {
+    preset_adj_n(sp, &["adj2"])
+}
+
+fn is_vert_site(idx: u32) -> bool {
+    idx == 0 || idx == 2
+}
+
+fn is_horiz_site(idx: u32) -> bool {
+    idx == 1 || idx == 3
+}
+
+fn connection_site(bbox: WorldBox, idx: u32) -> (f64, f64) {
+    let cx = bbox.x + bbox.cx / 2.0;
+    let cy = bbox.y + bbox.cy / 2.0;
+    match idx {
+        0 => (cx, bbox.y),
+        1 => (bbox.x + bbox.cx, cy),
+        2 => (cx, bbox.y + bbox.cy),
+        3 => (bbox.x, cy),
+        _ => (cx, cy),
+    }
+}
+
 fn visit_connector(
     c: &xdr::ConnectionShape,
     parent: Option<GroupFrame>,
     outer: WorldBox,
     nodes: &mut Vec<ShapeNode>,
     theme: Option<&Theme>,
+    anchors: &std::collections::HashMap<u32, ShapeAnchor>,
 ) {
     let sp = &c.shape_properties;
-    let world = match connector_world(sp, parent) {
+    let xfrm_world = match connector_world(sp, parent) {
         Some(w) => w,
         None => return,
+    };
+
+    let cxn_pr = &c
+        .non_visual_connection_shape_properties
+        .non_visual_connector_shape_drawing_properties;
+    let resolved_start = cxn_pr.start_connection.as_ref().and_then(|s| {
+        anchors
+            .get(&s.id)
+            .map(|a| connection_site(a.world, s.index))
+    });
+    let resolved_end = cxn_pr.end_connection.as_ref().and_then(|e| {
+        anchors
+            .get(&e.id)
+            .map(|a| connection_site(a.world, e.index))
+    });
+
+    let elbow_axis: Option<String> = match (
+        cxn_pr.start_connection.as_ref().map(|s| s.index),
+        cxn_pr.end_connection.as_ref().map(|e| e.index),
+    ) {
+        (Some(s), Some(e)) if is_vert_site(s) && is_vert_site(e) => Some("vertical".to_string()),
+        (Some(s), Some(e)) if is_horiz_site(s) && is_horiz_site(e) => {
+            Some("horizontal".to_string())
+        }
+        _ => None,
+    };
+
+    let mut override_flip_h: Option<bool> = None;
+    let mut override_flip_v: Option<bool> = None;
+    let mut override_rotation: Option<i32> = None;
+    let world = match (resolved_start, resolved_end) {
+        (Some((sx, sy)), Some((ex, ey))) => {
+            let min_x = sx.min(ex);
+            let max_x = sx.max(ex);
+            let min_y = sy.min(ey);
+            let max_y = sy.max(ey);
+            let cx = (max_x - min_x).max(1.0);
+            let cy = (max_y - min_y).max(1.0);
+            override_flip_h = Some(sx > ex);
+            override_flip_v = Some(sy > ey);
+            override_rotation = Some(0);
+            WorldBox {
+                x: min_x,
+                y: min_y,
+                cx,
+                cy,
+            }
+        }
+        _ => xfrm_world,
     };
 
     let rel_x = if outer.cx > 0.0 {
@@ -733,9 +735,11 @@ fn visit_connector(
         .and_then(|ln| ln.a_tail_end.as_ref())
         .and_then(|e| line_end_to_schema(e.r#type.as_ref(), e.width.as_ref(), e.length.as_ref()));
     let xfrm = sp.transform2_d.as_ref();
-    let flip_h = xfrm.and_then(|x| x.horizontal_flip).unwrap_or(false);
-    let flip_v = xfrm.and_then(|x| x.vertical_flip).unwrap_or(false);
-    let rotation = xfrm.and_then(|x| x.rotation);
+    let flip_h =
+        override_flip_h.unwrap_or_else(|| xfrm.and_then(|x| x.horizontal_flip).unwrap_or(false));
+    let flip_v =
+        override_flip_v.unwrap_or_else(|| xfrm.and_then(|x| x.vertical_flip).unwrap_or(false));
+    let rotation = override_rotation.or_else(|| xfrm.and_then(|x| x.rotation));
     let adj1 = preset_adj1(sp);
 
     let outline_color = outline_color.or_else(|| Some("#000000".to_string()));
@@ -763,412 +767,7 @@ fn visit_connector(
         head_end,
         tail_end,
         adj1,
+        adj2: None,
+        elbow_axis,
     });
-}
-
-fn text_body_to_paragraphs(
-    tb: Option<&xdr::TextBody>,
-    theme: Option<&Theme>,
-) -> (
-    Option<String>,
-    Option<String>,
-    Option<Vec<i32>>,
-    Vec<ShapeParagraph>,
-) {
-    let Some(tb) = tb else {
-        return (None, None, None, Vec::new());
-    };
-    let anchor = body_anchor_token(&tb.body_properties);
-    let wrap = body_wrap_token(&tb.body_properties);
-    let insets = body_insets_emu(&tb.body_properties);
-
-    let list_style = tb.list_style.as_deref();
-
-    let mut paragraphs: Vec<ShapeParagraph> = Vec::new();
-    for p in &tb.a_p {
-        let p_pr = p.paragraph_properties.as_deref();
-        let level = p_pr.and_then(|pp| pp.level).unwrap_or(0).clamp(0, 8) as usize;
-
-        let align = pick_align(p_pr, list_style, level);
-
-        let mut runs: Vec<TextRun> = Vec::new();
-        for ch in &p.paragraph_choice {
-            match ch {
-                a::ParagraphChoice::AR(run) => {
-                    let text: &str = &run.text;
-                    if text.is_empty() {
-                        continue;
-                    }
-                    let mut tr = TextRun {
-                        text: text.to_string(),
-                        ..Default::default()
-                    };
-                    apply_lst_style_def_p_pr(list_style, &mut tr, theme);
-                    apply_lst_style_lvl_p_pr(list_style, level, &mut tr, theme);
-                    apply_pp_def_r_pr(p_pr, &mut tr, theme);
-                    if let Some(rp) = run.run_properties.as_deref() {
-                        apply_run_properties(rp, &mut tr, theme);
-                    }
-                    runs.push(tr);
-                }
-                a::ParagraphChoice::ABr(_) => {
-                    runs.push(TextRun {
-                        text: "\n".to_string(),
-                        ..Default::default()
-                    });
-                }
-                _ => {}
-            }
-        }
-        if !runs.is_empty() {
-            paragraphs.push(ShapeParagraph { align, runs });
-        }
-    }
-    (anchor, wrap, insets, paragraphs)
-}
-
-fn pick_align(
-    p_pr: Option<&a::ParagraphProperties>,
-    list_style: Option<&a::ListStyle>,
-    level: usize,
-) -> Option<String> {
-    let mut align: Option<String> = None;
-    if let Some(ls) = list_style {
-        if let Some(def_pp) = ls.default_paragraph_properties.as_deref() {
-            if let Some(s) = alignment_token(&def_pp.alignment) {
-                align = Some(s);
-            }
-        }
-        if let Some(lvl_pp) = lvl_paragraph_alignment(ls, level) {
-            if let Some(s) = lvl_pp {
-                align = Some(s);
-            }
-        }
-    }
-    if let Some(s) = paragraph_align_token(p_pr) {
-        align = Some(s);
-    }
-    align
-}
-
-fn apply_lst_style_def_p_pr(
-    list_style: Option<&a::ListStyle>,
-    tr: &mut TextRun,
-    theme: Option<&Theme>,
-) {
-    let Some(ls) = list_style else { return };
-    let Some(def_pp) = ls.default_paragraph_properties.as_deref() else {
-        return;
-    };
-    if let Some(dr) = def_pp.a_def_r_pr.as_deref() {
-        apply_default_run_properties(dr, tr, theme);
-    }
-}
-
-fn apply_lst_style_lvl_p_pr(
-    list_style: Option<&a::ListStyle>,
-    level: usize,
-    tr: &mut TextRun,
-    theme: Option<&Theme>,
-) {
-    let Some(ls) = list_style else { return };
-    if let Some(dr) = lvl_paragraph_def_r_pr(ls, level) {
-        apply_default_run_properties(dr, tr, theme);
-    }
-}
-
-fn apply_pp_def_r_pr(
-    p_pr: Option<&a::ParagraphProperties>,
-    tr: &mut TextRun,
-    theme: Option<&Theme>,
-) {
-    let Some(pp) = p_pr else { return };
-    if let Some(dr) = pp.a_def_r_pr.as_deref() {
-        apply_default_run_properties(dr, tr, theme);
-    }
-}
-
-fn lvl_paragraph_def_r_pr(
-    ls: &a::ListStyle,
-    level: usize,
-) -> Option<&a::DefaultRunProperties> {
-    match level {
-        0 => ls.level1_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        1 => ls.level2_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        2 => ls.level3_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        3 => ls.level4_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        4 => ls.level5_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        5 => ls.level6_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        6 => ls.level7_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        7 => ls.level8_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        8 => ls.level9_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        _ => None,
-    }
-}
-
-fn lvl_paragraph_alignment(
-    ls: &a::ListStyle,
-    level: usize,
-) -> Option<Option<String>> {
-    let align = match level {
-        0 => ls.level1_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
-        1 => ls.level2_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
-        2 => ls.level3_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
-        3 => ls.level4_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
-        4 => ls.level5_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
-        5 => ls.level6_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
-        6 => ls.level7_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
-        7 => ls.level8_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
-        8 => ls.level9_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
-        _ => None,
-    };
-    align
-}
-
-fn alignment_token(alignment: &Option<a::TextAlignmentTypeValues>) -> Option<String> {
-    let dbg = format!("{:?}", alignment);
-    if !dbg.starts_with("Some(") {
-        return None;
-    }
-    if dbg.contains("Center") {
-        Some("ctr".to_string())
-    } else if dbg.contains("Right") {
-        Some("r".to_string())
-    } else if dbg.contains("Justified") {
-        Some("just".to_string())
-    } else if dbg.contains("Left") {
-        Some("l".to_string())
-    } else {
-        None
-    }
-}
-
-fn body_insets_emu(bp: &a::BodyProperties) -> Option<Vec<i32>> {
-    let l = bp.left_inset;
-    let t = bp.top_inset;
-    let r = bp.right_inset;
-    let b = bp.bottom_inset;
-    if l.is_none() && t.is_none() && r.is_none() && b.is_none() {
-        return None;
-    }
-    const DEF_LR: i32 = 91440;
-    const DEF_TB: i32 = 45720;
-    Some(vec![
-        l.unwrap_or(DEF_LR),
-        t.unwrap_or(DEF_TB),
-        r.unwrap_or(DEF_LR),
-        b.unwrap_or(DEF_TB),
-    ])
-}
-
-fn body_wrap_token(bp: &a::BodyProperties) -> Option<String> {
-    let dbg = format!("{:?}", bp.wrap);
-    if !dbg.starts_with("Some(") {
-        return None;
-    }
-    if dbg.contains("None_") || dbg.contains("NoWrap") {
-        Some("none".to_string())
-    } else if dbg.contains("Square") {
-        Some("square".to_string())
-    } else {
-        None
-    }
-}
-
-fn body_anchor_token(bp: &a::BodyProperties) -> Option<String> {
-    let dbg = format!("{:?}", bp.anchor);
-
-    if dbg.contains("Center") {
-        Some("ctr".to_string())
-    } else if dbg.contains("Bottom") {
-        Some("b".to_string())
-    } else if dbg.contains("Top") {
-        Some("t".to_string())
-    } else {
-        None
-    }
-}
-
-fn paragraph_align_token(pp: Option<&a::ParagraphProperties>) -> Option<String> {
-    let pp = pp?;
-    alignment_token(&pp.alignment)
-}
-
-fn apply_run_properties(rp: &a::RunProperties, tr: &mut TextRun, theme: Option<&Theme>) {
-    let solid_fill = match rp.run_properties_choice1.as_ref() {
-        Some(a::RunPropertiesChoice::ASolidFill(sf)) => Some(sf.as_ref()),
-        _ => None,
-    };
-    apply_run_fields(
-        tr,
-        theme,
-        rp.font_size,
-        rp.bold,
-        rp.italic,
-        rp.underline.is_some(),
-        rp.strike.is_some(),
-        solid_fill,
-        rp.a_latin.as_ref(),
-    );
-}
-
-fn apply_default_run_properties(
-    rp: &a::DefaultRunProperties,
-    tr: &mut TextRun,
-    theme: Option<&Theme>,
-) {
-    let solid_fill = match rp.default_run_properties_choice1.as_ref() {
-        Some(a::DefaultRunPropertiesChoice::ASolidFill(sf)) => Some(sf.as_ref()),
-        _ => None,
-    };
-    apply_run_fields(
-        tr,
-        theme,
-        rp.font_size,
-        rp.bold,
-        rp.italic,
-        rp.underline.is_some(),
-        rp.strike.is_some(),
-        solid_fill,
-        rp.a_latin.as_ref(),
-    );
-}
-
-fn apply_run_fields(
-    tr: &mut TextRun,
-    theme: Option<&Theme>,
-    font_size: Option<i32>,
-    bold: Option<bool>,
-    italic: Option<bool>,
-    underline_present: bool,
-    strike_present: bool,
-    solid_fill: Option<&a::SolidFill>,
-    latin: Option<&a::LatinFont>,
-) {
-    if let Some(sz) = font_size {
-        tr.size = Some((sz as f32) / 100.0);
-    }
-    if let Some(b) = bold {
-        tr.bold = b;
-    }
-    if let Some(i) = italic {
-        tr.italic = i;
-    }
-    if underline_present {
-        tr.underline = true;
-    }
-    if strike_present {
-        tr.strike = true;
-    }
-    if let Some(sf) = solid_fill {
-        if let Some(hex) = resolve_solid_fill(sf, theme) {
-            let stripped = hex.trim_start_matches('#');
-            if stripped.len() == 6 {
-                tr.color = Some(Color {
-                    rgb: Some(stripped.to_string()),
-                    theme: None,
-                    indexed: None,
-                    tint: None,
-                });
-            }
-        }
-    }
-    if let Some(latin) = latin {
-        let tf: &str = latin.typeface.as_deref().unwrap_or("");
-        if !tf.is_empty() && !tf.starts_with('+') {
-            tr.font_name = Some(tf.to_string());
-        } else if tf == "+mn-lt" {
-            if let Some(t) = theme {
-                tr.font_name = t.minor_font.clone();
-            }
-        } else if tf == "+mj-lt" {
-            if let Some(t) = theme {
-                tr.font_name = t.major_font.clone();
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn test_theme() -> Theme {
-        Theme {
-            colors: vec![
-                "FFFFFF".into(), "000000".into(), "E7E6E6".into(), "44546A".into(),
-                "4472C4".into(), "ED7D31".into(), "A5A5A5".into(), "FFC000".into(),
-                "5B9BD5".into(), "70AD47".into(), "0563C1".into(), "954F72".into(),
-            ],
-            major_font: Some("Calibri Light".into()),
-            minor_font: Some("Calibri".into()),
-        }
-    }
-
-    fn rgb_choice(hex: &str) -> a::FillReferenceChoice {
-        a::FillReferenceChoice::ASrgbClr(Box::new(a::RgbColorModelHex {
-            val: hex.into(),
-            ..Default::default()
-        }))
-    }
-
-    fn scheme_choice(name: &str) -> a::FillReferenceChoice {
-        let mut sc = a::SchemeColor::default();
-
-        sc.val = match name {
-            "accent1" => a::SchemeColorValues::Accent1,
-            "accent2" => a::SchemeColorValues::Accent2,
-            "accent3" => a::SchemeColorValues::Accent3,
-            "accent4" => a::SchemeColorValues::Accent4,
-            "accent5" => a::SchemeColorValues::Accent5,
-            "accent6" => a::SchemeColorValues::Accent6,
-            "bg1" | "lt1" => a::SchemeColorValues::Light1,
-            "dk1" | "tx1" => a::SchemeColorValues::Dark1,
-            _ => a::SchemeColorValues::Accent1,
-        };
-        a::FillReferenceChoice::ASchemeClr(Box::new(sc))
-    }
-
-    #[test]
-    fn ref_color_resolves_srgb() {
-        let c = rgb_choice("ABCDEF");
-        let out = resolve_ref_color_debug(Some(&c), Some(&test_theme()));
-        assert_eq!(out.as_deref(), Some("#ABCDEF"));
-    }
-
-    #[test]
-    fn ref_color_resolves_accent_scheme() {
-        let c = scheme_choice("accent1");
-        let out = resolve_ref_color_debug(Some(&c), Some(&test_theme()));
-
-        assert_eq!(out.as_deref(), Some("#4472C4"));
-    }
-
-    #[test]
-    fn ref_color_each_accent_picks_correct_slot() {
-        let theme = test_theme();
-        let cases = [
-            ("accent1", "#4472C4"),
-            ("accent2", "#ED7D31"),
-            ("accent3", "#A5A5A5"),
-            ("accent4", "#FFC000"),
-            ("accent5", "#5B9BD5"),
-            ("accent6", "#70AD47"),
-        ];
-        for (name, expect) in cases {
-            let c = scheme_choice(name);
-            let out = resolve_ref_color_debug(Some(&c), Some(&theme));
-            assert_eq!(out.as_deref(), Some(expect), "{name}");
-        }
-    }
-
-    #[test]
-    fn default_ln_ref_width_matches_standard_theme() {
-
-        assert_eq!(default_ln_ref_width(1), 6_350);
-        assert_eq!(default_ln_ref_width(2), 12_700);
-        assert_eq!(default_ln_ref_width(3), 19_050);
-
-        assert_eq!(default_ln_ref_width(99), 12_700);
-    }
 }

@@ -10,16 +10,10 @@ export type WorkbookLayout = {
   sheets: Array<Sheet>;
   styles: Styles;
   sharedStrings: Array<string>;
-
   sharedStringRuns: Array<Array<TextRun>>;
-
   dxfs: Array<Dxf>;
-
   tableStyles: Array<CustomTableStyle>;
-
   theme?: Theme;
-
   definedNames: Array<DefinedName>;
-
   activeSheetIndex?: number;
 };

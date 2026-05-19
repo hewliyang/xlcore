@@ -8,6 +8,5 @@ export type Drawing = {
   anchor: DrawingAnchor;
   chart?: Chart;
   image?: Image;
-
   shape?: Shape;
 };

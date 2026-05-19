@@ -1,7 +1,1 @@
-export type LineEnd = {
-  kind?: string;
-
-  w?: string;
-
-  len?: string;
-};
+export type LineEnd = { kind?: string; w?: string; len?: string };

@@ -5,13 +5,9 @@ export type Fill = {
   patternType?: string;
   fgColor?: Color;
   bgColor?: Color;
-
   gradientStops: Array<GradientStop>;
-
   gradientType?: string;
-
   gradientDegree?: number;
-
   gradientLeft?: number;
   gradientRight?: number;
   gradientTop?: number;

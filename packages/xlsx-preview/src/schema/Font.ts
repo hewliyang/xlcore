@@ -6,14 +6,10 @@ export type Font = {
   bold: boolean;
   italic: boolean;
   underline: boolean;
-
   underlineStyle?: string;
   strike: boolean;
   color?: Color;
-
   vertAlign?: string;
-
   family?: number;
-
   scheme?: string;
 };

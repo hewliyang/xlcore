@@ -6,40 +6,24 @@ export type ShapeNode = {
   relY: number;
   relW: number;
   relH: number;
-
   preset?: string;
-
   fill?: string;
-
   outlineColor?: string;
-
   outlineWidthEmu?: number;
-
   textAnchor?: string;
-
   rotation?: number;
-
   paragraphs: Array<ShapeParagraph>;
-
   textWrap?: string;
-
   textInsetsEmu?: Array<number>;
-
   imageDataUri?: string;
-
   imageSrcRect?: Array<number>;
-
   flipH?: boolean;
-
   flipV?: boolean;
-
   lineDash?: string;
-
   isConnector?: boolean;
-
   headEnd?: LineEnd;
-
   tailEnd?: LineEnd;
-
   adj1?: number;
+  adj2?: number;
+  elbowAxis?: string;
 };

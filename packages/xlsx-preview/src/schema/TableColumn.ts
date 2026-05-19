@@ -1,7 +1,1 @@
-export type TableColumn = {
-  name: string;
-
-  totalsRowFunction?: string;
-
-  totalsRowLabel?: string;
-};
+export type TableColumn = { name: string; totalsRowFunction?: string; totalsRowLabel?: string };

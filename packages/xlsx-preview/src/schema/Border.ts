@@ -5,10 +5,7 @@ export type Border = {
   right?: BorderLine;
   top?: BorderLine;
   bottom?: BorderLine;
-
   diagonalUp: boolean;
-
   diagonalDown: boolean;
-
   diagonal?: BorderLine;
 };

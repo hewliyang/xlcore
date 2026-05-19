@@ -3,9 +3,7 @@ export type CellFormat = {
   fillId?: number;
   borderId?: number;
   numFmtId?: number;
-
   horizontalAlignment?: string;
-
   verticalAlignment?: string;
   wrapText: boolean;
   indent?: number;

@@ -5,25 +5,15 @@ export type Chart = {
   type: string;
   title?: string;
   series: Array<ChartSeries>;
-
   categories: Array<string>;
-
   categoriesRef?: string;
-
   legendPos?: string;
-
   valueFormat?: string;
-
   categoriesFormat?: string;
-
   grouping?: string;
-
   barDir?: string;
-
   scatterStyle?: string;
-
   radarStyle?: string;
-
   dataLabels?: DataLabels;
   secondaryAxis: boolean;
   valueFormatSecondary?: string;
@@ -31,9 +21,7 @@ export type Chart = {
   valueMax?: number;
   valueMinSecondary?: number;
   valueMaxSecondary?: number;
-
   majorUnit?: number;
-
   majorUnitSecondary?: number;
   barGapWidth?: number;
   barOverlap?: number;
@@ -48,21 +36,15 @@ export type Chart = {
   dispUnitsLabelSecondary?: string;
   bubbleScale?: number;
   sizeRepresents?: string;
-
   stockHiLowLines: boolean;
   stockUpDownBars: boolean;
   stockDropLines: boolean;
-
   cxLayout?: string;
-
   cxSubtotalIndices: Array<number>;
-
   cxCategoryLevels: Array<Array<string>>;
-
   cxWaterfallIncrementColor?: string;
   cxWaterfallDecrementColor?: string;
   cxWaterfallSubtotalColor?: string;
-
   cxRegionMapMinColor?: string;
   cxRegionMapMidColor?: string;
   cxRegionMapMaxColor?: string;

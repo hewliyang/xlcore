@@ -6,12 +6,8 @@ export type Dxf = {
   italic?: boolean;
   strike?: boolean;
   underline?: boolean;
-
   underlineStyle?: string;
-
   fillColor?: Color;
-
   numFmt?: string;
-
   vertAlign?: string;
 };
