@@ -694,7 +694,7 @@ mod tests {
         // SpreadJS/Excel's pixel width (MDW=7px for Calibri 11pt). Adding the
         // 5px UI padding again makes every custom column too wide, shifting
         // bordered instruction boxes away from their text.
-        assert!((explicit_width_attr_to_px(23.421875, 11.0) - 163.953125).abs() < 0.001);
+        assert!((explicit_width_attr_to_px(23.421875, 11.0) - 163.953_13).abs() < 0.001);
         assert!((explicit_width_attr_to_px(8.00390625, 11.0) - 56.027344).abs() < 0.001);
     }
 }

@@ -13,7 +13,8 @@ export { paneAtPoint, frozenDims } from "./panes.js";
 import { resolveSelection, drawSelection } from "./selection.js";
 import { drawDrawings } from "./drawings.js";
 import { drawCellBackgrounds, drawCellBorders, drawDefaultFills } from "./cellPaint.js";
-import { drawCellText, drawFreezeIndicators } from "./textRenderer.js";
+import { drawFreezeIndicators } from "./freezeIndicators.js";
+import { drawCellText } from "./textRenderer.js";
 import {
   computeCfDxfMap,
   computeCfIconState,

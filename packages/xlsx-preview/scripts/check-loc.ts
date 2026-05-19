@@ -1,36 +1,48 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, extname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const MAX_LINES = 900;
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const CHECK_DIRS = ["src"];
-const EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".json"]);
+const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const WORKSPACE_ROOT = join(PACKAGE_ROOT, "..", "..");
 
-function extension(path: string): string {
-  const idx = path.lastIndexOf(".");
-  return idx === -1 ? "" : path.slice(idx);
-}
+const CHECK_TARGETS = [
+  {
+    root: PACKAGE_ROOT,
+    dirs: ["src"],
+    extensions: new Set([".ts", ".tsx", ".js", ".jsx", ".json"]),
+  },
+  {
+    root: WORKSPACE_ROOT,
+    dirs: ["crates"],
+    extensions: new Set([".rs"]),
+  },
+];
 
-function walk(dir: string): string[] {
+const SKIP_DIRS = new Set(["dist", "node_modules", "pkg", "target"]);
+
+function walk(dir: string, extensions: Set<string>): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
+    if (SKIP_DIRS.has(entry)) continue;
+
     const path = join(dir, entry);
     const stat = statSync(path);
     if (stat.isDirectory()) {
-      if (entry === "dist" || entry === "node_modules") continue;
-      out.push(...walk(path));
-    } else if (EXTENSIONS.has(extension(path))) {
+      out.push(...walk(path, extensions));
+    } else if (extensions.has(extname(path))) {
       out.push(path);
     }
   }
   return out;
 }
 
-const tooLarge = CHECK_DIRS.flatMap((dir) => walk(join(ROOT, dir)))
+const tooLarge = CHECK_TARGETS.flatMap(({ root, dirs, extensions }) =>
+  dirs.flatMap((dir) => walk(join(root, dir), extensions)),
+)
   .map((path) => {
     const text = readFileSync(path, "utf8");
-    const lines = text.length === 0 ? 0 : text.split(/\r\n|\r|\n/).length;
+    const lines = text.length === 0 ? 0 : text.replace(/\r\n|\r|\n$/, "").split(/\r\n|\r|\n/).length;
     return { path, lines };
   })
   .filter(({ lines }) => lines > MAX_LINES)
@@ -39,7 +51,7 @@ const tooLarge = CHECK_DIRS.flatMap((dir) => walk(join(ROOT, dir)))
 if (tooLarge.length > 0) {
   console.error(`Files over ${MAX_LINES} LoC:`);
   for (const { path, lines } of tooLarge) {
-    console.error(`${String(lines).padStart(5)}  ${relative(ROOT, path)}`);
+    console.error(`${String(lines).padStart(5)}  ${relative(WORKSPACE_ROOT, path)}`);
   }
   process.exit(1);
 }

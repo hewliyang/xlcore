@@ -5,7 +5,6 @@ import { iterCellsInRange } from "./columnar.js";
 
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, rectFor } from "./geometry.js";
-import { frozenDims } from "./panes.js";
 import type { Visible } from "./renderTypes.js";
 
 // ---------- rich-text run resolution ----------
@@ -885,33 +884,3 @@ function hasContent(cell: Cell, sheet: Sheet, layout: WorkbookLayout): boolean {
   return text.length > 0;
 }
 
-export function drawFreezeIndicators(
-  ctx: CanvasRenderingContext2D,
-  sheet: Sheet,
-  g: Grid,
-  canvasW: number,
-  canvasH: number,
-): void {
-  if (!sheet.freeze) return;
-  // Pane separator paints in canvas-local space at the split boundary,
-  // not at the absolute grid edge — so the line stays glued between TL/TR
-  // (or BL/BR) regardless of scroll. Excel's frozen-pane gridline is
-  // darker than the regular grid but single-pixel.
-  const { pcw, prh } = frozenDims(sheet, g);
-  ctx.save();
-  ctx.strokeStyle = "#9ca3af";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  if (sheet.freeze.leftCol > 1) {
-    const x = Math.round(g.originX + pcw) + 0.5;
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, canvasH);
-  }
-  if (sheet.freeze.topRow > 1) {
-    const y = Math.round(g.originY + prh) + 0.5;
-    ctx.moveTo(0, y);
-    ctx.lineTo(canvasW, y);
-  }
-  ctx.stroke();
-  ctx.restore();
-}

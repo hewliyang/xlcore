@@ -59,7 +59,7 @@ pub(crate) fn extract_disp_units(du: Option<&c::DisplayUnits>) -> Option<(f64, O
         }
         c::DisplayUnitsChoice::CCustUnit(cu) => cu.val,
     };
-    if !(factor > 0.0) {
+    if factor <= 0.0 {
         return None;
     }
     let lbl_present = du.c_disp_units_lbl.is_some();

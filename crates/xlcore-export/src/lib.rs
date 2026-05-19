@@ -15,7 +15,9 @@
 mod annotations;
 mod chart_colors;
 mod charts;
+mod charts_ex;
 mod charts_helpers;
+mod charts_legacy;
 mod columnar;
 mod pivots;
 mod refs;

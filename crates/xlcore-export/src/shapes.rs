@@ -203,10 +203,7 @@ pub(crate) enum ShapeTreeRoot<'a> {
 /// Identical to `shape_world` modulo the connector-specific guard
 /// that lets `cx == 0` or `cy == 0` through (straight axis-aligned
 /// connectors are common and their bbox really is degenerate).
-fn connector_world(
-    sp: &xdr::ShapeProperties,
-    parent: Option<GroupFrame>,
-) -> Option<WorldBox> {
+fn connector_world(sp: &xdr::ShapeProperties, parent: Option<GroupFrame>) -> Option<WorldBox> {
     let xfrm = sp.transform2_d.as_ref()?;
     let off = xfrm.offset.as_ref()?;
     let ext = xfrm.extents.as_ref()?;

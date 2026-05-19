@@ -418,6 +418,7 @@ pub(crate) fn hsl_to_rgb(h: f64, s: f64, l: f64) -> (f64, f64, f64) {
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod color_mod_tests {
     use super::*;
 

@@ -187,12 +187,12 @@ pub(crate) fn resolve_chart_refs(
                     if chart.chart_type == "chartex" && n_cols > 1 {
                         let mut levels: Vec<Vec<String>> = vec![Vec::with_capacity(n_rows); n_cols];
                         for r in 0..n_rows {
-                            for c in 0..n_cols {
+                            for (c, level) in levels.iter_mut().enumerate().take(n_cols) {
                                 let cell = cells.get(r * n_cols + c).and_then(|c| c.as_ref());
                                 let s = cell
                                     .and_then(|cc| read_string(&snapshot_sheets, cc, &sst))
                                     .unwrap_or_default();
-                                levels[c].push(s);
+                                level.push(s);
                             }
                         }
                         // `categories` (the legacy 1D field) gets the
@@ -410,9 +410,9 @@ fn parse_chart_ref(formula: &str) -> Option<(String, u32, u32, u32, u32)> {
     Some((sheet, r1, c1, r2, c2))
 }
 
-/// Returns `(plain_text_per_si, runs_per_si)`, the two parallel arrays
-/// indexed by SharedStringItem position. `runs_per_si[i]` is empty when
-/// the SST entry is plain text (single `<t>`); otherwise it carries the
+// Returns `(plain_text_per_si, runs_per_si)`, the two parallel arrays
+// indexed by SharedStringItem position. `runs_per_si[i]` is empty when
+// the SST entry is plain text (single `<t>`); otherwise it carries the
 
 #[cfg(test)]
 mod tests {
