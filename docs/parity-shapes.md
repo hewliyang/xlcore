@@ -131,7 +131,7 @@ Consolidated list of deliberate carve-outs. Most landed under e-007. Each item i
 | Line cap/join | ❌ | ❌ | P1 | See shortcut #9. |
 | Compound lines / alignment | ❌ | ❌ | P2 | `cmpd`, `algn`. |
 | Arrowheads (`headEnd` / `tailEnd`) | ✅ | ✅ | P0 | Connectors/lines. `triangle`, `stealth`, `diamond`, `oval`, `arrow`, `none`; `w`/`len` enums scale. |
-| Outer shadow (`outerShdw`) | ❌ | ❌ | P1 | Most visible effect omission on themed buttons/cards. |
+| Outer shadow (`outerShdw`) | ✅ | ✅ | P1 | `<a:effectLst><a:outerShdw>` only (effectDag deferred). Maps `dist`/`dir` to canvas `shadowOffsetX/Y`, `blurRad` to `shadowBlur`, and threads the color (incl. theme/scheme + alpha modifier) through the same resolver as solid fills. `algn` and `rotWithShape` ignored — not visually significant on standalone shapes. Locked in by `shapes/outer-shadow.xlsx`; **`.hsx.png` diverges from `.ours.png` intentionally** (SpreadJS drops outerShdw), exactly as the fixture builder predicted. |
 | Inner shadow / glow / soft edge | ❌ | ❌ | P2 | |
 | Reflection / blur | ❌ | ❌ | P3 | |
 | `effectLst` vs `effectDag` | ❌ | ❌ | P2 | Only `effectLst` realistically needed first. |
@@ -191,8 +191,8 @@ Ordered by impact × cost. Pick from the top.
 ### P1 — visual fidelity that real workbooks need
 
 1. ~~**Gradient fills (`gradFill`)**~~ — **shipped.** Linear + path painters reuse the cell-side gradient math; stop colors resolve through the same theme + color-modifier path as solid fills. Locked in by `shapes/gradient-fills.xlsx`. Remaining: tile flip, `tileRect`, `rotWithShape`.
-2. **Outer shadow (`outerShdw`)** — now the biggest visible omission on themed buttons/cards.
-3. **Style-ref matrix walk** — read `<a:fmtScheme><a:fillStyleLst>` / `<a:lnStyleLst>`. Unlocks themed gradient idx 2/3 + per-style line dashes "for free" now that #1 has landed. Resolves shortcut #6.
+2. ~~**Outer shadow (`outerShdw`)**~~ — **shipped.** Direct `<a:effectLst><a:outerShdw>` only; `effectDag` and effectRef-driven shadows still deferred. `dist`/`dir`/`blurRad` map straight onto canvas `shadow*` primitives; color resolves through the existing srgb/scheme/preset/sys path with `<a:alpha>` mod respected. `algn` and `rotWithShape` ignored (negligible on standalone shapes). Locked in by `shapes/outer-shadow.xlsx` — the fixture intentionally has `.hsx.png` (SpreadJS, drops the effect) diverging from `.ours.png` (we paint it).
+3. **Style-ref matrix walk** — read `<a:fmtScheme><a:fillStyleLst>` / `<a:lnStyleLst>` / `<a:effectStyleLst>`. Unlocks themed gradient idx 2/3, per-style line dashes, and theme-driven outer shadows on `effectRef idx≥1` (paired need with #2 above) "for free" now that the direct paths exist. Resolves shortcut #6.
 4. **Group rotation + body-rect-follows-flip** — the non-connector `flipH/V` painter shipped; remaining gaps are (a) `<a:xfrm rot="..."/>` on `<xdr:grpSpPr>` (children should rotate as a rigid body), (b) flipping the shape's text body rect so captions on asymmetric presets (arrows, callouts) sit on the visually-correct side.
 5. **Preset dash + line cap/join on non-connector outlines** — small surface, fixes thin-line shape appearance. Resolves shortcuts #8, #9.
 6. **`avLst` for `roundRect` / arrows / callouts** — small surface, fixes already-supported presets. Resolves shortcut #3.
@@ -219,4 +219,4 @@ Ordered by impact × cost. Pick from the top.
 
 ## Suggested PARITY.md one-line status
 
-Shapes remain 🟡 until outer shadow and the style-ref matrix walk land (P1 items 2–3; gradient fills shipped in P1 #1). Current v0 is good for basic callouts/buttons, themed gradients on direct `<a:gradFill>` shapes, grouped screenshot chrome, and Office-authored org-chart / SOTP diagrams; not yet broad DrawingML parity.
+Shapes remain 🟡 until the style-ref matrix walk lands (P1 #3; gradient fills and direct-`<a:effectLst>` outer shadow shipped in P1 #1–2). Current v0 is good for basic callouts/buttons, themed gradients + drop shadows on direct DrawingML shapes, grouped screenshot chrome, and Office-authored org-chart / SOTP diagrams; not yet broad DrawingML parity (theme-driven `effectRef` shadows are the next obvious gap).

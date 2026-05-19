@@ -33,6 +33,19 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- DrawingML `<a:effectLst><a:outerShdw>` on shapes: extractor parses
+  `blurRad` / `dist` / `dir` plus the color (`srgbClr` / `schemeClr` /
+  `prstClr` / `sysClr` resolved through the same theme + color-modifier
+  path as solid fills, including the `<a:alpha>` modifier); painter
+  maps `dist`/`dir` to canvas `shadowOffsetX/Y` and `blurRad` to
+  `shadowBlur`, paints the shadow once on the fill pass and clears
+  shadow state before stroking so the outline doesn't double-shadow.
+  `algn` and `rotWithShape` ignored (negligible on standalone shapes);
+  `effectDag` and theme-`effectRef`-driven shadows still deferred
+  pending the style-ref matrix walk. Locked in by
+  `shapes/outer-shadow.xlsx` (`.ours.png` now diverges from `.hsx.png`
+  on purpose — SpreadJS silently drops `outerShdw`, exactly as the
+  fixture builder predicted). Closes `parity-shapes.md` P1 #2.
 - DrawingML `<a:gradFill>` for shape fills: extractor reads `gsLst`
   stops (resolving `srgbClr`/`schemeClr`/`prstClr`/`sysClr` + color
   modifiers via the existing theme path), the `lin@ang` linear angle

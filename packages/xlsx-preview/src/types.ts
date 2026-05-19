@@ -44,6 +44,7 @@ export type {
   ShapeGradient,
   ShapeGradientStop,
   ShapeNode,
+  ShapeOuterShadow,
   ShapeParagraph,
   Sparkline,
   SparklineGroup,

@@ -38,6 +38,7 @@ export type { Shape } from "./Shape.js";
 export type { ShapeGradient } from "./ShapeGradient.js";
 export type { ShapeGradientStop } from "./ShapeGradientStop.js";
 export type { ShapeNode } from "./ShapeNode.js";
+export type { ShapeOuterShadow } from "./ShapeOuterShadow.js";
 export type { ShapeParagraph } from "./ShapeParagraph.js";
 export type { Sheet } from "./Sheet.js";
 export type { Sparkline } from "./Sparkline.js";

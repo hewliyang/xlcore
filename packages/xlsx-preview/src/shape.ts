@@ -64,12 +64,26 @@ function drawShapeNode(
   const preset = node.preset ?? "rect";
   pathForPreset(ctx, preset, x, y, w, h, node);
 
+  const shadow = node.outerShadow;
+  const hasShadowedFill = !!shadow && (!!node.fill || !!node.fillGradient);
+  if (hasShadowedFill && shadow) {
+    applyShadow(ctx, shadow);
+  }
+
   if (node.fillGradient && node.fillGradient.stops.length >= 2) {
     ctx.fillStyle = gradientFillStyle(ctx, node.fillGradient, x, y, w, h);
     ctx.fill();
   } else if (node.fill) {
     ctx.fillStyle = node.fill;
     ctx.fill();
+  } else if (shadow) {
+    applyShadow(ctx, shadow);
+    ctx.fillStyle = "rgba(0,0,0,0)";
+    ctx.fill();
+  }
+
+  if (shadow) {
+    clearShadow(ctx);
   }
 
   if (node.outlineColor) {
@@ -101,6 +115,39 @@ function drawShapeNode(
   }
 
   ctx.restore();
+}
+
+function applyShadow(
+  ctx: CanvasRenderingContext2D,
+  shadow: { color: string; alpha: number; blurEmu: number; distEmu: number; dirDeg: number },
+): void {
+  const blurPx = (shadow.blurEmu ?? 0) * PX_PER_EMU;
+  const distPx = (shadow.distEmu ?? 0) * PX_PER_EMU;
+  const rad = ((shadow.dirDeg ?? 0) * Math.PI) / 180;
+  const dx = Math.cos(rad) * distPx;
+  const dy = Math.sin(rad) * distPx;
+  ctx.shadowBlur = blurPx;
+  ctx.shadowOffsetX = dx;
+  ctx.shadowOffsetY = dy;
+  ctx.shadowColor = colorWithAlpha(shadow.color, shadow.alpha ?? 1);
+}
+
+function clearShadow(ctx: CanvasRenderingContext2D): void {
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+  ctx.shadowColor = "rgba(0,0,0,0)";
+}
+
+function colorWithAlpha(hex: string, alpha: number): string {
+  const a = Math.max(0, Math.min(1, alpha));
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1] ?? "0", 16);
+  const r = (n >> 16) & 0xff;
+  const g = (n >> 8) & 0xff;
+  const b = n & 0xff;
+  return `rgba(${r},${g},${b},${a})`;
 }
 
 function gradientFillStyle(

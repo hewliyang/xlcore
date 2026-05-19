@@ -379,6 +379,7 @@ fn visit_picture(
         adj2: None,
         elbow_axis: None,
         fill_gradient: None,
+        outer_shadow: None,
     });
 }
 
@@ -422,6 +423,7 @@ fn visit_shape(
     let preset = preset_geom_name(sp);
     let mut fill = solid_fill_color(&sp.shape_properties_choice2, theme);
     let fill_gradient = gradient_fill(&sp.shape_properties_choice2, theme);
+    let outer_shadow = outer_shadow(&sp.shape_properties_choice3, theme);
     let (mut outline_color, mut outline_width_emu) = outline_info(sp.a_ln.as_deref(), theme);
     let (text_anchor, text_wrap, text_insets_emu, mut paragraphs) =
         text_body_to_paragraphs(s.text_body.as_deref(), theme);
@@ -486,6 +488,7 @@ fn visit_shape(
         adj2: preset_adj2(sp),
         elbow_axis: None,
         fill_gradient,
+        outer_shadow,
     });
 }
 
@@ -614,6 +617,89 @@ fn gradient_fill(
             fill_to_rect: None,
         }),
     }
+}
+
+fn outer_shadow_color(
+    choice: &a::OuterShadowChoice,
+    theme: Option<&Theme>,
+) -> Option<(String, f32)> {
+    use a::OuterShadowChoice as C;
+    let (hex, scope) = match choice {
+        C::ASrgbClr(c) => {
+            let dbg = format!("{:?}", c);
+            let v: &str = &c.val;
+            if v.len() != 6 {
+                return None;
+            }
+            let base = format!("#{}", v);
+            (
+                crate::chart_colors::apply_color_modifiers(&base, &dbg),
+                dbg,
+            )
+        }
+        C::ASchemeClr(c) => {
+            let dbg = format!("{:?}", c);
+            let base = crate::chart_colors::theme_scheme_color(&dbg, theme)?;
+            (
+                crate::chart_colors::apply_color_modifiers(&base, &dbg),
+                dbg,
+            )
+        }
+        C::APrstClr(c) => {
+            let dbg = format!("{:?}", c);
+            let val_dbg = format!("{:?}", c.val);
+            let hex = preset_color_hex(&val_dbg)?.to_string();
+            (hex, dbg)
+        }
+        C::ASysClr(c) => {
+            let dbg = format!("{:?}", c);
+            let hex = c.last_color.as_deref().map(|s| format!("#{}", s))?;
+            (hex, dbg)
+        }
+        _ => return None,
+    };
+
+    let alpha = sniff_alpha_modifier(&scope).unwrap_or(1.0);
+    Some((hex, alpha))
+}
+
+fn sniff_alpha_modifier(scope: &str) -> Option<f32> {
+    let needle = "AAlpha(Alpha { val: ";
+    let p = scope.find(needle)?;
+    let tail = &scope[p + needle.len()..];
+    let end = tail.find(|c: char| !c.is_ascii_digit() && c != '-')?;
+    let raw: i64 = tail[..end].parse().ok()?;
+    Some((raw as f32 / 100_000.0).clamp(0.0, 1.0))
+}
+
+fn outer_shadow(
+    choice: &Option<xdr::ShapePropertiesChoice3>,
+    theme: Option<&Theme>,
+) -> Option<ShapeOuterShadow> {
+    use xdr::ShapePropertiesChoice3;
+    let lst = match choice.as_ref()? {
+        ShapePropertiesChoice3::AEffectLst(l) => l,
+        ShapePropertiesChoice3::AEffectDag(_) => return None,
+    };
+    let sh = lst.outer_shadow.as_ref()?;
+    let (color, alpha) = match sh.outer_shadow_choice.as_ref() {
+        Some(c) => outer_shadow_color(c, theme)?,
+        None => ("#000000".to_string(), 1.0),
+    };
+    let blur_emu = sh.blur_radius.unwrap_or(0);
+    let dist_emu = sh.distance.unwrap_or(0);
+    let dir_raw = sh.direction.unwrap_or(0);
+    let dir_deg = (dir_raw as f32) / 60_000.0;
+    if blur_emu == 0 && dist_emu == 0 {
+        return None;
+    }
+    Some(ShapeOuterShadow {
+        color,
+        alpha,
+        blur_emu,
+        dist_emu,
+        dir_deg,
+    })
 }
 
 pub(crate) fn resolve_solid_fill(sf: &a::SolidFill, theme: Option<&Theme>) -> Option<String> {
@@ -922,5 +1008,6 @@ fn visit_connector(
         adj2: None,
         elbow_axis,
         fill_gradient: None,
+        outer_shadow: None,
     });
 }

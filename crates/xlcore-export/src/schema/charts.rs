@@ -132,6 +132,31 @@ pub struct ShapeNode {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fill_gradient: Option<ShapeGradient>,
+
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outer_shadow: Option<ShapeOuterShadow>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ShapeOuterShadow {
+    pub color: String,
+
+    pub alpha: f32,
+
+    #[cfg_attr(feature = "typescript", ts(type = "number"))]
+    pub blur_emu: i64,
+
+    #[cfg_attr(feature = "typescript", ts(type = "number"))]
+    pub dist_emu: i64,
+
+    pub dir_deg: f32,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
