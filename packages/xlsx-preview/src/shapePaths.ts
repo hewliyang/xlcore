@@ -17,24 +17,25 @@ export function pathForPreset(
       break;
     }
     case "roundRect": {
-      const r = Math.min(w, h) * 0.16;
+      const adj = Math.max(0, Math.min(50000, node.adj1 ?? 16667)) / 100000;
+      const r = Math.min(w, h) * adj;
       roundRectPath(ctx, x, y, w, h, r);
       break;
     }
     case "leftArrow":
-      arrowPath(ctx, x, y, w, h, "left");
+      arrowPath(ctx, x, y, w, h, "left", node);
       break;
     case "rightArrow":
-      arrowPath(ctx, x, y, w, h, "right");
+      arrowPath(ctx, x, y, w, h, "right", node);
       break;
     case "upArrow":
-      arrowPath(ctx, x, y, w, h, "up");
+      arrowPath(ctx, x, y, w, h, "up", node);
       break;
     case "downArrow":
-      arrowPath(ctx, x, y, w, h, "down");
+      arrowPath(ctx, x, y, w, h, "down", node);
       break;
     case "leftRightArrow":
-      leftRightArrowPath(ctx, x, y, w, h);
+      leftRightArrowPath(ctx, x, y, w, h, node);
       break;
     case "triangle":
       ctx.moveTo(x + w / 2, y);
@@ -149,9 +150,12 @@ function leftRightArrowPath(
   y: number,
   w: number,
   h: number,
+  node: ShapeNode,
 ): void {
-  const head = Math.min(w * 0.25, h * 0.5);
-  const tail = h * 0.5;
+  const tailFrac = clamp01((node.adj1 ?? 50000) / 100000);
+  const headFrac = clamp01((node.adj2 ?? 50000) / 100000);
+  const tail = h * tailFrac;
+  const head = Math.min(w * 0.5 * headFrac, w * 0.5);
   const tailY1 = y + (h - tail) / 2;
   const tailY2 = tailY1 + tail;
   ctx.moveTo(x, y + h / 2);
@@ -243,10 +247,13 @@ function arrowPath(
   w: number,
   h: number,
   dir: "left" | "right" | "up" | "down",
+  node: ShapeNode,
 ): void {
+  const tailFrac = clamp01((node.adj1 ?? 50000) / 100000);
+  const headFrac = clamp01((node.adj2 ?? 50000) / 100000);
   if (dir === "left" || dir === "right") {
-    const head = w * 0.5;
-    const tail = h * 0.5;
+    const head = Math.min(w * headFrac, w);
+    const tail = h * tailFrac;
     const tailY1 = y + (h - tail) / 2;
     const tailY2 = tailY1 + tail;
     if (dir === "right") {
@@ -269,8 +276,8 @@ function arrowPath(
       ctx.closePath();
     }
   } else {
-    const head = h * 0.5;
-    const tail = w * 0.5;
+    const head = Math.min(h * headFrac, h);
+    const tail = w * tailFrac;
     const tailX1 = x + (w - tail) / 2;
     const tailX2 = tailX1 + tail;
     if (dir === "down") {
@@ -293,6 +300,11 @@ function arrowPath(
       ctx.closePath();
     }
   }
+}
+
+function clamp01(v: number): number {
+  if (!Number.isFinite(v)) return 0;
+  return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
 export function isBraceLikePreset(preset: string | undefined): boolean {

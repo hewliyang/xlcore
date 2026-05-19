@@ -5,6 +5,41 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- DrawingML `<a:avLst>` adjust values honored on `roundRect`, the four
+  cardinal arrows (`leftArrow` / `rightArrow` / `upArrow` /
+  `downArrow`), and `leftRightArrow`. `node.adj1` / `node.adj2` were
+  already extracted by `shapes.rs::preset_adj1` / `preset_adj2` and
+  plumbed through to the TS schema, but the painter ignored them
+  everywhere except the brace family — so every `roundRect` had a
+  fixed 16% corner radius and every arrow had the same 50/50 tail +
+  head proportions regardless of the workbook's avLst. Now
+  `pathForPreset` reads them: `roundRect` corner offset =
+  `min(w,h) * clamp(adj1, 0..50000) / 100000` (spec default 16667 ≈
+  16.667%); cardinal arrows take `adj1` = tail-thickness fraction of
+  cross-axis and `adj2` = head-length fraction of along-axis, both
+  clamped to `[0,1]`; `leftRightArrow` takes `adj1` = tail-height
+  fraction of `h` and `adj2` = per-side head-length fraction with the
+  head capped at `w/2` so the two heads never overlap past centre.
+  Defaults match the prior hardcoded values modulo a sub-pixel nudge
+  on `roundRect` (0.16 → spec-exact 0.16667); affected `.ours.png`
+  baselines (`basic-autoshapes`, `line-cap-join-dash`, `outer-shadow`,
+  `style-refs-matrix`, `style-refs-themed`) regenerated. Locked in by
+  `tests/fixtures/shapes/avlst-adjusts.xlsx` (4×4 sweep grid; pre-fix
+  every column collapsed to the same picture). Closes
+  `parity-shapes.md` P1 #6 — the arrow + `roundRect` arms. Callouts
+  still ignore `avLst` (no callout preset is rendered yet) and the
+  rest of the long tail (stars, arcs, chevron / pentagon point
+  depth) keep hardcoded defaults; tracked under shortcut #3 and
+  pairs with the long-tail preset corpus work (queue #13).
+- DrawingML fixture `tests/fixtures/shapes/avlst-adjusts.xlsx`
+  authored via `hsx eval` + Python zip-rewrite (SpreadJS doesn't
+  expose adjust-handle setters on its shape API). 4×4 grid sweeping
+  `adj1` / `adj2` extremes across `roundRect`, `rightArrow`, `upArrow`,
+  and `leftRightArrow`. Same recipe as
+  `build-list-style-inheritance.sh`.
+
 ### Fixed
 
 - DrawingML preset dash tokens for the long-variant family (`lgDash`,
