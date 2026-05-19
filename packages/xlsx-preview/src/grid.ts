@@ -195,7 +195,17 @@ export function anchorToRect(
       : rowEdge(g, a.toRow + 1) + a.toRowOffEmu * PX_PER_EMU;
   const w = toX - fromX;
   const h = toY - fromY;
-  if (w <= 1 || h <= 1) return null;
+  // Connectors / line shapes are allowed to be axis-degenerate (a
+  // horizontal connector has h == 0; vertical has w == 0). Drop only
+  // when both axes collapse, or when the anchor is too small for any
+  // non-line drawing.
+  const isShapeOnly =
+    d.kind === "shape" && d.shape != null && d.image == null && d.chart == null;
+  if (isShapeOnly) {
+    if (w <= 0.25 && h <= 0.25) return null;
+  } else if (w <= 1 || h <= 1) {
+    return null;
+  }
   return { x: fromX, y: fromY, w, h };
 }
 

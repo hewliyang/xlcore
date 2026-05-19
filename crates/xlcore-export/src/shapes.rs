@@ -161,11 +161,18 @@ pub(crate) fn extract_shape_tree(
     images: ImageUriResolver<'_>,
 ) -> Option<Shape> {
     let mut nodes: Vec<ShapeNode> = Vec::new();
+    // Connectors are special: their world bbox is degenerate when the
+    // connector is purely horizontal (cy=0) or vertical (cx=0), but
+    // the painter still needs the diagonal. Force a minimum 1-EMU
+    // extent so the fractional bbox math doesn't divide by zero;
+    // the renderer paints the connector path inside that rect.
     let outer = match &root {
         ShapeTreeRoot::Sp(s) => shape_world(s, None)?,
         ShapeTreeRoot::GrpSp(g) => group_frame(g, None).map(|(w, _)| w)?,
+        ShapeTreeRoot::CxnSp(c) => connector_world(&c.shape_properties, None)?,
     };
-    if outer.cx <= 0.0 || outer.cy <= 0.0 {
+    // Allow degenerate-axis connectors (horizontal / vertical lines).
+    if outer.cx <= 0.0 && outer.cy <= 0.0 {
         return None;
     }
     match root {
@@ -174,6 +181,9 @@ pub(crate) fn extract_shape_tree(
         }
         ShapeTreeRoot::GrpSp(g) => {
             visit_group(g, None, outer, &mut nodes, theme, images);
+        }
+        ShapeTreeRoot::CxnSp(c) => {
+            visit_connector(c, None, outer, &mut nodes, theme);
         }
     }
     if nodes.is_empty() {
@@ -186,6 +196,33 @@ pub(crate) fn extract_shape_tree(
 pub(crate) enum ShapeTreeRoot<'a> {
     Sp(&'a xdr::Shape),
     GrpSp(&'a xdr::GroupShape),
+    CxnSp(&'a xdr::ConnectionShape),
+}
+
+/// World-EMU bbox for a `<xdr:cxnSp>` derived from its `spPr/xfrm`.
+/// Identical to `shape_world` modulo the connector-specific guard
+/// that lets `cx == 0` or `cy == 0` through (straight axis-aligned
+/// connectors are common and their bbox really is degenerate).
+fn connector_world(
+    sp: &xdr::ShapeProperties,
+    parent: Option<GroupFrame>,
+) -> Option<WorldBox> {
+    let xfrm = sp.transform2_d.as_ref()?;
+    let off = xfrm.offset.as_ref()?;
+    let ext = xfrm.extents.as_ref()?;
+    let ox = off.x as f64;
+    let oy = off.y as f64;
+    let cx = ext.cx as f64;
+    let cy = ext.cy as f64;
+    Some(match parent {
+        Some(p) => p.map(ox, oy, cx, cy),
+        None => WorldBox {
+            x: ox,
+            y: oy,
+            cx,
+            cy,
+        },
+    })
 }
 
 fn visit_group(
@@ -211,9 +248,11 @@ fn visit_group(
             xdr::GroupShapeChoice::XdrPic(pic) => {
                 visit_picture(pic, Some(frame), outer, nodes, images);
             }
-            // graphicFrame / cxnSp inside groups: still out of scope.
-            // Connectors would slot in here once we add a generic
-            // `line` shape kind to the schema.
+            xdr::GroupShapeChoice::XdrCxnSp(c) => {
+                visit_connector(c, Some(frame), outer, nodes, theme);
+            }
+            // graphicFrame inside groups: still out of scope (chart /
+            // diagram / table-style graphics embedded in a group).
             _ => {}
         }
     }
@@ -308,6 +347,13 @@ fn visit_picture(
         text_insets_emu: None,
         image_data_uri: Some(data_uri),
         image_src_rect: crop,
+        flip_h: None,
+        flip_v: None,
+        line_dash: None,
+        is_connector: None,
+        head_end: None,
+        tail_end: None,
+        adj1: None,
     });
 }
 
@@ -381,6 +427,13 @@ fn visit_shape(
         text_insets_emu,
         image_data_uri: None,
         image_src_rect: None,
+        flip_h: None,
+        flip_v: None,
+        line_dash: None,
+        is_connector: None,
+        head_end: None,
+        tail_end: None,
+        adj1: None,
     });
 }
 
@@ -487,6 +540,183 @@ fn outline_info(ln: Option<&a::Outline>, theme: Option<&Theme>) -> (Option<Strin
         _ => None,
     };
     (color, width)
+}
+
+/// Extract `<a:prstDash val="..."/>` (DrawingML dash preset) from an
+/// `<a:ln>`. Returns lowercase token (e.g. `dash`, `dashDot`, `dot`,
+/// `lgDash`, `sysDash`). `None` for solid / custom / absent.
+fn line_dash_token(ln: Option<&a::Outline>) -> Option<String> {
+    let ln = ln?;
+    use a::OutlineChoice2;
+    match ln.outline_choice2.as_ref()? {
+        OutlineChoice2::APrstDash(d) => {
+            // PresetLineDashValues Debug yields PascalCase variant
+            // names matching the OOXML camelCase tokens after
+            // lowercasing the first char.
+            let dbg = format!("{:?}", d.val);
+            // Inner is `Option<PresetLineDashValues>` → strip the
+            // `Some(...)` / `None` wrapper.
+            if !dbg.starts_with("Some(") {
+                return None;
+            }
+            let inner = dbg.trim_start_matches("Some(").trim_end_matches(')');
+            let mut chars = inner.chars();
+            let first = chars.next()?;
+            let rest: String = chars.collect();
+            Some(format!("{}{}", first.to_ascii_lowercase(), rest))
+        }
+        _ => None,
+    }
+}
+
+/// Common shape for HeadEnd / TailEnd attribute trios.
+fn line_end_to_schema(
+    kind: Option<&a::LineEndValues>,
+    w: Option<&a::LineEndWidthValues>,
+    len: Option<&a::LineEndLengthValues>,
+) -> Option<LineEnd> {
+    let kind_tok = kind.and_then(|v| enum_token(&format!("{:?}", v)));
+    let w_tok = w.and_then(|v| enum_token(&format!("{:?}", v)));
+    let len_tok = len.and_then(|v| enum_token(&format!("{:?}", v)));
+    // Drop the entire end if it's authored as `type="none"` with no
+    // other distinguishing attrs (the OOXML default; common noise).
+    if matches!(kind_tok.as_deref(), Some("none")) && w_tok.is_none() && len_tok.is_none() {
+        return None;
+    }
+    if kind_tok.is_none() && w_tok.is_none() && len_tok.is_none() {
+        return None;
+    }
+    Some(LineEnd {
+        kind: kind_tok,
+        w: w_tok,
+        len: len_tok,
+    })
+}
+
+/// Lowercase-first the Pascal-case enum variant name Rust's Debug
+/// gives us. Returns None for `None_` (the OOXML `none` reserved-word
+/// rename used by ooxmlsdk's codegen → still maps to `"none"`).
+fn enum_token(dbg: &str) -> Option<String> {
+    let trimmed = dbg.trim_end_matches('_');
+    if trimmed.is_empty() {
+        return None;
+    }
+    let mut chars = trimmed.chars();
+    let first = chars.next()?;
+    let rest: String = chars.collect();
+    Some(format!("{}{}", first.to_ascii_lowercase(), rest))
+}
+
+/// Read `<a:avLst><a:gd name="adj1" fmla="val NNNN"/></a:avLst>` and
+/// return adj1 in DrawingML per-mil (e.g. 50000 = 50%). Returns None
+/// when the geometry has no avLst, no adj1 guide, or the formula is
+/// not a plain `val NNNN` literal (we don't evaluate guide formulas).
+fn preset_adj1(sp: &xdr::ShapeProperties) -> Option<i32> {
+    use xdr::ShapePropertiesChoice;
+    let geom = match sp.shape_properties_choice1.as_ref()? {
+        ShapePropertiesChoice::APrstGeom(g) => g,
+        _ => return None,
+    };
+    let avl = geom.adjust_value_list.as_ref()?;
+    for gd in &avl.a_gd {
+        let name: &str = &gd.name;
+        if name != "adj1" && name != "adj" {
+            continue;
+        }
+        let fmla: &str = &gd.formula;
+        if let Some(rest) = fmla.strip_prefix("val ") {
+            if let Ok(v) = rest.trim().parse::<i32>() {
+                return Some(v);
+            }
+        }
+    }
+    None
+}
+
+/// Walk a `<xdr:cxnSp>` into a single connector `ShapeNode`.
+fn visit_connector(
+    c: &xdr::ConnectionShape,
+    parent: Option<GroupFrame>,
+    outer: WorldBox,
+    nodes: &mut Vec<ShapeNode>,
+    theme: Option<&Theme>,
+) {
+    let sp = &c.shape_properties;
+    let world = match connector_world(sp, parent) {
+        Some(w) => w,
+        None => return,
+    };
+    // Map world → fractional bbox relative to outer. Outer can be
+    // axis-degenerate (cx==0 or cy==0) for axis-aligned root
+    // connectors; fall back to 0 / 1 in those slots so the renderer
+    // still has a usable diagonal frame.
+    let rel_x = if outer.cx > 0.0 {
+        (world.x - outer.x) / outer.cx
+    } else {
+        0.0
+    };
+    let rel_y = if outer.cy > 0.0 {
+        (world.y - outer.y) / outer.cy
+    } else {
+        0.0
+    };
+    let rel_w = if outer.cx > 0.0 {
+        world.cx / outer.cx
+    } else {
+        1.0
+    };
+    let rel_h = if outer.cy > 0.0 {
+        world.cy / outer.cy
+    } else {
+        1.0
+    };
+
+    let preset = preset_geom_name(sp);
+    let ln_box = sp.a_ln.as_deref();
+    let (outline_color, outline_width_emu) = outline_info(ln_box, theme);
+    let dash = line_dash_token(ln_box);
+    let head_end = ln_box
+        .and_then(|ln| ln.a_head_end.as_ref())
+        .and_then(|e| line_end_to_schema(e.r#type.as_ref(), e.width.as_ref(), e.length.as_ref()));
+    let tail_end = ln_box
+        .and_then(|ln| ln.a_tail_end.as_ref())
+        .and_then(|e| line_end_to_schema(e.r#type.as_ref(), e.width.as_ref(), e.length.as_ref()));
+    let xfrm = sp.transform2_d.as_ref();
+    let flip_h = xfrm.and_then(|x| x.horizontal_flip).unwrap_or(false);
+    let flip_v = xfrm.and_then(|x| x.vertical_flip).unwrap_or(false);
+    let rotation = xfrm.and_then(|x| x.rotation);
+    let adj1 = preset_adj1(sp);
+
+    // A connector with no resolvable outline color (e.g. style-only
+    // ref via <xdr:style>) still deserves to be drawn; fall back to
+    // black so it's visible. Style-ref resolution is tracked as a
+    // separate P1 item in parity-shapes.md.
+    let outline_color = outline_color.or_else(|| Some("#000000".to_string()));
+
+    nodes.push(ShapeNode {
+        rel_x: rel_x as f32,
+        rel_y: rel_y as f32,
+        rel_w: rel_w as f32,
+        rel_h: rel_h as f32,
+        preset,
+        fill: None,
+        outline_color,
+        outline_width_emu,
+        text_anchor: None,
+        rotation,
+        paragraphs: Vec::new(),
+        text_wrap: None,
+        text_insets_emu: None,
+        image_data_uri: None,
+        image_src_rect: None,
+        flip_h: if flip_h { Some(true) } else { None },
+        flip_v: if flip_v { Some(true) } else { None },
+        line_dash: dash,
+        is_connector: Some(true),
+        head_end,
+        tail_end,
+        adj1,
+    });
 }
 
 fn text_body_to_paragraphs(

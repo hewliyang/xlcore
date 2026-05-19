@@ -135,6 +135,70 @@ pub struct ShapeNode {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image_src_rect: Option<Vec<i32>>,
+    /// `<a:xfrm flipH="1"/>` — horizontal flip of the shape bbox.
+    /// Connectors lean on this heavily to express direction (a
+    /// `straightConnector1` with flipH goes top-right → bottom-left
+    /// instead of top-left → bottom-right).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flip_h: Option<bool>,
+    /// `<a:xfrm flipV="1"/>` — vertical flip.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flip_v: Option<bool>,
+    /// `<a:prstDash val="..."/>` token (`solid`/`dash`/`dot`/`dashDot`/
+    /// `lgDash`/`sysDash`/...). `None` ⇒ solid. Renderer translates to
+    /// a canvas dash pattern scaled by stroke width.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line_dash: Option<String>,
+    /// Whether this node is a `<xdr:cxnSp>` connector. When `Some(true)`
+    /// the renderer paints a stroked path (no fill, no text) along the
+    /// node's diagonal / Z-route depending on `preset`. Same shape
+    /// vocabulary is reused for non-connector `<xdr:sp>` line presets
+    /// (`line`, `lineInv`) by setting this flag at extraction time.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_connector: Option<bool>,
+    /// `<a:headEnd>` arrowhead at the connector's start point.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub head_end: Option<LineEnd>,
+    /// `<a:tailEnd>` arrowhead at the connector's end point.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tail_end: Option<LineEnd>,
+    /// `<a:avLst><a:gd name="adj1" fmla="val NNNNN"/></a:avLst>` first
+    /// adjustment value, in DrawingML per-mil (50000 ≈ 50%). Used by
+    /// `bentConnector3` to position the bend; defaults to 50000 when
+    /// the preset wants an adjust value and none is authored.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub adj1: Option<i32>,
+}
+
+/// `<a:headEnd>` / `<a:tailEnd>` arrowhead descriptor.
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct LineEnd {
+    /// `type="..."`: `none`/`triangle`/`stealth`/`diamond`/`oval`/`arrow`.
+    /// `None` ⇒ `none`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    /// `w="sm|med|lg"`. `None` ⇒ `med`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub w: Option<String>,
+    /// `len="sm|med|lg"`. `None` ⇒ `med`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub len: Option<String>,
 }
 
 /// One `<a:p>` paragraph inside a shape's text body.

@@ -7,6 +7,29 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- DrawingML `<xdr:cxnSp>` connectors (and bare `prstGeom=line`/`lineInv`
+  shapes) now extract and render end-to-end. New schema fields on
+  `ShapeNode`: `isConnector`, `flipH`, `flipV`, `lineDash`, `headEnd` /
+  `tailEnd` (new `LineEnd` struct — `kind`/`w`/`len`), `adj1`. Extractor
+  (`shapes::visit_connector`) walks `cxnSp` at root and inside groups,
+  reading `<a:xfrm flipH/flipV>`, `<a:prstDash val="…"/>`,
+  `<a:headEnd>/<a:tailEnd>` (type / `w` / `len` enums), and
+  `<a:avLst>/<a:gd name="adj1" fmla="val …"/>`. `charts.rs` wires
+  `XdrCxnSp` through `twoCellAnchor` and `oneCellAnchor`. Renderer
+  (`shape.ts::drawConnector`) paints straight connectors,
+  `bentConnector3` Z-routes (with horizontal vs vertical bend chosen
+  by the dominant axis), and `line`/`lineInv` diagonals — honoring
+  flips, dash patterns scaled to stroke width
+  (`dash`/`dot`/`dashDot`/`lgDash`/`sysDash`/…), and five OOXML
+  arrowhead kinds (triangle / stealth / diamond / oval / open `arrow`)
+  whose size scales from the `w`/`len` enum + stroke width.
+  `anchorToRect` (`grid.ts`) relaxed so axis-degenerate connector
+  anchors (horizontal lines with `h==0`, vertical with `w==0`) survive
+  layout instead of being filtered as zero-area drawings. Locked in by
+  `tests/fixtures/shapes/connectors.xlsx` (all five connectors now
+  visible against the HSX reference). Bonus side-effect: the
+  `prstGeom=line` diagonal in `tests/fixtures/shapes/basic-autoshapes.xlsx`
+  is no longer painted as a blue rect.
 - DrawingML shape text now honors `<a:bodyPr lIns/tIns/rIns/bIns/>`
   insets. New schema field `ShapeNode.textInsetsEmu` (length-4 EMU
   vector); extractor reads `BodyProperties.{left,top,right,bottom}_inset`

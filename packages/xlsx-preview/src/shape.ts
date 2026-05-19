@@ -30,7 +30,14 @@ export function drawShape(
     const ny = rect.y + node.relY * rect.h;
     const nw = node.relW * rect.w;
     const nh = node.relH * rect.h;
-    if (nw < 1 || nh < 1) continue;
+    // Connectors (and bare line presets) are allowed to have a
+    // degenerate axis — a purely horizontal connector has h=0, a
+    // purely vertical one has w=0. We still need to draw them; the
+    // connector path uses the (possibly zero) extent to compute
+    // direction. For everything else, drop sub-pixel ghosts.
+    const isLine = node.isConnector === true || isLinePreset(node.preset);
+    if (!isLine && (nw < 1 || nh < 1)) continue;
+    if (isLine && nw < 0.5 && nh < 0.5) continue;
     drawShapeNode(ctx, node, nx, ny, nw, nh);
   }
 }
@@ -60,6 +67,16 @@ function drawShapeNode(
   // `<a:srcRect>` crop if present) and we're done.
   if (node.imageDataUri) {
     drawShapeImage(ctx, node, x, y, w, h);
+    ctx.restore();
+    return;
+  }
+
+  // Connectors (and bare line presets) are stroked-path-only and need
+  // arrowheads + dash patterns + flips applied to the path itself, not
+  // a bbox-and-fill. They take a separate branch so we never accidentally
+  // fill or text-paint a 1px-tall line.
+  if (node.isConnector || isLinePreset(node.preset)) {
+    drawConnector(ctx, node, x, y, w, h);
     ctx.restore();
     return;
   }
@@ -228,6 +245,262 @@ function arrowPath(
       ctx.closePath();
     }
   }
+}
+
+// ---------- connectors ----------
+
+function isLinePreset(preset: string | undefined): boolean {
+  if (!preset) return false;
+  return (
+    preset === "line" ||
+    preset === "lineInv" ||
+    preset.startsWith("straightConnector") ||
+    preset.startsWith("bentConnector") ||
+    preset.startsWith("curvedConnector")
+  );
+}
+
+function drawConnector(
+  ctx: CanvasRenderingContext2D,
+  node: ShapeNode,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void {
+  // Compute the polyline as a sequence of [px,py] points inside the
+  // shape's local bbox. straightConnector / line: 2 points; bentConnector3:
+  // 4 points (Z route). flipH / flipV mirror the points across the
+  // bbox center.
+  const preset = node.preset ?? "line";
+  const adj1 = (node.adj1 ?? 50000) / 100000; // per-mil → [0,1]
+  let pts: Array<[number, number]>;
+  if (preset === "bentConnector3") {
+    // Default geometry: Z-shape with one bend at adj1 along the
+    // dominant axis. We bend horizontally when w ≥ h; otherwise the
+    // bend is vertical. (Matches the LibreOffice / Excel resolution
+    // of the spec's adj1 guide direction on this preset.)
+    if (w >= h) {
+      const bx = w * adj1;
+      pts = [
+        [0, 0],
+        [bx, 0],
+        [bx, h],
+        [w, h],
+      ];
+    } else {
+      const by = h * adj1;
+      pts = [
+        [0, 0],
+        [0, by],
+        [w, by],
+        [w, h],
+      ];
+    }
+  } else {
+    // straightConnector1 / line / lineInv / unknown connector →
+    // diagonal between the bbox corners.
+    pts = [
+      [0, 0],
+      [w, h],
+    ];
+    if (preset === "lineInv") {
+      // lineInv runs from top-right to bottom-left.
+      pts = [
+        [w, 0],
+        [0, h],
+      ];
+    }
+  }
+  // Apply flips. flipH mirrors X about w/2; flipV mirrors Y about h/2.
+  if (node.flipH) pts = pts.map(([px, py]) => [w - px, py]);
+  if (node.flipV) pts = pts.map(([px, py]) => [px, h - py]);
+  // Translate into world space.
+  pts = pts.map(([px, py]) => [x + px, y + py]);
+
+  // Stroke width / color: same defaults as `drawShapeNode` outline.
+  const widthEmu = node.outlineWidthEmu;
+  const widthPx =
+    widthEmu == null
+      ? 1.0
+      : widthEmu === 0
+        ? 0.75
+        : Math.max(0.5, widthEmu * PX_PER_EMU);
+  const color = node.outlineColor ?? "#000000";
+  ctx.strokeStyle = color;
+  ctx.lineWidth = widthPx;
+  ctx.lineCap = "butt";
+  ctx.lineJoin = "miter";
+  ctx.setLineDash(dashPattern(node.lineDash, widthPx));
+  ctx.beginPath();
+  ctx.moveTo(pts[0]![0], pts[0]![1]);
+  for (let i = 1; i < pts.length; i++) {
+    ctx.lineTo(pts[i]![0], pts[i]![1]);
+  }
+  ctx.stroke();
+  // Reset dash so subsequent paths aren't affected.
+  ctx.setLineDash([]);
+
+  // Arrowheads sit at the line endpoints; they're solid-filled
+  // (arrowhead fills aren't dashed), pointing along the tangent of
+  // the adjoining segment.
+  if (node.headEnd) {
+    drawArrowEnd(
+      ctx,
+      node.headEnd,
+      pts[1]!, // segment direction goes FROM pts[1] TO pts[0]
+      pts[0]!,
+      color,
+      widthPx,
+    );
+  }
+  if (node.tailEnd) {
+    const last = pts.length - 1;
+    drawArrowEnd(
+      ctx,
+      node.tailEnd,
+      pts[last - 1]!, // tangent from previous-to-last point
+      pts[last]!,
+      color,
+      widthPx,
+    );
+  }
+}
+
+/// Convert `<a:prstDash val="..."/>` to a canvas dash pattern, scaled
+/// by stroke width to look the same at any line weight. Numbers are in
+/// stroke-width multiples (Excel's measured ratios). Returns [] for
+/// solid / unknown.
+function dashPattern(token: string | undefined, w: number): number[] {
+  if (!token) return [];
+  switch (token) {
+    case "solid":
+      return [];
+    case "dot":
+    case "sysDot":
+      return [w, w * 2];
+    case "dash":
+    case "sysDash":
+      return [w * 4, w * 3];
+    case "lgDash":
+      return [w * 8, w * 3];
+    case "dashDot":
+    case "sysDashDot":
+      return [w * 4, w * 3, w, w * 3];
+    case "lgDashDot":
+      return [w * 8, w * 3, w, w * 3];
+    case "lgDashDotDot":
+    case "sysDashDotDot":
+      return [w * 8, w * 3, w, w * 3, w, w * 3];
+    default:
+      return [];
+  }
+}
+
+function drawArrowEnd(
+  ctx: CanvasRenderingContext2D,
+  end: NonNullable<ShapeNode["headEnd"]>,
+  from: [number, number],
+  tip: [number, number],
+  color: string,
+  strokeW: number,
+): void {
+  const kind = end.kind ?? "none";
+  if (kind === "none") return;
+  // Size scale per OOXML enum: sm ≈ 2, med ≈ 3, lg ≈ 5 multiples of
+  // stroke width (empirically matches Excel's rendering).
+  const sizeMul = (tok: string | undefined): number => {
+    switch (tok) {
+      case "sm":
+        return 2;
+      case "lg":
+        return 5;
+      default:
+        return 3.5; // "med" or absent
+    }
+  };
+  // Floor the per-stroke-width multiplier so very thin lines (hairline
+  // straightConnector1, common in Excel-authored shapes) still get a
+  // visible arrowhead.
+  const baseStroke = Math.max(strokeW, 1);
+  const lenPx = sizeMul(end.len) * baseStroke + 2;
+  const widPx = sizeMul(end.w) * baseStroke + 1;
+  const dx = tip[0] - from[0];
+  const dy = tip[1] - from[1];
+  const len = Math.hypot(dx, dy);
+  if (len < 0.01) return;
+  const ux = dx / len;
+  const uy = dy / len;
+  // Perp vector.
+  const px = -uy;
+  const py = ux;
+  // Base point (tip pulled back along the line by lenPx).
+  const baseX = tip[0] - ux * lenPx;
+  const baseY = tip[1] - uy * lenPx;
+  const halfW = widPx / 2;
+
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = strokeW;
+  ctx.setLineDash([]);
+  switch (kind) {
+    case "oval": {
+      // Oval marker centered on tip, axes aligned to line.
+      const cx = tip[0] - ux * (lenPx / 2);
+      const cy = tip[1] - uy * (lenPx / 2);
+      const angle = Math.atan2(uy, ux);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, lenPx / 2, widPx / 2, angle, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case "diamond": {
+      const midX = tip[0] - ux * (lenPx / 2);
+      const midY = tip[1] - uy * (lenPx / 2);
+      ctx.beginPath();
+      ctx.moveTo(tip[0], tip[1]);
+      ctx.lineTo(midX + px * halfW, midY + py * halfW);
+      ctx.lineTo(baseX, baseY);
+      ctx.lineTo(midX - px * halfW, midY - py * halfW);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+    case "stealth": {
+      // Stealth: like triangle but base concaves toward tip.
+      const concaveX = baseX + ux * lenPx * 0.35;
+      const concaveY = baseY + uy * lenPx * 0.35;
+      ctx.beginPath();
+      ctx.moveTo(tip[0], tip[1]);
+      ctx.lineTo(baseX + px * halfW, baseY + py * halfW);
+      ctx.lineTo(concaveX, concaveY);
+      ctx.lineTo(baseX - px * halfW, baseY - py * halfW);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+    case "arrow": {
+      // Open arrowhead (two strokes forming a V at the tip), not filled.
+      ctx.beginPath();
+      ctx.moveTo(baseX + px * halfW, baseY + py * halfW);
+      ctx.lineTo(tip[0], tip[1]);
+      ctx.lineTo(baseX - px * halfW, baseY - py * halfW);
+      ctx.stroke();
+      break;
+    }
+    case "triangle":
+    default: {
+      ctx.beginPath();
+      ctx.moveTo(tip[0], tip[1]);
+      ctx.lineTo(baseX + px * halfW, baseY + py * halfW);
+      ctx.lineTo(baseX - px * halfW, baseY - py * halfW);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    }
+  }
+  ctx.restore();
 }
 
 function drawShapeImage(

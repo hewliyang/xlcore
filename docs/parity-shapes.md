@@ -35,8 +35,8 @@ cd ecma-376
 
 | Layer | Status | Files / notes |
 | --- | --- | --- |
-| Extraction | 🟡 | `crates/xlcore-export/src/charts.rs` surfaces top-level `xdr:sp` and `xdr:grpSp` from `twoCellAnchor` / `oneCellAnchor`. Top-level `cxnSp`, `absoluteAnchor`, `contentPart` ignored. |
-| Shape tree | 🟡 | `crates/xlcore-export/src/shapes.rs` flattens `sp` / nested `grpSp`; maps group `xfrm/off/ext/chOff/chExt`; nested `xdr:pic` inside groups becomes image nodes. |
+| Extraction | 🟡 | `crates/xlcore-export/src/charts.rs` surfaces top-level `xdr:sp`, `xdr:grpSp`, and `xdr:cxnSp` from `twoCellAnchor` / `oneCellAnchor`. Top-level `absoluteAnchor`, `contentPart` still ignored. |
+| Shape tree | 🟡 | `crates/xlcore-export/src/shapes.rs` flattens `sp` / nested `grpSp` / nested `cxnSp`; maps group `xfrm/off/ext/chOff/chExt`; nested `xdr:pic` inside groups becomes image nodes. |
 | Schema | 🟡 | JSON model is intentionally painter-oriented (`Shape { nodes }`), not a full DrawingML AST. Good for preview; not enough for round-trip editing. |
 | Rendering | 🟡 | `packages/xlsx-preview/src/shape.ts` paints a small preset subset, solid fills, basic outlines, text, rotation, nested pictures. Unknown presets fall back to rectangle. |
 | Fixtures | 🟡 | Initial corpus landed under `tests/fixtures/shapes/`: `basic-autoshapes.xlsx`, `textbox-wrap-align.xlsx`, `connectors.xlsx`. Each ships with `.hsx.png` (ground truth) and `.ours.png` (current regression baseline). Still missing per the P0 list below: `groups-and-pictures.xlsx`, `style-refs-themed.xlsx` (partially exercised already by the boxes in `connectors.xlsx`, whose `<xdr:style>` blocks reference `lnRef`/`fillRef`/`fontRef`/`effectRef`). |
@@ -56,7 +56,7 @@ cd ecma-376
 | Top-level `grpSp` | ✅ | 🟡 | P0 | Nested `sp` / `grpSp` / `pic` supported; nested `cxnSp` / `graphicFrame` ignored. |
 | Top-level `pic` | ✅ | ✅ | P0 | Separate image path; top-level image crop/rotation tracked in `PARITY.md`. |
 | Nested `pic` in groups | ✅ | ✅ | P0 | Includes `<a:srcRect>` crop. |
-| `cxnSp` connectors | ❌ | ❌ | P0 | High-value next shape feature: arrows/lines/callout connectors are common in worksheets. |
+| `cxnSp` connectors | ✅ | ✅ | P0 | Top-level and group-nested. Straight + bentConnector3 with adj1; `line` / `lineInv` presets also routed through the connector painter so they no longer fall back to a blue rect. Locked in by `tests/fixtures/shapes/connectors.xlsx` (5 connectors: straight, bent Z, vertical bent, horizontal dashed-red w/ triangle, diagonal w/ oval head + triangle tail). |
 | `graphicFrame` in groups | ❌ | ❌ | P2 | Could contain chart/diagram/table-like graphics inside group. |
 | `contentPart` | ❌ | ❌ | P3 | Extension payload; low preview value initially. |
 | Non-visual props / alt text | ❌ | n/a | P2 | `cNvPr name/descr/title`, locks, hidden metadata not surfaced. |
@@ -76,7 +76,7 @@ cd ecma-376
 | Group `chOff` / `chExt` mapping | ✅ | ✅ | P0 | Important for Office-authored groups. |
 | Shape rotation `xfrm@rot` | ✅ | ✅ | P0 | Stored as 1/60000 degrees; renderer rotates node around center. |
 | Group rotation | ❌ | ❌ | P1 | `CT_GroupTransform2D` has `rot`; current frame mapping ignores it. |
-| Flip H/V | ❌ | ❌ | P1 | Both `CT_Transform2D` and group transform have `flipH` / `flipV`. |
+| Flip H/V on shape `xfrm` | 🟡 | 🟡 | P1 | Surfaced + applied for connectors only (where the OOXML producer uses flipH to express line direction). Non-connector shape flips still ignored. |
 | Z-order | ✅ | ✅ | P0 | XML traversal order is preserved for emitted nodes/drawings. Add fixture to lock this down. |
 | Clipping to group/shape | ❌ | ❌ | P2 | Current flattened model does not clip children to group bounds. |
 | `bwMode` (black/white render mode) | ❌ | ❌ | P3 | `spPr@bwMode`; rare in spreadsheets. |
@@ -90,7 +90,7 @@ cd ecma-376
 | `ellipse` / `circle` | ✅ | ✅ | P0 | |
 | `triangle`, `diamond` | ✅ | ✅ | P0 | |
 | Basic block arrows | ✅ | ✅ | P0 | `leftArrow`, `rightArrow`, `upArrow`, `downArrow`; hardcoded default adjusts. |
-| Lines (`prstGeom=line` / `lineInv`) | 🟡 | ❌ | P0 | Usually should become connector/line primitives, not rectangle fallback. |
+| Lines (`prstGeom=line` / `lineInv`) | ✅ | ✅ | P0 | Routed through the connector painter — `line` is a top-left→bottom-right diagonal, `lineInv` is top-right→bottom-left. Honors `flipH/V`, dash, and arrowheads. |
 | More common presets | 🟡 | ❌ | P1 | Chevron, pentagon/hexagon, stars, callouts, braces/brackets, flowchart symbols, action buttons. Spec lists 187 presets. |
 | `avLst` adjust values | ❌ | ❌ | P1 | Needed for arrow head/tail size, rounded rect radius, callout pointers, stars, arcs. |
 | `custGeom` paths | ❌ | ❌ | P2 | Requires DrawingML path interpreter (`moveTo`, `lnTo`, `arcTo`, bezier, close) and guide formulas. |
@@ -112,9 +112,10 @@ cd ecma-376
 | Blip fills `blipFill` | ❌ | ❌ | P1 | Shape-as-image-fill; distinct from `xdr:pic`. Common for textured buttons/banners. |
 | Group fill `grpFill` | ❌ | ❌ | P2 | Inherit/transform fill from parent group. |
 | Basic line color + width | ✅ | ✅ | P0 | `a:ln` solid/noFill + width. |
-| Line dash/cap/join | ❌ | ❌ | P1 | `prstDash`, `custDash`, cap, round/bevel/miter. |
+| Line dash (`prstDash`) | 🟡 | 🟡 | P1 | Surfaced + rendered for connectors/lines: `dash`, `dot`, `dashDot`, `lgDash`/`lgDashDot`/`lgDashDotDot`, `sysDash`/`sysDot`/`sysDashDot`/`sysDashDotDot`. `custDash` still ignored; non-connector shape outlines don't yet read dash. |
+| Line cap/join | ❌ | ❌ | P2 | `cap`, round/bevel/miter — connector painter currently fixes cap=butt, join=miter. |
 | Compound lines / alignment | ❌ | ❌ | P2 | `cmpd`, `algn`. |
-| Arrowheads (`headEnd` / `tailEnd`) | ❌ | ❌ | P0 | Especially important for connectors and line shapes. Type / width / length enums per §20.1.10.33–34. |
+| Arrowheads (`headEnd` / `tailEnd`) | ✅ | ✅ | P0 | Surfaced + rendered for connectors/lines. Types: `triangle`, `stealth`, `diamond`, `oval`, `arrow` (open V), `none`. `w`/`len` enums (`sm`/`med`/`lg`) scale the head size relative to stroke width. |
 | Outer shadow (`outerShdw`) | ❌ | ❌ | P1 | Most visually impactful effect on themed buttons/cards. |
 | Inner shadow (`innerShdw`) | ❌ | ❌ | P2 | |
 | Glow (`glow`) | ❌ | ❌ | P2 | |
@@ -176,7 +177,7 @@ cd ecma-376
 ### P0 — make common worksheet chrome dependable
 
 1. **Add fixture corpus first**: `tests/fixtures/shapes/basic-autoshapes.xlsx`, `shapes/groups-and-pictures.xlsx`, `shapes/textbox-wrap-align.xlsx`, `shapes/connectors.xlsx`, `shapes/style-refs-themed.xlsx` with committed `hsx` references. **Status:** `basic-autoshapes` / `textbox-wrap-align` / `connectors` landed (with `.hsx.png` + `.ours.png` baselines). `groups-and-pictures` and `style-refs-themed` still TODO (the latter is partially exercised by the node boxes in `connectors.xlsx`).
-2. **Connectors / line primitives**: surface top-level and nested `xdr:cxnSp`, plus `prstGeom=line/lineInv`, as a `ShapeNode` line kind with stroke, dash, arrowheads. Capture `stCxn`/`endCxn` ids even if we initially route bbox-to-bbox.
+2. **Connectors / line primitives**: ~~surface top-level and nested `xdr:cxnSp`, plus `prstGeom=line/lineInv`, as a `ShapeNode` line kind with stroke, dash, arrowheads.~~ **Shipped.** `ShapeNode` gained `isConnector` / `flipH` / `flipV` / `lineDash` / `headEnd` / `tailEnd` / `adj1` (`schema/charts.rs`); `shapes::visit_connector` walks `xdr:cxnSp` at root and inside groups; the renderer paints stroked polylines (straight, `bentConnector3` Z-route, `line`/`lineInv` diagonal) with dash patterns scaled to stroke width and the five OOXML arrowhead kinds (triangle / stealth / diamond / oval / arrow). `anchorToRect` was relaxed so axis-degenerate connector anchors (h==0 for horizontal lines, w==0 for vertical) survive layout. `stCxn`/`endCxn` ids still TODO — we currently route bbox-to-bbox via the connector's own `xfrm` (which Excel snaps to attached-shape edges on save, so visually this matches Office output).
 3. **Text insets**: ~~extract `bodyPr lIns/tIns/rIns/bIns`; renderer should use EMU→px padding instead of a fixed magic value.~~ **Shipped.** Schema gained `ShapeNode.textInsetsEmu`; extractor reads `BodyProperties.{left,top,right,bottom}_inset`; renderer applies them in `drawShapeText` with DrawingML-default fallback. Visible win: text inside narrow shapes (triangle / chevron / decision in `basic-autoshapes.xlsx`) no longer fragments into single-character vertical strips, and the inset row of `textbox-wrap-align.xlsx` produces four distinct paintings.
 4. **Style refs minimal resolver**: resolve `a:style/fillRef/lnRef/fontRef`/`effectRef` against theme format scheme for cases without direct `solidFill` / `ln`. Office-authored shapes lean on this heavily.
 5. **`lstStyle` paragraph inheritance**: pull `defPPr` / `lvl1pPr` rPr defaults inside `txBody` so themed text boxes don’t fall back to wrong size/font when local `rPr` is absent.

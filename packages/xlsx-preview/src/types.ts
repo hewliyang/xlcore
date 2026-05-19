@@ -49,6 +49,7 @@ export type {
   Freeze,
   Hyperlink,
   Image,
+  LineEnd,
   Merge,
   NumberFormat,
   OutlinePr,

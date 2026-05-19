@@ -42,6 +42,7 @@ enum AnchorTarget {
 enum ShapeRoot {
     Sp(std::boxed::Box<xdr::Shape>),
     GrpSp(std::boxed::Box<xdr::GroupShape>),
+    CxnSp(std::boxed::Box<xdr::ConnectionShape>),
 }
 
 /// Extract drawings (charts + images) from this worksheet's drawingsPart.
@@ -108,6 +109,9 @@ pub fn extract(
                     xdr::TwoCellAnchorChoice::XdrGrpSp(g) => {
                         AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone()))
                     }
+                    xdr::TwoCellAnchorChoice::XdrCxnSp(c) => {
+                        AnchorTarget::Shape(ShapeRoot::CxnSp(c.clone()))
+                    }
                     _ => return None,
                 };
                 Some((anchor, target))
@@ -157,6 +161,9 @@ pub fn extract(
                     }
                     xdr::OneCellAnchorChoice::XdrGrpSp(g) => {
                         AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone()))
+                    }
+                    xdr::OneCellAnchorChoice::XdrCxnSp(c) => {
+                        AnchorTarget::Shape(ShapeRoot::CxnSp(c.clone()))
                     }
                     _ => return None,
                 };
@@ -252,6 +259,11 @@ pub fn extract(
                     ),
                     ShapeRoot::GrpSp(g) => crate::shapes::extract_shape_tree(
                         crate::shapes::ShapeTreeRoot::GrpSp(g.as_ref()),
+                        theme,
+                        &resolver,
+                    ),
+                    ShapeRoot::CxnSp(c) => crate::shapes::extract_shape_tree(
+                        crate::shapes::ShapeTreeRoot::CxnSp(c.as_ref()),
                         theme,
                         &resolver,
                     ),

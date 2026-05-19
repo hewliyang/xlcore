@@ -32,6 +32,7 @@ export type { Font } from "./Font.js";
 export type { Freeze } from "./Freeze.js";
 export type { Hyperlink } from "./Hyperlink.js";
 export type { Image } from "./Image.js";
+export type { LineEnd } from "./LineEnd.js";
 export type { Merge } from "./Merge.js";
 export type { NumberFormat } from "./NumberFormat.js";
 export type { OutlinePr } from "./OutlinePr.js";
