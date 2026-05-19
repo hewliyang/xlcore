@@ -7,6 +7,56 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- DrawingML `<a:lstStyle>` + paragraph-`<a:pPr><a:defRPr>` run/paragraph
+  inheritance. `shapes.rs::text_body_to_paragraphs` now cascades run +
+  paragraph properties in OOXML-spec precedence order, lowest → highest:
+  (1) `<a:lstStyle><a:defPPr><a:defRPr>`, (2)
+  `<a:lstStyle><a:lvl{N+1}pPr><a:defRPr>` matching the paragraph's
+  `pPr@lvl` (default 0 → `lvl1pPr`; clamped to 0…8), (3)
+  `<a:p><a:pPr><a:defRPr>` (previously ignored — this was the real
+  fidelity gap on themed templates, since SpreadJS-emitted shape XML
+  always writes pPr/defRPr and only sometimes echoes it on the run
+  rPr), (4) `<a:r><a:rPr>`. Same cascade applied to paragraph alignment
+  via the new `pick_align` helper. The existing `apply_run_properties`
+  was refactored into a field-wise `apply_run_fields` core + an
+  `apply_default_run_properties` sibling so the cascade can chain
+  `RunProperties` (`<a:rPr>`) and `DefaultRunProperties`
+  (`<a:defRPr>`) — the SDK generates parallel types with identical
+  fields but differently-named choice enums. Scope (v0): font size,
+  bold, italic, underline-present, strike-present, solidFill color,
+  latin font — same fields the rPr path already supports. Still TODO:
+  `marL`/`indent`, line spacing, `spcBef`/`spcAft`, kerning, baseline,
+  `<a:rPr u="none">` to clear inherited underline, and the bullet list.
+  Locked in by `tests/fixtures/shapes/list-style-inheritance.xlsx`
+  (4 panels: control / lstStyle-defPPr / lstStyle-lvl1pPr /
+  cascade-precedence). Pixel-identical to all existing committed shape
+  baselines (basic-autoshapes / textbox-wrap-align / style-refs-themed /
+  connectors / groups-and-pictures all `bbox=None totaldiff=0` at
+  scale 1) since the cascade only changes behavior when a run is
+  missing fields. Divergence vs HSX: HSX doesn't honor
+  `<a:lstStyle><a:defPPr>` at all and only partially honors
+  `<a:lvl1pPr>` (size doesn't inherit), so on synthetic lstStyle-only
+  fixtures we render more spec-correctly than HSX. On real
+  Excel-authored workbooks (which always set rPr explicitly) we never
+  render LESS than HSX.
+- Dedicated z-order + grouping + picture regression baseline fixture
+  `tests/fixtures/shapes/groups-and-pictures.xlsx` (+ `.hsx.png` /
+  `.ours.png` + `build-groups-and-pictures.sh`). Five labelled panels
+  exercising features already shipped in the extractor + renderer:
+  (A) three overlapping shapes (rect / oval / diamond) at the same
+  anchor emitted in that XML order — the diamond paints on top,
+  locking in "z-order = XML traversal order"; (B) standalone pictures
+  via both `sheet.pictures.add` (the loose `<xdr:pic>` path with
+  `<a:xfrm>` zero-extent + anchor-derived geometry) and
+  `sheet.shapes.addPictureShape` (the `<xdr:pic>` path with explicit
+  `<a:xfrm>`); (C) a 3-shape group exercising `<xdr:grpSp>` flattening
+  + `chOff/chExt`; (D) a label rect + nested picture grouped together
+  — the "nested `<xdr:pic>` inside `<xdr:grpSp>`" extractor path in
+  `shapes::visit_group`; (E) a nested group (outer `{ rect, inner
+  { triangle, oval } }`) exercising the recursive `visit_shapes` walk
+  + compounded `chOff/chExt`. Hsx and ours match pixel-for-pixel on
+  every panel — this is a pure regression baseline, not a known gap.
+  Drawings emitted: 4 `<xdr:grpSp>`, 4 `<xdr:pic>`, 10 `<xdr:sp>`.
 - DrawingML `<xdr:cxnSp>` connectors (and bare `prstGeom=line`/`lineInv`
   shapes) now extract and render end-to-end. New schema fields on
   `ShapeNode`: `isConnector`, `flipH`, `flipV`, `lineDash`, `headEnd` /

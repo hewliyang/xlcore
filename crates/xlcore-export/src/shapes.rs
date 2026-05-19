@@ -781,9 +781,16 @@ fn text_body_to_paragraphs(
     let anchor = body_anchor_token(&tb.body_properties);
     let wrap = body_wrap_token(&tb.body_properties);
     let insets = body_insets_emu(&tb.body_properties);
+
+    let list_style = tb.list_style.as_deref();
+
     let mut paragraphs: Vec<ShapeParagraph> = Vec::new();
     for p in &tb.a_p {
-        let align = paragraph_align_token(p.paragraph_properties.as_deref());
+        let p_pr = p.paragraph_properties.as_deref();
+        let level = p_pr.and_then(|pp| pp.level).unwrap_or(0).clamp(0, 8) as usize;
+
+        let align = pick_align(p_pr, list_style, level);
+
         let mut runs: Vec<TextRun> = Vec::new();
         for ch in &p.paragraph_choice {
             match ch {
@@ -796,6 +803,9 @@ fn text_body_to_paragraphs(
                         text: text.to_string(),
                         ..Default::default()
                     };
+                    apply_lst_style_def_p_pr(list_style, &mut tr, theme);
+                    apply_lst_style_lvl_p_pr(list_style, level, &mut tr, theme);
+                    apply_pp_def_r_pr(p_pr, &mut tr, theme);
                     if let Some(rp) = run.run_properties.as_deref() {
                         apply_run_properties(rp, &mut tr, theme);
                     }
@@ -815,6 +825,122 @@ fn text_body_to_paragraphs(
         }
     }
     (anchor, wrap, insets, paragraphs)
+}
+
+fn pick_align(
+    p_pr: Option<&a::ParagraphProperties>,
+    list_style: Option<&a::ListStyle>,
+    level: usize,
+) -> Option<String> {
+    let mut align: Option<String> = None;
+    if let Some(ls) = list_style {
+        if let Some(def_pp) = ls.default_paragraph_properties.as_deref() {
+            if let Some(s) = alignment_token(&def_pp.alignment) {
+                align = Some(s);
+            }
+        }
+        if let Some(lvl_pp) = lvl_paragraph_alignment(ls, level) {
+            if let Some(s) = lvl_pp {
+                align = Some(s);
+            }
+        }
+    }
+    if let Some(s) = paragraph_align_token(p_pr) {
+        align = Some(s);
+    }
+    align
+}
+
+fn apply_lst_style_def_p_pr(
+    list_style: Option<&a::ListStyle>,
+    tr: &mut TextRun,
+    theme: Option<&Theme>,
+) {
+    let Some(ls) = list_style else { return };
+    let Some(def_pp) = ls.default_paragraph_properties.as_deref() else {
+        return;
+    };
+    if let Some(dr) = def_pp.a_def_r_pr.as_deref() {
+        apply_default_run_properties(dr, tr, theme);
+    }
+}
+
+fn apply_lst_style_lvl_p_pr(
+    list_style: Option<&a::ListStyle>,
+    level: usize,
+    tr: &mut TextRun,
+    theme: Option<&Theme>,
+) {
+    let Some(ls) = list_style else { return };
+    if let Some(dr) = lvl_paragraph_def_r_pr(ls, level) {
+        apply_default_run_properties(dr, tr, theme);
+    }
+}
+
+fn apply_pp_def_r_pr(
+    p_pr: Option<&a::ParagraphProperties>,
+    tr: &mut TextRun,
+    theme: Option<&Theme>,
+) {
+    let Some(pp) = p_pr else { return };
+    if let Some(dr) = pp.a_def_r_pr.as_deref() {
+        apply_default_run_properties(dr, tr, theme);
+    }
+}
+
+fn lvl_paragraph_def_r_pr(
+    ls: &a::ListStyle,
+    level: usize,
+) -> Option<&a::DefaultRunProperties> {
+    match level {
+        0 => ls.level1_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        1 => ls.level2_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        2 => ls.level3_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        3 => ls.level4_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        4 => ls.level5_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        5 => ls.level6_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        6 => ls.level7_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        7 => ls.level8_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        8 => ls.level9_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        _ => None,
+    }
+}
+
+fn lvl_paragraph_alignment(
+    ls: &a::ListStyle,
+    level: usize,
+) -> Option<Option<String>> {
+    let align = match level {
+        0 => ls.level1_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
+        1 => ls.level2_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
+        2 => ls.level3_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
+        3 => ls.level4_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
+        4 => ls.level5_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
+        5 => ls.level6_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
+        6 => ls.level7_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
+        7 => ls.level8_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
+        8 => ls.level9_paragraph_properties.as_deref().map(|p| alignment_token(&p.alignment)),
+        _ => None,
+    };
+    align
+}
+
+fn alignment_token(alignment: &Option<a::TextAlignmentTypeValues>) -> Option<String> {
+    let dbg = format!("{:?}", alignment);
+    if !dbg.starts_with("Some(") {
+        return None;
+    }
+    if dbg.contains("Center") {
+        Some("ctr".to_string())
+    } else if dbg.contains("Right") {
+        Some("r".to_string())
+    } else if dbg.contains("Justified") {
+        Some("just".to_string())
+    } else if dbg.contains("Left") {
+        Some("l".to_string())
+    } else {
+        None
+    }
 }
 
 fn body_insets_emu(bp: &a::BodyProperties) -> Option<Vec<i32>> {
@@ -865,39 +991,76 @@ fn body_anchor_token(bp: &a::BodyProperties) -> Option<String> {
 
 fn paragraph_align_token(pp: Option<&a::ParagraphProperties>) -> Option<String> {
     let pp = pp?;
-    let dbg = format!("{:?}", pp.alignment);
-
-    if dbg.contains("Center") {
-        Some("ctr".to_string())
-    } else if dbg.contains("Right") {
-        Some("r".to_string())
-    } else if dbg.contains("Justified") {
-        Some("just".to_string())
-    } else if dbg.contains("Left") {
-        Some("l".to_string())
-    } else {
-        None
-    }
+    alignment_token(&pp.alignment)
 }
 
 fn apply_run_properties(rp: &a::RunProperties, tr: &mut TextRun, theme: Option<&Theme>) {
-    if let Some(sz) = rp.font_size {
+    let solid_fill = match rp.run_properties_choice1.as_ref() {
+        Some(a::RunPropertiesChoice::ASolidFill(sf)) => Some(sf.as_ref()),
+        _ => None,
+    };
+    apply_run_fields(
+        tr,
+        theme,
+        rp.font_size,
+        rp.bold,
+        rp.italic,
+        rp.underline.is_some(),
+        rp.strike.is_some(),
+        solid_fill,
+        rp.a_latin.as_ref(),
+    );
+}
+
+fn apply_default_run_properties(
+    rp: &a::DefaultRunProperties,
+    tr: &mut TextRun,
+    theme: Option<&Theme>,
+) {
+    let solid_fill = match rp.default_run_properties_choice1.as_ref() {
+        Some(a::DefaultRunPropertiesChoice::ASolidFill(sf)) => Some(sf.as_ref()),
+        _ => None,
+    };
+    apply_run_fields(
+        tr,
+        theme,
+        rp.font_size,
+        rp.bold,
+        rp.italic,
+        rp.underline.is_some(),
+        rp.strike.is_some(),
+        solid_fill,
+        rp.a_latin.as_ref(),
+    );
+}
+
+fn apply_run_fields(
+    tr: &mut TextRun,
+    theme: Option<&Theme>,
+    font_size: Option<i32>,
+    bold: Option<bool>,
+    italic: Option<bool>,
+    underline_present: bool,
+    strike_present: bool,
+    solid_fill: Option<&a::SolidFill>,
+    latin: Option<&a::LatinFont>,
+) {
+    if let Some(sz) = font_size {
         tr.size = Some((sz as f32) / 100.0);
     }
-    if let Some(b) = rp.bold {
+    if let Some(b) = bold {
         tr.bold = b;
     }
-    if let Some(i) = rp.italic {
+    if let Some(i) = italic {
         tr.italic = i;
     }
-    if let Some(_u) = rp.underline.as_ref() {
+    if underline_present {
         tr.underline = true;
     }
-    if let Some(_s) = rp.strike.as_ref() {
+    if strike_present {
         tr.strike = true;
     }
-
-    if let Some(a::RunPropertiesChoice::ASolidFill(sf)) = rp.run_properties_choice1.as_ref() {
+    if let Some(sf) = solid_fill {
         if let Some(hex) = resolve_solid_fill(sf, theme) {
             let stripped = hex.trim_start_matches('#');
             if stripped.len() == 6 {
@@ -910,8 +1073,7 @@ fn apply_run_properties(rp: &a::RunProperties, tr: &mut TextRun, theme: Option<&
             }
         }
     }
-
-    if let Some(latin) = rp.a_latin.as_ref() {
+    if let Some(latin) = latin {
         let tf: &str = latin.typeface.as_deref().unwrap_or("");
         if !tf.is_empty() && !tf.starts_with('+') {
             tr.font_name = Some(tf.to_string());
