@@ -7,6 +7,38 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- DrawingML shape text now honors `<a:bodyPr lIns/tIns/rIns/bIns/>`
+  insets. New schema field `ShapeNode.textInsetsEmu` (length-4 EMU
+  vector); extractor reads `BodyProperties.{left,top,right,bottom}_inset`
+  and back-fills missing slots with the ECMA-376 §21.1.2.1.1 defaults
+  (91440 / 45720 / 91440 / 45720 EMU). Renderer (`shape.ts::drawShapeText`)
+  applies them at `PX_PER_EMU`, replacing the old 4%-of-shape magic
+  margin. Visible fix: text inside narrow autoshapes (triangle / chevron /
+  hexagon / flowchartDecision) no longer fragments into single-character
+  vertical strips.
+- Initial DrawingML shape fixture corpus under `tests/fixtures/shapes/`,
+  each shipping the `.xlsx` plus committed `.hsx.png` (ground truth) and
+  `.ours.png` (current baseline):
+  - `basic-autoshapes.xlsx` — 19 `prstGeom` presets (rect, roundRect,
+    oval, triangle, diamond, 5 block arrows, chevron, pentagon, hexagon,
+    star5, two flowchart symbols, line, lineInverse) plus 30°/90° rotated
+    copies. Exercises preset dispatch, text label paths, z-order, and
+    `xfrm@rot`.
+  - `textbox-wrap-align.xlsx` — 4×4 grid covering h-alignment
+    (`l`/`ctr`/`r`/`just`), vertical anchor (`t`/`ctr`/`b`), wrap
+    (`square`/`none`), and four inset variants (default / tight / loose /
+    asymmetric). Built via `hsx eval` + a Python zip-patch
+    (`_patch_textbox.py`) that splices in attrs SpreadJS won't emit
+    (`algn="just"`, `wrap="none"`, explicit `lIns`/`tIns`/`rIns`/`bIns`).
+  - `connectors.xlsx` — four labelled node boxes with five real
+    `<xdr:cxnSp>` connectors between them (straight, straight-diagonal
+    with arrowhead, elbow with both-end arrowheads, dashed thick red
+    straight, vertical elbow). Today's renderer paints zero of them —
+    this is the wedge fixture for the upcoming connector milestone
+    tracked in `docs/parity-shapes.md`. Bonus: the node boxes carry
+    `<xdr:style>` blocks with `lnRef`/`fillRef`/`fontRef`/`effectRef`,
+    so this fixture also exercises the upcoming style-refs resolver.
+
 - Browser previewer now follows in-workbook hyperlinks like Excel: clicking
   worksheet navigation buttons switches sheets, selects/scrolls to the target
   cell, and resolves bare workbook/sheet defined-name targets such as `Top`,

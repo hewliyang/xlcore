@@ -305,6 +305,7 @@ fn visit_picture(
         rotation: xfrm.rotation,
         paragraphs: Vec::new(),
         text_wrap: None,
+        text_insets_emu: None,
         image_data_uri: Some(data_uri),
         image_src_rect: crop,
     });
@@ -352,7 +353,7 @@ fn visit_shape(
     let preset = preset_geom_name(sp);
     let fill = solid_fill_color(&sp.shape_properties_choice2, theme);
     let (outline_color, outline_width_emu) = outline_info(sp.a_ln.as_deref(), theme);
-    let (text_anchor, text_wrap, paragraphs) =
+    let (text_anchor, text_wrap, text_insets_emu, paragraphs) =
         text_body_to_paragraphs(s.text_body.as_deref(), theme);
     let rotation = sp.transform2_d.as_ref().and_then(|x| x.rotation);
 
@@ -377,6 +378,7 @@ fn visit_shape(
         rotation,
         paragraphs,
         text_wrap,
+        text_insets_emu,
         image_data_uri: None,
         image_src_rect: None,
     });
@@ -490,12 +492,18 @@ fn outline_info(ln: Option<&a::Outline>, theme: Option<&Theme>) -> (Option<Strin
 fn text_body_to_paragraphs(
     tb: Option<&xdr::TextBody>,
     theme: Option<&Theme>,
-) -> (Option<String>, Option<String>, Vec<ShapeParagraph>) {
+) -> (
+    Option<String>,
+    Option<String>,
+    Option<Vec<i32>>,
+    Vec<ShapeParagraph>,
+) {
     let Some(tb) = tb else {
-        return (None, None, Vec::new());
+        return (None, None, None, Vec::new());
     };
     let anchor = body_anchor_token(&tb.body_properties);
     let wrap = body_wrap_token(&tb.body_properties);
+    let insets = body_insets_emu(&tb.body_properties);
     let mut paragraphs: Vec<ShapeParagraph> = Vec::new();
     for p in &tb.a_p {
         let align = paragraph_align_token(p.paragraph_properties.as_deref());
@@ -529,7 +537,30 @@ fn text_body_to_paragraphs(
             paragraphs.push(ShapeParagraph { align, runs });
         }
     }
-    (anchor, wrap, paragraphs)
+    (anchor, wrap, insets, paragraphs)
+}
+
+/// Read `<a:bodyPr lIns/tIns/rIns/bIns/>` insets in EMU. Returns
+/// `None` when *all four* attrs are absent (so the renderer can
+/// apply the DrawingML defaults wholesale). When at least one is
+/// present, missing slots are filled with their respective default
+/// (91440 / 45720 / 91440 / 45720 EMU per ECMA-376 §21.1.2.1.1).
+fn body_insets_emu(bp: &a::BodyProperties) -> Option<Vec<i32>> {
+    let l = bp.left_inset;
+    let t = bp.top_inset;
+    let r = bp.right_inset;
+    let b = bp.bottom_inset;
+    if l.is_none() && t.is_none() && r.is_none() && b.is_none() {
+        return None;
+    }
+    const DEF_LR: i32 = 91440;
+    const DEF_TB: i32 = 45720;
+    Some(vec![
+        l.unwrap_or(DEF_LR),
+        t.unwrap_or(DEF_TB),
+        r.unwrap_or(DEF_LR),
+        b.unwrap_or(DEF_TB),
+    ])
 }
 
 fn body_wrap_token(bp: &a::BodyProperties) -> Option<String> {

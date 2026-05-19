@@ -109,6 +109,16 @@ pub struct ShapeNode {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_wrap: Option<String>,
+    /// `<a:bodyPr lIns/tIns/rIns/bIns/>` text-body insets in EMU.
+    /// Length-4 `[left, top, right, bottom]`. `None` ⇒ use the
+    /// DrawingML defaults (lIns/rIns = 91440 EMU ≈ 0.1", tIns/bIns
+    /// = 45720 EMU ≈ 0.05" — ECMA-376 §21.1.2.1.1). Cells with one
+    /// or more inset attrs present surface all four (missing slots
+    /// fall back to the per-edge default), so the renderer never
+    /// has to mix-and-match.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_insets_emu: Option<Vec<i32>>,
     /// Inline picture node — when this is `Some(...)`, the node
     /// renders an embedded raster image (`<xdr:pic>` nested inside
     /// `<xdr:grpSp>`) instead of a `prstGeom` rect. The string is a

@@ -44,7 +44,9 @@ function drawShapeNode(
   h: number,
 ): void {
   // Honor `<a:xfrm rot="...">`. Excel stores rotation in 1/60000°.
-  const rotation = node.rotation ? (node.rotation / 60000) * (Math.PI / 180) : 0;
+  const rotation = node.rotation
+    ? (node.rotation / 60000) * (Math.PI / 180)
+    : 0;
   ctx.save();
   if (rotation) {
     ctx.translate(x + w / 2, y + h / 2);
@@ -76,7 +78,11 @@ function drawShapeNode(
     // OOXML default `<a:ln>` width when unspecified is 9525 EMU (1pt).
     // 0 EMU is a hairline (Excel renders as 0.5px).
     const widthPx =
-      widthEmu == null ? 1.0 : widthEmu === 0 ? 0.5 : Math.max(0.5, widthEmu * PX_PER_EMU);
+      widthEmu == null
+        ? 1.0
+        : widthEmu === 0
+          ? 0.5
+          : Math.max(0.5, widthEmu * PX_PER_EMU);
     ctx.strokeStyle = node.outlineColor;
     ctx.lineWidth = widthPx;
     ctx.stroke();
@@ -285,12 +291,28 @@ function drawShapeText(
   // `<a:bodyPr wrap="..."/>`: `square` (default) wraps on word
   // boundaries to fit the inner width; `none` lets text overflow
   // horizontally. Vertical clipping at innerH is honored regardless.
-  const insetX = w * 0.04;
-  const insetY = h * 0.04;
-  const innerX = x + insetX;
-  const innerY = y + insetY;
-  const innerW = Math.max(1, w - 2 * insetX);
-  const innerH = Math.max(1, h - 2 * insetY);
+  //
+  // Inset policy follows `<a:bodyPr lIns/tIns/rIns/bIns/>` when
+  // present; otherwise we apply the DrawingML defaults (lIns/rIns =
+  // 91440 EMU ≈ 9.6px @ 96dpi; tIns/bIns = 45720 EMU ≈ 4.8px). The
+  // old fallback was a 4%-of-shape magic margin which both bled
+  // unevenly across small shapes (narrow text boxes lost almost all
+  // their inner width) and didn't match Excel's measured padding.
+  const DEFAULT_LR_EMU = 91440;
+  const DEFAULT_TB_EMU = 45720;
+  const ins = node.textInsetsEmu;
+  const lEmu = ins?.[0] ?? DEFAULT_LR_EMU;
+  const tEmu = ins?.[1] ?? DEFAULT_TB_EMU;
+  const rEmu = ins?.[2] ?? DEFAULT_LR_EMU;
+  const bEmu = ins?.[3] ?? DEFAULT_TB_EMU;
+  const lPad = lEmu * PX_PER_EMU;
+  const tPad = tEmu * PX_PER_EMU;
+  const rPad = rEmu * PX_PER_EMU;
+  const bPad = bEmu * PX_PER_EMU;
+  const innerX = x + lPad;
+  const innerY = y + tPad;
+  const innerW = Math.max(1, w - lPad - rPad);
+  const innerH = Math.max(1, h - tPad - bPad);
   const wrap = node.textWrap !== "none";
 
   // Pre-wrap each paragraph into visual lines so we can vertically
