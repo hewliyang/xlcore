@@ -2,14 +2,6 @@ use crate::schema::*;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_drawing as xdr;
 
-/// Resolve any DrawingML color *choice* (the `<a:srgbClr>` / `<a:schemeClr>`
-/// / `<a:sysClr>` / `<a:prstClr>` etc. directly under a ref element such as
-/// `<a:fillRef>` / `<a:lnRef>` / `<a:fontRef>`) into a `#RRGGBB` hex string.
-///
-/// Reuses the same Debug-string-driven path that `chart_colors` uses for
-/// chart series, so theme scheme resolution + color modifier application
-/// (`shade` / `tint` / `lumMod` / `lumOff` / …) stays consistent across
-/// shapes, charts, and runs.
 fn resolve_ref_color_debug<T: std::fmt::Debug>(
     choice_opt: Option<&T>,
     theme: Option<&Theme>,
@@ -53,7 +45,7 @@ fn resolve_ref_color_debug<T: std::fmt::Debug>(
         let scope = crate::chart_colors::scope_from_open_brace(&dbg[p..]);
         if let Some(v) = scope.find("val: ") {
             let tail = &scope[v + 5..];
-            // PresetColorValues variant is bare-ident, e.g. `Red,` or `Red }`.
+
             let end = tail
                 .find(|ch: char| ch == ',' || ch == ' ' || ch == '}')
                 .unwrap_or(tail.len());
@@ -65,9 +57,6 @@ fn resolve_ref_color_debug<T: std::fmt::Debug>(
     None
 }
 
-/// Resolved theme-scheme paint contributed by an `<xdr:style>` block.
-/// Used as a fallback when the shape has no direct `<a:solidFill>` / `<a:ln>`
-/// (Office writes style-only shapes when the user picks a quick-style preset).
 struct StyleRefPaint {
     fill: Option<String>,
     outline: Option<String>,
@@ -76,8 +65,6 @@ struct StyleRefPaint {
     font_color: Option<String>,
 }
 
-/// Default line widths for `<a:lnRef idx="1|2|3">` per the standard theme
-/// `<a:lnStyleLst>` (subtle / moderate / intense). Values in EMU.
 fn default_ln_ref_width(idx: u32) -> i32 {
     match idx {
         1 => 6_350,
@@ -484,16 +471,6 @@ fn visit_shape(
         text_body_to_paragraphs(s.text_body.as_deref(), theme);
     let rotation = sp.transform2_d.as_ref().and_then(|x| x.rotation);
 
-    // Style-ref fallback: if the shape has no direct paint, resolve through
-    // <xdr:style>'s fill/line/font refs against the theme format scheme.
-    // Also fills in missing font name/color on runs that don't override them.
-    //
-    // EXCEPTION: line-shaped presets (`line` / `lineInv`) are routed through
-    // the connector painter on the TS side and must NOT take a fill —
-    // otherwise an unfilled line preset (which Office leaves with no
-    // `<a:solidFill>`) would paint as a filled rectangle through the
-    // accent-color fallback. Connector presets emitted as `xdr:sp` are rare
-    // (Office uses `xdr:cxnSp` for those) but `line`/`lineInv` are normal.
     let preset_is_line = preset
         .as_deref()
         .map(|p| matches!(p, "line" | "lineInv"))
@@ -966,9 +943,6 @@ mod tests {
         }
     }
 
-    // The ref-color resolver runs off the Debug-string of the choice enum,
-    // mirroring what chart_colors does. Build the SDK structs by hand so the
-    // test stays decoupled from XML parsing.
     fn rgb_choice(hex: &str) -> a::FillReferenceChoice {
         a::FillReferenceChoice::ASrgbClr(Box::new(a::RgbColorModelHex {
             val: hex.into(),
@@ -978,7 +952,7 @@ mod tests {
 
     fn scheme_choice(name: &str) -> a::FillReferenceChoice {
         let mut sc = a::SchemeColor::default();
-        // Set val via Debug-roundtrip-friendly construction.
+
         sc.val = match name {
             "accent1" => a::SchemeColorValues::Accent1,
             "accent2" => a::SchemeColorValues::Accent2,
@@ -1004,7 +978,7 @@ mod tests {
     fn ref_color_resolves_accent_scheme() {
         let c = scheme_choice("accent1");
         let out = resolve_ref_color_debug(Some(&c), Some(&test_theme()));
-        // accent1 in our test theme = 4472C4
+
         assert_eq!(out.as_deref(), Some("#4472C4"));
     }
 
@@ -1028,11 +1002,11 @@ mod tests {
 
     #[test]
     fn default_ln_ref_width_matches_standard_theme() {
-        // From the standard Office theme's <a:lnStyleLst>: subtle/moderate/intense.
+
         assert_eq!(default_ln_ref_width(1), 6_350);
         assert_eq!(default_ln_ref_width(2), 12_700);
         assert_eq!(default_ln_ref_width(3), 19_050);
-        // Unknown index falls back to "moderate".
+
         assert_eq!(default_ln_ref_width(99), 12_700);
     }
 }
