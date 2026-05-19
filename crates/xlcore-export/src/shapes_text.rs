@@ -10,6 +10,8 @@ pub(crate) struct TextBodyOut {
     pub autofit_kind: Option<String>,
     pub autofit_font_scale: Option<i32>,
     pub autofit_line_space_reduction: Option<i32>,
+    pub rotation: Option<i32>,
+    pub vert: Option<String>,
     pub paragraphs: Vec<ShapeParagraph>,
 }
 
@@ -22,6 +24,8 @@ impl TextBodyOut {
             autofit_kind: None,
             autofit_font_scale: None,
             autofit_line_space_reduction: None,
+            rotation: None,
+            vert: None,
             paragraphs: Vec::new(),
         }
     }
@@ -39,6 +43,8 @@ pub(crate) fn text_body_to_paragraphs(
     let insets = body_insets_emu(&tb.body_properties);
     let (autofit_kind, autofit_font_scale, autofit_line_space_reduction) =
         body_autofit(&tb.body_properties);
+    let rotation = tb.body_properties.rotation;
+    let vert = body_vert_token(&tb.body_properties);
 
     let list_style = tb.list_style.as_deref();
 
@@ -106,8 +112,25 @@ pub(crate) fn text_body_to_paragraphs(
         autofit_kind,
         autofit_font_scale,
         autofit_line_space_reduction,
+        rotation,
+        vert,
         paragraphs,
     }
+}
+
+fn body_vert_token(bp: &a::BodyProperties) -> Option<String> {
+    let v = bp.vertical.as_ref()?;
+    use a::TextVerticalValues as V;
+    let s = match v {
+        V::Horizontal => return None,
+        V::Vertical => "vert",
+        V::Vertical270 => "vert270",
+        V::WordArtVertical => "wordArtVert",
+        V::EastAsianVetical => "eaVert",
+        V::MongolianVertical => "mongolianVert",
+        V::WordArtLeftToRight => "wordArtVertRtl",
+    };
+    Some(s.to_string())
 }
 
 fn body_autofit(

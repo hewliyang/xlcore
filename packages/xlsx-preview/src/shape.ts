@@ -532,10 +532,48 @@ function drawShapeText(
   const baseY = y + textRect.y;
   const baseW = textRect.w;
   const baseH = textRect.h;
-  const innerX = baseX + lPad;
-  const innerY = baseY + tPad;
-  const innerW = Math.max(1, baseW - lPad - rPad);
-  const innerH = Math.max(1, baseH - tPad - bPad);
+  const innerXOrig = baseX + lPad;
+  const innerYOrig = baseY + tPad;
+  const innerWOrig = Math.max(1, baseW - lPad - rPad);
+  const innerHOrig = Math.max(1, baseH - tPad - bPad);
+
+  const vertDeg = (() => {
+    switch (node.textVert) {
+      case "vert":
+      case "wordArtVert":
+      case "eaVert":
+      case "mongolianVert":
+        return 90;
+      case "vert270":
+      case "wordArtVertRtl":
+        return -90;
+      default:
+        return 0;
+    }
+  })();
+  const bodyRotDeg = (node.textRotation ?? 0) / 60000;
+  const effDeg = bodyRotDeg + vertDeg;
+  const thetaRad = (effDeg * Math.PI) / 180;
+  const modDeg = ((effDeg % 180) + 180) % 180;
+  const isPerp = Math.abs(modDeg - 90) < 1;
+  const hasRot = Math.abs(thetaRad) > 1e-6;
+
+  const innerW = isPerp ? innerHOrig : innerWOrig;
+  const innerH = isPerp ? innerWOrig : innerHOrig;
+  let innerX: number;
+  let innerY: number;
+  if (hasRot) {
+    const cx = innerXOrig + innerWOrig / 2;
+    const cy = innerYOrig + innerHOrig / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(thetaRad);
+    innerX = -innerW / 2;
+    innerY = -innerH / 2;
+  } else {
+    innerX = innerXOrig;
+    innerY = innerYOrig;
+  }
   const wrap = node.textWrap !== "none";
 
   const fontScale =
@@ -586,6 +624,7 @@ function drawShapeText(
     drawWrappedLine(ctx, ln, innerX, cursorY, innerW);
     cursorY += ln.lineHeight;
   }
+  if (hasRot) ctx.restore();
 }
 
 function presetTextRect(

@@ -428,6 +428,8 @@ fn visit_picture(
         text_autofit: None,
         text_font_scale: None,
         text_line_space_reduction: None,
+        text_rotation: None,
+        text_vert: None,
     });
 }
 
@@ -482,6 +484,8 @@ fn visit_shape(
     let text_autofit = tb_out.autofit_kind;
     let text_font_scale = tb_out.autofit_font_scale;
     let text_line_space_reduction = tb_out.autofit_line_space_reduction;
+    let text_rotation = tb_out.rotation;
+    let text_vert = tb_out.vert;
     let mut paragraphs = tb_out.paragraphs;
     let rotation = merge_rotation(
         parent_rot_rad,
@@ -569,6 +573,8 @@ fn visit_shape(
         text_autofit,
         text_font_scale,
         text_line_space_reduction,
+        text_rotation,
+        text_vert,
     });
 }
 
@@ -1136,5 +1142,7 @@ fn visit_connector(
         text_autofit: None,
         text_font_scale: None,
         text_line_space_reduction: None,
+        text_rotation: None,
+        text_vert: None,
     });
 }

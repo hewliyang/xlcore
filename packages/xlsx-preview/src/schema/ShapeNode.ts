@@ -36,4 +36,6 @@ export type ShapeNode = {
   textAutofit?: string;
   textFontScale?: number;
   textLineSpaceReduction?: number;
+  textRotation?: number;
+  textVert?: string;
 };
