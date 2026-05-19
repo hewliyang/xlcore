@@ -560,6 +560,10 @@ function drawShapeText(
 
   const innerW = isPerp ? innerHOrig : innerWOrig;
   const innerH = isPerp ? innerWOrig : innerHOrig;
+  const vertOverflow = node.textVertOverflow ?? "overflow";
+  const horzOverflow = node.textHorzOverflow ?? "overflow";
+  const clipNeeded = vertOverflow !== "overflow" || horzOverflow === "clip";
+  const needSave = hasRot || clipNeeded;
   let innerX: number;
   let innerY: number;
   if (hasRot) {
@@ -571,8 +575,14 @@ function drawShapeText(
     innerX = -innerW / 2;
     innerY = -innerH / 2;
   } else {
+    if (needSave) ctx.save();
     innerX = innerXOrig;
     innerY = innerYOrig;
+  }
+  if (clipNeeded) {
+    ctx.beginPath();
+    ctx.rect(innerX, innerY, innerW, innerH);
+    ctx.clip();
   }
   const wrap = node.textWrap !== "none";
 
@@ -619,12 +629,61 @@ function drawShapeText(
   }
   if (cursorY < innerY) cursorY = innerY;
 
-  for (const ln of lines) {
-    if (cursorY > innerY + innerH + 0.5) break;
+  const bottom = innerY + innerH;
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i]!;
+    if (vertOverflow !== "overflow") {
+      if (cursorY > bottom + 0.5) break;
+      if (vertOverflow === "ellipsis") {
+        const next = cursorY + ln.lineHeight;
+        const moreFollows = i < lines.length - 1;
+        if ((next > bottom + 0.5 || (moreFollows && next + lines[i + 1]!.lineHeight > bottom + 0.5)) && ln.runs.length > 0) {
+          drawWrappedLineWithEllipsis(ctx, ln, innerX, cursorY, innerW);
+          break;
+        }
+      }
+    }
     drawWrappedLine(ctx, ln, innerX, cursorY, innerW);
     cursorY += ln.lineHeight;
   }
-  if (hasRot) ctx.restore();
+  if (needSave) ctx.restore();
+}
+
+function drawWrappedLineWithEllipsis(
+  ctx: CanvasRenderingContext2D,
+  ln: { runs: { r: ShapeParagraph["runs"][number]; width: number; font: string }[]; align: ShapeParagraph["align"]; lineHeight: number; width: number },
+  x: number,
+  y: number,
+  w: number,
+): void {
+  const ELLIPSIS = "\u2026";
+  const runs = ln.runs.slice();
+  const measure = (text: string, font: string) => {
+    ctx.save();
+    ctx.font = font;
+    const m = ctx.measureText(text).width;
+    ctx.restore();
+    return m;
+  };
+  while (runs.length > 0) {
+    const tail = runs[runs.length - 1]!;
+    let txt = tail.r.text + ELLIPSIS;
+    let totalW = 0;
+    for (let i = 0; i < runs.length - 1; i++) totalW += runs[i]!.width;
+    let tailW = measure(txt, tail.font);
+    while (txt.length > 1 && totalW + tailW > w + 0.5) {
+      txt = txt.slice(0, -2) + ELLIPSIS;
+      tailW = measure(txt, tail.font);
+    }
+    if (totalW + tailW <= w + 0.5 || runs.length === 1) {
+      const newRuns = runs.slice(0, -1);
+      newRuns.push({ ...tail, r: { ...tail.r, text: txt }, width: tailW });
+      drawWrappedLine(ctx, { ...ln, runs: newRuns, width: totalW + tailW }, x, y, w);
+      return;
+    }
+    runs.pop();
+  }
+  ctx.fillText(ELLIPSIS, x, y);
 }
 
 function presetTextRect(

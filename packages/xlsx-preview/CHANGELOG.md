@@ -7,6 +7,44 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- DrawingML text overflow (`<a:bodyPr vertOverflow=… horzOverflow=…>`)
+  honored end-to-end. `body_vert_overflow_token` /
+  `body_horz_overflow_token` in `crates/xlcore-export/src/shapes_text.rs`
+  decode the `vertOverflow` (`overflow`/`clip`/`ellipsis`) and
+  `horzOverflow` (`overflow`/`clip`) attrs into two new `ShapeNode`
+  fields (`textVertOverflow`, `textHorzOverflow`), wired through
+  every shape path (`visit_picture` / `visit_shape` / `visit_connector`).
+  The painter (`drawShapeText` in `packages/xlsx-preview/src/shape.ts`)
+  now treats the spec default `overflow` as "paint every line, don't
+  clip" — previously the renderer hardcoded a clip-like rule that
+  broke any line whose top moved past the body rect. When either
+  `vertOverflow != overflow` or `horzOverflow = clip`, the painter
+  `ctx.clip()`s to the inner rect before drawing. `vertOverflow=ellipsis`
+  additionally rewrites the last fully-visible line's tail run as
+  `…` (character-by-character truncation until the trailing ellipsis
+  fits `innerW`). Locked in by `tests/fixtures/shapes/text-overflow.xlsx`
+  (3×2 grid sweeping vert `overflow` / `clip` / `ellipsis` across
+  row 0 and horz `overflow` / `clip` / `clip+ellipsis` across row 1
+  with `wrap="none"`). Like `outer-shadow.xlsx` / `text-autofit.xlsx`
+  / `text-rotation-vert.xlsx`, the `.hsx.png` ground truth intentionally
+  diverges from `.ours.png` — SpreadJS drops both overflow attrs.
+  Closes `parity-shapes.md` P1 #9.
+- DrawingML fixture `tests/fixtures/shapes/text-overflow.xlsx`
+  authored via `hsx eval` + `_patch_text_overflow.py` Python
+  zip-rewrite (SpreadJS only ever emits the default overflow attrs
+  through its public API, so without the patch every cell in the
+  fixture is visually identical).
+
+### Fixed
+
+- `body_wrap_token` in `crates/xlcore-export/src/shapes_text.rs` had
+  been pattern-matching the Debug repr of `TextWrappingValues` for
+  the string `"None_"` (no such variant), so `<a:bodyPr wrap="none">`
+  always fell through to the default `square` wrap. Switched to a
+  direct `match` against the enum. Latent since wrap extraction
+  landed; `tests/fixtures/shapes/text-overflow.xlsx` is the first
+  fixture to exercise `wrap="none"`.
+
 - DrawingML text autofit (`<a:normAutofit fontScale lnSpcReduction>` /
   `<a:spAutoFit/>`) honored end-to-end. `body_autofit` in
   `crates/xlcore-export/src/shapes_text.rs` decodes `<a:bodyPr>`'s

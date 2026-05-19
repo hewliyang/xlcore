@@ -12,6 +12,8 @@ pub(crate) struct TextBodyOut {
     pub autofit_line_space_reduction: Option<i32>,
     pub rotation: Option<i32>,
     pub vert: Option<String>,
+    pub vert_overflow: Option<String>,
+    pub horz_overflow: Option<String>,
     pub paragraphs: Vec<ShapeParagraph>,
 }
 
@@ -26,6 +28,8 @@ impl TextBodyOut {
             autofit_line_space_reduction: None,
             rotation: None,
             vert: None,
+            vert_overflow: None,
+            horz_overflow: None,
             paragraphs: Vec::new(),
         }
     }
@@ -45,6 +49,8 @@ pub(crate) fn text_body_to_paragraphs(
         body_autofit(&tb.body_properties);
     let rotation = tb.body_properties.rotation;
     let vert = body_vert_token(&tb.body_properties);
+    let vert_overflow = body_vert_overflow_token(&tb.body_properties);
+    let horz_overflow = body_horz_overflow_token(&tb.body_properties);
 
     let list_style = tb.list_style.as_deref();
 
@@ -114,8 +120,31 @@ pub(crate) fn text_body_to_paragraphs(
         autofit_line_space_reduction,
         rotation,
         vert,
+        vert_overflow,
+        horz_overflow,
         paragraphs,
     }
+}
+
+fn body_vert_overflow_token(bp: &a::BodyProperties) -> Option<String> {
+    let v = bp.vertical_overflow.as_ref()?;
+    use a::TextVerticalOverflowValues as V;
+    let s = match v {
+        V::Overflow => "overflow",
+        V::Ellipsis => "ellipsis",
+        V::Clip => "clip",
+    };
+    Some(s.to_string())
+}
+
+fn body_horz_overflow_token(bp: &a::BodyProperties) -> Option<String> {
+    let v = bp.horizontal_overflow.as_ref()?;
+    use a::TextHorizontalOverflowValues as V;
+    let s = match v {
+        V::Overflow => "overflow",
+        V::Clip => "clip",
+    };
+    Some(s.to_string())
 }
 
 fn body_vert_token(bp: &a::BodyProperties) -> Option<String> {
@@ -330,17 +359,13 @@ fn body_insets_emu(bp: &a::BodyProperties) -> Option<Vec<i32>> {
 }
 
 fn body_wrap_token(bp: &a::BodyProperties) -> Option<String> {
-    let dbg = format!("{:?}", bp.wrap);
-    if !dbg.starts_with("Some(") {
-        return None;
-    }
-    if dbg.contains("None_") || dbg.contains("NoWrap") {
-        Some("none".to_string())
-    } else if dbg.contains("Square") {
-        Some("square".to_string())
-    } else {
-        None
-    }
+    let w = bp.wrap.as_ref()?;
+    use a::TextWrappingValues as W;
+    let s = match w {
+        W::None => "none",
+        W::Square => "square",
+    };
+    Some(s.to_string())
 }
 
 fn body_anchor_token(bp: &a::BodyProperties) -> Option<String> {

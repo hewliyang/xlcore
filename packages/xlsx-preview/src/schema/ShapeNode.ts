@@ -38,4 +38,6 @@ export type ShapeNode = {
   textLineSpaceReduction?: number;
   textRotation?: number;
   textVert?: string;
+  textVertOverflow?: string;
+  textHorzOverflow?: string;
 };
