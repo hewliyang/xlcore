@@ -53,6 +53,14 @@ function drawShapeNode(
     return;
   }
 
+  const flipH = !!node.flipH;
+  const flipV = !!node.flipV;
+  if (flipH || flipV) {
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+    ctx.translate(-(x + w / 2), -(y + h / 2));
+  }
+
   const preset = node.preset ?? "rect";
   pathForPreset(ctx, preset, x, y, w, h, node);
 
@@ -77,6 +85,12 @@ function drawShapeNode(
     ctx.stroke();
     ctx.lineCap = cap;
     ctx.lineJoin = join;
+  }
+
+  if (flipH || flipV) {
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+    ctx.translate(-(x + w / 2), -(y + h / 2));
   }
 
   if ((node.paragraphs?.length ?? 0) > 0) {

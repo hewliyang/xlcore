@@ -7,6 +7,16 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Shapes with no `<a:xfrm>` (or `<a:xfrm>` carrying only flip/rot attrs
+  and no off+ext) were silently dropped — EPPlus, OpenXML SDK, and
+  Excel itself emit this shape for plainly-anchored shapes. `shape_world`
+  / `connector_world` now fall back to a unit-box outer normalised to
+  the anchor rect.
+- Non-connector `flipH` / `flipV` honored end-to-end: extractor reads
+  the xfrm attrs on every `<xdr:sp>` (was hardcoded `None`), painter
+  applies `ctx.scale(±1,±1)` around shape centre and unflips before
+  text so captions stay readable. Text body rect doesn't follow the
+  flip yet (caption sits on the un-flipped half on asymmetric presets).
 - Cut per-frame redraw cost on large sheets with conditional formatting by
   ~17× (89ms → 5ms median on a 10k-row workbook with 5 CF rules). Scrolling
   was previously re-running viewport-independent CF work — `iterAllCells`
@@ -26,6 +36,11 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   switch sheets, select / scroll to the target cell, and resolve bare
   workbook/sheet defined-name targets. External links still open in a
   new tab.
+- DrawingML gap fixtures `gradient-fills.xlsx` (`<a:gradFill>`),
+  `outer-shadow.xlsx` (`<a:outerShdw>`), `shape-flips.xlsx`
+  (non-connector `flipH`/`flipV`). Authored offline via EPPlus; the C#
+  project is gitignored, the `.xlsx` + `.hsx.png` + `.ours.png` are
+  committed.
 - DrawingML shape fixture corpus under `tests/fixtures/shapes/`
   (`basic-autoshapes`, `textbox-wrap-align`, `connectors`,
   `style-refs-themed`, `groups-and-pictures`,

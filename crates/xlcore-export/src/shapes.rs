@@ -77,9 +77,25 @@ fn group_frame(g: &xdr::GroupShape, parent: Option<GroupFrame>) -> Option<(World
 }
 
 fn shape_world(s: &xdr::Shape, parent: Option<GroupFrame>) -> Option<WorldBox> {
-    let xfrm = s.shape_properties.transform2_d.as_ref()?;
-    let off = xfrm.offset.as_ref()?;
-    let ext = xfrm.extents.as_ref()?;
+    let xfrm_opt = s.shape_properties.transform2_d.as_ref();
+    let (off_opt, ext_opt) = match xfrm_opt {
+        Some(x) => (x.offset.as_ref(), x.extents.as_ref()),
+        None => (None, None),
+    };
+    let (off, ext) = match (off_opt, ext_opt) {
+        (Some(o), Some(e)) => (o, e),
+        _ => {
+            if parent.is_some() {
+                return None;
+            }
+            return Some(WorldBox {
+                x: 0.0,
+                y: 0.0,
+                cx: 1.0,
+                cy: 1.0,
+            });
+        }
+    };
     let ox = off.x as f64;
     let oy = off.y as f64;
     let cx = ext.cx as f64;
@@ -198,9 +214,25 @@ pub(crate) enum ShapeTreeRoot<'a> {
 }
 
 fn connector_world(sp: &xdr::ShapeProperties, parent: Option<GroupFrame>) -> Option<WorldBox> {
-    let xfrm = sp.transform2_d.as_ref()?;
-    let off = xfrm.offset.as_ref()?;
-    let ext = xfrm.extents.as_ref()?;
+    let xfrm_opt = sp.transform2_d.as_ref();
+    let (off_opt, ext_opt) = match xfrm_opt {
+        Some(x) => (x.offset.as_ref(), x.extents.as_ref()),
+        None => (None, None),
+    };
+    let (off, ext) = match (off_opt, ext_opt) {
+        (Some(o), Some(e)) => (o, e),
+        _ => {
+            if parent.is_some() {
+                return None;
+            }
+            return Some(WorldBox {
+                x: 0.0,
+                y: 0.0,
+                cx: 1.0,
+                cy: 1.0,
+            });
+        }
+    };
     let ox = off.x as f64;
     let oy = off.y as f64;
     let cx = ext.cx as f64;
@@ -392,6 +424,16 @@ fn visit_shape(
     let (text_anchor, text_wrap, text_insets_emu, mut paragraphs) =
         text_body_to_paragraphs(s.text_body.as_deref(), theme);
     let rotation = sp.transform2_d.as_ref().and_then(|x| x.rotation);
+    let flip_h = sp
+        .transform2_d
+        .as_ref()
+        .and_then(|x| x.horizontal_flip)
+        .unwrap_or(false);
+    let flip_v = sp
+        .transform2_d
+        .as_ref()
+        .and_then(|x| x.vertical_flip)
+        .unwrap_or(false);
 
     let preset_is_line = preset
         .as_deref()
@@ -432,8 +474,8 @@ fn visit_shape(
         text_insets_emu,
         image_data_uri: None,
         image_src_rect: None,
-        flip_h: None,
-        flip_v: None,
+        flip_h: if flip_h { Some(true) } else { None },
+        flip_v: if flip_v { Some(true) } else { None },
         line_dash: None,
         is_connector: None,
         head_end: None,

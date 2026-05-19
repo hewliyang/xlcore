@@ -39,11 +39,13 @@ cd ecma-376
 | Shape tree | 🟡 | `crates/xlcore-export/src/shapes.rs` (+ `shapes_style.rs`, `shapes_text.rs`) flattens `sp` / nested `grpSp` / `cxnSp`; maps group `xfrm/off/ext/chOff/chExt`; nested `xdr:pic` in groups becomes image nodes. |
 | Schema | 🟡 | JSON model is painter-oriented (`Shape { nodes }`), not a full DrawingML AST. Good for preview, not for round-trip editing. |
 | Rendering | 🟡 | `packages/xlsx-preview/src/shape.ts` + `shapePaths.ts`. Small preset subset, solid fills, basic outlines, text, rotation, connectors, nested pictures. Unknown presets fall back to rectangle. |
-| Fixture corpus | ✅ | `tests/fixtures/shapes/`: `basic-autoshapes.xlsx`, `textbox-wrap-align.xlsx`, `connectors.xlsx`, `style-refs-themed.xlsx`, `groups-and-pictures.xlsx`, `list-style-inheritance.xlsx`. Each with `.hsx.png` ground truth + `.ours.png` baseline. |
+| Fixture corpus | ✅ | `tests/fixtures/shapes/`: `basic-autoshapes.xlsx`, `textbox-wrap-align.xlsx`, `connectors.xlsx`, `style-refs-themed.xlsx`, `groups-and-pictures.xlsx`, `list-style-inheritance.xlsx`, plus three EPPlus-authored gap fixtures — `gradient-fills.xlsx`, `outer-shadow.xlsx`, `shape-flips.xlsx`. Each with `.hsx.png` ground truth + `.ours.png` baseline. The EPPlus path lives at `tests/fixtures/shapes/dotnet-builder/FixtureBuilder/` for features SpreadJS's public API can't author (gradients, shape effects, non-connector flips). |
 
 ## Known v0 shortcuts
 
 Consolidated list of deliberate carve-outs. Most landed under e-007. Each item is shipped as far as the bullet describes; the rest is the v0 cheat.
+
+*(2026-05-19: items #7 and the new "missing xfrm / xfrm without off+ext" extractor bug were resolved while adding the EPPlus fixture corpus — the painter now honors `flipH`/`flipV` on every shape kind, and the extractor falls back to anchor geometry when xfrm is absent or partial. Both were exposed by `shapes/shape-flips.xlsx`.)*
 
 1. **`stCxn`/`endCxn` connection sites** — only the 4 cardinal sites (top/right/bottom/left center) are resolved against the target bbox. Enough for `rect`/`roundRect`/`ellipse` receivers (org-chart / SOTP). Skipped: preset-aware sites (chevron tip, star points, flowchart non-cardinal), custom `cxnLst` declared on the shape XML, multi-segment `bentConnector{2,4,5}` re-routing.
 2. **Brace/bracket presets** — only `leftBrace` / `rightBrace` / `leftBracket` / `rightBracket`. Missing: `bracePair`, `bracketPair`, diagonal bracket variants.
@@ -51,7 +53,7 @@ Consolidated list of deliberate carve-outs. Most landed under e-007. Each item i
 4. **`vertOverflow`** — hardcoded DrawingML default `overflow` (line paints if its top is inside the body rect). Explicit `vertOverflow="clip"` and `horzOverflow` unmodeled.
 5. **`lstStyle` cascade** — inherits only size / bold / italic / underline / strike / solidFill color / latin font. Ignores `marL`, `indent`, `lnSpc`, `spcBef`, `spcAft`, kerning, baseline, run-`u="none"`-as-disable-inherited, and the entire bullet list.
 6. **Style refs (`a:style`)** — does not walk `<a:fmtScheme><a:fillStyleLst>` / `<a:lnStyleLst>`. Every `fillRef idx≥1` is treated as flat `solidFill phClr` (correct for the standard theme's idx=1; loses gradients on idx 2/3 and per-style line dashes).
-7. **`flipH/V`** — applied to connectors only. Non-connector shape flips ignored.
+7. ~~**`flipH/V`** — applied to connectors only. Non-connector shape flips ignored.~~ **Shipped.** Painter applies `ctx.scale(±1,±1)` around shape centre before geometry; unflips before text. Text body rect doesn't follow the flip yet (caption position is off on asymmetric presets like arrows), tracked as a follow-up under P1 #4.
 8. **`prstDash`** — extracted+rendered on connectors/lines only. Non-connector shape outlines don't read dash. `custDash` fully ignored.
 9. **Line cap/join** — connector painter hardcodes `cap=butt, join=miter`; brace painter forces `round`. No reading of `a:ln@cap`, `a:round`/`a:bevel`/`a:miter`.
 10. **`a:fld`** — handled as a cached-text run (we display the cached `<a:t>`). The `textlink` formula is not evaluated; harmless for preview because OOXML stores the latest evaluated value in the field.
@@ -88,11 +90,11 @@ Consolidated list of deliberate carve-outs. Most landed under e-007. Each item i
 
 | Feature | Extract | Render | Priority | Notes |
 | --- | --- | --- | --- | --- |
-| Shape offset / extent | ✅ | ✅ | P0 | |
+| Shape offset / extent | ✅ | ✅ | P0 | `<a:xfrm>` is optional in DrawingML; `shape_world` / `connector_world` fall back to a unit-box outer (renderer normalises to anchor rect) when `<xdr:spPr>` has no `<a:xfrm>` at all, or when `<a:xfrm>` carries only `flipH`/`flipV`/`rot` attributes with no `<a:off>` + `<a:ext>` children. EPPlus, OpenXML SDK, and Excel itself for plain anchored shapes all emit one of these shapes. Locked in by `shapes/shape-flips.xlsx` (would extract 0/5 shapes pre-fix). |
 | Group `chOff` / `chExt` mapping | ✅ | ✅ | P0 | |
 | Shape rotation `xfrm@rot` | ✅ | ✅ | P0 | 1/60000 deg; rotated around center. |
 | Group rotation | ❌ | ❌ | P1 | `CT_GroupTransform2D@rot` ignored by frame mapping. |
-| Flip H/V on shape `xfrm` | 🟡 | 🟡 | P1 | Connectors only — see shortcut #7. |
+| Flip H/V on shape `xfrm` | ✅ | 🟡 | P1 | Geometry now flips on both connector and non-connector paths. The painter applies `ctx.scale(±1, ±1)` around the shape centre before drawing the path, then unflips before drawing text so labels stay readable — matches HSX/Excel for `flipH`. **Remaining divergence:** the text body rect is not also flipped, so on a `flipH` right-arrow the caption sits over the left half (in HSX it sits over the right half because the body rect follows the geometry). Visible only on shapes whose preset path defines a non-centred text rect (arrows, callouts). Locked in by `shapes/shape-flips.xlsx`. |
 | Z-order | ✅ | ✅ | P0 | Preserved from XML traversal order. |
 | Clipping to group/shape | ❌ | ❌ | P2 | Flattened model does not clip children to group bounds. |
 | `bwMode` | ❌ | ❌ | P3 | Rare in spreadsheets. |
@@ -191,7 +193,7 @@ Ordered by impact × cost. Pick from the top.
 1. **Gradient fills (`gradFill`)** — biggest visible gap on themed shapes. Reuse cell/chart gradient logic.
 2. **Outer shadow (`outerShdw`)** — second-biggest visible omission on themed buttons/cards.
 3. **Style-ref matrix walk** — read `<a:fmtScheme><a:fillStyleLst>` / `<a:lnStyleLst>`. Unlocks themed gradient idx 2/3 + per-style line dashes "for free" once #1 lands. Resolves shortcut #6.
-4. **Non-connector `flipH/V` + group rotation** — cheap correctness wins. Resolves shortcut #7.
+4. **Group rotation + body-rect-follows-flip** — the non-connector `flipH/V` painter shipped; remaining gaps are (a) `<a:xfrm rot="..."/>` on `<xdr:grpSpPr>` (children should rotate as a rigid body), (b) flipping the shape's text body rect so captions on asymmetric presets (arrows, callouts) sit on the visually-correct side.
 5. **Preset dash + line cap/join on non-connector outlines** — small surface, fixes thin-line shape appearance. Resolves shortcuts #8, #9.
 6. **`avLst` for `roundRect` / arrows / callouts** — small surface, fixes already-supported presets. Resolves shortcut #3.
 7. **Text autofit (`normAutofit` font scaling, `spAutoFit`)** — fixes cramped labels everywhere.
