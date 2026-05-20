@@ -1,4 +1,13 @@
+import { hasPresetGeometry, tracePresetIntoPath } from "./presetShapeEval.js";
 import type { ShapeNode } from "./schema/ShapeNode.js";
+
+function nodeAdjusts(node: ShapeNode): number[] | undefined {
+  if (node.adj1 == null && node.adj2 == null) return undefined;
+  const out: number[] = [];
+  if (node.adj1 != null) out.push(node.adj1);
+  if (node.adj2 != null && node.adj1 != null) out.push(node.adj2);
+  return out;
+}
 
 export function pathForPreset(
   ctx: CanvasRenderingContext2D,
@@ -103,8 +112,12 @@ export function pathForPreset(
     case "rightBracket":
       bracePath(ctx, x, y, w, h, "right", "bracket", node);
       break;
-    default:
+    default: {
+      if (hasPresetGeometry(preset)) {
+        if (tracePresetIntoPath(ctx, preset, x, y, w, h, nodeAdjusts(node))) break;
+      }
       ctx.rect(x, y, w, h);
+    }
   }
 }
 

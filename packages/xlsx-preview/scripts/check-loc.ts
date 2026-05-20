@@ -20,7 +20,7 @@ const CHECK_TARGETS = [
 ];
 
 const SKIP_DIRS = new Set(["dist", "node_modules", "pkg", "target"]);
-const SKIP_FILES = new Set(["world110m.ts"]);
+const SKIP_FILES = new Set(["world110m.ts", "presetShapeData.generated.ts"]);
 
 function walk(dir: string, extensions: Set<string>): string[] {
   const out: string[] = [];
