@@ -138,6 +138,10 @@ pub struct ShapeNode {
 
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub adj3: Option<i32>,
+
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub elbow_axis: Option<String>,
 
     #[cfg_attr(feature = "typescript", ts(optional))]

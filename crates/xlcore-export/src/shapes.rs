@@ -505,6 +505,7 @@ fn visit_picture(
         tail_end: None,
         adj1: None,
         adj2: None,
+        adj3: None,
         elbow_axis: None,
         fill_gradient: None,
         outer_shadow: None,
@@ -658,6 +659,7 @@ fn visit_shape(
         tail_end: None,
         adj1: preset_adj1(sp),
         adj2: preset_adj2(sp),
+        adj3: preset_adj3(sp),
         elbow_axis: None,
         fill_gradient,
         outer_shadow,
@@ -1100,6 +1102,10 @@ fn preset_adj2(sp: &xdr::ShapeProperties) -> Option<i32> {
     preset_adj_n(sp, &["adj2"])
 }
 
+fn preset_adj3(sp: &xdr::ShapeProperties) -> Option<i32> {
+    preset_adj_n(sp, &["adj3"])
+}
+
 fn is_vert_site(idx: u32) -> bool {
     idx == 0 || idx == 2
 }
@@ -1250,6 +1256,8 @@ fn visit_connector(
         None => merge_rotation(parent_rot_rad, xfrm.and_then(|x| x.rotation)),
     };
     let adj1 = preset_adj1(sp);
+    let adj2 = preset_adj2(sp);
+    let adj3 = preset_adj3(sp);
 
     let outline_color = outline_color.or_else(|| Some("#000000".to_string()));
 
@@ -1278,7 +1286,8 @@ fn visit_connector(
         head_end,
         tail_end,
         adj1,
-        adj2: None,
+        adj2,
+        adj3,
         elbow_axis,
         fill_gradient: None,
         outer_shadow: None,

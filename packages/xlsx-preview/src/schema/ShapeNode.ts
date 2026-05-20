@@ -31,6 +31,7 @@ export type ShapeNode = {
   tailEnd?: LineEnd;
   adj1?: number;
   adj2?: number;
+  adj3?: number;
   elbowAxis?: string;
   fillGradient?: ShapeGradient;
   outerShadow?: ShapeOuterShadow;

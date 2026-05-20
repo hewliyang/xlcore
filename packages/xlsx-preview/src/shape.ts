@@ -252,8 +252,16 @@ function drawConnector(
 ): void {
   const preset = node.preset ?? "line";
   const adj1 = (node.adj1 ?? 50000) / 100000;
+  const adj2 = (node.adj2 ?? 50000) / 100000;
+  const adj3 = (node.adj3 ?? 50000) / 100000;
   let pts: Array<[number, number]>;
-  if (preset === "bentConnector3") {
+  if (preset === "bentConnector2") {
+    pts = [
+      [0, 0],
+      [w, 0],
+      [w, h],
+    ];
+  } else if (preset === "bentConnector3") {
     const axis =
       node.elbowAxis === "vertical"
         ? "v"
@@ -279,6 +287,28 @@ function drawConnector(
         [w, h],
       ];
     }
+  } else if (preset === "bentConnector4") {
+    const x1 = w * adj1;
+    const y2 = h * adj2;
+    pts = [
+      [0, 0],
+      [x1, 0],
+      [x1, y2],
+      [w, y2],
+      [w, h],
+    ];
+  } else if (preset === "bentConnector5") {
+    const x1 = w * adj1;
+    const y2 = h * adj2;
+    const x3 = w * adj3;
+    pts = [
+      [0, 0],
+      [x1, 0],
+      [x1, y2],
+      [x3, y2],
+      [x3, h],
+      [w, h],
+    ];
   } else {
     pts = [
       [0, 0],
