@@ -7,6 +7,42 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- DrawingML `<a:blipFill>` on `<xdr:sp>/<xdr:spPr>` (shape-as-image-fill,
+  distinct from `<xdr:pic>`) plus the modern-Office `asvg:svgBlip` SVG
+  sidecar honored end-to-end. The `<xdr:sp>` extractor in
+  `crates/xlcore-export/src/shapes.rs` decodes
+  `ShapePropertiesChoice2::ABlipFill` through a new `blip_fill` helper
+  into `ShapeNode.fill_blip` (`ShapeBlipFill { dataUri, srcRect?, kind? }`).
+  The embed id resolves through the same `ImageUriResolver` already
+  plumbed for `<xdr:pic>`; when the blip carries
+  `<a:extLst><a:ext uri="{96DAC541-7B7A-43D3-8B79-37D633B846F1}">
+  <asvg:svgBlip r:embed="..."/></a:ext></a:extLst>` the SVG sidecar's
+  embed wins over the raster fallback (vector → crisper at scale).
+  `<a:srcRect>` decodes to the same 1/100000 `[l,t,r,b]` model as the
+  existing picture-crop path; all-zero rects are dropped. The painter
+  (new `drawBlipFillImage` in `packages/xlsx-preview/src/shape.ts`)
+  traces the preset path, `ctx.clip()`s to it, draws the resolved
+  image stretched into the bbox honoring `srcRect`, then re-traces
+  the path so the outline stroke below picks up the geometry. `tile`
+  is parsed but painted as `stretch` for v0. Locked in by
+  `tests/fixtures/shapes/blip-fills.xlsx` (EPPlus authors the blip
+  fills + a post-save XML splice adds the `asvg:svgBlip` ext, the
+  SVG part, the drawing rel, and `Default Extension="svg"` in
+  `[Content_Types].xml`). Like `outer-shadow.xlsx` / `text-autofit.xlsx`
+  / `text-rotation-vert.xlsx` / `text-overflow.xlsx`, the `.hsx.png`
+  ground truth intentionally diverges from `.ours.png` on panel b5
+  — SpreadJS drops the SVG sidecar and uses the raster fallback
+  (checkerboard), we paint the spec-correct SVG (blue rect + yellow
+  circle). Closes `parity-shapes.md` P1 #10.
+- DrawingML fixture `tests/fixtures/shapes/blip-fills.xlsx` authored
+  via EPPlus `BuildBlipFills` + a `System.IO.Compression.ZipArchive`
+  post-save splice for the SVG sidecar (`InjectSvgSidecars`). Five
+  panels: rect / ellipse / roundRect-with-25%-srcRect-crop / chevron-
+  with-black-outline raster blips + one rect carrying both a raster
+  fallback and an `asvg:svgBlip` vector sidecar. Sample image
+  (`_blip-sample.png`) is a 64×64 accent1/accent2 checkerboard so
+  blip silhouettes and crops are visually obvious.
+
 - DrawingML text overflow (`<a:bodyPr vertOverflow=… horzOverflow=…>`)
   honored end-to-end. `body_vert_overflow_token` /
   `body_horz_overflow_token` in `crates/xlcore-export/src/shapes_text.rs`

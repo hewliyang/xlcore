@@ -360,7 +360,10 @@ pub fn realize_fill(
             let mut stops: Vec<ShapeGradientStop> = Vec::new();
             for (pos, c) in &g.stops {
                 if let Some((hex, _alpha)) = resolve_fmt_color(c, ph_hex, theme) {
-                    stops.push(ShapeGradientStop { pos: *pos, color: hex });
+                    stops.push(ShapeGradientStop {
+                        pos: *pos,
+                        color: hex,
+                    });
                 }
             }
             if stops.len() < 2 {

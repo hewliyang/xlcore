@@ -35,6 +35,7 @@ export type { OutlinePr } from "./OutlinePr.js";
 export type { Pivot } from "./Pivot.js";
 export type { RowMetaBlob } from "./RowMetaBlob.js";
 export type { Shape } from "./Shape.js";
+export type { ShapeBlipFill } from "./ShapeBlipFill.js";
 export type { ShapeGradient } from "./ShapeGradient.js";
 export type { ShapeGradientStop } from "./ShapeGradientStop.js";
 export type { ShapeNode } from "./ShapeNode.js";

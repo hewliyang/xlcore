@@ -162,16 +162,14 @@ fn body_vert_token(bp: &a::BodyProperties) -> Option<String> {
     Some(s.to_string())
 }
 
-fn body_autofit(
-    bp: &a::BodyProperties,
-) -> (Option<String>, Option<i32>, Option<i32>) {
+fn body_autofit(bp: &a::BodyProperties) -> (Option<String>, Option<i32>, Option<i32>) {
     match bp.body_properties_choice1.as_ref() {
-        Some(a::BodyPropertiesChoice::ANormAutofit(n)) => {
-            (Some("norm".to_string()), n.font_scale, n.line_space_reduction)
-        }
-        Some(a::BodyPropertiesChoice::ASpAutoFit(_)) => {
-            (Some("shape".to_string()), None, None)
-        }
+        Some(a::BodyPropertiesChoice::ANormAutofit(n)) => (
+            Some("norm".to_string()),
+            n.font_scale,
+            n.line_space_reduction,
+        ),
+        Some(a::BodyPropertiesChoice::ASpAutoFit(_)) => (Some("shape".to_string()), None, None),
         _ => (None, None, None),
     }
 }

@@ -104,8 +104,7 @@ pub(crate) fn resolve_style_refs(
     }
 
     let ln_idx: u32 = style.line_reference.index;
-    let ph_ln =
-        resolve_ref_color_debug(style.line_reference.line_reference_choice.as_ref(), theme);
+    let ph_ln = resolve_ref_color_debug(style.line_reference.line_reference_choice.as_ref(), theme);
     let mut outline: Option<String> = None;
     let mut outline_width_emu: Option<i32> = None;
     let mut line_dash: Option<String> = None;
@@ -132,8 +131,10 @@ pub(crate) fn resolve_style_refs(
     }
 
     let effect_idx: u32 = style.effect_reference.index;
-    let ph_eff =
-        resolve_ref_color_debug(style.effect_reference.effect_reference_choice.as_ref(), theme);
+    let ph_eff = resolve_ref_color_debug(
+        style.effect_reference.effect_reference_choice.as_ref(),
+        theme,
+    );
     let mut outer_shadow: Option<ShapeOuterShadow> = None;
     if effect_idx >= 1 {
         let entry = fmt.and_then(|fs| fmt_entry(&fs.effects, effect_idx));

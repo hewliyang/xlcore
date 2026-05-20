@@ -1,4 +1,4 @@
-import type { Shape, ShapeGradient, ShapeNode, ShapeParagraph } from "./types.js";
+import type { Shape, ShapeBlipFill, ShapeGradient, ShapeNode, ShapeParagraph } from "./types.js";
 import { getOrLoadImage } from "./imageCache.js";
 
 import { isBraceLikePreset, isLinePreset, pathForPreset } from "./shapePaths.js";
@@ -70,7 +70,19 @@ function drawShapeNode(
     applyShadow(ctx, shadow);
   }
 
-  if (node.fillGradient && node.fillGradient.stops.length >= 2) {
+  if (node.fillBlip) {
+    if (shadow) {
+      applyShadow(ctx, shadow);
+      ctx.fillStyle = "rgba(0,0,0,0)";
+      ctx.fill();
+      clearShadow(ctx);
+    }
+    ctx.save();
+    ctx.clip();
+    drawBlipFillImage(ctx, node.fillBlip, x, y, w, h);
+    ctx.restore();
+    pathForPreset(ctx, preset, x, y, w, h, node);
+  } else if (node.fillGradient && node.fillGradient.stops.length >= 2) {
     ctx.fillStyle = gradientFillStyle(ctx, node.fillGradient, x, y, w, h);
     ctx.fill();
   } else if (node.fill) {
@@ -458,6 +470,51 @@ function drawArrowEnd(
   ctx.restore();
 }
 
+function drawBlipFillImage(
+  ctx: CanvasRenderingContext2D,
+  blip: ShapeBlipFill,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void {
+  const uri = blip.dataUri;
+  if (!uri) return;
+  const img = getOrLoadImage(uri);
+  if (!img) {
+    ctx.fillStyle = "#f4f4f5";
+    ctx.fillRect(x, y, w, h);
+    return;
+  }
+  const naturalW = (img.naturalWidth ?? img.width ?? 0) || 0;
+  const naturalH = (img.naturalHeight ?? img.height ?? 0) || 0;
+  if (naturalW <= 0 || naturalH <= 0) {
+    ctx.drawImage(img as CanvasImageSource, x, y, w, h);
+    return;
+  }
+  let sx = 0,
+    sy = 0,
+    sw = naturalW,
+    sh = naturalH;
+  const crop = blip.srcRect;
+  if (crop && crop.length === 4) {
+    const [l, t, r, b] = crop;
+    const lf = (l ?? 0) / 100000;
+    const tf = (t ?? 0) / 100000;
+    const rf = (r ?? 0) / 100000;
+    const bf = (b ?? 0) / 100000;
+    sx = naturalW * lf;
+    sy = naturalH * tf;
+    sw = naturalW * Math.max(0, 1 - lf - rf);
+    sh = naturalH * Math.max(0, 1 - tf - bf);
+  }
+  if (sw > 0 && sh > 0) {
+    ctx.drawImage(img as CanvasImageSource, sx, sy, sw, sh, x, y, w, h);
+  } else {
+    ctx.drawImage(img as CanvasImageSource, x, y, w, h);
+  }
+}
+
 function drawShapeImage(
   ctx: CanvasRenderingContext2D,
   node: ShapeNode,
@@ -637,7 +694,11 @@ function drawShapeText(
       if (vertOverflow === "ellipsis") {
         const next = cursorY + ln.lineHeight;
         const moreFollows = i < lines.length - 1;
-        if ((next > bottom + 0.5 || (moreFollows && next + lines[i + 1]!.lineHeight > bottom + 0.5)) && ln.runs.length > 0) {
+        if (
+          (next > bottom + 0.5 ||
+            (moreFollows && next + lines[i + 1]!.lineHeight > bottom + 0.5)) &&
+          ln.runs.length > 0
+        ) {
           drawWrappedLineWithEllipsis(ctx, ln, innerX, cursorY, innerW);
           break;
         }
@@ -651,7 +712,12 @@ function drawShapeText(
 
 function drawWrappedLineWithEllipsis(
   ctx: CanvasRenderingContext2D,
-  ln: { runs: { r: ShapeParagraph["runs"][number]; width: number; font: string }[]; align: ShapeParagraph["align"]; lineHeight: number; width: number },
+  ln: {
+    runs: { r: ShapeParagraph["runs"][number]; width: number; font: string }[];
+    align: ShapeParagraph["align"];
+    lineHeight: number;
+    width: number;
+  },
   x: number,
   y: number,
   w: number,
@@ -806,7 +872,7 @@ function wrapParagraph(
 
   const finishLine = () => {
     if (!cur) return;
-    cur.lineHeight = Math.ceil((maxFontPt * fontScale / PT_PER_PX) * 1.2 * lineScale);
+    cur.lineHeight = Math.ceil(((maxFontPt * fontScale) / PT_PER_PX) * 1.2 * lineScale);
   };
 
   for (const a of atoms) {
@@ -959,7 +1025,7 @@ function paragraphLineHeight(
     if (r.size && r.size > maxPt) maxPt = r.size;
   }
 
-  return Math.ceil((maxPt * fontScale / PT_PER_PX) * 1.2 * lineScale);
+  return Math.ceil(((maxPt * fontScale) / PT_PER_PX) * 1.2 * lineScale);
 }
 
 function runFont(

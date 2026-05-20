@@ -172,6 +172,29 @@ pub struct ShapeNode {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_horz_overflow: Option<String>,
+
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill_blip: Option<ShapeBlipFill>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ShapeBlipFill {
+    pub data_uri: String,
+
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub src_rect: Option<Vec<i32>>,
+
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

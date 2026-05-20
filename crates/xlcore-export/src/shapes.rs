@@ -23,7 +23,14 @@ struct Frame {
 }
 
 impl Frame {
-    const IDENTITY: Frame = Frame { a: 1.0, b: 0.0, c: 0.0, d: 1.0, tx: 0.0, ty: 0.0 };
+    const IDENTITY: Frame = Frame {
+        a: 1.0,
+        b: 0.0,
+        c: 0.0,
+        d: 1.0,
+        tx: 0.0,
+        ty: 0.0,
+    };
 
     fn apply(&self, x: f64, y: f64) -> (f64, f64) {
         (
@@ -44,16 +51,37 @@ impl Frame {
     }
 
     fn translation(tx: f64, ty: f64) -> Frame {
-        Frame { a: 1.0, b: 0.0, c: 0.0, d: 1.0, tx, ty }
+        Frame {
+            a: 1.0,
+            b: 0.0,
+            c: 0.0,
+            d: 1.0,
+            tx,
+            ty,
+        }
     }
 
     fn rotation(theta_rad: f64) -> Frame {
         let (sn, cs) = theta_rad.sin_cos();
-        Frame { a: cs, b: sn, c: -sn, d: cs, tx: 0.0, ty: 0.0 }
+        Frame {
+            a: cs,
+            b: sn,
+            c: -sn,
+            d: cs,
+            tx: 0.0,
+            ty: 0.0,
+        }
     }
 
     fn scale(sx: f64, sy: f64) -> Frame {
-        Frame { a: sx, b: 0.0, c: 0.0, d: sy, tx: 0.0, ty: 0.0 }
+        Frame {
+            a: sx,
+            b: 0.0,
+            c: 0.0,
+            d: sy,
+            tx: 0.0,
+            ty: 0.0,
+        }
     }
 
     fn scale_x_mag(&self) -> f64 {
@@ -86,7 +114,11 @@ fn merge_rotation(parent_rad: f64, own: Option<i32>) -> Option<i32> {
     let own_v = own.unwrap_or(0);
     let parent_v = rad_to_xfrm_rot(parent_rad);
     let total = own_v.wrapping_add(parent_v);
-    if total == 0 { None } else { Some(total) }
+    if total == 0 {
+        None
+    } else {
+        Some(total)
+    }
 }
 
 fn group_frame(g: &xdr::GroupShape, parent: Option<Frame>) -> Option<(WorldBox, Frame)> {
@@ -107,8 +139,16 @@ fn group_frame(g: &xdr::GroupShape, parent: Option<Frame>) -> Option<(WorldBox, 
     let ch_off_y = ch_off.y as f64;
     let ch_ext_cx = ch_ext.cx as f64;
     let ch_ext_cy = ch_ext.cy as f64;
-    let sx = if ch_ext_cx > 0.0 { own_ext_cx / ch_ext_cx } else { 1.0 };
-    let sy = if ch_ext_cy > 0.0 { own_ext_cy / ch_ext_cy } else { 1.0 };
+    let sx = if ch_ext_cx > 0.0 {
+        own_ext_cx / ch_ext_cx
+    } else {
+        1.0
+    };
+    let sy = if ch_ext_cy > 0.0 {
+        own_ext_cy / ch_ext_cy
+    } else {
+        1.0
+    };
     let rot_rad = xfrm
         .rotation
         .map(|r| (r as f64 / 60000.0).to_radians())
@@ -129,9 +169,19 @@ fn group_frame(g: &xdr::GroupShape, parent: Option<Frame>) -> Option<(WorldBox, 
             let (x, y) = p.apply(own_off_x, own_off_y);
             let dx = p.scale_x_mag();
             let dy = p.scale_y_mag();
-            WorldBox { x, y, cx: own_ext_cx * dx, cy: own_ext_cy * dy }
+            WorldBox {
+                x,
+                y,
+                cx: own_ext_cx * dx,
+                cy: own_ext_cy * dy,
+            }
         }
-        None => WorldBox { x: own_off_x, y: own_off_y, cx: own_ext_cx, cy: own_ext_cy },
+        None => WorldBox {
+            x: own_off_x,
+            y: own_off_y,
+            cx: own_ext_cx,
+            cy: own_ext_cy,
+        },
     };
     Some((bbox_parent_local, frame))
 }
@@ -148,10 +198,24 @@ fn shape_world(s: &xdr::Shape, parent: Option<Frame>) -> Option<(WorldBox, f64)>
             if parent.is_some() {
                 return None;
             }
-            return Some((WorldBox { x: 0.0, y: 0.0, cx: 1.0, cy: 1.0 }, 0.0));
+            return Some((
+                WorldBox {
+                    x: 0.0,
+                    y: 0.0,
+                    cx: 1.0,
+                    cy: 1.0,
+                },
+                0.0,
+            ));
         }
     };
-    Some(transform_local_box(parent, off.x as f64, off.y as f64, ext.cx as f64, ext.cy as f64))
+    Some(transform_local_box(
+        parent,
+        off.x as f64,
+        off.y as f64,
+        ext.cx as f64,
+        ext.cy as f64,
+    ))
 }
 
 fn transform_local_box(
@@ -168,7 +232,12 @@ fn transform_local_box(
     let w = ext_cx * sx;
     let h = ext_cy * sy;
     (
-        WorldBox { x: cx_world - w / 2.0, y: cy_world - h / 2.0, cx: w, cy: h },
+        WorldBox {
+            x: cx_world - w / 2.0,
+            y: cy_world - h / 2.0,
+            cx: w,
+            cy: h,
+        },
         f.rotation_rad(),
     )
 }
@@ -253,7 +322,7 @@ pub(crate) fn extract_shape_tree(
 
     match root {
         ShapeTreeRoot::Sp(s) => {
-            visit_shape(s, None, outer, &mut nodes, theme);
+            visit_shape(s, None, outer, &mut nodes, theme, images);
         }
         ShapeTreeRoot::GrpSp(g) => {
             visit_group(g, None, outer, &mut nodes, theme, images, &anchors);
@@ -287,10 +356,24 @@ fn connector_world(sp: &xdr::ShapeProperties, parent: Option<Frame>) -> Option<(
             if parent.is_some() {
                 return None;
             }
-            return Some((WorldBox { x: 0.0, y: 0.0, cx: 1.0, cy: 1.0 }, 0.0));
+            return Some((
+                WorldBox {
+                    x: 0.0,
+                    y: 0.0,
+                    cx: 1.0,
+                    cy: 1.0,
+                },
+                0.0,
+            ));
         }
     };
-    Some(transform_local_box(parent, off.x as f64, off.y as f64, ext.cx as f64, ext.cy as f64))
+    Some(transform_local_box(
+        parent,
+        off.x as f64,
+        off.y as f64,
+        ext.cx as f64,
+        ext.cy as f64,
+    ))
 }
 
 fn visit_group(
@@ -309,7 +392,7 @@ fn visit_group(
     for choice in &g.group_shape_choice {
         match choice {
             xdr::GroupShapeChoice::XdrSp(s) => {
-                visit_shape(s, Some(frame), outer, nodes, theme);
+                visit_shape(s, Some(frame), outer, nodes, theme, images);
             }
             xdr::GroupShapeChoice::XdrGrpSp(inner) => {
                 visit_group(inner, Some(frame), outer, nodes, theme, images, anchors);
@@ -432,6 +515,7 @@ fn visit_picture(
         text_vert: None,
         text_vert_overflow: None,
         text_horz_overflow: None,
+        fill_blip: None,
     });
 }
 
@@ -441,6 +525,7 @@ fn visit_shape(
     outer: WorldBox,
     nodes: &mut Vec<ShapeNode>,
     theme: Option<&Theme>,
+    images: ImageUriResolver<'_>,
 ) {
     let (world, parent_rot_rad) = match shape_world(s, parent) {
         Some(v) => v,
@@ -474,6 +559,7 @@ fn visit_shape(
     let preset = preset_geom_name(sp);
     let mut fill = solid_fill_color(&sp.shape_properties_choice2, theme);
     let mut fill_gradient = gradient_fill(&sp.shape_properties_choice2, theme);
+    let fill_blip = blip_fill(&sp.shape_properties_choice2, images);
     let mut outer_shadow = outer_shadow(&sp.shape_properties_choice3, theme);
     let (mut outline_color, mut outline_width_emu) = outline_info(sp.a_ln.as_deref(), theme);
     let mut line_dash: Option<String> = line_dash_token(sp.a_ln.as_deref());
@@ -539,7 +625,8 @@ fn visit_shape(
         apply_font_ref_to_runs(&mut paragraphs, &refs.font_name, &refs.font_color);
     }
 
-    let has_paint = fill.is_some() || fill_gradient.is_some() || outline_color.is_some();
+    let has_paint =
+        fill.is_some() || fill_gradient.is_some() || fill_blip.is_some() || outline_color.is_some();
     let has_text = !paragraphs.is_empty();
     if !has_paint && !has_text {
         return;
@@ -581,7 +668,66 @@ fn visit_shape(
         text_vert,
         text_vert_overflow,
         text_horz_overflow,
+        fill_blip,
     });
+}
+
+fn blip_fill(
+    choice: &Option<xdr::ShapePropertiesChoice2>,
+    images: ImageUriResolver<'_>,
+) -> Option<ShapeBlipFill> {
+    use xdr::ShapePropertiesChoice2;
+    let bf = match choice.as_ref()? {
+        ShapePropertiesChoice2::ABlipFill(b) => b,
+        _ => return None,
+    };
+    let blip = bf.blip.as_ref()?;
+
+    let mut data_uri: Option<String> = None;
+    if let Some(ext_lst) = blip.a_ext_lst.as_ref() {
+        for ext in &ext_lst.a_ext {
+            if let Some(a::BlipExtensionChoice::AsvgSvgBlip(sv)) =
+                ext.blip_extension_choice.as_ref()
+            {
+                if let Some(embed) = sv.embed.as_deref() {
+                    if let Some(uri) = images(embed) {
+                        data_uri = Some(uri);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    if data_uri.is_none() {
+        let embed = blip.embed.as_deref()?;
+        data_uri = images(embed);
+    }
+    let data_uri = data_uri?;
+
+    let src_rect = bf.source_rectangle.as_ref().and_then(|r| {
+        let v = vec![
+            r.left.unwrap_or(0),
+            r.top.unwrap_or(0),
+            r.right.unwrap_or(0),
+            r.bottom.unwrap_or(0),
+        ];
+        if v.iter().any(|n| *n != 0) {
+            Some(v)
+        } else {
+            None
+        }
+    });
+
+    let kind = bf.blip_fill_choice.as_ref().map(|c| match c {
+        a::BlipFillChoice::ATile(_) => "tile".to_string(),
+        a::BlipFillChoice::AStretch(_) => "stretch".to_string(),
+    });
+
+    Some(ShapeBlipFill {
+        data_uri,
+        src_rect,
+        kind,
+    })
 }
 
 fn preset_geom_name(sp: &xdr::ShapeProperties) -> Option<String> {
@@ -604,10 +750,7 @@ fn solid_fill_color(
     }
 }
 
-fn resolve_gradient_stop_color(
-    c: &a::GradientStopChoice,
-    theme: Option<&Theme>,
-) -> Option<String> {
+fn resolve_gradient_stop_color(c: &a::GradientStopChoice, theme: Option<&Theme>) -> Option<String> {
     use a::GradientStopChoice as G;
     match c {
         G::ASrgbClr(c) => {
@@ -724,18 +867,12 @@ fn outer_shadow_color(
                 return None;
             }
             let base = format!("#{}", v);
-            (
-                crate::chart_colors::apply_color_modifiers(&base, &dbg),
-                dbg,
-            )
+            (crate::chart_colors::apply_color_modifiers(&base, &dbg), dbg)
         }
         C::ASchemeClr(c) => {
             let dbg = format!("{:?}", c);
             let base = crate::chart_colors::theme_scheme_color(&dbg, theme)?;
-            (
-                crate::chart_colors::apply_color_modifiers(&base, &dbg),
-                dbg,
-            )
+            (crate::chart_colors::apply_color_modifiers(&base, &dbg), dbg)
         }
         C::APrstClr(c) => {
             let dbg = format!("{:?}", c);
@@ -1152,5 +1289,6 @@ fn visit_connector(
         text_vert: None,
         text_vert_overflow: None,
         text_horz_overflow: None,
+        fill_blip: None,
     });
 }
