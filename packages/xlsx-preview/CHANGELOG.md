@@ -7,6 +7,9 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Shape-level click hyperlinks (`<xdr:cNvPr>/<a:hlinkClick r:id="...">` on `<xdr:sp>`, `<xdr:pic>`, `<xdr:grpSp>`, or `<xdr:cxnSp>`) honored end-to-end. The `<xdr:cNvPr>` extractor in `crates/xlcore-export/src/charts.rs` decodes the `hlinkClick` element into the `Drawing`'s `hyperlink` field (`DrawingHyperlink { target, tooltip? }`), resolving the relationship through the drawings part. The TS renderer's interactivity layer (`interact.ts`) hit-tests shape bounding boxes before cell hyperlinks. Hovering over shapes with hyperlinks updates the canvas style cursor to `"pointer"`, clicking shapes with external hyperlinks triggers `window.open`, and clicking internal sheets/defined-name targets dispatches the `"xlcore-hyperlink-jump"` custom event. Locked in by `tests/fixtures/shapes/shape-hyperlinks.xlsx`. Closes `parity-shapes.md` P1 #12.
+- Drawing absolute anchors (`<xdr:absoluteAnchor>`) supported in both the Rust exporter and TS/WASM previewer. The exporter extracts absolute anchors and their `w/h` extents into `DrawingAnchor`. The previewer maps absolute coordinate anchors into the grid layout alignment space using cell offset logic. Locked in by `tests/fixtures/shapes/absolute-anchor.xlsx`. Closes `parity-shapes.md` P1 #11.
+
 - DrawingML `<a:blipFill>` on `<xdr:sp>/<xdr:spPr>` (shape-as-image-fill,
   distinct from `<xdr:pic>`) plus the modern-Office `asvg:svgBlip` SVG
   sidecar honored end-to-end. The `<xdr:sp>` extractor in

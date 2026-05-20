@@ -1,4 +1,5 @@
 import type { Sheet, WorkbookLayout } from "./types.js";
+import { drawingHyperlinkAt } from "./drawingHits.js";
 import { buildGrid, frozenDims } from "./render.js";
 import { createAnnotationLayer } from "./interactAnnotations.js";
 import {
@@ -244,7 +245,9 @@ export function attachInteractivity(
       return;
     }
     const anchor = resolveAnchor(cell.r, cell.c);
-    const link = annotations.hyperlinkAt(anchor);
+    const grid = getGrid();
+    const link =
+      drawingHyperlinkAt(opts.getSheet(), grid, lp.x, lp.y) ?? annotations.hyperlinkAt(anchor);
     const cmt = annotations.commentAt(anchor);
 
     canvas.style.cursor = link ? "pointer" : savedCursor;
@@ -530,8 +533,12 @@ export function attachInteractivity(
         canvas.focus({ preventScroll: true });
 
         annotations.ensureMaps();
-        const link = annotations.hyperlinkAt(anchor);
-        if (link) annotations.openHyperlink(link);
+        const grid = getGrid();
+        const link = drawingHyperlinkAt(sheet, grid, p.x, p.y) ?? annotations.hyperlinkAt(anchor);
+        if (link) {
+          annotations.openHyperlink(link);
+          return;
+        }
       }
     }
   }

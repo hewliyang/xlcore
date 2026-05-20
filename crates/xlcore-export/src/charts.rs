@@ -2,18 +2,16 @@ use crate::charts_ex::extract_chart_ex;
 use crate::charts_legacy::extract_chart;
 use crate::schema::*;
 use base64::Engine;
+use ooxmlsdk::parts::drawings_part::DrawingsPart;
 use ooxmlsdk::parts::spreadsheet_document::SpreadsheetDocument;
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_drawing as xdr;
-
 const CHARTEX_GRAPHIC_DATA_URI: &str = "http://schemas.microsoft.com/office/drawing/2014/chartex";
 
 enum AnchorTarget {
     Chart(String),
-
     ChartEx(String),
     Image(String),
-
     Shape(ShapeRoot),
 }
 
@@ -21,6 +19,12 @@ enum ShapeRoot {
     Sp(std::boxed::Box<xdr::Shape>),
     GrpSp(std::boxed::Box<xdr::GroupShape>),
     CxnSp(std::boxed::Box<xdr::ConnectionShape>),
+}
+
+struct ParsedAnchor {
+    anchor: DrawingAnchor,
+    target: AnchorTarget,
+    cnv_pr: Option<std::boxed::Box<xdr::NonVisualDrawingProperties>>,
 }
 
 pub fn extract(
@@ -41,100 +45,10 @@ pub fn extract(
         Ok(d) => d,
         Err(_) => return Vec::new(),
     };
-    let anchors_xml: Vec<(DrawingAnchor, AnchorTarget)> = drawing_root
+    let anchors_xml: Vec<ParsedAnchor> = drawing_root
         .worksheet_drawing_choice
         .iter()
-        .filter_map(|choice| match choice {
-            xdr::WorksheetDrawingChoice::XdrTwoCellAnchor(a) => {
-                let from = a.from_marker.as_ref()?;
-                let to = a.to_marker.as_ref()?;
-                let anchor = DrawingAnchor {
-                    from_col: from.column_id as u32,
-                    from_col_off_emu: from.column_offset,
-                    from_row: from.row_id as u32,
-                    from_row_off_emu: from.row_offset,
-                    to_col: to.column_id as u32,
-                    to_col_off_emu: to.column_offset,
-                    to_row: to.row_id as u32,
-                    to_row_off_emu: to.row_offset,
-                    ext_emu_cx: None,
-                    ext_emu_cy: None,
-                };
-                let target = match a.two_cell_anchor_choice.as_ref()? {
-                    xdr::TwoCellAnchorChoice::XdrGraphicFrame(gf) => {
-                        let rid = find_relationship_id(&gf.graphic.graphic_data.xml_children)?;
-                        if gf.graphic.graphic_data.uri.as_str() == CHARTEX_GRAPHIC_DATA_URI {
-                            AnchorTarget::ChartEx(rid)
-                        } else {
-                            AnchorTarget::Chart(rid)
-                        }
-                    }
-                    xdr::TwoCellAnchorChoice::XdrPic(pic) => {
-                        let blip = pic.blip_fill.blip.as_ref()?;
-                        let embed = blip.embed.as_ref()?;
-                        AnchorTarget::Image(embed.as_str().to_string())
-                    }
-                    xdr::TwoCellAnchorChoice::XdrSp(sp) => {
-                        AnchorTarget::Shape(ShapeRoot::Sp(sp.clone()))
-                    }
-                    xdr::TwoCellAnchorChoice::XdrGrpSp(g) => {
-                        AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone()))
-                    }
-                    xdr::TwoCellAnchorChoice::XdrCxnSp(c) => {
-                        AnchorTarget::Shape(ShapeRoot::CxnSp(c.clone()))
-                    }
-                    _ => return None,
-                };
-                Some((anchor, target))
-            }
-            xdr::WorksheetDrawingChoice::XdrOneCellAnchor(a) => {
-                let from = a.from_marker.as_ref()?;
-                let ext = a.extent.as_ref()?;
-                const EMU_PER_DEFAULT_COL: i64 = 64 * 9525;
-                const EMU_PER_DEFAULT_ROW: i64 = 20 * 9525;
-                let col_span = ((ext.cx + EMU_PER_DEFAULT_COL - 1) / EMU_PER_DEFAULT_COL).max(1);
-                let row_span = ((ext.cy + EMU_PER_DEFAULT_ROW - 1) / EMU_PER_DEFAULT_ROW).max(1);
-                let anchor = DrawingAnchor {
-                    from_col: from.column_id as u32,
-                    from_col_off_emu: from.column_offset,
-                    from_row: from.row_id as u32,
-                    from_row_off_emu: from.row_offset,
-                    to_col: from.column_id as u32 + col_span as u32,
-                    to_col_off_emu: 0,
-                    to_row: from.row_id as u32 + row_span as u32,
-                    to_row_off_emu: 0,
-                    ext_emu_cx: Some(ext.cx),
-                    ext_emu_cy: Some(ext.cy),
-                };
-                let target = match a.one_cell_anchor_choice.as_ref()? {
-                    xdr::OneCellAnchorChoice::XdrGraphicFrame(gf) => {
-                        let rid = find_relationship_id(&gf.graphic.graphic_data.xml_children)?;
-                        if gf.graphic.graphic_data.uri.as_str() == CHARTEX_GRAPHIC_DATA_URI {
-                            AnchorTarget::ChartEx(rid)
-                        } else {
-                            AnchorTarget::Chart(rid)
-                        }
-                    }
-                    xdr::OneCellAnchorChoice::XdrPic(pic) => {
-                        let blip = pic.blip_fill.blip.as_ref()?;
-                        let embed = blip.embed.as_ref()?;
-                        AnchorTarget::Image(embed.as_str().to_string())
-                    }
-                    xdr::OneCellAnchorChoice::XdrSp(sp) => {
-                        AnchorTarget::Shape(ShapeRoot::Sp(sp.clone()))
-                    }
-                    xdr::OneCellAnchorChoice::XdrGrpSp(g) => {
-                        AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone()))
-                    }
-                    xdr::OneCellAnchorChoice::XdrCxnSp(c) => {
-                        AnchorTarget::Shape(ShapeRoot::CxnSp(c.clone()))
-                    }
-                    _ => return None,
-                };
-                Some((anchor, target))
-            }
-            _ => None,
-        })
+        .filter_map(|choice| parse_worksheet_drawing_choice(choice))
         .collect();
 
     let mut chart_by_rid: Vec<(String, ooxmlsdk::parts::chart_part::ChartPart)> = chart_parts
@@ -164,8 +78,13 @@ pub fn extract(
         .collect();
 
     let mut out = Vec::new();
-    for (anchor, target) in anchors_xml {
-        match target {
+    for parsed in anchors_xml {
+        let hyperlink = parsed
+            .cnv_pr
+            .as_ref()
+            .and_then(|cnv| drawing_hyperlink_from_cnvpr(doc, &drawings_part, cnv));
+
+        match parsed.target {
             AnchorTarget::Chart(rid) => {
                 let pos = match chart_by_rid.iter().position(|(r, _)| r == &rid) {
                     Some(i) => i,
@@ -179,7 +98,8 @@ pub fn extract(
                 let chart = extract_chart(space, theme);
                 out.push(Drawing {
                     kind: "chart".to_string(),
-                    anchor,
+                    anchor: parsed.anchor,
+                    hyperlink,
                     chart,
                     image: None,
                     shape: None,
@@ -198,7 +118,8 @@ pub fn extract(
                 let chart = extract_chart_ex(space, theme);
                 out.push(Drawing {
                     kind: "chart".to_string(),
-                    anchor,
+                    anchor: parsed.anchor,
+                    hyperlink,
                     chart,
                     image: None,
                     shape: None,
@@ -226,7 +147,8 @@ pub fn extract(
                 let Some(shape) = shape_opt else { continue };
                 out.push(Drawing {
                     kind: "shape".to_string(),
-                    anchor,
+                    anchor: parsed.anchor,
+                    hyperlink,
                     chart: None,
                     image: None,
                     shape: Some(shape),
@@ -248,7 +170,8 @@ pub fn extract(
                 let data_uri = format!("data:{};base64,{}", mime, b64);
                 out.push(Drawing {
                     kind: "image".to_string(),
-                    anchor,
+                    anchor: parsed.anchor,
+                    hyperlink,
                     chart: None,
                     image: Some(Image { data_uri }),
                     shape: None,
@@ -257,6 +180,303 @@ pub fn extract(
         }
     }
     out
+}
+
+fn parse_worksheet_drawing_choice(choice: &xdr::WorksheetDrawingChoice) -> Option<ParsedAnchor> {
+    match choice {
+        xdr::WorksheetDrawingChoice::XdrTwoCellAnchor(a) => {
+            let from = a.from_marker.as_ref()?;
+            let to = a.to_marker.as_ref()?;
+            let anchor = DrawingAnchor {
+                anchor_kind: Some("twoCell".to_string()),
+                edit_as: a.edit_as.map(edit_as_token),
+                from_col: from.column_id as u32,
+                from_col_off_emu: from.column_offset,
+                from_row: from.row_id as u32,
+                from_row_off_emu: from.row_offset,
+                to_col: to.column_id as u32,
+                to_col_off_emu: to.column_offset,
+                to_row: to.row_id as u32,
+                to_row_off_emu: to.row_offset,
+                ext_emu_cx: None,
+                ext_emu_cy: None,
+            };
+            let (target, cnv_pr) = anchor_target_from_two_cell(a.two_cell_anchor_choice.as_ref()?)?;
+            Some(ParsedAnchor {
+                anchor,
+                target,
+                cnv_pr,
+            })
+        }
+        xdr::WorksheetDrawingChoice::XdrOneCellAnchor(a) => {
+            let from = a.from_marker.as_ref()?;
+            let ext = a.extent.as_ref()?;
+            const EMU_PER_DEFAULT_COL: i64 = 64 * 9525;
+            const EMU_PER_DEFAULT_ROW: i64 = 20 * 9525;
+            let col_span = ((ext.cx + EMU_PER_DEFAULT_COL - 1) / EMU_PER_DEFAULT_COL).max(1);
+            let row_span = ((ext.cy + EMU_PER_DEFAULT_ROW - 1) / EMU_PER_DEFAULT_ROW).max(1);
+            let anchor = DrawingAnchor {
+                anchor_kind: Some("oneCell".to_string()),
+                edit_as: None,
+                from_col: from.column_id as u32,
+                from_col_off_emu: from.column_offset,
+                from_row: from.row_id as u32,
+                from_row_off_emu: from.row_offset,
+                to_col: from.column_id as u32 + col_span as u32,
+                to_col_off_emu: 0,
+                to_row: from.row_id as u32 + row_span as u32,
+                to_row_off_emu: 0,
+                ext_emu_cx: Some(ext.cx),
+                ext_emu_cy: Some(ext.cy),
+            };
+            let (target, cnv_pr) = anchor_target_from_one_cell(a.one_cell_anchor_choice.as_ref()?)?;
+            Some(ParsedAnchor {
+                anchor,
+                target,
+                cnv_pr,
+            })
+        }
+        xdr::WorksheetDrawingChoice::XdrAbsoluteAnchor(a) => {
+            let pos = a.position.as_ref()?;
+            let ext = a.extent.as_ref()?;
+            let anchor = DrawingAnchor {
+                anchor_kind: Some("absolute".to_string()),
+                edit_as: None,
+                from_col: 0,
+                from_col_off_emu: pos.x,
+                from_row: 0,
+                from_row_off_emu: pos.y,
+                to_col: 0,
+                to_col_off_emu: 0,
+                to_row: 0,
+                to_row_off_emu: 0,
+                ext_emu_cx: Some(ext.cx),
+                ext_emu_cy: Some(ext.cy),
+            };
+            let (target, cnv_pr) =
+                anchor_target_from_absolute(a.absolute_anchor_choice.as_ref()?)?;
+            Some(ParsedAnchor {
+                anchor,
+                target,
+                cnv_pr,
+            })
+        }
+    }
+}
+
+fn edit_as_token(v: xdr::EditAsValues) -> String {
+    match v {
+        xdr::EditAsValues::TwoCell => "twoCell",
+        xdr::EditAsValues::OneCell => "oneCell",
+        xdr::EditAsValues::Absolute => "absolute",
+    }
+    .to_string()
+}
+
+fn anchor_target_from_two_cell(
+    choice: &xdr::TwoCellAnchorChoice,
+) -> Option<(AnchorTarget, Option<std::boxed::Box<xdr::NonVisualDrawingProperties>>)> {
+    match choice {
+        xdr::TwoCellAnchorChoice::XdrGraphicFrame(gf) => {
+            let rid = find_relationship_id(&gf.graphic.graphic_data.xml_children)?;
+            if gf.graphic.graphic_data.uri.as_str() == CHARTEX_GRAPHIC_DATA_URI {
+                Some((AnchorTarget::ChartEx(rid), None))
+            } else {
+                Some((AnchorTarget::Chart(rid), None))
+            }
+        }
+        xdr::TwoCellAnchorChoice::XdrPic(pic) => {
+            let blip = pic.blip_fill.blip.as_ref()?;
+            let embed = blip.embed.as_ref()?;
+            let cnv = pic
+                .non_visual_picture_properties
+                .non_visual_drawing_properties
+                .clone();
+            Some((AnchorTarget::Image(embed.as_str().to_string()), Some(cnv)))
+        }
+        xdr::TwoCellAnchorChoice::XdrSp(sp) => {
+            let cnv = sp.non_visual_shape_properties.non_visual_drawing_properties.clone();
+            Some((
+                AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())),
+                Some(cnv),
+            ))
+        }
+        xdr::TwoCellAnchorChoice::XdrGrpSp(g) => {
+            let cnv = g
+                .non_visual_group_shape_properties
+                .as_ref()
+                .map(|nv| nv.non_visual_drawing_properties.clone());
+            Some((AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone())), cnv))
+        }
+        xdr::TwoCellAnchorChoice::XdrCxnSp(c) => {
+            let cnv = c
+                .non_visual_connection_shape_properties
+                .non_visual_drawing_properties
+                .clone();
+            Some((
+                AnchorTarget::Shape(ShapeRoot::CxnSp(c.clone())),
+                Some(cnv),
+            ))
+        }
+        _ => None,
+    }
+}
+
+fn anchor_target_from_one_cell(
+    choice: &xdr::OneCellAnchorChoice,
+) -> Option<(AnchorTarget, Option<std::boxed::Box<xdr::NonVisualDrawingProperties>>)> {
+    match choice {
+        xdr::OneCellAnchorChoice::XdrGraphicFrame(gf) => {
+            let rid = find_relationship_id(&gf.graphic.graphic_data.xml_children)?;
+            if gf.graphic.graphic_data.uri.as_str() == CHARTEX_GRAPHIC_DATA_URI {
+                Some((AnchorTarget::ChartEx(rid), None))
+            } else {
+                Some((AnchorTarget::Chart(rid), None))
+            }
+        }
+        xdr::OneCellAnchorChoice::XdrPic(pic) => {
+            let blip = pic.blip_fill.blip.as_ref()?;
+            let embed = blip.embed.as_ref()?;
+            let cnv = pic
+                .non_visual_picture_properties
+                .non_visual_drawing_properties
+                .clone();
+            Some((AnchorTarget::Image(embed.as_str().to_string()), Some(cnv)))
+        }
+        xdr::OneCellAnchorChoice::XdrSp(sp) => {
+            let cnv = sp.non_visual_shape_properties.non_visual_drawing_properties.clone();
+            Some((
+                AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())),
+                Some(cnv),
+            ))
+        }
+        xdr::OneCellAnchorChoice::XdrGrpSp(g) => {
+            let cnv = g
+                .non_visual_group_shape_properties
+                .as_ref()
+                .map(|nv| nv.non_visual_drawing_properties.clone());
+            Some((AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone())), cnv))
+        }
+        xdr::OneCellAnchorChoice::XdrCxnSp(c) => {
+            let cnv = c
+                .non_visual_connection_shape_properties
+                .non_visual_drawing_properties
+                .clone();
+            Some((
+                AnchorTarget::Shape(ShapeRoot::CxnSp(c.clone())),
+                Some(cnv),
+            ))
+        }
+        _ => None,
+    }
+}
+
+fn anchor_target_from_absolute(
+    choice: &xdr::AbsoluteAnchorChoice,
+) -> Option<(AnchorTarget, Option<std::boxed::Box<xdr::NonVisualDrawingProperties>>)> {
+    match choice {
+        xdr::AbsoluteAnchorChoice::XdrGraphicFrame(gf) => {
+            let rid = find_relationship_id(&gf.graphic.graphic_data.xml_children)?;
+            if gf.graphic.graphic_data.uri.as_str() == CHARTEX_GRAPHIC_DATA_URI {
+                Some((AnchorTarget::ChartEx(rid), None))
+            } else {
+                Some((AnchorTarget::Chart(rid), None))
+            }
+        }
+        xdr::AbsoluteAnchorChoice::XdrPic(pic) => {
+            let blip = pic.blip_fill.blip.as_ref()?;
+            let embed = blip.embed.as_ref()?;
+            let cnv = pic
+                .non_visual_picture_properties
+                .non_visual_drawing_properties
+                .clone();
+            Some((AnchorTarget::Image(embed.as_str().to_string()), Some(cnv)))
+        }
+        xdr::AbsoluteAnchorChoice::XdrSp(sp) => {
+            let cnv = sp.non_visual_shape_properties.non_visual_drawing_properties.clone();
+            Some((
+                AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())),
+                Some(cnv),
+            ))
+        }
+        xdr::AbsoluteAnchorChoice::XdrGrpSp(g) => {
+            let cnv = g
+                .non_visual_group_shape_properties
+                .as_ref()
+                .map(|nv| nv.non_visual_drawing_properties.clone());
+            Some((AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone())), cnv))
+        }
+        xdr::AbsoluteAnchorChoice::XdrCxnSp(c) => {
+            let cnv = c
+                .non_visual_connection_shape_properties
+                .non_visual_drawing_properties
+                .clone();
+            Some((
+                AnchorTarget::Shape(ShapeRoot::CxnSp(c.clone())),
+                Some(cnv),
+            ))
+        }
+        _ => None,
+    }
+}
+
+fn drawing_hyperlink_from_cnvpr(
+    doc: &mut SpreadsheetDocument,
+    drawings_part: &DrawingsPart,
+    cnv: &xdr::NonVisualDrawingProperties,
+) -> Option<DrawingHyperlink> {
+    let click = cnv.hyperlink_on_click.as_ref()?;
+    let rid = click.id.as_ref()?.as_str();
+    let rel = drawings_part.get_hyperlink_relationship(doc, rid)?;
+    let mut target = rel.target().to_string();
+    if let Some(url) = click.invalid_url.as_ref() {
+        target = url.as_str().to_string();
+    }
+    let location = location_from_hlink_click(click, &target);
+    let target = normalize_drawing_hlink_target(&target, location.as_deref());
+    Some(DrawingHyperlink {
+        target: Some(target),
+        location,
+        tooltip: click
+            .tooltip
+            .as_ref()
+            .map(|t| t.as_str().to_string()),
+        display: None,
+    })
+}
+
+fn location_from_hlink_click(
+    click: &ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main::HyperlinkOnClick,
+    target: &str,
+) -> Option<String> {
+    if let Some(action) = click.action.as_ref() {
+        let action = action.as_str();
+        if action.starts_with("ppaction://") {
+            return None;
+        }
+        if !action.is_empty() {
+            return Some(action.to_string());
+        }
+    }
+    if let Some(hash) = target.strip_prefix('#') {
+        return Some(hash.to_string());
+    }
+    None
+}
+
+fn normalize_drawing_hlink_target(target: &str, location: Option<&str>) -> String {
+    if target.starts_with('#') {
+        return target.to_string();
+    }
+    if let Some(loc) = location.filter(|s| !s.is_empty()) {
+        if target.is_empty() || !target.contains("://") {
+            return format!("#{loc}");
+        }
+    }
+    if !target.is_empty() && !target.contains("://") && target.contains('!') {
+        return format!("#{target}");
+    }
+    target.to_string()
 }
 
 fn sniff_image_mime(b: &[u8]) -> Option<&'static str> {
@@ -301,4 +521,85 @@ fn find_relationship_id(children: &[Box<str>]) -> Option<String> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn edit_as_token_maps_spec_values() {
+        assert_eq!(edit_as_token(xdr::EditAsValues::TwoCell), "twoCell");
+        assert_eq!(edit_as_token(xdr::EditAsValues::OneCell), "oneCell");
+        assert_eq!(edit_as_token(xdr::EditAsValues::Absolute), "absolute");
+    }
+
+    #[test]
+    fn extract_absolute_anchor_and_shape_hyperlink_fixtures() {
+        let abs_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/fixtures/shapes/absolute-anchor.xlsx"
+        );
+        let mut doc = xlcore_io::open(abs_path).expect("open absolute-anchor fixture");
+        let layout = crate::extract_doc(&mut doc).expect("extract");
+        let drawings = &layout.sheets[0].drawings;
+        let absolute = drawings
+            .iter()
+            .find(|d| d.anchor.anchor_kind.as_deref() == Some("absolute"))
+            .expect("absoluteAnchor drawing");
+        assert_eq!(absolute.anchor.from_col_off_emu, 304800);
+        assert_eq!(absolute.anchor.ext_emu_cx, Some(1524000));
+
+        let hlink_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/fixtures/shapes/shape-hyperlinks.xlsx"
+        );
+        let mut doc = xlcore_io::open(hlink_path).expect("open shape-hyperlinks fixture");
+        let layout = crate::extract_doc(&mut doc).expect("extract");
+        let drawings = &layout.sheets[0].drawings;
+        let external = drawings
+            .iter()
+            .find(|d| {
+                d.hyperlink
+                    .as_ref()
+                    .and_then(|h| h.target.as_deref())
+                    == Some("https://example.com/shape-external")
+            })
+            .expect("external shape hyperlink");
+        assert_eq!(
+            external.hyperlink.as_ref().and_then(|h| h.tooltip.as_deref()),
+            Some("External shape link")
+        );
+        let internal = drawings
+            .iter()
+            .find(|d| {
+                d.hyperlink
+                    .as_ref()
+                    .and_then(|h| h.target.as_deref())
+                    == Some("#Sheet1!B5")
+            })
+            .expect("internal shape hyperlink");
+        assert!(internal.hyperlink.is_some());
+        assert!(
+            drawings
+                .iter()
+                .any(|d| d.hyperlink.is_none() && d.shape.is_some())
+        );
+    }
+
+    #[test]
+    fn normalize_drawing_hlink_target_prefixes_internal_sheet_refs() {
+        assert_eq!(
+            normalize_drawing_hlink_target("Sheet2!A1", Some("Sheet2!A1")),
+            "#Sheet2!A1"
+        );
+        assert_eq!(
+            normalize_drawing_hlink_target("Sheet1!B5", None),
+            "#Sheet1!B5"
+        );
+        assert_eq!(
+            normalize_drawing_hlink_target("https://example.com", None),
+            "https://example.com"
+        );
+    }
 }

@@ -28,6 +28,7 @@ export type {
   CustomTableStyle,
   Drawing,
   DrawingAnchor,
+  DrawingHyperlink,
   Dxf,
   Fill,
   Font,
