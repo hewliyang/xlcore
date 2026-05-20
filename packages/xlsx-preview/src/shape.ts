@@ -1,5 +1,13 @@
 import type { Shape, ShapeBlipFill, ShapeGradient, ShapeNode, ShapeParagraph } from "./types.js";
 import { getOrLoadImage } from "./imageCache.js";
+import {
+  buildBulletGlyph,
+  computeLineHeight,
+  computeParaSpacing,
+  drawBullet,
+  NumberingState,
+  paragraphRefFontPt,
+} from "./shapeBullets.js";
 
 import { isBraceLikePreset, isLinePreset, pathForPreset } from "./shapePaths.js";
 const DEFAULT_FONT_PT = 11;
@@ -658,19 +666,35 @@ function drawShapeText(
     lineHeight: number;
     width: number;
   };
-  const lines: WrappedLine[] = [];
+  type LaidOutPara = {
+    p: ShapeParagraph;
+    marL: number;
+    indent: number;
+    spcBef: number;
+    spcAft: number;
+    bullet: ReturnType<typeof buildBulletGlyph>;
+    lines: WrappedLine[];
+    height: number; // sum of line heights only
+  };
+  const paras: LaidOutPara[] = [];
+  const numbering = new NumberingState();
   let totalH = 0;
   for (const p of node.paragraphs ?? []) {
-    const wrapped = wrapParagraph(ctx, p, innerW, wrap, fontScale, lineScale);
-    for (const ln of wrapped) {
-      lines.push(ln);
-      totalH += ln.lineHeight;
-    }
+    const marL = Math.max(0, (p.marLEmu ?? 0) * PX_PER_EMU);
+    const indent = (p.indentEmu ?? 0) * PX_PER_EMU;
+    const refPt = paragraphRefFontPt(p);
+    const lnSpcPx = computeLineHeight(p, refPt, fontScale, lineScale);
+    const spcBef = computeParaSpacing(p.spaceBeforePct, p.spaceBeforePts, refPt, fontScale);
+    const spcAft = computeParaSpacing(p.spaceAfterPct, p.spaceAfterPts, refPt, fontScale);
+    const bullet = buildBulletGlyph(ctx, p, refPt, fontScale, numbering);
+    const wrapWidth = Math.max(1, innerW - marL);
+    const wrapped = wrapParagraph(ctx, p, wrapWidth, wrap, fontScale, lineScale, lnSpcPx);
     if (wrapped.length === 0) {
-      const lineH = paragraphLineHeight(p, fontScale, lineScale);
-      lines.push({ runs: [], align: p.align, lineHeight: lineH, width: 0 });
-      totalH += lineH;
+      wrapped.push({ runs: [], align: p.align, lineHeight: lnSpcPx, width: 0 });
     }
+    const height = wrapped.reduce((acc, ln) => acc + ln.lineHeight, 0);
+    paras.push({ p, marL, indent, spcBef, spcAft, bullet, lines: wrapped, height });
+    totalH += spcBef + height + spcAft;
   }
 
   let cursorY: number;
@@ -687,25 +711,44 @@ function drawShapeText(
   if (cursorY < innerY) cursorY = innerY;
 
   const bottom = innerY + innerH;
-  for (let i = 0; i < lines.length; i++) {
-    const ln = lines[i]!;
-    if (vertOverflow !== "overflow") {
-      if (cursorY > bottom + 0.5) break;
-      if (vertOverflow === "ellipsis") {
-        const next = cursorY + ln.lineHeight;
-        const moreFollows = i < lines.length - 1;
-        if (
-          (next > bottom + 0.5 ||
-            (moreFollows && next + lines[i + 1]!.lineHeight > bottom + 0.5)) &&
-          ln.runs.length > 0
-        ) {
-          drawWrappedLineWithEllipsis(ctx, ln, innerX, cursorY, innerW);
-          break;
+  outer: for (const para of paras) {
+    cursorY += para.spcBef;
+    for (let i = 0; i < para.lines.length; i++) {
+      const ln = para.lines[i]!;
+      const isFirst = i === 0;
+      const lineX = innerX + para.marL;
+      const lineW = Math.max(1, innerW - para.marL);
+      if (vertOverflow !== "overflow") {
+        if (cursorY > bottom + 0.5) break outer;
+        if (vertOverflow === "ellipsis") {
+          const next = cursorY + ln.lineHeight;
+          const moreFollows = i < para.lines.length - 1;
+          if (
+            (next > bottom + 0.5 ||
+              (moreFollows && next + para.lines[i + 1]!.lineHeight > bottom + 0.5)) &&
+            ln.runs.length > 0
+          ) {
+            if (isFirst && para.bullet) {
+              drawBullet(
+                ctx,
+                para.bullet,
+                innerX + para.marL + para.indent,
+                cursorY,
+                ln.lineHeight,
+              );
+            }
+            drawWrappedLineWithEllipsis(ctx, ln, lineX, cursorY, lineW);
+            break outer;
+          }
         }
       }
+      if (isFirst && para.bullet) {
+        drawBullet(ctx, para.bullet, innerX + para.marL + para.indent, cursorY, ln.lineHeight);
+      }
+      drawWrappedLine(ctx, ln, lineX, cursorY, lineW);
+      cursorY += ln.lineHeight;
     }
-    drawWrappedLine(ctx, ln, innerX, cursorY, innerW);
-    cursorY += ln.lineHeight;
+    cursorY += para.spcAft;
   }
   if (needSave) ctx.restore();
 }
@@ -828,6 +871,7 @@ function wrapParagraph(
   wrap: boolean,
   fontScale: number = 1,
   lineScale: number = 1,
+  lineHeightOverride?: number,
 ): {
   runs: { r: ShapeParagraph["runs"][number]; width: number; font: string }[];
   align: ShapeParagraph["align"];
@@ -872,7 +916,8 @@ function wrapParagraph(
 
   const finishLine = () => {
     if (!cur) return;
-    cur.lineHeight = Math.ceil(((maxFontPt * fontScale) / PT_PER_PX) * 1.2 * lineScale);
+    cur.lineHeight =
+      lineHeightOverride ?? Math.ceil(((maxFontPt * fontScale) / PT_PER_PX) * 1.2 * lineScale);
   };
 
   for (const a of atoms) {
@@ -989,43 +1034,38 @@ function drawWrappedLine(
   }
   const baselineY = y + ln.lineHeight * 0.82;
   for (const m of ln.runs) {
-    ctx.font = m.font;
+    const baselineRaw = m.r.baseline ?? 0;
+    const isSuperSub = baselineRaw !== 0;
+    const runPt = m.r.size ?? DEFAULT_FONT_PT;
+    const baselineOffsetPx = isSuperSub ? -(baselineRaw / 100000) * (runPt / PT_PER_PX) : 0;
+    const drawFont = isSuperSub
+      ? m.font.replace(/(\d+(?:\.\d+)?)px/, (_, n) => `${Number(n) * 0.65}px`)
+      : m.font;
+    ctx.font = drawFont;
     ctx.textBaseline = "alphabetic";
     ctx.textAlign = "left";
     const color = m.r.color?.rgb ? `#${m.r.color.rgb.slice(-6)}` : "#000000";
     ctx.fillStyle = color;
-    ctx.fillText(m.r.text, cursorX, baselineY);
+    const drawY = baselineY + baselineOffsetPx;
+    ctx.fillText(m.r.text, cursorX, drawY);
     if (m.r.underline) {
       ctx.strokeStyle = color;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(cursorX, baselineY + 2);
-      ctx.lineTo(cursorX + m.width, baselineY + 2);
+      ctx.moveTo(cursorX, drawY + 2);
+      ctx.lineTo(cursorX + m.width, drawY + 2);
       ctx.stroke();
     }
     if (m.r.strike) {
       ctx.strokeStyle = color;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(cursorX, baselineY - 4);
-      ctx.lineTo(cursorX + m.width, baselineY - 4);
+      ctx.moveTo(cursorX, drawY - 4);
+      ctx.lineTo(cursorX + m.width, drawY - 4);
       ctx.stroke();
     }
     cursorX += m.width;
   }
-}
-
-function paragraphLineHeight(
-  p: ShapeParagraph,
-  fontScale: number = 1,
-  lineScale: number = 1,
-): number {
-  let maxPt = DEFAULT_FONT_PT;
-  for (const r of p.runs ?? []) {
-    if (r.size && r.size > maxPt) maxPt = r.size;
-  }
-
-  return Math.ceil(((maxPt * fontScale) / PT_PER_PX) * 1.2 * lineScale);
 }
 
 function runFont(

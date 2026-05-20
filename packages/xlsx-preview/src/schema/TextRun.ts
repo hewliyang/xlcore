@@ -14,4 +14,6 @@ export type TextRun = {
   vertAlign?: string;
   family?: number;
   scheme?: string;
+  kern?: number;
+  baseline?: number;
 };

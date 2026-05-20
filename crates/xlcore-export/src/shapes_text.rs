@@ -35,6 +35,229 @@ impl TextBodyOut {
     }
 }
 
+#[derive(Default, Clone, Copy)]
+struct LnSp {
+    pct: Option<i32>,
+    pts: Option<i32>,
+}
+
+#[derive(Clone)]
+struct BulletKindResolved {
+    kind: &'static str,
+    char: Option<String>,
+    auto_num_type: Option<String>,
+    auto_num_start_at: Option<i32>,
+}
+
+#[derive(Default, Clone)]
+struct PpResolved<'a> {
+    align: Option<String>,
+    mar_l: Option<i32>,
+    indent: Option<i32>,
+    level: Option<u8>,
+    line_spacing: LnSp,
+    space_before: LnSp,
+    space_after: LnSp,
+    bullet_kind: Option<BulletKindResolved>,
+    bullet_color: Option<&'a a::BulletColor>,
+    bullet_font: Option<&'a a::BulletFont>,
+    bullet_size_pct: Option<i32>,
+    bullet_size_pts: Option<i32>,
+    def_r_pr: Option<&'a a::DefaultRunProperties>,
+}
+
+macro_rules! pp_view {
+    (
+        $vis:vis $name:ident,
+        $ty:ty,
+        ($f1:ident, $c1:ident),
+        ($f2:ident, $c2:ident),
+        ($f3:ident, $c3:ident),
+        ($f4:ident, $c4:ident) $(,)?
+    ) => {
+        $vis fn $name(p: &$ty) -> PpResolved<'_> {
+            PpResolved {
+                align: alignment_token(&p.alignment),
+                mar_l: p.left_margin,
+                indent: p.indent,
+                level: p.level.map(|v| v.clamp(0, 8) as u8),
+                line_spacing: line_spacing_from(p.line_spacing.as_deref()),
+                space_before: space_before_from(p.space_before.as_deref()),
+                space_after: space_after_from(p.space_after.as_deref()),
+                bullet_color: match p.$f1.as_ref() {
+                    Some(a::$c1::ABuClr(c)) => Some(c.as_ref()),
+                    _ => None,
+                },
+                bullet_size_pct: match p.$f2.as_ref() {
+                    Some(a::$c2::ABuSzPct(c)) => Some(c.val),
+                    _ => None,
+                },
+                bullet_size_pts: match p.$f2.as_ref() {
+                    Some(a::$c2::ABuSzPts(c)) => Some(c.val),
+                    _ => None,
+                },
+                bullet_font: match p.$f3.as_ref() {
+                    Some(a::$c3::ABuFont(f)) => Some(f.as_ref()),
+                    _ => None,
+                },
+                bullet_kind: match p.$f4.as_ref() {
+                    Some(a::$c4::ABuNone) => Some(BulletKindResolved {
+                        kind: "none",
+                        char: None,
+                        auto_num_type: None,
+                        auto_num_start_at: None,
+                    }),
+                    Some(a::$c4::ABuChar(c)) => Some(BulletKindResolved {
+                        kind: "char",
+                        char: Some(c.char.to_string()),
+                        auto_num_type: None,
+                        auto_num_start_at: None,
+                    }),
+                    Some(a::$c4::ABuAutoNum(c)) => Some(BulletKindResolved {
+                        kind: "autoNum",
+                        char: None,
+                        auto_num_type: Some(auto_num_token(&c.r#type)),
+                        auto_num_start_at: c.start_at,
+                    }),
+                    _ => None,
+                },
+                def_r_pr: p.a_def_r_pr.as_deref(),
+            }
+        }
+    };
+}
+
+pp_view!(
+    view_def_pp,
+    a::DefaultParagraphProperties,
+    (default_paragraph_properties_choice1, DefaultParagraphPropertiesChoice),
+    (default_paragraph_properties_choice2, DefaultParagraphPropertiesChoice2),
+    (default_paragraph_properties_choice3, DefaultParagraphPropertiesChoice3),
+    (default_paragraph_properties_choice4, DefaultParagraphPropertiesChoice4),
+);
+pp_view!(
+    view_pp,
+    a::ParagraphProperties,
+    (paragraph_properties_choice1, ParagraphPropertiesChoice),
+    (paragraph_properties_choice2, ParagraphPropertiesChoice2),
+    (paragraph_properties_choice3, ParagraphPropertiesChoice3),
+    (paragraph_properties_choice4, ParagraphPropertiesChoice4),
+);
+pp_view!(
+    view_lvl1,
+    a::Level1ParagraphProperties,
+    (level1_paragraph_properties_choice1, Level1ParagraphPropertiesChoice),
+    (level1_paragraph_properties_choice2, Level1ParagraphPropertiesChoice2),
+    (level1_paragraph_properties_choice3, Level1ParagraphPropertiesChoice3),
+    (level1_paragraph_properties_choice4, Level1ParagraphPropertiesChoice4),
+);
+pp_view!(
+    view_lvl2,
+    a::Level2ParagraphProperties,
+    (level2_paragraph_properties_choice1, Level2ParagraphPropertiesChoice),
+    (level2_paragraph_properties_choice2, Level2ParagraphPropertiesChoice2),
+    (level2_paragraph_properties_choice3, Level2ParagraphPropertiesChoice3),
+    (level2_paragraph_properties_choice4, Level2ParagraphPropertiesChoice4),
+);
+pp_view!(
+    view_lvl3,
+    a::Level3ParagraphProperties,
+    (level3_paragraph_properties_choice1, Level3ParagraphPropertiesChoice),
+    (level3_paragraph_properties_choice2, Level3ParagraphPropertiesChoice2),
+    (level3_paragraph_properties_choice3, Level3ParagraphPropertiesChoice3),
+    (level3_paragraph_properties_choice4, Level3ParagraphPropertiesChoice4),
+);
+pp_view!(
+    view_lvl4,
+    a::Level4ParagraphProperties,
+    (level4_paragraph_properties_choice1, Level4ParagraphPropertiesChoice),
+    (level4_paragraph_properties_choice2, Level4ParagraphPropertiesChoice2),
+    (level4_paragraph_properties_choice3, Level4ParagraphPropertiesChoice3),
+    (level4_paragraph_properties_choice4, Level4ParagraphPropertiesChoice4),
+);
+pp_view!(
+    view_lvl5,
+    a::Level5ParagraphProperties,
+    (level5_paragraph_properties_choice1, Level5ParagraphPropertiesChoice),
+    (level5_paragraph_properties_choice2, Level5ParagraphPropertiesChoice2),
+    (level5_paragraph_properties_choice3, Level5ParagraphPropertiesChoice3),
+    (level5_paragraph_properties_choice4, Level5ParagraphPropertiesChoice4),
+);
+pp_view!(
+    view_lvl6,
+    a::Level6ParagraphProperties,
+    (level6_paragraph_properties_choice1, Level6ParagraphPropertiesChoice),
+    (level6_paragraph_properties_choice2, Level6ParagraphPropertiesChoice2),
+    (level6_paragraph_properties_choice3, Level6ParagraphPropertiesChoice3),
+    (level6_paragraph_properties_choice4, Level6ParagraphPropertiesChoice4),
+);
+pp_view!(
+    view_lvl7,
+    a::Level7ParagraphProperties,
+    (level7_paragraph_properties_choice1, Level7ParagraphPropertiesChoice),
+    (level7_paragraph_properties_choice2, Level7ParagraphPropertiesChoice2),
+    (level7_paragraph_properties_choice3, Level7ParagraphPropertiesChoice3),
+    (level7_paragraph_properties_choice4, Level7ParagraphPropertiesChoice4),
+);
+pp_view!(
+    view_lvl8,
+    a::Level8ParagraphProperties,
+    (level8_paragraph_properties_choice1, Level8ParagraphPropertiesChoice),
+    (level8_paragraph_properties_choice2, Level8ParagraphPropertiesChoice2),
+    (level8_paragraph_properties_choice3, Level8ParagraphPropertiesChoice3),
+    (level8_paragraph_properties_choice4, Level8ParagraphPropertiesChoice4),
+);
+pp_view!(
+    view_lvl9,
+    a::Level9ParagraphProperties,
+    (level9_paragraph_properties_choice1, Level9ParagraphPropertiesChoice),
+    (level9_paragraph_properties_choice2, Level9ParagraphPropertiesChoice2),
+    (level9_paragraph_properties_choice3, Level9ParagraphPropertiesChoice3),
+    (level9_paragraph_properties_choice4, Level9ParagraphPropertiesChoice4),
+);
+
+fn view_lvl<'a>(ls: &'a a::ListStyle, level: usize) -> Option<PpResolved<'a>> {
+    match level {
+        0 => ls.level1_paragraph_properties.as_deref().map(view_lvl1),
+        1 => ls.level2_paragraph_properties.as_deref().map(view_lvl2),
+        2 => ls.level3_paragraph_properties.as_deref().map(view_lvl3),
+        3 => ls.level4_paragraph_properties.as_deref().map(view_lvl4),
+        4 => ls.level5_paragraph_properties.as_deref().map(view_lvl5),
+        5 => ls.level6_paragraph_properties.as_deref().map(view_lvl6),
+        6 => ls.level7_paragraph_properties.as_deref().map(view_lvl7),
+        7 => ls.level8_paragraph_properties.as_deref().map(view_lvl8),
+        8 => ls.level9_paragraph_properties.as_deref().map(view_lvl9),
+        _ => None,
+    }
+}
+
+fn merge_pp<'a>(base: PpResolved<'a>, over: PpResolved<'a>) -> PpResolved<'a> {
+    PpResolved {
+        align: over.align.or(base.align),
+        mar_l: over.mar_l.or(base.mar_l),
+        indent: over.indent.or(base.indent),
+        level: over.level.or(base.level),
+        line_spacing: LnSp {
+            pct: over.line_spacing.pct.or(base.line_spacing.pct),
+            pts: over.line_spacing.pts.or(base.line_spacing.pts),
+        },
+        space_before: LnSp {
+            pct: over.space_before.pct.or(base.space_before.pct),
+            pts: over.space_before.pts.or(base.space_before.pts),
+        },
+        space_after: LnSp {
+            pct: over.space_after.pct.or(base.space_after.pct),
+            pts: over.space_after.pts.or(base.space_after.pts),
+        },
+        bullet_kind: over.bullet_kind.or(base.bullet_kind),
+        bullet_color: over.bullet_color.or(base.bullet_color),
+        bullet_font: over.bullet_font.or(base.bullet_font),
+        bullet_size_pct: over.bullet_size_pct.or(base.bullet_size_pct),
+        bullet_size_pts: over.bullet_size_pts.or(base.bullet_size_pts),
+        def_r_pr: over.def_r_pr.or(base.def_r_pr),
+    }
+}
+
 pub(crate) fn text_body_to_paragraphs(
     tb: Option<&xdr::TextBody>,
     theme: Option<&Theme>,
@@ -59,9 +282,38 @@ pub(crate) fn text_body_to_paragraphs(
         let p_pr = p.paragraph_properties.as_deref();
         let level = p_pr.and_then(|pp| pp.level).unwrap_or(0).clamp(0, 8) as usize;
 
-        let align = pick_align(p_pr, list_style, level);
+        let mut resolved = PpResolved::default();
+        if let Some(ls) = list_style {
+            if let Some(def) = ls.default_paragraph_properties.as_deref() {
+                resolved = merge_pp(resolved, view_def_pp(def));
+            }
+            if let Some(lvl) = view_lvl(ls, level) {
+                resolved = merge_pp(resolved, lvl);
+            }
+        }
+        if let Some(pp) = p_pr {
+            resolved = merge_pp(resolved, view_pp(pp));
+        }
 
         let mut runs: Vec<TextRun> = Vec::new();
+        let bake_defaults = |tr: &mut TextRun| {
+            if let Some(ls) = list_style {
+                if let Some(def) = ls.default_paragraph_properties.as_deref() {
+                    if let Some(dr) = def.a_def_r_pr.as_deref() {
+                        apply_default_run_properties(dr, tr, theme);
+                    }
+                }
+                if let Some(dr) = lvl_paragraph_def_r_pr(ls, level) {
+                    apply_default_run_properties(dr, tr, theme);
+                }
+            }
+            if let Some(pp) = p_pr {
+                if let Some(dr) = pp.a_def_r_pr.as_deref() {
+                    apply_default_run_properties(dr, tr, theme);
+                }
+            }
+        };
+
         for ch in &p.paragraph_choice {
             match ch {
                 a::ParagraphChoice::AR(run) => {
@@ -73,9 +325,7 @@ pub(crate) fn text_body_to_paragraphs(
                         text: text.to_string(),
                         ..Default::default()
                     };
-                    apply_lst_style_def_p_pr(list_style, &mut tr, theme);
-                    apply_lst_style_lvl_p_pr(list_style, level, &mut tr, theme);
-                    apply_pp_def_r_pr(p_pr, &mut tr, theme);
+                    bake_defaults(&mut tr);
                     if let Some(rp) = run.run_properties.as_deref() {
                         apply_run_properties(rp, &mut tr, theme);
                     }
@@ -96,9 +346,7 @@ pub(crate) fn text_body_to_paragraphs(
                         text,
                         ..Default::default()
                     };
-                    apply_lst_style_def_p_pr(list_style, &mut tr, theme);
-                    apply_lst_style_lvl_p_pr(list_style, level, &mut tr, theme);
-                    apply_pp_def_r_pr(p_pr, &mut tr, theme);
+                    bake_defaults(&mut tr);
                     if let Some(rp) = field.run_properties.as_deref() {
                         apply_run_properties(rp, &mut tr, theme);
                     }
@@ -107,9 +355,25 @@ pub(crate) fn text_body_to_paragraphs(
                 _ => {}
             }
         }
-        if !runs.is_empty() {
-            paragraphs.push(ShapeParagraph { align, runs });
+
+        if runs.is_empty() {
+            continue;
         }
+
+        paragraphs.push(ShapeParagraph {
+            align: resolved.align.clone(),
+            mar_l_emu: resolved.mar_l,
+            indent_emu: resolved.indent,
+            level: Some(level as u8),
+            line_spacing_pct: resolved.line_spacing.pct,
+            line_spacing_pts: resolved.line_spacing.pts,
+            space_before_pct: resolved.space_before.pct,
+            space_before_pts: resolved.space_before.pts,
+            space_after_pct: resolved.space_after.pct,
+            space_after_pts: resolved.space_after.pts,
+            bullet: build_bullet(&resolved, theme),
+            runs,
+        });
     }
     TextBodyOut {
         anchor,
@@ -123,6 +387,153 @@ pub(crate) fn text_body_to_paragraphs(
         vert_overflow,
         horz_overflow,
         paragraphs,
+    }
+}
+
+fn build_bullet(r: &PpResolved<'_>, theme: Option<&Theme>) -> Option<ShapeBullet> {
+    let bk = r.bullet_kind.as_ref()?;
+    let color = r.bullet_color.and_then(|c| bullet_color_to_color(c, theme));
+    Some(ShapeBullet {
+        kind: bk.kind.to_string(),
+        char: bk.char.clone(),
+        auto_num_type: bk.auto_num_type.clone(),
+        auto_num_start_at: bk.auto_num_start_at,
+        font: r
+            .bullet_font
+            .and_then(|f| f.typeface.clone())
+            .filter(|s| !s.is_empty()),
+        color,
+        size_pct: r.bullet_size_pct,
+        size_pts: r.bullet_size_pts,
+    })
+}
+
+fn bullet_color_to_color(bc: &a::BulletColor, theme: Option<&Theme>) -> Option<Color> {
+    let hex = match bc.bullet_color_choice.as_ref()? {
+        a::BulletColorChoice::ASrgbClr(c) => {
+            let v: &str = c.val.as_ref();
+            if v.len() == 6 || v.len() == 8 {
+                Some(v[v.len() - 6..].to_string())
+            } else {
+                None
+            }
+        }
+        a::BulletColorChoice::ASchemeClr(c) => resolve_scheme_clr_hex(c, theme),
+        a::BulletColorChoice::APrstClr(c) => Some(format!("{:?}", c.val)).map(|_| "808080".to_string()),
+        a::BulletColorChoice::ASysClr(c) => c
+            .last_color
+            .as_deref()
+            .filter(|s| s.len() == 6)
+            .map(|s| s.to_string()),
+        _ => None,
+    }?;
+    if hex.len() != 6 {
+        return None;
+    }
+    Some(Color {
+        rgb: Some(hex.to_uppercase()),
+        theme: None,
+        indexed: None,
+        tint: None,
+    })
+}
+
+fn resolve_scheme_clr_hex(c: &a::SchemeColor, theme: Option<&Theme>) -> Option<String> {
+    let theme = theme?;
+    let token = format!("{:?}", c.val);
+    let idx = scheme_color_index(&token)?;
+    theme.colors.get(idx).map(|s| {
+        let s = s.trim_start_matches('#');
+        s.chars()
+            .rev()
+            .take(6)
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect::<String>()
+    })
+}
+
+fn scheme_color_index(token: &str) -> Option<usize> {
+    if token.contains("Light1") || token.contains("Background1") {
+        Some(0)
+    } else if token.contains("Dark1") || token.contains("Text1") {
+        Some(1)
+    } else if token.contains("Light2") || token.contains("Background2") {
+        Some(2)
+    } else if token.contains("Dark2") || token.contains("Text2") {
+        Some(3)
+    } else if token.contains("Accent1") {
+        Some(4)
+    } else if token.contains("Accent2") {
+        Some(5)
+    } else if token.contains("Accent3") {
+        Some(6)
+    } else if token.contains("Accent4") {
+        Some(7)
+    } else if token.contains("Accent5") {
+        Some(8)
+    } else if token.contains("Accent6") {
+        Some(9)
+    } else if token.contains("Hyperlink") && !token.contains("Followed") {
+        Some(10)
+    } else if token.contains("FollowedHyperlink") {
+        Some(11)
+    } else {
+        None
+    }
+}
+
+fn auto_num_token(t: &a::TextAutoNumberSchemeValues) -> String {
+    let dbg = format!("{:?}", t);
+    if dbg.is_empty() {
+        return dbg;
+    }
+    let mut chars = dbg.chars();
+    let first = chars.next().unwrap().to_ascii_lowercase();
+    let rest: String = chars.collect();
+    format!("{first}{rest}")
+}
+
+fn line_spacing_from(ls: Option<&a::LineSpacing>) -> LnSp {
+    match ls.and_then(|x| x.line_spacing_choice.as_ref()) {
+        Some(a::LineSpacingChoice::ASpcPct(p)) => LnSp {
+            pct: Some(p.val),
+            pts: None,
+        },
+        Some(a::LineSpacingChoice::ASpcPts(p)) => LnSp {
+            pct: None,
+            pts: Some(p.val),
+        },
+        _ => LnSp::default(),
+    }
+}
+
+fn space_before_from(s: Option<&a::SpaceBefore>) -> LnSp {
+    match s.and_then(|x| x.space_before_choice.as_ref()) {
+        Some(a::SpaceBeforeChoice::ASpcPct(p)) => LnSp {
+            pct: Some(p.val),
+            pts: None,
+        },
+        Some(a::SpaceBeforeChoice::ASpcPts(p)) => LnSp {
+            pct: None,
+            pts: Some(p.val),
+        },
+        _ => LnSp::default(),
+    }
+}
+
+fn space_after_from(s: Option<&a::SpaceAfter>) -> LnSp {
+    match s.and_then(|x| x.space_after_choice.as_ref()) {
+        Some(a::SpaceAfterChoice::ASpcPct(p)) => LnSp {
+            pct: Some(p.val),
+            pts: None,
+        },
+        Some(a::SpaceAfterChoice::ASpcPts(p)) => LnSp {
+            pct: None,
+            pts: Some(p.val),
+        },
+        _ => LnSp::default(),
     }
 }
 
@@ -174,150 +585,19 @@ fn body_autofit(bp: &a::BodyProperties) -> (Option<String>, Option<i32>, Option<
     }
 }
 
-fn pick_align(
-    p_pr: Option<&a::ParagraphProperties>,
-    list_style: Option<&a::ListStyle>,
-    level: usize,
-) -> Option<String> {
-    let mut align: Option<String> = None;
-    if let Some(ls) = list_style {
-        if let Some(def_pp) = ls.default_paragraph_properties.as_deref() {
-            if let Some(s) = alignment_token(&def_pp.alignment) {
-                align = Some(s);
-            }
-        }
-        if let Some(lvl_pp) = lvl_paragraph_alignment(ls, level) {
-            if let Some(s) = lvl_pp {
-                align = Some(s);
-            }
-        }
-    }
-    if let Some(s) = paragraph_align_token(p_pr) {
-        align = Some(s);
-    }
-    align
-}
-
-fn apply_lst_style_def_p_pr(
-    list_style: Option<&a::ListStyle>,
-    tr: &mut TextRun,
-    theme: Option<&Theme>,
-) {
-    let Some(ls) = list_style else { return };
-    let Some(def_pp) = ls.default_paragraph_properties.as_deref() else {
-        return;
-    };
-    if let Some(dr) = def_pp.a_def_r_pr.as_deref() {
-        apply_default_run_properties(dr, tr, theme);
-    }
-}
-
-fn apply_lst_style_lvl_p_pr(
-    list_style: Option<&a::ListStyle>,
-    level: usize,
-    tr: &mut TextRun,
-    theme: Option<&Theme>,
-) {
-    let Some(ls) = list_style else { return };
-    if let Some(dr) = lvl_paragraph_def_r_pr(ls, level) {
-        apply_default_run_properties(dr, tr, theme);
-    }
-}
-
-fn apply_pp_def_r_pr(
-    p_pr: Option<&a::ParagraphProperties>,
-    tr: &mut TextRun,
-    theme: Option<&Theme>,
-) {
-    let Some(pp) = p_pr else { return };
-    if let Some(dr) = pp.a_def_r_pr.as_deref() {
-        apply_default_run_properties(dr, tr, theme);
-    }
-}
-
 fn lvl_paragraph_def_r_pr(ls: &a::ListStyle, level: usize) -> Option<&a::DefaultRunProperties> {
     match level {
-        0 => ls
-            .level1_paragraph_properties
-            .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
-        1 => ls
-            .level2_paragraph_properties
-            .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
-        2 => ls
-            .level3_paragraph_properties
-            .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
-        3 => ls
-            .level4_paragraph_properties
-            .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
-        4 => ls
-            .level5_paragraph_properties
-            .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
-        5 => ls
-            .level6_paragraph_properties
-            .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
-        6 => ls
-            .level7_paragraph_properties
-            .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
-        7 => ls
-            .level8_paragraph_properties
-            .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
-        8 => ls
-            .level9_paragraph_properties
-            .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
+        0 => ls.level1_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        1 => ls.level2_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        2 => ls.level3_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        3 => ls.level4_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        4 => ls.level5_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        5 => ls.level6_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        6 => ls.level7_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        7 => ls.level8_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        8 => ls.level9_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
         _ => None,
     }
-}
-
-fn lvl_paragraph_alignment(ls: &a::ListStyle, level: usize) -> Option<Option<String>> {
-    let align = match level {
-        0 => ls
-            .level1_paragraph_properties
-            .as_deref()
-            .map(|p| alignment_token(&p.alignment)),
-        1 => ls
-            .level2_paragraph_properties
-            .as_deref()
-            .map(|p| alignment_token(&p.alignment)),
-        2 => ls
-            .level3_paragraph_properties
-            .as_deref()
-            .map(|p| alignment_token(&p.alignment)),
-        3 => ls
-            .level4_paragraph_properties
-            .as_deref()
-            .map(|p| alignment_token(&p.alignment)),
-        4 => ls
-            .level5_paragraph_properties
-            .as_deref()
-            .map(|p| alignment_token(&p.alignment)),
-        5 => ls
-            .level6_paragraph_properties
-            .as_deref()
-            .map(|p| alignment_token(&p.alignment)),
-        6 => ls
-            .level7_paragraph_properties
-            .as_deref()
-            .map(|p| alignment_token(&p.alignment)),
-        7 => ls
-            .level8_paragraph_properties
-            .as_deref()
-            .map(|p| alignment_token(&p.alignment)),
-        8 => ls
-            .level9_paragraph_properties
-            .as_deref()
-            .map(|p| alignment_token(&p.alignment)),
-        _ => None,
-    };
-    align
 }
 
 fn alignment_token(alignment: &Option<a::TextAlignmentTypeValues>) -> Option<String> {
@@ -380,17 +660,12 @@ fn body_anchor_token(bp: &a::BodyProperties) -> Option<String> {
     }
 }
 
-fn paragraph_align_token(pp: Option<&a::ParagraphProperties>) -> Option<String> {
-    let pp = pp?;
-    alignment_token(&pp.alignment)
+fn underline_state(u: Option<&a::TextUnderlineValues>) -> Option<bool> {
+    u.map(|v| !matches!(v, a::TextUnderlineValues::None))
 }
 
-fn underline_is_visible(u: Option<&a::TextUnderlineValues>) -> bool {
-    matches!(u, Some(v) if !matches!(v, a::TextUnderlineValues::None))
-}
-
-fn strike_is_visible(s: Option<&a::TextStrikeValues>) -> bool {
-    matches!(s, Some(v) if !matches!(v, a::TextStrikeValues::NoStrike))
+fn strike_state(s: Option<&a::TextStrikeValues>) -> Option<bool> {
+    s.map(|v| !matches!(v, a::TextStrikeValues::NoStrike))
 }
 
 fn apply_run_properties(rp: &a::RunProperties, tr: &mut TextRun, theme: Option<&Theme>) {
@@ -404,10 +679,12 @@ fn apply_run_properties(rp: &a::RunProperties, tr: &mut TextRun, theme: Option<&
         rp.font_size,
         rp.bold,
         rp.italic,
-        underline_is_visible(rp.underline.as_ref()),
-        strike_is_visible(rp.strike.as_ref()),
+        underline_state(rp.underline.as_ref()),
+        strike_state(rp.strike.as_ref()),
         solid_fill,
         rp.a_latin.as_ref(),
+        rp.kerning,
+        rp.baseline,
     );
 }
 
@@ -426,10 +703,12 @@ fn apply_default_run_properties(
         rp.font_size,
         rp.bold,
         rp.italic,
-        underline_is_visible(rp.underline.as_ref()),
-        strike_is_visible(rp.strike.as_ref()),
+        underline_state(rp.underline.as_ref()),
+        strike_state(rp.strike.as_ref()),
         solid_fill,
         rp.a_latin.as_ref(),
+        rp.kerning,
+        rp.baseline,
     );
 }
 
@@ -439,10 +718,12 @@ fn apply_run_fields(
     font_size: Option<i32>,
     bold: Option<bool>,
     italic: Option<bool>,
-    underline_present: bool,
-    strike_present: bool,
+    underline_state: Option<bool>,
+    strike_state: Option<bool>,
     solid_fill: Option<&a::SolidFill>,
     latin: Option<&a::LatinFont>,
+    kern: Option<i32>,
+    baseline: Option<i32>,
 ) {
     if let Some(sz) = font_size {
         tr.size = Some((sz as f32) / 100.0);
@@ -453,11 +734,11 @@ fn apply_run_fields(
     if let Some(i) = italic {
         tr.italic = i;
     }
-    if underline_present {
-        tr.underline = true;
+    if let Some(v) = underline_state {
+        tr.underline = v;
     }
-    if strike_present {
-        tr.strike = true;
+    if let Some(v) = strike_state {
+        tr.strike = v;
     }
     if let Some(sf) = solid_fill {
         if let Some(hex) = resolve_solid_fill(sf, theme) {
@@ -485,5 +766,11 @@ fn apply_run_fields(
                 tr.font_name = t.major_font.clone();
             }
         }
+    }
+    if let Some(k) = kern {
+        tr.kern = Some(k);
+    }
+    if let Some(b) = baseline {
+        tr.baseline = Some(b);
     }
 }
