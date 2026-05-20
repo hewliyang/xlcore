@@ -5,6 +5,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-05-20
+
 ### Added
 
 - Multi-segment elbow connectors `bentConnector2`, `bentConnector4`, and `bentConnector5`, in addition to the existing `bentConnector3`. `ShapeNode` gains an `adj3` slot, and the extractor reads `<a:avLst><a:gd name="adj3">`. Path geometry follows ECMA-376 Appendix D; `flipH`/`flipV` and arrowheads honored.
