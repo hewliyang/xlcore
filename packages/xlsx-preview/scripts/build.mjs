@@ -18,7 +18,8 @@ await build({
 });
 
 for (const [entry, outfile, platform, external = []] of [
-  ["src/index.ts", "dist/index.js", "node", ["skia-canvas"]],
+  ["src/index.ts", "dist/index.js", "browser"],
+  ["src/node.ts", "dist/node.js", "node", ["skia-canvas"]],
   ["src/cli.ts", "dist/cli.js", "node", ["skia-canvas"]],
   ["src/previewer.ts", "dist/previewer.js", "browser"],
   ["src/color.ts", "dist/color.js", "browser"],
@@ -57,4 +58,12 @@ await cp("../../crates/xlcore-wasm/pkg/xlcore_wasm_bg.wasm", "dist/xlcore_wasm_b
 await cp(
   "../../crates/xlcore-wasm/pkg/xlcore_wasm_bg.wasm.d.ts",
   "dist/xlcore_wasm_bg.wasm.d.ts",
+);
+
+// Vitest transpiles from src/, so `import.meta.url` inside `node.ts` resolves
+// to `src/xlcore_wasm_bg.wasm`. Stage the binary there so the same `node.ts`
+// works for both bundled (dist) and source-based (tests) loads.
+await cp(
+  "../../crates/xlcore-wasm/pkg/xlcore_wasm_bg.wasm",
+  "src/xlcore_wasm_bg.wasm",
 );

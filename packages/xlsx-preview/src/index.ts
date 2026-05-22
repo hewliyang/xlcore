@@ -9,14 +9,6 @@ export {
   loadWorkbookFromFileWithReport,
 } from "./browserLoader.js";
 export {
-  loadWorkbookFromXlsx,
-  loadWorkbookFromXlsxWithReport,
-  renderToCanvas,
-  renderToPng,
-  renderXlsxToCanvas,
-  renderXlsxToPng,
-} from "./node.js";
-export {
   EMPTY_LOAD_REPORT,
   XlsxLoadError,
   reportIsClean,
@@ -35,14 +27,12 @@ export type {
   WorkbookLoaderOptions,
   WorkbookLoadProgress,
 } from "./browserLoader.js";
-export type { LoadedWorkbookNode } from "./node.js";
 export type {
   PreviewerEventName,
   PreviewerOptions,
   PreviewerState,
   WorkbookPreviewer,
 } from "./previewer.js";
-export type { RenderPngOptions } from "./node.js";
 export { jsDelivrUrls, unpkgUrls } from "./cdn.js";
 export type { CdnAssetUrls } from "./cdn.js";
 export type * from "./types.js";

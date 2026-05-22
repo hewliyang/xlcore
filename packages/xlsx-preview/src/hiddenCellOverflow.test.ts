@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 
-import { loadWorkbookFromXlsx, renderToCanvas } from "../dist/index.js";
+import { loadWorkbookFromXlsx, renderToCanvas } from "./node.js";
 
 const FIXTURE = resolve(
   fileURLToPath(import.meta.url),

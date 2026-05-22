@@ -14,4 +14,6 @@ layout.json
 .DS_Store
 TODO.md
 ecma-376/
+epplus/
+ironcalc/
 tests/fixtures/shapes/dotnet-builder/
