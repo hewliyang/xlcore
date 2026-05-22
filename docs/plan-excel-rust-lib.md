@@ -58,6 +58,7 @@ crates/
   xlcore-export/   # ✅ WorkbookLayout serializer (ts-rs-generated TS bindings)
   xlcore-wasm/     # ✅ wasm-bindgen entry for browser (used by xlsxWorker.ts)
   xlcore-cli/      # ✅ `xlcore extract` / `xlcore preview`
+  xlcore-tabular/  # ✅ csv + parquet (parquet behind `parquet` cargo feature; enabled in wasm)
   xlcore-engine/   # 🔴 not yet — ironcalc fork + missing functions
   xlcore-bridge/   # 🔴 not yet — harvest/replay/write-back; agent batch-mutation API
 packages/xlsx-preview/  # ✅ npm package, runs in browser + Node

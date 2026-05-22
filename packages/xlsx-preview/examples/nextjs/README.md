@@ -1,13 +1,15 @@
 # xlsx-preview · Next.js
 
 Minimal Next.js (App Router) starter using `@hewliyang/xlsx-preview/react`.
+This starter depends on the local package via `file:../..`, so run it from
+this directory when testing worktree changes.
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Then open <http://localhost:3000> and pick an `.xlsx` file.
+Then open <http://localhost:3000> and pick an `.xlsx`, `.csv`, or `.parquet` file.
 
 ## What this shows
 

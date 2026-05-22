@@ -10,10 +10,28 @@ import {
   type PreviewerOptions,
   type WorkbookPreviewer,
 } from "./previewer.js";
+import { resolveWorkbookFormat, type WorkbookSourceFormat } from "./sourceFormat.js";
 import type { WorkbookLayout } from "./types.js";
 
 export interface WorkbookLoadProgress {
   label: string;
+}
+
+/** Subset of the Rust `CsvOptions` that's safe to expose to JS. */
+export interface CsvLoadOptions {
+  /** Single byte (`,`, `\t`, `;`, `|`) or the literal `"tab"`. */
+  delimiter?: string;
+  /** Rendered-row truncation cap; warning is reported via `LoadReport.warnings`. */
+  maxRows?: number;
+  /** Sheet name shown in the renderer's tab strip. */
+  sheetName?: string;
+}
+
+/** Subset of the Rust `ParquetOptions` exposed to JS. */
+export interface ParquetLoadOptions {
+  /** Rendered-row truncation cap, including the synthetic header row. */
+  maxRows?: number;
+  sheetName?: string;
 }
 
 export interface WorkbookLoaderOptions {
@@ -21,6 +39,24 @@ export interface WorkbookLoaderOptions {
 
   workerUrl?: string;
   onProgress?: (progress: WorkbookLoadProgress) => void;
+
+  /** XLSX only: extract a single sheet by zero-based index. */
+  sheetIndex?: number;
+
+  /** XLSX only: extract a single sheet by name. Takes precedence over sheetIndex. */
+  sheetName?: string;
+
+  /**
+   * Source format. `"auto"` (default) sniffs Parquet/XLSX byte signatures
+   * first, then falls back to a `File`'s name/type when available.
+   */
+  format?: "auto" | WorkbookSourceFormat;
+
+  /** Forwarded to the rust CSV reader when `format === "csv"`. */
+  csvOptions?: CsvLoadOptions;
+
+  /** Forwarded to the rust parquet reader when `format === "parquet"`. */
+  parquetOptions?: ParquetLoadOptions;
 }
 
 export interface CreateWorkbookPreviewerFromFileOptions
@@ -47,7 +83,24 @@ export async function loadWorkbookFromFileWithReport(
 ): Promise<LoadedWorkbook> {
   progress(options, "Reading file");
   const bytes = await file.arrayBuffer();
-  return loadWorkbookFromArrayBufferWithReport(bytes, options);
+  const format = resolveWorkbookFormat(options.format, bytes, {
+    fileName: (file as File).name,
+    mimeType: file.type,
+  });
+  const resolved: WorkbookLoaderOptions = {
+    ...options,
+    format,
+    csvOptions: {
+      // Default the sheet tab name to the file's basename if the caller didn't.
+      sheetName: defaultSheetName(file),
+      ...options.csvOptions,
+    },
+    parquetOptions: {
+      sheetName: defaultSheetName(file),
+      ...options.parquetOptions,
+    },
+  };
+  return loadWorkbookFromArrayBufferWithReport(bytes, resolved);
 }
 
 export async function loadWorkbookFromArrayBuffer(
@@ -61,7 +114,10 @@ export async function loadWorkbookFromArrayBufferWithReport(
   bytes: ArrayBuffer,
   options: WorkbookLoaderOptions = {},
 ): Promise<LoadedWorkbook> {
+  const format = resolveWorkbookFormat(options.format, bytes);
+  const resolvedOptions = { ...options, format };
   const worker = createExtractionWorker(options);
+  const workerBytes = bytes.slice(0);
   return await new Promise((resolve, reject) => {
     worker.onmessage = (event) => {
       const message = event.data as
@@ -92,10 +148,17 @@ export async function loadWorkbookFromArrayBufferWithReport(
     };
     worker.postMessage(
       {
-        bytes,
+        bytes: workerBytes,
         wasmBinaryUrl: options.wasmBinaryUrl ?? DEFAULT_WASM_BINARY_URL,
+        format,
+        xlsxOptions:
+          format === "xlsx"
+            ? { sheetIndex: options.sheetIndex, sheetName: options.sheetName }
+            : undefined,
+        csvOptions: format === "csv" ? resolvedOptions.csvOptions : undefined,
+        parquetOptions: format === "parquet" ? resolvedOptions.parquetOptions : undefined,
       },
-      [bytes],
+      [workerBytes],
     );
   });
 }
@@ -140,4 +203,10 @@ function isCrossOrigin(url: string): boolean {
 
 function progress(options: WorkbookLoaderOptions, label: string): void {
   options.onProgress?.({ label });
+}
+
+function defaultSheetName(file: Blob): string {
+  const name = (file as File).name ?? "";
+  const base = name.replace(/\.[^./\\]+$/, "").trim();
+  return base || "data";
 }

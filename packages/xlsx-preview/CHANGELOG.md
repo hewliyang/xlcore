@@ -7,27 +7,44 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- CSV and Parquet preview support across browser, React, Node, and CLI. New
+  `format` / `csvOptions` / `parquetOptions` loader options route tabular
+  files through the same `WorkbookLayout` renderer as XLSX; browser and CLI
+  entry points sniff Parquet/XLSX byte signatures first, then filename/MIME
+  hints. Node gains `loadWorkbookFromCsv*` and `loadWorkbookFromParquet*`
+  helpers plus a `@hewliyang/xlsx-preview/node` subpath.
+- New `xlcore-tabular` Rust crate converts CSV and Parquet into one-sheet,
+  unstyled `WorkbookLayout`s. CSV keeps type inference conservative
+  (leading-zero identifiers stay strings), replaces invalid UTF-8 instead of
+  dropping fields, and reports truncation warnings. Parquet supports primitive,
+  temporal, nested/list/struct/map, decimal, and binary-ish Arrow columns with
+  precision-preserving string fallback for large integers.
 - Package test/build hardening: `pnpm test` now checks for stale wasm, rebuilds
-  TS from a clean `dist`, and verifies that the built public entries can be
-  imported. Added a `@hewliyang/xlsx-preview/node` subpath for the Node-only
-  loaders and renderers.
+  TS from a clean `dist`, verifies built public entries can be imported, and
+  exercises committed CSV/Parquet fixtures. Added `smoke:csv` and
+  `smoke:parquet` scripts for shipped-build PNG smoke tests.
 - Structured load-error envelope and `LoadReport`. The wasm extractor now returns `{ layout, report }`; `loadWorkbookFromFileWithReport` / `loadWorkbookFromArrayBufferWithReport` / `loadWorkbookFromXlsxWithReport` expose the report alongside the layout. Failures throw `XlsxLoadError` with `code` (`Zip` | `Schema` | `MissingPart` | `Io` | `Other`), `part`, `schemaKind`, `ty`, `field`, `value` and a `diagnosticsText()` helper. CLI gains `--verbose` (print fixes/warnings) and `--strict` (exit `2` if the loader had to coerce attributes _or_ skip a fixer).
 - React: `ExcelPreviewer` renders a default error card on load failure and a dismissible "leniency" chip when the load report is non-clean. Override via `renderError`, hide via `hideErrorUI` / `showLeniencyChip={false}`.
 
 ### Changed
 
+- The npm package description and examples now describe workbook/tabular
+  previews rather than XLSX-only previews. Build-based examples accept and
+  extract `.xlsx`, `.csv`, `.tsv`, `.parquet`, and `.pqt`; the pinned
+  no-build CDN example remains limited to features already published on npm.
 - **Breaking (internal worker protocol):** the bundled extraction worker now posts `{ type: "loaded", layout, report }` instead of `{ type: "layout", layout }`, and errors are posted as `{ type: "error", payload: XlsxLoadErrorPayload }` instead of `{ type: "error", message }`. The wasm-bindgen export `extract_xlsx` now returns `{ layout, report }` instead of `layout`. Consumers using the public `loadWorkbookFromFile` / `createWorkbookPreviewerFromFile` APIs are unaffected; anyone embedding the worker or calling `extract_xlsx` directly must update.
 
 ### Fixed
 
+- React `useWorkbookPreviewer` reloads when load-affecting options change for
+  the same `File` (`format`, sheet selectors, tabular options, worker/wasm
+  URLs, initial sheet/zoom/hidden-sheet options) while callback-only changes
+  still update through refs without forcing reloads.
+- Built package subpaths no longer miss runtime files: `dist/sourceFormat.js`
+  and `dist/node.js` are emitted and covered by import checks.
 - The root package entrypoint no longer re-exports Node-only helpers, keeping
   `@hewliyang/xlsx-preview` browser-safe. Server-side rendering and file
-  loading helpers are now available from `@hewliyang/xlsx-preview/node`.
-- Built package subpaths no longer miss the `dist/node.js` runtime file; an
-  import-time check guards the dist layout in CI.
-- When extracting a single sheet by name or index, `defined names` with a
-  `local_sheet_id` are now filtered to the selected sheet and remapped to
-  local id `0`, so chart series referencing local names resolve correctly.
+  loading helpers are available from `@hewliyang/xlsx-preview/node`.
 
 ## [0.0.8] - 2026-05-20
 

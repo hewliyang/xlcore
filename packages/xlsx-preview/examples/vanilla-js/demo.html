@@ -17,7 +17,9 @@
 
     <script type="module">
       import { createWorkbookPreviewer } from "https://esm.sh/@hewliyang/xlsx-preview@0.0.8/previewer";
-      import initWasm, { extract_xlsx } from "https://cdn.jsdelivr.net/npm/@hewliyang/xlsx-preview@0.0.8/dist/xlcore_wasm.js";
+      import initWasm, {
+        extract_xlsx,
+      } from "https://cdn.jsdelivr.net/npm/@hewliyang/xlsx-preview@0.0.8/dist/xlcore_wasm.js";
 
       const wasmReady = initWasm({
         module_or_path:
@@ -31,7 +33,7 @@
         if (!file) return;
         await wasmReady;
         const bytes = new Uint8Array(await file.arrayBuffer());
-        const layout = extract_xlsx(bytes, undefined);
+        const { layout } = extract_xlsx(bytes, undefined);
         previewer?.destroy();
         previewer = createWorkbookPreviewer(container, layout);
       });

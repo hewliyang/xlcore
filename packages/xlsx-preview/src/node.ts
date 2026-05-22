@@ -1,7 +1,7 @@
 import { Canvas, Image } from "skia-canvas";
 import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
-import initWasm, { extract_xlsx } from "xlcore-wasm";
+import initWasm, { extract_csv, extract_parquet, extract_xlsx } from "xlcore-wasm";
 import { decodeWorkbookLayout } from "./columnar.js";
 import {
   EMPTY_LOAD_REPORT,
@@ -65,6 +65,76 @@ export async function loadWorkbookFromXlsxWithReport(
       sheetIndex: options.sheetIndex,
       sheetName: options.sheetName,
     }) as {
+      layout: WorkbookLayout;
+      report?: LoadReport;
+    };
+  } catch (err) {
+    throw new XlsxLoadError(xlsxLoadErrorPayloadFromUnknown(err));
+  }
+  return { layout: envelope.layout, report: envelope.report ?? EMPTY_LOAD_REPORT };
+}
+
+/**
+ * Options accepted by {@link loadWorkbookFromCsv}. All fields are optional;
+ * delimiter defaults to a sniff over the first line.
+ */
+export interface LoadWorkbookFromCsvOptions {
+  /** Single byte (`,`, `\t`, `;`, `|`) or the literal `"tab"`. */
+  delimiter?: string;
+  /** Hard cap on rendered rows. Triggers a `report.warnings` entry. */
+  maxRows?: number;
+  /** Sheet name shown in the renderer's tab strip. */
+  sheetName?: string;
+}
+
+export async function loadWorkbookFromCsv(
+  input: string | ArrayBuffer | Uint8Array,
+  options: LoadWorkbookFromCsvOptions = {},
+): Promise<WorkbookLayout> {
+  return (await loadWorkbookFromCsvWithReport(input, options)).layout;
+}
+
+export async function loadWorkbookFromCsvWithReport(
+  input: string | ArrayBuffer | Uint8Array,
+  options: LoadWorkbookFromCsvOptions = {},
+): Promise<LoadedWorkbookNode> {
+  await ensureWasm();
+  const bytes = await bytesFromInput(input);
+  let envelope: { layout: WorkbookLayout; report?: LoadReport };
+  try {
+    envelope = extract_csv(bytes, options) as {
+      layout: WorkbookLayout;
+      report?: LoadReport;
+    };
+  } catch (err) {
+    throw new XlsxLoadError(xlsxLoadErrorPayloadFromUnknown(err));
+  }
+  return { layout: envelope.layout, report: envelope.report ?? EMPTY_LOAD_REPORT };
+}
+
+/** Options accepted by {@link loadWorkbookFromParquet}. */
+export interface LoadWorkbookFromParquetOptions {
+  /** Hard cap on rendered rows, including the synthetic header row. */
+  maxRows?: number;
+  sheetName?: string;
+}
+
+export async function loadWorkbookFromParquet(
+  input: string | ArrayBuffer | Uint8Array,
+  options: LoadWorkbookFromParquetOptions = {},
+): Promise<WorkbookLayout> {
+  return (await loadWorkbookFromParquetWithReport(input, options)).layout;
+}
+
+export async function loadWorkbookFromParquetWithReport(
+  input: string | ArrayBuffer | Uint8Array,
+  options: LoadWorkbookFromParquetOptions = {},
+): Promise<LoadedWorkbookNode> {
+  await ensureWasm();
+  const bytes = await bytesFromInput(input);
+  let envelope: { layout: WorkbookLayout; report?: LoadReport };
+  try {
+    envelope = extract_parquet(bytes, options) as {
       layout: WorkbookLayout;
       report?: LoadReport;
     };

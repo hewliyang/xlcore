@@ -12,7 +12,7 @@ export default function Page() {
       <p>
         <input
           type="file"
-          accept=".xlsx"
+          accept=".xlsx,.csv,.tsv,.parquet,.pqt"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
         />
       </p>

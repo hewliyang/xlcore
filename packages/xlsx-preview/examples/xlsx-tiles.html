@@ -294,8 +294,8 @@ function createLeaf() {
   body.innerHTML = `
     <label for="${fileId}" class="empty-inner">
       <b>Drop or click to load</b>
-      <span>any .xlsx file</span>
-      <input type="file" id="${fileId}" multiple accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+      <span>any .xlsx, .csv, .parquet, or .pqt file</span>
+      <input type="file" id="${fileId}" multiple accept=".xlsx,.csv,.tsv,.parquet,.pqt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/tab-separated-values">
     </label>`;
 
   const tabbar = document.createElement("footer");
@@ -381,10 +381,14 @@ function createLeaf() {
 function wireDropZone(leaf) {
   const body = leaf.bodyEl;
   let fileDepth = 0;
-  const isXlsx = (f) =>
+  const isSupportedWorkbook = (f) =>
     f && (
-      /\.xlsx$/i.test(f.name) ||
-      f.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      /\.(xlsx|csv|tsv|parquet|pqt)$/i.test(f.name) ||
+      f.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      f.type === "application/vnd.apache.parquet" ||
+      f.type === "application/x-parquet" ||
+      f.type === "text/csv" ||
+      f.type === "text/tab-separated-values"
     );
   const isPaneDrag = (types) => types?.includes(PANE_MIME);
   const isFileDrag = (types) => types?.includes("Files");
@@ -448,9 +452,9 @@ function wireDropZone(leaf) {
     e.stopPropagation();
     fileDepth = 0;
     body.classList.remove("drop-target");
-    const files = Array.from(e.dataTransfer.files).filter(isXlsx);
+    const files = Array.from(e.dataTransfer.files).filter(isSupportedWorkbook);
     if (files.length) loadFiles(leaf, files);
-    else leaf.metaEl.textContent = "not an .xlsx file";
+    else leaf.metaEl.textContent = "unsupported file";
   });
 }
 

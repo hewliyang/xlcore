@@ -45,6 +45,7 @@ await build({
     "src/browserLoader.ts",
     "src/xlsxWorker.ts",
     "src/errors.ts",
+    "src/sourceFormat.ts",
   ],
   outdir: "dist",
   platform: "browser",

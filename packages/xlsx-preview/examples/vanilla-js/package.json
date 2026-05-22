@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@hewliyang/xlsx-preview": "^0.0.8"
+    "@hewliyang/xlsx-preview": "file:../.."
   },
   "devDependencies": {
     "vite": "^5.4.0"

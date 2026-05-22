@@ -81,6 +81,90 @@ pub fn extract_xlsx_json(bytes: Vec<u8>, options: JsValue) -> Result<String, JsV
     serde_json::to_string(&envelope).map_err(other_err_to_js)
 }
 
+#[derive(serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct WasmCsvOptions {
+    delimiter: Option<String>,
+    max_rows: Option<usize>,
+    sheet_name: Option<String>,
+}
+
+fn parse_csv_options(options: JsValue) -> Result<xlcore_tabular::CsvOptions, JsValue> {
+    let raw: WasmCsvOptions = if options.is_null() || options.is_undefined() {
+        WasmCsvOptions::default()
+    } else {
+        serde_wasm_bindgen::from_value(options).map_err(other_err_to_js)?
+    };
+    let mut opts = xlcore_tabular::CsvOptions::default();
+    if let Some(d) = raw.delimiter {
+        // Accept either a single byte (",", "\t", ";") or the literal word "tab".
+        let bytes = d.as_bytes();
+        let byte = if d.eq_ignore_ascii_case("tab") {
+            b'\t'
+        } else if bytes.len() == 1 {
+            bytes[0]
+        } else {
+            return Err(other_err_to_js(format!(
+                "csv delimiter must be a single byte (got {d:?})"
+            )));
+        };
+        opts.delimiter = Some(byte);
+    }
+    if let Some(m) = raw.max_rows {
+        opts.max_rows = m;
+    }
+    if let Some(n) = raw.sheet_name {
+        opts.sheet_name = n;
+    }
+    Ok(opts)
+}
+
+#[wasm_bindgen]
+pub fn extract_csv(bytes: Vec<u8>, options: JsValue) -> Result<JsValue, JsValue> {
+    let opts = parse_csv_options(options)?;
+    let (layout, report) = xlcore_tabular::extract_csv(&bytes, &opts).map_err(other_err_to_js)?;
+    let envelope = WasmSuccess {
+        layout: &layout,
+        report: &report,
+    };
+    serde_wasm_bindgen::to_value(&envelope).map_err(other_err_to_js)
+}
+
+#[derive(serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct WasmParquetOptions {
+    max_rows: Option<usize>,
+    sheet_name: Option<String>,
+}
+
+fn parse_parquet_options(options: JsValue) -> Result<xlcore_tabular::ParquetOptions, JsValue> {
+    let raw: WasmParquetOptions = if options.is_null() || options.is_undefined() {
+        WasmParquetOptions::default()
+    } else {
+        serde_wasm_bindgen::from_value(options).map_err(other_err_to_js)?
+    };
+    let mut opts = xlcore_tabular::ParquetOptions::default();
+    if let Some(m) = raw.max_rows {
+        opts.max_rows = m;
+    }
+    if let Some(n) = raw.sheet_name {
+        opts.sheet_name = n;
+    }
+    Ok(opts)
+}
+
+#[wasm_bindgen]
+pub fn extract_parquet(bytes: Vec<u8>, options: JsValue) -> Result<JsValue, JsValue> {
+    let opts = parse_parquet_options(options)?;
+    let (layout, report) =
+        xlcore_tabular::extract_parquet(&bytes, &opts).map_err(other_err_to_js)?;
+    let envelope = WasmSuccess {
+        layout: &layout,
+        report: &report,
+    };
+    serde_wasm_bindgen::to_value(&envelope).map_err(other_err_to_js)
+}
+
 fn run_extract(
     bytes: Vec<u8>,
     options: JsValue,

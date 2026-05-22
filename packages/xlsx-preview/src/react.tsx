@@ -61,6 +61,7 @@ export function useWorkbookPreviewer(
   const [loading, setLoading] = useState(false);
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  const loadKey = workbookLoadKey(options);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -116,9 +117,24 @@ export function useWorkbookPreviewer(
       cancelled = true;
       activePreviewer?.destroy();
     };
-  }, [file]);
+  }, [file, loadKey]);
 
   return { containerRef, previewer, progress, error, report, loading };
+}
+
+function workbookLoadKey(options: UseWorkbookPreviewerOptions): string {
+  return JSON.stringify({
+    wasmBinaryUrl: options.wasmBinaryUrl,
+    workerUrl: options.workerUrl,
+    sheetIndex: options.sheetIndex,
+    sheetName: options.sheetName,
+    format: options.format,
+    csvOptions: options.csvOptions,
+    parquetOptions: options.parquetOptions,
+    initialSheet: options.initialSheet,
+    initialZoom: options.initialZoom,
+    showHidden: options.showHidden,
+  });
 }
 
 export function ExcelPreviewer({
@@ -129,6 +145,11 @@ export function ExcelPreviewer({
   style,
   wasmBinaryUrl,
   workerUrl,
+  sheetIndex,
+  sheetName,
+  format,
+  csvOptions,
+  parquetOptions,
   initialSheet,
   initialZoom,
   onProgress,
@@ -145,9 +166,13 @@ export function ExcelPreviewer({
   const result = useWorkbookPreviewer(file, {
     wasmBinaryUrl,
     workerUrl,
+    sheetIndex,
+    sheetName,
+    format,
+    csvOptions,
+    parquetOptions,
     initialSheet,
     initialZoom,
-    className,
     onProgress,
     onReady,
     onError,
@@ -266,8 +291,8 @@ function errorCopy(err: XlsxLoadError): {
 } {
   if (err.code === "Zip") {
     return {
-      headline: "Not a valid .xlsx file",
-      body: "The file isn't a valid Excel workbook archive.",
+      headline: "Couldn't open this workbook",
+      body: "The file is not a valid XLSX archive. If this is CSV or Parquet, pass the matching format option or use a matching file extension.",
       detail: err.message,
     };
   }

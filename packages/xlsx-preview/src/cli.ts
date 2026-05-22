@@ -1,10 +1,18 @@
 #!/usr/bin/env node
 
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, extname, join, resolve } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { type LoadReport, XlsxLoadError, reportIsClean } from "./errors.js";
-import { loadWorkbookFromXlsxWithReport, renderToPng } from "./node.js";
+import {
+  loadWorkbookFromCsvWithReport,
+  loadWorkbookFromParquetWithReport,
+  loadWorkbookFromXlsxWithReport,
+  renderToPng,
+} from "./node.js";
+import { resolveWorkbookFormat, type WorkbookSourceFormat } from "./sourceFormat.js";
 import type { WorkbookLayout } from "./types.js";
+
+type SourceFormat = WorkbookSourceFormat;
 
 interface CliOptions {
   input?: string;
@@ -17,28 +25,42 @@ interface CliOptions {
   all: boolean;
   verbose: boolean;
   strict: boolean;
+  /** Explicit override; defaults to byte sniffing plus file-name hints. */
+  format?: SourceFormat;
+  /** CSV: field delimiter (`","`, `"\t"`, `";"`, `"|"`, or `"tab"`). */
+  delimiter?: string;
+  /** CSV/parquet: rendered-row truncation cap. */
+  maxRows?: number;
 }
 
 function usage(): string {
   return [
     "Usage:",
     "  xlsx-preview workbook.xlsx --output sheet.png [--range A1:H20] [--sheet Sheet1] [--scale 2]",
+    '  xlsx-preview data.csv --output data.png [--delimiter ","] [--max-rows 1000]',
+    "  xlsx-preview data.parquet --output data.png [--max-rows 1000]",
     "  xlsx-preview workbook.xlsx --info",
     "  xlsx-preview workbook.xlsx --all --output previews/",
     "",
+    "Format is sniffed from file signatures first, then extension (.xlsx / .csv / .tsv / .parquet);",
+    "override with --format xlsx|csv|parquet if needed.",
+    "",
     "Options:",
-    "  --info             Print workbook sheets and used ranges as JSON; no --output needed",
-    "  --all              Render every sheet. --output may be a directory or include {sheet}/{index}",
-    "  --sheet-index N    Render/select sheet by zero-based index",
-    "  --verbose / -v     Print non-fatal load warnings (fixed attributes) to stderr",
-    "  --strict           Exit non-zero if the loader had to coerce any invalid attributes",
-    "                     (use to catch regressions in CI)",
+    "  --info             Print sheet info and used range as JSON; no --output needed",
+    "  --all              Render every sheet (xlsx). --output may be a directory or {sheet}/{index} template",
+    "  --sheet-index N    Render/select sheet by zero-based index (xlsx)",
+    "  --format FMT       Force xlsx|csv|parquet (default: sniff bytes/name)",
+    '  --delimiter S      CSV field delimiter (",", ";", "|", or "tab"; default: sniff)',
+    "  --max-rows N       CSV/parquet rendered-row cap (default: 100000)",
+    "  --verbose / -v     Print non-fatal load warnings (xlsx repairs, csv/parquet truncation)",
+    "  --strict           Exit non-zero if the loader had to coerce/warn (use in CI)",
     "",
     "Examples:",
     "  xlsx-preview model.xlsx --info",
     "  xlsx-preview model.xlsx -o cover.png --range \"'Cover'!B3:E12\" --scale 2",
     "  xlsx-preview model.xlsx -o previews/{index}-{sheet}.png --all",
-    "  xlsx-preview model.xlsx -o sheet.png --sheet Cover --range B3:E12",
+    '  xlsx-preview sales.csv -o sales.png --delimiter ";"',
+    "  xlsx-preview events.parquet -o events.png --max-rows 5000",
   ].join("\n");
 }
 
@@ -81,6 +103,12 @@ function parseArgs(argv: string[]): CliOptions {
     else if (arg === "--sheet" || arg === "-s") options.sheet = value;
     else if (arg === "--sheet-index") options.sheetIndex = Number(value);
     else if (arg === "--scale") options.scale = Number(value);
+    else if (arg === "--format") {
+      if (value !== "xlsx" && value !== "csv" && value !== "parquet")
+        throw new Error(`Invalid --format: ${value} (expected xlsx|csv|parquet)`);
+      options.format = value;
+    } else if (arg === "--delimiter") options.delimiter = value;
+    else if (arg === "--max-rows") options.maxRows = Number(value);
     else throw new Error(`Unknown argument: ${arg}`);
     i++;
   }
@@ -95,20 +123,76 @@ function parseArgs(argv: string[]): CliOptions {
     (!Number.isInteger(options.sheetIndex) || options.sheetIndex < 0)
   )
     throw new Error(`Invalid --sheet-index: ${options.sheetIndex}`);
+  if (options.maxRows !== undefined && (!Number.isInteger(options.maxRows) || options.maxRows <= 0))
+    throw new Error(`Invalid --max-rows: ${options.maxRows}`);
   return options;
+}
+
+async function readInputAndResolveFormat(
+  options: CliOptions,
+  input: string,
+): Promise<{ bytes: Uint8Array; format: SourceFormat }> {
+  const bytes = await readFile(input);
+  return {
+    bytes,
+    format: resolveWorkbookFormat(options.format, bytes, { fileName: input }),
+  };
+}
+
+/**
+ * Load a workbook by format. Returns the same `{ layout, report }` envelope
+ * regardless of source, so the renderer downstream doesn't care.
+ *
+ * `sheetIndex` / `sheetName` only apply to xlsx; csv/parquet always produce
+ * a single sheet and are rejected before this loader is called.
+ */
+async function loadByFormat(
+  input: string,
+  bytes: Uint8Array,
+  format: SourceFormat,
+  options: CliOptions,
+): Promise<{ layout: WorkbookLayout; report: LoadReport }> {
+  if (format === "csv") {
+    return loadWorkbookFromCsvWithReport(bytes, {
+      delimiter: options.delimiter,
+      maxRows: options.maxRows,
+      sheetName: basename(input).replace(/\.[^.]+$/, ""),
+    });
+  }
+  if (format === "parquet") {
+    return loadWorkbookFromParquetWithReport(bytes, {
+      maxRows: options.maxRows,
+      sheetName: basename(input).replace(/\.[^.]+$/, ""),
+    });
+  }
+  return loadWorkbookFromXlsxWithReport(bytes, {
+    sheetIndex: options.sheetIndex,
+    sheetName: options.sheet,
+  });
 }
 
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   const input = resolve(options.input!);
+  const { bytes: inputBytes, format } = await readInputAndResolveFormat(options, input);
+
+  // Reject options that don't make sense for the chosen format. Cheap-but-loud
+  // guardrails — they catch a typoed extension before we render garbage.
+  if (format !== "xlsx") {
+    if (options.all) throw new Error("--all only applies to .xlsx inputs");
+    if (options.sheet || options.sheetIndex !== undefined)
+      throw new Error("--sheet / --sheet-index only apply to .xlsx inputs");
+  }
+  if (format !== "csv" && options.delimiter)
+    throw new Error("--delimiter only applies to .csv inputs");
 
   if (options.info || options.all) {
-    const { layout, report } = await loadWorkbookFromXlsxWithReport(input);
+    const { layout, report } = await loadByFormat(input, inputBytes, format, options);
     reportToStderr(report, options);
     enforceStrict(report, options);
 
     if (options.info) {
-      console.log(JSON.stringify(workbookInfo(input, layout, report), null, 2));
+      console.log(JSON.stringify(workbookInfo(input, format, layout, report), null, 2));
       if (!options.all) return;
     }
 
@@ -130,16 +214,13 @@ async function main(): Promise<void> {
       await writeFile(output, png);
       rendered.push({ sheetIndex: i, sheet: layout.sheets[i]?.name, output, bytes: png.length });
     }
-    console.log(JSON.stringify({ input, scale: options.scale, rendered }, null, 2));
+    console.log(JSON.stringify({ input, format, scale: options.scale, rendered }, null, 2));
     return;
   }
 
   const output = resolve(options.output!);
 
-  const { layout, report } = await loadWorkbookFromXlsxWithReport(input, {
-    sheetIndex: options.sheetIndex,
-    sheetName: options.sheet,
-  });
+  const { layout, report } = await loadByFormat(input, inputBytes, format, options);
   reportToStderr(report, options);
   enforceStrict(report, options);
   const png = await renderToPng(layout, {
@@ -154,6 +235,7 @@ async function main(): Promise<void> {
   console.log(
     JSON.stringify({
       input,
+      format,
       output,
       range: options.range,
       sheet: options.sheet,
@@ -164,9 +246,15 @@ async function main(): Promise<void> {
   );
 }
 
-function workbookInfo(input: string, layout: WorkbookLayout, report: LoadReport) {
+function workbookInfo(
+  input: string,
+  format: SourceFormat,
+  layout: WorkbookLayout,
+  report: LoadReport,
+) {
   return {
     input,
+    format,
     loadReport: reportIsClean(report) ? null : report,
     activeSheetIndex: layout.activeSheetIndex ?? 0,
     sheets: layout.sheets.map((sheet, index) => ({
