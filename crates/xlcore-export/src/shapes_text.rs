@@ -127,6 +127,7 @@ macro_rules! pp_view {
     };
 }
 
+#[rustfmt::skip]
 pp_view!(
     view_def_pp,
     a::DefaultParagraphProperties,
@@ -135,6 +136,7 @@ pp_view!(
     (default_paragraph_properties_choice3, DefaultParagraphPropertiesChoice3),
     (default_paragraph_properties_choice4, DefaultParagraphPropertiesChoice4),
 );
+#[rustfmt::skip]
 pp_view!(
     view_pp,
     a::ParagraphProperties,
@@ -143,6 +145,7 @@ pp_view!(
     (paragraph_properties_choice3, ParagraphPropertiesChoice3),
     (paragraph_properties_choice4, ParagraphPropertiesChoice4),
 );
+#[rustfmt::skip]
 pp_view!(
     view_lvl1,
     a::Level1ParagraphProperties,
@@ -151,6 +154,7 @@ pp_view!(
     (level1_paragraph_properties_choice3, Level1ParagraphPropertiesChoice3),
     (level1_paragraph_properties_choice4, Level1ParagraphPropertiesChoice4),
 );
+#[rustfmt::skip]
 pp_view!(
     view_lvl2,
     a::Level2ParagraphProperties,
@@ -159,6 +163,7 @@ pp_view!(
     (level2_paragraph_properties_choice3, Level2ParagraphPropertiesChoice3),
     (level2_paragraph_properties_choice4, Level2ParagraphPropertiesChoice4),
 );
+#[rustfmt::skip]
 pp_view!(
     view_lvl3,
     a::Level3ParagraphProperties,
@@ -167,6 +172,7 @@ pp_view!(
     (level3_paragraph_properties_choice3, Level3ParagraphPropertiesChoice3),
     (level3_paragraph_properties_choice4, Level3ParagraphPropertiesChoice4),
 );
+#[rustfmt::skip]
 pp_view!(
     view_lvl4,
     a::Level4ParagraphProperties,
@@ -175,6 +181,7 @@ pp_view!(
     (level4_paragraph_properties_choice3, Level4ParagraphPropertiesChoice3),
     (level4_paragraph_properties_choice4, Level4ParagraphPropertiesChoice4),
 );
+#[rustfmt::skip]
 pp_view!(
     view_lvl5,
     a::Level5ParagraphProperties,
@@ -183,6 +190,7 @@ pp_view!(
     (level5_paragraph_properties_choice3, Level5ParagraphPropertiesChoice3),
     (level5_paragraph_properties_choice4, Level5ParagraphPropertiesChoice4),
 );
+#[rustfmt::skip]
 pp_view!(
     view_lvl6,
     a::Level6ParagraphProperties,
@@ -191,6 +199,7 @@ pp_view!(
     (level6_paragraph_properties_choice3, Level6ParagraphPropertiesChoice3),
     (level6_paragraph_properties_choice4, Level6ParagraphPropertiesChoice4),
 );
+#[rustfmt::skip]
 pp_view!(
     view_lvl7,
     a::Level7ParagraphProperties,
@@ -199,6 +208,7 @@ pp_view!(
     (level7_paragraph_properties_choice3, Level7ParagraphPropertiesChoice3),
     (level7_paragraph_properties_choice4, Level7ParagraphPropertiesChoice4),
 );
+#[rustfmt::skip]
 pp_view!(
     view_lvl8,
     a::Level8ParagraphProperties,
@@ -207,6 +217,7 @@ pp_view!(
     (level8_paragraph_properties_choice3, Level8ParagraphPropertiesChoice3),
     (level8_paragraph_properties_choice4, Level8ParagraphPropertiesChoice4),
 );
+#[rustfmt::skip]
 pp_view!(
     view_lvl9,
     a::Level9ParagraphProperties,
@@ -419,7 +430,9 @@ fn bullet_color_to_color(bc: &a::BulletColor, theme: Option<&Theme>) -> Option<C
             }
         }
         a::BulletColorChoice::ASchemeClr(c) => resolve_scheme_clr_hex(c, theme),
-        a::BulletColorChoice::APrstClr(c) => Some(format!("{:?}", c.val)).map(|_| "808080".to_string()),
+        a::BulletColorChoice::APrstClr(c) => {
+            Some(format!("{:?}", c.val)).map(|_| "808080".to_string())
+        }
         a::BulletColorChoice::ASysClr(c) => c
             .last_color
             .as_deref()
@@ -587,15 +600,42 @@ fn body_autofit(bp: &a::BodyProperties) -> (Option<String>, Option<i32>, Option<
 
 fn lvl_paragraph_def_r_pr(ls: &a::ListStyle, level: usize) -> Option<&a::DefaultRunProperties> {
     match level {
-        0 => ls.level1_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        1 => ls.level2_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        2 => ls.level3_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        3 => ls.level4_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        4 => ls.level5_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        5 => ls.level6_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        6 => ls.level7_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        7 => ls.level8_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
-        8 => ls.level9_paragraph_properties.as_deref().and_then(|p| p.a_def_r_pr.as_deref()),
+        0 => ls
+            .level1_paragraph_properties
+            .as_deref()
+            .and_then(|p| p.a_def_r_pr.as_deref()),
+        1 => ls
+            .level2_paragraph_properties
+            .as_deref()
+            .and_then(|p| p.a_def_r_pr.as_deref()),
+        2 => ls
+            .level3_paragraph_properties
+            .as_deref()
+            .and_then(|p| p.a_def_r_pr.as_deref()),
+        3 => ls
+            .level4_paragraph_properties
+            .as_deref()
+            .and_then(|p| p.a_def_r_pr.as_deref()),
+        4 => ls
+            .level5_paragraph_properties
+            .as_deref()
+            .and_then(|p| p.a_def_r_pr.as_deref()),
+        5 => ls
+            .level6_paragraph_properties
+            .as_deref()
+            .and_then(|p| p.a_def_r_pr.as_deref()),
+        6 => ls
+            .level7_paragraph_properties
+            .as_deref()
+            .and_then(|p| p.a_def_r_pr.as_deref()),
+        7 => ls
+            .level8_paragraph_properties
+            .as_deref()
+            .and_then(|p| p.a_def_r_pr.as_deref()),
+        8 => ls
+            .level9_paragraph_properties
+            .as_deref()
+            .and_then(|p| p.a_def_r_pr.as_deref()),
         _ => None,
     }
 }
@@ -712,6 +752,7 @@ fn apply_default_run_properties(
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn apply_run_fields(
     tr: &mut TextRun,
     theme: Option<&Theme>,

@@ -1,6 +1,6 @@
 use crate::schema::*;
 use crate::shapes::{
-    Frame, ShapeAnchor, WorldBox, merge_rotation, preset_geom_name, transform_local_box,
+    merge_rotation, preset_geom_name, transform_local_box, Frame, ShapeAnchor, WorldBox,
 };
 use crate::shapes_fill::{
     line_cap_token, line_dash_token, line_end_to_schema, line_join_token, outline_info,
@@ -52,7 +52,7 @@ fn preset_adj_n(sp: &xdr::ShapeProperties, target: &[&str]) -> Option<i32> {
     let avl = geom.adjust_value_list.as_ref()?;
     for gd in &avl.a_gd {
         let name: &str = &gd.name;
-        if !target.iter().any(|t| *t == name) {
+        if !target.contains(&name) {
             continue;
         }
         let fmla: &str = &gd.formula;

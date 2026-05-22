@@ -7,10 +7,10 @@
     "src/cli.ts",
     "src/index.ts",
     "src/node.ts",
-    "src/react.ts",
+    "src/react.tsx",
     "src/xlsxWorker.ts"
   ],
-  "project": ["src/**/*.ts"],
+  "project": ["src/**/*.ts", "src/**/*.tsx"],
   "ignore": ["src/schema/Row.ts"],
   "ignoreBinaries": ["wasm-pack"],
   "ignoreExportsUsedInFile": true,

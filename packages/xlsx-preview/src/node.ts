@@ -3,6 +3,12 @@ import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import initWasm, { extract_xlsx } from "xlcore-wasm";
 import { decodeWorkbookLayout } from "./columnar.js";
+import {
+  EMPTY_LOAD_REPORT,
+  type LoadReport,
+  XlsxLoadError,
+  xlsxLoadErrorPayloadFromUnknown,
+} from "./errors.js";
 import { render, buildGrid } from "./render.js";
 import { setOffscreenCanvasFactory } from "./canvasFactory.js";
 import type { RenderOptions } from "./renderTypes.js";
@@ -39,9 +45,33 @@ export async function loadWorkbookFromXlsx(
   input: string | ArrayBuffer | Uint8Array,
   options: LoadWorkbookFromXlsxOptions = {},
 ): Promise<WorkbookLayout> {
+  return (await loadWorkbookFromXlsxWithReport(input, options)).layout;
+}
+
+export interface LoadedWorkbookNode {
+  layout: WorkbookLayout;
+  report: LoadReport;
+}
+
+export async function loadWorkbookFromXlsxWithReport(
+  input: string | ArrayBuffer | Uint8Array,
+  options: LoadWorkbookFromXlsxOptions = {},
+): Promise<LoadedWorkbookNode> {
   await ensureWasm();
   const bytes = await bytesFromInput(input);
-  return extract_xlsx(bytes, extractionOptions(options)) as WorkbookLayout;
+  let envelope: { layout: WorkbookLayout; report?: LoadReport };
+  try {
+    envelope = extract_xlsx(bytes, {
+      sheetIndex: options.sheetIndex,
+      sheetName: options.sheetName,
+    }) as {
+      layout: WorkbookLayout;
+      report?: LoadReport;
+    };
+  } catch (err) {
+    throw new XlsxLoadError(xlsxLoadErrorPayloadFromUnknown(err));
+  }
+  return { layout: envelope.layout, report: envelope.report ?? EMPTY_LOAD_REPORT };
 }
 
 export async function renderXlsxToCanvas(
@@ -102,16 +132,6 @@ function loadOptionsFromRenderOptions(options: RenderPngOptions): LoadWorkbookFr
   return {
     sheetIndex: options.sheetIndex,
     sheetName: options.sheetName ?? rangeSheetName,
-  };
-}
-
-function extractionOptions(options: LoadWorkbookFromXlsxOptions): {
-  sheetIndex?: number;
-  sheetName?: string;
-} {
-  return {
-    sheetIndex: options.sheetIndex,
-    sheetName: options.sheetName,
   };
 }
 

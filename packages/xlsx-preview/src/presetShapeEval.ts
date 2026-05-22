@@ -80,7 +80,9 @@ function evalFormula(fmla: Formula, symbols: Map<string, number>): number {
     case "val":
       return a(0);
     case "*/": {
-      const va = a(0), vb = a(1), vc = a(2);
+      const va = a(0),
+        vb = a(1),
+        vc = a(2);
       return vc === 0 ? 0 : (va * vb) / vc;
     }
     case "+-":
@@ -102,11 +104,15 @@ function evalFormula(fmla: Formula, symbols: Map<string, number>): number {
     case "min":
       return Math.min(a(0), a(1));
     case "mod": {
-      const x = a(0), y = a(1), z = a(2);
+      const x = a(0),
+        y = a(1),
+        z = a(2);
       return Math.sqrt(x * x + y * y + z * z);
     }
     case "pin": {
-      const lo = a(0), v = a(1), hi = a(2);
+      const lo = a(0),
+        v = a(1),
+        hi = a(2);
       return v < lo ? lo : v > hi ? hi : v;
     }
     case "sin":
@@ -116,8 +122,9 @@ function evalFormula(fmla: Formula, symbols: Map<string, number>): number {
     case "tan":
       return a(0) * Math.tan(radFromAngleUnit(a(1)));
     case "at2": {
-      const x = a(0), y = a(1);
-      return (Math.atan2(y, x) * 180) / Math.PI * DEG;
+      const x = a(0),
+        y = a(1);
+      return ((Math.atan2(y, x) * 180) / Math.PI) * DEG;
     }
     case "cat2":
       return a(0) * Math.cos(Math.atan2(a(2), a(1)));
@@ -164,15 +171,18 @@ export function tracePresetIntoPath(
           break;
         }
         case "Q": {
-          const cpx = px(c.x1), cpy = py(c.y1);
+          const cpx = px(c.x1),
+            cpy = py(c.y1);
           penX = px(c.x);
           penY = py(c.y);
           ctx.quadraticCurveTo(cpx, cpy, penX, penY);
           break;
         }
         case "C": {
-          const c1x = px(c.x1), c1y = py(c.y1);
-          const c2x = px(c.x2), c2y = py(c.y2);
+          const c1x = px(c.x1),
+            c1y = py(c.y1);
+          const c2x = px(c.x2),
+            c2y = py(c.y2);
           penX = px(c.x);
           penY = py(c.y);
           ctx.bezierCurveTo(c1x, c1y, c2x, c2y, penX, penY);

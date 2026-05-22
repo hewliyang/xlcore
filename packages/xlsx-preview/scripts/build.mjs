@@ -8,7 +8,6 @@ const common = {
   logLevel: "info",
 };
 
-// Standalone bundle used by `xlcore preview` HTML output.
 await build({
   ...common,
   entryPoints: ["src/browser.ts"],
@@ -18,13 +17,12 @@ await build({
   target: "es2022",
 });
 
-// Public ESM entry points.
 for (const [entry, outfile, platform, external = []] of [
   ["src/index.ts", "dist/index.js", "node", ["skia-canvas"]],
   ["src/cli.ts", "dist/cli.js", "node", ["skia-canvas"]],
   ["src/previewer.ts", "dist/previewer.js", "browser"],
   ["src/color.ts", "dist/color.js", "browser"],
-  ["src/react.ts", "dist/react.js", "browser", ["react"]],
+  ["src/react.tsx", "dist/react.js", "browser", ["react", "react/jsx-runtime"]],
   ["src/cdn.ts", "dist/cdn.js", "browser"],
 ]) {
   await build({
@@ -38,20 +36,21 @@ for (const [entry, outfile, platform, external = []] of [
   });
 }
 
-// Keep loader and worker as separate ESM files. Bundlers can then discover
-// the worker module and wasm binary from their `new URL(..., import.meta.url)`
-// references instead of seeing one pre-bundled blob.
 await build({
   ...common,
   bundle: false,
-  entryPoints: ["src/browserLoader.ts", "src/xlsxWorker.ts"],
+
+  entryPoints: [
+    "src/browserLoader.ts",
+    "src/xlsxWorker.ts",
+    "src/errors.ts",
+  ],
   outdir: "dist",
   platform: "browser",
   format: "esm",
   target: "es2022",
 });
 
-// Runtime assets used by the browser worker and Node entry.
 await cp("../../crates/xlcore-wasm/pkg/xlcore_wasm.js", "dist/xlcore_wasm.js");
 await cp("../../crates/xlcore-wasm/pkg/xlcore_wasm.d.ts", "dist/xlcore_wasm.d.ts");
 await cp("../../crates/xlcore-wasm/pkg/xlcore_wasm_bg.wasm", "dist/xlcore_wasm_bg.wasm");
