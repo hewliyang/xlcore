@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@hewliyang/xlsx-preview": "file:../..",
+    "@hewliyang/xlsx-preview": "^0.0.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
