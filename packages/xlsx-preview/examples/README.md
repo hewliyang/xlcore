@@ -18,14 +18,12 @@ outside local/dev hosts.
 
 - [`vanilla-js/demo.html`](./vanilla-js/demo.html) — the smallest possible
   integration. Open the file in a browser; code and wasm are served from
-  jsDelivr. Uses main-thread extraction so it also works from `file://`. This
-  pinned demo only shows features already published to npm.
+  jsDelivr. Uses main-thread extraction so it also works from `file://`.
 
 ## Framework starters
 
-Each is a self-contained app that depends on the local package via
-`file:../..`, so the examples exercise this worktree rather than the last
-published npm version. Run them in place with `pnpm install && pnpm dev`.
+Each is a self-contained app that installs `@hewliyang/xlsx-preview` from
+npm. Copy the directory anywhere and `pnpm install && pnpm dev`.
 
 - [`vanilla-js/`](./vanilla-js/) — Vite + plain JavaScript.
 - [`react-vite/`](./react-vite/) — Vite + React + TypeScript.

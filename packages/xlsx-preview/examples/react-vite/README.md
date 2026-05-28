@@ -1,8 +1,6 @@
 # xlsx-preview · React + Vite
 
 Minimal Vite + React + TypeScript starter using `@hewliyang/xlsx-preview/react`.
-This starter depends on the local package via `file:../..`, so run it from
-this directory when testing worktree changes.
 
 ```bash
 pnpm install
