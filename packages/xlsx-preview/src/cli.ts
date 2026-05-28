@@ -2,7 +2,9 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, extname, join, resolve } from "node:path";
-import { loadWorkbookFromXlsx, renderToPng, renderXlsxToPng } from "./node.js";
+import { type LoadReport, XlsxLoadError, reportIsClean } from "./errors.js";
+import { loadWorkbookFromXlsxWithReport, renderToPng } from "./node.js";
+import type { WorkbookLayout } from "./types.js";
 
 interface CliOptions {
   input?: string;
@@ -13,6 +15,8 @@ interface CliOptions {
   scale: number;
   info: boolean;
   all: boolean;
+  verbose: boolean;
+  strict: boolean;
 }
 
 function usage(): string {
@@ -26,6 +30,9 @@ function usage(): string {
     "  --info             Print workbook sheets and used ranges as JSON; no --output needed",
     "  --all              Render every sheet. --output may be a directory or include {sheet}/{index}",
     "  --sheet-index N    Render/select sheet by zero-based index",
+    "  --verbose / -v     Print non-fatal load warnings (fixed attributes) to stderr",
+    "  --strict           Exit non-zero if the loader had to coerce any invalid attributes",
+    "                     (use to catch regressions in CI)",
     "",
     "Examples:",
     "  xlsx-preview model.xlsx --info",
@@ -36,7 +43,7 @@ function usage(): string {
 }
 
 function parseArgs(argv: string[]): CliOptions {
-  const options: CliOptions = { scale: 1, info: false, all: false };
+  const options: CliOptions = { scale: 1, info: false, all: false, verbose: false, strict: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === "--help" || arg === "-h") {
@@ -49,6 +56,14 @@ function parseArgs(argv: string[]): CliOptions {
     }
     if (arg === "--all") {
       options.all = true;
+      continue;
+    }
+    if (arg === "--verbose" || arg === "-v") {
+      options.verbose = true;
+      continue;
+    }
+    if (arg === "--strict") {
+      options.strict = true;
       continue;
     }
     if (!arg.startsWith("-")) {
@@ -70,7 +85,7 @@ function parseArgs(argv: string[]): CliOptions {
     i++;
   }
   if (!options.input) throw new Error("Missing --input");
-  if (!options.info && !options.output) throw new Error("Missing --output");
+  if ((!options.info || options.all) && !options.output) throw new Error("Missing --output");
   if (options.all && (options.sheet || options.sheetIndex !== undefined))
     throw new Error("--all cannot be combined with --sheet or --sheet-index");
   if (!Number.isFinite(options.scale) || options.scale <= 0)
@@ -87,14 +102,16 @@ async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   const input = resolve(options.input!);
 
-  if (options.info) {
-    const layout = await loadWorkbookFromXlsx(input);
-    console.log(JSON.stringify(workbookInfo(input, layout), null, 2));
-    if (!options.all) return;
-  }
+  if (options.info || options.all) {
+    const { layout, report } = await loadWorkbookFromXlsxWithReport(input);
+    reportToStderr(report, options);
+    enforceStrict(report, options);
 
-  if (options.all) {
-    const layout = await loadWorkbookFromXlsx(input);
+    if (options.info) {
+      console.log(JSON.stringify(workbookInfo(input, layout, report), null, 2));
+      if (!options.all) return;
+    }
+
     const rendered = [];
     for (let i = 0; i < layout.sheets.length; i++) {
       const state = layout.sheets[i]?.state;
@@ -118,7 +135,14 @@ async function main(): Promise<void> {
   }
 
   const output = resolve(options.output!);
-  const png = await renderXlsxToPng(input, {
+
+  const { layout, report } = await loadWorkbookFromXlsxWithReport(input, {
+    sheetIndex: options.sheetIndex,
+    sheetName: options.sheet,
+  });
+  reportToStderr(report, options);
+  enforceStrict(report, options);
+  const png = await renderToPng(layout, {
     range: options.range,
     sheetName: options.sheet,
     sheetIndex: options.sheetIndex,
@@ -140,9 +164,10 @@ async function main(): Promise<void> {
   );
 }
 
-function workbookInfo(input: string, layout: Awaited<ReturnType<typeof loadWorkbookFromXlsx>>) {
+function workbookInfo(input: string, layout: WorkbookLayout, report: LoadReport) {
   return {
     input,
+    loadReport: reportIsClean(report) ? null : report,
     activeSheetIndex: layout.activeSheetIndex ?? 0,
     sheets: layout.sheets.map((sheet, index) => ({
       index,
@@ -181,8 +206,40 @@ function colName(col: number): string {
   return out;
 }
 
+function reportToStderr(report: LoadReport, options: CliOptions): void {
+  if (!options.verbose || reportIsClean(report)) return;
+  const lines: string[] = ["xlsx-preview: load report"];
+  for (const fix of report.fixes) {
+    const where = fix.part && fix.part !== "*" ? fix.part : "package";
+    lines.push(
+      `  fixed ${fix.field ?? "?"}=${JSON.stringify(fix.value ?? "")} ×${fix.occurrences} in ${where} (${fix.kind})`,
+    );
+  }
+  for (const w of report.warnings) {
+    lines.push(`  warning: ${w}`);
+  }
+  console.error(lines.join("\n"));
+}
+
+function enforceStrict(report: LoadReport, options: CliOptions): void {
+  if (!options.strict || reportIsClean(report)) return;
+  const fixes = report.fixes.reduce((sum, fix) => sum + fix.occurrences, 0);
+  const warnings = report.warnings.length;
+  const parts = [
+    fixes > 0 ? `${fixes} repair(s)` : null,
+    warnings > 0 ? `${warnings} warning(s)` : null,
+  ].filter(Boolean);
+  console.error(`xlsx-preview: --strict failed: load produced ${parts.join(", ")}`);
+  process.exit(2);
+}
+
 main().catch((error) => {
-  console.error(error?.message || String(error));
+  if (XlsxLoadError.isXlsxLoadError(error)) {
+    console.error(`xlsx-preview: ${error.message}`);
+    console.error(error.diagnosticsText());
+  } else {
+    console.error(error?.message || String(error));
+  }
   console.error("");
   console.error(usage());
   process.exit(1);

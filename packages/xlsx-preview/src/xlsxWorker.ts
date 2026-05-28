@@ -1,3 +1,5 @@
+import { xlsxLoadErrorPayloadFromUnknown, type LoadReport } from "./errors.js";
+import type { WorkbookLayout } from "./types.js";
 import init, { extract_xlsx } from "./xlcore_wasm.js";
 
 let wasmReady: Promise<void> | null = null;
@@ -22,12 +24,13 @@ function stage(label: string): void {
     wasmReady ??= init({ module_or_path: wasmBinaryUrl }).then(() => undefined);
     await wasmReady;
     stage("Extracting OOXML");
-    const layout = extract_xlsx(new Uint8Array(bytes), undefined);
-    post({ type: "layout", layout });
+
+    const envelope = extract_xlsx(new Uint8Array(bytes), undefined) as {
+      layout: WorkbookLayout;
+      report: LoadReport;
+    };
+    post({ type: "loaded", layout: envelope.layout, report: envelope.report });
   } catch (error) {
-    post({
-      type: "error",
-      message: error instanceof Error ? (error.stack ?? error.message) : String(error),
-    });
+    post({ type: "error", payload: xlsxLoadErrorPayloadFromUnknown(error) });
   }
 };

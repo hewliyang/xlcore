@@ -1,5 +1,7 @@
 use crate::schema::*;
-use crate::shapes_connector::{connector_world, preset_adj1, preset_adj2, preset_adj3, visit_connector};
+use crate::shapes_connector::{
+    connector_world, preset_adj1, preset_adj2, preset_adj3, visit_connector,
+};
 use crate::shapes_fill::{
     gradient_fill, line_cap_token, line_dash_token, line_join_token, outer_shadow, outline_info,
     solid_fill_color,

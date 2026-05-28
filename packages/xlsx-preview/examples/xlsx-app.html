@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://rsms.me/">
 <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
 <style>
-  /* --- design tokens ------------------------------------------------ */
+
   :root {
     --bg: #f7f8fa;
     --surface: #ffffff;
@@ -44,7 +44,6 @@
     min-height: 0;
   }
 
-  /* --- app bar ------------------------------------------------------ */
   header {
     min-width: 0;
     padding: 0 8px;
@@ -154,7 +153,6 @@
   }
   #panel-toggle:hover { background: var(--surface-muted); color: var(--text); }
 
-  /* --- main grid: preview + aside ----------------------------------- */
   main {
     min-height: 0;
     display: grid;
@@ -178,12 +176,59 @@
     color: var(--accent); font-weight: 600; font-size: 14px;
     pointer-events: none;
   }
-  /* Hide the previewer's built-in sheet-tab strip and formula bar —
-     we render compact equivalents in the app bar / footer. */
+
+  #load-error {
+    position: absolute; inset: 0; z-index: 40;
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 24px;
+    background: rgba(247, 248, 250, 0.92);
+    backdrop-filter: blur(2px);
+  }
+  #load-error.visible { display: flex; }
+  #load-error .card {
+    max-width: 520px;
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    padding: 20px;
+    color: var(--text);
+  }
+  #load-error h2 { margin: 0 0 4px 0; font-size: 16px; display: flex; gap: 10px; align-items: center; }
+  #load-error h2 .icon { color: var(--warn); font-size: 20px; }
+  #load-error .meta { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+  #load-error p { font-size: 14px; line-height: 1.5; margin: 0 0 12px 0; color: #334155; }
+  #load-error pre { margin: 0 0 12px 0; padding: 8px 10px; font-family: var(--font-mono); font-size: 12px; background: var(--code-bg); border: 1px solid var(--code-border); border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
+  #load-error .actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+  #leniency-chip {
+    position: absolute; right: 12px; bottom: 12px; z-index: 30;
+    display: none;
+    align-items: center; gap: 4px;
+    padding: 6px 8px 6px 10px;
+    max-width: min(640px, calc(100% - 24px));
+    background: rgba(15, 23, 42, 0.88);
+    color: #f8fafc;
+    font-size: 12px;
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+  }
+  #leniency-chip #leniency-chip-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  #leniency-chip.visible { display: inline-flex; }
+  #leniency-chip .icon { opacity: 0.85; margin-right: 4px; }
+  #leniency-chip button { appearance: none; background: transparent; color: #93c5fd; border: 0; font: inherit; padding: 0 6px; cursor: pointer; text-decoration: underline; height: auto; }
+  #leniency-chip .close { color: #cbd5e1; text-decoration: none; font-size: 16px; line-height: 1; padding: 0 4px; }
+
   #preview .xlcore-tabs { display: none !important; }
   #preview .xlcore-formula-bar { display: none !important; }
 
-  /* --- inspector aside --------------------------------------------- */
   aside {
     min-height: 0;
     overflow: auto;
@@ -194,7 +239,6 @@
   body.panel-collapsed aside { overflow: hidden; }
   body.panel-collapsed aside > * { display: none; }
 
-  /* Collapsible section */
   details.section {
     border-bottom: 1px solid var(--border);
   }
@@ -233,7 +277,6 @@
     gap: 8px;
   }
 
-  /* Key/value rows */
   .kv {
     display: grid;
     grid-template-columns: 92px 1fr;
@@ -258,7 +301,6 @@
   }
   .kv dd.mono { font-family: var(--font-mono); font-size: 11.5px; }
 
-  /* Form controls */
   .row { display: flex; gap: 6px; align-items: center; min-width: 0; }
   button, select, input[type=text], input[type=number] {
     height: 28px;
@@ -289,7 +331,6 @@
   #address { flex: 1; font-family: var(--font-mono); font-size: 11.5px; }
   #sheet-select { width: 100%; }
 
-  /* Chip-style quick jumps */
   .chips {
     display: flex;
     flex-wrap: wrap;
@@ -313,7 +354,6 @@
 
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 
-  /* Syntax-highlighted state block (light) */
   .state {
     margin: 0;
     padding: 10px 12px;
@@ -327,12 +367,11 @@
     color: #374151;
     white-space: pre;
   }
-  .state .k { color: #6d28d9; }     /* keys: purple */
-  .state .s { color: #047857; }     /* strings: green */
-  .state .n { color: #b45309; }     /* numbers: amber */
-  .state .p { color: var(--text-dim); }   /* punctuation */
+  .state .k { color: #6d28d9; }
+  .state .s { color: #047857; }
+  .state .n { color: #b45309; }
+  .state .p { color: var(--text-dim); }
 
-  /* --- sheet tab bar (footer) -------------------------------------- */
   footer.tabbar {
     height: 28px;
     border-top: 1px solid var(--border);
@@ -419,7 +458,6 @@
     color: var(--text);
   }
 
-  /* --- loading overlay -------------------------------------------- */
   #loading {
     position: fixed;
     inset: 34px 300px 28px 0;
@@ -491,7 +529,25 @@
 </header>
 
 <main>
-  <div id="preview"></div>
+  <div id="preview">
+    <div id="load-error" role="alert" aria-live="polite">
+      <div class="card">
+        <h2><span class="icon" aria-hidden="true">⚠</span><span id="load-error-headline">Couldn’t open this workbook</span></h2>
+        <div class="meta" id="load-error-meta"></div>
+        <p id="load-error-body"></p>
+        <pre id="load-error-detail" hidden></pre>
+        <div class="actions">
+          <button type="button" id="load-error-copy">Copy diagnostics</button>
+          <button type="button" id="load-error-dismiss">Dismiss</button>
+        </div>
+      </div>
+    </div>
+    <div id="leniency-chip" role="status">
+      <span class="icon" aria-hidden="true">ⓘ</span>
+      <span id="leniency-chip-text">Loaded</span>
+      <button type="button" id="leniency-chip-close" class="close" aria-label="Dismiss">×</button>
+    </div>
+  </div>
   <aside>
     <details class="section" open>
       <summary>Selection</summary>
@@ -552,25 +608,22 @@
 </div>
 
 <script type="module">
-// Examples load the renderer from a local `../dist/` build when run under
-// `pnpm preview`, and fall back to the published npm package on jsdelivr
-// when the HTML is opened standalone (e.g. hosted on Pages / file://).
-const REMOTE_CDN = "https://cdn.jsdelivr.net/npm/@hewliyang/xlsx-preview@0.0.8/dist/";
-let ASSET_BASE = "../dist/";
-let createWorkbookPreviewerFromFile;
-let colorToCssWithTheme;
+
+import { loadXlsxPreviewRuntime } from "./shared/loadXlsxPreview.js";
+let runtime;
 try {
-  ({ createWorkbookPreviewerFromFile } = await import(`../dist/browserLoader.js?v=${Date.now()}`));
+  runtime = await loadXlsxPreviewRuntime();
 } catch (error) {
-  console.warn("Local renderer failed to load; falling back to CDN build", error);
-  ASSET_BASE = REMOTE_CDN;
-  ({ createWorkbookPreviewerFromFile } = await import(`${REMOTE_CDN}browserLoader.js`));
+  document.body.innerHTML =
+    `<pre style="margin: 24px; padding: 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font: 13px/1.5 ui-monospace, monospace; color: #7f1d1d; white-space: pre-wrap;">` +
+    String(error && error.message ? error.message : error)
+      .replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])) +
+    `</pre>`;
+  throw error;
 }
-try {
-  ({ colorToCssWithTheme } = await import(`${ASSET_BASE}color.js?v=${Date.now()}`));
-} catch {
-  colorToCssWithTheme = fallbackColorToCssWithTheme;
-}
+const ASSET_BASE = runtime.assetBase;
+const { createWorkbookPreviewerFromFile } = runtime;
+const colorToCssWithTheme = runtime.colorToCssWithTheme ?? fallbackColorToCssWithTheme;
 const picker = document.getElementById("picker");
 const status = document.getElementById("status");
 const previewRoot = document.getElementById("preview");
@@ -636,9 +689,8 @@ function finishLoading() {
   loading.hidden = true;
 }
 
-/** Tiny JSON syntax highlighter for the live-state block. */
 function highlightJSON(text) {
-  // Escape HTML first.
+
   const esc = text.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
   return esc
     .replace(/("(?:\\.|[^"\\])*")(\s*:)/g, '<span class="k">$1</span><span class="p">$2</span>')
@@ -647,7 +699,6 @@ function highlightJSON(text) {
     .replace(/([{}\[\],])/g, '<span class="p">$1</span>');
 }
 
-// Cell kinds (must mirror columnar.ts KIND_NAMES).
 const CELL_KIND = ["n", "s", "inline", "b", "e", "str", "f"];
 const DEFAULT_THEME = ["#ffffff", "#000000", "#e7e6e6", "#44546a", "#4472c4", "#ed7d31", "#a5a5a5", "#ffc000", "#5b9bd5", "#70ad47", "#0563c1", "#954f72"];
 const INDEXED = { 0: "#000000", 1: "#ffffff", 2: "#ff0000", 3: "#00ff00", 4: "#0000ff", 5: "#ffff00", 6: "#ff00ff", 7: "#00ffff", 64: "#000000", 65: "#ffffff" };
@@ -677,7 +728,7 @@ function activeCellDisplay(sheet, layout, r, c) {
   if (m === undefined) return "";
   const start = cells.rowPtr[m] ?? 0;
   const end = cells.rowPtr[m + 1] ?? cells.count;
-  // Binary search by column within the row's cell range.
+
   let lo = start, hi = end - 1, idx = -1;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
@@ -752,8 +803,7 @@ function renderState() {
   selRange.textContent = rangeAddr;
   selSize.textContent = size;
   zoomLabel.textContent = zoomPct;
-  // Name box shows range when multi-cell (Excel convention shows the size,
-  // e.g. "3R x 4C"). For a single cell, show the address.
+
   nameBox.textContent = rows === 1 && cols === 1 ? activeAddr : `${rows}R×${cols}C`;
   try {
     formulaBox.textContent = String(
@@ -763,7 +813,6 @@ function renderState() {
     formulaBox.textContent = "";
   }
 
-  // Reflect active sheet in the tab strip.
   const activeIndex = state.activeSheetIndex;
   for (const btn of sheetTabs.querySelectorAll(".tab")) {
     btn.classList.toggle("active", Number(btn.dataset.index) === activeIndex);
@@ -825,16 +874,12 @@ function splitSheetReference(value) {
   const raw = String(value).trim();
   if (!raw) throw new Error("Enter a cell, range, or sheet-qualified reference");
 
-  // Supports Excel-style sheet-qualified references:
-  //   Sheet1!A1
-  //   'Sheet 2'!B2:E8
-  //   'Bob''s Sheet'!$C$5
   let inQuotedSheetName = false;
   let bang = -1;
   for (let i = 0; i < raw.length; i++) {
     const ch = raw[i];
     if (ch === "'") {
-      if (inQuotedSheetName && raw[i + 1] === "'") i++; // escaped quote inside a quoted sheet name
+      if (inQuotedSheetName && raw[i + 1] === "'") i++;
       else inQuotedSheetName = !inQuotedSheetName;
     } else if (ch === "!" && !inQuotedSheetName) {
       bang = i;
@@ -914,12 +959,98 @@ function goFromAddress() {
   }
 }
 
+function hideErrorOverlay() {
+  document.getElementById("load-error").classList.remove("visible");
+}
+function hideLeniencyChip() {
+  document.getElementById("leniency-chip").classList.remove("visible");
+}
+function showErrorOverlay(error, file) {
+  hideLeniencyChip();
+
+  const copy = errorCopy(error);
+  document.getElementById("load-error-headline").textContent = copy.headline;
+  document.getElementById("load-error-body").textContent = copy.body;
+  const detail = document.getElementById("load-error-detail");
+  if (copy.detail) { detail.hidden = false; detail.textContent = copy.detail; }
+  else { detail.hidden = true; detail.textContent = ""; }
+  const metaParts = [];
+  if (file?.name) metaParts.push(file.name);
+  if (file?.size) metaParts.push(formatBytes(file.size));
+  document.getElementById("load-error-meta").textContent = metaParts.join(" · ");
+  document.getElementById("load-error-copy").onclick = () => {
+    const text = diagnosticsText(error);
+    navigator.clipboard?.writeText(text).catch(() => {});
+  };
+  document.getElementById("load-error-dismiss").onclick = hideErrorOverlay;
+  document.getElementById("load-error").classList.add("visible");
+}
+function showLeniencyChip(report) {
+  const fixes = report.fixes ?? [];
+  const total = fixes.reduce((n, f) => n + (f.occurrences ?? 0), 0);
+  if (!total && !(report.warnings?.length)) return;
+
+  const summary = total > 0
+    ? `Fixed ${total} invalid attribute${total === 1 ? "" : "s"}`
+    : "Loaded with warnings";
+  const MAX = 3;
+  const head = fixes.slice(0, MAX).map((f) => {
+    const attr = f.field ? `${f.field}=${JSON.stringify(f.value ?? "")}` : (f.value ?? "?");
+    return f.occurrences > 1 ? `${attr} ×${f.occurrences}` : attr;
+  });
+  const rest = fixes.length - MAX;
+  if (rest > 0) head.push(`+${rest} more`);
+  const detail = head.join(", ");
+  document.getElementById("leniency-chip-text").textContent =
+    detail ? `${summary} · ${detail}` : summary;
+  document.getElementById("leniency-chip-close").onclick = hideLeniencyChip;
+  document.getElementById("leniency-chip").classList.add("visible");
+}
+function errorCopy(err) {
+  const code = err?.code ?? "Other";
+  const message = err?.message ?? String(err);
+  switch (code) {
+    case "Zip":
+
+      return { headline: "Not a valid .xlsx file", body: "The file isn’t a valid Excel workbook archive.", detail: message };
+    case "Schema": {
+      const attr = err.field ? `${err.field}=${JSON.stringify(err.value ?? "")}` : err.value ?? "";
+      const where = err.part && err.part !== "<unknown>" ? err.part : "the workbook";
+      const detail = (err.ty || err.field || err.value !== undefined) ? `<${err.ty ?? "?"}> ${attr}\nin ${where}` : message;
+      return { headline: "Couldn’t open this workbook", body: "A value in the file doesn’t match the Excel file format and we couldn’t recover automatically.", detail };
+    }
+    case "MissingPart":
+      return { headline: "Workbook is incomplete", body: `A required part is missing: ${err.part ?? "(unknown)"}.` };
+    case "Io":
+      return { headline: "Couldn’t read the file", body: "An I/O error occurred while reading the workbook.", detail: message };
+    default:
+      return { headline: "Couldn’t open this workbook", body: message };
+  }
+}
+function diagnosticsText(err) {
+  const lines = [`XlsxLoadError [${err.code ?? "Other"}]`, err.message ?? ""];
+  for (const k of ["part", "schemaKind", "ty", "field", "value"]) {
+    if (err[k] !== undefined) lines.push(`  ${k}: ${typeof err[k] === "string" ? err[k] : JSON.stringify(err[k])}`);
+  }
+  return lines.join("\n");
+}
+function formatBytes(n) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
 async function loadWorkbookFile(file) {
   if (!file) return;
+  hideErrorOverlay();
+  hideLeniencyChip();
   const started = startLoading();
   try {
     previewer?.destroy();
-    previewRoot.replaceChildren();
+
+    Array.from(previewRoot.children).forEach((node) => {
+      if (node.id !== "load-error" && node.id !== "leniency-chip") node.remove();
+    });
     previewer = await createWorkbookPreviewerFromFile(previewRoot, file, {
       wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
       workerUrl: `${ASSET_BASE}xlsxWorker.js`,
@@ -937,9 +1068,14 @@ async function loadWorkbookFile(file) {
       `${previewer.layout.sheets.length} sheet(s) · ${((performance.now() - started) / 1000).toFixed(1)}s`,
       file.name,
     );
+    const report = previewer.report;
+    if (report && ((report.fixes?.length ?? 0) > 0 || (report.warnings?.length ?? 0) > 0)) {
+      showLeniencyChip(report);
+    }
   } catch (error) {
     console.error(error);
     finishLoading();
+    showErrorOverlay(error, file);
     setStatus(error && error.message ? error.message : String(error));
   }
 }
@@ -950,9 +1086,6 @@ picker.addEventListener("change", () => {
   picker.value = "";
 });
 
-// Drag-and-drop on the preview pane. Accepts a single .xlsx; extra
-// files are ignored. Drops outside the pane are swallowed at window
-// level so the browser doesn't navigate away.
 (() => {
   let depth = 0;
   const isXlsx = (f) =>
@@ -981,7 +1114,7 @@ picker.addEventListener("change", () => {
     if (file) loadWorkbookFile(file);
     else setStatus("not an .xlsx file");
   });
-  // Page-wide swallow so accidental drops elsewhere don't navigate.
+
   window.addEventListener("dragover", (e) => {
     if (e.dataTransfer?.types?.includes("Files")) e.preventDefault();
   });

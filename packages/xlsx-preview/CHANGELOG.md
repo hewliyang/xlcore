@@ -5,6 +5,15 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Structured load-error envelope and `LoadReport`. The wasm extractor now returns `{ layout, report }`; `loadWorkbookFromFileWithReport` / `loadWorkbookFromArrayBufferWithReport` / `loadWorkbookFromXlsxWithReport` expose the report alongside the layout. Failures throw `XlsxLoadError` with `code` (`Zip` | `Schema` | `MissingPart` | `Io` | `Other`), `part`, `schemaKind`, `ty`, `field`, `value` and a `diagnosticsText()` helper. CLI gains `--verbose` (print fixes/warnings) and `--strict` (exit `2` if the loader had to coerce attributes _or_ skip a fixer).
+- React: `ExcelPreviewer` renders a default error card on load failure and a dismissible "leniency" chip when the load report is non-clean. Override via `renderError`, hide via `hideErrorUI` / `showLeniencyChip={false}`.
+
+### Changed
+
+- **Breaking (internal worker protocol):** the bundled extraction worker now posts `{ type: "loaded", layout, report }` instead of `{ type: "layout", layout }`, and errors are posted as `{ type: "error", payload: XlsxLoadErrorPayload }` instead of `{ type: "error", message }`. The wasm-bindgen export `extract_xlsx` now returns `{ layout, report }` instead of `layout`. Consumers using the public `loadWorkbookFromFile` / `createWorkbookPreviewerFromFile` APIs are unaffected; anyone embedding the worker or calling `extract_xlsx` directly must update.
+
 ## [0.0.8] - 2026-05-20
 
 ### Added

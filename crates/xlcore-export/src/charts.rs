@@ -48,7 +48,7 @@ pub fn extract(
     let anchors_xml: Vec<ParsedAnchor> = drawing_root
         .worksheet_drawing_choice
         .iter()
-        .filter_map(|choice| parse_worksheet_drawing_choice(choice))
+        .filter_map(parse_worksheet_drawing_choice)
         .collect();
 
     let mut chart_by_rid: Vec<(String, ooxmlsdk::parts::chart_part::ChartPart)> = chart_parts
@@ -253,8 +253,7 @@ fn parse_worksheet_drawing_choice(choice: &xdr::WorksheetDrawingChoice) -> Optio
                 ext_emu_cx: Some(ext.cx),
                 ext_emu_cy: Some(ext.cy),
             };
-            let (target, cnv_pr) =
-                anchor_target_from_absolute(a.absolute_anchor_choice.as_ref()?)?;
+            let (target, cnv_pr) = anchor_target_from_absolute(a.absolute_anchor_choice.as_ref()?)?;
             Some(ParsedAnchor {
                 anchor,
                 target,
@@ -275,7 +274,10 @@ fn edit_as_token(v: xdr::EditAsValues) -> String {
 
 fn anchor_target_from_two_cell(
     choice: &xdr::TwoCellAnchorChoice,
-) -> Option<(AnchorTarget, Option<std::boxed::Box<xdr::NonVisualDrawingProperties>>)> {
+) -> Option<(
+    AnchorTarget,
+    Option<std::boxed::Box<xdr::NonVisualDrawingProperties>>,
+)> {
     match choice {
         xdr::TwoCellAnchorChoice::XdrGraphicFrame(gf) => {
             let rid = find_relationship_id(&gf.graphic.graphic_data.xml_children)?;
@@ -295,11 +297,11 @@ fn anchor_target_from_two_cell(
             Some((AnchorTarget::Image(embed.as_str().to_string()), Some(cnv)))
         }
         xdr::TwoCellAnchorChoice::XdrSp(sp) => {
-            let cnv = sp.non_visual_shape_properties.non_visual_drawing_properties.clone();
-            Some((
-                AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())),
-                Some(cnv),
-            ))
+            let cnv = sp
+                .non_visual_shape_properties
+                .non_visual_drawing_properties
+                .clone();
+            Some((AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())), Some(cnv)))
         }
         xdr::TwoCellAnchorChoice::XdrGrpSp(g) => {
             let cnv = g
@@ -313,10 +315,7 @@ fn anchor_target_from_two_cell(
                 .non_visual_connection_shape_properties
                 .non_visual_drawing_properties
                 .clone();
-            Some((
-                AnchorTarget::Shape(ShapeRoot::CxnSp(c.clone())),
-                Some(cnv),
-            ))
+            Some((AnchorTarget::Shape(ShapeRoot::CxnSp(c.clone())), Some(cnv)))
         }
         _ => None,
     }
@@ -324,7 +323,10 @@ fn anchor_target_from_two_cell(
 
 fn anchor_target_from_one_cell(
     choice: &xdr::OneCellAnchorChoice,
-) -> Option<(AnchorTarget, Option<std::boxed::Box<xdr::NonVisualDrawingProperties>>)> {
+) -> Option<(
+    AnchorTarget,
+    Option<std::boxed::Box<xdr::NonVisualDrawingProperties>>,
+)> {
     match choice {
         xdr::OneCellAnchorChoice::XdrGraphicFrame(gf) => {
             let rid = find_relationship_id(&gf.graphic.graphic_data.xml_children)?;
@@ -344,11 +346,11 @@ fn anchor_target_from_one_cell(
             Some((AnchorTarget::Image(embed.as_str().to_string()), Some(cnv)))
         }
         xdr::OneCellAnchorChoice::XdrSp(sp) => {
-            let cnv = sp.non_visual_shape_properties.non_visual_drawing_properties.clone();
-            Some((
-                AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())),
-                Some(cnv),
-            ))
+            let cnv = sp
+                .non_visual_shape_properties
+                .non_visual_drawing_properties
+                .clone();
+            Some((AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())), Some(cnv)))
         }
         xdr::OneCellAnchorChoice::XdrGrpSp(g) => {
             let cnv = g
@@ -362,10 +364,7 @@ fn anchor_target_from_one_cell(
                 .non_visual_connection_shape_properties
                 .non_visual_drawing_properties
                 .clone();
-            Some((
-                AnchorTarget::Shape(ShapeRoot::CxnSp(c.clone())),
-                Some(cnv),
-            ))
+            Some((AnchorTarget::Shape(ShapeRoot::CxnSp(c.clone())), Some(cnv)))
         }
         _ => None,
     }
@@ -373,7 +372,10 @@ fn anchor_target_from_one_cell(
 
 fn anchor_target_from_absolute(
     choice: &xdr::AbsoluteAnchorChoice,
-) -> Option<(AnchorTarget, Option<std::boxed::Box<xdr::NonVisualDrawingProperties>>)> {
+) -> Option<(
+    AnchorTarget,
+    Option<std::boxed::Box<xdr::NonVisualDrawingProperties>>,
+)> {
     match choice {
         xdr::AbsoluteAnchorChoice::XdrGraphicFrame(gf) => {
             let rid = find_relationship_id(&gf.graphic.graphic_data.xml_children)?;
@@ -393,11 +395,11 @@ fn anchor_target_from_absolute(
             Some((AnchorTarget::Image(embed.as_str().to_string()), Some(cnv)))
         }
         xdr::AbsoluteAnchorChoice::XdrSp(sp) => {
-            let cnv = sp.non_visual_shape_properties.non_visual_drawing_properties.clone();
-            Some((
-                AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())),
-                Some(cnv),
-            ))
+            let cnv = sp
+                .non_visual_shape_properties
+                .non_visual_drawing_properties
+                .clone();
+            Some((AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())), Some(cnv)))
         }
         xdr::AbsoluteAnchorChoice::XdrGrpSp(g) => {
             let cnv = g
@@ -411,10 +413,7 @@ fn anchor_target_from_absolute(
                 .non_visual_connection_shape_properties
                 .non_visual_drawing_properties
                 .clone();
-            Some((
-                AnchorTarget::Shape(ShapeRoot::CxnSp(c.clone())),
-                Some(cnv),
-            ))
+            Some((AnchorTarget::Shape(ShapeRoot::CxnSp(c.clone())), Some(cnv)))
         }
         _ => None,
     }
@@ -437,10 +436,7 @@ fn drawing_hyperlink_from_cnvpr(
     Some(DrawingHyperlink {
         target: Some(target),
         location,
-        tooltip: click
-            .tooltip
-            .as_ref()
-            .map(|t| t.as_str().to_string()),
+        tooltip: click.tooltip.as_ref().map(|t| t.as_str().to_string()),
         display: None,
     })
 }
@@ -560,31 +556,25 @@ mod tests {
         let external = drawings
             .iter()
             .find(|d| {
-                d.hyperlink
-                    .as_ref()
-                    .and_then(|h| h.target.as_deref())
+                d.hyperlink.as_ref().and_then(|h| h.target.as_deref())
                     == Some("https://example.com/shape-external")
             })
             .expect("external shape hyperlink");
         assert_eq!(
-            external.hyperlink.as_ref().and_then(|h| h.tooltip.as_deref()),
+            external
+                .hyperlink
+                .as_ref()
+                .and_then(|h| h.tooltip.as_deref()),
             Some("External shape link")
         );
         let internal = drawings
             .iter()
-            .find(|d| {
-                d.hyperlink
-                    .as_ref()
-                    .and_then(|h| h.target.as_deref())
-                    == Some("#Sheet1!B5")
-            })
+            .find(|d| d.hyperlink.as_ref().and_then(|h| h.target.as_deref()) == Some("#Sheet1!B5"))
             .expect("internal shape hyperlink");
         assert!(internal.hyperlink.is_some());
-        assert!(
-            drawings
-                .iter()
-                .any(|d| d.hyperlink.is_none() && d.shape.is_some())
-        );
+        assert!(drawings
+            .iter()
+            .any(|d| d.hyperlink.is_none() && d.shape.is_some()));
     }
 
     #[test]

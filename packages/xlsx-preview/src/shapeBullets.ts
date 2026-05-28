@@ -131,23 +131,40 @@ function autoNumGlyph(type: string, n: number): string {
   const romanLc = toRoman(n).toLowerCase();
   const romanUc = toRoman(n).toUpperCase();
   switch (type) {
-    case "arabicPeriod": return `${arabic}.`;
-    case "arabicParenR": return `${arabic})`;
-    case "arabicParenBoth": return `(${arabic})`;
-    case "arabicPlain": return arabic;
-    case "alphaLcPeriod": return `${alphaLc}.`;
-    case "alphaLcParenR": return `${alphaLc})`;
-    case "alphaLcParenBoth": return `(${alphaLc})`;
-    case "alphaUcPeriod": return `${alphaUc}.`;
-    case "alphaUcParenR": return `${alphaUc})`;
-    case "alphaUcParenBoth": return `(${alphaUc})`;
-    case "romanLcPeriod": return `${romanLc}.`;
-    case "romanLcParenR": return `${romanLc})`;
-    case "romanLcParenBoth": return `(${romanLc})`;
-    case "romanUcPeriod": return `${romanUc}.`;
-    case "romanUcParenR": return `${romanUc})`;
-    case "romanUcParenBoth": return `(${romanUc})`;
-    default: return `${arabic}.`;
+    case "arabicPeriod":
+      return `${arabic}.`;
+    case "arabicParenR":
+      return `${arabic})`;
+    case "arabicParenBoth":
+      return `(${arabic})`;
+    case "arabicPlain":
+      return arabic;
+    case "alphaLcPeriod":
+      return `${alphaLc}.`;
+    case "alphaLcParenR":
+      return `${alphaLc})`;
+    case "alphaLcParenBoth":
+      return `(${alphaLc})`;
+    case "alphaUcPeriod":
+      return `${alphaUc}.`;
+    case "alphaUcParenR":
+      return `${alphaUc})`;
+    case "alphaUcParenBoth":
+      return `(${alphaUc})`;
+    case "romanLcPeriod":
+      return `${romanLc}.`;
+    case "romanLcParenR":
+      return `${romanLc})`;
+    case "romanLcParenBoth":
+      return `(${romanLc})`;
+    case "romanUcPeriod":
+      return `${romanUc}.`;
+    case "romanUcParenR":
+      return `${romanUc})`;
+    case "romanUcParenBoth":
+      return `(${romanUc})`;
+    default:
+      return `${arabic}.`;
   }
 }
 
@@ -165,9 +182,19 @@ function toAlpha(n: number): string {
 function toRoman(n: number): string {
   if (n <= 0 || n >= 4000) return String(n);
   const map: [number, string][] = [
-    [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"],
-    [100, "C"], [90, "XC"], [50, "L"], [40, "XL"],
-    [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"],
+    [1000, "M"],
+    [900, "CM"],
+    [500, "D"],
+    [400, "CD"],
+    [100, "C"],
+    [90, "XC"],
+    [50, "L"],
+    [40, "XL"],
+    [10, "X"],
+    [9, "IX"],
+    [5, "V"],
+    [4, "IV"],
+    [1, "I"],
   ];
   let out = "";
   let v = n;

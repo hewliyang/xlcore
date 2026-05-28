@@ -160,10 +160,10 @@ fn extract_line(ln: &a::Outline) -> FmtLine {
         .cap_type
         .as_ref()
         .and_then(|v| enum_token(&format!("{:?}", v)));
-    let join = ln.outline_choice3.as_ref().and_then(|c| match c {
-        a::OutlineChoice3::ARound => Some("round".to_string()),
-        a::OutlineChoice3::ABevel => Some("bevel".to_string()),
-        a::OutlineChoice3::AMiter(_) => Some("miter".to_string()),
+    let join = ln.outline_choice3.as_ref().map(|c| match c {
+        a::OutlineChoice3::ARound => "round".to_string(),
+        a::OutlineChoice3::ABevel => "bevel".to_string(),
+        a::OutlineChoice3::AMiter(_) => "miter".to_string(),
     });
     let dash = ln.outline_choice2.as_ref().and_then(|c| match c {
         a::OutlineChoice2::APrstDash(d) => d

@@ -5,7 +5,6 @@
 <title>xlcore tiles · multi-workbook</title>
 <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
 <style>
-  /* --- tokens ------------------------------------------------------- */
   :root {
     --bg: #f7f8fa;
     --surface: #ffffff;
@@ -51,7 +50,7 @@
   header button:hover { background: var(--surface-muted); }
   .spacer { flex: 1; }
 
-  /* --- tile tree ---------------------------------------------------- */
+  /* Tile tree */
   #root-tile { display: flex; min-width: 0; min-height: 0; }
   .split {
     display: flex; min-width: 0; min-height: 0;
@@ -61,7 +60,7 @@
   .split.horizontal { flex-direction: row; }
   .split > .pane-host { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; }
 
-  /* Split.js gutter styling */
+  /* Split.js gutters */
   .gutter {
     background: var(--border);
     background-repeat: no-repeat;
@@ -73,7 +72,7 @@
   .gutter.gutter-horizontal { cursor: col-resize; width: 4px; }
   .gutter.gutter-vertical { cursor: row-resize; height: 4px; }
 
-  /* --- leaf pane ---------------------------------------------------- */
+  /* Leaf pane */
   .pane {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
@@ -118,10 +117,7 @@
   .pane-body.empty .empty-inner { text-align: center; font-size: 11.5px; pointer-events: none; }
   .pane-body.empty .empty-inner b { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
   .pane-body.empty input { position: absolute; left: -9999px; }
-  /* Drag-over affordance: light accent tint covers the whole pane body
-     (empty or already-loaded — dropping onto a loaded pane replaces its
-     workbook). The overlay is pointer-events:none so the underlying drop
-     target keeps receiving the event. */
+
   .pane-body.drop-target::after {
     content: "Drop to load";
     position: absolute; inset: 0;
@@ -133,10 +129,7 @@
     pointer-events: none;
     z-index: 5;
   }
-  /* Pane-rearrange drop zones: shown when another pane's header is being
-     dragged over this body. The overlay rectangle previews where the
-     dragged pane will land (left/right/top/bottom half = insert as a
-     sibling on that edge; center = swap positions). */
+
   .pane-body[data-pane-zone]::before {
     content: "";
     position: absolute;
@@ -152,15 +145,11 @@
   .pane-body[data-pane-zone="bottom"]::before { inset: 50% 0 0 0; }
   .pane-body[data-pane-zone="center"]::before { inset: 0; background: rgba(79, 70, 229, 0.28); }
   .pane.dragging { opacity: 0.6; }
-  /* The previewer renders its own formula bar + sheet tab strip. We
-     hide both: the formula bar to save vertical space in small tiles,
-     and the built-in tabs because we render our own footer below
-     (matching the look in xlsx-app.html). */
+
+  /* Use the per-pane footer tabs below instead of the previewer's built-in chrome. */
   .pane-body .xlcore-formula-bar,
   .pane-body .xlcore-tabs { display: none !important; }
 
-  /* --- per-pane sheet tab bar (footer) ----------------------------- */
-  /* Cloned from xlsx-app.html. Lives inside each leaf pane. */
   .tabbar {
     height: 28px;
     border-top: 1px solid var(--border);
@@ -248,61 +237,28 @@
 
 <script src="https://unpkg.com/split.js@1.6.5/dist/split.min.js"></script>
 <script type="module">
-const REMOTE_CDN = "https://cdn.jsdelivr.net/npm/@hewliyang/xlsx-preview@0.0.8/dist/";
-let ASSET_BASE = "../dist/";
-let createWorkbookPreviewerFromFile;
+import { loadXlsxPreviewRuntime } from "./shared/loadXlsxPreview.js";
+let runtime;
 try {
-  ({ createWorkbookPreviewerFromFile } = await import(`../dist/browserLoader.js?v=${Date.now()}`));
+  runtime = await loadXlsxPreviewRuntime({ modules: ["browserLoader.js"] });
 } catch (error) {
-  console.warn("Local renderer failed; falling back to CDN", error);
-  ASSET_BASE = REMOTE_CDN;
-  ({ createWorkbookPreviewerFromFile } = await import(`${REMOTE_CDN}browserLoader.js`));
+  document.body.innerHTML =
+    `<pre style="margin: 24px; padding: 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font: 13px/1.5 ui-monospace, monospace; color: #7f1d1d; white-space: pre-wrap;">` +
+    String(error && error.message ? error.message : error)
+      .replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])) +
+    `</pre>`;
+  throw error;
 }
+const ASSET_BASE = runtime.assetBase;
+const { createWorkbookPreviewerFromFile } = runtime;
 
 const root = document.getElementById("root-tile");
 
-// ----- tile tree --------------------------------------------------------
-//
-// Each tile is either a leaf (with an optional loaded workbook) or a
-// split that contains exactly two children plus a Split.js instance for
-// drag-resize between them. The tree is mutated in place: splitting a
-// leaf replaces it with a Split node whose first child holds the
-// original leaf and whose second child is a fresh empty leaf. Closing a
-// leaf finds its parent split and replaces the parent with the surviving
-// sibling — exactly how tmux/zellij pane-close works.
-
+// Binary tile tree: leaves hold previewers, split nodes hold two children plus Split.js state.
 let nextId = 1;
 function uid() { return `t${nextId++}`; }
 
-// Custom MIME used by the pane-rearrange drag-and-drop. Drop targets
-// look for this type to distinguish an internal move from an external
-// .xlsx file drop. Note: most browsers normalise the type to lowercase
-// when it's read back via `dataTransfer.types`, so we use a lowercase
-// canonical form everywhere.
 const PANE_MIME = "application/x-xlcore-pane";
-
-/**
- * @typedef {Object} Leaf
- * @property {"leaf"} kind
- * @property {string} id
- * @property {HTMLElement} el        // .pane element
- * @property {HTMLElement} bodyEl    // .pane-body
- * @property {HTMLElement} nameEl
- * @property {HTMLElement} metaEl
- * @property {any|null} previewer    // WorkbookPreviewer | null
- * @property {Split|null} parentSplit
- * @property {Object|null} parent
- */
-/**
- * @typedef {Object} Split
- * @property {"split"} kind
- * @property {"horizontal"|"vertical"} direction
- * @property {HTMLElement} el        // .split element
- * @property {[Object, Object]} children // each child has .host (pane-host wrapper)
- * @property {[HTMLElement, HTMLElement]} hosts
- * @property {any} instance          // Split.js instance
- * @property {Object|null} parent
- */
 
 let rootNode = null;
 
@@ -342,10 +298,6 @@ function createLeaf() {
       <input type="file" id="${fileId}" multiple accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
     </label>`;
 
-  // Per-pane footer (sheet tabs + zoom controls). Cloned from
-  // xlsx-app.html — each leaf owns its own tabbar wired to its own
-  // previewer instance. Starts in the "empty" state until a workbook
-  // is loaded.
   const tabbar = document.createElement("footer");
   tabbar.className = "tabbar empty";
   const tabs = document.createElement("div");
@@ -371,7 +323,6 @@ function createLeaf() {
 
   el.append(head, body, tabbar);
 
-  /** @type {Leaf} */
   const leaf = {
     kind: "leaf",
     id: el.dataset.id,
@@ -399,13 +350,9 @@ function createLeaf() {
   splitDown.onclick = () => splitLeaf(leaf, "vertical");
   closeBtn.onclick = () => closeLeaf(leaf);
 
-  // The pane head doubles as a drag handle: dragging it onto another
-  // pane re-parents this leaf in the tree (see moveLeaf). We tag the
-  // dataTransfer with a custom MIME type so drop targets can tell
-  // pane-rearrange drags apart from external file drops.
   head.draggable = true;
   head.addEventListener("dragstart", (e) => {
-    // Action buttons inside the head shouldn't initiate a move drag.
+
     if (e.target instanceof Element && e.target.closest("button")) {
       e.preventDefault();
       return;
@@ -416,8 +363,7 @@ function createLeaf() {
   });
   head.addEventListener("dragend", () => {
     leaf.el.classList.remove("dragging");
-    // Any zone overlays still showing (e.g. drag cancelled outside any
-    // pane) should be cleared.
+
     for (const b of document.querySelectorAll(".pane-body[data-pane-zone]")) {
       b.removeAttribute("data-pane-zone");
     }
@@ -432,16 +378,9 @@ function createLeaf() {
   return leaf;
 }
 
-/** Wire native drag-and-drop on a leaf's body. Handles two drag kinds:
- *  (1) external `.xlsx` files dragged from the OS — load them into
- *      this slot via loadFiles (splits if the slot already holds a
- *      workbook), and (2) an internal pane-rearrange drag where the
- *      user grabbed another pane's header — show a directional drop
- *      overlay (left/right/top/bottom/center) and on drop call
- *      moveLeaf to re-home the source leaf in this slot. */
 function wireDropZone(leaf) {
   const body = leaf.bodyEl;
-  let fileDepth = 0; // dragenter/dragleave fire per child, so we ref-count.
+  let fileDepth = 0;
   const isXlsx = (f) =>
     f && (
       /\.xlsx$/i.test(f.name) ||
@@ -458,7 +397,7 @@ function wireDropZone(leaf) {
       body.classList.add("drop-target");
     } else if (isPaneDrag(types)) {
       e.preventDefault();
-      // Zone overlay is computed in dragover (needs pointer coords).
+
     }
   });
   body.addEventListener("dragover", (e) => {
@@ -480,11 +419,7 @@ function wireDropZone(leaf) {
       if (fileDepth === 0) body.classList.remove("drop-target");
     }
     if (isPaneDrag(types)) {
-      // dragleave fires when the pointer crosses into a child element
-      // too, but in that case a fresh dragenter follows immediately and
-      // re-sets the attribute via dragover. Safe to clear here; if the
-      // pointer is still over the body it'll be set again on the next
-      // dragover frame.
+
       const r = body.getBoundingClientRect();
       if (
         e.clientX < r.left || e.clientX >= r.right ||
@@ -497,7 +432,6 @@ function wireDropZone(leaf) {
   body.addEventListener("drop", (e) => {
     const types = e.dataTransfer?.types;
 
-    // Pane-rearrange drop: re-home the source leaf relative to this one.
     if (isPaneDrag(types)) {
       e.preventDefault();
       e.stopPropagation();
@@ -509,7 +443,6 @@ function wireDropZone(leaf) {
       return;
     }
 
-    // External file drop.
     if (!e.dataTransfer?.files?.length) return;
     e.preventDefault();
     e.stopPropagation();
@@ -521,9 +454,6 @@ function wireDropZone(leaf) {
   });
 }
 
-/** Bucket a pointer position inside `body` into one of five drop zones.
- *  The central rectangle (30%–70% on both axes) is "center" → swap;
- *  outside that it falls to the nearest edge. */
 function computeZone(body, clientX, clientY) {
   const r = body.getBoundingClientRect();
   const fx = (clientX - r.left) / Math.max(1, r.width);
@@ -537,7 +467,6 @@ function computeZone(body, clientX, clientY) {
   return "bottom";
 }
 
-/** Walk the tree, return the leaf whose id matches. */
 function findLeafById(node, id) {
   if (!node) return null;
   if (node.kind === "leaf") return node.id === id ? node : null;
@@ -548,8 +477,6 @@ function findLeafById(node, id) {
   return null;
 }
 
-// Suppress the browser default of opening dropped files when the drop
-// lands outside any pane body (otherwise the user navigates away).
 window.addEventListener("dragover", (e) => {
   if (e.dataTransfer?.types?.includes("Files")) e.preventDefault();
 });
@@ -567,13 +494,6 @@ function iconBtn(label, title) {
   return b;
 }
 
-/** Load N files starting from `startLeaf`. The drop target itself
- *  takes the first file (if empty) or is split to make room. Extra
- *  files cascade: each one splits the leaf the previous file landed
- *  in. Split direction is perpendicular to the target leaf's longest
- *  side, so a wide pane cuts left/right and a tall pane cuts
- *  top/bottom — matching the way a user would expect a drop to
- *  subdivide that specific tile. */
 async function loadFiles(startLeaf, files) {
   let target = startLeaf;
   for (const file of files) {
@@ -582,18 +502,13 @@ async function loadFiles(startLeaf, files) {
       const direction = rect.width >= rect.height ? "horizontal" : "vertical";
       target = splitLeaf(target, direction);
     }
-    // Sequential: keeps Split.js state and layout mutations serialized,
-    // and avoids N concurrent WASM workbook parses fighting for the
-    // main thread.
-    // eslint-disable-next-line no-await-in-loop
+
     await loadInto(target, file);
   }
 }
 
 async function loadInto(leaf, file) {
-  // Tearing down a previous workbook before re-loading the slot keeps
-  // canvas/worker resources from leaking when a user opens a new file
-  // into a pane that already has one.
+
   if (leaf.previewer) {
     leaf.previewer.destroy();
     leaf.previewer = null;
@@ -613,8 +528,7 @@ async function loadInto(leaf, file) {
     const dt = ((performance.now() - started) / 1000).toFixed(1);
     leaf.metaEl.textContent = `${leaf.previewer.layout.sheets.length} sheet(s) · ${dt}s`;
     populateTabbar(leaf);
-    // Sheet/zoom changes can come from keyboard nav or programmatic
-    // calls inside the previewer; mirror them in our tabbar.
+
     leaf.previewer.on("sheetchange", () => updateTabbar(leaf));
     leaf.previewer.on("zoomchange", () => updateTabbar(leaf));
   } catch (err) {
@@ -662,18 +576,10 @@ function updateTabbar(leaf) {
   leaf.zoomLabelEl.textContent = `${Math.round(state.zoom * 100)}%`;
 }
 
-// ----- split / merge ----------------------------------------------------
-
-/** Replace `leaf` in the tree with a new Split node whose first child
- *  is `leaf` and whose second child is a fresh empty leaf. Split.js
- *  manages the drag-resize gutter between them. */
 function splitLeaf(leaf, direction) {
   const newLeaf = createLeaf();
   const split = createSplitNode(direction, leaf, newLeaf);
-  // IMPORTANT: replaceNode reads `leaf.parent` to find the slot it lives
-  // in, so we must not have rewritten the parent pointers on the
-  // children yet. createSplitNode therefore returns a split whose
-  // children's `.parent` is still pointing at the original tree.
+
   replaceNode(leaf, split);
   leaf.parent = split;
   split.children[1].parent = split;
@@ -691,20 +597,18 @@ function createSplitNode(direction, a, b) {
   hostA.append(a.el);
   hostB.append(b.el);
   el.append(hostA, hostB);
-  /** @type {Split} */
+
   const node = {
     kind: "split", direction, el,
     children: [a, b], hosts: [hostA, hostB],
     instance: null, parent: null,
   };
-  // Parent pointers on children are intentionally NOT set here; the
-  // caller wires them up after replaceNode has used the old pointer.
+
   return node;
 }
 
 function instantiateSplit(node) {
-  // Split.js wants the actual DOM children to size; we feed it the
-  // wrapper hosts so leaves themselves stay flexible.
+
   node.instance = Split([node.hosts[0], node.hosts[1]], {
     direction: node.direction === "horizontal" ? "horizontal" : "vertical",
     sizes: [50, 50],
@@ -716,9 +620,7 @@ function instantiateSplit(node) {
       g.className = `gutter gutter-${direction}`;
       return g;
     },
-    // Fire a redraw on each previewer in this split as the user drags,
-    // otherwise the canvas keeps its old logical size until the next
-    // ResizeObserver tick.
+
     onDrag: () => redrawSubtree(node),
     onDragEnd: () => redrawSubtree(node),
   });
@@ -741,43 +643,28 @@ function replaceNode(oldNode, newNode) {
     rootNode = newNode;
     return;
   }
-  // Find which slot the old node was in.
+
   const idx = parent.children.indexOf(oldNode);
   parent.children[idx] = newNode;
   parent.hosts[idx].replaceChildren(newNode.el);
 }
 
-/** Re-home `source` relative to `target` based on a drop zone:
- *   - "center"           → swap the two leaves' positions in the tree.
- *   - "left"  / "right"  → wrap target in a new horizontal split with
- *                          source on the requested side.
- *   - "top"   / "bottom" → same but vertical.
- *  No-ops if source === target, if source is the root (nothing to
- *  detach), or if the move would be visually a no-op (source is
- *  already target's sibling on the same side with same direction). */
 function moveLeaf(source, target, zone) {
   if (!source || !target || source === target) return;
   if (zone === "center") { swapLeaves(source, target); return; }
-  if (!source.parent) return; // root can't be detached
-  // After detaching source the tree shrinks; we then wrap target in a
-  // new split with source. The order of operations matters: detach
-  // first so `target.parent` reflects the post-detach state when we
-  // compute its slot.
+  if (!source.parent) return;
+
   detachLeaf(source);
   insertLeafAt(target, source, zone);
 }
 
-/** Remove `leaf` from its parent split, replacing the parent in the
- *  grandparent with the surviving sibling. Mirrors closeLeaf but
- *  preserves the previewer (we're going to re-insert it elsewhere). */
 function detachLeaf(leaf) {
   const parent = leaf.parent;
   if (!parent) return;
   const sibling = parent.children[0] === leaf ? parent.children[1] : parent.children[0];
   parent.instance?.destroy();
   parent.instance = null;
-  // Detach DOM nodes from their current hosts so replaceNode can re-home
-  // the sibling cleanly.
+
   sibling.el.remove();
   sibling.parent = null;
   replaceNode(parent, sibling);
@@ -785,13 +672,10 @@ function detachLeaf(leaf) {
   leaf.parent = null;
 }
 
-/** Insert `source` next to `target` on the given side, creating a new
- *  Split node in target's previous slot. */
 function insertLeafAt(target, source, side) {
   const direction = (side === "left" || side === "right") ? "horizontal" : "vertical";
   const sourceFirst = side === "left" || side === "top";
-  // Detach target from its current host so createSplitNode can place
-  // both children into its fresh host wrappers.
+
   const targetParent = target.parent;
   const targetIdx = targetParent ? targetParent.children.indexOf(target) : -1;
   target.el.remove();
@@ -799,8 +683,7 @@ function insertLeafAt(target, source, side) {
   const a = sourceFirst ? source : target;
   const b = sourceFirst ? target : source;
   const split = createSplitNode(direction, a, b);
-  // Plug the new split into the slot target used to live in (handles
-  // root-replacement when target was root).
+
   if (!targetParent) {
     root.replaceChildren(split.el);
     rootNode = split;
@@ -813,24 +696,18 @@ function insertLeafAt(target, source, side) {
   a.parent = split;
   b.parent = split;
   instantiateSplit(split);
-  // Both panes' previewers may need a redraw now that their containers
-  // have new sizes; the resize observer will fire on its own tick but
-  // a manual nudge eliminates a one-frame flash.
+
   source.previewer?.redraw();
   target.previewer?.redraw();
 }
 
-/** Swap two leaves' positions in the tree (each ends up where the other
- *  used to be). Both leaves must have parents (no root involvement). */
 function swapLeaves(a, b) {
   if (a === b || !a.parent || !b.parent) return;
   const pa = a.parent, pb = b.parent;
   const ia = pa.children.indexOf(a);
   const ib = pb.children.indexOf(b);
   if (ia < 0 || ib < 0) return;
-  // Pull both elements out of their hosts before re-homing — otherwise
-  // appendChild would silently move the still-live sibling and we'd lose
-  // track of one of them.
+
   a.el.remove();
   b.el.remove();
   pa.children[ia] = b;
@@ -843,10 +720,6 @@ function swapLeaves(a, b) {
   b.previewer?.redraw();
 }
 
-/** Close a leaf. If it's the root, replace it with a fresh empty leaf
- *  (a tile manager always shows at least one pane). Otherwise, replace
- *  the parent split with the surviving sibling, destroying the Split.js
- *  instance along the way. */
 function closeLeaf(leaf) {
   leaf.previewer?.destroy();
   if (!leaf.parent) {
@@ -858,13 +731,11 @@ function closeLeaf(leaf) {
   const parent = leaf.parent;
   const sibling = parent.children[0] === leaf ? parent.children[1] : parent.children[0];
   parent.instance?.destroy();
-  // Detach sibling from parent's host wrapper so replaceNode can re-home it.
+
   sibling.el.remove();
   sibling.parent = null;
   replaceNode(parent, sibling);
 }
-
-// ----- init -------------------------------------------------------------
 
 function resetLayout() {
   if (rootNode) destroyTree(rootNode);

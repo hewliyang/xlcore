@@ -3,6 +3,7 @@
   "files": {
     "includes": [
       "src/**/*.ts",
+      "src/**/*.tsx",
       "examples/**/*.html",
       "package.json",
       "tsconfig.json",

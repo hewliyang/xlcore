@@ -9,7 +9,11 @@ use ooxmlsdk::sdk::{
     OpenSettings,
 };
 
-mod xmlns_normalize;
+mod error;
+mod precompile;
+
+use error::map_sdk_error;
+pub use error::{FixedAttribute, LoadReport, SchemaErrorKind, XlsxLoadError};
 
 pub fn open<P: AsRef<Path>>(path: P) -> anyhow::Result<SpreadsheetDocument> {
     let f = File::open(path.as_ref())?;
@@ -23,7 +27,16 @@ pub fn open_reader<R: Read + Seek>(mut reader: R) -> anyhow::Result<SpreadsheetD
 }
 
 pub fn open_bytes(bytes: Vec<u8>) -> anyhow::Result<SpreadsheetDocument> {
-    let bytes = xmlns_normalize::normalize_xlsx(bytes)?;
+    let (doc, _report) = open_bytes_with_report(bytes)?;
+    Ok(doc)
+}
+
+pub fn open_bytes_with_report(
+    bytes: Vec<u8>,
+) -> Result<(SpreadsheetDocument, LoadReport), XlsxLoadError> {
+    let mut report = LoadReport::default();
+
+    let bytes = precompile::precompile_xlsx(bytes, &mut report)?;
 
     let settings = OpenSettings {
         markup_compatibility_process_settings: MarkupCompatibilityProcessSettings {
@@ -32,10 +45,10 @@ pub fn open_bytes(bytes: Vec<u8>) -> anyhow::Result<SpreadsheetDocument> {
         },
         ..OpenSettings::default()
     };
-    Ok(SpreadsheetDocument::new_with_settings(
-        std::io::Cursor::new(bytes),
-        settings,
-    )?)
+
+    let doc = SpreadsheetDocument::new_with_settings(std::io::Cursor::new(&bytes), settings)
+        .map_err(map_sdk_error)?;
+    Ok((doc, report))
 }
 
 pub fn save<P: AsRef<Path>>(doc: &mut SpreadsheetDocument, path: P) -> anyhow::Result<()> {

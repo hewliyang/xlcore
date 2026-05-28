@@ -1,5 +1,6 @@
 import { decodeWorkbookLayout, findCell, iterRows } from "./columnar.js";
 import { colorToCssWithTheme } from "./color.js";
+import type { LoadReport } from "./errors.js";
 import { attachInteractivity, type InteractHandle, type Selection } from "./interact.js";
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
 import type { Sheet as WireSheet } from "./schema/Sheet.js";
@@ -9,7 +10,7 @@ export interface PreviewerOptions {
   initialSheet?: number | string;
   initialZoom?: number;
   className?: string;
-
+  report?: LoadReport;
   showHidden?: boolean;
 }
 
@@ -33,6 +34,8 @@ export interface WorkbookPreviewer {
   readonly root: HTMLElement;
   readonly canvas: HTMLCanvasElement;
   readonly layout: WorkbookLayout;
+
+  readonly report?: LoadReport;
   destroy(): void;
   redraw(): void;
   getState(): PreviewerState;
@@ -75,6 +78,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   readonly root: HTMLElement;
   readonly canvas: HTMLCanvasElement;
   readonly layout: WorkbookLayout;
+  readonly report?: LoadReport;
 
   private readonly tabs: HTMLDivElement;
   private readonly sheetTabs: HTMLDivElement;
@@ -100,6 +104,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   constructor(container: HTMLElement, rawLayout: WorkbookLayout, options: PreviewerOptions) {
     super();
     this.layout = decodeWorkbookLayout(rawLayout);
+    this.report = options.report;
     this.zoom = clamp(options.initialZoom ?? 1, 0.25, 4);
     this.showHidden = options.showHidden === true;
     this.sheetStates = this.layout.sheets.map(() => ({

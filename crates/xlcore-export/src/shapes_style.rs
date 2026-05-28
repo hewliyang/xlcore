@@ -47,9 +47,7 @@ fn resolve_ref_color_debug<T: std::fmt::Debug>(
         if let Some(v) = scope.find("val: ") {
             let tail = &scope[v + 5..];
 
-            let end = tail
-                .find(|ch: char| ch == ',' || ch == ' ' || ch == '}')
-                .unwrap_or(tail.len());
+            let end = tail.find([',', ' ', '}']).unwrap_or(tail.len());
             if let Some(hex) = preset_color_hex(&tail[..end]) {
                 return Some(hex.to_string());
             }
@@ -236,18 +234,19 @@ mod tests {
     }
 
     fn scheme_choice(name: &str) -> a::FillReferenceChoice {
-        let mut sc = a::SchemeColor::default();
-
-        sc.val = match name {
-            "accent1" => a::SchemeColorValues::Accent1,
-            "accent2" => a::SchemeColorValues::Accent2,
-            "accent3" => a::SchemeColorValues::Accent3,
-            "accent4" => a::SchemeColorValues::Accent4,
-            "accent5" => a::SchemeColorValues::Accent5,
-            "accent6" => a::SchemeColorValues::Accent6,
-            "bg1" | "lt1" => a::SchemeColorValues::Light1,
-            "dk1" | "tx1" => a::SchemeColorValues::Dark1,
-            _ => a::SchemeColorValues::Accent1,
+        let sc = a::SchemeColor {
+            val: match name {
+                "accent1" => a::SchemeColorValues::Accent1,
+                "accent2" => a::SchemeColorValues::Accent2,
+                "accent3" => a::SchemeColorValues::Accent3,
+                "accent4" => a::SchemeColorValues::Accent4,
+                "accent5" => a::SchemeColorValues::Accent5,
+                "accent6" => a::SchemeColorValues::Accent6,
+                "bg1" | "lt1" => a::SchemeColorValues::Light1,
+                "dk1" | "tx1" => a::SchemeColorValues::Dark1,
+                _ => a::SchemeColorValues::Accent1,
+            },
+            ..Default::default()
         };
         a::FillReferenceChoice::ASchemeClr(Box::new(sc))
     }

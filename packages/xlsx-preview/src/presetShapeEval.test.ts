@@ -18,11 +18,17 @@ function fakeCtx(): { calls: Call[]; ctx: CanvasRenderingContext2D } {
     lineTo: (x: number, y: number) => calls.push(["L", x, y]),
     quadraticCurveTo: (cx: number, cy: number, x: number, y: number) =>
       calls.push(["Q", cx, cy, x, y]),
-    bezierCurveTo: (
-      c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number,
-    ) => calls.push(["C", c1x, c1y, c2x, c2y, x, y]),
+    bezierCurveTo: (c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number) =>
+      calls.push(["C", c1x, c1y, c2x, c2y, x, y]),
     ellipse: (
-      cx: number, cy: number, rx: number, ry: number, rot: number, sa: number, ea: number, ccw: boolean,
+      cx: number,
+      cy: number,
+      rx: number,
+      ry: number,
+      rot: number,
+      sa: number,
+      ea: number,
+      ccw: boolean,
     ) => calls.push(["E", cx, cy, rx, ry, rot, sa, ea, ccw]),
     closePath: () => calls.push(["Z"]),
   } as unknown as CanvasRenderingContext2D;

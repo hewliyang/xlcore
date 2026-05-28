@@ -1,4 +1,11 @@
 import {
+  EMPTY_LOAD_REPORT,
+  type LoadReport,
+  XlsxLoadError,
+  type XlsxLoadErrorPayload,
+  xlsxLoadErrorPayloadFromUnknown,
+} from "./errors.js";
+import {
   createWorkbookPreviewer,
   type PreviewerOptions,
   type WorkbookPreviewer,
@@ -20,41 +27,68 @@ export interface CreateWorkbookPreviewerFromFileOptions
   extends WorkbookLoaderOptions,
     PreviewerOptions {}
 
+export interface LoadedWorkbook {
+  layout: WorkbookLayout;
+  report: LoadReport;
+}
+
 const DEFAULT_WASM_BINARY_URL = new URL("./xlcore_wasm_bg.wasm", import.meta.url).href;
 
 export async function loadWorkbookFromFile(
   file: Blob,
   options: WorkbookLoaderOptions = {},
 ): Promise<WorkbookLayout> {
+  return (await loadWorkbookFromFileWithReport(file, options)).layout;
+}
+
+export async function loadWorkbookFromFileWithReport(
+  file: Blob,
+  options: WorkbookLoaderOptions = {},
+): Promise<LoadedWorkbook> {
   progress(options, "Reading file");
   const bytes = await file.arrayBuffer();
-  return loadWorkbookFromArrayBuffer(bytes, options);
+  return loadWorkbookFromArrayBufferWithReport(bytes, options);
 }
 
 export async function loadWorkbookFromArrayBuffer(
   bytes: ArrayBuffer,
   options: WorkbookLoaderOptions = {},
 ): Promise<WorkbookLayout> {
+  return (await loadWorkbookFromArrayBufferWithReport(bytes, options)).layout;
+}
+
+export async function loadWorkbookFromArrayBufferWithReport(
+  bytes: ArrayBuffer,
+  options: WorkbookLoaderOptions = {},
+): Promise<LoadedWorkbook> {
   const worker = createExtractionWorker(options);
   return await new Promise((resolve, reject) => {
     worker.onmessage = (event) => {
       const message = event.data as
         | { type: "stage"; label: string }
-        | { type: "layout"; layout: WorkbookLayout }
-        | { type: "error"; message: string };
+        | { type: "loaded"; layout: WorkbookLayout; report: LoadReport }
+        | { type: "error"; payload: XlsxLoadErrorPayload };
       if (message.type === "stage") {
         progress(options, message.label);
-      } else if (message.type === "layout") {
+      } else if (message.type === "loaded") {
         worker.terminate();
-        resolve(message.layout);
+        resolve({
+          layout: message.layout,
+          report: message.report ?? EMPTY_LOAD_REPORT,
+        });
       } else if (message.type === "error") {
         worker.terminate();
-        reject(new Error(message.message));
+        reject(new XlsxLoadError(xlsxLoadErrorPayloadFromUnknown(message.payload)));
       }
     };
     worker.onerror = (event) => {
       worker.terminate();
-      reject(new Error(event.message || "Workbook worker failed"));
+      reject(
+        new XlsxLoadError({
+          code: "Other",
+          message: event.message || "Workbook worker failed",
+        }),
+      );
     };
     worker.postMessage(
       {
@@ -71,9 +105,9 @@ export async function createWorkbookPreviewerFromFile(
   file: Blob,
   options: CreateWorkbookPreviewerFromFileOptions = {},
 ): Promise<WorkbookPreviewer> {
-  const layout = await loadWorkbookFromFile(file, options);
+  const { layout, report } = await loadWorkbookFromFileWithReport(file, options);
   progress(options, "Preparing preview");
-  const previewer = createWorkbookPreviewer(container, layout, options);
+  const previewer = createWorkbookPreviewer(container, layout, { ...options, report });
   progress(options, "Rendering canvas");
   return previewer;
 }
