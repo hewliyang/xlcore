@@ -28,10 +28,9 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- Build-based examples (`nextjs`, `react-vite`, `vanilla-js`) now accept
-  `.csv`, `.tsv`, `.parquet`, and `.pqt` in their file pickers and depend on
-  `@hewliyang/xlsx-preview ^0.0.9`. The pinned no-build CDN demo
-  (`vanilla-js/demo.html`) stays at `@0.0.8` until manually bumped.
+- All examples (build-based and the pinned no-build CDN demo) now accept
+  `.csv`, `.tsv`, `.parquet`, and `.pqt` in their file pickers and target
+  `@hewliyang/xlsx-preview` `0.0.9`.
 - **Breaking (internal worker protocol):** the bundled extraction worker now posts `{ type: "loaded", layout, report }` instead of `{ type: "layout", layout }`, and errors are posted as `{ type: "error", payload: XlsxLoadErrorPayload }` instead of `{ type: "error", message }`. The wasm-bindgen export `extract_xlsx` now returns `{ layout, report }` instead of `layout`. Consumers using the public `loadWorkbookFromFile` / `createWorkbookPreviewerFromFile` APIs are unaffected; anyone embedding the worker or calling `extract_xlsx` directly must update.
 
 ### Fixed
