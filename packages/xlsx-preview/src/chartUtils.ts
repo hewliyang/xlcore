@@ -122,6 +122,18 @@ export function buildStackedRows(
   return tops;
 }
 
+export function categoryAxisExtraRows(chart: Chart): string[][] {
+  const lv = chart.cxCategoryLevels ?? [];
+  if (lv.length <= 1) return [];
+  const out: string[][] = [];
+  for (let i = lv.length - 2; i >= 0; i--) out.push(lv[i] ?? []);
+  return out;
+}
+
+export function categoryAxisExtraHeight(chart: Chart): number {
+  return categoryAxisExtraRows(chart).length * (AXIS_FONT_SIZE + 4);
+}
+
 export function drawAxisFrame(
   ctx: CanvasRenderingContext2D,
   chart: Chart,
@@ -137,7 +149,7 @@ export function drawAxisFrame(
     percent ? `${Math.round(t)}%` : formatAxisValue(t, chart.valueFormat, chart.dispUnits),
   );
   const yAxisW = Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
-  const xAxisH = AXIS_FONT_SIZE + 8;
+  const xAxisH = AXIS_FONT_SIZE + 8 + (horizontal ? 0 : categoryAxisExtraHeight(chart));
   const inner: Rect = horizontal
     ? { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH }
     : { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH };
@@ -221,6 +233,58 @@ export function drawCategoryAxis(
     if (left < lastRight + minGapPx) continue;
     ctx.fillText(label, cx, inner.y + inner.h + 4);
     lastRight = cx + w / 2;
+  }
+
+  if (!horizontal) {
+    const extras = categoryAxisExtraRows(chart);
+    const rowH = AXIS_FONT_SIZE + 4;
+    for (let ri = 0; ri < extras.length; ri++) {
+      const row = extras[ri]!;
+      const yBase = inner.y + inner.h + 4 + (ri + 1) * rowH;
+      let lastRightR = -Infinity;
+      for (let i = 0; i < categoryCount; i++) {
+        const label = row[i] ?? "";
+        if (!label) continue;
+        const cx = inner.x + (i / denom) * inner.w;
+        const w = ctx.measureText(label).width;
+        const left = cx - w / 2;
+        if (left < lastRightR + minGapPx) continue;
+        ctx.fillText(label, cx, yBase);
+        lastRightR = cx + w / 2;
+      }
+    }
+  }
+}
+
+export function drawCategoryAxisExtraRowsCentered(
+  ctx: CanvasRenderingContext2D,
+  chart: Chart,
+  inner: Rect,
+  categoryCount: number,
+  xCenterFor: (i: number) => number,
+): void {
+  const extras = categoryAxisExtraRows(chart);
+  if (extras.length === 0) return;
+  ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  ctx.fillStyle = AXIS_LABEL_COLOR;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  const rowH = AXIS_FONT_SIZE + 4;
+  const minGapPx = 8;
+  for (let ri = 0; ri < extras.length; ri++) {
+    const row = extras[ri]!;
+    const y = inner.y + inner.h + 4 + (ri + 1) * rowH;
+    let lastRight = -Infinity;
+    for (let i = 0; i < categoryCount; i++) {
+      const label = row[i] ?? "";
+      if (!label) continue;
+      const cx = xCenterFor(i);
+      const w = ctx.measureText(label).width;
+      const left = cx - w / 2;
+      if (left < lastRight + minGapPx) continue;
+      ctx.fillText(label, cx, y);
+      lastRight = cx + w / 2;
+    }
   }
 }
 

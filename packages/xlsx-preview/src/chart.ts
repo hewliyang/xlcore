@@ -3,9 +3,11 @@ import { drawAreaChart } from "./chartArea.js";
 import {
   buildLabelText,
   buildStackedRows,
+  categoryAxisExtraHeight,
   computeBarSlotMetrics,
   drawAxisFrame,
   drawCategoryAxis,
+  drawCategoryAxisExtraRowsCentered,
   drawLabel,
   drawLegend,
   drawPlaceholderPlot,
@@ -351,7 +353,7 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
   const labelStrings = ticks.map((t) => formatAxisValue(t, chart.valueFormat, chart.dispUnits));
   const yAxisW = Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
-  const xAxisH = AXIS_FONT_SIZE + 8;
+  const xAxisH = AXIS_FONT_SIZE + 8 + (horizontal ? 0 : categoryAxisExtraHeight(chart));
 
   const innerRect: Rect = horizontal
     ? { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH }
@@ -417,6 +419,15 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     } else {
       ctx.fillText(label, center, innerRect.y + innerRect.h + 4);
     }
+  }
+  if (!horizontal) {
+    drawCategoryAxisExtraRowsCentered(
+      ctx,
+      chart,
+      innerRect,
+      categoryCount,
+      (i) => innerRect.x + (i + 0.5) * groupGap,
+    );
   }
   ctx.textAlign = "left";
 

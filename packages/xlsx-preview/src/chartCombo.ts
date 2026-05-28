@@ -3,7 +3,9 @@ import type { Rect } from "./chart.js";
 import { resolveBarFill } from "./chartAdvanced.js";
 import {
   buildLabelText,
+  categoryAxisExtraHeight,
   computeBarSlotMetrics,
+  drawCategoryAxisExtraRowsCentered,
   drawLabel,
   drawPlaceholderPlot,
   effectiveLabels,
@@ -132,7 +134,7 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
   const leftGutter = Math.max(...pLabels.map((s) => ctx.measureText(s).width)) + 8;
   const rightGutter =
     sLabels.length > 0 ? Math.max(...sLabels.map((s) => ctx.measureText(s).width)) + 8 : 4;
-  const xAxisH = AXIS_FONT_SIZE + 8;
+  const xAxisH = AXIS_FONT_SIZE + 8 + categoryAxisExtraHeight(chart);
 
   const inner: Rect = {
     x: rect.x + leftGutter,
@@ -200,6 +202,13 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
   for (let i = 0; i < categoryCount; i++) {
     ctx.fillText(catLabel(i), inner.x + (i + 0.5) * groupGap, inner.y + inner.h + 4);
   }
+  drawCategoryAxisExtraRowsCentered(
+    ctx,
+    chart,
+    inner,
+    categoryCount,
+    (i) => inner.x + (i + 0.5) * groupGap,
+  );
 
   const xAt = (i: number) => inner.x + (i + 0.5) * groupGap;
   const yPrim = (v: number) => inner.y + (1 - (v - pMin) / (pMax - pMin)) * inner.h;

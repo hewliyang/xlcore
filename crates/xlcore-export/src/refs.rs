@@ -167,6 +167,25 @@ pub(crate) fn resolve_chart_refs(
                             }
                         }
                         chart.cx_category_levels = levels;
+                    } else if chart.chart_type != "chartex" && n_rows > 1 && n_cols > 1 {
+                        let mut levels: Vec<Vec<String>> = Vec::with_capacity(n_rows);
+                        for r in 0..n_rows {
+                            let mut row = Vec::with_capacity(n_cols);
+                            for c in 0..n_cols {
+                                let cell = cells.get(r * n_cols + c).and_then(|c| c.as_ref());
+                                let s = cell
+                                    .and_then(|cc| read_string(&snapshot_sheets, cc, &sst))
+                                    .unwrap_or_default();
+                                row.push(s);
+                            }
+                            levels.push(row);
+                        }
+                        if chart.categories.is_empty() {
+                            if let Some(last) = levels.last() {
+                                chart.categories = last.clone();
+                            }
+                        }
+                        chart.cx_category_levels = levels;
                     } else if chart.categories.is_empty() {
                         chart.categories = cells
                             .into_iter()
@@ -251,6 +270,11 @@ pub(crate) fn resolve_chart_refs(
                 .unwrap_or(0);
             if chart.categories.len() > max_series_len {
                 chart.categories.truncate(max_series_len);
+            }
+            for level in chart.cx_category_levels.iter_mut() {
+                if level.len() > max_series_len {
+                    level.truncate(max_series_len);
+                }
             }
         }
     }

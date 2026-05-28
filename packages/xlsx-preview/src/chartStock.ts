@@ -3,6 +3,7 @@ import type { Rect } from "./chart.js";
 import {
   buildLabelText,
   drawAxisFrame,
+  drawCategoryAxisExtraRowsCentered,
   drawLabel,
   drawPlaceholderPlot,
   effectiveLabels,
@@ -101,6 +102,7 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
       lastRight = cx + w / 2;
     }
   }
+  drawCategoryAxisExtraRowsCentered(ctx, chart, inner, categoryCount, xFor);
 
   ctx.save();
   ctx.beginPath();
