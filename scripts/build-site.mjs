@@ -71,6 +71,11 @@ for (const [route, file] of routes) {
   }
   await mkdir(resolve(out, route), { recursive: true });
   await cp(src, resolve(out, route, "index.html"));
+  // The example HTML imports `./shared/loadXlsxPreview.js` at module top level.
+  // Without this, Cloudflare Pages serves its HTML 404 page and the browser
+  // refuses the module with a MIME-type error before our try/catch CDN
+  // fallback can run.
+  await cp(resolve(examples, "shared"), resolve(out, route, "shared"), { recursive: true });
   console.log(`  /${route}  ←  ${file}`);
 }
 
