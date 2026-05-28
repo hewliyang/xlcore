@@ -7,18 +7,16 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- CSV and Parquet preview support across browser, React, Node, and CLI. New
-  `format` / `csvOptions` / `parquetOptions` loader options route tabular
-  files through the same `WorkbookLayout` renderer as XLSX; browser and CLI
-  entry points sniff Parquet/XLSX byte signatures first, then filename/MIME
-  hints. Node gains `loadWorkbookFromCsv*` and `loadWorkbookFromParquet*`
-  helpers plus a `@hewliyang/xlsx-preview/node` subpath.
-- New `xlcore-tabular` Rust crate converts CSV and Parquet into one-sheet,
-  unstyled `WorkbookLayout`s. CSV keeps type inference conservative
-  (leading-zero identifiers stay strings), replaces invalid UTF-8 instead of
-  dropping fields, and reports truncation warnings. Parquet supports primitive,
-  temporal, nested/list/struct/map, decimal, and binary-ish Arrow columns with
-  precision-preserving string fallback for large integers.
+- CSV and Parquet preview support. New `format` / `csvOptions` /
+  `parquetOptions` loader options route tabular files through the same
+  `WorkbookLayout` renderer as XLSX. Browser and CLI sniff Parquet/XLSX byte
+  signatures, then fall back to filename/MIME. Node gains
+  `loadWorkbookFromCsv*` / `loadWorkbookFromParquet*` under the
+  `@hewliyang/xlsx-preview/node` subpath. Parquet handles primitives,
+  temporals, decimals, binary, and nested list/struct/map columns (large
+  integers fall back to precision-preserving strings); CSV preserves
+  leading-zero identifiers as strings and reports truncation. Backed by a new
+  `xlcore-tabular` Rust crate.
 - Package test/build hardening: `pnpm test` now checks for stale wasm, rebuilds
   TS from a clean `dist`, verifies built public entries can be imported, and
   exercises committed CSV/Parquet fixtures. Added `smoke:csv` and
@@ -28,10 +26,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- The npm package description and examples now describe workbook/tabular
-  previews rather than XLSX-only previews. Build-based examples accept and
-  extract `.xlsx`, `.csv`, `.tsv`, `.parquet`, and `.pqt`; the pinned
-  no-build CDN example remains limited to features already published on npm.
+- Package description and build-based examples now cover XLSX, CSV, TSV, and
+  Parquet; the no-build CDN example stays XLSX-only until the next publish.
 - **Breaking (internal worker protocol):** the bundled extraction worker now posts `{ type: "loaded", layout, report }` instead of `{ type: "layout", layout }`, and errors are posted as `{ type: "error", payload: XlsxLoadErrorPayload }` instead of `{ type: "error", message }`. The wasm-bindgen export `extract_xlsx` now returns `{ layout, report }` instead of `layout`. Consumers using the public `loadWorkbookFromFile` / `createWorkbookPreviewerFromFile` APIs are unaffected; anyone embedding the worker or calling `extract_xlsx` directly must update.
 
 ### Fixed
@@ -45,6 +41,9 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The root package entrypoint no longer re-exports Node-only helpers, keeping
   `@hewliyang/xlsx-preview` browser-safe. Server-side rendering and file
   loading helpers are available from `@hewliyang/xlsx-preview/node`.
+- When extracting a single sheet by name or index, `defined names` with a
+  `local_sheet_id` are now filtered to the selected sheet and remapped to
+  local id `0`, so chart series referencing local names resolve correctly.
 
 ## [0.0.8] - 2026-05-20
 
