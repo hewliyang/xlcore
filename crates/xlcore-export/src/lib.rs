@@ -21,6 +21,7 @@ mod styles;
 mod tables;
 mod theme;
 
+pub use columnar::compactify;
 pub use schema::*;
 pub(crate) use shared_strings::{
     font_scheme_variant, text_run_from, underline_variant, vert_align_variant,
@@ -99,6 +100,7 @@ pub fn extract_doc_with_options(
         workbook_sheets.len()
     };
     let mut sheets = Vec::with_capacity(sheet_capacity);
+    let mut selected_original_sheet_index: Option<u32> = None;
     for (idx, wb_sheet) in workbook_sheets.iter().enumerate() {
         if let Some(wanted_idx) = options.sheet_index {
             if idx != wanted_idx {
@@ -147,6 +149,9 @@ pub fn extract_doc_with_options(
         sheet.hyperlinks = hyperlinks;
         sheet.comments = comments;
         sheet.sparkline_groups = sparkline_groups;
+        if options.sheet_index.is_some() || options.sheet_name.is_some() {
+            selected_original_sheet_index = Some(idx as u32);
+        }
         sheets.push(sheet);
     }
 
@@ -159,7 +164,7 @@ pub fn extract_doc_with_options(
         }
     }
 
-    let defined_names_vec: Vec<DefinedName> = workbook
+    let mut defined_names_vec: Vec<DefinedName> = workbook
         .defined_names
         .as_ref()
         .map(|dn| {
@@ -176,6 +181,7 @@ pub fn extract_doc_with_options(
                 .collect()
         })
         .unwrap_or_default();
+    normalize_defined_names_for_single_sheet(&mut defined_names_vec, selected_original_sheet_index);
 
     let mut layout = WorkbookLayout {
         sheets,
@@ -193,13 +199,103 @@ pub fn extract_doc_with_options(
         },
     };
 
-    let defined_names: std::collections::HashMap<String, String> = defined_names_vec
-        .iter()
-        .map(|d| (d.name.clone(), d.formula.clone()))
-        .collect();
+    let defined_names =
+        defined_name_lookup(&defined_names_vec, selected_original_sheet_index.is_some());
     refs::resolve_chart_refs(&mut layout, &defined_names);
     refs::resolve_sparkline_refs(&mut layout);
 
     columnar::compactify(&mut layout);
     Ok(layout)
+}
+
+fn defined_name_lookup(
+    defined_names: &[DefinedName],
+    single_sheet: bool,
+) -> std::collections::HashMap<String, String> {
+    let mut out = std::collections::HashMap::new();
+    for name in defined_names {
+        if single_sheet && name.local_sheet_id == Some(0) {
+            out.insert(name.name.clone(), name.formula.clone());
+        } else {
+            out.entry(name.name.clone())
+                .or_insert_with(|| name.formula.clone());
+        }
+    }
+    out
+}
+
+fn normalize_defined_names_for_single_sheet(
+    defined_names: &mut Vec<DefinedName>,
+    selected_original_sheet_index: Option<u32>,
+) {
+    let Some(selected_idx) = selected_original_sheet_index else {
+        return;
+    };
+    *defined_names = std::mem::take(defined_names)
+        .into_iter()
+        .filter_map(|mut name| match name.local_sheet_id {
+            Some(local_idx) if local_idx == selected_idx => {
+                name.local_sheet_id = Some(0);
+                Some(name)
+            }
+            Some(_) => None,
+            None => Some(name),
+        })
+        .collect();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn defined_name(name: &str, local_sheet_id: Option<u32>) -> DefinedName {
+        DefinedName {
+            name: name.to_string(),
+            formula: "A1".to_string(),
+            local_sheet_id,
+        }
+    }
+
+    #[test]
+    fn single_sheet_defined_names_are_filtered_and_remapped() {
+        let mut names = vec![
+            defined_name("global", None),
+            defined_name("selected_local", Some(9)),
+            defined_name("other_local", Some(3)),
+        ];
+
+        normalize_defined_names_for_single_sheet(&mut names, Some(9));
+
+        assert_eq!(names.len(), 2);
+        assert_eq!(names[0].name, "global");
+        assert_eq!(names[0].local_sheet_id, None);
+        assert_eq!(names[1].name, "selected_local");
+        assert_eq!(names[1].local_sheet_id, Some(0));
+    }
+
+    #[test]
+    fn full_workbook_defined_names_keep_original_scope() {
+        let mut names = vec![defined_name("local", Some(2))];
+        normalize_defined_names_for_single_sheet(&mut names, None);
+        assert_eq!(names[0].local_sheet_id, Some(2));
+    }
+
+    #[test]
+    fn single_sheet_defined_name_lookup_prefers_selected_local_scope() {
+        let names = vec![
+            DefinedName {
+                name: "SeriesValues".to_string(),
+                formula: "Sheet1!A1:A2".to_string(),
+                local_sheet_id: None,
+            },
+            DefinedName {
+                name: "SeriesValues".to_string(),
+                formula: "Sheet2!A1:A2".to_string(),
+                local_sheet_id: Some(0),
+            },
+        ];
+
+        let lookup = defined_name_lookup(&names, true);
+        assert_eq!(lookup["SeriesValues"], "Sheet2!A1:A2");
+    }
 }

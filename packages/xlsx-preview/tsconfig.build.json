@@ -1,7 +1,7 @@
 {
-  // Declaration-only build for publishing. Library sources only —
-  // no tests (they import from `../dist`, which would pull dist
-  // d.ts files in as inputs and trip TS5055), no scripts.
+  // Declaration-only build for publishing. Source files only — no tests
+  // (they import from `../dist`, which would pull dist d.ts files in as inputs
+  // and trip TS5055).
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
