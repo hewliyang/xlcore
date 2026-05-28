@@ -26,8 +26,6 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- Package description and build-based examples now cover XLSX, CSV, TSV, and
-  Parquet; the no-build CDN example stays XLSX-only until the next publish.
 - **Breaking (internal worker protocol):** the bundled extraction worker now posts `{ type: "loaded", layout, report }` instead of `{ type: "layout", layout }`, and errors are posted as `{ type: "error", payload: XlsxLoadErrorPayload }` instead of `{ type: "error", message }`. The wasm-bindgen export `extract_xlsx` now returns `{ layout, report }` instead of `layout`. Consumers using the public `loadWorkbookFromFile` / `createWorkbookPreviewerFromFile` APIs are unaffected; anyone embedding the worker or calling `extract_xlsx` directly must update.
 
 ### Fixed
