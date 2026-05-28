@@ -1,14 +1,3 @@
-//! Parquet → `WorkbookLayout` adapter.
-//!
-//! Streams record batches via `parquet::arrow::ParquetRecordBatchReaderBuilder`,
-//! downcasts each column to its concrete arrow array type, and stringifies
-//! values per row into the same columnar IR the xlsx pipeline emits.
-//!
-//! Types are mapped conservatively. Anything we don't recognise falls back to
-//! Arrow's display formatter so the user at least sees *something* rather
-//! than an empty cell. This is intentional v0 behaviour — we'd rather render
-//! a quirky preview than refuse the file.
-
 use arrow_array::{
     cast::AsArray,
     types::{
@@ -31,11 +20,8 @@ use super::{
     AUTO_WIDTH_SAMPLE_ROWS,
 };
 
-/// Tuning knobs for the parquet adapter. Mirrors `CsvOptions` for symmetry.
 #[derive(Debug, Clone)]
 pub struct ParquetOptions {
-    /// Hard cap on rendered rows, including the synthetic header row.
-    /// Files larger than this are truncated and reported via `LoadReport`.
     pub max_rows: usize,
     pub sheet_name: String,
 }
@@ -61,7 +47,6 @@ impl From<arrow_schema::ArrowError> for TabularError {
     }
 }
 
-/// Read a parquet file from an in-memory byte slice.
 pub fn extract_parquet(
     bytes: &[u8],
     options: &ParquetOptions,
@@ -82,7 +67,6 @@ pub fn extract_parquet(
         return Err(TabularError::Empty);
     }
 
-    // Row 1 is the header. We always emit it as plain strings (unstyled).
     let mut rows: Vec<Row> = Vec::new();
     let mut char_widths: Vec<usize> = vec![0; col_count];
     {
@@ -101,7 +85,7 @@ pub fn extract_parquet(
         });
     }
 
-    let mut emitted: usize = 1; // header counted in max_row
+    let mut emitted: usize = 1;
     let mut total_data_rows: usize = 0;
     let mut truncated = false;
     let max_rows = options.max_rows.max(1);
@@ -110,7 +94,6 @@ pub fn extract_parquet(
         let batch: RecordBatch = batch?;
         total_data_rows += batch.num_rows();
         if truncated {
-            // Keep counting to report an accurate total in the warning.
             continue;
         }
         let take = batch.num_rows().min(max_rows.saturating_sub(emitted));
@@ -164,10 +147,6 @@ pub fn extract_parquet(
     Ok((finalize_layout(sheet), report))
 }
 
-/// Translate one (array, row) pair into a cell `(kind, value)` pair.
-///
-/// `kind` follows the same single-letter convention used elsewhere:
-/// `"n"` = number, `"b"` = bool, `"str"` = inline string.
 fn stringify_cell(array: &dyn Array, row: usize) -> (&'static str, String) {
     use DataType::*;
     match array.data_type() {
@@ -212,26 +191,15 @@ fn stringify_cell(array: &dyn Array, row: usize) -> (&'static str, String) {
             ("str", format_decimal_i128(v, *scale))
         }
         Decimal256(_, scale) => {
-            // Decimal256 holds an i256; render via its Display.
             let v = array.as_primitive::<Decimal256Type>().value(row);
             ("str", format!("{} (scale {})", v, scale))
         }
         Binary => bytes_cell(array.as_binary::<i32>().value(row)),
         LargeBinary => bytes_cell(array.as_binary::<i64>().value(row)),
-        // List / Struct / Map / Union / Dictionary / FixedSizeBinary / … —
-        // delegate to arrow's `ArrayFormatter`, which produces compact
-        // single-line representations (`[1, 2, 3]`, `{a: 1, b: 2}`, etc.).
-        // Falling back to `format!("{:?}", ...)` instead spews multi-line
-        // arrow Debug output that mangles the cell layout.
         _ => ("str", format_via_arrow(array, row)),
     }
 }
 
-/// Last-resort stringifier for types we don't translate by hand. Arrow's
-/// formatter handles every type uniformly, but we keep the hand-written
-/// fast paths above to (a) control number formatting (whole floats as ints,
-/// f32 precision), (b) bypass formatter setup cost per cell on the common
-/// primitive columns.
 fn format_via_arrow(array: &dyn Array, row: usize) -> String {
     arrow_cast::display::ArrayFormatter::try_new(array, &Default::default())
         .map(|fmt| fmt.value(row).to_string())
@@ -249,9 +217,6 @@ fn num_cell(n: f64) -> (&'static str, String) {
     }
 }
 
-/// i64 values outside ±2^53 cannot round-trip through JS `number`, so keep
-/// them as strings to preserve precision. Cell kind degrades to `"str"`
-/// (loses right-alignment), which is the correct tradeoff for IDs.
 fn int64_cell(v: i64) -> (&'static str, String) {
     if v.abs() < (1_i64 << 53) {
         ("n", v.to_string())
@@ -269,7 +234,6 @@ fn uint64_cell(v: u64) -> (&'static str, String) {
 }
 
 fn bytes_cell(b: &[u8]) -> (&'static str, String) {
-    // Try utf-8; fall back to a compact length marker for true binary blobs.
     match std::str::from_utf8(b) {
         Ok(s) => ("str", s.to_string()),
         Err(_) => ("str", format!("<{} bytes>", b.len())),
@@ -333,14 +297,11 @@ fn format_time64(array: &dyn Array, row: usize, unit: TimeUnit) -> String {
     .unwrap_or_default()
 }
 
-/// Format an i128 with a fixed scale (decimal exponent). Hand-rolled to avoid
-/// pulling in `rust_decimal` or `bigdecimal`.
 fn format_decimal_i128(v: i128, scale: i8) -> String {
     if scale == 0 {
         return v.to_string();
     }
     if scale < 0 {
-        // Negative scale = the value is `v * 10^|scale|`; render with trailing zeros.
         let zeros = "0".repeat((-scale) as usize);
         return format!("{v}{zeros}");
     }
@@ -366,7 +327,6 @@ fn format_decimal_i128(v: i128, scale: i8) -> String {
     out.push_str(&int_part);
     out.push('.');
     out.push_str(&frac_part);
-    // Trim trailing zeros for the fractional part, but keep at least one digit.
     while out.ends_with('0') {
         out.pop();
     }
@@ -412,8 +372,6 @@ mod tests {
         buf
     }
 
-    /// Build a tiny parquet file in memory and verify it round-trips through
-    /// `extract_parquet` into a sane `WorkbookLayout`.
     #[test]
     fn round_trips_basic_parquet() {
         let buf = build_basic_parquet();
@@ -421,17 +379,13 @@ mod tests {
             extract_parquet(&buf, &ParquetOptions::default()).expect("parquet extract");
         assert!(report.is_clean(), "unexpected report: {report:?}");
         let sheet = &layout.sheets[0];
-        // 1 header + 3 data rows.
         assert_eq!(sheet.max_row, 4);
         assert_eq!(sheet.max_col, 4);
         assert_eq!(sheet.cols.len(), 4);
-        // Column headers landed in the value pool.
         assert!(sheet.value_pool.iter().any(|v| v == "name"));
         assert!(sheet.value_pool.iter().any(|v| v == "Ada"));
         assert!(sheet.value_pool.iter().any(|v| v == "36"));
         assert!(sheet.value_pool.iter().any(|v| v == "0.95"));
-        // The null score cell should be omitted, not stringified.
-        // 4 header + (3 names + 3 ages + 2 scores + 3 bools) = 4 + 11 = 15.
         assert_eq!(sheet.cells.count, 15);
     }
 

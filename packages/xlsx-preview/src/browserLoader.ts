@@ -17,19 +17,13 @@ export interface WorkbookLoadProgress {
   label: string;
 }
 
-/** Subset of the Rust `CsvOptions` that's safe to expose to JS. */
 export interface CsvLoadOptions {
-  /** Single byte (`,`, `\t`, `;`, `|`) or the literal `"tab"`. */
   delimiter?: string;
-  /** Rendered-row truncation cap; warning is reported via `LoadReport.warnings`. */
   maxRows?: number;
-  /** Sheet name shown in the renderer's tab strip. */
   sheetName?: string;
 }
 
-/** Subset of the Rust `ParquetOptions` exposed to JS. */
 export interface ParquetLoadOptions {
-  /** Rendered-row truncation cap, including the synthetic header row. */
   maxRows?: number;
   sheetName?: string;
 }
@@ -40,22 +34,14 @@ export interface WorkbookLoaderOptions {
   workerUrl?: string;
   onProgress?: (progress: WorkbookLoadProgress) => void;
 
-  /** XLSX only: extract a single sheet by zero-based index. */
   sheetIndex?: number;
 
-  /** XLSX only: extract a single sheet by name. Takes precedence over sheetIndex. */
   sheetName?: string;
 
-  /**
-   * Source format. `"auto"` (default) sniffs Parquet/XLSX byte signatures
-   * first, then falls back to a `File`'s name/type when available.
-   */
   format?: "auto" | WorkbookSourceFormat;
 
-  /** Forwarded to the rust CSV reader when `format === "csv"`. */
   csvOptions?: CsvLoadOptions;
 
-  /** Forwarded to the rust parquet reader when `format === "parquet"`. */
   parquetOptions?: ParquetLoadOptions;
 }
 
@@ -91,7 +77,6 @@ export async function loadWorkbookFromFileWithReport(
     ...options,
     format,
     csvOptions: {
-      // Default the sheet tab name to the file's basename if the caller didn't.
       sheetName: defaultSheetName(file),
       ...options.csvOptions,
     },

@@ -13,8 +13,6 @@ export function detectWorkbookFormatFromBytes(
       ? new Uint8Array(bytes)
       : new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (isParquet(view)) return "parquet";
-  // XLSX is a ZIP container. This is a candidate classification; the OOXML
-  // loader still validates that the ZIP actually contains workbook parts.
   if (isZipContainer(view)) return "xlsx";
   return undefined;
 }

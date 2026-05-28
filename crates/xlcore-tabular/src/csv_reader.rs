@@ -1,10 +1,3 @@
-//! CSV → `WorkbookLayout` adapter.
-//!
-//! Single-pass over a buffered reader. We buffer once so delimiter sniffing and
-//! `csv::Reader` can consume the same bytes, then build per-column max-char
-//! trackers as records are read. Type inference is intentionally conservative
-//! — see `infer_csv_token` in `lib.rs`.
-
 use std::io::Read;
 
 use xlcore_export::{Row, WorkbookLayout};
@@ -15,18 +8,11 @@ use super::{
     track_col_width, InferredCell, TabularError, AUTO_WIDTH_SAMPLE_ROWS,
 };
 
-/// Knobs for CSV ingestion. Matches the conventions Excel uses on Text Import.
 #[derive(Debug, Clone)]
 pub struct CsvOptions {
-    /// Field delimiter. `None` triggers a tiny heuristic sniff over the first
-    /// line (comma / tab / semicolon / pipe by frequency).
     pub delimiter: Option<u8>,
-    /// Hard cap on rendered rows. Files larger than this are truncated and a
-    /// warning is appended to the returned `LoadReport`.
     pub max_rows: usize,
-    /// Quote character. Defaults to `"`.
     pub quote: u8,
-    /// Sheet name shown in the renderer's tab strip.
     pub sheet_name: String,
 }
 
@@ -41,7 +27,6 @@ impl Default for CsvOptions {
     }
 }
 
-/// Convenience: parse from an in-memory byte slice.
 pub fn extract_csv(
     bytes: &[u8],
     options: &CsvOptions,
@@ -49,17 +34,12 @@ pub fn extract_csv(
     extract_csv_reader(std::io::Cursor::new(bytes), options)
 }
 
-/// Entry-point for any `Read`; buffers the input once for delimiter sniffing.
 pub fn extract_csv_reader<R: Read>(
     mut reader: R,
     options: &CsvOptions,
 ) -> Result<(WorkbookLayout, LoadReport), TabularError> {
     let mut report = LoadReport::default();
 
-    // Sniff the delimiter from the first ~4 KiB of input if not specified.
-    // We have to buffer to sniff anyway; just buffer the whole thing here. The
-    // `csv` crate is already fully buffered internally, so this trades a bit
-    // of peak RSS for simpler code.
     let mut all = Vec::new();
     reader.read_to_end(&mut all)?;
     let delimiter = options.delimiter.unwrap_or_else(|| sniff_delimiter(&all));
@@ -67,12 +47,11 @@ pub fn extract_csv_reader<R: Read>(
     let mut builder = csv::ReaderBuilder::new();
     builder
         .delimiter(delimiter)
-        .has_headers(false) // render every record as a worksheet row
+        .has_headers(false)
         .quote(options.quote)
         .flexible(true);
     let mut rdr = builder.from_reader(std::io::Cursor::new(&all));
 
-    // Tracking state.
     let mut rows: Vec<Row> = Vec::new();
     let mut char_widths: Vec<usize> = Vec::new();
     let mut max_col: u32 = 0;
@@ -86,7 +65,6 @@ pub fn extract_csv_reader<R: Read>(
         total_seen += 1;
         if emitted >= max_rows {
             truncated = true;
-            // Keep counting to report the true total in the warning.
             continue;
         }
         let row_index = (emitted as u32) + 1;
@@ -97,13 +75,11 @@ pub fn extract_csv_reader<R: Read>(
             if col_num > max_col {
                 max_col = col_num;
             }
-            // Width sampling: only over the auto-width window (cheap on huge
-            // files; the rest of the column rarely changes the bound).
             if emitted < AUTO_WIDTH_SAMPLE_ROWS {
                 track_col_width(&mut char_widths, col_idx, token.as_ref());
             }
             match infer_csv_token(token.as_ref()) {
-                InferredCell::Empty => {} // omit cell entirely (matches xlsx)
+                InferredCell::Empty => {}
                 InferredCell::Number(n) => {
                     row_cells.push(make_cell(row_index, col_num, "n", format_number(n)));
                 }
@@ -150,25 +126,17 @@ pub fn extract_csv_reader<R: Read>(
     Ok((finalize_layout(sheet), report))
 }
 
-/// Format an `f64` for storage in the value pool. Whole-valued floats render
-/// as integers (Excel's behaviour with the General format).
 fn format_number(n: f64) -> String {
     if n.fract() == 0.0 && n.abs() < 1e16 {
         format!("{}", n as i64)
     } else {
-        // Use Rust's default `{}` which already trims trailing zeros and
-        // switches to scientific only at extreme magnitudes.
         format!("{n}")
     }
 }
 
-/// Pick the most plausible delimiter from `,`, `\t`, `;`, `|` based on
-/// occurrence counts in the first non-empty line. Defaults to `,` when the
-/// first line contains none of them.
 fn sniff_delimiter(bytes: &[u8]) -> u8 {
     let head_len = bytes.len().min(4096);
     let head = &bytes[..head_len];
-    // First newline-terminated line, ignoring CR.
     let line_end = head.iter().position(|&b| b == b'\n').unwrap_or(head.len());
     let line = &head[..line_end];
 
@@ -197,9 +165,7 @@ mod tests {
         assert_eq!(sheet.max_row, 3);
         assert_eq!(sheet.max_col, 2);
         assert_eq!(sheet.cols.len(), 2);
-        // Cells were compactified into the columnar blob.
         assert_eq!(sheet.cells.count, 6);
-        // Value pool should hold the unique strings plus number strings.
         assert!(sheet.value_pool.iter().any(|v| v == "Ada"));
         assert!(sheet.value_pool.iter().any(|v| v == "36"));
     }
@@ -271,7 +237,6 @@ mod tests {
 
     #[test]
     fn ragged_rows_extend_max_col() {
-        // Row 2 has more fields than row 1. We should report max_col=3.
         let bytes = b"a,b\nx,y,z\n";
         let (layout, _) = extract_csv(bytes, &CsvOptions::default()).unwrap();
         assert_eq!(layout.sheets[0].max_col, 3);

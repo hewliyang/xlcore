@@ -25,11 +25,8 @@ interface CliOptions {
   all: boolean;
   verbose: boolean;
   strict: boolean;
-  /** Explicit override; defaults to byte sniffing plus file-name hints. */
   format?: SourceFormat;
-  /** CSV: field delimiter (`","`, `"\t"`, `";"`, `"|"`, or `"tab"`). */
   delimiter?: string;
-  /** CSV/parquet: rendered-row truncation cap. */
   maxRows?: number;
 }
 
@@ -139,13 +136,6 @@ async function readInputAndResolveFormat(
   };
 }
 
-/**
- * Load a workbook by format. Returns the same `{ layout, report }` envelope
- * regardless of source, so the renderer downstream doesn't care.
- *
- * `sheetIndex` / `sheetName` only apply to xlsx; csv/parquet always produce
- * a single sheet and are rejected before this loader is called.
- */
 async function loadByFormat(
   input: string,
   bytes: Uint8Array,
@@ -176,8 +166,6 @@ async function main(): Promise<void> {
   const input = resolve(options.input!);
   const { bytes: inputBytes, format } = await readInputAndResolveFormat(options, input);
 
-  // Reject options that don't make sense for the chosen format. Cheap-but-loud
-  // guardrails — they catch a typoed extension before we render garbage.
   if (format !== "xlsx") {
     if (options.all) throw new Error("--all only applies to .xlsx inputs");
     if (options.sheet || options.sheetIndex !== undefined)

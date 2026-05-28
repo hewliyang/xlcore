@@ -74,16 +74,9 @@ export async function loadWorkbookFromXlsxWithReport(
   return { layout: envelope.layout, report: envelope.report ?? EMPTY_LOAD_REPORT };
 }
 
-/**
- * Options accepted by {@link loadWorkbookFromCsv}. All fields are optional;
- * delimiter defaults to a sniff over the first line.
- */
 export interface LoadWorkbookFromCsvOptions {
-  /** Single byte (`,`, `\t`, `;`, `|`) or the literal `"tab"`. */
   delimiter?: string;
-  /** Hard cap on rendered rows. Triggers a `report.warnings` entry. */
   maxRows?: number;
-  /** Sheet name shown in the renderer's tab strip. */
   sheetName?: string;
 }
 
@@ -112,9 +105,7 @@ export async function loadWorkbookFromCsvWithReport(
   return { layout: envelope.layout, report: envelope.report ?? EMPTY_LOAD_REPORT };
 }
 
-/** Options accepted by {@link loadWorkbookFromParquet}. */
 export interface LoadWorkbookFromParquetOptions {
-  /** Hard cap on rendered rows, including the synthetic header row. */
   maxRows?: number;
   sheetName?: string;
 }

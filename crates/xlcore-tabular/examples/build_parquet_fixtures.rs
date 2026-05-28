@@ -1,18 +1,3 @@
-//! Builder for the parquet fixtures under this directory.
-//!
-//! Run with:
-//!     cargo run -p xlcore-tabular --features parquet \
-//!         --example build_parquet_fixtures
-//!
-//! Three fixtures are emitted:
-//! - `primitives.parquet` — bool / int64 / float64 / utf8, with nulls.
-//! - `temporal.parquet`   — Date32, Timestamp(ms), Time64(us).
-//! - `nested.parquet`     — List<Int32>, Struct{a, b}, Map<Utf8, Int32>.
-//!
-//! Each fixture is deliberately tiny (a handful of rows) so the snapshot
-//! tests can spot a single-cell regression. Re-run the builder whenever the
-//! adapter changes shape, then commit the regenerated `.parquet` files.
-
 use std::sync::Arc;
 
 use arrow_array::{
@@ -67,14 +52,12 @@ fn write_temporal(path: &std::path::Path) -> Result<(), Box<dyn std::error::Erro
     let batch = RecordBatch::try_new(
         schema.clone(),
         vec![
-            // 2024-01-15, 1990-06-01, 2015-09-22
             Arc::new(Date32Array::from(vec![19737, 7456, 16700])),
             Arc::new(TimestampMillisecondArray::from(vec![
                 Some(1_700_000_000_000),
                 None,
                 Some(1_710_500_000_000),
             ])),
-            // Microseconds since midnight: 09:00:00, 14:30:15, 23:59:59
             Arc::new(Time64MicrosecondArray::from(vec![
                 Some(9 * 3600 * 1_000_000),
                 Some((14 * 3600 + 30 * 60 + 15) * 1_000_000),
@@ -86,7 +69,6 @@ fn write_temporal(path: &std::path::Path) -> Result<(), Box<dyn std::error::Erro
 }
 
 fn write_nested(path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
-    // tags: List<Int32>
     let mut tags = ListBuilder::new(Int32Builder::new());
     for row in [&[1, 2, 3][..], &[][..], &[42][..]] {
         for v in row {
@@ -96,7 +78,6 @@ fn write_nested(path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>
     }
     let tags_arr = tags.finish();
 
-    // owner: Struct<{ name: Utf8, age: Int32 }>
     let owner_fields: Fields = Fields::from(vec![
         Field::new("name", DataType::Utf8, false),
         Field::new("age", DataType::Int32, true),
@@ -122,17 +103,13 @@ fn write_nested(path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>
     }
     let owner_arr = owner.finish();
 
-    // attrs: Map<Utf8, Int32>
     let mut attrs = MapBuilder::new(None, StringBuilder::new(), Int32Builder::new());
-    // row 0: { k1: 1, k2: 2 }
     attrs.keys().append_value("k1");
     attrs.values().append_value(1);
     attrs.keys().append_value("k2");
     attrs.values().append_value(2);
     attrs.append(true)?;
-    // row 1: {}
     attrs.append(true)?;
-    // row 2: { only: 99 }
     attrs.keys().append_value("only");
     attrs.values().append_value(99);
     attrs.append(true)?;

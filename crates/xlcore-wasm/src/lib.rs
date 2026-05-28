@@ -97,7 +97,6 @@ fn parse_csv_options(options: JsValue) -> Result<xlcore_tabular::CsvOptions, JsV
     };
     let mut opts = xlcore_tabular::CsvOptions::default();
     if let Some(d) = raw.delimiter {
-        // Accept either a single byte (",", "\t", ";") or the literal word "tab".
         let bytes = d.as_bytes();
         let byte = if d.eq_ignore_ascii_case("tab") {
             b'\t'
