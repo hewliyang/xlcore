@@ -199,8 +199,9 @@ export function drawCategoryAxis(
   const denom = Math.max(1, categoryCount - 1);
 
   const fmt = chart.categoriesFormat;
+  const cats = chart.categories ?? [];
   const labels = Array.from({ length: categoryCount }, (_, i) => {
-    const raw = chart.categories[i] ?? `${i + 1}`;
+    const raw = cats[i] ?? `${i + 1}`;
     if (!fmt) return raw;
     const n = parseFloat(raw);
     if (!Number.isFinite(n)) return raw;

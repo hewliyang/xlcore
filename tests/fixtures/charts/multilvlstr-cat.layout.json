@@ -1,0 +1,212 @@
+{
+  "sheets": [
+    {
+      "index": 0,
+      "name": "Sheet1",
+      "maxRow": 2,
+      "maxCol": 13,
+      "defaultColWidthPx": 61.960938,
+      "defaultRowHeightPx": 20.0,
+      "cols": [],
+      "merges": [],
+      "freeze": null,
+      "showGridLines": true,
+      "drawings": [
+        {
+          "kind": "chart",
+          "anchor": {
+            "anchorKind": "twoCell",
+            "fromCol": 0,
+            "fromColOffEmu": 0,
+            "fromRow": 4,
+            "fromRowOffEmu": 0,
+            "toCol": 9,
+            "toColOffEmu": 400050,
+            "toRow": 19,
+            "toRowOffEmu": 0
+          },
+          "chart": {
+            "type": "column",
+            "title": "multiLvlStrRef category axis",
+            "series": [
+              {
+                "name": "Sales",
+                "nameRef": "Sheet1!$A$2",
+                "color": "#4F81BD",
+                "values": [
+                  10.0,
+                  20.0,
+                  15.0,
+                  25.0,
+                  30.0,
+                  22.0,
+                  18.0,
+                  28.0,
+                  35.0,
+                  40.0,
+                  33.0,
+                  45.0
+                ],
+                "valuesRef": "Sheet1!$B$2:$M$2"
+              }
+            ],
+            "categories": [
+              "Jan",
+              "Feb",
+              "Mar",
+              "Apr",
+              "May",
+              "Jun",
+              "Jul",
+              "Aug",
+              "Sep",
+              "Oct",
+              "Nov",
+              "Dec"
+            ],
+            "categoriesRef": "Sheet1!$B$1:$M$2",
+            "legendPos": "b",
+            "valueFormat": "General",
+            "grouping": "clustered",
+            "barDir": "column",
+            "barGapWidth": 150,
+            "barOverlap": -27,
+            "showMajorGridlines": true
+          }
+        }
+      ],
+      "cells": {
+        "count": 26,
+        "r": "AQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAIAAAACAAAAAgAAAAIAAAACAAAAAgAAAAIAAAACAAAAAgAAAAIAAAACAAAAAgAAAAIAAAA=",
+        "c": "AQAAAAIAAAADAAAABAAAAAUAAAAGAAAABwAAAAgAAAAJAAAACgAAAAsAAAAMAAAADQAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAA0AAAA=",
+        "kind": "AQEBAQEBAQEBAQEBAQEAAAAAAAAAAAAAAAA=",
+        "valueIdx": "AAAAAAEAAAACAAAAAwAAAAQAAAAFAAAABgAAAAcAAAAIAAAACQAAAAoAAAALAAAADAAAAA0AAAAKAAAADgAAAA8AAAAQAAAAEQAAABIAAAATAAAAFAAAABUAAAAWAAAAFwAAABgAAAA=",
+        "formulaIdx": "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=",
+        "styleIdx": "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=",
+        "runsIdx": "//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8=",
+        "rowPtr": "AAAAAA0AAAAaAAAA"
+      },
+      "rowMeta": {
+        "count": 2,
+        "index": "AQAAAAIAAAA=",
+        "heightPx": "AACgQQAAoEE=",
+        "styleIdx": "//////////8=",
+        "hidden": "AAA="
+      },
+      "valuePool": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "20",
+        "15",
+        "25",
+        "30",
+        "22",
+        "18",
+        "28",
+        "35",
+        "40",
+        "33",
+        "45"
+      ]
+    }
+  ],
+  "styles": {
+    "fonts": [
+      {
+        "name": "Calibri",
+        "size": 11.0,
+        "color": {
+          "theme": 1
+        },
+        "scheme": "minor"
+      }
+    ],
+    "fills": [
+      {
+        "patternType": "none"
+      },
+      {
+        "patternType": "gray125"
+      }
+    ],
+    "borders": [
+      {},
+      {}
+    ],
+    "cellXfs": [
+      {
+        "fontId": 0,
+        "fillId": 0,
+        "borderId": 1,
+        "numFmtId": 0,
+        "verticalAlignment": "top"
+      }
+    ],
+    "numFmts": [],
+    "defaultFont": "Calibri",
+    "defaultFontSize": 11.0
+  },
+  "sharedStrings": [
+    "",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+    "Sales"
+  ],
+  "sharedStringRuns": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "theme": {
+    "colors": [
+      "FFFFFF",
+      "000000",
+      "EEECE1",
+      "1F497D",
+      "4F81BD",
+      "C0504D",
+      "9BBB59",
+      "8064A2",
+      "4BACC6",
+      "F79646",
+      "0000FF",
+      "800080"
+    ],
+    "majorFont": "Cambria",
+    "minorFont": "Calibri"
+  },
+  "activeSheetIndex": 0
+}

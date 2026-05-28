@@ -466,7 +466,7 @@ pub struct Chart {
     pub title: Option<String>,
     pub series: Vec<ChartSeries>,
 
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub categories: Vec<String>,
 
     #[cfg_attr(feature = "typescript", ts(optional))]

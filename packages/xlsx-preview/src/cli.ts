@@ -314,7 +314,7 @@ main().catch((error) => {
     console.error(`xlsx-preview: ${error.message}`);
     console.error(error.diagnosticsText());
   } else {
-    console.error(error?.message || String(error));
+    console.error(error?.stack || error?.message || String(error));
   }
   console.error("");
   console.error(usage());

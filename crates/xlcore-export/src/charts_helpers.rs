@@ -381,6 +381,9 @@ pub(crate) fn ax_data_values(
             Some(sr.formula.as_str().to_string()),
             None,
         ),
+        c::CategoryAxisDataChoice::CMultiLvlStrRef(mlsr) => {
+            (Vec::new(), Some(mlsr.formula.as_str().to_string()), None)
+        }
         c::CategoryAxisDataChoice::CNumRef(nr) => {
             let vals = nr
                 .numbering_cache
@@ -416,7 +419,6 @@ pub(crate) fn ax_data_values(
             None,
             lit.format_code.as_ref().map(|s| s.as_str().to_string()),
         ),
-        _ => (Vec::new(), None, None),
     }
 }
 
