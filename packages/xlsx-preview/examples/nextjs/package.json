@@ -8,7 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@hewliyang/xlsx-preview": "^0.0.8",
+    "@hewliyang/xlsx-preview": "^0.0.9",
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
