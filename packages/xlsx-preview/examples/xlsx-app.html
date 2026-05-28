@@ -168,7 +168,7 @@
   }
   body.panel-collapsed #preview { border-right: 0; }
   #preview.drop-target::after {
-    content: "Drop to load .xlsx";
+    content: "Drop to load .xlsx, .csv, or .parquet";
     position: absolute; inset: 0; z-index: 50;
     display: grid; place-items: center;
     background: rgba(79, 70, 229, 0.08);
@@ -517,14 +517,14 @@
   <label class="file-picker" for="picker">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     <span>Open</span>
-    <input type="file" id="picker" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+    <input type="file" id="picker" accept=".xlsx,.csv,.tsv,.parquet,.pqt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/tab-separated-values">
   </label>
   <span class="sep"></span>
   <span class="name-box" id="name-box">—</span>
   <span class="fx-label">fx</span>
   <span class="formula-box" id="formula-box"></span>
   <span class="sep"></span>
-  <span id="status">Load an .xlsx file to begin</span>
+  <span id="status">Load an .xlsx, .csv, or .parquet file to begin</span>
   <button id="panel-toggle" type="button" aria-label="Collapse side panel" aria-expanded="true" title="Toggle inspector">›</button>
 </header>
 
@@ -1012,7 +1012,7 @@ function errorCopy(err) {
   switch (code) {
     case "Zip":
 
-      return { headline: "Not a valid .xlsx file", body: "The file isn’t a valid Excel workbook archive.", detail: message };
+      return { headline: "Couldn’t open this workbook", body: "The file is not a valid XLSX archive. If this is CSV or Parquet, use a matching file extension.", detail: message };
     case "Schema": {
       const attr = err.field ? `${err.field}=${JSON.stringify(err.value ?? "")}` : err.value ?? "";
       const where = err.part && err.part !== "<unknown>" ? err.part : "the workbook";
@@ -1088,8 +1088,15 @@ picker.addEventListener("change", () => {
 
 (() => {
   let depth = 0;
-  const isXlsx = (f) =>
-    f && (/\.xlsx$/i.test(f.name) || f.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  const isSupported = (f) =>
+    f && (
+      /\.(xlsx|csv|tsv|parquet|pqt)$/i.test(f.name) ||
+      f.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      f.type === "application/vnd.apache.parquet" ||
+      f.type === "application/x-parquet" ||
+      f.type === "text/csv" ||
+      f.type === "text/tab-separated-values"
+    );
   previewRoot.addEventListener("dragenter", (e) => {
     if (!e.dataTransfer?.types?.includes("Files")) return;
     e.preventDefault();
@@ -1110,9 +1117,9 @@ picker.addEventListener("change", () => {
     e.preventDefault();
     depth = 0;
     previewRoot.classList.remove("drop-target");
-    const file = Array.from(e.dataTransfer.files).find(isXlsx);
+    const file = Array.from(e.dataTransfer.files).find(isSupported);
     if (file) loadWorkbookFile(file);
-    else setStatus("not an .xlsx file");
+    else setStatus("unsupported file (expected .xlsx, .csv, .tsv, .parquet, or .pqt)");
   });
 
   window.addEventListener("dragover", (e) => {

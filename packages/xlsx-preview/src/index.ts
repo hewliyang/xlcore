@@ -23,10 +23,13 @@ export type {
 export type { InteractHandle, InteractOptions } from "./interact.js";
 export type {
   CreateWorkbookPreviewerFromFileOptions,
+  CsvLoadOptions,
   LoadedWorkbook,
+  ParquetLoadOptions,
   WorkbookLoaderOptions,
   WorkbookLoadProgress,
 } from "./browserLoader.js";
+export type { WorkbookSourceFormat } from "./sourceFormat.js";
 export type {
   PreviewerEventName,
   PreviewerOptions,

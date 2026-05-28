@@ -1,6 +1,6 @@
 
 
-const CDN_BASE = "https://cdn.jsdelivr.net/npm/@hewliyang/xlsx-preview@0.0.8/dist/";
+const CDN_BASE = "https://cdn.jsdelivr.net/npm/@hewliyang/xlsx-preview@0.0.9/dist/";
 
 function isDevHost() {
   if (typeof location === "undefined") return false;

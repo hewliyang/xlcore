@@ -5,7 +5,8 @@ Live demos: <https://xlcore.pages.dev>.
 ## Plain HTML
 
 Open these directly in a browser (or serve the folder statically). They
-load `@hewliyang/xlsx-preview` from jsDelivr.
+prefer a local `../dist/` build, falling back to the published CDN package
+outside local/dev hosts.
 
 - [`xlsx-app.html`](./xlsx-app.html) — full previewer (file picker, sheet
   tabs, zoom, selection).

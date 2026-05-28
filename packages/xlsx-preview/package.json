@@ -1,7 +1,7 @@
 {
   "name": "@hewliyang/xlsx-preview",
-  "version": "0.0.8",
-  "description": "XLSX preview/rendering library for browser, React, and Node.",
+  "version": "0.0.9",
+  "description": "Workbook preview/rendering library for XLSX, CSV, and Parquet in browser, React, and Node.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hewliyang/xlcore.git",
@@ -13,6 +13,8 @@
   "author": "hewliyang",
   "keywords": [
     "xlsx",
+    "csv",
+    "parquet",
     "excel",
     "spreadsheet",
     "preview",
@@ -44,6 +46,8 @@
     "check:loc": "tsx scripts/check-loc.ts",
     "dev": "esbuild src/browser.ts --outfile=dist/browser.js --target=es2022 --platform=browser --format=iife --bundle --watch",
     "preview": "pnpm run build:ts && node scripts/preview.mjs",
+    "smoke:csv": "pnpm run build:ts && node scripts/smoke-csv.mjs",
+    "smoke:parquet": "pnpm run build:ts && node scripts/smoke-parquet.mjs",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "knip": "knip",

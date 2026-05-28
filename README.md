@@ -1,7 +1,8 @@
 # xlsx-preview
 
-Render `.xlsx` workbooks to a `<canvas>` or PNG — in the browser, in Node, or
-from the CLI. Published as [`@hewliyang/xlsx-preview`](https://www.npmjs.com/package/@hewliyang/xlsx-preview).
+Render `.xlsx`, `.csv`, and Parquet workbooks to a `<canvas>` or PNG — in the
+browser, in Node, or from the CLI. Published as
+[`@hewliyang/xlsx-preview`](https://www.npmjs.com/package/@hewliyang/xlsx-preview).
 
 ```bash
 npm install @hewliyang/xlsx-preview
@@ -16,7 +17,7 @@ await createWorkbookPreviewerFromFile(container, file);
 ```
 
 The browser entry runs the Rust extractor as wasm inside a Web Worker, so the
-xlsx never leaves the page. See the
+file never leaves the page. See the
 [`vanilla-js` examples](packages/xlsx-preview/examples/vanilla-js/) for both a
 no-build CDN demo and a Vite starter.
 
@@ -35,11 +36,18 @@ See the framework starters for full minimal projects:
 ## node
 
 ```ts
-import { renderXlsxToPng } from "@hewliyang/xlsx-preview";
+import {
+  loadWorkbookFromCsv,
+  loadWorkbookFromParquet,
+  renderXlsxToPng,
+} from "@hewliyang/xlsx-preview/node";
 import { writeFile } from "node:fs/promises";
 
 const png = await renderXlsxToPng("model.xlsx", { scale: 2 });
 await writeFile("out.png", png);
+
+const csvLayout = await loadWorkbookFromCsv("sales.csv");
+const parquetLayout = await loadWorkbookFromParquet("events.parquet");
 ```
 
 ## cli
@@ -48,6 +56,8 @@ await writeFile("out.png", png);
 xlsx-preview model.xlsx --info
 xlsx-preview model.xlsx -o cover.png --sheet Cover --range B3:E12 --scale 2
 xlsx-preview model.xlsx -o previews/{index}-{sheet}.png --all
+xlsx-preview data.csv -o data.png --delimiter ","
+xlsx-preview events.parquet -o events.png --max-rows 5000
 ```
 
 ## examples

@@ -7,7 +7,7 @@ pnpm install
 pnpm dev
 ```
 
-Then open <http://localhost:3000> and pick an `.xlsx` file.
+Then open <http://localhost:3000> and pick an `.xlsx`, `.csv`, or `.parquet` file.
 
 ## What this shows
 

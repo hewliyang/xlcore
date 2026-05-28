@@ -8,8 +8,9 @@ Three layers, smallest first.
 cargo test --workspace
 ```
 
-Today: A1-roundtrip test in `xlcore-io`, theme color resolvers
-(`scrgb_byte`, `hsl_to_rgb`, prstClr table) in `xlcore-export`.
+Today: `xlcore-io` covers ZIP/opening fixers and A1 helpers,
+`xlcore-export` covers chart/theme/sheet extraction edge cases, and
+`xlcore-tabular` covers CSV/Parquet conversion semantics.
 
 The TypeScript renderer ships unit tests too:
 
@@ -17,9 +18,36 @@ The TypeScript renderer ships unit tests too:
 pnpm --filter @hewliyang/xlsx-preview test
 ```
 
+This test script first checks that `crates/xlcore-wasm/pkg/xlcore_wasm_bg.wasm`
+is newer than the Rust crates it embeds. If you changed extractor code, run
+`pnpm --filter @hewliyang/xlsx-preview run build:wasm` before the test.
+
 Covers `numfmt.ts` (date/time/fraction/scientific/sections),
 `render.ts` HLS-tint math, hidden-cell overflow, outline-gutter
-placement.
+placement, and `tabular.test.ts` snapshot tests over the CSV / parquet
+fixtures under `tests/fixtures/{csv,parquet}/`.
+
+The script also rebuilds TS from a clean `dist/`, imports the built public
+entry points, and asserts the root `dist/index.js` stays browser-safe.
+
+The parquet fixtures are regenerated reproducibly via
+
+```bash
+cargo run -p xlcore-tabular --features parquet --example build_parquet_fixtures
+```
+
+Re-run the builder + tests whenever the parquet adapter changes shape and
+commit the regenerated `.parquet` files alongside the test update.
+
+The npm package also has shipped-build smoke tests for the tabular paths:
+
+```bash
+pnpm --filter @hewliyang/xlsx-preview run smoke:csv
+pnpm --filter @hewliyang/xlsx-preview run smoke:parquet
+```
+
+They load the committed CSV/Parquet fixtures through `dist/`, render PNGs to
+`/tmp`, and print basic layout statistics.
 
 ## 2. End-to-end CLI smoke
 

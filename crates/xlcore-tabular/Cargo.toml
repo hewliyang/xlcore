@@ -1,0 +1,38 @@
+[package]
+name = "xlcore-tabular"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CSV / Parquet -> WorkbookLayout (same IR as xlcore-export) for unstyled tabular preview."
+
+[[example]]
+name = "build_parquet_fixtures"
+required-features = ["parquet"]
+
+[features]
+default = []
+# Enable to build parquet support. Off by default because the parquet + arrow
+# crates significantly inflate compile time and wasm binary size; the CSV path
+# has no extra dependencies beyond `csv`.
+parquet = ["dep:parquet", "dep:arrow-array", "dep:arrow-schema", "dep:arrow-cast", "dep:bytes"]
+# Opt-in: pulls native zstd (via `zstd-sys`). Not available in wasm — the
+# `zstd-sys` C build needs a wasm32 sysroot we don't ship. Useful for native
+# tools when dealing with zstd-compressed real-world parquet files.
+parquet-zstd = ["parquet", "parquet/zstd"]
+
+[dependencies]
+xlcore-export = { path = "../xlcore-export" }
+xlcore-io = { path = "../xlcore-io" }
+serde = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+csv = "1"
+# Default compression: snappy only (covers the vast majority of parquet in
+# the wild and compiles cleanly to wasm). Zstd is opt-in via the
+# `parquet-zstd` cargo feature; gzip/brotli are intentionally skipped to
+# control wasm size, but can be added the same way if needed.
+parquet = { version = "53", optional = true, default-features = false, features = ["arrow", "snap"] }
+arrow-array = { version = "53", optional = true, default-features = false }
+arrow-schema = { version = "53", optional = true, default-features = false }
+arrow-cast = { version = "53", optional = true, default-features = false }
+bytes = { version = "1", optional = true }

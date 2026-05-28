@@ -1,7 +1,7 @@
 import { Canvas, Image } from "skia-canvas";
 import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
-import initWasm, { extract_xlsx } from "xlcore-wasm";
+import initWasm, { extract_csv, extract_parquet, extract_xlsx } from "xlcore-wasm";
 import { decodeWorkbookLayout } from "./columnar.js";
 import {
   EMPTY_LOAD_REPORT,
@@ -65,6 +65,67 @@ export async function loadWorkbookFromXlsxWithReport(
       sheetIndex: options.sheetIndex,
       sheetName: options.sheetName,
     }) as {
+      layout: WorkbookLayout;
+      report?: LoadReport;
+    };
+  } catch (err) {
+    throw new XlsxLoadError(xlsxLoadErrorPayloadFromUnknown(err));
+  }
+  return { layout: envelope.layout, report: envelope.report ?? EMPTY_LOAD_REPORT };
+}
+
+export interface LoadWorkbookFromCsvOptions {
+  delimiter?: string;
+  maxRows?: number;
+  sheetName?: string;
+}
+
+export async function loadWorkbookFromCsv(
+  input: string | ArrayBuffer | Uint8Array,
+  options: LoadWorkbookFromCsvOptions = {},
+): Promise<WorkbookLayout> {
+  return (await loadWorkbookFromCsvWithReport(input, options)).layout;
+}
+
+export async function loadWorkbookFromCsvWithReport(
+  input: string | ArrayBuffer | Uint8Array,
+  options: LoadWorkbookFromCsvOptions = {},
+): Promise<LoadedWorkbookNode> {
+  await ensureWasm();
+  const bytes = await bytesFromInput(input);
+  let envelope: { layout: WorkbookLayout; report?: LoadReport };
+  try {
+    envelope = extract_csv(bytes, options) as {
+      layout: WorkbookLayout;
+      report?: LoadReport;
+    };
+  } catch (err) {
+    throw new XlsxLoadError(xlsxLoadErrorPayloadFromUnknown(err));
+  }
+  return { layout: envelope.layout, report: envelope.report ?? EMPTY_LOAD_REPORT };
+}
+
+export interface LoadWorkbookFromParquetOptions {
+  maxRows?: number;
+  sheetName?: string;
+}
+
+export async function loadWorkbookFromParquet(
+  input: string | ArrayBuffer | Uint8Array,
+  options: LoadWorkbookFromParquetOptions = {},
+): Promise<WorkbookLayout> {
+  return (await loadWorkbookFromParquetWithReport(input, options)).layout;
+}
+
+export async function loadWorkbookFromParquetWithReport(
+  input: string | ArrayBuffer | Uint8Array,
+  options: LoadWorkbookFromParquetOptions = {},
+): Promise<LoadedWorkbookNode> {
+  await ensureWasm();
+  const bytes = await bytesFromInput(input);
+  let envelope: { layout: WorkbookLayout; report?: LoadReport };
+  try {
+    envelope = extract_parquet(bytes, options) as {
       layout: WorkbookLayout;
       report?: LoadReport;
     };

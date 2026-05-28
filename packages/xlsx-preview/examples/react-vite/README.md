@@ -7,7 +7,7 @@ pnpm install
 pnpm dev
 ```
 
-Then open the printed URL and pick an `.xlsx` file.
+Then open the printed URL and pick an `.xlsx`, `.csv`, or `.parquet` file.
 
 ## What this shows
 

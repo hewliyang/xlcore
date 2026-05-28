@@ -10,10 +10,22 @@ import {
   type PreviewerOptions,
   type WorkbookPreviewer,
 } from "./previewer.js";
+import { resolveWorkbookFormat, type WorkbookSourceFormat } from "./sourceFormat.js";
 import type { WorkbookLayout } from "./types.js";
 
 export interface WorkbookLoadProgress {
   label: string;
+}
+
+export interface CsvLoadOptions {
+  delimiter?: string;
+  maxRows?: number;
+  sheetName?: string;
+}
+
+export interface ParquetLoadOptions {
+  maxRows?: number;
+  sheetName?: string;
 }
 
 export interface WorkbookLoaderOptions {
@@ -21,6 +33,16 @@ export interface WorkbookLoaderOptions {
 
   workerUrl?: string;
   onProgress?: (progress: WorkbookLoadProgress) => void;
+
+  sheetIndex?: number;
+
+  sheetName?: string;
+
+  format?: "auto" | WorkbookSourceFormat;
+
+  csvOptions?: CsvLoadOptions;
+
+  parquetOptions?: ParquetLoadOptions;
 }
 
 export interface CreateWorkbookPreviewerFromFileOptions
@@ -47,7 +69,23 @@ export async function loadWorkbookFromFileWithReport(
 ): Promise<LoadedWorkbook> {
   progress(options, "Reading file");
   const bytes = await file.arrayBuffer();
-  return loadWorkbookFromArrayBufferWithReport(bytes, options);
+  const format = resolveWorkbookFormat(options.format, bytes, {
+    fileName: (file as File).name,
+    mimeType: file.type,
+  });
+  const resolved: WorkbookLoaderOptions = {
+    ...options,
+    format,
+    csvOptions: {
+      sheetName: defaultSheetName(file),
+      ...options.csvOptions,
+    },
+    parquetOptions: {
+      sheetName: defaultSheetName(file),
+      ...options.parquetOptions,
+    },
+  };
+  return loadWorkbookFromArrayBufferWithReport(bytes, resolved);
 }
 
 export async function loadWorkbookFromArrayBuffer(
@@ -61,7 +99,10 @@ export async function loadWorkbookFromArrayBufferWithReport(
   bytes: ArrayBuffer,
   options: WorkbookLoaderOptions = {},
 ): Promise<LoadedWorkbook> {
+  const format = resolveWorkbookFormat(options.format, bytes);
+  const resolvedOptions = { ...options, format };
   const worker = createExtractionWorker(options);
+  const workerBytes = bytes.slice(0);
   return await new Promise((resolve, reject) => {
     worker.onmessage = (event) => {
       const message = event.data as
@@ -92,10 +133,17 @@ export async function loadWorkbookFromArrayBufferWithReport(
     };
     worker.postMessage(
       {
-        bytes,
+        bytes: workerBytes,
         wasmBinaryUrl: options.wasmBinaryUrl ?? DEFAULT_WASM_BINARY_URL,
+        format,
+        xlsxOptions:
+          format === "xlsx"
+            ? { sheetIndex: options.sheetIndex, sheetName: options.sheetName }
+            : undefined,
+        csvOptions: format === "csv" ? resolvedOptions.csvOptions : undefined,
+        parquetOptions: format === "parquet" ? resolvedOptions.parquetOptions : undefined,
       },
-      [bytes],
+      [workerBytes],
     );
   });
 }
@@ -140,4 +188,10 @@ function isCrossOrigin(url: string): boolean {
 
 function progress(options: WorkbookLoaderOptions, label: string): void {
   options.onProgress?.({ label });
+}
+
+function defaultSheetName(file: Blob): string {
+  const name = (file as File).name ?? "";
+  const base = name.replace(/\.[^./\\]+$/, "").trim();
+  return base || "data";
 }

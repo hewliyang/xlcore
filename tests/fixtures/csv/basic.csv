@@ -1,0 +1,5 @@
+name,age,score,active
+Ada,36,0.95,true
+Grace,85,0.72,FALSE
+Linus,54,0.5,true
+Margaret,82,1.0,true
