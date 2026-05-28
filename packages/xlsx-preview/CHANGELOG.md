@@ -3,23 +3,11 @@
 All notable changes to `@hewliyang/xlsx-preview` are documented here.
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Fixed
-
-- Chart category axes that use `<c:multiLvlStrRef>` (emitted by Microsoft Office budget/dashboard templates when the category source spans multiple rows, often with a malformed cache that lists N levels each with `ptCount=1` and one `pt idx=0`) no longer produce a borked preview. The `CategoryAxisDataChoice` match in `xlcore-export` used to drop `CMultiLvlStrRef` through a wildcard arm, losing both the categories *and* the formula reference; the resolver in `refs.rs` then had nothing to backfill from. We now surface the formula ref so the resolver can read categories from the actual sheet range, and the renderer guards `chart.categories[i]` in `drawCategoryAxis`. Repro: `12-month-budget-template.xlsx` (Microsoft template) previously threw `Cannot read properties of undefined (reading '0')` and dismissing the error left a half-rendered preview.
-- Hierarchical multi-row `<c:multiLvlStrRef>` category bands now render in the preview, matching hsx / Excel desktop. `refs.rs::resolve_chart_refs` reuses `cx_category_levels` for non-chartex charts when the formula range is `n_rows > 1 && n_cols > 1` — one inner Vec per source row, in source order so `levels[0]` is the outermost (top) band and `levels[last]` mirrors the innermost (bottom) row that `chart.categories` already carries. Single-column multi-row ranges keep the flat fallback. The renderer gained `categoryAxisExtraRows` / `categoryAxisExtraHeight` / `drawCategoryAxisExtraRowsCentered` helpers in `chartUtils.ts`; `drawAxisFrame` + `drawCategoryAxis` enlarge `xAxisH` and stack outer rows underneath the innermost band, and the bar/column inline path in `chart.ts`, `chartCombo.ts`, and `chartStock.ts` all paint the extras centered on each category slot. Horizontal bar charts skip extras since categories live on the y-axis. Covered by the `multilvlstr-cat.xlsx` fixture.
-- `Chart.categories` is now always emitted in extracted JSON (previously elided when empty), matching the ts-rs `Array<string>` binding. The schema drift was the proximate cause of the multiLvlStrRef crash above and a latent footgun for any future code path that produces empty categories.
-- CLI now prints `error.stack` (not just `error.message`) for non-`XlsxLoadError` failures, so future opaque errors like `Cannot read properties of undefined (reading '0')` arrive with a usable stack frame.
-
-### Added
-
-- `tests/fixtures/charts/multilvlstr-cat.xlsx` regression fixture (hsx + Python zip-patch).
-
 ## [0.0.9] - 2026-05-28
 
 ### Added
 
+- `tests/fixtures/charts/multilvlstr-cat.xlsx` regression fixture (hsx + Python zip-patch).
 - CSV and Parquet preview support. New `format` / `csvOptions` /
   `parquetOptions` loader options route tabular files through the same
   `WorkbookLayout` renderer as XLSX. Browser and CLI sniff Parquet/XLSX byte
@@ -58,6 +46,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - When extracting a single sheet by name or index, `defined names` with a
   `local_sheet_id` are now filtered to the selected sheet and remapped to
   local id `0`, so chart series referencing local names resolve correctly.
+- Chart category axes that use `<c:multiLvlStrRef>` (emitted by Microsoft Office budget/dashboard templates when the category source spans multiple rows, often with a malformed cache that lists N levels each with `ptCount=1` and one `pt idx=0`) no longer produce a borked preview. The `CategoryAxisDataChoice` match in `xlcore-export` used to drop `CMultiLvlStrRef` through a wildcard arm, losing both the categories *and* the formula reference; the resolver in `refs.rs` then had nothing to backfill from. We now surface the formula ref so the resolver can read categories from the actual sheet range, and the renderer guards `chart.categories[i]` in `drawCategoryAxis`. Repro: `12-month-budget-template.xlsx` (Microsoft template) previously threw `Cannot read properties of undefined (reading '0')` and dismissing the error left a half-rendered preview.
+- Hierarchical multi-row `<c:multiLvlStrRef>` category bands now render in the preview, matching hsx / Excel desktop. `refs.rs::resolve_chart_refs` reuses `cx_category_levels` for non-chartex charts when the formula range is `n_rows > 1 && n_cols > 1` — one inner Vec per source row, in source order so `levels[0]` is the outermost (top) band and `levels[last]` mirrors the innermost (bottom) row that `chart.categories` already carries. Single-column multi-row ranges keep the flat fallback. The renderer gained `categoryAxisExtraRows` / `categoryAxisExtraHeight` / `drawCategoryAxisExtraRowsCentered` helpers in `chartUtils.ts`; `drawAxisFrame` + `drawCategoryAxis` enlarge `xAxisH` and stack outer rows underneath the innermost band, and the bar/column inline path in `chart.ts`, `chartCombo.ts`, and `chartStock.ts` all paint the extras centered on each category slot. Horizontal bar charts skip extras since categories live on the y-axis. Covered by the `multilvlstr-cat.xlsx` fixture.
+- `Chart.categories` is now always emitted in extracted JSON (previously elided when empty), matching the ts-rs `Array<string>` binding. The schema drift was the proximate cause of the multiLvlStrRef crash above and a latent footgun for any future code path that produces empty categories.
+- CLI now prints `error.stack` (not just `error.message`) for non-`XlsxLoadError` failures, so future opaque errors like `Cannot read properties of undefined (reading '0')` arrive with a usable stack frame.
 
 ## [0.0.8] - 2026-05-20
 
