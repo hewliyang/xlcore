@@ -42,7 +42,7 @@ Implemented:
 
 Known gaps:
 
-- No style writes
+- Style write surface limited to font/fill/border/alignment/number format patch
 - No row/column structural edits
 - No merges
 - No comments, hyperlinks, tables, names, validation, or object authoring
@@ -70,7 +70,7 @@ Status key:
 | Range values | `Worksheet.getArray/setArray`, `Range.value` | Get/set rectangular matrices with shape validation | Done | Rust API + TS smoke |
 | Range formulas | `Range.formula`, copy/fill APIs | Set formula matrices, copy formulas with relative refs | Partial | Rust API + TS smoke (matrix set/get); copy/fill still P1 |
 | Clear modes | `clear`, `ClearPendingChangeType` | Clear values, formulas, styles, comments, or all | P0 | OOXML diff + reopen |
-| Style subset | `Style`, `Range.backColor/font/border/formatter` | Number format, font, fill, alignment, wrap, simple borders | P0 | Renderer screenshot |
+| Style subset | `Style`, `Range.backColor/font/border/formatter` | Number format, font, fill, alignment, wrap, simple borders | Done | Rust API + layout |
 | Full styles | Themes, named styles, table styles | Preserve existing styles; author broader style model later | P2 | OOXML diff + preview |
 | Row/column size | `setRowHeight/setColumnWidth`, auto fit | Resize rows/columns; optional auto-fit later | P0 | Layout JSON + screenshot |
 | Row/column visibility | `setRowVisible/setColumnVisible` | Hide/show rows and columns | P0 | Layout JSON + hsx |
@@ -170,7 +170,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `cannot_delete_last_sheet` | Deleting would leave no worksheets |
 | `shape_mismatch` | Range matrix dimensions do not match the target range |
 | `unsupported_formula` | Formula could not be evaluated; source/cache preserved where possible |
-| `unsupported_style` | Style patch contains fields we do not write yet |
+| `unsupported_style` | Style patch contains values we cannot serialize (e.g. invalid color) |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |
 | `ooxml_write_error` | Writer could not serialize a valid workbook |
@@ -181,14 +181,13 @@ committed or rolled back.
 
 ## Next Slices
 
-1. Style patch P0: number format, font, fill, alignment, wrap, simple borders.
-2. Sheet/row/column structure: move/hide/show sheets, resize/hide rows/columns,
+1. Sheet/row/column structure: move/hide/show sheets, resize/hide rows/columns,
    insert/delete rows/columns, freeze panes.
-3. Merge/unmerge/list merged ranges.
-4. Browser mutation harness for open -> mutate -> recalc -> render -> save.
-5. hsx oracle fixtures for copy/fill, row/column insert/delete, search, deps,
+2. Merge/unmerge/list merged ranges.
+3. Browser mutation harness for open -> mutate -> recalc -> render -> save.
+4. hsx oracle fixtures for copy/fill, row/column insert/delete, search, deps,
    and diff.
-6. Range copy/fill with relative-formula translation (lifts Range formulas
+5. Range copy/fill with relative-formula translation (lifts Range formulas
    from Partial to Done).
 
 ## Definition Of Done

@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Workbook API: `setStyle(range, patch)` with font/fill/border/alignment/number-format sub-patches, interned styles, and `unsupported_style` diagnostic for invalid colors.
 - Workbook API: `getRange` / `setRangeValues` / `setRangeFormulas` / `clearRange` with A1 range refs (`A1:B3`, sheet-qualified, absolute, reversed corners), shape validation (new `shape_mismatch` `ApiError`), and a `RangeInfo` DTO (row-major `values` + `formulas`).
 
 ## [0.0.9] - 2026-05-28

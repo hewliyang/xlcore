@@ -1,3 +1,5 @@
+mod styles;
+
 use std::collections::HashMap;
 use std::io::{Cursor, Write};
 use std::path::Path;
@@ -6,8 +8,10 @@ use ooxmlsdk::parts::worksheet_part::WorksheetPart;
 use ooxmlsdk::sdk::SdkPart;
 use xlcore_io::spreadsheetml as x;
 pub use xlcore_types::{
-    ApiCellValue, ApiCellValue as CellValue, ApiError, ApiErrorCode, CellInfo, LayoutOptions,
-    RangeInfo, SheetInfo,
+    AlignmentPatch, ApiCellValue, ApiCellValue as CellValue, ApiError, ApiErrorCode,
+    BorderLinePatch, BorderLineStyle, BorderPatch, CellInfo, FillPatch, FontPatch,
+    HorizontalAlign, LayoutOptions, RangeInfo, SheetInfo, StylePatch, UnderlinePatch,
+    VerticalAlign,
 };
 
 pub type Result<T> = std::result::Result<T, ApiError>;
@@ -20,7 +24,7 @@ fn load_err_to_api(value: xlcore_io::XlsxLoadError) -> ApiError {
     err
 }
 
-fn sdk_err_to_api(value: ooxmlsdk::common::SdkError) -> ApiError {
+pub(crate) fn sdk_err_to_api(value: ooxmlsdk::common::SdkError) -> ApiError {
     ApiError::new(ApiErrorCode::Other, value.to_string())
 }
 
@@ -360,6 +364,63 @@ impl Workbook {
             }
         }
         mark_formulas_stale(&mut self.doc)?;
+        self.read_range(&range_ref)
+    }
+
+    pub fn set_style(
+        &mut self,
+        reference: impl AsRef<str>,
+        patch: StylePatch,
+    ) -> Result<RangeInfo> {
+        let range_ref = self.resolve_range_ref(reference.as_ref())?;
+        {
+            let ws_part = self.worksheet_part_for_sheet(&range_ref.sheet)?;
+            let mut existing: HashMap<(u32, u32), Option<u32>> = HashMap::new();
+            {
+                let ws = ws_part
+                    .root_element(&mut self.doc)
+                    .map_err(sdk_err_to_api)?;
+                for row in &ws.x_sheet_data.x_row {
+                    let Some(row_idx) = row.row_index else { continue };
+                    if row_idx < range_ref.start_row || row_idx > range_ref.end_row {
+                        continue;
+                    }
+                    for cell in &row.x_c {
+                        if let Some((r, c)) = cell
+                            .cell_reference
+                            .as_ref()
+                            .and_then(|r| xlcore_io::parse_a1(r.as_str()))
+                        {
+                            if c >= range_ref.start_column && c <= range_ref.end_column {
+                                existing.insert((r, c), cell.style_index);
+                            }
+                        }
+                    }
+                }
+            }
+
+            let mut resolved_indexes: HashMap<(u32, u32), u32> = HashMap::new();
+            for row_idx in range_ref.start_row..=range_ref.end_row {
+                for col_idx in range_ref.start_column..=range_ref.end_column {
+                    let current = existing.get(&(row_idx, col_idx)).copied().flatten();
+                    let new_idx = styles::resolve_style_index(&mut self.doc, current, &patch)?;
+                    resolved_indexes.insert((row_idx, col_idx), new_idx);
+                }
+            }
+
+            let ws_part = self.worksheet_part_for_sheet(&range_ref.sheet)?;
+            let ws = ws_part
+                .root_element_mut(&mut self.doc)
+                .map_err(sdk_err_to_api)?;
+            for row_idx in range_ref.start_row..=range_ref.end_row {
+                for col_idx in range_ref.start_column..=range_ref.end_column {
+                    let cell = ensure_cell(ws, row_idx, col_idx);
+                    if let Some(idx) = resolved_indexes.get(&(row_idx, col_idx)) {
+                        cell.style_index = Some(*idx);
+                    }
+                }
+            }
+        }
         self.read_range(&range_ref)
     }
 
@@ -1392,6 +1453,98 @@ mod tests {
         assert_eq!(err.code, ApiErrorCode::ShapeMismatch);
         assert_eq!(err.reference.as_deref(), Some("A1:B2"));
         assert_eq!(err.sheet.as_deref(), Some("Sheet1"));
+    }
+
+    #[test]
+    fn set_style_applies_font_fill_border_align_and_numfmt() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.set_value("Sheet1!A1", "Hello").unwrap();
+        workbook.set_value("Sheet1!B1", 1234.5).unwrap();
+
+        let patch = StylePatch {
+            font: Some(FontPatch {
+                bold: Some(true),
+                color: Some("#FF0000".to_string()),
+                size: Some(14.0),
+                ..Default::default()
+            }),
+            fill: Some(FillPatch {
+                color: Some("E2F0D9".to_string()),
+            }),
+            border: Some(BorderPatch {
+                all: Some(BorderLinePatch {
+                    style: BorderLineStyle::Thin,
+                    color: Some("000000".to_string()),
+                }),
+                ..Default::default()
+            }),
+            alignment: Some(AlignmentPatch {
+                horizontal: Some(HorizontalAlign::Center),
+                wrap: Some(true),
+                ..Default::default()
+            }),
+            number_format: Some("#,##0.00".to_string()),
+        };
+        workbook.set_style("Sheet1!A1:B1", patch).unwrap();
+        let a1 = workbook.get_cell("Sheet1!A1").unwrap();
+        let b1 = workbook.get_cell("Sheet1!B1").unwrap();
+        let idx_a = a1.style_index.unwrap();
+        let idx_b = b1.style_index.unwrap();
+        assert!(idx_a > 0);
+        assert_eq!(idx_a, idx_b);
+
+        let bytes = workbook.save_bytes().unwrap();
+        let mut reopened = Workbook::open_bytes(bytes).unwrap();
+        assert_eq!(
+            reopened.get_cell("Sheet1!A1").unwrap().style_index,
+            Some(idx_a)
+        );
+
+        let layout = reopened.layout(LayoutOptions::default()).unwrap();
+        let xf = &layout.styles.cell_xfs[idx_a as usize];
+        let font = &layout.styles.fonts[xf.font_id.unwrap() as usize];
+        assert!(font.bold);
+        assert_eq!(font.size, Some(14.0));
+        assert_eq!(
+            font.color.as_ref().and_then(|c| c.rgb.as_deref()),
+            Some("FFFF0000")
+        );
+        let fill = &layout.styles.fills[xf.fill_id.unwrap() as usize];
+        assert_eq!(fill.pattern_type.as_deref(), Some("solid"));
+        assert_eq!(
+            fill.fg_color.as_ref().and_then(|c| c.rgb.as_deref()),
+            Some("FFE2F0D9")
+        );
+        assert!(xf.wrap_text);
+        assert_eq!(xf.horizontal_alignment.as_deref(), Some("center"));
+        let num_fmt_id = xf.num_fmt_id.unwrap();
+        assert_eq!(num_fmt_id, 4);
+    }
+
+    #[test]
+    fn set_style_dedupes_across_cells_and_invalid_color_errors() {
+        let mut workbook = Workbook::new().unwrap();
+        let bold = StylePatch {
+            font: Some(FontPatch { bold: Some(true), ..Default::default() }),
+            ..Default::default()
+        };
+        workbook.set_style("Sheet1!A1", bold.clone()).unwrap();
+        workbook.set_style("Sheet1!B1", bold).unwrap();
+        assert_eq!(
+            workbook.get_cell("Sheet1!A1").unwrap().style_index,
+            workbook.get_cell("Sheet1!B1").unwrap().style_index
+        );
+
+        let err = workbook
+            .set_style(
+                "Sheet1!A1",
+                StylePatch {
+                    fill: Some(FillPatch { color: Some("notacolor".into()) }),
+                    ..Default::default()
+                },
+            )
+            .unwrap_err();
+        assert_eq!(err.code, ApiErrorCode::UnsupportedStyle);
     }
 
     #[test]

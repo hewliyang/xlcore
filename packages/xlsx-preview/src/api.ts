@@ -6,23 +6,34 @@ import type {
   RangeInfo,
   RecalcWorkbook,
   SheetInfo,
+  StylePatch,
 } from "./api-schema/index.js";
 import type { WorkbookLayout } from "./types.js";
 
 export type {
+  AlignmentPatch,
   ApiCellValue,
   ApiError,
   ApiError as ApiErrorPayload,
   ApiErrorCode,
+  BorderLinePatch,
+  BorderLineStyle,
+  BorderPatch,
   CellInfo,
   EngineCellValue,
+  FillPatch,
+  FontPatch,
   FormulaFallback,
+  HorizontalAlign,
   LayoutOptions as WorkbookLayoutOptions,
   RangeInfo,
   RecalcCell,
   RecalcSheet,
   RecalcWorkbook,
   SheetInfo,
+  StylePatch,
+  UnderlinePatch,
+  VerticalAlign,
 } from "./api-schema/index.js";
 
 const DEFAULT_WASM_BINARY_URL = new URL("./xlcore_wasm_bg.wasm", import.meta.url).href;
@@ -81,6 +92,10 @@ export class Workbook {
 
   setRangeFormulas(reference: string, formulas: Array<Array<string | null>>): RangeInfo {
     return this.handle.setRangeFormulas(reference, formulas) as RangeInfo;
+  }
+
+  setStyle(reference: string, patch: StylePatch): RangeInfo {
+    return this.handle.setStyle(reference, patch) as RangeInfo;
   }
 
   clearRange(reference: string): RangeInfo {

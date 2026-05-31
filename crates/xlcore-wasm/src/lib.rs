@@ -262,6 +262,20 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = setStyle)]
+    pub fn set_style(&mut self, reference: &str, patch: JsValue) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::StylePatch = if patch.is_null() || patch.is_undefined() {
+            xlcore_api::StylePatch::default()
+        } else {
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?
+        };
+        let range = self
+            .workbook_mut()?
+            .set_style(reference, patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = clearRange)]
     pub fn clear_range(&mut self, reference: &str) -> Result<JsValue, JsValue> {
         let range = self
