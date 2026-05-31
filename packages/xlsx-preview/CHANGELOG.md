@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Workbook API: `setRowHeight` / `setRowVisible` / `setColumnWidth` / `setColumnVisible` / `setFreeze` / `getFreeze` with `FreezeInfo` DTO and OOXML round-trip for row/col size+hidden and frozen panes.
 - Workbook API: `moveSheet(name, toIndex)` / `setSheetVisibility(name, visibility)` / `setActiveSheet(name)` with `SheetVisibility` DTO (`visible` | `hidden` | `veryHidden`), active-tab tracking across moves/deletes, and refusal to hide the last visible sheet or activate a hidden one.
 - Workbook API: `merges(sheet)` / `addMerge(range)` / `removeMerge(ref)` with `MergeInfo` DTO, overlap diagnostic (`merge_overlap` `ApiError`), and OOXML `<mergeCells>` round-trip.
 - Workbook API: `setStyle(range, patch)` with font/fill/border/alignment/number-format sub-patches, interned styles, and `unsupported_style` diagnostic for invalid colors.

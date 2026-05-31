@@ -109,8 +109,21 @@ if (!hideActiveErr || hideActiveErr.code !== "other") {
   throw new Error("expected activate-hidden ApiError, got: " + String(hideActiveErr));
 }
 
+workbook.setRowHeight("Sheet1", 2, 33);
+workbook.setRowVisible("Sheet1", 3, false);
+workbook.setColumnWidth("Sheet1", 2, 24.5);
+workbook.setColumnVisible("Sheet1", 4, false);
+const freeze = workbook.setFreeze("Sheet1", 1, 2);
+if (freeze.frozenRows !== 1 || freeze.frozenColumns !== 2) {
+  throw new Error("unexpected setFreeze result: " + JSON.stringify(freeze));
+}
+
 const saved = workbook.save();
 const reopened = await Workbook.open(saved, { wasmBinaryUrl: wasm });
+const reopenedFreeze = reopened.getFreeze("Sheet1");
+if (reopenedFreeze.frozenRows !== 1 || reopenedFreeze.frozenColumns !== 2) {
+  throw new Error("unexpected reopened freeze: " + JSON.stringify(reopenedFreeze));
+}
 const c1 = reopened.getCell("Sheet1!C1");
 if (c1.value.type !== "number" || c1.value.value !== 30 || c1.formula !== "B1*3") {
   throw new Error("unexpected reopened cell: " + JSON.stringify(c1));

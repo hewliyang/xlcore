@@ -10,6 +10,7 @@ export type { EngineCellValue } from "./EngineCellValue.js";
 export type { FillPatch } from "./FillPatch.js";
 export type { FontPatch } from "./FontPatch.js";
 export type { FormulaFallback } from "./FormulaFallback.js";
+export type { FreezeInfo } from "./FreezeInfo.js";
 export type { HorizontalAlign } from "./HorizontalAlign.js";
 export type { LayoutOptions } from "./LayoutOptions.js";
 export type { MergeInfo } from "./MergeInfo.js";

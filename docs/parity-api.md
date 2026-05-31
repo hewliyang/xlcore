@@ -72,10 +72,10 @@ Status key:
 | Clear modes | `clear`, `ClearPendingChangeType` | Clear values, formulas, styles, comments, or all | P0 | OOXML diff + reopen |
 | Style subset | `Style`, `Range.backColor/font/border/formatter` | Number format, font, fill, alignment, wrap, simple borders | Done | Rust API + layout |
 | Full styles | Themes, named styles, table styles | Preserve existing styles; author broader style model later | P2 | OOXML diff + preview |
-| Row/column size | `setRowHeight/setColumnWidth`, auto fit | Resize rows/columns; optional auto-fit later | P0 | Layout JSON + screenshot |
-| Row/column visibility | `setRowVisible/setColumnVisible` | Hide/show rows and columns | P0 | Layout JSON + hsx |
+| Row/column size | `setRowHeight/setColumnWidth`, auto fit | Resize rows/columns; optional auto-fit later | Done | Rust API + save/reopen |
+| Row/column visibility | `setRowVisible/setColumnVisible` | Hide/show rows and columns | Done | Rust API + save/reopen |
 | Insert/delete rows/cols | `addRows/deleteRows/addColumns/deleteColumns` | Structural edits with cell/formula/reference movement | P0/P1 | hsx + OOXML diff |
-| Freeze panes | `frozenRowCount/frozenColumnCount` | Freeze/unfreeze panes | P0 | Layout JSON + screenshot |
+| Freeze panes | `frozenRowCount/frozenColumnCount` | Freeze/unfreeze panes | Done | Rust API + save/reopen |
 | Merges | `addSpan/removeSpan/getSpans` | Merge/unmerge/list merged ranges | Done | Rust API + TS smoke |
 | Selections/view state | `setSelection/getSelections/showCell` | Persist active cell/selection only if OOXML-backed and useful | Later | OOXML inspection |
 | Search | `Worksheet.search` | Search values/formulas across sheets | P1 | hsx search oracle |
@@ -182,14 +182,13 @@ committed or rolled back.
 
 ## Next Slices
 
-1. Row/column structure: resize/hide rows/columns, insert/delete
-   rows/columns, freeze panes.
-2. Merge/unmerge/list merged ranges.
-3. Browser mutation harness for open -> mutate -> recalc -> render -> save.
-4. hsx oracle fixtures for copy/fill, row/column insert/delete, search, deps,
+1. Insert/delete rows/columns with cell/formula/reference movement.
+2. Browser mutation harness for open -> mutate -> recalc -> render -> save.
+3. hsx oracle fixtures for copy/fill, row/column insert/delete, search, deps,
    and diff.
-5. Range copy/fill with relative-formula translation (lifts Range formulas
+4. Range copy/fill with relative-formula translation (lifts Range formulas
    from Partial to Done).
+5. Clear modes (`values` / `formulas` / `styles` / `all`).
 
 ## Definition Of Done
 

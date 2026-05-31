@@ -3,6 +3,7 @@ mod errors;
 mod merges;
 mod ranges;
 mod refs;
+mod rowcols;
 mod sheets;
 mod styles;
 mod xml;
@@ -11,7 +12,7 @@ use std::path::Path;
 
 pub use xlcore_types::{
     AlignmentPatch, ApiCellValue, ApiCellValue as CellValue, ApiError, ApiErrorCode,
-    BorderLinePatch, BorderLineStyle, BorderPatch, CellInfo, FillPatch, FontPatch,
+    BorderLinePatch, BorderLineStyle, BorderPatch, CellInfo, FillPatch, FontPatch, FreezeInfo,
     HorizontalAlign, LayoutOptions, MergeInfo, RangeInfo, SheetInfo, SheetVisibility,
     StylePatch, UnderlinePatch, VerticalAlign,
 };

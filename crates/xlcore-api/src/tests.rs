@@ -372,6 +372,67 @@
     }
 
     #[test]
+    fn row_and_column_size_visibility_and_freeze_round_trip() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.set_value("Sheet1!A1", "keep").unwrap();
+        workbook.set_row_height("Sheet1", 2, 33.0).unwrap();
+        workbook.set_row_visible("Sheet1", 3, false).unwrap();
+        workbook.set_column_width("Sheet1", 2, 24.5).unwrap();
+        workbook.set_column_visible("Sheet1", 4, false).unwrap();
+        let freeze = workbook.set_freeze("Sheet1", 1, 2).unwrap();
+        assert_eq!(freeze.frozen_rows, 1);
+        assert_eq!(freeze.frozen_columns, 2);
+
+        let bytes = workbook.save_bytes().unwrap();
+        let mut reopened = Workbook::open_bytes(bytes).unwrap();
+        assert_eq!(
+            reopened.get_cell("Sheet1!A1").unwrap().value,
+            CellValue::String("keep".to_string())
+        );
+        let got = reopened.get_freeze("Sheet1").unwrap();
+        assert_eq!(got.frozen_rows, 1);
+        assert_eq!(got.frozen_columns, 2);
+
+        reopened.set_freeze("Sheet1", 0, 0).unwrap();
+        let cleared = reopened.get_freeze("Sheet1").unwrap();
+        assert_eq!(cleared.frozen_rows, 0);
+        assert_eq!(cleared.frozen_columns, 0);
+
+        reopened.set_row_visible("Sheet1", 3, true).unwrap();
+        reopened.set_column_visible("Sheet1", 4, true).unwrap();
+    }
+
+    #[test]
+    fn row_and_column_invalid_indices_diagnosed() {
+        let mut workbook = Workbook::new().unwrap();
+        assert_eq!(
+            workbook
+                .set_row_height("Sheet1", 0, 20.0)
+                .unwrap_err()
+                .code,
+            ApiErrorCode::InvalidRef,
+        );
+        assert_eq!(
+            workbook
+                .set_column_width("Sheet1", 0, 10.0)
+                .unwrap_err()
+                .code,
+            ApiErrorCode::InvalidRef,
+        );
+        assert_eq!(
+            workbook
+                .set_row_height("Sheet1", 1, f64::NAN)
+                .unwrap_err()
+                .code,
+            ApiErrorCode::InvalidRef,
+        );
+        assert_eq!(
+            workbook.set_row_height("Ghost", 1, 10.0).unwrap_err().code,
+            ApiErrorCode::MissingSheet,
+        );
+    }
+
+    #[test]
     fn layout_reflects_mutated_cells() {
         let mut workbook = Workbook::new().unwrap();
         workbook

@@ -2,6 +2,7 @@ import init, { WorkbookHandle as WasmWorkbookHandle } from "./xlcore_wasm.js";
 import type {
   ApiCellValue,
   CellInfo,
+  FreezeInfo,
   LayoutOptions as WorkbookLayoutOptions,
   MergeInfo,
   RangeInfo,
@@ -26,6 +27,7 @@ export type {
   FillPatch,
   FontPatch,
   FormulaFallback,
+  FreezeInfo,
   HorizontalAlign,
   LayoutOptions as WorkbookLayoutOptions,
   MergeInfo,
@@ -140,6 +142,30 @@ export class Workbook {
 
   setActiveSheet(name: string): SheetInfo {
     return this.handle.setActiveSheet(name) as SheetInfo;
+  }
+
+  setRowHeight(sheet: string, row: number, height: number): void {
+    this.handle.setRowHeight(sheet, row, height);
+  }
+
+  setRowVisible(sheet: string, row: number, visible: boolean): void {
+    this.handle.setRowVisible(sheet, row, visible);
+  }
+
+  setColumnWidth(sheet: string, column: number, width: number): void {
+    this.handle.setColumnWidth(sheet, column, width);
+  }
+
+  setColumnVisible(sheet: string, column: number, visible: boolean): void {
+    this.handle.setColumnVisible(sheet, column, visible);
+  }
+
+  setFreeze(sheet: string, frozenRows: number, frozenColumns: number): FreezeInfo {
+    return this.handle.setFreeze(sheet, frozenRows, frozenColumns) as FreezeInfo;
+  }
+
+  getFreeze(sheet: string): FreezeInfo {
+    return this.handle.getFreeze(sheet) as FreezeInfo;
   }
 
   recalculate(): RecalcWorkbook {

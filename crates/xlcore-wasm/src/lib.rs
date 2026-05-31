@@ -366,6 +366,77 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&sheet).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = setRowHeight)]
+    pub fn set_row_height(
+        &mut self,
+        sheet: &str,
+        row: u32,
+        height: f64,
+    ) -> Result<(), JsValue> {
+        self.workbook_mut()?
+            .set_row_height(sheet, row, height)
+            .map_err(api_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setRowVisible)]
+    pub fn set_row_visible(
+        &mut self,
+        sheet: &str,
+        row: u32,
+        visible: bool,
+    ) -> Result<(), JsValue> {
+        self.workbook_mut()?
+            .set_row_visible(sheet, row, visible)
+            .map_err(api_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setColumnWidth)]
+    pub fn set_column_width(
+        &mut self,
+        sheet: &str,
+        column: u32,
+        width: f64,
+    ) -> Result<(), JsValue> {
+        self.workbook_mut()?
+            .set_column_width(sheet, column, width)
+            .map_err(api_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setColumnVisible)]
+    pub fn set_column_visible(
+        &mut self,
+        sheet: &str,
+        column: u32,
+        visible: bool,
+    ) -> Result<(), JsValue> {
+        self.workbook_mut()?
+            .set_column_visible(sheet, column, visible)
+            .map_err(api_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setFreeze)]
+    pub fn set_freeze(
+        &mut self,
+        sheet: &str,
+        frozen_rows: u32,
+        frozen_columns: u32,
+    ) -> Result<JsValue, JsValue> {
+        let info = self
+            .workbook_mut()?
+            .set_freeze(sheet, frozen_rows, frozen_columns)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = getFreeze)]
+    pub fn get_freeze(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
+        let info = self
+            .workbook_mut()?
+            .get_freeze(sheet)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = setActiveSheet)]
     pub fn set_active_sheet(&mut self, name: &str) -> Result<JsValue, JsValue> {
         let sheet = self
