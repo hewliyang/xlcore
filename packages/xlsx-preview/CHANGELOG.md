@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `examples/xlsx-playground.html` browser mutation harness: open → mutate via a small JS editor (with snippet presets) → recalc → re-render via `createWorkbookPreviewer` → download `.xlsx`. Wired into the site build at `/playground`.
 - Workbook API: `copyRange(src, dst)` / `fillRange(src, dst)` with relative-formula translation; copy supports same-shape, single-cell, or whole-multiple destinations (tiles source); fill requires dst to contain src and be a whole multiple; absolute markers and cross-sheet refs preserved; out-of-bounds collapses to `#REF!`.
 - Workbook API: `insertRows` / `deleteRows` / `insertColumns` / `deleteColumns` with cell/merge shifting and formula reference rewriting (cross-sheet refs, absolute markers, ranges, column/row-only refs); deleted refs collapse to `#REF!`. Structural shifts now also rewrite workbook-level defined names (global + `localSheetId`-scoped), conditional formatting `sqref` ranges and rule formulas (cross-sheet aware), table `ref`/`autoFilter` ranges, and the worksheet-level `autoFilter` range.
 - Workbook API: `clear(ref, mode?)` / `clearRange(ref, mode?)` accept a `ClearMode` (`all` | `values` | `formulas` | `styles`); `all` now also clears the cell's style index.

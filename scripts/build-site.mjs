@@ -41,6 +41,7 @@ for (const c of demoCandidates) {
 const routes = [
   ["app", "xlsx-app.html"],
   ["tiles", "xlsx-tiles.html"],
+  ["playground", "xlsx-playground.html"],
 ];
 
 async function exists(p) {
@@ -523,6 +524,11 @@ const landing = `<!doctype html>
         <a href="/tiles">
           <span class="route">/tiles</span>
           <span class="desc">Thumbnail tile grid of every sheet.</span>
+          <span class="arrow">→</span>
+        </a>
+        <a href="/playground">
+          <span class="route">/playground</span>
+          <span class="desc">Workbook API playground: open → mutate → recalc → render → save.</span>
           <span class="arrow">→</span>
         </a>
       </div>

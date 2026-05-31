@@ -101,7 +101,7 @@ Status key:
 | Undo/redo/commands | Command manager, undo manager | Optional command journal/replay log | Later | Unit tests |
 | Events/UI options | Events, context menu, scrollbars, hit testing | Out of scope unless needed by previewer harness | Later | Browser harness only |
 | Diagnostics | SpreadJS often throws or mutates silently | Stable `ApiError` and future batch diagnostics | Partial | Snapshot tests |
-| Browser harness | SpreadJS UI runtime | Minimal local page to mutate/recalc/render via TS wrapper | P0 | Playwright/screenshot |
+| Browser harness | SpreadJS UI runtime | Minimal local page to mutate/recalc/render via TS wrapper | Done (`examples/xlsx-playground.html`, site `/playground`) | Playwright/screenshot |
 
 ## Target TypeScript Shape
 
@@ -182,8 +182,7 @@ committed or rolled back.
 
 ## Next Slices
 
-1. Browser mutation harness for open -> mutate -> recalc -> render -> save.
-2. hsx oracle fixtures for copy/fill, row/column insert/delete, search, deps,
+1. hsx oracle fixtures for copy/fill, row/column insert/delete, search, deps,
    and diff.
 
 ## Definition Of Done

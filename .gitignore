@@ -7,6 +7,7 @@ site/
 !packages/xlsx-preview/examples/xlsx-app.html
 !packages/xlsx-preview/examples/xlsx-multi.html
 !packages/xlsx-preview/examples/xlsx-tiles.html
+!packages/xlsx-preview/examples/xlsx-playground.html
 !packages/xlsx-preview/examples/vanilla-js/demo.html
 !packages/xlsx-preview/examples/vanilla-js/index.html
 !packages/xlsx-preview/examples/react-vite/index.html
