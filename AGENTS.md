@@ -1,0 +1,2 @@
+- Never write comments/docstrings
+- Keep changelog entries terse, most should be one liners.
