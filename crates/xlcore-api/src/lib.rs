@@ -10,8 +10,8 @@ use xlcore_io::spreadsheetml as x;
 pub use xlcore_types::{
     AlignmentPatch, ApiCellValue, ApiCellValue as CellValue, ApiError, ApiErrorCode,
     BorderLinePatch, BorderLineStyle, BorderPatch, CellInfo, FillPatch, FontPatch,
-    HorizontalAlign, LayoutOptions, RangeInfo, SheetInfo, StylePatch, UnderlinePatch,
-    VerticalAlign,
+    HorizontalAlign, LayoutOptions, MergeInfo, RangeInfo, SheetInfo, StylePatch,
+    UnderlinePatch, VerticalAlign,
 };
 
 pub type Result<T> = std::result::Result<T, ApiError>;
@@ -499,6 +499,129 @@ impl Workbook {
         })
     }
 
+    pub fn merges(&mut self, sheet: impl AsRef<str>) -> Result<Vec<MergeInfo>> {
+        let sheet = sheet.as_ref().to_string();
+        let ws_part = self.worksheet_part_for_sheet(&sheet)?;
+        let ws = ws_part.root_element(&mut self.doc).map_err(sdk_err_to_api)?;
+        let mut out = Vec::new();
+        if let Some(mc) = ws.x_merge_cells.as_ref() {
+            for m in &mc.x_merge_cell {
+                if let Some(info) = merge_info_from_ref(&sheet, m.reference.as_str()) {
+                    out.push(info);
+                }
+            }
+        }
+        Ok(out)
+    }
+
+    pub fn add_merge(&mut self, reference: impl AsRef<str>) -> Result<MergeInfo> {
+        let range_ref = self.resolve_range_ref(reference.as_ref())?;
+        let ws_part = self.worksheet_part_for_sheet(&range_ref.sheet)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let new_ref = canonical_range_ref(&range_ref);
+        let merges = ws
+            .x_merge_cells
+            .get_or_insert_with(x::MergeCells::default);
+        for existing in &merges.x_merge_cell {
+            let Some((r1, c1, r2, c2)) = parse_range_a1(existing.reference.as_str()) else {
+                continue;
+            };
+            if ranges_overlap(
+                range_ref.start_row,
+                range_ref.start_column,
+                range_ref.end_row,
+                range_ref.end_column,
+                r1,
+                c1,
+                r2,
+                c2,
+            ) {
+                return Err(ApiError::new(
+                    ApiErrorCode::MergeOverlap,
+                    format!(
+                        "merge {new_ref} overlaps existing merge {}",
+                        existing.reference.as_str()
+                    ),
+                )
+                .with_sheet(&range_ref.sheet)
+                .with_ref(&new_ref));
+            }
+        }
+        merges.x_merge_cell.push(x::MergeCell {
+            reference: new_ref.clone(),
+        });
+        merges.count = Some(merges.x_merge_cell.len() as u32);
+        Ok(merge_info(&range_ref.sheet, &range_ref))
+    }
+
+    pub fn remove_merge(
+        &mut self,
+        reference: impl AsRef<str>,
+    ) -> Result<Option<MergeInfo>> {
+        let reference = reference.as_ref();
+        let (sheet, body) = match split_sheet_reference(reference)? {
+            (Some(s), body) => (s, body.to_string()),
+            (None, body) => (self.default_sheet_name()?, body.to_string()),
+        };
+        let is_range = body.contains(':');
+        let target_range = if is_range {
+            Some(parse_range_reference(&format!("{}!{}", quote_sheet_name(&sheet), body))?)
+        } else {
+            None
+        };
+        let (target_row, target_col) = if !is_range {
+            parse_cell_address(&body).ok_or_else(|| {
+                ApiError::new(
+                    ApiErrorCode::InvalidRef,
+                    format!("invalid cell reference: {reference}"),
+                )
+                .with_ref(reference)
+            })?
+        } else {
+            (0, 0)
+        };
+
+        let ws_part = self.worksheet_part_for_sheet(&sheet)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let Some(merges) = ws.x_merge_cells.as_mut() else {
+            return Ok(None);
+        };
+        let mut found: Option<usize> = None;
+        for (idx, existing) in merges.x_merge_cell.iter().enumerate() {
+            let Some((r1, c1, r2, c2)) = parse_range_a1(existing.reference.as_str()) else {
+                continue;
+            };
+            let hit = if let Some(tr) = &target_range {
+                tr.start_row == r1
+                    && tr.start_column == c1
+                    && tr.end_row == r2
+                    && tr.end_column == c2
+            } else {
+                target_row >= r1
+                    && target_row <= r2
+                    && target_col >= c1
+                    && target_col <= c2
+            };
+            if hit {
+                found = Some(idx);
+                break;
+            }
+        }
+        let Some(idx) = found else { return Ok(None) };
+        let removed = merges.x_merge_cell.remove(idx);
+        if merges.x_merge_cell.is_empty() {
+            ws.x_merge_cells = None;
+        } else {
+            let len = merges.x_merge_cell.len() as u32;
+            merges.count = Some(len);
+        }
+        Ok(merge_info_from_ref(&sheet, removed.reference.as_str()))
+    }
+
     pub fn clear(&mut self, reference: impl AsRef<str>) -> Result<CellInfo> {
         let cell_ref = self.resolve_cell_ref(reference.as_ref())?;
         let ws_part = self.worksheet_part_for_sheet(&cell_ref.sheet)?;
@@ -911,6 +1034,62 @@ fn parse_cell_address(cell: &str) -> Option<(u32, u32)> {
     } else {
         None
     }
+}
+
+fn parse_range_a1(reference: &str) -> Option<(u32, u32, u32, u32)> {
+    let (a, b) = match reference.split_once(':') {
+        Some((a, b)) => (a, b),
+        None => (reference, reference),
+    };
+    let (r1, c1) = parse_cell_address(a)?;
+    let (r2, c2) = parse_cell_address(b)?;
+    let (r1, r2) = if r1 <= r2 { (r1, r2) } else { (r2, r1) };
+    let (c1, c2) = if c1 <= c2 { (c1, c2) } else { (c2, c1) };
+    Some((r1, c1, r2, c2))
+}
+
+fn ranges_overlap(
+    ar1: u32, ac1: u32, ar2: u32, ac2: u32,
+    br1: u32, bc1: u32, br2: u32, bc2: u32,
+) -> bool {
+    ar1 <= br2 && br1 <= ar2 && ac1 <= bc2 && bc1 <= ac2
+}
+
+fn canonical_range_ref(range_ref: &ResolvedRangeRef) -> String {
+    range_ref.range_reference()
+}
+
+fn merge_info(sheet: &str, range_ref: &ResolvedRangeRef) -> MergeInfo {
+    MergeInfo {
+        sheet: sheet.to_string(),
+        reference: range_ref.range_reference(),
+        start_row: range_ref.start_row,
+        start_column: range_ref.start_column,
+        end_row: range_ref.end_row,
+        end_column: range_ref.end_column,
+        rows: range_ref.end_row - range_ref.start_row + 1,
+        columns: range_ref.end_column - range_ref.start_column + 1,
+    }
+}
+
+fn merge_info_from_ref(sheet: &str, reference: &str) -> Option<MergeInfo> {
+    let (r1, c1, r2, c2) = parse_range_a1(reference)?;
+    Some(MergeInfo {
+        sheet: sheet.to_string(),
+        reference: format!(
+            "{}{}:{}{}",
+            xlcore_io::col_label(c1),
+            r1,
+            xlcore_io::col_label(c2),
+            r2,
+        ),
+        start_row: r1,
+        start_column: c1,
+        end_row: r2,
+        end_column: c2,
+        rows: r2 - r1 + 1,
+        columns: c2 - c1 + 1,
+    })
 }
 
 fn quote_sheet_name(sheet: &str) -> String {
@@ -1545,6 +1724,38 @@ mod tests {
             )
             .unwrap_err();
         assert_eq!(err.code, ApiErrorCode::UnsupportedStyle);
+    }
+
+    #[test]
+    fn merges_add_list_remove_and_overlap_diagnosed() {
+        let mut workbook = Workbook::new().unwrap();
+        let info = workbook.add_merge("Sheet1!A1:B2").unwrap();
+        assert_eq!(info.reference, "A1:B2");
+        assert_eq!(info.rows, 2);
+        assert_eq!(info.columns, 2);
+
+        workbook.add_merge("Sheet1!C1:D2").unwrap();
+        let list = workbook.merges("Sheet1").unwrap();
+        assert_eq!(list.len(), 2);
+
+        let err = workbook.add_merge("Sheet1!B2:C3").unwrap_err();
+        assert_eq!(err.code, ApiErrorCode::MergeOverlap);
+        assert_eq!(err.sheet.as_deref(), Some("Sheet1"));
+
+        let bytes = workbook.save_bytes().unwrap();
+        let mut reopened = Workbook::open_bytes(bytes).unwrap();
+        let after = reopened.merges("Sheet1").unwrap();
+        assert_eq!(
+            after.iter().map(|m| m.reference.as_str()).collect::<Vec<_>>(),
+            ["A1:B2", "C1:D2"]
+        );
+
+        let removed = reopened.remove_merge("Sheet1!B1").unwrap().unwrap();
+        assert_eq!(removed.reference, "A1:B2");
+        let removed_exact = reopened.remove_merge("Sheet1!C1:D2").unwrap().unwrap();
+        assert_eq!(removed_exact.reference, "C1:D2");
+        assert!(reopened.merges("Sheet1").unwrap().is_empty());
+        assert!(reopened.remove_merge("Sheet1!A1").unwrap().is_none());
     }
 
     #[test]

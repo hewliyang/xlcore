@@ -15,8 +15,27 @@ pub enum ApiErrorCode {
     CannotDeleteLastSheet,
     ShapeMismatch,
     UnsupportedStyle,
+    MergeOverlap,
     OoxmlWriteError,
     Other,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct MergeInfo {
+    pub sheet: String,
+    pub reference: String,
+    pub start_row: u32,
+    pub start_column: u32,
+    pub end_row: u32,
+    pub end_column: u32,
+    pub rows: u32,
+    pub columns: u32,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

@@ -12,6 +12,7 @@ export type { FontPatch } from "./FontPatch.js";
 export type { FormulaFallback } from "./FormulaFallback.js";
 export type { HorizontalAlign } from "./HorizontalAlign.js";
 export type { LayoutOptions } from "./LayoutOptions.js";
+export type { MergeInfo } from "./MergeInfo.js";
 export type { RangeInfo } from "./RangeInfo.js";
 export type { RecalcCell } from "./RecalcCell.js";
 export type { RecalcSheet } from "./RecalcSheet.js";

@@ -276,6 +276,32 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
     }
 
+    pub fn merges(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
+        let merges = self
+            .workbook_mut()?
+            .merges(sheet)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&merges).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = addMerge)]
+    pub fn add_merge(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let info = self
+            .workbook_mut()?
+            .add_merge(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removeMerge)]
+    pub fn remove_merge(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let info = self
+            .workbook_mut()?
+            .remove_merge(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = clearRange)]
     pub fn clear_range(&mut self, reference: &str) -> Result<JsValue, JsValue> {
         let range = self

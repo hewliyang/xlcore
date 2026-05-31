@@ -3,6 +3,7 @@ import type {
   ApiCellValue,
   CellInfo,
   LayoutOptions as WorkbookLayoutOptions,
+  MergeInfo,
   RangeInfo,
   RecalcWorkbook,
   SheetInfo,
@@ -26,6 +27,7 @@ export type {
   FormulaFallback,
   HorizontalAlign,
   LayoutOptions as WorkbookLayoutOptions,
+  MergeInfo,
   RangeInfo,
   RecalcCell,
   RecalcSheet,
@@ -100,6 +102,18 @@ export class Workbook {
 
   clearRange(reference: string): RangeInfo {
     return this.handle.clearRange(reference) as RangeInfo;
+  }
+
+  merges(sheet: string): MergeInfo[] {
+    return this.handle.merges(sheet) as MergeInfo[];
+  }
+
+  addMerge(reference: string): MergeInfo {
+    return this.handle.addMerge(reference) as MergeInfo;
+  }
+
+  removeMerge(reference: string): MergeInfo | null {
+    return (this.handle.removeMerge(reference) as MergeInfo | null) ?? null;
   }
 
   createSheet(name: string): SheetInfo {

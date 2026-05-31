@@ -62,6 +62,29 @@ if (!shapeErr || shapeErr.code !== "shape_mismatch" || shapeErr.reference !== "A
   throw new Error("expected shape_mismatch ApiError, got: " + String(shapeErr));
 }
 
+workbook.addMerge("Sheet1!A10:B11");
+workbook.addMerge("Sheet1!C10:D11");
+let mergeOverlapErr;
+try {
+  workbook.addMerge("Sheet1!B11:C12");
+} catch (err) {
+  mergeOverlapErr = err;
+}
+if (!mergeOverlapErr || mergeOverlapErr.code !== "merge_overlap") {
+  throw new Error("expected merge_overlap ApiError, got: " + String(mergeOverlapErr));
+}
+const mergesBefore = workbook.merges("Sheet1");
+if (mergesBefore.length !== 2 || mergesBefore[0].reference !== "A10:B11") {
+  throw new Error("unexpected merges: " + JSON.stringify(mergesBefore));
+}
+const removed = workbook.removeMerge("Sheet1!A10");
+if (!removed || removed.reference !== "A10:B11") {
+  throw new Error("unexpected removeMerge result: " + JSON.stringify(removed));
+}
+if (workbook.removeMerge("Sheet1!Z99") !== null) {
+  throw new Error("expected null when removing non-existent merge");
+}
+
 const saved = workbook.save();
 const reopened = await Workbook.open(saved, { wasmBinaryUrl: wasm });
 const c1 = reopened.getCell("Sheet1!C1");
@@ -69,4 +92,9 @@ if (c1.value.type !== "number" || c1.value.value !== 30 || c1.formula !== "B1*3"
   throw new Error("unexpected reopened cell: " + JSON.stringify(c1));
 }
 
-console.log(JSON.stringify({ ok: true, sheets: reopened.sheets().length, c1 }));
+const reopenedMerges = reopened.merges("Sheet1");
+if (reopenedMerges.length !== 1 || reopenedMerges[0].reference !== "C10:D11") {
+  throw new Error("unexpected reopened merges: " + JSON.stringify(reopenedMerges));
+}
+
+console.log(JSON.stringify({ ok: true, sheets: reopened.sheets().length, c1, merges: reopenedMerges.length }));

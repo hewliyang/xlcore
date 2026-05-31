@@ -76,7 +76,7 @@ Status key:
 | Row/column visibility | `setRowVisible/setColumnVisible` | Hide/show rows and columns | P0 | Layout JSON + hsx |
 | Insert/delete rows/cols | `addRows/deleteRows/addColumns/deleteColumns` | Structural edits with cell/formula/reference movement | P0/P1 | hsx + OOXML diff |
 | Freeze panes | `frozenRowCount/frozenColumnCount` | Freeze/unfreeze panes | P0 | Layout JSON + screenshot |
-| Merges | `addSpan/removeSpan/getSpans` | Merge/unmerge/list merged ranges | P0 | Rust API + renderer |
+| Merges | `addSpan/removeSpan/getSpans` | Merge/unmerge/list merged ranges | Done | Rust API + TS smoke |
 | Selections/view state | `setSelection/getSelections/showCell` | Persist active cell/selection only if OOXML-backed and useful | Later | OOXML inspection |
 | Search | `Worksheet.search` | Search values/formulas across sheets | P1 | hsx search oracle |
 | Copy/paste/fill | `copyTo`, fill APIs | Copy ranges, fill down/right, translate relative formulas | P1 | hsx copy/fill oracle |
@@ -171,6 +171,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `shape_mismatch` | Range matrix dimensions do not match the target range |
 | `unsupported_formula` | Formula could not be evaluated; source/cache preserved where possible |
 | `unsupported_style` | Style patch contains values we cannot serialize (e.g. invalid color) |
+| `merge_overlap` | Requested merge overlaps an existing merge on the sheet |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |
 | `ooxml_write_error` | Writer could not serialize a valid workbook |

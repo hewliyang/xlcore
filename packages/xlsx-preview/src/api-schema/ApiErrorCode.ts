@@ -8,5 +8,6 @@ export type ApiErrorCode =
   | "cannot_delete_last_sheet"
   | "shape_mismatch"
   | "unsupported_style"
+  | "merge_overlap"
   | "ooxml_write_error"
   | "other";
