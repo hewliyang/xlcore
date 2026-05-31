@@ -1,5 +1,27 @@
 import init, { WorkbookHandle as WasmWorkbookHandle } from "./xlcore_wasm.js";
+import type {
+  ApiCellValue,
+  CellInfo,
+  LayoutOptions as WorkbookLayoutOptions,
+  RecalcWorkbook,
+  SheetInfo,
+} from "./api-schema/index.js";
 import type { WorkbookLayout } from "./types.js";
+
+export type {
+  ApiCellValue,
+  ApiError,
+  ApiError as ApiErrorPayload,
+  ApiErrorCode,
+  CellInfo,
+  EngineCellValue,
+  FormulaFallback,
+  LayoutOptions as WorkbookLayoutOptions,
+  RecalcCell,
+  RecalcSheet,
+  RecalcWorkbook,
+  SheetInfo,
+} from "./api-schema/index.js";
 
 const DEFAULT_WASM_BINARY_URL = new URL("./xlcore_wasm_bg.wasm", import.meta.url).href;
 
@@ -9,69 +31,7 @@ export interface WorkbookApiOptions {
   wasmBinaryUrl?: string | URL | RequestInfo | BufferSource | WebAssembly.Module;
 }
 
-export interface WorkbookLayoutOptions {
-  sheetIndex?: number;
-  sheetName?: string;
-}
-
-export interface SheetInfo {
-  index: number;
-  id: number;
-  name: string;
-  state?: "hidden" | "veryHidden";
-  rowCount: number;
-  columnCount: number;
-  active: boolean;
-}
-
-export type ApiCellValue =
-  | { type: "blank" }
-  | { type: "string"; value: string }
-  | { type: "number"; value: number }
-  | { type: "boolean"; value: boolean }
-  | { type: "error"; value: string };
-
 export type CellInput = string | number | boolean | null | ApiCellValue;
-
-export interface CellInfo {
-  sheet: string;
-  reference: string;
-  row: number;
-  column: number;
-  value: ApiCellValue;
-  formula?: string;
-  styleIndex?: number;
-}
-
-export interface ApiErrorPayload {
-  code: string;
-  message: string;
-  sheet?: string;
-  reference?: string;
-  part?: string;
-}
-
-export interface RecalcWorkbook {
-  sheets: RecalcSheet[];
-}
-
-export interface RecalcSheet {
-  index: number;
-  name: string;
-  cells: RecalcCell[];
-}
-
-export interface RecalcCell {
-  r: number;
-  c: number;
-  formula: string;
-  cachedValue?: ApiCellValue;
-  value: ApiCellValue;
-  fallback?: {
-    kind: string;
-    message: string;
-  };
-}
 
 export class Workbook {
   static async create(options: WorkbookApiOptions = {}): Promise<Workbook> {

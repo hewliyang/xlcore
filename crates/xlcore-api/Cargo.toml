@@ -9,11 +9,10 @@ description = "Workbook manipulation facade for xlcore"
 [dependencies]
 anyhow = { workspace = true }
 ooxmlsdk = { workspace = true }
-serde = { workspace = true }
-thiserror = { workspace = true }
 xlcore-bridge = { path = "../xlcore-bridge" }
 xlcore-export = { path = "../xlcore-export" }
 xlcore-io = { path = "../xlcore-io" }
+xlcore-types = { path = "../xlcore-types" }
 zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [dev-dependencies]

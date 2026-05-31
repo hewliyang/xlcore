@@ -1394,12 +1394,11 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "ooxmlsdk",
- "serde",
- "thiserror 1.0.69",
  "xlcore-bridge",
  "xlcore-engine",
  "xlcore-export",
  "xlcore-io",
+ "xlcore-types",
  "zip",
 ]
 
@@ -1409,10 +1408,10 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "ooxmlsdk",
- "serde",
  "xlcore-engine",
  "xlcore-export",
  "xlcore-io",
+ "xlcore-types",
 ]
 
 [[package]]
@@ -1435,6 +1434,7 @@ dependencies = [
  "ironcalc_base",
  "serde",
  "thiserror 1.0.69",
+ "xlcore-types",
 ]
 
 [[package]]
@@ -1477,6 +1477,14 @@ dependencies = [
  "thiserror 1.0.69",
  "xlcore-export",
  "xlcore-io",
+]
+
+[[package]]
+name = "xlcore-types"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "ts-rs",
 ]
 
 [[package]]

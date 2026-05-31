@@ -33,9 +33,13 @@ export type {
 export type { WorkbookSourceFormat } from "./sourceFormat.js";
 export type {
   ApiCellValue,
+  ApiError,
   ApiErrorPayload,
+  ApiErrorCode,
   CellInfo,
   CellInput,
+  EngineCellValue,
+  FormulaFallback,
   RecalcCell,
   RecalcSheet,
   RecalcWorkbook,

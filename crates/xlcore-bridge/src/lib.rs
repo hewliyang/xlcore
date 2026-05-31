@@ -6,54 +6,7 @@ use ooxmlsdk::sdk::SdkPart;
 use xlcore_engine::{CellValue, FormulaError, WorkbookEngine};
 use xlcore_io::spreadsheetml as x;
 
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecalcWorkbook {
-    pub sheets: Vec<RecalcSheet>,
-}
-
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecalcSheet {
-    pub index: u32,
-    pub name: String,
-    pub cells: Vec<RecalcCell>,
-}
-
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecalcCell {
-    pub r: u32,
-    pub c: u32,
-    pub formula: String,
-    pub cached_value: Option<CellValue>,
-    pub value: CellValue,
-    pub fallback: Option<FormulaFallback>,
-}
-
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FormulaFallback {
-    pub kind: String,
-    pub message: String,
-}
-
-impl RecalcWorkbook {
-    pub fn sheet(&self, name: &str) -> Option<&RecalcSheet> {
-        self.sheets.iter().find(|sheet| sheet.name == name)
-    }
-
-    pub fn cell(&self, sheet_name: &str, cell_ref: &str) -> Option<&RecalcCell> {
-        let (r, c) = xlcore_io::parse_a1(cell_ref)?;
-        self.sheet(sheet_name)?.cell(r, c)
-    }
-}
-
-impl RecalcSheet {
-    pub fn cell(&self, r: u32, c: u32) -> Option<&RecalcCell> {
-        self.cells.iter().find(|cell| cell.r == r && cell.c == c)
-    }
-}
+pub use xlcore_types::{FormulaFallback, RecalcCell, RecalcSheet, RecalcWorkbook};
 
 pub fn recalculate<P: AsRef<Path>>(path: P) -> Result<RecalcWorkbook> {
     let mut doc = xlcore_io::open(path)?;

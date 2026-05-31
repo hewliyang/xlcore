@@ -4,160 +4,34 @@ use std::path::Path;
 
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
 use ooxmlsdk::sdk::SdkPart;
-use serde::{Deserialize, Serialize};
 use xlcore_io::spreadsheetml as x;
+pub use xlcore_types::{
+    ApiCellValue, ApiCellValue as CellValue, ApiError, ApiErrorCode, CellInfo, LayoutOptions,
+    SheetInfo,
+};
 
 pub type Result<T> = std::result::Result<T, ApiError>;
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ApiErrorCode {
-    InvalidRef,
-    MissingSheet,
-    DuplicateSheet,
-    InvalidSheetName,
-    CannotDeleteLastSheet,
-    OoxmlWriteError,
-    Other,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, thiserror::Error)]
-#[error("{message}")]
-pub struct ApiError {
-    pub code: ApiErrorCode,
-    pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sheet: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reference: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub part: Option<String>,
-}
-
-impl ApiError {
-    pub fn new(code: ApiErrorCode, message: impl Into<String>) -> Self {
-        Self {
-            code,
-            message: message.into(),
-            sheet: None,
-            reference: None,
-            part: None,
-        }
+fn load_err_to_api(value: xlcore_io::XlsxLoadError) -> ApiError {
+    let mut err = ApiError::new(ApiErrorCode::Other, value.to_string());
+    if let xlcore_io::XlsxLoadError::Schema { part, .. } = value {
+        err.part = Some(part);
     }
-
-    fn with_sheet(mut self, sheet: impl Into<String>) -> Self {
-        self.sheet = Some(sheet.into());
-        self
-    }
-
-    fn with_ref(mut self, reference: impl Into<String>) -> Self {
-        self.reference = Some(reference.into());
-        self
-    }
+    err
 }
 
-impl From<xlcore_io::XlsxLoadError> for ApiError {
-    fn from(value: xlcore_io::XlsxLoadError) -> Self {
-        let mut err = Self::new(ApiErrorCode::Other, value.to_string());
-        if let xlcore_io::XlsxLoadError::Schema { part, .. } = value {
-            err.part = Some(part);
-        }
-        err
-    }
+fn sdk_err_to_api(value: ooxmlsdk::common::SdkError) -> ApiError {
+    ApiError::new(ApiErrorCode::Other, value.to_string())
 }
 
-impl From<ooxmlsdk::common::SdkError> for ApiError {
-    fn from(value: ooxmlsdk::common::SdkError) -> Self {
-        Self::new(ApiErrorCode::Other, value.to_string())
-    }
+fn anyhow_err_to_api(value: anyhow::Error) -> ApiError {
+    ApiError::new(ApiErrorCode::Other, value.to_string())
 }
 
-impl From<anyhow::Error> for ApiError {
-    fn from(value: anyhow::Error) -> Self {
-        Self::new(ApiErrorCode::Other, value.to_string())
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SheetInfo {
-    pub index: usize,
-    pub id: u32,
-    pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub state: Option<String>,
-    pub row_count: u32,
-    pub column_count: u32,
-    pub active: bool,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", tag = "type", content = "value")]
-pub enum CellValue {
-    Blank,
-    String(String),
-    Number(f64),
-    Boolean(bool),
-    Error(String),
-}
-
-impl From<&str> for CellValue {
-    fn from(value: &str) -> Self {
-        Self::String(value.to_string())
-    }
-}
-
-impl From<String> for CellValue {
-    fn from(value: String) -> Self {
-        Self::String(value)
-    }
-}
-
-impl From<f64> for CellValue {
-    fn from(value: f64) -> Self {
-        Self::Number(value)
-    }
-}
-
-impl From<i32> for CellValue {
-    fn from(value: i32) -> Self {
-        Self::Number(value as f64)
-    }
-}
-
-impl From<bool> for CellValue {
-    fn from(value: bool) -> Self {
-        Self::Boolean(value)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CellInfo {
-    pub sheet: String,
-    pub reference: String,
-    pub row: u32,
-    pub column: u32,
-    pub value: CellValue,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub formula: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub style_index: Option<u32>,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LayoutOptions {
-    pub sheet_index: Option<usize>,
-    pub sheet_name: Option<String>,
-}
-
-impl From<LayoutOptions> for xlcore_export::ExtractOptions {
-    fn from(value: LayoutOptions) -> Self {
-        Self {
-            sheet_index: value.sheet_index,
-            sheet_name: value.sheet_name,
-        }
+fn extract_options_from_layout(value: LayoutOptions) -> xlcore_export::ExtractOptions {
+    xlcore_export::ExtractOptions {
+        sheet_index: value.sheet_index,
+        sheet_name: value.sheet_name,
     }
 }
 
@@ -168,12 +42,14 @@ pub struct Workbook {
 
 impl Workbook {
     pub fn new() -> Result<Self> {
-        let (doc, report) = xlcore_io::open_bytes_with_report(blank_workbook_bytes()?)?;
+        let (doc, report) =
+            xlcore_io::open_bytes_with_report(blank_workbook_bytes()?).map_err(load_err_to_api)?;
         Ok(Self { doc, report })
     }
 
     pub fn open_bytes(bytes: impl Into<Vec<u8>>) -> Result<Self> {
-        let (doc, report) = xlcore_io::open_bytes_with_report(bytes.into())?;
+        let (doc, report) =
+            xlcore_io::open_bytes_with_report(bytes.into()).map_err(load_err_to_api)?;
         Ok(Self { doc, report })
     }
 
@@ -232,9 +108,13 @@ impl Workbook {
             .with_sheet(name));
         }
 
-        let wb_part = self.doc.workbook_part()?.clone();
-        let ws_part: WorksheetPart = wb_part.add_new_part_auto_id(&mut self.doc)?;
-        ws_part.set_root_element(&mut self.doc, empty_worksheet())?;
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let ws_part: WorksheetPart = wb_part
+            .add_new_part_auto_id(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        ws_part
+            .set_root_element(&mut self.doc, empty_worksheet())
+            .map_err(sdk_err_to_api)?;
 
         let relationship_id = ws_part
             .relationship_id()
@@ -246,7 +126,9 @@ impl Workbook {
             })?
             .to_string();
 
-        let workbook = wb_part.root_element_mut(&mut self.doc)?;
+        let workbook = wb_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
         let next_sheet_id = workbook
             .sheets
             .x_sheet
@@ -290,8 +172,10 @@ impl Workbook {
             .with_sheet(new_name));
         }
 
-        let wb_part = self.doc.workbook_part()?.clone();
-        let workbook = wb_part.root_element_mut(&mut self.doc)?;
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let workbook = wb_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
         let Some(sheet) = workbook
             .sheets
             .x_sheet
@@ -310,8 +194,10 @@ impl Workbook {
 
     pub fn delete_sheet(&mut self, name: impl AsRef<str>) -> Result<()> {
         let name = name.as_ref();
-        let wb_part = self.doc.workbook_part()?.clone();
-        let workbook = wb_part.root_element_mut(&mut self.doc)?;
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let workbook = wb_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
         if workbook.sheets.x_sheet.len() <= 1 {
             return Err(ApiError::new(
                 ApiErrorCode::CannotDeleteLastSheet,
@@ -331,7 +217,9 @@ impl Workbook {
             .with_sheet(name));
         };
         let relationship_id = workbook.sheets.x_sheet.remove(index).id;
-        let _ = wb_part.delete_part_by_id(&mut self.doc, relationship_id.as_str())?;
+        let _ = wb_part
+            .delete_part_by_id(&mut self.doc, relationship_id.as_str())
+            .map_err(sdk_err_to_api)?;
         self.normalize_active_sheet_after_delete(index as u32)?;
         Ok(())
     }
@@ -340,7 +228,9 @@ impl Workbook {
         let cell_ref = self.resolve_cell_ref(reference.as_ref())?;
         let shared_strings = load_shared_strings(&mut self.doc);
         let ws_part = self.worksheet_part_for_sheet(&cell_ref.sheet)?;
-        let ws = ws_part.root_element(&mut self.doc)?;
+        let ws = ws_part
+            .root_element(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
         let cell = ws
             .x_sheet_data
             .x_row
@@ -371,7 +261,9 @@ impl Workbook {
         let cell_ref = self.resolve_cell_ref(reference.as_ref())?;
         let value = value.into();
         let ws_part = self.worksheet_part_for_sheet(&cell_ref.sheet)?;
-        let ws = ws_part.root_element_mut(&mut self.doc)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
         let cell = ensure_cell(ws, cell_ref.row, cell_ref.column);
         set_cell_value(cell, &value);
         mark_formulas_stale(&mut self.doc)?;
@@ -386,7 +278,9 @@ impl Workbook {
         let cell_ref = self.resolve_cell_ref(reference.as_ref())?;
         let formula = normalize_formula(formula.as_ref());
         let ws_part = self.worksheet_part_for_sheet(&cell_ref.sheet)?;
-        let ws = ws_part.root_element_mut(&mut self.doc)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
         let cell = ensure_cell(ws, cell_ref.row, cell_ref.column);
         cell.data_type = None;
         cell.inline_string = None;
@@ -402,7 +296,9 @@ impl Workbook {
     pub fn clear(&mut self, reference: impl AsRef<str>) -> Result<CellInfo> {
         let cell_ref = self.resolve_cell_ref(reference.as_ref())?;
         let ws_part = self.worksheet_part_for_sheet(&cell_ref.sheet)?;
-        let ws = ws_part.root_element_mut(&mut self.doc)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
         let cell = ensure_cell(ws, cell_ref.row, cell_ref.column);
         cell.data_type = None;
         cell.inline_string = None;
@@ -417,12 +313,12 @@ impl Workbook {
     }
 
     pub fn recalculate(&mut self) -> Result<xlcore_bridge::RecalcWorkbook> {
-        xlcore_bridge::recalculate_doc_with_writeback(&mut self.doc).map_err(ApiError::from)
+        xlcore_bridge::recalculate_doc_with_writeback(&mut self.doc).map_err(anyhow_err_to_api)
     }
 
     pub fn layout(&mut self, options: LayoutOptions) -> Result<xlcore_export::WorkbookLayout> {
-        let options: xlcore_export::ExtractOptions = options.into();
-        xlcore_export::extract_doc_with_options(&mut self.doc, &options).map_err(ApiError::from)
+        let options = extract_options_from_layout(options);
+        xlcore_export::extract_doc_with_options(&mut self.doc, &options).map_err(anyhow_err_to_api)
     }
 
     pub fn recalculate_layout(
@@ -435,14 +331,20 @@ impl Workbook {
     }
 
     fn workbook_sheets(&mut self) -> Result<Vec<x::Sheet>> {
-        let wb_part = self.doc.workbook_part()?;
-        Ok(wb_part.root_element(&mut self.doc)?.sheets.x_sheet.clone())
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?;
+        Ok(wb_part
+            .root_element(&mut self.doc)
+            .map_err(sdk_err_to_api)?
+            .sheets
+            .x_sheet
+            .clone())
     }
 
     fn active_sheet_index(&mut self) -> Result<Option<u32>> {
-        let wb_part = self.doc.workbook_part()?;
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?;
         Ok(wb_part
-            .root_element(&mut self.doc)?
+            .root_element(&mut self.doc)
+            .map_err(sdk_err_to_api)?
             .book_views
             .as_ref()
             .and_then(|views| views.x_workbook_view.first())
@@ -450,8 +352,10 @@ impl Workbook {
     }
 
     fn normalize_active_sheet_after_delete(&mut self, deleted_index: u32) -> Result<()> {
-        let wb_part = self.doc.workbook_part()?.clone();
-        let workbook = wb_part.root_element_mut(&mut self.doc)?;
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let workbook = wb_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
         let Some(book_views) = workbook.book_views.as_mut() else {
             return Ok(());
         };
@@ -471,7 +375,7 @@ impl Workbook {
     }
 
     fn worksheet_parts_by_relationship_id(&self) -> Result<HashMap<String, WorksheetPart>> {
-        let wb_part = self.doc.workbook_part()?;
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?;
         Ok(wb_part
             .worksheet_parts(&self.doc)
             .filter_map(|part| {
@@ -895,7 +799,7 @@ fn sheet_dimensions(
     doc: &mut xlcore_io::SpreadsheetDocument,
     part: &WorksheetPart,
 ) -> Result<(u32, u32)> {
-    let ws = part.root_element(doc)?;
+    let ws = part.root_element(doc).map_err(sdk_err_to_api)?;
     let mut rows = 0;
     let mut cols = 0;
     for row in &ws.x_sheet_data.x_row {
@@ -939,8 +843,8 @@ fn format_number(value: f64) -> String {
 }
 
 fn mark_formulas_stale(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<()> {
-    let wb_part = doc.workbook_part()?.clone();
-    let workbook = wb_part.root_element_mut(doc)?;
+    let wb_part = doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+    let workbook = wb_part.root_element_mut(doc).map_err(sdk_err_to_api)?;
     let calc = workbook
         .calculation_properties
         .get_or_insert_with(Default::default);

@@ -3,6 +3,7 @@ mod formula;
 use ironcalc_base::{cell::CellValue as IronCellValue, types::Cell, Model};
 
 pub use formula::prepare_formula_for_ironcalc;
+pub use xlcore_types::EngineCellValue as CellValue;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {
@@ -19,28 +20,17 @@ impl From<String> for EngineError {
 pub type Result<T> = std::result::Result<T, EngineError>;
 
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "camelCase", tag = "type", content = "value")]
-pub enum CellValue {
-    Blank,
-    String(String),
-    Number(f64),
-    Boolean(bool),
-}
-
-#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct FormulaError {
     pub kind: String,
     pub message: String,
 }
 
-impl From<IronCellValue> for CellValue {
-    fn from(value: IronCellValue) -> Self {
-        match value {
-            IronCellValue::None => Self::Blank,
-            IronCellValue::String(v) => Self::String(v),
-            IronCellValue::Number(v) => Self::Number(v),
-            IronCellValue::Boolean(v) => Self::Boolean(v),
-        }
+fn cell_value_from_iron(value: IronCellValue) -> CellValue {
+    match value {
+        IronCellValue::None => CellValue::Blank,
+        IronCellValue::String(v) => CellValue::String(v),
+        IronCellValue::Number(v) => CellValue::Number(v),
+        IronCellValue::Boolean(v) => CellValue::Boolean(v),
     }
 }
 
@@ -111,10 +101,9 @@ impl<'a> WorkbookEngine<'a> {
     }
 
     pub fn cell_value(&self, sheet: u32, row: i32, column: i32) -> Result<CellValue> {
-        Ok(self
-            .model
-            .get_cell_value_by_index(sheet, row, column)?
-            .into())
+        Ok(cell_value_from_iron(
+            self.model.get_cell_value_by_index(sheet, row, column)?,
+        ))
     }
 
     pub fn formula_error(&self, sheet: u32, row: i32, column: i32) -> Result<Option<FormulaError>> {

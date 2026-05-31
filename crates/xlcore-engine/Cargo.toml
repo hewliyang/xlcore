@@ -9,3 +9,4 @@ repository.workspace = true
 ironcalc_base.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+xlcore-types = { path = "../xlcore-types" }
