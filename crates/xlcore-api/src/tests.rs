@@ -650,6 +650,136 @@
     }
 
     #[test]
+    fn structural_shifts_defined_names() {
+        use crate::errors::sdk_err_to_api;
+        use xlcore_io::spreadsheetml as x;
+
+        let mut workbook = Workbook::new().unwrap();
+        workbook.create_sheet("Data").unwrap();
+        {
+            let wb_part = workbook.doc.workbook_part().map_err(sdk_err_to_api).unwrap().clone();
+            let wb = wb_part.root_element_mut(&mut workbook.doc).map_err(sdk_err_to_api).unwrap();
+            wb.defined_names = Some(x::DefinedNames {
+                x_defined_name: vec![
+                    x::DefinedName {
+                        name: "Global".to_string(),
+                        xml_content: Some("Sheet1!$A$1:$B$10".to_string()),
+                        ..Default::default()
+                    },
+                    x::DefinedName {
+                        name: "LocalScoped".to_string(),
+                        local_sheet_id: Some(0),
+                        xml_content: Some("$A$1:$B$10".to_string()),
+                        ..Default::default()
+                    },
+                    x::DefinedName {
+                        name: "OtherSheet".to_string(),
+                        xml_content: Some("Data!$C$5".to_string()),
+                        ..Default::default()
+                    },
+                ],
+            });
+        }
+
+        workbook.insert_rows("Sheet1", 2, 3).unwrap();
+
+        let wb_part = workbook.doc.workbook_part().map_err(sdk_err_to_api).unwrap().clone();
+        let wb = wb_part.root_element(&mut workbook.doc).map_err(sdk_err_to_api).unwrap();
+        let names = &wb.defined_names.as_ref().unwrap().x_defined_name;
+        assert_eq!(names[0].xml_content.as_deref(), Some("Sheet1!$A$1:$B$13"));
+        assert_eq!(names[1].xml_content.as_deref(), Some("$A$1:$B$13"));
+        assert_eq!(names[2].xml_content.as_deref(), Some("Data!$C$5"));
+
+        workbook.delete_rows("Sheet1", 1, 1000).unwrap();
+        let wb_part = workbook.doc.workbook_part().map_err(sdk_err_to_api).unwrap().clone();
+        let wb = wb_part.root_element(&mut workbook.doc).map_err(sdk_err_to_api).unwrap();
+        let names = &wb.defined_names.as_ref().unwrap().x_defined_name;
+        assert_eq!(names[0].xml_content.as_deref(), Some("Sheet1!#REF!"));
+    }
+
+    #[test]
+    fn structural_shifts_conditional_formatting() {
+        use crate::errors::sdk_err_to_api;
+        use ooxmlsdk::simple_type::ListValue;
+        use xlcore_io::spreadsheetml as x;
+
+        let mut workbook = Workbook::new().unwrap();
+        let ws_part = workbook.worksheet_part_for_sheet("Sheet1").unwrap();
+        {
+            let ws = ws_part.root_element_mut(&mut workbook.doc).map_err(sdk_err_to_api).unwrap();
+            ws.x_conditional_formatting.push(x::ConditionalFormatting {
+                sequence_of_references: Some(ListValue(vec![
+                    "A1:B5".to_string(),
+                    "D10".to_string(),
+                ])),
+                x_cf_rule: vec![x::ConditionalFormattingRule {
+                    x_formula: vec![x::Formula {
+                        xml_content: Some("A1>0".to_string()),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                }],
+                ..Default::default()
+            });
+        }
+
+        workbook.insert_rows("Sheet1", 1, 2).unwrap();
+
+        let ws_part = workbook.worksheet_part_for_sheet("Sheet1").unwrap();
+        let ws = ws_part.root_element(&mut workbook.doc).map_err(sdk_err_to_api).unwrap();
+        let cf = &ws.x_conditional_formatting[0];
+        let sqref = cf.sequence_of_references.as_ref().unwrap();
+        assert_eq!(sqref.0, vec!["A3:B7".to_string(), "D12".to_string()]);
+        assert_eq!(
+            cf.x_cf_rule[0].x_formula[0].xml_content.as_deref(),
+            Some("A3>0"),
+        );
+    }
+
+    #[test]
+    fn structural_shifts_tables() {
+        use crate::errors::sdk_err_to_api;
+        use ooxmlsdk::parts::table_definition_part::TableDefinitionPart;
+        use ooxmlsdk::sdk::SdkPart;
+        use xlcore_io::spreadsheetml as x;
+
+        let mut workbook = Workbook::new().unwrap();
+        let ws_part = workbook.worksheet_part_for_sheet("Sheet1").unwrap();
+        let table_part: TableDefinitionPart = ws_part
+            .add_new_part_auto_id(&mut workbook.doc)
+            .map_err(sdk_err_to_api)
+            .unwrap();
+        table_part
+            .set_root_element(
+                &mut workbook.doc,
+                x::Table {
+                    id: 1,
+                    display_name: "Table1".to_string(),
+                    reference: "A1:C10".to_string(),
+                    auto_filter: Some(Box::new(x::AutoFilter {
+                        reference: Some("A1:C10".to_string()),
+                        ..Default::default()
+                    })),
+                    table_columns: Box::new(x::TableColumns::default()),
+                    ..Default::default()
+                },
+            )
+            .map_err(sdk_err_to_api)
+            .unwrap();
+
+        workbook.insert_rows("Sheet1", 2, 5).unwrap();
+
+        let ws_part = workbook.worksheet_part_for_sheet("Sheet1").unwrap();
+        let parts: Vec<_> = ws_part.table_definition_parts(&workbook.doc).collect();
+        let table = parts[0].root_element(&mut workbook.doc).map_err(sdk_err_to_api).unwrap();
+        assert_eq!(table.reference, "A1:C15");
+        assert_eq!(
+            table.auto_filter.as_ref().unwrap().reference.as_deref(),
+            Some("A1:C15"),
+        );
+    }
+
+    #[test]
     fn layout_reflects_mutated_cells() {
         let mut workbook = Workbook::new().unwrap();
         workbook

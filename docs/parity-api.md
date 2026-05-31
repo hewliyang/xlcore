@@ -187,9 +187,6 @@ committed or rolled back.
    and diff.
 3. Range copy/fill with relative-formula translation (lifts Range formulas
    from Partial to Done).
-4. Extend row/column structural edits to also rewrite defined-name, table,
-   and conditional-formatting references (currently only cells/merges/cell
-   formulas are shifted).
 
 ## Definition Of Done
 

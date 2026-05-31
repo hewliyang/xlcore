@@ -95,6 +95,8 @@ impl Workbook {
             shift_sheet_data(ws, op);
             shift_columns_metadata(ws, op);
             shift_merges(ws, op);
+            shift_auto_filter(ws, op);
+            shift_conditional_formatting_sqref(ws, op);
         }
 
         let sheet_names: Vec<String> = self
@@ -108,6 +110,34 @@ impl Workbook {
                 .root_element_mut(&mut self.doc)
                 .map_err(sdk_err_to_api)?;
             rewrite_formulas(ws, name, target, op);
+            shift_conditional_formatting_formulas(ws, name, target, op);
+        }
+
+        let ws_part_target = self.worksheet_part_for_sheet(target)?;
+        let table_parts: Vec<_> = ws_part_target
+            .table_definition_parts(&self.doc)
+            .collect();
+        for tp in table_parts {
+            let table = tp
+                .root_element_mut(&mut self.doc)
+                .map_err(sdk_err_to_api)?;
+            shift_table(table, op);
+        }
+
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let workbook = wb_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        if let Some(dns) = workbook.defined_names.as_mut() {
+            for dn in &mut dns.x_defined_name {
+                let owning = dn
+                    .local_sheet_id
+                    .and_then(|i| sheet_names.get(i as usize).cloned())
+                    .unwrap_or_default();
+                if let Some(text) = dn.xml_content.as_mut() {
+                    *text = shift_formula_refs(text, &owning, target, op);
+                }
+            }
         }
 
         mark_formulas_stale(&mut self.doc)?;
@@ -329,6 +359,118 @@ fn shift_merges(ws: &mut x::Worksheet, op: ShiftOp) {
     } else {
         merges.count = Some(kept.len() as u32);
         merges.x_merge_cell = kept;
+    }
+}
+
+fn shift_auto_filter(ws: &mut x::Worksheet, op: ShiftOp) {
+    if let Some(af) = ws.x_auto_filter.as_mut() {
+        if let Some(reference) = af.reference.as_mut() {
+            match shift_a1_range_str(reference, op) {
+                RangeShift::Kept(s) => *reference = s,
+                RangeShift::Collapsed => {
+                    ws.x_auto_filter = None;
+                    return;
+                }
+                RangeShift::Unparsed => {}
+            }
+        }
+    }
+}
+
+fn shift_conditional_formatting_sqref(ws: &mut x::Worksheet, op: ShiftOp) {
+    ws.x_conditional_formatting.retain_mut(|cf| {
+        let Some(sqref) = cf.sequence_of_references.as_mut() else {
+            return true;
+        };
+        let combined = format!("{sqref}");
+        let mut new_parts: Vec<String> = Vec::new();
+        for part in combined.split_whitespace() {
+            match shift_a1_range_str(part, op) {
+                RangeShift::Kept(s) => new_parts.push(s),
+                RangeShift::Collapsed => {}
+                RangeShift::Unparsed => new_parts.push(part.to_string()),
+            }
+        }
+        if new_parts.is_empty() {
+            return false;
+        }
+        sqref.0 = new_parts;
+        true
+    });
+}
+
+fn shift_conditional_formatting_formulas(
+    ws: &mut x::Worksheet,
+    owning: &str,
+    target: &str,
+    op: ShiftOp,
+) {
+    for cf in &mut ws.x_conditional_formatting {
+        for rule in &mut cf.x_cf_rule {
+            for f in &mut rule.x_formula {
+                if let Some(text) = f.xml_content.as_mut() {
+                    *text = shift_formula_refs(text, owning, target, op);
+                }
+            }
+        }
+    }
+}
+
+fn shift_table(table: &mut x::Table, op: ShiftOp) {
+    match shift_a1_range_str(table.reference.as_str(), op) {
+        RangeShift::Kept(s) => table.reference = s,
+        RangeShift::Collapsed | RangeShift::Unparsed => {}
+    }
+    if let Some(af) = table.auto_filter.as_mut() {
+        if let Some(reference) = af.reference.as_mut() {
+            if let RangeShift::Kept(s) = shift_a1_range_str(reference, op) {
+                *reference = s;
+            }
+        }
+    }
+}
+
+enum RangeShift {
+    Kept(String),
+    Collapsed,
+    Unparsed,
+}
+
+fn shift_a1_range_str(s: &str, op: ShiftOp) -> RangeShift {
+    let trimmed = s.trim();
+    let bytes = trimmed.as_bytes();
+    let Some((e1, p1)) = parse_endpoint(bytes, 0) else {
+        return RangeShift::Unparsed;
+    };
+    let (e2, p2) = if p1 < bytes.len() && bytes[p1] == b':' {
+        let Some((e2, p2)) = parse_endpoint(bytes, p1 + 1) else {
+            return RangeShift::Unparsed;
+        };
+        (Some(e2), p2)
+    } else {
+        (None, p1)
+    };
+    if p2 != bytes.len() {
+        return RangeShift::Unparsed;
+    }
+    let kind = e1.kind();
+    if kind == EndpointKind::Invalid {
+        return RangeShift::Unparsed;
+    }
+    if let Some(e2) = e2 {
+        if e2.kind() != kind {
+            return RangeShift::Unparsed;
+        }
+    }
+    if op.is_row() && kind == EndpointKind::ColOnly {
+        return RangeShift::Kept(trimmed.to_string());
+    }
+    if !op.is_row() && kind == EndpointKind::RowOnly {
+        return RangeShift::Kept(trimmed.to_string());
+    }
+    match apply_op_to_ref(e1, e2, op) {
+        Some((ns, ne)) => RangeShift::Kept(render_ref_body(ns, ne)),
+        None => RangeShift::Collapsed,
     }
 }
 
