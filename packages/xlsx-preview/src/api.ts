@@ -168,6 +168,22 @@ export class Workbook {
     this.handle.setColumnVisible(sheet, column, visible);
   }
 
+  insertRows(sheet: string, before: number, count: number): void {
+    this.handle.insertRows(sheet, before, count);
+  }
+
+  deleteRows(sheet: string, start: number, count: number): void {
+    this.handle.deleteRows(sheet, start, count);
+  }
+
+  insertColumns(sheet: string, before: number, count: number): void {
+    this.handle.insertColumns(sheet, before, count);
+  }
+
+  deleteColumns(sheet: string, start: number, count: number): void {
+    this.handle.deleteColumns(sheet, start, count);
+  }
+
   setFreeze(sheet: string, frozenRows: number, frozenColumns: number): FreezeInfo {
     return this.handle.setFreeze(sheet, frozenRows, frozenColumns) as FreezeInfo;
   }

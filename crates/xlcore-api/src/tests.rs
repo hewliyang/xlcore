@@ -526,6 +526,130 @@
     }
 
     #[test]
+    fn insert_rows_shifts_cells_formulas_and_merges() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.set_value("Sheet1!A1", "Header").unwrap();
+        workbook.set_value("Sheet1!A2", 1.0).unwrap();
+        workbook.set_value("Sheet1!A3", 2.0).unwrap();
+        workbook.set_formula("Sheet1!B3", "=SUM(A2:A3)").unwrap();
+        workbook.add_merge("Sheet1!C2:D3").unwrap();
+
+        workbook.insert_rows("Sheet1", 2, 2).unwrap();
+
+        assert_eq!(
+            workbook.get_cell("Sheet1!A1").unwrap().value,
+            CellValue::String("Header".to_string())
+        );
+        assert_eq!(workbook.get_cell("Sheet1!A2").unwrap().value, CellValue::Blank);
+        assert_eq!(workbook.get_cell("Sheet1!A4").unwrap().value, CellValue::Number(1.0));
+        assert_eq!(workbook.get_cell("Sheet1!A5").unwrap().value, CellValue::Number(2.0));
+        assert_eq!(
+            workbook.get_cell("Sheet1!B5").unwrap().formula.as_deref(),
+            Some("SUM(A4:A5)")
+        );
+        let merges = workbook.merges("Sheet1").unwrap();
+        assert_eq!(merges[0].reference, "C4:D5");
+
+        let bytes = workbook.save_bytes().unwrap();
+        let mut reopened = Workbook::open_bytes(bytes).unwrap();
+        let recalc = reopened.recalculate().unwrap();
+        assert_eq!(
+            recalc.cell("Sheet1", "B5").unwrap().value,
+            xlcore_engine::CellValue::Number(3.0)
+        );
+    }
+
+    #[test]
+    fn delete_rows_collapses_refs_and_drops_cells() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.set_value("Sheet1!A1", 1.0).unwrap();
+        workbook.set_value("Sheet1!A2", 2.0).unwrap();
+        workbook.set_value("Sheet1!A3", 3.0).unwrap();
+        workbook.set_value("Sheet1!A4", 4.0).unwrap();
+        workbook.set_formula("Sheet1!B1", "=A2+A3").unwrap();
+        workbook.set_formula("Sheet1!B4", "=SUM(A1:A4)").unwrap();
+
+        workbook.delete_rows("Sheet1", 2, 2).unwrap();
+
+        assert_eq!(workbook.get_cell("Sheet1!A1").unwrap().value, CellValue::Number(1.0));
+        assert_eq!(workbook.get_cell("Sheet1!A2").unwrap().value, CellValue::Number(4.0));
+        assert_eq!(workbook.get_cell("Sheet1!A3").unwrap().value, CellValue::Blank);
+        assert_eq!(
+            workbook.get_cell("Sheet1!B1").unwrap().formula.as_deref(),
+            Some("#REF!+#REF!")
+        );
+        assert_eq!(
+            workbook.get_cell("Sheet1!B2").unwrap().formula.as_deref(),
+            Some("SUM(A1:A2)")
+        );
+    }
+
+    #[test]
+    fn insert_and_delete_columns_round_trip() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.set_value("Sheet1!A1", 10.0).unwrap();
+        workbook.set_value("Sheet1!B1", 20.0).unwrap();
+        workbook.set_value("Sheet1!C1", 30.0).unwrap();
+        workbook.set_formula("Sheet1!D1", "=A1+B1+C1").unwrap();
+        workbook.set_column_width("Sheet1", 2, 40.0).unwrap();
+
+        workbook.insert_columns("Sheet1", 2, 1).unwrap();
+        assert_eq!(workbook.get_cell("Sheet1!A1").unwrap().value, CellValue::Number(10.0));
+        assert_eq!(workbook.get_cell("Sheet1!C1").unwrap().value, CellValue::Number(20.0));
+        assert_eq!(
+            workbook.get_cell("Sheet1!E1").unwrap().formula.as_deref(),
+            Some("A1+C1+D1")
+        );
+
+        workbook.delete_columns("Sheet1", 1, 1).unwrap();
+        assert_eq!(workbook.get_cell("Sheet1!A1").unwrap().value, CellValue::Blank);
+        assert_eq!(workbook.get_cell("Sheet1!B1").unwrap().value, CellValue::Number(20.0));
+        assert_eq!(
+            workbook.get_cell("Sheet1!D1").unwrap().formula.as_deref(),
+            Some("#REF!+B1+C1")
+        );
+
+        let bytes = workbook.save_bytes().unwrap();
+        let mut reopened = Workbook::open_bytes(bytes).unwrap();
+        assert_eq!(
+            reopened.get_cell("Sheet1!B1").unwrap().value,
+            CellValue::Number(20.0)
+        );
+    }
+
+    #[test]
+    fn cross_sheet_formulas_update_when_target_changes() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.create_sheet("Data").unwrap();
+        workbook.set_value("Data!A1", 5.0).unwrap();
+        workbook.set_value("Data!A2", 7.0).unwrap();
+        workbook.set_formula("Sheet1!A1", "=Data!A1+Data!A2").unwrap();
+
+        workbook.insert_rows("Data", 1, 1).unwrap();
+        assert_eq!(
+            workbook.get_cell("Sheet1!A1").unwrap().formula.as_deref(),
+            Some("Data!A2+Data!A3")
+        );
+    }
+
+    #[test]
+    fn structural_invalid_args_diagnosed() {
+        let mut workbook = Workbook::new().unwrap();
+        assert_eq!(
+            workbook.insert_rows("Sheet1", 0, 1).unwrap_err().code,
+            ApiErrorCode::InvalidRef,
+        );
+        assert_eq!(
+            workbook.insert_rows("Sheet1", 1, 0).unwrap_err().code,
+            ApiErrorCode::InvalidRef,
+        );
+        assert_eq!(
+            workbook.delete_columns("Ghost", 1, 1).unwrap_err().code,
+            ApiErrorCode::MissingSheet,
+        );
+    }
+
+    #[test]
     fn layout_reflects_mutated_cells() {
         let mut workbook = Workbook::new().unwrap();
         workbook

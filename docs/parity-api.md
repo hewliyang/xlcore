@@ -74,7 +74,7 @@ Status key:
 | Full styles | Themes, named styles, table styles | Preserve existing styles; author broader style model later | P2 | OOXML diff + preview |
 | Row/column size | `setRowHeight/setColumnWidth`, auto fit | Resize rows/columns; optional auto-fit later | Done | Rust API + save/reopen |
 | Row/column visibility | `setRowVisible/setColumnVisible` | Hide/show rows and columns | Done | Rust API + save/reopen |
-| Insert/delete rows/cols | `addRows/deleteRows/addColumns/deleteColumns` | Structural edits with cell/formula/reference movement | P0/P1 | hsx + OOXML diff |
+| Insert/delete rows/cols | `addRows/deleteRows/addColumns/deleteColumns` | Structural edits with cell/formula/reference movement | Done | Rust API + save/reopen |
 | Freeze panes | `frozenRowCount/frozenColumnCount` | Freeze/unfreeze panes | Done | Rust API + save/reopen |
 | Merges | `addSpan/removeSpan/getSpans` | Merge/unmerge/list merged ranges | Done | Rust API + TS smoke |
 | Selections/view state | `setSelection/getSelections/showCell` | Persist active cell/selection only if OOXML-backed and useful | Later | OOXML inspection |
@@ -182,12 +182,14 @@ committed or rolled back.
 
 ## Next Slices
 
-1. Insert/delete rows/columns with cell/formula/reference movement.
-2. Browser mutation harness for open -> mutate -> recalc -> render -> save.
-3. hsx oracle fixtures for copy/fill, row/column insert/delete, search, deps,
+1. Browser mutation harness for open -> mutate -> recalc -> render -> save.
+2. hsx oracle fixtures for copy/fill, row/column insert/delete, search, deps,
    and diff.
-4. Range copy/fill with relative-formula translation (lifts Range formulas
+3. Range copy/fill with relative-formula translation (lifts Range formulas
    from Partial to Done).
+4. Extend row/column structural edits to also rewrite defined-name, table,
+   and conditional-formatting references (currently only cells/merges/cell
+   formulas are shifted).
 
 ## Definition Of Done
 

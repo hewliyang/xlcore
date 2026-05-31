@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Workbook API: `insertRows` / `deleteRows` / `insertColumns` / `deleteColumns` with cell/merge shifting and formula reference rewriting (cross-sheet refs, absolute markers, ranges, column/row-only refs); deleted refs collapse to `#REF!`. Defined names, tables, and conditional formatting are preserved but not yet shifted.
 - Workbook API: `clear(ref, mode?)` / `clearRange(ref, mode?)` accept a `ClearMode` (`all` | `values` | `formulas` | `styles`); `all` now also clears the cell's style index.
 - Workbook API: `setRowHeight` / `setRowVisible` / `setColumnWidth` / `setColumnVisible` / `setFreeze` / `getFreeze` with `FreezeInfo` DTO and OOXML round-trip for row/col size+hidden and frozen panes.
 - Workbook API: `moveSheet(name, toIndex)` / `setSheetVisibility(name, visibility)` / `setActiveSheet(name)` with `SheetVisibility` DTO (`visible` | `hidden` | `veryHidden`), active-tab tracking across moves/deletes, and refusal to hide the last visible sheet or activate a hidden one.

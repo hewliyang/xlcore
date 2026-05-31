@@ -440,6 +440,54 @@ impl WorkbookHandle {
             .map_err(api_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = insertRows)]
+    pub fn insert_rows(
+        &mut self,
+        sheet: &str,
+        before: u32,
+        count: u32,
+    ) -> Result<(), JsValue> {
+        self.workbook_mut()?
+            .insert_rows(sheet, before, count)
+            .map_err(api_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = deleteRows)]
+    pub fn delete_rows(
+        &mut self,
+        sheet: &str,
+        start: u32,
+        count: u32,
+    ) -> Result<(), JsValue> {
+        self.workbook_mut()?
+            .delete_rows(sheet, start, count)
+            .map_err(api_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = insertColumns)]
+    pub fn insert_columns(
+        &mut self,
+        sheet: &str,
+        before: u32,
+        count: u32,
+    ) -> Result<(), JsValue> {
+        self.workbook_mut()?
+            .insert_columns(sheet, before, count)
+            .map_err(api_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = deleteColumns)]
+    pub fn delete_columns(
+        &mut self,
+        sheet: &str,
+        start: u32,
+        count: u32,
+    ) -> Result<(), JsValue> {
+        self.workbook_mut()?
+            .delete_columns(sheet, start, count)
+            .map_err(api_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = setFreeze)]
     pub fn set_freeze(
         &mut self,

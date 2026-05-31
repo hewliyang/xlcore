@@ -5,6 +5,7 @@ mod ranges;
 mod refs;
 mod rowcols;
 mod sheets;
+mod structural;
 mod styles;
 mod xml;
 
