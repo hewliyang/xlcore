@@ -13,6 +13,7 @@ pub enum ApiErrorCode {
     DuplicateSheet,
     InvalidSheetName,
     CannotDeleteLastSheet,
+    ShapeMismatch,
     OoxmlWriteError,
     Other,
 }
@@ -153,6 +154,26 @@ pub struct CellInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub style_index: Option<u32>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct RangeInfo {
+    pub sheet: String,
+    pub reference: String,
+    pub start_row: u32,
+    pub start_column: u32,
+    pub end_row: u32,
+    pub end_column: u32,
+    pub rows: u32,
+    pub columns: u32,
+    pub values: Vec<Vec<ApiCellValue>>,
+    pub formulas: Vec<Vec<Option<String>>>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

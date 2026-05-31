@@ -3,6 +3,7 @@ import type {
   ApiCellValue,
   CellInfo,
   LayoutOptions as WorkbookLayoutOptions,
+  RangeInfo,
   RecalcWorkbook,
   SheetInfo,
 } from "./api-schema/index.js";
@@ -17,6 +18,7 @@ export type {
   EngineCellValue,
   FormulaFallback,
   LayoutOptions as WorkbookLayoutOptions,
+  RangeInfo,
   RecalcCell,
   RecalcSheet,
   RecalcWorkbook,
@@ -67,6 +69,22 @@ export class Workbook {
 
   clear(reference: string): CellInfo {
     return this.handle.clear(reference) as CellInfo;
+  }
+
+  getRange(reference: string): RangeInfo {
+    return this.handle.getRange(reference) as RangeInfo;
+  }
+
+  setRangeValues(reference: string, values: CellInput[][]): RangeInfo {
+    return this.handle.setRangeValues(reference, values) as RangeInfo;
+  }
+
+  setRangeFormulas(reference: string, formulas: Array<Array<string | null>>): RangeInfo {
+    return this.handle.setRangeFormulas(reference, formulas) as RangeInfo;
+  }
+
+  clearRange(reference: string): RangeInfo {
+    return this.handle.clearRange(reference) as RangeInfo;
   }
 
   createSheet(name: string): SheetInfo {

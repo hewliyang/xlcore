@@ -5,6 +5,7 @@ export type { CellInfo } from "./CellInfo.js";
 export type { EngineCellValue } from "./EngineCellValue.js";
 export type { FormulaFallback } from "./FormulaFallback.js";
 export type { LayoutOptions } from "./LayoutOptions.js";
+export type { RangeInfo } from "./RangeInfo.js";
 export type { RecalcCell } from "./RecalcCell.js";
 export type { RecalcSheet } from "./RecalcSheet.js";
 export type { RecalcWorkbook } from "./RecalcWorkbook.js";

@@ -7,7 +7,7 @@ use ooxmlsdk::sdk::SdkPart;
 use xlcore_io::spreadsheetml as x;
 pub use xlcore_types::{
     ApiCellValue, ApiCellValue as CellValue, ApiError, ApiErrorCode, CellInfo, LayoutOptions,
-    SheetInfo,
+    RangeInfo, SheetInfo,
 };
 
 pub type Result<T> = std::result::Result<T, ApiError>;
@@ -293,6 +293,151 @@ impl Workbook {
         self.get_cell(cell_ref.full_reference())
     }
 
+    pub fn get_range(&mut self, reference: impl AsRef<str>) -> Result<RangeInfo> {
+        let range_ref = self.resolve_range_ref(reference.as_ref())?;
+        self.read_range(&range_ref)
+    }
+
+    pub fn set_range_values(
+        &mut self,
+        reference: impl AsRef<str>,
+        values: Vec<Vec<CellValue>>,
+    ) -> Result<RangeInfo> {
+        let range_ref = self.resolve_range_ref(reference.as_ref())?;
+        validate_matrix_shape(&values, &range_ref, "values")?;
+
+        let ws_part = self.worksheet_part_for_sheet(&range_ref.sheet)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        for (r_off, row) in values.iter().enumerate() {
+            let row_idx = range_ref.start_row + r_off as u32;
+            for (c_off, value) in row.iter().enumerate() {
+                let col_idx = range_ref.start_column + c_off as u32;
+                let cell = ensure_cell(ws, row_idx, col_idx);
+                set_cell_value(cell, value);
+            }
+        }
+        mark_formulas_stale(&mut self.doc)?;
+        self.read_range(&range_ref)
+    }
+
+    pub fn set_range_formulas(
+        &mut self,
+        reference: impl AsRef<str>,
+        formulas: Vec<Vec<Option<String>>>,
+    ) -> Result<RangeInfo> {
+        let range_ref = self.resolve_range_ref(reference.as_ref())?;
+        validate_matrix_shape(&formulas, &range_ref, "formulas")?;
+
+        let ws_part = self.worksheet_part_for_sheet(&range_ref.sheet)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        for (r_off, row) in formulas.iter().enumerate() {
+            let row_idx = range_ref.start_row + r_off as u32;
+            for (c_off, formula) in row.iter().enumerate() {
+                let col_idx = range_ref.start_column + c_off as u32;
+                let cell = ensure_cell(ws, row_idx, col_idx);
+                match formula {
+                    Some(text) => {
+                        let normalized = normalize_formula(text.as_str());
+                        cell.data_type = None;
+                        cell.inline_string = None;
+                        cell.cell_value = None;
+                        cell.cell_formula = Some(x::CellFormula {
+                            xml_content: Some(normalized),
+                            ..Default::default()
+                        });
+                    }
+                    None => {
+                        cell.data_type = None;
+                        cell.inline_string = None;
+                        cell.cell_value = None;
+                        cell.cell_formula = None;
+                    }
+                }
+            }
+        }
+        mark_formulas_stale(&mut self.doc)?;
+        self.read_range(&range_ref)
+    }
+
+    pub fn clear_range(&mut self, reference: impl AsRef<str>) -> Result<RangeInfo> {
+        let range_ref = self.resolve_range_ref(reference.as_ref())?;
+        let ws_part = self.worksheet_part_for_sheet(&range_ref.sheet)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        for row_idx in range_ref.start_row..=range_ref.end_row {
+            for col_idx in range_ref.start_column..=range_ref.end_column {
+                let cell = ensure_cell(ws, row_idx, col_idx);
+                cell.data_type = None;
+                cell.inline_string = None;
+                cell.cell_value = None;
+                cell.cell_formula = None;
+            }
+        }
+        mark_formulas_stale(&mut self.doc)?;
+        self.read_range(&range_ref)
+    }
+
+    fn read_range(&mut self, range_ref: &ResolvedRangeRef) -> Result<RangeInfo> {
+        let shared_strings = load_shared_strings(&mut self.doc);
+        let ws_part = self.worksheet_part_for_sheet(&range_ref.sheet)?;
+        let ws = ws_part
+            .root_element(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let rows = (range_ref.end_row - range_ref.start_row + 1) as usize;
+        let cols = (range_ref.end_column - range_ref.start_column + 1) as usize;
+        let mut values = vec![vec![CellValue::Blank; cols]; rows];
+        let mut formulas: Vec<Vec<Option<String>>> = vec![vec![None; cols]; rows];
+        for row in &ws.x_sheet_data.x_row {
+            let Some(row_idx) = row.row_index else { continue };
+            if row_idx < range_ref.start_row || row_idx > range_ref.end_row {
+                continue;
+            }
+            let r_off = (row_idx - range_ref.start_row) as usize;
+            for cell in &row.x_c {
+                let Some((cr, cc)) = cell
+                    .cell_reference
+                    .as_ref()
+                    .and_then(|r| xlcore_io::parse_a1(r.as_str()))
+                else {
+                    continue;
+                };
+                if cr != row_idx
+                    || cc < range_ref.start_column
+                    || cc > range_ref.end_column
+                {
+                    continue;
+                }
+                let c_off = (cc - range_ref.start_column) as usize;
+                let raw_v = cell
+                    .cell_value
+                    .as_ref()
+                    .and_then(|value| value.xml_content.as_deref());
+                values[r_off][c_off] = read_cell_value(cell, raw_v, &shared_strings);
+                formulas[r_off][c_off] = cell
+                    .cell_formula
+                    .as_ref()
+                    .and_then(|formula| formula.xml_content.as_deref().map(str::to_string));
+            }
+        }
+        Ok(RangeInfo {
+            sheet: range_ref.sheet.clone(),
+            reference: range_ref.range_reference(),
+            start_row: range_ref.start_row,
+            start_column: range_ref.start_column,
+            end_row: range_ref.end_row,
+            end_column: range_ref.end_column,
+            rows: rows as u32,
+            columns: cols as u32,
+            values,
+            formulas,
+        })
+    }
+
     pub fn clear(&mut self, reference: impl AsRef<str>) -> Result<CellInfo> {
         let cell_ref = self.resolve_cell_ref(reference.as_ref())?;
         let ws_part = self.worksheet_part_for_sheet(&cell_ref.sheet)?;
@@ -434,6 +579,21 @@ impl Workbook {
             column: parsed.column,
         })
     }
+
+    fn resolve_range_ref(&mut self, reference: &str) -> Result<ResolvedRangeRef> {
+        let parsed = parse_range_reference(reference)?;
+        let sheet = match parsed.sheet {
+            Some(sheet) => sheet,
+            None => self.default_sheet_name()?,
+        };
+        Ok(ResolvedRangeRef {
+            sheet,
+            start_row: parsed.start_row,
+            start_column: parsed.start_column,
+            end_row: parsed.end_row,
+            end_column: parsed.end_column,
+        })
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -462,6 +622,130 @@ impl ResolvedCellRef {
             self.cell_reference()
         )
     }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ParsedRangeRef {
+    sheet: Option<String>,
+    start_row: u32,
+    start_column: u32,
+    end_row: u32,
+    end_column: u32,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ResolvedRangeRef {
+    sheet: String,
+    start_row: u32,
+    start_column: u32,
+    end_row: u32,
+    end_column: u32,
+}
+
+impl ResolvedRangeRef {
+    fn range_reference(&self) -> String {
+        format!(
+            "{}{}:{}{}",
+            xlcore_io::col_label(self.start_column),
+            self.start_row,
+            xlcore_io::col_label(self.end_column),
+            self.end_row,
+        )
+    }
+}
+
+fn parse_range_reference(reference: &str) -> Result<ParsedRangeRef> {
+    let reference = reference.trim();
+    if reference.is_empty() {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidRef,
+            "range reference is empty",
+        ));
+    }
+    let (sheet, cells) = split_sheet_reference(reference)?;
+    let (start_cell, end_cell) = match cells.split_once(':') {
+        Some((a, b)) => (a, b),
+        None => (cells, cells),
+    };
+    if start_cell.is_empty() || end_cell.is_empty() {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidRef,
+            format!("invalid range reference: {reference}"),
+        )
+        .with_ref(reference));
+    }
+    let (mut r1, mut c1) = parse_cell_address(start_cell).ok_or_else(|| {
+        ApiError::new(
+            ApiErrorCode::InvalidRef,
+            format!("invalid range reference: {reference}"),
+        )
+        .with_ref(reference)
+    })?;
+    let (mut r2, mut c2) = parse_cell_address(end_cell).ok_or_else(|| {
+        ApiError::new(
+            ApiErrorCode::InvalidRef,
+            format!("invalid range reference: {reference}"),
+        )
+        .with_ref(reference)
+    })?;
+    if r1 > r2 {
+        std::mem::swap(&mut r1, &mut r2);
+    }
+    if c1 > c2 {
+        std::mem::swap(&mut c1, &mut c2);
+    }
+    Ok(ParsedRangeRef {
+        sheet,
+        start_row: r1,
+        start_column: c1,
+        end_row: r2,
+        end_column: c2,
+    })
+}
+
+fn validate_matrix_shape<T>(
+    matrix: &[Vec<T>],
+    range_ref: &ResolvedRangeRef,
+    kind: &str,
+) -> Result<()> {
+    let expected_rows = (range_ref.end_row - range_ref.start_row + 1) as usize;
+    let expected_cols = (range_ref.end_column - range_ref.start_column + 1) as usize;
+    if matrix.is_empty() {
+        return Err(ApiError::new(
+            ApiErrorCode::ShapeMismatch,
+            format!("{kind} matrix is empty"),
+        )
+        .with_ref(range_ref.range_reference())
+        .with_sheet(&range_ref.sheet));
+    }
+    if matrix.len() != expected_rows {
+        return Err(ApiError::new(
+            ApiErrorCode::ShapeMismatch,
+            format!(
+                "{kind} matrix has {} rows but range expects {}",
+                matrix.len(),
+                expected_rows
+            ),
+        )
+        .with_ref(range_ref.range_reference())
+        .with_sheet(&range_ref.sheet));
+    }
+    for (idx, row) in matrix.iter().enumerate() {
+        if row.len() != expected_cols {
+            return Err(ApiError::new(
+                ApiErrorCode::ShapeMismatch,
+                format!(
+                    "{kind} matrix row {} has {} cells but range expects {}",
+                    idx,
+                    row.len(),
+                    expected_cols
+                ),
+            )
+            .with_ref(range_ref.range_reference())
+            .with_sheet(&range_ref.sheet));
+        }
+    }
+    Ok(())
 }
 
 fn parse_cell_reference(reference: &str) -> Result<ParsedCellRef> {
@@ -1004,6 +1288,110 @@ mod tests {
             workbook.get_cell("Inputs!A1").unwrap().value,
             CellValue::String("ok".to_string())
         );
+    }
+
+    #[test]
+    fn parses_range_references() {
+        let plain = parse_range_reference("A1:B3").unwrap();
+        assert_eq!(
+            plain,
+            ParsedRangeRef {
+                sheet: None,
+                start_row: 1,
+                start_column: 1,
+                end_row: 3,
+                end_column: 2,
+            }
+        );
+        let qualified = parse_range_reference("'Q1 Inputs'!$B$2:$C$4").unwrap();
+        assert_eq!(
+            qualified,
+            ParsedRangeRef {
+                sheet: Some("Q1 Inputs".to_string()),
+                start_row: 2,
+                start_column: 2,
+                end_row: 4,
+                end_column: 3,
+            }
+        );
+        let single = parse_range_reference("Sheet1!C5").unwrap();
+        assert_eq!(single.start_row, 5);
+        assert_eq!(single.end_row, 5);
+        assert_eq!(single.start_column, 3);
+        assert_eq!(single.end_column, 3);
+        let reversed = parse_range_reference("B3:A1").unwrap();
+        assert_eq!(reversed.start_row, 1);
+        assert_eq!(reversed.end_row, 3);
+        assert_eq!(reversed.start_column, 1);
+        assert_eq!(reversed.end_column, 2);
+
+        assert!(parse_range_reference("").is_err());
+        assert!(parse_range_reference("A1:").is_err());
+        assert!(parse_range_reference(":B2").is_err());
+        assert!(parse_range_reference("NOT_A_REF").is_err());
+    }
+
+    #[test]
+    fn range_round_trip_values_formulas_and_clear() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook
+            .set_range_values(
+                "Sheet1!A1:B2",
+                vec![
+                    vec![CellValue::String("Region".into()), CellValue::String("Units".into())],
+                    vec![CellValue::String("North".into()), CellValue::Number(10.0)],
+                ],
+            )
+            .unwrap();
+        workbook
+            .set_range_formulas(
+                "Sheet1!C1:C2",
+                vec![vec![None], vec![Some("=B2*2".to_string())]],
+            )
+            .unwrap();
+
+        let range = workbook.get_range("Sheet1!A1:C2").unwrap();
+        assert_eq!(range.rows, 2);
+        assert_eq!(range.columns, 3);
+        assert_eq!(range.reference, "A1:C2");
+        assert_eq!(
+            range.values[0][0],
+            CellValue::String("Region".to_string())
+        );
+        assert_eq!(range.values[1][1], CellValue::Number(10.0));
+        assert_eq!(range.formulas[0][2], None);
+        assert_eq!(range.formulas[1][2].as_deref(), Some("B2*2"));
+
+        let recalc = workbook.recalculate().unwrap();
+        assert_eq!(
+            recalc.cell("Sheet1", "C2").unwrap().value,
+            xlcore_engine::CellValue::Number(20.0)
+        );
+
+        let bytes = workbook.save_bytes().unwrap();
+        let mut reopened = Workbook::open_bytes(bytes).unwrap();
+        let reread = reopened.get_range("Sheet1!A1:C2").unwrap();
+        assert_eq!(reread.values[1][1], CellValue::Number(10.0));
+        assert_eq!(reread.formulas[1][2].as_deref(), Some("B2*2"));
+        assert_eq!(reread.values[1][2], CellValue::Number(20.0));
+
+        let cleared = reopened.clear_range("Sheet1!A1:C2").unwrap();
+        assert!(cleared.values.iter().flatten().all(|v| matches!(v, CellValue::Blank)));
+        assert!(cleared.formulas.iter().flatten().all(|f| f.is_none()));
+    }
+
+    #[test]
+    fn range_shape_mismatch_is_diagnosed() {
+        let mut workbook = Workbook::new().unwrap();
+        let err = workbook
+            .set_range_values(
+                "Sheet1!A1:B2",
+                vec![vec![CellValue::Number(1.0), CellValue::Number(2.0)]],
+            )
+            .unwrap_err();
+        assert_eq!(err.code, ApiErrorCode::ShapeMismatch);
+        assert_eq!(err.reference.as_deref(), Some("A1:B2"));
+        assert_eq!(err.sheet.as_deref(), Some("Sheet1"));
     }
 
     #[test]

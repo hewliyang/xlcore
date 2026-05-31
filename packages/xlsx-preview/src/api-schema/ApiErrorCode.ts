@@ -6,5 +6,6 @@ export type ApiErrorCode =
   | "duplicate_sheet"
   | "invalid_sheet_name"
   | "cannot_delete_last_sheet"
+  | "shape_mismatch"
   | "ooxml_write_error"
   | "other";

@@ -225,6 +225,52 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&cell).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = getRange)]
+    pub fn get_range(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let range = self
+            .workbook_mut()?
+            .get_range(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setRangeValues)]
+    pub fn set_range_values(
+        &mut self,
+        reference: &str,
+        values: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let values = range_values_from_js(values)?;
+        let range = self
+            .workbook_mut()?
+            .set_range_values(reference, values)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setRangeFormulas)]
+    pub fn set_range_formulas(
+        &mut self,
+        reference: &str,
+        formulas: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let formulas = range_formulas_from_js(formulas)?;
+        let range = self
+            .workbook_mut()?
+            .set_range_formulas(reference, formulas)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = clearRange)]
+    pub fn clear_range(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let range = self
+            .workbook_mut()?
+            .clear_range(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = createSheet)]
     pub fn create_sheet(&mut self, name: &str) -> Result<JsValue, JsValue> {
         let sheet = self
@@ -310,6 +356,50 @@ fn parse_layout_options(options: JsValue) -> Result<xlcore_api::LayoutOptions, J
     } else {
         serde_wasm_bindgen::from_value(options).map_err(other_err_to_js)
     }
+}
+
+fn range_values_from_js(value: JsValue) -> Result<Vec<Vec<xlcore_api::CellValue>>, JsValue> {
+    let rows: js_sys::Array = value
+        .dyn_into()
+        .map_err(|_| other_err_to_js("range values must be a 2D array of cells"))?;
+    let mut out: Vec<Vec<xlcore_api::CellValue>> = Vec::with_capacity(rows.length() as usize);
+    for row in rows.iter() {
+        let row_arr: js_sys::Array = row
+            .dyn_into()
+            .map_err(|_| other_err_to_js("range values must be a 2D array of cells"))?;
+        let mut row_out = Vec::with_capacity(row_arr.length() as usize);
+        for cell in row_arr.iter() {
+            row_out.push(cell_value_from_js(cell)?);
+        }
+        out.push(row_out);
+    }
+    Ok(out)
+}
+
+fn range_formulas_from_js(value: JsValue) -> Result<Vec<Vec<Option<String>>>, JsValue> {
+    let rows: js_sys::Array = value
+        .dyn_into()
+        .map_err(|_| other_err_to_js("range formulas must be a 2D array of strings or null"))?;
+    let mut out: Vec<Vec<Option<String>>> = Vec::with_capacity(rows.length() as usize);
+    for row in rows.iter() {
+        let row_arr: js_sys::Array = row.dyn_into().map_err(|_| {
+            other_err_to_js("range formulas must be a 2D array of strings or null")
+        })?;
+        let mut row_out = Vec::with_capacity(row_arr.length() as usize);
+        for cell in row_arr.iter() {
+            if cell.is_null() || cell.is_undefined() {
+                row_out.push(None);
+            } else if let Some(text) = cell.as_string() {
+                row_out.push(Some(text));
+            } else {
+                return Err(other_err_to_js(
+                    "range formula entries must be strings or null",
+                ));
+            }
+        }
+        out.push(row_out);
+    }
+    Ok(out)
 }
 
 fn cell_value_from_js(value: JsValue) -> Result<xlcore_api::CellValue, JsValue> {

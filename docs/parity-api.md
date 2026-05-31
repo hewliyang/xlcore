@@ -42,7 +42,6 @@ Implemented:
 
 Known gaps:
 
-- No range get/set yet
 - No style writes
 - No row/column structural edits
 - No merges
@@ -68,8 +67,8 @@ Status key:
 | Sheet collection | `Workbook.getSheet/addSheet/removeSheet/setSheet` | List/create/rename/delete/move/hide/show/active sheet | Partial | Rust API + hsx info |
 | Cell scalar IO | `Worksheet.getValue/setValue`, `Range.value` | Get/set scalar values and errors by A1 ref | Done | Rust API + TS smoke |
 | Cell formulas | `getFormula/setFormula`, calc APIs | Set formula text, preserve formula, explicit recalc/writeback | Partial | xlcore-engine + Excel fixtures |
-| Range values | `Worksheet.getArray/setArray`, `Range.value` | Get/set rectangular matrices with shape validation | P0 | Rust API + TS smoke |
-| Range formulas | `Range.formula`, copy/fill APIs | Set formula matrices, copy formulas with relative refs | P0/P1 | hsx copy/fill oracle |
+| Range values | `Worksheet.getArray/setArray`, `Range.value` | Get/set rectangular matrices with shape validation | Done | Rust API + TS smoke |
+| Range formulas | `Range.formula`, copy/fill APIs | Set formula matrices, copy formulas with relative refs | Partial | Rust API + TS smoke (matrix set/get); copy/fill still P1 |
 | Clear modes | `clear`, `ClearPendingChangeType` | Clear values, formulas, styles, comments, or all | P0 | OOXML diff + reopen |
 | Style subset | `Style`, `Range.backColor/font/border/formatter` | Number format, font, fill, alignment, wrap, simple borders | P0 | Renderer screenshot |
 | Full styles | Themes, named styles, table styles | Preserve existing styles; author broader style model later | P2 | OOXML diff + preview |
@@ -169,6 +168,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `duplicate_sheet` | Create/rename would duplicate a sheet name |
 | `invalid_sheet_name` | Sheet name violates Excel rules |
 | `cannot_delete_last_sheet` | Deleting would leave no worksheets |
+| `shape_mismatch` | Range matrix dimensions do not match the target range |
 | `unsupported_formula` | Formula could not be evaluated; source/cache preserved where possible |
 | `unsupported_style` | Style patch contains fields we do not write yet |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
@@ -181,15 +181,15 @@ committed or rolled back.
 
 ## Next Slices
 
-1. Range values and formulas: A1 range parser, matrix validation, get/set values,
-   get/set formulas, TS/WASM wrappers.
-2. Style patch P0: number format, font, fill, alignment, wrap, simple borders.
-3. Sheet/row/column structure: move/hide/show sheets, resize/hide rows/columns,
+1. Style patch P0: number format, font, fill, alignment, wrap, simple borders.
+2. Sheet/row/column structure: move/hide/show sheets, resize/hide rows/columns,
    insert/delete rows/columns, freeze panes.
-4. Merge/unmerge/list merged ranges.
-5. Browser mutation harness for open -> mutate -> recalc -> render -> save.
-6. hsx oracle fixtures for copy/fill, row/column insert/delete, search, deps,
+3. Merge/unmerge/list merged ranges.
+4. Browser mutation harness for open -> mutate -> recalc -> render -> save.
+5. hsx oracle fixtures for copy/fill, row/column insert/delete, search, deps,
    and diff.
+6. Range copy/fill with relative-formula translation (lifts Range formulas
+   from Partial to Done).
 
 ## Definition Of Done
 
