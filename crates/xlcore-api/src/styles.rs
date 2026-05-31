@@ -5,7 +5,8 @@ pub use xlcore_types::{
     HorizontalAlign, StylePatch, UnderlinePatch, VerticalAlign,
 };
 
-use crate::{sdk_err_to_api, ApiError, ApiErrorCode, Result};
+use crate::errors::sdk_err_to_api;
+use crate::{ApiError, ApiErrorCode, Result};
 
 pub(crate) fn ensure_styles_part(
     doc: &mut xlcore_io::SpreadsheetDocument,
