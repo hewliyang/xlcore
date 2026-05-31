@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use xlcore_io::spreadsheetml as x;
-use xlcore_types::{ApiCellValue as CellValue, RangeInfo, StylePatch};
+use xlcore_types::{ApiCellValue as CellValue, ClearMode, RangeInfo, StylePatch};
 
 use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_range_reference, validate_matrix_shape, ResolvedRangeRef};
 use crate::styles;
 use crate::xml::{
-    ensure_cell, load_shared_strings, mark_formulas_stale, normalize_formula, read_cell_value,
-    set_cell_value,
+    apply_clear_mode, ensure_cell, load_shared_strings, mark_formulas_stale, normalize_formula,
+    read_cell_value, set_cell_value,
 };
 use crate::{Result, Workbook};
 
@@ -141,7 +141,16 @@ impl Workbook {
     }
 
     pub fn clear_range(&mut self, reference: impl AsRef<str>) -> Result<RangeInfo> {
+        self.clear_range_with(reference, ClearMode::All)
+    }
+
+    pub fn clear_range_with(
+        &mut self,
+        reference: impl AsRef<str>,
+        mode: ClearMode,
+    ) -> Result<RangeInfo> {
         let range_ref = self.resolve_range_ref(reference.as_ref())?;
+        let touches_formulas = matches!(mode, ClearMode::All | ClearMode::Formulas | ClearMode::Values);
         let ws_part = self.worksheet_part_for_sheet(&range_ref.sheet)?;
         let ws = ws_part
             .root_element_mut(&mut self.doc)
@@ -149,13 +158,12 @@ impl Workbook {
         for row_idx in range_ref.start_row..=range_ref.end_row {
             for col_idx in range_ref.start_column..=range_ref.end_column {
                 let cell = ensure_cell(ws, row_idx, col_idx);
-                cell.data_type = None;
-                cell.inline_string = None;
-                cell.cell_value = None;
-                cell.cell_formula = None;
+                apply_clear_mode(cell, mode);
             }
         }
-        mark_formulas_stale(&mut self.doc)?;
+        if touches_formulas {
+            mark_formulas_stale(&mut self.doc)?;
+        }
         self.read_range(&range_ref)
     }
 

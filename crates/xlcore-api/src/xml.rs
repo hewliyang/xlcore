@@ -2,7 +2,7 @@ use std::io::{Cursor, Write};
 
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
 use xlcore_io::spreadsheetml as x;
-use xlcore_types::{ApiCellValue as CellValue, CellInfo};
+use xlcore_types::{ApiCellValue as CellValue, CellInfo, ClearMode};
 
 use crate::errors::{sdk_err_to_api, zip_err};
 use crate::Result;
@@ -56,6 +56,29 @@ pub(crate) fn ensure_cell(ws: &mut x::Worksheet, row: u32, column: u32) -> &mut 
         }
     };
     &mut row_ref.x_c[cell_pos]
+}
+
+pub(crate) fn apply_clear_mode(cell: &mut x::Cell, mode: ClearMode) {
+    match mode {
+        ClearMode::All => {
+            cell.data_type = None;
+            cell.inline_string = None;
+            cell.cell_value = None;
+            cell.cell_formula = None;
+            cell.style_index = None;
+        }
+        ClearMode::Values => {
+            cell.data_type = None;
+            cell.inline_string = None;
+            cell.cell_value = None;
+        }
+        ClearMode::Formulas => {
+            cell.cell_formula = None;
+        }
+        ClearMode::Styles => {
+            cell.style_index = None;
+        }
+    }
 }
 
 pub(crate) fn set_cell_value(cell: &mut x::Cell, value: &CellValue) {

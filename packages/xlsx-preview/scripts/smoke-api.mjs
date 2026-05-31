@@ -109,6 +109,24 @@ if (!hideActiveErr || hideActiveErr.code !== "other") {
   throw new Error("expected activate-hidden ApiError, got: " + String(hideActiveErr));
 }
 
+workbook.setValue("Sheet1!E1", 7);
+workbook.setFormula("Sheet1!E2", "=E1*5");
+workbook.recalculate();
+const clearedFormula = workbook.clear("Sheet1!E2", "formulas");
+if (clearedFormula.formula !== undefined && clearedFormula.formula !== null) {
+  throw new Error("expected formula cleared, got: " + JSON.stringify(clearedFormula));
+}
+workbook.setFormula("Sheet1!E2", "=E1*5");
+workbook.recalculate();
+const clearedValue = workbook.clear("Sheet1!E2", "values");
+if (clearedValue.value.type !== "blank" || clearedValue.formula !== "E1*5") {
+  throw new Error("expected value cleared, formula kept: " + JSON.stringify(clearedValue));
+}
+const rangeCleared = workbook.clearRange("Sheet1!E1:E2", "all");
+if (rangeCleared.values.flat().some((v) => v.type !== "blank")) {
+  throw new Error("expected range cleared: " + JSON.stringify(rangeCleared));
+}
+
 workbook.setRowHeight("Sheet1", 2, 33);
 workbook.setRowVisible("Sheet1", 3, false);
 workbook.setColumnWidth("Sheet1", 2, 24.5);

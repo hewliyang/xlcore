@@ -2,6 +2,7 @@ import init, { WorkbookHandle as WasmWorkbookHandle } from "./xlcore_wasm.js";
 import type {
   ApiCellValue,
   CellInfo,
+  ClearMode,
   FreezeInfo,
   LayoutOptions as WorkbookLayoutOptions,
   MergeInfo,
@@ -23,6 +24,7 @@ export type {
   BorderLineStyle,
   BorderPatch,
   CellInfo,
+  ClearMode,
   EngineCellValue,
   FillPatch,
   FontPatch,
@@ -84,8 +86,11 @@ export class Workbook {
     return this.handle.setFormula(reference, formula) as CellInfo;
   }
 
-  clear(reference: string): CellInfo {
-    return this.handle.clear(reference) as CellInfo;
+  clear(reference: string, mode?: ClearMode): CellInfo {
+    if (mode === undefined) {
+      return this.handle.clear(reference) as CellInfo;
+    }
+    return this.handle.clearWith(reference, mode) as CellInfo;
   }
 
   getRange(reference: string): RangeInfo {
@@ -104,8 +109,11 @@ export class Workbook {
     return this.handle.setStyle(reference, patch) as RangeInfo;
   }
 
-  clearRange(reference: string): RangeInfo {
-    return this.handle.clearRange(reference) as RangeInfo;
+  clearRange(reference: string, mode?: ClearMode): RangeInfo {
+    if (mode === undefined) {
+      return this.handle.clearRange(reference) as RangeInfo;
+    }
+    return this.handle.clearRangeWith(reference, mode) as RangeInfo;
   }
 
   merges(sheet: string): MergeInfo[] {

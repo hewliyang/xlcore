@@ -225,6 +225,17 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&cell).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = clearWith)]
+    pub fn clear_with(&mut self, reference: &str, mode: JsValue) -> Result<JsValue, JsValue> {
+        let mode: xlcore_api::ClearMode =
+            serde_wasm_bindgen::from_value(mode).map_err(other_err_to_js)?;
+        let cell = self
+            .workbook_mut()?
+            .clear_with(reference, mode)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&cell).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = getRange)]
     pub fn get_range(&mut self, reference: &str) -> Result<JsValue, JsValue> {
         let range = self
@@ -307,6 +318,21 @@ impl WorkbookHandle {
         let range = self
             .workbook_mut()?
             .clear_range(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = clearRangeWith)]
+    pub fn clear_range_with(
+        &mut self,
+        reference: &str,
+        mode: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let mode: xlcore_api::ClearMode =
+            serde_wasm_bindgen::from_value(mode).map_err(other_err_to_js)?;
+        let range = self
+            .workbook_mut()?
+            .clear_range_with(reference, mode)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
     }

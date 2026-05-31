@@ -12,8 +12,8 @@ use std::path::Path;
 
 pub use xlcore_types::{
     AlignmentPatch, ApiCellValue, ApiCellValue as CellValue, ApiError, ApiErrorCode,
-    BorderLinePatch, BorderLineStyle, BorderPatch, CellInfo, FillPatch, FontPatch, FreezeInfo,
-    HorizontalAlign, LayoutOptions, MergeInfo, RangeInfo, SheetInfo, SheetVisibility,
+    BorderLinePatch, BorderLineStyle, BorderPatch, CellInfo, ClearMode, FillPatch, FontPatch,
+    FreezeInfo, HorizontalAlign, LayoutOptions, MergeInfo, RangeInfo, SheetInfo, SheetVisibility,
     StylePatch, UnderlinePatch, VerticalAlign,
 };
 

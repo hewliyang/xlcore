@@ -234,6 +234,99 @@
     }
 
     #[test]
+    fn clear_modes_respect_target() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.set_value("Sheet1!A1", 10.0).unwrap();
+        workbook.set_formula("Sheet1!B1", "=A1*2").unwrap();
+        workbook
+            .set_style(
+                "Sheet1!A1:B1",
+                StylePatch {
+                    font: Some(FontPatch {
+                        bold: Some(true),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        workbook.recalculate().unwrap();
+
+        let styled_a = workbook.get_cell("Sheet1!A1").unwrap().style_index;
+        assert!(styled_a.is_some());
+
+        let only_values = workbook
+            .clear_with("Sheet1!B1", ClearMode::Values)
+            .unwrap();
+        assert_eq!(only_values.value, CellValue::Blank);
+        assert_eq!(only_values.formula.as_deref(), Some("A1*2"));
+        assert!(only_values.style_index.is_some());
+
+        let only_formulas = workbook
+            .clear_with("Sheet1!B1", ClearMode::Formulas)
+            .unwrap();
+        assert!(only_formulas.formula.is_none());
+        assert!(only_formulas.style_index.is_some());
+
+        let only_styles = workbook
+            .clear_with("Sheet1!A1", ClearMode::Styles)
+            .unwrap();
+        assert_eq!(only_styles.value, CellValue::Number(10.0));
+        assert!(only_styles.style_index.is_none());
+
+        let all = workbook
+            .clear_with("Sheet1!A1", ClearMode::All)
+            .unwrap();
+        assert_eq!(all.value, CellValue::Blank);
+        assert!(all.formula.is_none());
+        assert!(all.style_index.is_none());
+    }
+
+    #[test]
+    fn clear_range_modes_round_trip() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook
+            .set_range_values(
+                "Sheet1!A1:B1",
+                vec![vec![CellValue::Number(1.0), CellValue::Number(2.0)]],
+            )
+            .unwrap();
+        workbook
+            .set_range_formulas(
+                "Sheet1!A2:B2",
+                vec![vec![Some("=A1+1".into()), Some("=B1+1".into())]],
+            )
+            .unwrap();
+        workbook
+            .set_style(
+                "Sheet1!A1:B2",
+                StylePatch {
+                    font: Some(FontPatch {
+                        italic: Some(true),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+
+        let cleared_formulas = workbook
+            .clear_range_with("Sheet1!A2:B2", ClearMode::Formulas)
+            .unwrap();
+        assert!(cleared_formulas.formulas.iter().flatten().all(|f| f.is_none()));
+
+        let cleared_styles = workbook
+            .clear_range_with("Sheet1!A1:B1", ClearMode::Styles)
+            .unwrap();
+        assert!(matches!(cleared_styles.values[0][0], CellValue::Number(1.0)));
+
+        let bytes = workbook.save_bytes().unwrap();
+        let mut reopened = Workbook::open_bytes(bytes).unwrap();
+        assert!(reopened.get_cell("Sheet1!A2").unwrap().formula.is_none());
+        assert!(reopened.get_cell("Sheet1!A1").unwrap().style_index.is_none());
+    }
+
+    #[test]
     fn range_shape_mismatch_is_diagnosed() {
         let mut workbook = Workbook::new().unwrap();
         let err = workbook

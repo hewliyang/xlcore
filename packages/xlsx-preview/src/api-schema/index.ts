@@ -6,6 +6,7 @@ export type { BorderLinePatch } from "./BorderLinePatch.js";
 export type { BorderLineStyle } from "./BorderLineStyle.js";
 export type { BorderPatch } from "./BorderPatch.js";
 export type { CellInfo } from "./CellInfo.js";
+export type { ClearMode } from "./ClearMode.js";
 export type { EngineCellValue } from "./EngineCellValue.js";
 export type { FillPatch } from "./FillPatch.js";
 export type { FontPatch } from "./FontPatch.js";

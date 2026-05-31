@@ -69,7 +69,7 @@ Status key:
 | Cell formulas | `getFormula/setFormula`, calc APIs | Set formula text, preserve formula, explicit recalc/writeback | Partial | xlcore-engine + Excel fixtures |
 | Range values | `Worksheet.getArray/setArray`, `Range.value` | Get/set rectangular matrices with shape validation | Done | Rust API + TS smoke |
 | Range formulas | `Range.formula`, copy/fill APIs | Set formula matrices, copy formulas with relative refs | Partial | Rust API + TS smoke (matrix set/get); copy/fill still P1 |
-| Clear modes | `clear`, `ClearPendingChangeType` | Clear values, formulas, styles, comments, or all | P0 | OOXML diff + reopen |
+| Clear modes | `clear`, `ClearPendingChangeType` | Clear values, formulas, styles, comments, or all | Done (values/formulas/styles/all; comments later) | Rust API + TS smoke |
 | Style subset | `Style`, `Range.backColor/font/border/formatter` | Number format, font, fill, alignment, wrap, simple borders | Done | Rust API + layout |
 | Full styles | Themes, named styles, table styles | Preserve existing styles; author broader style model later | P2 | OOXML diff + preview |
 | Row/column size | `setRowHeight/setColumnWidth`, auto fit | Resize rows/columns; optional auto-fit later | Done | Rust API + save/reopen |
@@ -188,7 +188,6 @@ committed or rolled back.
    and diff.
 4. Range copy/fill with relative-formula translation (lifts Range formulas
    from Partial to Done).
-5. Clear modes (`values` / `formulas` / `styles` / `all`).
 
 ## Definition Of Done
 
