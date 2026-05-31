@@ -1,0 +1,11 @@
+[package]
+name = "xlcore-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ironcalc_base.workspace = true
+thiserror.workspace = true
+

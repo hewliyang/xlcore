@@ -1,8 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/ironcalc-base",
     "crates/xlcore-io",
     "crates/xlcore-export",
+    "crates/xlcore-engine",
+    "crates/xlcore-bridge",
     "crates/xlcore-tabular",
     "crates/xlcore-cli",
     "crates/xlcore-wasm",
@@ -23,6 +26,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
 thiserror = "1"
+ironcalc_base = { path = "crates/ironcalc-base" }
 # Used only by xlcore-export's opt-in `typescript` feature. Keeping it out of
 # default CLI builds avoids expanding dozens of TS proc macros on every edit.
 ts-rs = { version = "10", features = ["serde-compat", "import-esm"] }

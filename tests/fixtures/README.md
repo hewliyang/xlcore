@@ -14,6 +14,7 @@ Today's fixtures (more land as features ship):
 | Path                              | What it covers                                  |
 |-----------------------------------|-------------------------------------------------|
 | `kitchensink/kitchensink.xlsx`    | Big mixed workbook: shared strings, custom widths/heights, fonts/fills/borders, alignment, merges, freeze, CF color scale, built-in number formats, dynamic-array spills (SORT/FILTER/UNIQUE/SEQUENCE), LET/SUMPRODUCT, a `<table>` ListObject, a clustered column chart. |
+| `engine/basic-formulas.xlsx` | Minimal formula-engine bridge fixture: scalar inputs plus `SUM` and `SUMPRODUCT` formulas. Catches regressions in `xlcore-bridge` OOXML harvest → `xlcore-engine` evaluate → recalculated formula values. |
 | `themes/custom-theme-accent.xlsx` | 12 cells, one per `theme="0"`..`theme="11"` slot, against a non-default ("Cyber") theme palette. Catches regressions in (a) `xl/theme/theme1.xml` parsing, (b) the lt1/dk1, lt2/dk2 spreadsheet-index swap, (c) chart-series accent resolution. |
 | `numfmt/date-time-formats.xlsx` | 13 date/time format codes (built-in + custom), one sample each. **All currently fail** — see [`numfmt/TRIAGE.md`](numfmt/TRIAGE.md). |
 | `numfmt/currency-locale.xlsx` | 10 currency / accounting / locale-tagged formats. Loses `[$€-407]` / `[$¥-411]` symbols and accounting padding. |

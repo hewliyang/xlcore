@@ -124,8 +124,8 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a out of scope.
 | Feature | State | Notes |
 | --- | --- | --- |
 | Cached `<v>` values | ✅ | current render source |
-| Formula recalc | ❌ | IronCalc fork planned; see `plan-excel-rust-lib.md` |
-| Modern/dynamic functions | ❌ | `SUMPRODUCT`, `LET`, `LAMBDA`, `FILTER`, `SORT`, `UNIQUE`, `SEQUENCE`, arrays |
+| Formula recalc | 🟡 | `xlcore-engine` crate started with a thin IronCalc facade, vendored IronCalc fork, core recalc tests, real `SUMPRODUCT`, scalar `LET` shim PoC, and first `xlcore-bridge` OOXML harvest/recalc API. OOXML/layout writeback still missing. See `docs/parity-engine.md`. |
+| Modern/dynamic functions | 🟡 | `SUMPRODUCT` implemented in fork; scalar `LET` shim only. Missing real `LET`, `LAMBDA`, `FILTER`, `SORT`, `UNIQUE`, `SEQUENCE`, arrays |
 
 ## Major open work
 

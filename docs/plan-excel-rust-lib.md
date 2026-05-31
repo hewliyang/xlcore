@@ -59,8 +59,9 @@ crates/
   xlcore-wasm/     # ✅ wasm-bindgen entry for browser (used by xlsxWorker.ts)
   xlcore-cli/      # ✅ `xlcore extract` / `xlcore preview`
   xlcore-tabular/  # ✅ csv + parquet (parquet behind `parquet` cargo feature; enabled in wasm)
-  xlcore-engine/   # 🔴 not yet — ironcalc fork + missing functions
-  xlcore-bridge/   # 🔴 not yet — harvest/replay/write-back; agent batch-mutation API
+  ironcalc-base/   # 🟡 vendored IronCalc fork; SUMPRODUCT added
+  xlcore-engine/   # 🟡 thin engine facade + core recalc tests + LET shim PoC
+  xlcore-bridge/   # 🟡 first OOXML harvest/recalc API; write-back still pending
 packages/xlsx-preview/  # ✅ npm package, runs in browser + Node
 ```
 
@@ -74,7 +75,8 @@ alongside it under `tests/fixtures/<feature>/`. See
 [`TESTING.md`](TESTING.md) for the workflow,
 [`tests/fixtures/README.md`](../tests/fixtures/README.md) for the fixture
 table + how to add new ones, and [`PARITY.md`](PARITY.md) for the
-feature-by-feature scoreboard.
+feature-by-feature scoreboard. Formula/recalc parity has its own hillclimb in
+[`parity-engine.md`](parity-engine.md).
 
 ## references on this machine
 
@@ -103,10 +105,15 @@ comments, all of CF except `expression`) have landed.
 
 Remaining headline work:
 
-1. **`xlcore-engine` + `xlcore-bridge`.** Fork IronCalc, fill the
-   function gap (§key decisions #2), wire harvest/replay through to
-   the layout. Unblocks live recalc, `#SPILL!`, `expression` CF rules,
-   and the agent batch-mutation API.
+1. **`xlcore-engine` + `xlcore-bridge`.** IronCalc is now vendored as
+   `crates/ironcalc-base`, with `SUMPRODUCT` added in the fork.
+   `xlcore-engine` has the first thin facade with same-sheet and cross-sheet
+   recalc tests plus a scalar `LET` compatibility-shim PoC. `xlcore-bridge`
+   now harvests scalar cells/formulas from OOXML and returns recalculated formula
+   values. Next: replay evaluated values into `WorkbookLayout` and write
+   updated cached `<v>` values back into OOXML, then fill the rest of the
+   function gap (§key decisions #2). Unblocks live recalc, `#SPILL!`,
+   `expression` CF rules, and the agent batch-mutation API.
 2. **Selection / active-cell** rendering for HITL.
 3. The long tail: combo charts, secondary axes, slicers, validation
    UI, formula-driven CF, `autoFilter` filtered-row hiding. See
