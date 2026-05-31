@@ -68,7 +68,7 @@ Status key:
 | Cell scalar IO | `Worksheet.getValue/setValue`, `Range.value` | Get/set scalar values and errors by A1 ref | Done | Rust API + TS smoke |
 | Cell formulas | `getFormula/setFormula`, calc APIs | Set formula text, preserve formula, explicit recalc/writeback | Partial | xlcore-engine + Excel fixtures |
 | Range values | `Worksheet.getArray/setArray`, `Range.value` | Get/set rectangular matrices with shape validation | Done | Rust API + TS smoke |
-| Range formulas | `Range.formula`, copy/fill APIs | Set formula matrices, copy formulas with relative refs | Partial | Rust API + TS smoke (matrix set/get); copy/fill still P1 |
+| Range formulas | `Range.formula`, copy/fill APIs | Set formula matrices, copy formulas with relative refs | Done | Rust API + TS smoke |
 | Clear modes | `clear`, `ClearPendingChangeType` | Clear values, formulas, styles, comments, or all | Done (values/formulas/styles/all; comments later) | Rust API + TS smoke |
 | Style subset | `Style`, `Range.backColor/font/border/formatter` | Number format, font, fill, alignment, wrap, simple borders | Done | Rust API + layout |
 | Full styles | Themes, named styles, table styles | Preserve existing styles; author broader style model later | P2 | OOXML diff + preview |
@@ -79,7 +79,7 @@ Status key:
 | Merges | `addSpan/removeSpan/getSpans` | Merge/unmerge/list merged ranges | Done | Rust API + TS smoke |
 | Selections/view state | `setSelection/getSelections/showCell` | Persist active cell/selection only if OOXML-backed and useful | Later | OOXML inspection |
 | Search | `Worksheet.search` | Search values/formulas across sheets | P1 | hsx search oracle |
-| Copy/paste/fill | `copyTo`, fill APIs | Copy ranges, fill down/right, translate relative formulas | P1 | hsx copy/fill oracle |
+| Copy/paste/fill | `copyTo`, fill APIs | Copy ranges, fill down/right, translate relative formulas | Done | Rust API + TS smoke; hsx oracle for fixtures still P1 |
 | Diff | Not a single SpreadJS API; hsx has diff | Compare workbook values/formulas/style subset/sheet structure | P1 | xlcore fixtures |
 | Dependencies | Calc engine refs/deps behavior | Precedents/dependents from formula graph | P1 | hsx deps/refs oracle |
 | Defined names | `Workbook.names`, `NameInfo` | List/create/update/delete workbook and sheet names | P1 | OOXML + formulas |
@@ -185,8 +185,6 @@ committed or rolled back.
 1. Browser mutation harness for open -> mutate -> recalc -> render -> save.
 2. hsx oracle fixtures for copy/fill, row/column insert/delete, search, deps,
    and diff.
-3. Range copy/fill with relative-formula translation (lifts Range formulas
-   from Partial to Done).
 
 ## Definition Of Done
 

@@ -109,6 +109,14 @@ export class Workbook {
     return this.handle.setStyle(reference, patch) as RangeInfo;
   }
 
+  copyRange(sourceReference: string, destinationReference: string): RangeInfo {
+    return this.handle.copyRange(sourceReference, destinationReference) as RangeInfo;
+  }
+
+  fillRange(sourceReference: string, destinationReference: string): RangeInfo {
+    return this.handle.fillRange(sourceReference, destinationReference) as RangeInfo;
+  }
+
   clearRange(reference: string, mode?: ClearMode): RangeInfo {
     if (mode === undefined) {
       return this.handle.clearRange(reference) as RangeInfo;

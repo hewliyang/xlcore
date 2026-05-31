@@ -6,8 +6,11 @@ use crate::refs::{parse_range_a1, quote_sheet_name};
 use crate::xml::mark_formulas_stale;
 use crate::{Result, Workbook};
 
-const MAX_ROW: u32 = 1_048_576;
-const MAX_COLUMN: u32 = 16_384;
+pub(crate) const MAX_ROW: u32 = 1_048_576;
+pub(crate) const MAX_COLUMN: u32 = 16_384;
+
+pub(crate) type RefRewriter<'a> =
+    &'a mut dyn FnMut(Endpoint, Option<Endpoint>, Option<&str>, &str) -> String;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum ShiftOp {
@@ -537,11 +540,11 @@ fn rewrite_formulas(ws: &mut x::Worksheet, owning: &str, target: &str, op: Shift
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct Endpoint {
-    col_abs: bool,
-    col: Option<u32>,
-    row_abs: bool,
-    row: Option<u32>,
+pub(crate) struct Endpoint {
+    pub(crate) col_abs: bool,
+    pub(crate) col: Option<u32>,
+    pub(crate) row_abs: bool,
+    pub(crate) row: Option<u32>,
 }
 
 impl Endpoint {
@@ -556,7 +559,7 @@ impl Endpoint {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum EndpointKind {
+pub(crate) enum EndpointKind {
     Cell,
     ColOnly,
     RowOnly,
@@ -564,6 +567,94 @@ enum EndpointKind {
 }
 
 fn shift_formula_refs(src: &str, owning: &str, target: &str, op: ShiftOp) -> String {
+    let mut rewrite = |start: Endpoint,
+                       end: Option<Endpoint>,
+                       sheet: Option<&str>,
+                       prefix_literal: &str| {
+        rewrite_ref_token(start, end, sheet, owning, target, op, prefix_literal)
+    };
+    walk_formula_refs(src, &mut rewrite)
+}
+
+pub(crate) fn translate_formula_refs(src: &str, dr: i64, dc: i64) -> String {
+    let mut rewrite = |start: Endpoint,
+                       end: Option<Endpoint>,
+                       _sheet: Option<&str>,
+                       prefix_literal: &str| {
+        translate_ref_token(start, end, dr, dc, prefix_literal)
+    };
+    walk_formula_refs(src, &mut rewrite)
+}
+
+fn translate_ref_token(
+    start: Endpoint,
+    end: Option<Endpoint>,
+    dr: i64,
+    dc: i64,
+    prefix_literal: &str,
+) -> String {
+    let kind = start.kind();
+    if kind == EndpointKind::Invalid {
+        return format!("{}{}", prefix_literal, render_ref_body(start, end));
+    }
+    if let Some(e) = end {
+        if e.kind() != kind {
+            return format!("{}{}", prefix_literal, render_ref_body(start, end));
+        }
+    }
+    if kind == EndpointKind::ColOnly && dc == 0 {
+        return format!("{}{}", prefix_literal, render_ref_body(start, end));
+    }
+    if kind == EndpointKind::RowOnly && dr == 0 {
+        return format!("{}{}", prefix_literal, render_ref_body(start, end));
+    }
+    let Some(new_start) = translate_endpoint(start, dr, dc) else {
+        return format!("{}#REF!", prefix_literal);
+    };
+    let new_end = match end {
+        Some(e) => match translate_endpoint(e, dr, dc) {
+            Some(v) => Some(v),
+            None => return format!("{}#REF!", prefix_literal),
+        },
+        None => None,
+    };
+    format!(
+        "{}{}",
+        prefix_literal,
+        render_ref_body(new_start, new_end)
+    )
+}
+
+fn translate_endpoint(ep: Endpoint, dr: i64, dc: i64) -> Option<Endpoint> {
+    let new_row = match ep.row {
+        Some(r) if !ep.row_abs => {
+            let nr = (r as i64) + dr;
+            if nr < 1 || nr > MAX_ROW as i64 {
+                return None;
+            }
+            Some(nr as u32)
+        }
+        other => other,
+    };
+    let new_col = match ep.col {
+        Some(c) if !ep.col_abs => {
+            let nc = (c as i64) + dc;
+            if nc < 1 || nc > MAX_COLUMN as i64 {
+                return None;
+            }
+            Some(nc as u32)
+        }
+        other => other,
+    };
+    Some(Endpoint {
+        col_abs: ep.col_abs,
+        col: new_col,
+        row_abs: ep.row_abs,
+        row: new_row,
+    })
+}
+
+fn walk_formula_refs(src: &str, rewrite: RefRewriter<'_>) -> String {
     let bytes = src.as_bytes();
     let mut out = String::with_capacity(src.len());
     let mut i = 0;
@@ -602,9 +693,7 @@ fn shift_formula_refs(src: &str, owning: &str, target: &str, op: ShiftOp) -> Str
                         bytes,
                         body_start,
                         Some(&sheet),
-                        owning,
-                        target,
-                        op,
+                        rewrite,
                         &sheet_prefix,
                     );
                     out.push_str(&rendered);
@@ -626,9 +715,7 @@ fn shift_formula_refs(src: &str, owning: &str, target: &str, op: ShiftOp) -> Str
                         bytes,
                         body_start,
                         Some(ident),
-                        owning,
-                        target,
-                        op,
+                        rewrite,
                         &prefix,
                     );
                     out.push_str(&rendered);
@@ -641,7 +728,7 @@ fn shift_formula_refs(src: &str, owning: &str, target: &str, op: ShiftOp) -> Str
                     continue;
                 }
                 if let Some((rendered, consumed)) =
-                    try_rewrite_bare_identifier(ident, bytes, i, id_end, owning, target, op)
+                    try_rewrite_bare_identifier(ident, bytes, i, id_end, rewrite)
                 {
                     out.push_str(&rendered);
                     i = i + consumed;
@@ -652,7 +739,7 @@ fn shift_formula_refs(src: &str, owning: &str, target: &str, op: ShiftOp) -> Str
             }
             b'$' | b'0'..=b'9' => {
                 let (rendered, consumed) = try_consume_and_rewrite_ref(
-                    bytes, i, None, owning, target, op, "",
+                    bytes, i, None, rewrite, "",
                 );
                 if consumed > 0 {
                     out.push_str(&rendered);
@@ -680,16 +767,14 @@ fn try_rewrite_bare_identifier(
     bytes: &[u8],
     start: usize,
     id_end: usize,
-    owning: &str,
-    target: &str,
-    op: ShiftOp,
+    rewrite: RefRewriter<'_>,
 ) -> Option<(String, usize)> {
     if !ident.bytes().all(|b| b.is_ascii_alphabetic()) {
         let (e1, p1) = parse_endpoint_strict(ident.as_bytes(), 0)?;
         if p1 != ident.len() {
             return None;
         }
-        return finalize_ref(bytes, start, id_end, e1, None, owning, target, op);
+        return finalize_ref(bytes, start, id_end, e1, None, rewrite);
     }
     let col = letters_to_col(ident.as_bytes())?;
     let e1 = Endpoint {
@@ -698,7 +783,7 @@ fn try_rewrite_bare_identifier(
         row_abs: false,
         row: None,
     };
-    finalize_ref(bytes, start, id_end, e1, None, owning, target, op)
+    finalize_ref(bytes, start, id_end, e1, None, rewrite)
 }
 
 fn finalize_ref(
@@ -707,9 +792,7 @@ fn finalize_ref(
     end_of_first: usize,
     e1: Endpoint,
     sheet: Option<&str>,
-    owning: &str,
-    target: &str,
-    op: ShiftOp,
+    rewrite: RefRewriter<'_>,
 ) -> Option<(String, usize)> {
     let mut total = end_of_first;
     let mut endpoints = (e1, None);
@@ -721,12 +804,15 @@ fn finalize_ref(
             }
         }
     }
+    if endpoints.1.is_none() && e1.kind() != EndpointKind::Cell {
+        return None;
+    }
     let prefix = if let Some(s) = sheet {
         format!("{}!", quote_sheet_name(s))
     } else {
         String::new()
     };
-    let rendered = rewrite_ref_token(endpoints.0, endpoints.1, sheet, owning, target, op, &prefix);
+    let rendered = rewrite(endpoints.0, endpoints.1, sheet, &prefix);
     Some((rendered, total - start))
 }
 
@@ -734,9 +820,7 @@ fn try_consume_and_rewrite_ref(
     bytes: &[u8],
     i: usize,
     sheet: Option<&str>,
-    owning: &str,
-    target: &str,
-    op: ShiftOp,
+    rewrite: RefRewriter<'_>,
     prefix_literal: &str,
 ) -> (String, usize) {
     let Some((e1, p1)) = parse_endpoint(bytes, i) else {
@@ -752,8 +836,10 @@ fn try_consume_and_rewrite_ref(
             }
         }
     }
-    let rendered =
-        rewrite_ref_token(e1, end, sheet, owning, target, op, prefix_literal);
+    if end.is_none() && e1.kind() != EndpointKind::Cell {
+        return (prefix_literal.to_string(), 0);
+    }
+    let rendered = rewrite(e1, end, sheet, prefix_literal);
     (rendered, total_end - i)
 }
 

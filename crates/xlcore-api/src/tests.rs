@@ -798,3 +798,107 @@
         assert!(sheet.value_pool.iter().any(|value| value == "Label"));
         assert!(sheet.value_pool.iter().any(|value| value == "42"));
     }
+
+    #[test]
+    fn copy_range_translates_relative_formulas() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.set_value("Sheet1!A1", 1.0).unwrap();
+        workbook.set_value("Sheet1!A2", 2.0).unwrap();
+        workbook.set_value("Sheet1!A3", 3.0).unwrap();
+        workbook.set_formula("Sheet1!B1", "=A1*$C$1").unwrap();
+        workbook.set_value("Sheet1!C1", 10.0).unwrap();
+
+        let info = workbook.copy_range("Sheet1!B1", "Sheet1!B2:B3").unwrap();
+        assert_eq!(info.formulas[0][0].as_deref(), Some("A2*$C$1"));
+        assert_eq!(info.formulas[1][0].as_deref(), Some("A3*$C$1"));
+    }
+
+    #[test]
+    fn copy_range_to_single_cell_uses_source_shape() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook
+            .set_range_values(
+                "Sheet1!A1:B2",
+                vec![
+                    vec![CellValue::Number(1.0), CellValue::Number(2.0)],
+                    vec![CellValue::Number(3.0), CellValue::Number(4.0)],
+                ],
+            )
+            .unwrap();
+        workbook.set_formula("Sheet1!A1", "=B1+1").unwrap();
+
+        let info = workbook.copy_range("Sheet1!A1:B2", "Sheet1!D5").unwrap();
+        assert_eq!(info.reference, "D5:E6");
+        assert_eq!(info.formulas[0][0].as_deref(), Some("E5+1"));
+        assert_eq!(info.values[1][0], CellValue::Number(3.0));
+        assert_eq!(info.values[1][1], CellValue::Number(4.0));
+    }
+
+    #[test]
+    fn copy_range_shape_mismatch() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.set_value("Sheet1!A1", 1.0).unwrap();
+        let err = workbook
+            .copy_range("Sheet1!A1:A2", "Sheet1!C1:D3")
+            .unwrap_err();
+        assert_eq!(err.code, ApiErrorCode::ShapeMismatch);
+    }
+
+    #[test]
+    fn copy_range_across_sheets_keeps_sheet_qualifier() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.create_sheet("Other").unwrap();
+        workbook.set_value("Sheet1!A1", 5.0).unwrap();
+        workbook.set_formula("Sheet1!B1", "=A1+Other!A1").unwrap();
+
+        let info = workbook.copy_range("Sheet1!B1", "Sheet1!B2").unwrap();
+        assert_eq!(info.formulas[0][0].as_deref(), Some("A2+Other!A2"));
+    }
+
+    #[test]
+    fn fill_range_tiles_source_with_translation() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.set_value("Sheet1!A1", 1.0).unwrap();
+        workbook.set_formula("Sheet1!B1", "=A1*2").unwrap();
+
+        let info = workbook.fill_range("Sheet1!A1:B1", "Sheet1!A1:B4").unwrap();
+        assert_eq!(info.values[0][0], CellValue::Number(1.0));
+        for r in 1..4 {
+            assert_eq!(info.values[r][0], CellValue::Number(1.0));
+            assert_eq!(
+                info.formulas[r][0].as_deref(),
+                None,
+                "row {r} col 0 should be value"
+            );
+            assert_eq!(
+                info.formulas[r][1].as_deref(),
+                Some(format!("A{}*2", r + 1).as_str())
+            );
+        }
+    }
+
+    #[test]
+    fn fill_range_requires_multiple() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.set_value("Sheet1!A1", 1.0).unwrap();
+        let err = workbook
+            .fill_range("Sheet1!A1:A2", "Sheet1!A1:A5")
+            .unwrap_err();
+        assert_eq!(err.code, ApiErrorCode::ShapeMismatch);
+    }
+
+    #[test]
+    fn copy_range_round_trips_through_save() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.set_value("Sheet1!A1", 1.0).unwrap();
+        workbook.set_value("Sheet1!A2", 2.0).unwrap();
+        workbook.set_formula("Sheet1!B1", "=A1+10").unwrap();
+        workbook.copy_range("Sheet1!B1", "Sheet1!B2").unwrap();
+
+        let bytes = workbook.save_bytes().unwrap();
+        let mut reopened = Workbook::open_bytes(bytes).unwrap();
+        assert_eq!(
+            reopened.get_cell("Sheet1!B2").unwrap().formula.as_deref(),
+            Some("A2+10")
+        );
+    }

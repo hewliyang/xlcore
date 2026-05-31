@@ -127,6 +127,19 @@ if (rangeCleared.values.flat().some((v) => v.type !== "blank")) {
   throw new Error("expected range cleared: " + JSON.stringify(rangeCleared));
 }
 
+workbook.setValue("Sheet1!G1", 1);
+workbook.setFormula("Sheet1!G2", "=G1+10");
+const copied = workbook.copyRange("Sheet1!G2", "Sheet1!G3:G5");
+if (copied.formulas[0][0] !== "G2+10" || copied.formulas[2][0] !== "G4+10") {
+  throw new Error("unexpected copyRange formulas: " + JSON.stringify(copied));
+}
+workbook.setValue("Sheet1!H1", 1);
+workbook.setFormula("Sheet1!I1", "=H1*2");
+const filled = workbook.fillRange("Sheet1!H1:I1", "Sheet1!H1:I3");
+if (filled.formulas[2][1] !== "H3*2") {
+  throw new Error("unexpected fillRange formulas: " + JSON.stringify(filled));
+}
+
 workbook.setRowHeight("Sheet1", 2, 33);
 workbook.setRowVisible("Sheet1", 3, false);
 workbook.setColumnWidth("Sheet1", 2, 24.5);

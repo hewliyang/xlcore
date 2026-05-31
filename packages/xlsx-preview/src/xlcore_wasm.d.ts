@@ -9,11 +9,13 @@ export class WorkbookHandle {
     clearRange(reference: string): any;
     clearRangeWith(reference: string, mode: any): any;
     clearWith(reference: string, mode: any): any;
+    copyRange(src_reference: string, dst_reference: string): any;
     createSheet(name: string): any;
     deleteColumns(sheet: string, start: number, count: number): void;
     deleteRows(sheet: string, start: number, count: number): void;
     deleteSheet(name: string): void;
     dispose(): void;
+    fillRange(src_reference: string, dst_reference: string): any;
     getCell(reference: string): any;
     getFreeze(sheet: string): any;
     getRange(reference: string): any;
@@ -65,11 +67,13 @@ export interface InitOutput {
     readonly workbookhandle_clearRange: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_clearRangeWith: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_clearWith: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly workbookhandle_copyRange: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_createSheet: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_deleteColumns: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_deleteRows: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_deleteSheet: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_dispose: (a: number) => void;
+    readonly workbookhandle_fillRange: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_getCell: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_getFreeze: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_getRange: (a: number, b: number, c: number, d: number) => void;

@@ -337,6 +337,32 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = copyRange)]
+    pub fn copy_range(
+        &mut self,
+        src_reference: &str,
+        dst_reference: &str,
+    ) -> Result<JsValue, JsValue> {
+        let range = self
+            .workbook_mut()?
+            .copy_range(src_reference, dst_reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = fillRange)]
+    pub fn fill_range(
+        &mut self,
+        src_reference: &str,
+        dst_reference: &str,
+    ) -> Result<JsValue, JsValue> {
+        let range = self
+            .workbook_mut()?
+            .fill_range(src_reference, dst_reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = createSheet)]
     pub fn create_sheet(&mut self, name: &str) -> Result<JsValue, JsValue> {
         let sheet = self
