@@ -18,6 +18,7 @@ export type { RecalcCell } from "./RecalcCell.js";
 export type { RecalcSheet } from "./RecalcSheet.js";
 export type { RecalcWorkbook } from "./RecalcWorkbook.js";
 export type { SheetInfo } from "./SheetInfo.js";
+export type { SheetVisibility } from "./SheetVisibility.js";
 export type { StylePatch } from "./StylePatch.js";
 export type { UnderlinePatch } from "./UnderlinePatch.js";
 export type { VerticalAlign } from "./VerticalAlign.js";

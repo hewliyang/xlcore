@@ -64,7 +64,7 @@ Status key:
 | Open/create/save | `Workbook`, JSON/file flows | Open bytes/path, create blank workbook, save bytes/path, preserve unrelated OOXML | Done | Rust API + save/reopen |
 | Shared DTOs | SpreadJS `.d.ts` surface | Rust DTOs generated to TS from `xlcore-types` | Done | `scripts/regen-api-schema.sh` |
 | Workbook metadata | `Workbook.options`, `docProps`, workbook name | Read/write core properties, active sheet, calc properties | P1 | OOXML inspection |
-| Sheet collection | `Workbook.getSheet/addSheet/removeSheet/setSheet` | List/create/rename/delete/move/hide/show/active sheet | Partial | Rust API + hsx info |
+| Sheet collection | `Workbook.getSheet/addSheet/removeSheet/setSheet` | List/create/rename/delete/move/hide/show/active sheet | Done | Rust API + TS smoke |
 | Cell scalar IO | `Worksheet.getValue/setValue`, `Range.value` | Get/set scalar values and errors by A1 ref | Done | Rust API + TS smoke |
 | Cell formulas | `getFormula/setFormula`, calc APIs | Set formula text, preserve formula, explicit recalc/writeback | Partial | xlcore-engine + Excel fixtures |
 | Range values | `Worksheet.getArray/setArray`, `Range.value` | Get/set rectangular matrices with shape validation | Done | Rust API + TS smoke |
@@ -182,8 +182,8 @@ committed or rolled back.
 
 ## Next Slices
 
-1. Sheet/row/column structure: move/hide/show sheets, resize/hide rows/columns,
-   insert/delete rows/columns, freeze panes.
+1. Row/column structure: resize/hide rows/columns, insert/delete
+   rows/columns, freeze panes.
 2. Merge/unmerge/list merged ranges.
 3. Browser mutation harness for open -> mutate -> recalc -> render -> save.
 4. hsx oracle fixtures for copy/fill, row/column insert/delete, search, deps,

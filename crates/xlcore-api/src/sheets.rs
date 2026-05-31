@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
 use ooxmlsdk::sdk::SdkPart;
 use xlcore_io::spreadsheetml as x;
-use xlcore_types::{ApiError, ApiErrorCode, SheetInfo};
+use xlcore_types::{ApiError, ApiErrorCode, SheetInfo, SheetVisibility};
 
 use crate::errors::sdk_err_to_api;
 use crate::refs::validate_sheet_name;
@@ -158,6 +158,182 @@ impl Workbook {
             .delete_part_by_id(&mut self.doc, relationship_id.as_str())
             .map_err(sdk_err_to_api)?;
         self.normalize_active_sheet_after_delete(index as u32)?;
+        Ok(())
+    }
+
+    pub fn move_sheet(&mut self, name: impl AsRef<str>, to_index: usize) -> Result<SheetInfo> {
+        let name = name.as_ref();
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let workbook = wb_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let len = workbook.sheets.x_sheet.len();
+        let Some(from) = workbook
+            .sheets
+            .x_sheet
+            .iter()
+            .position(|sheet| sheet.name.as_str() == name)
+        else {
+            return Err(ApiError::new(
+                ApiErrorCode::MissingSheet,
+                format!("sheet not found: {name}"),
+            )
+            .with_sheet(name));
+        };
+        let to = to_index.min(len.saturating_sub(1));
+        if from != to {
+            let sheet = workbook.sheets.x_sheet.remove(from);
+            workbook.sheets.x_sheet.insert(to, sheet);
+            self.normalize_active_sheet_after_move(from as u32, to as u32)?;
+        }
+        self.sheet_info_by_name(name)
+    }
+
+    pub fn set_sheet_visibility(
+        &mut self,
+        name: impl AsRef<str>,
+        visibility: SheetVisibility,
+    ) -> Result<SheetInfo> {
+        let name = name.as_ref();
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let workbook = wb_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let visible_count = workbook
+            .sheets
+            .x_sheet
+            .iter()
+            .filter(|sheet| matches!(sheet.state, None | Some(x::SheetStateValues::Visible)))
+            .count();
+        let Some(sheet) = workbook
+            .sheets
+            .x_sheet
+            .iter_mut()
+            .find(|sheet| sheet.name.as_str() == name)
+        else {
+            return Err(ApiError::new(
+                ApiErrorCode::MissingSheet,
+                format!("sheet not found: {name}"),
+            )
+            .with_sheet(name));
+        };
+        let was_visible = matches!(sheet.state, None | Some(x::SheetStateValues::Visible));
+        let becoming_hidden = !matches!(visibility, SheetVisibility::Visible);
+        if was_visible && becoming_hidden && visible_count <= 1 {
+            return Err(ApiError::new(
+                ApiErrorCode::Other,
+                "cannot hide the last visible worksheet",
+            )
+            .with_sheet(name));
+        }
+        sheet.state = match visibility {
+            SheetVisibility::Visible => None,
+            SheetVisibility::Hidden => Some(x::SheetStateValues::Hidden),
+            SheetVisibility::VeryHidden => Some(x::SheetStateValues::VeryHidden),
+        };
+        self.ensure_active_sheet_visible()?;
+        self.sheet_info_by_name(name)
+    }
+
+    pub fn set_active_sheet(&mut self, name: impl AsRef<str>) -> Result<SheetInfo> {
+        let name = name.as_ref();
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let workbook = wb_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let Some(index) = workbook
+            .sheets
+            .x_sheet
+            .iter()
+            .position(|sheet| sheet.name.as_str() == name)
+        else {
+            return Err(ApiError::new(
+                ApiErrorCode::MissingSheet,
+                format!("sheet not found: {name}"),
+            )
+            .with_sheet(name));
+        };
+        let sheet = &workbook.sheets.x_sheet[index];
+        if !matches!(sheet.state, None | Some(x::SheetStateValues::Visible)) {
+            return Err(ApiError::new(
+                ApiErrorCode::Other,
+                format!("cannot activate hidden sheet: {name}"),
+            )
+            .with_sheet(name));
+        }
+        let book_views = workbook.book_views.get_or_insert_with(Default::default);
+        if book_views.x_workbook_view.is_empty() {
+            book_views.x_workbook_view.push(x::WorkbookView::default());
+        }
+        book_views.x_workbook_view[0].active_tab = Some(index as u32);
+        self.sheet_info_by_name(name)
+    }
+
+    fn sheet_info_by_name(&mut self, name: &str) -> Result<SheetInfo> {
+        self.sheets()?
+            .into_iter()
+            .find(|sheet| sheet.name == name)
+            .ok_or_else(|| {
+                ApiError::new(
+                    ApiErrorCode::MissingSheet,
+                    format!("sheet not found: {name}"),
+                )
+                .with_sheet(name)
+            })
+    }
+
+    fn normalize_active_sheet_after_move(&mut self, from: u32, to: u32) -> Result<()> {
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let workbook = wb_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let Some(book_views) = workbook.book_views.as_mut() else {
+            return Ok(());
+        };
+        let Some(view) = book_views.x_workbook_view.first_mut() else {
+            return Ok(());
+        };
+        let Some(active) = view.active_tab else {
+            return Ok(());
+        };
+        let new_active = if active == from {
+            to
+        } else if from < to && active > from && active <= to {
+            active - 1
+        } else if to < from && active >= to && active < from {
+            active + 1
+        } else {
+            active
+        };
+        view.active_tab = Some(new_active);
+        Ok(())
+    }
+
+    fn ensure_active_sheet_visible(&mut self) -> Result<()> {
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let workbook = wb_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let states: Vec<bool> = workbook
+            .sheets
+            .x_sheet
+            .iter()
+            .map(|sheet| matches!(sheet.state, None | Some(x::SheetStateValues::Visible)))
+            .collect();
+        let first_visible = states.iter().position(|visible| *visible);
+        let Some(book_views) = workbook.book_views.as_mut() else {
+            return Ok(());
+        };
+        let Some(view) = book_views.x_workbook_view.first_mut() else {
+            return Ok(());
+        };
+        let active = view.active_tab.unwrap_or(0) as usize;
+        let active_hidden = states.get(active).map(|v| !*v).unwrap_or(false);
+        if active_hidden {
+            if let Some(idx) = first_visible {
+                view.active_tab = Some(idx as u32);
+            }
+        }
         Ok(())
     }
 

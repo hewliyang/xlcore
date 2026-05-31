@@ -334,6 +334,47 @@ impl WorkbookHandle {
             .map_err(api_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = moveSheet)]
+    pub fn move_sheet(&mut self, name: &str, to_index: usize) -> Result<JsValue, JsValue> {
+        let sheet = self
+            .workbook_mut()?
+            .move_sheet(name, to_index)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&sheet).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setSheetVisibility)]
+    pub fn set_sheet_visibility(
+        &mut self,
+        name: &str,
+        visibility: &str,
+    ) -> Result<JsValue, JsValue> {
+        let visibility = match visibility {
+            "visible" => xlcore_api::SheetVisibility::Visible,
+            "hidden" => xlcore_api::SheetVisibility::Hidden,
+            "veryHidden" => xlcore_api::SheetVisibility::VeryHidden,
+            other => {
+                return Err(other_err_to_js(format!(
+                    "unknown sheet visibility: {other}"
+                )))
+            }
+        };
+        let sheet = self
+            .workbook_mut()?
+            .set_sheet_visibility(name, visibility)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&sheet).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setActiveSheet)]
+    pub fn set_active_sheet(&mut self, name: &str) -> Result<JsValue, JsValue> {
+        let sheet = self
+            .workbook_mut()?
+            .set_active_sheet(name)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&sheet).map_err(other_err_to_js)
+    }
+
     pub fn recalculate(&mut self) -> Result<JsValue, JsValue> {
         let recalculated = self.workbook_mut()?.recalculate().map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&recalculated).map_err(other_err_to_js)

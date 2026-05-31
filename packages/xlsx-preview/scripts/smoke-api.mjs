@@ -85,6 +85,30 @@ if (workbook.removeMerge("Sheet1!Z99") !== null) {
   throw new Error("expected null when removing non-existent merge");
 }
 
+workbook.createSheet("Inputs");
+workbook.createSheet("Outputs");
+const moved = workbook.moveSheet("Outputs", 0);
+if (moved.index !== 0 || moved.name !== "Outputs") {
+  throw new Error("unexpected moveSheet result: " + JSON.stringify(moved));
+}
+const hidden = workbook.setSheetVisibility("Inputs", "hidden");
+if (hidden.state !== "hidden") {
+  throw new Error("unexpected setSheetVisibility result: " + JSON.stringify(hidden));
+}
+const active = workbook.setActiveSheet("Outputs");
+if (!active.active) {
+  throw new Error("unexpected setActiveSheet result: " + JSON.stringify(active));
+}
+let hideActiveErr;
+try {
+  workbook.setActiveSheet("Inputs");
+} catch (err) {
+  hideActiveErr = err;
+}
+if (!hideActiveErr || hideActiveErr.code !== "other") {
+  throw new Error("expected activate-hidden ApiError, got: " + String(hideActiveErr));
+}
+
 const saved = workbook.save();
 const reopened = await Workbook.open(saved, { wasmBinaryUrl: wasm });
 const c1 = reopened.getCell("Sheet1!C1");
@@ -97,4 +121,22 @@ if (reopenedMerges.length !== 1 || reopenedMerges[0].reference !== "C10:D11") {
   throw new Error("unexpected reopened merges: " + JSON.stringify(reopenedMerges));
 }
 
-console.log(JSON.stringify({ ok: true, sheets: reopened.sheets().length, c1, merges: reopenedMerges.length }));
+const reopenedSheets = reopened.sheets();
+const reopenedActive = reopenedSheets.find((sheet) => sheet.active);
+if (reopenedActive?.name !== "Outputs" || reopenedSheets[0]?.name !== "Outputs") {
+  throw new Error("unexpected reopened sheet order/active: " + JSON.stringify(reopenedSheets));
+}
+const reopenedHidden = reopenedSheets.find((sheet) => sheet.name === "Inputs");
+if (reopenedHidden?.state !== "hidden") {
+  throw new Error("unexpected reopened hidden state: " + JSON.stringify(reopenedHidden));
+}
+
+console.log(
+  JSON.stringify({
+    ok: true,
+    sheets: reopenedSheets.length,
+    c1,
+    merges: reopenedMerges.length,
+    active: reopenedActive?.name,
+  }),
+);

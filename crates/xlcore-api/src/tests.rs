@@ -76,6 +76,74 @@
     }
 
     #[test]
+    fn move_visibility_and_active_sheet_round_trip() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.create_sheet("Inputs").unwrap();
+        workbook.create_sheet("Outputs").unwrap();
+
+        let names = |w: &mut Workbook| {
+            w.sheets()
+                .unwrap()
+                .into_iter()
+                .map(|s| s.name)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(names(&mut workbook), ["Sheet1", "Inputs", "Outputs"]);
+
+        workbook.set_active_sheet("Outputs").unwrap();
+        let outputs = workbook.move_sheet("Outputs", 0).unwrap();
+        assert_eq!(outputs.index, 0);
+        assert!(outputs.active);
+        assert_eq!(names(&mut workbook), ["Outputs", "Sheet1", "Inputs"]);
+
+        let hidden = workbook
+            .set_sheet_visibility("Sheet1", SheetVisibility::Hidden)
+            .unwrap();
+        assert_eq!(hidden.state.as_deref(), Some("hidden"));
+        let very = workbook
+            .set_sheet_visibility("Inputs", SheetVisibility::VeryHidden)
+            .unwrap();
+        assert_eq!(very.state.as_deref(), Some("veryHidden"));
+
+        let err = workbook
+            .set_sheet_visibility("Outputs", SheetVisibility::Hidden)
+            .unwrap_err();
+        assert_eq!(err.code, ApiErrorCode::Other);
+
+        let err = workbook.set_active_sheet("Sheet1").unwrap_err();
+        assert_eq!(err.code, ApiErrorCode::Other);
+
+        let bytes = workbook.save_bytes().unwrap();
+        let mut reopened = Workbook::open_bytes(bytes).unwrap();
+        let sheets = reopened.sheets().unwrap();
+        assert_eq!(
+            sheets.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(),
+            ["Outputs", "Sheet1", "Inputs"]
+        );
+        assert!(sheets[0].active);
+        assert_eq!(sheets[1].state.as_deref(), Some("hidden"));
+        assert_eq!(sheets[2].state.as_deref(), Some("veryHidden"));
+
+        reopened
+            .set_sheet_visibility("Sheet1", SheetVisibility::Visible)
+            .unwrap();
+        reopened.set_active_sheet("Sheet1").unwrap();
+        let after = reopened.sheets().unwrap();
+        assert!(after.iter().find(|s| s.name == "Sheet1").unwrap().active);
+    }
+
+    #[test]
+    fn move_sheet_clamps_to_range_and_missing_errors() {
+        let mut workbook = Workbook::new().unwrap();
+        workbook.create_sheet("B").unwrap();
+        workbook.create_sheet("C").unwrap();
+        let moved = workbook.move_sheet("Sheet1", 99).unwrap();
+        assert_eq!(moved.index, 2);
+        let err = workbook.move_sheet("Missing", 0).unwrap_err();
+        assert_eq!(err.code, ApiErrorCode::MissingSheet);
+    }
+
+    #[test]
     fn parses_range_references() {
         let plain = parse_range_reference("A1:B3").unwrap();
         assert_eq!(

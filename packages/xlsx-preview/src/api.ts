@@ -7,6 +7,7 @@ import type {
   RangeInfo,
   RecalcWorkbook,
   SheetInfo,
+  SheetVisibility,
   StylePatch,
 } from "./api-schema/index.js";
 import type { WorkbookLayout } from "./types.js";
@@ -33,6 +34,7 @@ export type {
   RecalcSheet,
   RecalcWorkbook,
   SheetInfo,
+  SheetVisibility,
   StylePatch,
   UnderlinePatch,
   VerticalAlign,
@@ -126,6 +128,18 @@ export class Workbook {
 
   deleteSheet(name: string): void {
     this.handle.deleteSheet(name);
+  }
+
+  moveSheet(name: string, toIndex: number): SheetInfo {
+    return this.handle.moveSheet(name, toIndex) as SheetInfo;
+  }
+
+  setSheetVisibility(name: string, visibility: SheetVisibility): SheetInfo {
+    return this.handle.setSheetVisibility(name, visibility) as SheetInfo;
+  }
+
+  setActiveSheet(name: string): SheetInfo {
+    return this.handle.setActiveSheet(name) as SheetInfo;
   }
 
   recalculate(): RecalcWorkbook {
