@@ -7,5 +7,5 @@ repository.workspace = true
 
 [dependencies]
 ironcalc_base.workspace = true
+serde.workspace = true
 thiserror.workspace = true
-

@@ -61,7 +61,8 @@ crates/
   xlcore-tabular/  # ✅ csv + parquet (parquet behind `parquet` cargo feature; enabled in wasm)
   ironcalc-base/   # 🟡 vendored IronCalc fork; SUMPRODUCT added
   xlcore-engine/   # 🟡 thin engine facade + core recalc tests + LET shim PoC
-  xlcore-bridge/   # 🟡 first OOXML harvest/recalc API; write-back still pending
+  xlcore-bridge/   # 🟡 OOXML harvest/recalc/writeback API for scalar formulas
+  xlcore-api/      # 🟡 workbook manipulation facade, Rust -> WASM -> TS
 packages/xlsx-preview/  # ✅ npm package, runs in browser + Node
 ```
 
@@ -105,14 +106,23 @@ comments, all of CF except `expression`) have landed.
 
 Remaining headline work:
 
+The workbook manipulation/API hillclimb is tracked in
+[parity-api.md](parity-api.md). P0 is now started: a Rust mutation facade,
+stateful WASM handle, and TypeScript wrapper can create/open/save workbooks,
+mutate scalar cells/formulas, recalculate, extract layout, and smoke-test through
+the npm package.
+
 1. **`xlcore-engine` + `xlcore-bridge`.** IronCalc is now vendored as
    `crates/ironcalc-base`, with `SUMPRODUCT` added in the fork.
    `xlcore-engine` has the first thin facade with same-sheet and cross-sheet
    recalc tests plus a scalar `LET` compatibility-shim PoC. `xlcore-bridge`
-   now harvests scalar cells/formulas from OOXML and returns recalculated formula
-   values. Next: replay evaluated values into `WorkbookLayout` and write
-   updated cached `<v>` values back into OOXML, then fill the rest of the
-   function gap (§key decisions #2). Unblocks live recalc, `#SPILL!`,
+   now harvests scalar cells/formulas from OOXML, writes recalculated scalar
+   formula caches back into `<v>`, expands ordinary shared formula groups,
+   preserves unsupported-formula source caches with diagnostics, and can extract
+   a `WorkbookLayout` from the recalculated in-memory document. Next:
+   arrays/spills, structured refs, and the rest of the function gap (§key
+   decisions #2).
+   Unblocks live recalc, `#SPILL!`,
    `expression` CF rules, and the agent batch-mutation API.
 2. **Selection / active-cell** rendering for HITL.
 3. The long tail: combo charts, secondary axes, slicers, validation

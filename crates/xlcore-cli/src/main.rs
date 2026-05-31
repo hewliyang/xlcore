@@ -12,6 +12,7 @@ fn main() -> Result<()> {
     match args[1].as_str() {
         "extract" => cmd_extract(&args[2..]),
         "preview" => cmd_preview(&args[2..]),
+        "recalc" => cmd_recalc(&args[2..]),
         "-h" | "--help" | "help" => {
             print_help();
             Ok(())
@@ -29,19 +30,26 @@ fn print_help() {
         "xlcore <command>\n\
          \n\
          Commands:\n  \
-           extract <in.xlsx> [-o layout.json]            Extract WorkbookLayout JSON\n  \
-           preview <in.xlsx> [-o preview.html] [--renderer R]  Bundle a standalone HTML preview"
+           extract <in.xlsx> [-o layout.json] [--recalc] Extract WorkbookLayout JSON\n  \
+           preview <in.xlsx> [-o preview.html] [--renderer R] [--recalc]  Bundle a standalone HTML preview\n  \
+           recalc <in.xlsx> [-o out.xlsx]                Write recalculated cached formula values"
     );
 }
 
 fn cmd_extract(args: &[String]) -> Result<()> {
-    let (input, output) = parse_io_args(args, ".json")?;
-    let layout = xlcore_export::extract(&input)?;
+    let (recalc, args) = take_flag(args, "--recalc");
+    let (input, output) = parse_io_args(&args, ".json")?;
+    let layout = if recalc {
+        xlcore_bridge::recalculate_layout(&input)?.1
+    } else {
+        xlcore_export::extract(&input)?
+    };
     let json = serde_json::to_string_pretty(&layout)?;
     fs::write(&output, json)?;
     println!(
-        "extracted {} sheet(s) -> {}",
+        "extracted {} sheet(s){} -> {}",
         layout.sheets.len(),
+        if recalc { " after recalc" } else { "" },
         output.display()
     );
     Ok(())
@@ -49,10 +57,14 @@ fn cmd_extract(args: &[String]) -> Result<()> {
 
 fn cmd_preview(args: &[String]) -> Result<()> {
     let mut renderer_path: Option<PathBuf> = None;
+    let mut recalc = false;
     let mut positional: Vec<String> = Vec::new();
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
+            "--recalc" => {
+                recalc = true;
+            }
             "--renderer" => {
                 i += 1;
                 renderer_path = Some(PathBuf::from(
@@ -65,7 +77,11 @@ fn cmd_preview(args: &[String]) -> Result<()> {
     }
 
     let (input, output) = parse_io_args(&positional, ".html")?;
-    let layout = xlcore_export::extract(&input)?;
+    let layout = if recalc {
+        xlcore_bridge::recalculate_layout(&input)?.1
+    } else {
+        xlcore_export::extract(&input)?
+    };
     let layout_json = serde_json::to_string(&layout)?;
 
     let renderer_path = renderer_path.or_else(default_renderer_path).context(
@@ -91,8 +107,9 @@ fn cmd_preview(args: &[String]) -> Result<()> {
     let html = build_preview_html(&layout_b64, &renderer_js, &input);
     fs::write(&output, html)?;
     println!(
-        "preview ({} sheet(s), {} B json -> {} B gz -> {} B b64, {} B renderer) -> {}",
+        "preview ({} sheet(s){}, {} B json -> {} B gz -> {} B b64, {} B renderer) -> {}",
         layout.sheets.len(),
+        if recalc { " after recalc" } else { "" },
         layout_json.len(),
         layout_gz.len(),
         layout_b64.len(),
@@ -100,6 +117,36 @@ fn cmd_preview(args: &[String]) -> Result<()> {
         output.display()
     );
     Ok(())
+}
+
+fn cmd_recalc(args: &[String]) -> Result<()> {
+    let (input, output) = parse_io_args(args, ".recalc.xlsx")?;
+    let recalculated = xlcore_bridge::recalculate_and_save(&input, &output)?;
+    let formula_count: usize = recalculated
+        .sheets
+        .iter()
+        .map(|sheet| sheet.cells.len())
+        .sum();
+    println!(
+        "recalculated {} formula cell(s) across {} sheet(s) -> {}",
+        formula_count,
+        recalculated.sheets.len(),
+        output.display()
+    );
+    Ok(())
+}
+
+fn take_flag(args: &[String], flag: &str) -> (bool, Vec<String>) {
+    let mut found = false;
+    let mut rest = Vec::with_capacity(args.len());
+    for arg in args {
+        if arg == flag {
+            found = true;
+        } else {
+            rest.push(arg.clone());
+        }
+    }
+    (found, rest)
 }
 
 fn parse_io_args(args: &[String], default_ext: &str) -> Result<(PathBuf, PathBuf)> {

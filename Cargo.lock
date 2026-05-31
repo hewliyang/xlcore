@@ -1389,12 +1389,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 
 [[package]]
+name = "xlcore-api"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "ooxmlsdk",
+ "serde",
+ "thiserror 1.0.69",
+ "xlcore-bridge",
+ "xlcore-engine",
+ "xlcore-export",
+ "xlcore-io",
+ "zip",
+]
+
+[[package]]
 name = "xlcore-bridge"
 version = "0.0.1"
 dependencies = [
  "anyhow",
  "ooxmlsdk",
+ "serde",
  "xlcore-engine",
+ "xlcore-export",
  "xlcore-io",
 ]
 
@@ -1406,6 +1423,7 @@ dependencies = [
  "base64",
  "flate2",
  "serde_json",
+ "xlcore-bridge",
  "xlcore-export",
  "xlcore-io",
 ]
@@ -1415,6 +1433,7 @@ name = "xlcore-engine"
 version = "0.0.1"
 dependencies = [
  "ironcalc_base",
+ "serde",
  "thiserror 1.0.69",
 ]
 
@@ -1469,6 +1488,7 @@ dependencies = [
  "serde-wasm-bindgen",
  "serde_json",
  "wasm-bindgen",
+ "xlcore-api",
  "xlcore-export",
  "xlcore-io",
  "xlcore-tabular",

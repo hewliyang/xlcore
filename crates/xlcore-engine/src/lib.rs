@@ -1,6 +1,6 @@
 mod formula;
 
-use ironcalc_base::{cell::CellValue as IronCellValue, Model};
+use ironcalc_base::{cell::CellValue as IronCellValue, types::Cell, Model};
 
 pub use formula::prepare_formula_for_ironcalc;
 
@@ -18,12 +18,19 @@ impl From<String> for EngineError {
 
 pub type Result<T> = std::result::Result<T, EngineError>;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
 pub enum CellValue {
     Blank,
     String(String),
     Number(f64),
     Boolean(bool),
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+pub struct FormulaError {
+    pub kind: String,
+    pub message: String,
 }
 
 impl From<IronCellValue> for CellValue {
@@ -108,6 +115,27 @@ impl<'a> WorkbookEngine<'a> {
             .model
             .get_cell_value_by_index(sheet, row, column)?
             .into())
+    }
+
+    pub fn formula_error(&self, sheet: u32, row: i32, column: i32) -> Result<Option<FormulaError>> {
+        let cell = self
+            .model
+            .workbook
+            .worksheet(sheet)?
+            .cell(row, column)
+            .cloned()
+            .unwrap_or_default();
+        Ok(match cell {
+            Cell::CellFormulaError { ei, m, .. } => Some(FormulaError {
+                kind: ei.to_string(),
+                message: m,
+            }),
+            Cell::CellFormula { .. } => Some(FormulaError {
+                kind: "#ERROR!".to_string(),
+                message: "Unevaluated formula".to_string(),
+            }),
+            _ => None,
+        })
     }
 
     pub fn inner(&self) -> &Model<'a> {
@@ -212,5 +240,17 @@ mod tests {
             engine.cell_value(0, 4, 1).unwrap(),
             CellValue::Number(140.0)
         );
+    }
+
+    #[test]
+    fn exposes_formula_errors_after_evaluation() {
+        let mut engine = WorkbookEngine::new("errors").unwrap();
+        engine.set_formula(0, 1, 1, "NO_SUCH_FUNCTION(1)").unwrap();
+
+        engine.evaluate();
+
+        let error = engine.formula_error(0, 1, 1).unwrap().unwrap();
+        assert_eq!(error.kind, "#NAME?");
+        assert!(error.message.contains("Invalid function"));
     }
 }

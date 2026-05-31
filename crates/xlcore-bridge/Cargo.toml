@@ -8,5 +8,7 @@ repository.workspace = true
 [dependencies]
 anyhow.workspace = true
 ooxmlsdk.workspace = true
+serde.workspace = true
+xlcore-export = { path = "../xlcore-export" }
 xlcore-engine = { path = "../xlcore-engine" }
 xlcore-io = { path = "../xlcore-io" }

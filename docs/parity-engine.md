@@ -18,17 +18,23 @@ Implemented:
   internal tests and xlcore-engine tests.
 - crates/xlcore-bridge has the first OOXML harvest -> engine evaluate ->
   recalculated formula value API, covered by tests/fixtures/engine/basic-formulas.xlsx.
+- crates/xlcore-bridge can write recalculated scalar formula values back into
+  cached <v> nodes and extract WorkbookLayout from the recalculated document,
+  covered by tests/fixtures/engine/stale-formulas.xlsx.
+- Shared formula groups (<f t="shared">) are expanded into per-cell formulas
+  for ordinary A1-style refs, then written back per cell. Covered by
+  tests/fixtures/engine/shared-formulas.xlsx.
+- Unsupported formulas that surface as #NAME?, #N/IMPL, or #ERROR! now preserve
+  their source cached <v> values and report a per-cell fallback diagnostic.
+  Covered by tests/fixtures/engine/unsupported-formulas.xlsx.
 - A narrow compatibility shim rewrites top-level scalar LET(...) formulas into
   ordinary formulas before IronCalc sees them. This is a proof of concept, not
   the long-term implementation.
 
 Not implemented yet:
 
-- OOXML value replay/writeback into workbook parts and WorkbookLayout.
-- Cached <v> writeback after recalc.
-- Shared formula expansion, array formulas, dynamic spill ranges, tables,
-  structured refs, and workbook defined-name evaluation beyond what IronCalc
-  already handles.
+- Array formulas, dynamic spill ranges, tables, structured refs, and workbook
+  defined-name evaluation beyond what IronCalc already handles.
 - Most missing modern functions and Excel edge semantics.
 
 ## Parity Ladder
@@ -42,11 +48,14 @@ without harming round-trip fidelity.
 - Preserve sheet order and names exactly enough for formulas. Started.
 - Load literals: numbers, strings, booleans, errors, blanks. Basic scalar load is started.
 - Load formulas from <f> and keep cached <v> as fallback on errors. Formula load is started.
-- Expand shared formulas before handing them to the engine.
+- Expand shared formulas before handing them to the engine. Started for
+  ordinary A1-style refs, including $ row/column anchors and simple ranges.
 - Evaluate dependencies across sheets.
-- Write evaluated scalar values back into <v> and layout cell values.
+- Write evaluated scalar values back into <v> and layout cell values. Started
+  for ordinary scalar formula cells.
 - Preserve formulas, styles, comments, charts, tables, drawings, and unknown XML.
 - Handle circular refs, parse errors, and unsupported functions deterministically.
+  Unsupported-function fallback is started for scalar formula cells.
 
 Acceptance: a basic formula fixture mutates inputs, recalculates totals, and the
 exported layout plus rewritten workbook show the new values while unrelated OOXML
@@ -210,6 +219,7 @@ Start with these cases, in this order:
 | --- | --- | --- |
 | basic-formulas.xlsx | arithmetic, ranges, SUMPRODUCT | hsx/Excel |
 | shared-formulas.xlsx | <f t="shared"> expansion and writeback | Excel |
+| unsupported-formulas.xlsx | unsupported function fallback and reporting | Excel cache |
 | errors.xlsx | #DIV/0!, #VALUE!, #NAME?, circular refs | Excel |
 | coercion.xlsx | text/number/bool coercion | Excel |
 | defined-names.xlsx | workbook and sheet-local names | Excel |

@@ -1,4 +1,5 @@
 export { render, buildGrid, HEADER_H, HEADER_W } from "./render.js";
+export { Workbook } from "./api.js";
 export { attachInteractivity } from "./interact.js";
 export { createWorkbookPreviewer } from "./previewer.js";
 export {
@@ -30,6 +31,18 @@ export type {
   WorkbookLoadProgress,
 } from "./browserLoader.js";
 export type { WorkbookSourceFormat } from "./sourceFormat.js";
+export type {
+  ApiCellValue,
+  ApiErrorPayload,
+  CellInfo,
+  CellInput,
+  RecalcCell,
+  RecalcSheet,
+  RecalcWorkbook,
+  SheetInfo,
+  WorkbookApiOptions,
+  WorkbookLayoutOptions,
+} from "./api.js";
 export type {
   PreviewerEventName,
   PreviewerOptions,

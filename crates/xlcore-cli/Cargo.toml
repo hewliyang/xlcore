@@ -12,6 +12,7 @@ path = "src/main.rs"
 [dependencies]
 xlcore-io = { path = "../xlcore-io" }
 xlcore-export = { path = "../xlcore-export" }
+xlcore-bridge = { path = "../xlcore-bridge" }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 flate2 = "1"

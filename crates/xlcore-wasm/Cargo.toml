@@ -13,6 +13,7 @@ crate-type = ["cdylib", "rlib"]
 xlcore-io = { path = "../xlcore-io" }
 xlcore-export = { path = "../xlcore-export" }
 xlcore-tabular = { path = "../xlcore-tabular", features = ["parquet"] }
+xlcore-api = { path = "../xlcore-api" }
 serde-wasm-bindgen = "0.6"
 serde = { workspace = true }
 serde_json = { workspace = true }

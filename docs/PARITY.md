@@ -124,14 +124,23 @@ Legend: ✅ done · 🟡 partial · ❌ missing · n/a out of scope.
 | Feature | State | Notes |
 | --- | --- | --- |
 | Cached `<v>` values | ✅ | current render source |
-| Formula recalc | 🟡 | `xlcore-engine` crate started with a thin IronCalc facade, vendored IronCalc fork, core recalc tests, real `SUMPRODUCT`, scalar `LET` shim PoC, and first `xlcore-bridge` OOXML harvest/recalc API. OOXML/layout writeback still missing. See `docs/parity-engine.md`. |
+| Formula recalc | 🟡 | `xlcore-engine` crate started with a thin IronCalc facade, vendored IronCalc fork, core recalc tests, real `SUMPRODUCT`, scalar `LET` shim PoC, and `xlcore-bridge` OOXML harvest/recalc/writeback API for scalar formula cached `<v>` values plus recalculated layout extraction. Shared formulas are expanded for ordinary A1-style refs; unsupported formula cells preserve source caches with diagnostics. Arrays, structured refs, and most modern functions still missing. See `docs/parity-engine.md`. |
 | Modern/dynamic functions | 🟡 | `SUMPRODUCT` implemented in fork; scalar `LET` shim only. Missing real `LET`, `LAMBDA`, `FILTER`, `SORT`, `UNIQUE`, `SEQUENCE`, arrays |
+
+## Workbook API
+
+| Feature | State | Notes |
+| --- | --- | --- |
+| Extraction API | ✅ | `xlcore-wasm` exposes extraction for browser/worker preview. |
+| Mutation API | 🟡 | `xlcore-api` now provides the first Rust facade for open/save, sheet list/create/rename/delete, A1 get/set value, set formula, clear, batch, recalc, and layout. `xlcore-wasm` exposes a stateful `WorkbookHandle`, and `packages/xlsx-preview/src/api.ts` wraps it for TypeScript. Range operations, styles, row/column edits, and object writes are still open. See `docs/parity-api.md`. |
+| Create-from-scratch API | 🟡 | Blank workbook creation works through Rust/WASM/TypeScript with scalar values and formulas. Rich workbook generation remains P1/P2. |
 
 ## Major open work
 
 | Area | Status |
 | --- | --- |
 | Formula engine / recalc | ❌ |
+| Workbook manipulation API | 🟡 |
 | Split panes | ❌ |
 | RTL sheets | ❌ |
 | Data validation UI | ❌ |

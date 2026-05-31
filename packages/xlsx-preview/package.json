@@ -46,6 +46,7 @@
     "check:loc": "tsx scripts/check-loc.ts",
     "dev": "esbuild src/browser.ts --outfile=dist/browser.js --target=es2022 --platform=browser --format=iife --bundle --watch",
     "preview": "pnpm run build:ts && node scripts/preview.mjs",
+    "smoke:api": "pnpm run build:ts && node scripts/smoke-api.mjs",
     "smoke:csv": "pnpm run build:ts && node scripts/smoke-csv.mjs",
     "smoke:parquet": "pnpm run build:ts && node scripts/smoke-parquet.mjs",
     "format": "biome format --write .",
@@ -72,6 +73,10 @@
     "./node": {
       "import": "./dist/node.js",
       "types": "./dist/node.d.ts"
+    },
+    "./api": {
+      "import": "./dist/api.js",
+      "types": "./dist/api.d.ts"
     },
     "./react": {
       "import": "./dist/react.js",

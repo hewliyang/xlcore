@@ -6,6 +6,7 @@ members = [
     "crates/xlcore-export",
     "crates/xlcore-engine",
     "crates/xlcore-bridge",
+    "crates/xlcore-api",
     "crates/xlcore-tabular",
     "crates/xlcore-cli",
     "crates/xlcore-wasm",

@@ -164,6 +164,121 @@ pub fn extract_parquet(bytes: Vec<u8>, options: JsValue) -> Result<JsValue, JsVa
     serde_wasm_bindgen::to_value(&envelope).map_err(other_err_to_js)
 }
 
+#[wasm_bindgen]
+pub struct WorkbookHandle {
+    workbook: Option<xlcore_api::Workbook>,
+}
+
+#[wasm_bindgen]
+impl WorkbookHandle {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Result<WorkbookHandle, JsValue> {
+        Ok(Self {
+            workbook: Some(xlcore_api::Workbook::new().map_err(api_err_to_js)?),
+        })
+    }
+
+    pub fn open(bytes: Vec<u8>) -> Result<WorkbookHandle, JsValue> {
+        Ok(Self {
+            workbook: Some(xlcore_api::Workbook::open_bytes(bytes).map_err(api_err_to_js)?),
+        })
+    }
+
+    pub fn sheets(&mut self) -> Result<JsValue, JsValue> {
+        let sheets = self.workbook_mut()?.sheets().map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&sheets).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = getCell)]
+    pub fn get_cell(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let cell = self
+            .workbook_mut()?
+            .get_cell(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&cell).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setValue)]
+    pub fn set_value(&mut self, reference: &str, value: JsValue) -> Result<JsValue, JsValue> {
+        let value = cell_value_from_js(value)?;
+        let cell = self
+            .workbook_mut()?
+            .set_value(reference, value)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&cell).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setFormula)]
+    pub fn set_formula(&mut self, reference: &str, formula: &str) -> Result<JsValue, JsValue> {
+        let cell = self
+            .workbook_mut()?
+            .set_formula(reference, formula)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&cell).map_err(other_err_to_js)
+    }
+
+    pub fn clear(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let cell = self
+            .workbook_mut()?
+            .clear(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&cell).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = createSheet)]
+    pub fn create_sheet(&mut self, name: &str) -> Result<JsValue, JsValue> {
+        let sheet = self
+            .workbook_mut()?
+            .create_sheet(name)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&sheet).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = renameSheet)]
+    pub fn rename_sheet(&mut self, old_name: &str, new_name: &str) -> Result<(), JsValue> {
+        self.workbook_mut()?
+            .rename_sheet(old_name, new_name)
+            .map_err(api_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = deleteSheet)]
+    pub fn delete_sheet(&mut self, name: &str) -> Result<(), JsValue> {
+        self.workbook_mut()?
+            .delete_sheet(name)
+            .map_err(api_err_to_js)
+    }
+
+    pub fn recalculate(&mut self) -> Result<JsValue, JsValue> {
+        let recalculated = self.workbook_mut()?.recalculate().map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&recalculated).map_err(other_err_to_js)
+    }
+
+    pub fn layout(&mut self, options: JsValue) -> Result<JsValue, JsValue> {
+        let options = parse_layout_options(options)?;
+        let layout = self
+            .workbook_mut()?
+            .layout(options)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&layout).map_err(other_err_to_js)
+    }
+
+    pub fn save(&mut self) -> Result<Vec<u8>, JsValue> {
+        self.workbook_mut()?.save_bytes().map_err(api_err_to_js)
+    }
+
+    pub fn dispose(&mut self) {
+        self.workbook = None;
+    }
+}
+
+impl WorkbookHandle {
+    fn workbook_mut(&mut self) -> Result<&mut xlcore_api::Workbook, JsValue> {
+        self.workbook
+            .as_mut()
+            .ok_or_else(|| other_err_to_js("workbook handle has been disposed"))
+    }
+}
+
 fn run_extract(
     bytes: Vec<u8>,
     options: JsValue,
@@ -189,27 +304,64 @@ fn parse_options(options: JsValue) -> Result<WasmExtractOptions, JsValue> {
     }
 }
 
+fn parse_layout_options(options: JsValue) -> Result<xlcore_api::LayoutOptions, JsValue> {
+    if options.is_null() || options.is_undefined() {
+        Ok(xlcore_api::LayoutOptions::default())
+    } else {
+        serde_wasm_bindgen::from_value(options).map_err(other_err_to_js)
+    }
+}
+
+fn cell_value_from_js(value: JsValue) -> Result<xlcore_api::CellValue, JsValue> {
+    if value.is_null() || value.is_undefined() {
+        return Ok(xlcore_api::CellValue::Blank);
+    }
+    if let Some(value) = value.as_bool() {
+        return Ok(xlcore_api::CellValue::Boolean(value));
+    }
+    if let Some(value) = value.as_f64() {
+        return Ok(xlcore_api::CellValue::Number(value));
+    }
+    if let Some(value) = value.as_string() {
+        if value.starts_with('#') {
+            return Ok(xlcore_api::CellValue::Error(value));
+        }
+        return Ok(xlcore_api::CellValue::String(value));
+    }
+    serde_wasm_bindgen::from_value(value).map_err(other_err_to_js)
+}
+
+fn api_err_to_js(err: xlcore_api::ApiError) -> JsValue {
+    let js_err = js_sys::Error::new(&err.message);
+    if let Ok(payload_val) = serde_wasm_bindgen::to_value(&err) {
+        copy_object_entries_to_error(&js_err, payload_val);
+    }
+    js_err.into()
+}
+
 fn load_err_to_js(err: XlsxLoadError) -> JsValue {
     let payload = WasmErrorPayload::from_load_error(&err);
     let js_err = js_sys::Error::new(&payload.message);
 
     if let Ok(payload_val) = serde_wasm_bindgen::to_value(&payload) {
-        if let Ok(entries) =
-            js_sys::Object::entries(&payload_val.into()).dyn_into::<js_sys::Array>()
-        {
-            for entry in entries.iter() {
-                let Ok(pair) = entry.dyn_into::<js_sys::Array>() else {
-                    continue;
-                };
-                let key = pair.get(0);
-                let value = pair.get(1);
-                let _ = js_sys::Reflect::set(&js_err, &key, &value);
-            }
-        }
+        copy_object_entries_to_error(&js_err, payload_val);
     }
     js_err.into()
 }
 
 fn other_err_to_js(err: impl std::fmt::Display) -> JsValue {
     js_sys::Error::new(&err.to_string()).into()
+}
+
+fn copy_object_entries_to_error(js_err: &js_sys::Error, payload_val: JsValue) {
+    if let Ok(entries) = js_sys::Object::entries(&payload_val.into()).dyn_into::<js_sys::Array>() {
+        for entry in entries.iter() {
+            let Ok(pair) = entry.dyn_into::<js_sys::Array>() else {
+                continue;
+            };
+            let key = pair.get(0);
+            let value = pair.get(1);
+            let _ = js_sys::Reflect::set(js_err, &key, &value);
+        }
+    }
 }
