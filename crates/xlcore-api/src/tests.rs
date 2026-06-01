@@ -3384,6 +3384,7 @@ fn images_create_list_remove_roundtrip() {
             },
             bytes: PNG_1X1.to_vec(),
             format: None,
+            ..Default::default()
         })
         .unwrap();
     assert_eq!(info.sheet, "Sheet1");
@@ -3413,6 +3414,90 @@ fn images_create_list_remove_roundtrip() {
 }
 
 #[test]
+fn images_rotation_crop_flip_roundtrip() {
+    let mut wb = Workbook::new().unwrap();
+    let info = wb
+        .set_image(ImagePatch {
+            sheet: "Sheet1".to_string(),
+            name: Some("Rotated".to_string()),
+            anchor: ChartAnchor {
+                from_column: 0,
+                from_row: 0,
+                to_column: 4,
+                to_row: 8,
+                ..Default::default()
+            },
+            bytes: PNG_1X1.to_vec(),
+            format: None,
+            rotation_degrees: Some(90.0),
+            crop_left_pct: Some(10.0),
+            crop_top_pct: Some(20.0),
+            crop_right_pct: Some(5.0),
+            crop_bottom_pct: Some(15.0),
+            flip_horizontal: Some(true),
+            flip_vertical: Some(false),
+        })
+        .unwrap();
+    assert_eq!(info.rotation_degrees, 90.0);
+    assert_eq!(info.crop_left_pct, 10.0);
+    assert!(info.flip_horizontal);
+    assert!(!info.flip_vertical);
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let images = reopened.images(None).unwrap();
+    assert_eq!(images.len(), 1);
+    let got = &images[0];
+    assert!((got.rotation_degrees - 90.0).abs() < 1e-3);
+    assert!((got.crop_left_pct - 10.0).abs() < 1e-3);
+    assert!((got.crop_top_pct - 20.0).abs() < 1e-3);
+    assert!((got.crop_right_pct - 5.0).abs() < 1e-3);
+    assert!((got.crop_bottom_pct - 15.0).abs() < 1e-3);
+    assert!(got.flip_horizontal);
+    assert!(!got.flip_vertical);
+}
+
+#[test]
+fn images_rejects_non_finite_rotation_and_crop() {
+    let mut wb = Workbook::new().unwrap();
+    let err = wb
+        .set_image(ImagePatch {
+            sheet: "Sheet1".to_string(),
+            name: None,
+            anchor: ChartAnchor::default(),
+            bytes: PNG_1X1.to_vec(),
+            format: None,
+            rotation_degrees: Some(f64::NAN),
+            crop_left_pct: None,
+            crop_top_pct: None,
+            crop_right_pct: None,
+            crop_bottom_pct: None,
+            flip_horizontal: None,
+            flip_vertical: None,
+        })
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidImage);
+
+    let err = wb
+        .set_image(ImagePatch {
+            sheet: "Sheet1".to_string(),
+            name: None,
+            anchor: ChartAnchor::default(),
+            bytes: PNG_1X1.to_vec(),
+            format: None,
+            rotation_degrees: None,
+            crop_left_pct: Some(f64::INFINITY),
+            crop_top_pct: None,
+            crop_right_pct: None,
+            crop_bottom_pct: None,
+            flip_horizontal: None,
+            flip_vertical: None,
+        })
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidImage);
+}
+
+#[test]
 fn images_rejects_empty_bytes_and_unknown_format() {
     let mut wb = Workbook::new().unwrap();
     let err = wb
@@ -3422,6 +3507,7 @@ fn images_rejects_empty_bytes_and_unknown_format() {
             anchor: ChartAnchor::default(),
             bytes: Vec::new(),
             format: None,
+            ..Default::default()
         })
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidImage);
@@ -3433,6 +3519,7 @@ fn images_rejects_empty_bytes_and_unknown_format() {
             anchor: ChartAnchor::default(),
             bytes: b"not an image".to_vec(),
             format: None,
+            ..Default::default()
         })
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidImage);

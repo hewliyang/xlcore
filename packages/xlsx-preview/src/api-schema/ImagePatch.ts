@@ -8,4 +8,11 @@ export type ImagePatch = {
   anchor: ChartAnchor;
   bytes: Uint8Array | number[];
   format?: ImageFormat;
+  rotationDegrees?: number;
+  cropLeftPct?: number;
+  cropTopPct?: number;
+  cropRightPct?: number;
+  cropBottomPct?: number;
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
 };

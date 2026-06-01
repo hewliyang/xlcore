@@ -3,7 +3,8 @@ use ooxmlsdk::parts::image_part::ImagePart;
 use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_drawing as xdr;
-use ooxmlsdk::simple_type::CoordinateValue;
+use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
+use ooxmlsdk::units::DrawingmlPercentageValue;
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
     ApiError, ApiErrorCode, ChartAnchor, ImageFormat, ImageInfo, ImagePatch,
@@ -78,6 +79,10 @@ impl Workbook {
                 } else {
                     name_raw.to_string()
                 };
+                let (rotation_degrees, flip_horizontal, flip_vertical) =
+                    picture_rotation_flip(pic);
+                let (crop_left_pct, crop_top_pct, crop_right_pct, crop_bottom_pct) =
+                    picture_crop_pct(pic);
                 out.push(ImageInfo {
                     sheet: sheet_name.clone(),
                     id: rid,
@@ -85,6 +90,13 @@ impl Workbook {
                     anchor,
                     format,
                     byte_len: bytes,
+                    rotation_degrees,
+                    crop_left_pct,
+                    crop_top_pct,
+                    crop_right_pct,
+                    crop_bottom_pct,
+                    flip_horizontal,
+                    flip_vertical,
                 });
             }
         }
@@ -106,6 +118,11 @@ impl Workbook {
             )
             .with_sheet(&patch.sheet));
         }
+        let rotation_emu = match patch.rotation_degrees {
+            Some(d) => Some(degrees_to_rot60000(d, &patch.sheet)?),
+            None => None,
+        };
+        let src_rect = build_source_rectangle(&patch, &patch.sheet)?;
         let format = match patch.format {
             Some(f) => f,
             None => ImageFormat::sniff(&patch.bytes).ok_or_else(|| {
@@ -166,7 +183,16 @@ impl Workbook {
         let pic_index = drawing.worksheet_drawing_choice.len() + 1;
         let pic_name = patch.name.clone().unwrap_or_else(|| format!("Image {pic_index}"));
 
-        let anchor = build_picture_two_cell_anchor(&patch.anchor, pic_index, &pic_name, &image_rid);
+        let anchor = build_picture_two_cell_anchor(
+            &patch.anchor,
+            pic_index,
+            &pic_name,
+            &image_rid,
+            rotation_emu,
+            patch.flip_horizontal.unwrap_or(false),
+            patch.flip_vertical.unwrap_or(false),
+            src_rect.clone(),
+        );
 
         let drawing_mut = drawings_part
             .root_element_mut(&mut self.doc)
@@ -182,6 +208,13 @@ impl Workbook {
             anchor: patch.anchor,
             format,
             byte_len: patch.bytes.len() as u64,
+            rotation_degrees: patch.rotation_degrees.unwrap_or(0.0),
+            crop_left_pct: patch.crop_left_pct.unwrap_or(0.0),
+            crop_top_pct: patch.crop_top_pct.unwrap_or(0.0),
+            crop_right_pct: patch.crop_right_pct.unwrap_or(0.0),
+            crop_bottom_pct: patch.crop_bottom_pct.unwrap_or(0.0),
+            flip_horizontal: patch.flip_horizontal.unwrap_or(false),
+            flip_vertical: patch.flip_vertical.unwrap_or(false),
         })
     }
 
@@ -239,6 +272,75 @@ fn picture_embed_rid(pic: &xdr::Picture) -> Option<String> {
         .map(|s| s.as_str().to_string())
 }
 
+fn picture_rotation_flip(pic: &xdr::Picture) -> (f64, bool, bool) {
+    let Some(xfrm) = pic.shape_properties.transform2_d.as_ref() else {
+        return (0.0, false, false);
+    };
+    let rot = xfrm.rotation.map(|r| r as f64 / 60_000.0).unwrap_or(0.0);
+    let fh = xfrm.horizontal_flip.map(bool::from).unwrap_or(false);
+    let fv = xfrm.vertical_flip.map(bool::from).unwrap_or(false);
+    (rot, fh, fv)
+}
+
+fn picture_crop_pct(pic: &xdr::Picture) -> (f64, f64, f64, f64) {
+    let Some(rect) = pic.blip_fill.source_rectangle.as_ref() else {
+        return (0.0, 0.0, 0.0, 0.0);
+    };
+    let f = |v: Option<DrawingmlPercentageValue>| {
+        v.map(|p| p.as_drawingml_percent() as f64 / 1000.0)
+            .unwrap_or(0.0)
+    };
+    (f(rect.left), f(rect.top), f(rect.right), f(rect.bottom))
+}
+
+fn degrees_to_rot60000(deg: f64, sheet: &str) -> Result<i32> {
+    if !deg.is_finite() {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidImage,
+            "rotation_degrees must be finite",
+        )
+        .with_sheet(sheet));
+    }
+    let normalized = deg.rem_euclid(360.0);
+    Ok((normalized * 60_000.0).round() as i32)
+}
+
+fn pct_to_drawingml(value: f64, field: &str, sheet: &str) -> Result<DrawingmlPercentageValue> {
+    if !value.is_finite() {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidImage,
+            format!("{field} must be finite"),
+        )
+        .with_sheet(sheet));
+    }
+    Ok(DrawingmlPercentageValue::Decimal(
+        (value * 1000.0).round() as i32,
+    ))
+}
+
+fn build_source_rectangle(patch: &ImagePatch, sheet: &str) -> Result<Option<a::SourceRectangle>> {
+    if patch.crop_left_pct.is_none()
+        && patch.crop_top_pct.is_none()
+        && patch.crop_right_pct.is_none()
+        && patch.crop_bottom_pct.is_none()
+    {
+        return Ok(None);
+    }
+    let mk = |v: Option<f64>, name: &str| -> Result<Option<DrawingmlPercentageValue>> {
+        match v {
+            Some(x) => Ok(Some(pct_to_drawingml(x, name, sheet)?)),
+            None => Ok(None),
+        }
+    };
+    Ok(Some(a::SourceRectangle {
+        left: mk(patch.crop_left_pct, "crop_left_pct")?,
+        top: mk(patch.crop_top_pct, "crop_top_pct")?,
+        right: mk(patch.crop_right_pct, "crop_right_pct")?,
+        bottom: mk(patch.crop_bottom_pct, "crop_bottom_pct")?,
+        ..Default::default()
+    }))
+}
+
 fn two_cell_anchor_to_chart_anchor(anchor: &xdr::TwoCellAnchor) -> ChartAnchor {
     let from = &anchor.from_marker;
     let to = &anchor.to_marker;
@@ -273,6 +375,10 @@ fn build_picture_two_cell_anchor(
     pic_index: usize,
     pic_name: &str,
     embed_rid: &str,
+    rotation_60000ths: Option<i32>,
+    flip_h: bool,
+    flip_v: bool,
+    src_rect: Option<a::SourceRectangle>,
 ) -> xdr::TwoCellAnchor {
     let from = xdr::FromMarker {
         column_id: anchor.from_column as i32,
@@ -308,6 +414,7 @@ fn build_picture_two_cell_anchor(
     };
     let blip_fill = xdr::BlipFill {
         blip: Some(Box::new(blip)),
+        source_rectangle: src_rect,
         blip_fill_choice: Some(xdr::BlipFillChoice::Stretch(Box::new(a::Stretch {
             fill_rectangle: Some(a::FillRectangle::default()),
             ..Default::default()
@@ -321,6 +428,17 @@ fn build_picture_two_cell_anchor(
         ..Default::default()
     };
     let xfrm = a::Transform2D {
+        rotation: rotation_60000ths,
+        horizontal_flip: if flip_h {
+            Some(BooleanValue::from_bool(true))
+        } else {
+            None
+        },
+        vertical_flip: if flip_v {
+            Some(BooleanValue::from_bool(true))
+        } else {
+            None
+        },
         offset: Some(a::Offset {
             x: CoordinateValue::Emu(0),
             y: CoordinateValue::Emu(0),

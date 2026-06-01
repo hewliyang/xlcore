@@ -56,8 +56,9 @@ Known gaps:
   fonts). SpreadJS applies its own theme so authored charts render more
   modernly there. Richer chart features (combo, dual axis, chartEx,
   marker/line styling, data labels, modern chartStyle/colorStyle
-  companion parts) remain preserve-only. Images, shapes, sparklines, and
-  pivot tables are still preserve-only — no authoring API yet. Sparkline
+  companion parts) remain preserve-only. Image authoring now covers
+  position, rotation, flips, and crop; shapes and pivot tables are still
+  preserve-only — no authoring API yet. Sparkline
   groups now author/list/remove (line/column/win-loss stacked, per-cell
   location + dataRef, markers/high/low/first/last/negative/displayXAxis
   flags, per-color palette, axis types + manual min/max, line weight).
@@ -280,7 +281,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `invalid_auto_filter` | Auto-filter column patch references a non-existent filter, an out-of-range column offset, or an empty/unsupported criteria shape |
 | `invalid_conditional_format` | Conditional format rule patch is missing required formula/operator/text for the rule kind, or has a non-positive priority |
 | `invalid_chart` | Chart patch has no series, or a series `values_ref` is empty |
-| `invalid_image` | Image patch has empty bytes or an unrecognized format that wasn't explicitly specified |
+| `invalid_image` | Image patch has empty bytes, an unrecognized format that wasn't explicitly specified, or a non-finite rotation/crop value |
 | `invalid_sparkline_group` | Sparkline group patch has no entries, an invalid location/dataRef, or a non-RRGGBB color |
 | `unsupported_formula` | Formula could not be evaluated; source/cache preserved where possible |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |

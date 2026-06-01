@@ -9,4 +9,11 @@ export type ImageInfo = {
   anchor: ChartAnchor;
   format: ImageFormat;
   byteLen: bigint;
+  rotationDegrees: number;
+  cropLeftPct: number;
+  cropTopPct: number;
+  cropRightPct: number;
+  cropBottomPct: number;
+  flipHorizontal: boolean;
+  flipVertical: boolean;
 };

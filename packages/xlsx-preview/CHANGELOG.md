@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Image authoring: `ImagePatch` / `ImageInfo` gain `rotationDegrees` (°, normalized mod 360, written as `rot` in 60000ths on `<a:xfrm>`), `cropLeftPct`/`cropTopPct`/`cropRightPct`/`cropBottomPct` (% on `<a:srcRect>` l/t/r/b, 1000ths-of-a-percent units), and `flipHorizontal`/`flipVertical` (`<a:xfrm flipH/flipV>`). Round-trips through save/reopen. New `invalid_image` cases for non-finite rotation/crop values.
 - Sparkline group authoring: `sparklineGroups(sheet?)` / `setSparklineGroup(patch)` / `removeSparklineGroup(sheet, id)` with `SparklineKind` (`line` | `column` | `stacked`), `SparklineEntry { location, dataRef }`, axis kinds + manual min/max, line weight, full color palette (series/negative/axis/markers/first/last/high/low). New `invalid_sparkline_group` error.
 - Chart authoring: `ChartKind` gains `scatter` | `bubble` | `doughnut`. Scatter/bubble series take `xValuesRef` (required) + `valuesRef` (yVal); bubble adds `bubbleSizesRef` (required). Per-series solid color via `ChartSeriesPatch.color` (`RRGGBB` hex, `#` accepted). Axis titles via `ChartPatch.categoryAxisTitle` / `valueAxisTitle`. New `invalid_chart` errors for missing xVal on scatter/bubble, missing bubble sizes, and non-hex color.
 
