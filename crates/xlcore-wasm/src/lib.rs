@@ -546,6 +546,19 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&sheet).map_err(other_err_to_js)
     }
 
+    pub fn search(&mut self, query: &str, options: JsValue) -> Result<JsValue, JsValue> {
+        let options: xlcore_api::SearchOptions = if options.is_null() || options.is_undefined() {
+            xlcore_api::SearchOptions::default()
+        } else {
+            serde_wasm_bindgen::from_value(options).map_err(other_err_to_js)?
+        };
+        let hits = self
+            .workbook_mut()?
+            .search(query, options)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&hits).map_err(other_err_to_js)
+    }
+
     pub fn recalculate(&mut self) -> Result<JsValue, JsValue> {
         let recalculated = self.workbook_mut()?.recalculate().map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&recalculated).map_err(other_err_to_js)

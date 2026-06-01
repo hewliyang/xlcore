@@ -16,6 +16,7 @@ pub enum ApiErrorCode {
     ShapeMismatch,
     UnsupportedStyle,
     MergeOverlap,
+    InvalidSearchQuery,
     OoxmlWriteError,
     Other,
 }
@@ -433,6 +434,92 @@ pub struct RangeInfo {
     pub columns: u32,
     pub values: Vec<Vec<ApiCellValue>>,
     pub formulas: Vec<Vec<Option<String>>>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub enum SearchTarget {
+    #[default]
+    Values,
+    Formulas,
+    Both,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub enum SearchMode {
+    #[default]
+    Substring,
+    Exact,
+    Wildcard,
+    Regex,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub enum SearchHit {
+    Value,
+    Formula,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchOptions {
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sheet: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<String>,
+    #[serde(default)]
+    pub target: SearchTarget,
+    #[serde(default)]
+    pub mode: SearchMode,
+    #[serde(default)]
+    pub case_sensitive: bool,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_results: Option<usize>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchMatch {
+    pub sheet: String,
+    pub reference: String,
+    pub row: u32,
+    pub column: u32,
+    pub hit: SearchHit,
+    pub matched: String,
+    pub value: ApiCellValue,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub formula: Option<String>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

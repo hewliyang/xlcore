@@ -5,6 +5,7 @@ mod merges;
 mod ranges;
 mod refs;
 mod rowcols;
+mod search;
 mod sheets;
 mod structural;
 mod styles;
@@ -15,8 +16,9 @@ use std::path::Path;
 pub use xlcore_types::{
     AlignmentPatch, ApiCellValue, ApiCellValue as CellValue, ApiError, ApiErrorCode,
     BorderLinePatch, BorderLineStyle, BorderPatch, CellInfo, ClearMode, FillPatch, FontPatch,
-    FreezeInfo, HorizontalAlign, LayoutOptions, MergeInfo, RangeInfo, SheetInfo, SheetVisibility,
-    StylePatch, UnderlinePatch, VerticalAlign,
+    FreezeInfo, HorizontalAlign, LayoutOptions, MergeInfo, RangeInfo, SearchHit, SearchMatch,
+    SearchMode, SearchOptions, SearchTarget, SheetInfo, SheetVisibility, StylePatch,
+    UnderlinePatch, VerticalAlign,
 };
 
 use crate::errors::{anyhow_err_to_api, load_err_to_api};

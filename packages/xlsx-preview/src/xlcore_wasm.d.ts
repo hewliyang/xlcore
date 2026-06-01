@@ -30,6 +30,7 @@ export class WorkbookHandle {
     removeMerge(reference: string): any;
     renameSheet(old_name: string, new_name: string): void;
     save(): Uint8Array;
+    search(query: string, options: any): any;
     setActiveSheet(name: string): any;
     setColumnVisible(sheet: string, column: number, visible: boolean): void;
     setColumnWidth(sheet: string, column: number, width: number): void;
@@ -88,6 +89,7 @@ export interface InitOutput {
     readonly workbookhandle_removeMerge: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_renameSheet: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_save: (a: number, b: number) => void;
+    readonly workbookhandle_search: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setActiveSheet: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_setColumnVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setColumnWidth: (a: number, b: number, c: number, d: number, e: number, f: number) => void;

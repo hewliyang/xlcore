@@ -28,6 +28,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
 thiserror = "1"
+regex = "1"
 ironcalc_base = { path = "crates/ironcalc-base" }
 # Used only by opt-in `typescript` features. Keeping it out of default CLI
 # builds avoids expanding TS proc macros on every edit.

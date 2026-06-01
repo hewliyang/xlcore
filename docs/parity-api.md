@@ -43,8 +43,6 @@ Implemented:
 Known gaps:
 
 - Style write surface limited to font/fill/border/alignment/number format patch
-- No row/column structural edits
-- No merges
 - No comments, hyperlinks, tables, names, validation, or object authoring
 - Batch is a simple Rust closure, not a diagnostic/transaction envelope
 
@@ -78,7 +76,7 @@ Status key:
 | Freeze panes | `frozenRowCount/frozenColumnCount` | Freeze/unfreeze panes | Done | Rust API + save/reopen |
 | Merges | `addSpan/removeSpan/getSpans` | Merge/unmerge/list merged ranges | Done | Rust API + TS smoke |
 | Selections/view state | `setSelection/getSelections/showCell` | Persist active cell/selection only if OOXML-backed and useful | Later | OOXML inspection |
-| Search | `Worksheet.search` | Search values/formulas across sheets | P1 | Rust API + TS smoke |
+| Search | `Worksheet.search` | Search values/formulas across sheets | Done | Rust API + TS smoke |
 | Copy/paste/fill | `copyTo`, fill APIs | Copy ranges, fill down/right, translate relative formulas | Done | Rust API + TS smoke |
 | Dependencies | Calc engine refs/deps behavior | Precedents/dependents from formula graph | P1 | Rust API + xlcore-engine |
 | Defined names | `Workbook.names`, `NameInfo` | List/create/update/delete workbook and sheet names | P1 | OOXML + formulas |
@@ -154,6 +152,32 @@ Fixture builders:
 - Do not require byte-for-byte parity with SpreadJS. Compare semantic workbook
   state, rendered output, object inventory, and selected OOXML invariants.
 
+## Manual Validation With `hsx`
+
+For any structural edit (`insert_rows`, `delete_columns`, `copy_range`,
+`fill_range`, merges, freeze, defined-name shifts), the quickest sanity check is
+to apply the op through `xlcore-api`, save the workbook, and read it back
+through `hsx`. `hsx` (SpreadJS) is the authority on what an Excel-side consumer
+actually sees.
+
+Loop:
+
+1. Write a throwaway driver under `crates/xlcore-api/examples/`
+   (`cargo run -p xlcore-api --example <name>`) that builds the workbook,
+   applies the op, and `save_path`s to `/tmp/<scenario>.xlsx`. Don't commit it.
+2. Inspect with `hsx`:
+   - `hsx --no-daemon get <file> <Sheet!Range> --formulas` — values + formulas
+     as SpreadJS reads them.
+   - `hsx --no-daemon info <file>` — sheet list + used range.
+3. For OOXML facts `hsx` doesn't surface (merges, panes, defined names),
+   `unzip -p <file> xl/worksheets/sheetN.xml | rg -o '<mergeCell[^/]*/>'`
+   etc. is fine.
+4. If the output disagrees with what Excel would show, the bug is in xlcore;
+   fix and re-run.
+
+This is a local-only loop. `hsx` is not a CI dependency and never imported from
+crates or packages.
+
 ## Diagnostics Contract
 
 Current errors are generated as `ApiError` and exposed to TS as `ApiError`.
@@ -170,6 +194,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `unsupported_formula` | Formula could not be evaluated; source/cache preserved where possible |
 | `unsupported_style` | Style patch contains values we cannot serialize (e.g. invalid color) |
 | `merge_overlap` | Requested merge overlaps an existing merge on the sheet |
+| `invalid_search_query` | Search query is empty or contains an invalid regex/wildcard pattern |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |
 | `ooxml_write_error` | Writer could not serialize a valid workbook |

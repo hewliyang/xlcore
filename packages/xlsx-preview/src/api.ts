@@ -8,6 +8,8 @@ import type {
   MergeInfo,
   RangeInfo,
   RecalcWorkbook,
+  SearchMatch,
+  SearchOptions,
   SheetInfo,
   SheetVisibility,
   StylePatch,
@@ -37,6 +39,11 @@ export type {
   RecalcCell,
   RecalcSheet,
   RecalcWorkbook,
+  SearchHit,
+  SearchMatch,
+  SearchMode,
+  SearchOptions,
+  SearchTarget,
   SheetInfo,
   SheetVisibility,
   StylePatch,
@@ -198,6 +205,18 @@ export class Workbook {
 
   getFreeze(sheet: string): FreezeInfo {
     return this.handle.getFreeze(sheet) as FreezeInfo;
+  }
+
+  search(query: string, options: Partial<SearchOptions> = {}): SearchMatch[] {
+    const full: SearchOptions = {
+      sheet: options.sheet,
+      range: options.range,
+      target: options.target ?? "values",
+      mode: options.mode ?? "substring",
+      caseSensitive: options.caseSensitive ?? false,
+      maxResults: options.maxResults,
+    };
+    return this.handle.search(query, full) as SearchMatch[];
   }
 
   recalculate(): RecalcWorkbook {

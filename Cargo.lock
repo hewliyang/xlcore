@@ -1394,6 +1394,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "ooxmlsdk",
+ "regex",
  "xlcore-bridge",
  "xlcore-engine",
  "xlcore-export",
