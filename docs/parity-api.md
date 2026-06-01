@@ -79,7 +79,7 @@ Status key:
 | Search | `Worksheet.search` | Search values/formulas across sheets | Done | Rust API + TS smoke |
 | Copy/paste/fill | `copyTo`, fill APIs | Copy ranges, fill down/right, translate relative formulas | Done | Rust API + TS smoke |
 | Dependencies | Calc engine refs/deps behavior | Precedents/dependents from formula graph | P1 | Rust API + xlcore-engine |
-| Defined names | `Workbook.names`, `NameInfo` | List/create/update/delete workbook and sheet names | P1 | OOXML + formulas |
+| Defined names | `Workbook.names`, `NameInfo` | List/create/update/delete workbook and sheet names | Done (engine resolution still missing) | Rust API + TS smoke |
 | Comments/notes | `Comments.CommentManager` | Add/edit/delete/list comments and threaded notes when present | P1 | Renderer + OOXML |
 | Hyperlinks | Worksheet hyperlink APIs | Add/edit/delete/list cell hyperlinks | Done | Rust API + save/reopen |
 | Tables | `Tables.TableManager`, `Table` | Create table from range, headers/totals, resize, style name | P1/P2 | Excel/hsx + renderer |
@@ -196,6 +196,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `merge_overlap` | Requested merge overlaps an existing merge on the sheet |
 | `invalid_hyperlink` | Hyperlink patch is missing both target and location, or has an empty target |
 | `invalid_search_query` | Search query is empty or contains an invalid regex/wildcard pattern |
+| `invalid_defined_name` | Defined name violates Excel naming rules or has empty formula |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |
 | `ooxml_write_error` | Writer could not serialize a valid workbook |

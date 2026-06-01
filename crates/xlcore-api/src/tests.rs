@@ -1233,3 +1233,119 @@
         file.read_to_string(&mut out).unwrap();
         Some(out)
     }
+
+    #[test]
+    fn defined_names_create_update_remove_and_round_trip() {
+        let mut wb = Workbook::new().unwrap();
+        wb.create_sheet("Inputs").unwrap();
+
+        let info = wb
+            .set_defined_name(DefinedNamePatch {
+                name: "TaxRate".to_string(),
+                formula: "Sheet1!$B$1".to_string(),
+                comment: Some("effective rate".to_string()),
+                ..Default::default()
+            })
+            .unwrap();
+        assert_eq!(info.name, "TaxRate");
+        assert!(info.scope.is_none());
+
+        wb.set_defined_name(DefinedNamePatch {
+            name: "LocalRange".to_string(),
+            formula: "$A$1:$B$10".to_string(),
+            scope: Some("Inputs".to_string()),
+            hidden: Some(true),
+            ..Default::default()
+        })
+        .unwrap();
+
+        let list = wb.defined_names().unwrap();
+        assert_eq!(list.len(), 2);
+        let local = list.iter().find(|d| d.name == "LocalRange").unwrap();
+        assert_eq!(local.scope.as_deref(), Some("Inputs"));
+        assert!(local.hidden);
+
+        wb.set_defined_name(DefinedNamePatch {
+            name: "TaxRate".to_string(),
+            formula: "Sheet1!$C$1".to_string(),
+            ..Default::default()
+        })
+        .unwrap();
+        let updated = wb
+            .defined_names()
+            .unwrap()
+            .into_iter()
+            .find(|d| d.name == "TaxRate")
+            .unwrap();
+        assert_eq!(updated.formula, "Sheet1!$C$1");
+        assert_eq!(updated.comment.as_deref(), None);
+
+        let bytes = wb.save_bytes().unwrap();
+        let mut reopened = Workbook::open_bytes(bytes).unwrap();
+        let after = reopened.defined_names().unwrap();
+        assert_eq!(after.len(), 2);
+
+        let removed = reopened
+            .remove_defined_name("LocalRange", Some("Inputs"))
+            .unwrap()
+            .unwrap();
+        assert_eq!(removed.name, "LocalRange");
+        assert_eq!(reopened.defined_names().unwrap().len(), 1);
+
+        assert!(reopened
+            .remove_defined_name("TaxRate", Some("Inputs"))
+            .unwrap()
+            .is_none());
+        assert!(reopened.remove_defined_name("TaxRate", None).unwrap().is_some());
+        assert!(reopened.defined_names().unwrap().is_empty());
+    }
+
+    #[test]
+    fn defined_names_validation_errors() {
+        let mut wb = Workbook::new().unwrap();
+        let err = wb
+            .set_defined_name(DefinedNamePatch {
+                name: "".to_string(),
+                formula: "Sheet1!$A$1".to_string(),
+                ..Default::default()
+            })
+            .unwrap_err();
+        assert_eq!(err.code, ApiErrorCode::InvalidDefinedName);
+
+        let err = wb
+            .set_defined_name(DefinedNamePatch {
+                name: "A1".to_string(),
+                formula: "Sheet1!$A$1".to_string(),
+                ..Default::default()
+            })
+            .unwrap_err();
+        assert_eq!(err.code, ApiErrorCode::InvalidDefinedName);
+
+        let err = wb
+            .set_defined_name(DefinedNamePatch {
+                name: "has space".to_string(),
+                formula: "Sheet1!$A$1".to_string(),
+                ..Default::default()
+            })
+            .unwrap_err();
+        assert_eq!(err.code, ApiErrorCode::InvalidDefinedName);
+
+        let err = wb
+            .set_defined_name(DefinedNamePatch {
+                name: "OK".to_string(),
+                formula: "   ".to_string(),
+                ..Default::default()
+            })
+            .unwrap_err();
+        assert_eq!(err.code, ApiErrorCode::InvalidDefinedName);
+
+        let err = wb
+            .set_defined_name(DefinedNamePatch {
+                name: "Scoped".to_string(),
+                formula: "$A$1".to_string(),
+                scope: Some("Ghost".to_string()),
+                ..Default::default()
+            })
+            .unwrap_err();
+        assert_eq!(err.code, ApiErrorCode::MissingSheet);
+    }

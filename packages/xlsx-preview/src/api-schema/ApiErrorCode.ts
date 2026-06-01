@@ -11,5 +11,6 @@ export type ApiErrorCode =
   | "merge_overlap"
   | "invalid_hyperlink"
   | "invalid_search_query"
+  | "invalid_defined_name"
   | "ooxml_write_error"
   | "other";

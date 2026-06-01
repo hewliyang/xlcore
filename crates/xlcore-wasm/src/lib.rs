@@ -344,6 +344,39 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = definedNames)]
+    pub fn defined_names(&mut self) -> Result<JsValue, JsValue> {
+        let list = self
+            .workbook_mut()?
+            .defined_names()
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setDefinedName)]
+    pub fn set_defined_name(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::DefinedNamePatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .set_defined_name(patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removeDefinedName)]
+    pub fn remove_defined_name(
+        &mut self,
+        name: &str,
+        scope: Option<String>,
+    ) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .remove_defined_name(name, scope.as_deref())
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = clearRange)]
     pub fn clear_range(&mut self, reference: &str) -> Result<JsValue, JsValue> {
         let range = self

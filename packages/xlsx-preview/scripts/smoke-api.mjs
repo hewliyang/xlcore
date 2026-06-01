@@ -149,6 +149,13 @@ if (freeze.frozenRows !== 1 || freeze.frozenColumns !== 2) {
   throw new Error("unexpected setFreeze result: " + JSON.stringify(freeze));
 }
 
+workbook.setDefinedName({ name: "TaxRate", formula: "Sheet1!$B$1" });
+workbook.setDefinedName({ name: "LocalRange", formula: "$A$1:$B$5", scope: "Inputs" });
+const names = workbook.definedNames();
+if (names.length !== 2 || !names.some((n) => n.name === "LocalRange" && n.scope === "Inputs")) {
+  throw new Error("unexpected definedNames: " + JSON.stringify(names));
+}
+
 const saved = workbook.save();
 const reopened = await Workbook.open(saved, { wasmBinaryUrl: wasm });
 const reopenedFreeze = reopened.getFreeze("Sheet1");
@@ -175,6 +182,15 @@ if (reopenedHidden?.state !== "hidden") {
   throw new Error("unexpected reopened hidden state: " + JSON.stringify(reopenedHidden));
 }
 
+const reopenedNames = reopened.definedNames();
+if (reopenedNames.length !== 2) {
+  throw new Error("unexpected reopened definedNames: " + JSON.stringify(reopenedNames));
+}
+const removedName = reopened.removeDefinedName("LocalRange", "Inputs");
+if (removedName?.name !== "LocalRange") {
+  throw new Error("unexpected removeDefinedName: " + JSON.stringify(removedName));
+}
+
 console.log(
   JSON.stringify({
     ok: true,
@@ -182,5 +198,6 @@ console.log(
     c1,
     merges: reopenedMerges.length,
     active: reopenedActive?.name,
+    definedNames: reopened.definedNames().length,
   }),
 );

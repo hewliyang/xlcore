@@ -3,6 +3,8 @@ import type {
   ApiCellValue,
   CellInfo,
   ClearMode,
+  DefinedNameInfo,
+  DefinedNamePatch,
   FreezeInfo,
   HyperlinkInfo,
   HyperlinkPatch,
@@ -29,6 +31,8 @@ export type {
   BorderPatch,
   CellInfo,
   ClearMode,
+  DefinedNameInfo,
+  DefinedNamePatch,
   EngineCellValue,
   FillPatch,
   FontPatch,
@@ -157,6 +161,18 @@ export class Workbook {
 
   removeHyperlink(reference: string): HyperlinkInfo[] {
     return this.handle.removeHyperlink(reference) as HyperlinkInfo[];
+  }
+
+  definedNames(): DefinedNameInfo[] {
+    return this.handle.definedNames() as DefinedNameInfo[];
+  }
+
+  setDefinedName(patch: DefinedNamePatch): DefinedNameInfo {
+    return this.handle.setDefinedName(patch) as DefinedNameInfo;
+  }
+
+  removeDefinedName(name: string, scope?: string | null): DefinedNameInfo | null {
+    return (this.handle.removeDefinedName(name, scope ?? null) as DefinedNameInfo | null) ?? null;
   }
 
   createSheet(name: string): SheetInfo {

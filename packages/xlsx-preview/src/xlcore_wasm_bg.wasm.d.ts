@@ -13,6 +13,7 @@ export const workbookhandle_clearRangeWith: (a: number, b: number, c: number, d:
 export const workbookhandle_clearWith: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_copyRange: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_createSheet: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_definedNames: (a: number, b: number) => void;
 export const workbookhandle_deleteColumns: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_deleteRows: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_deleteSheet: (a: number, b: number, c: number, d: number) => void;
@@ -30,6 +31,7 @@ export const workbookhandle_moveSheet: (a: number, b: number, c: number, d: numb
 export const workbookhandle_new: (a: number) => void;
 export const workbookhandle_open: (a: number, b: number, c: number) => void;
 export const workbookhandle_recalculate: (a: number, b: number) => void;
+export const workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removeHyperlink: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeMerge: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_renameSheet: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
@@ -38,6 +40,7 @@ export const workbookhandle_search: (a: number, b: number, c: number, d: number,
 export const workbookhandle_setActiveSheet: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_setColumnVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setColumnWidth: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+export const workbookhandle_setDefinedName: (a: number, b: number, c: number) => void;
 export const workbookhandle_setFormula: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setFreeze: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setHyperlink: (a: number, b: number, c: number, d: number, e: number) => void;

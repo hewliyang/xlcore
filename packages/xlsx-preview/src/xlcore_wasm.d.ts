@@ -11,6 +11,7 @@ export class WorkbookHandle {
     clearWith(reference: string, mode: any): any;
     copyRange(src_reference: string, dst_reference: string): any;
     createSheet(name: string): any;
+    definedNames(): any;
     deleteColumns(sheet: string, start: number, count: number): void;
     deleteRows(sheet: string, start: number, count: number): void;
     deleteSheet(name: string): void;
@@ -28,6 +29,7 @@ export class WorkbookHandle {
     constructor();
     static open(bytes: Uint8Array): WorkbookHandle;
     recalculate(): any;
+    removeDefinedName(name: string, scope?: string | null): any;
     removeHyperlink(reference: string): any;
     removeMerge(reference: string): any;
     renameSheet(old_name: string, new_name: string): void;
@@ -36,6 +38,7 @@ export class WorkbookHandle {
     setActiveSheet(name: string): any;
     setColumnVisible(sheet: string, column: number, visible: boolean): void;
     setColumnWidth(sheet: string, column: number, width: number): void;
+    setDefinedName(patch: any): any;
     setFormula(reference: string, formula: string): any;
     setFreeze(sheet: string, frozen_rows: number, frozen_columns: number): any;
     setHyperlink(reference: string, patch: any): any;
@@ -73,6 +76,7 @@ export interface InitOutput {
     readonly workbookhandle_clearWith: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_copyRange: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_createSheet: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_definedNames: (a: number, b: number) => void;
     readonly workbookhandle_deleteColumns: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_deleteRows: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_deleteSheet: (a: number, b: number, c: number, d: number) => void;
@@ -90,6 +94,7 @@ export interface InitOutput {
     readonly workbookhandle_new: (a: number) => void;
     readonly workbookhandle_open: (a: number, b: number, c: number) => void;
     readonly workbookhandle_recalculate: (a: number, b: number) => void;
+    readonly workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_removeHyperlink: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeMerge: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_renameSheet: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
@@ -98,6 +103,7 @@ export interface InitOutput {
     readonly workbookhandle_setActiveSheet: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_setColumnVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setColumnWidth: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+    readonly workbookhandle_setDefinedName: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setFormula: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setFreeze: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setHyperlink: (a: number, b: number, c: number, d: number, e: number) => void;
