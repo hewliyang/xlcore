@@ -10,6 +10,7 @@ use xlcore_types::{ApiError, ApiErrorCode, ThreadedNoteInfo, ThreadedNotePatch};
 use crate::comments::{ensure_comments_part, is_threaded_shadow_author, upsert_author};
 use crate::errors::sdk_err_to_api;
 use crate::refs::ranges_overlap;
+use crate::vml_comments::sync_vml_comment_indicators;
 use crate::{Result, Workbook};
 
 impl Workbook {
@@ -71,6 +72,7 @@ impl Workbook {
         });
         let shadow_ws_part = self.worksheet_part_for_sheet(&cell_ref.sheet)?;
         write_classic_shadow(&mut self.doc, &shadow_ws_part, &cell_ref_str, &id, &patch.text)?;
+        sync_vml_comment_indicators(&mut self.doc, &shadow_ws_part)?;
 
         Ok(ThreadedNoteInfo {
             sheet: cell_ref.sheet,
@@ -122,6 +124,7 @@ impl Workbook {
         });
         let shadow_ws_part = self.worksheet_part_for_sheet(&sheet)?;
         write_classic_shadow(&mut self.doc, &shadow_ws_part, &parent_ref, &id, &patch.text)?;
+        sync_vml_comment_indicators(&mut self.doc, &shadow_ws_part)?;
 
         Ok(ThreadedNoteInfo {
             sheet,

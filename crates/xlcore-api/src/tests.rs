@@ -1763,6 +1763,46 @@ fn threaded_note_shadow_coexists_with_classic_comment() {
 }
 
 #[test]
+fn comment_emits_vml_legacy_drawing_indicator() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_comment(
+        "Sheet1!B3",
+        CommentPatch { text: "note".into(), author: Some("Mario".into()) },
+    )
+    .unwrap();
+    let bytes = wb.save_bytes().unwrap();
+
+    let cursor = std::io::Cursor::new(&bytes);
+    let mut zip = zip::ZipArchive::new(cursor).unwrap();
+    let names: Vec<String> = (0..zip.len())
+        .map(|i| zip.by_index(i).unwrap().name().to_string())
+        .collect();
+    let vml_name = names
+        .iter()
+        .find(|n| n.ends_with(".vml"))
+        .unwrap_or_else(|| panic!("vml drawing missing: {names:?}"))
+        .clone();
+    let mut buf = String::new();
+    use std::io::Read;
+    zip.by_name(&vml_name).unwrap().read_to_string(&mut buf).unwrap();
+    assert!(buf.contains("x:ClientData ObjectType=\"Note\""), "vml missing client data: {buf}");
+    assert!(buf.contains("<x:Row>2</x:Row>"), "vml missing row: {buf}");
+    assert!(buf.contains("<x:Column>1</x:Column>"), "vml missing column: {buf}");
+
+    let sheet_name = names
+        .iter()
+        .find(|n| n.starts_with("xl/worksheets/sheet") && n.ends_with(".xml"))
+        .unwrap()
+        .clone();
+    let mut sheet_buf = String::new();
+    zip.by_name(&sheet_name).unwrap().read_to_string(&mut sheet_buf).unwrap();
+    assert!(sheet_buf.contains("legacyDrawing"), "sheet missing legacyDrawing: {sheet_buf}");
+
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    assert_eq!(reopened.comments("Sheet1").unwrap().len(), 1);
+}
+
+#[test]
 fn auto_filter_set_get_remove_and_round_trip() {
     let mut wb = Workbook::new().unwrap();
     wb.set_range_values(

@@ -51,7 +51,9 @@ Known gaps:
 - Threaded notes (modern `<threadedComment>`) author/list/reply/remove
   shipped through `xlcore-api`, with legacy `tc=<guid>`-authored classic
   comment shadow now mirrored into `xl/comments<n>.xml` so older Excel
-  viewers see the thread. VML drawing indicators still not emitted.
+  viewers see the thread. VML drawing indicators are synthesized on
+  comment authoring when no `legacyDrawing` already exists (preserves
+  user-supplied VML on round-trip).
 - Batch returns a diagnostic envelope (`BatchOutcome { value, warnings, error }`)
   and a workbook-level warnings buffer is exposed via `warnings()` / `take_warnings()`
   (Rust, WASM, TS). Real warning emitters (lossy normalizations, unsupported
@@ -132,7 +134,7 @@ Status key:
 | Copy/paste/fill | `copyTo`, fill APIs | Copy ranges, fill down/right, translate relative formulas | Done | Rust API + TS smoke |
 | Dependencies | Calc engine refs/deps behavior | Precedents/dependents from formula graph | Done | Rust API + TS smoke |
 | Defined names | `Workbook.names`, `NameInfo` | List/create/update/delete workbook and sheet names | Done (engine resolution still missing) | Rust API + TS smoke |
-| Comments/notes | `Comments.CommentManager` | Add/edit/delete/list comments and threaded notes when present | Done (classic comments + threaded notes add/reply/list/remove + `tc=<guid>` classic shadow for legacy Excel; VML indicator drawing later) | Rust API + save/reopen |
+| Comments/notes | `Comments.CommentManager` | Add/edit/delete/list comments and threaded notes when present | Done (classic comments + threaded notes add/reply/list/remove + `tc=<guid>` classic shadow for legacy Excel + synthesized VML legacy drawing indicators on fresh files) | Rust API + save/reopen |
 | Hyperlinks | Worksheet hyperlink APIs | Add/edit/delete/list cell hyperlinks | Done | Rust API + save/reopen |
 | Tables | `Tables.TableManager`, `Table` | Create table from range, headers/totals, resize, style name | Done | Rust API + save/reopen |
 | AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | Done (range + per-column Top10/Custom/multi-value Values with optional blank) | Rust API + smoke |

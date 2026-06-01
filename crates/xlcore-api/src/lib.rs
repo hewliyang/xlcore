@@ -21,6 +21,7 @@ mod structural;
 mod styles;
 mod tables;
 mod threaded_notes;
+mod vml_comments;
 mod xml;
 
 use std::path::Path;
