@@ -529,7 +529,7 @@ fn builtin_num_fmt_id(code: &str) -> Option<u32> {
     }
 }
 
-fn parse_color(text: &str) -> Result<x::Color> {
+pub(crate) fn parse_color(text: &str) -> Result<x::Color> {
     let cleaned = text.trim().trim_start_matches('#').to_ascii_uppercase();
     let hex = match cleaned.len() {
         6 => format!("FF{cleaned}"),

@@ -2625,3 +2625,153 @@ fn conditional_format_rejects_missing_formula() {
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidConditionalFormat);
 }
+
+#[test]
+fn conditional_format_color_scale_round_trip() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook
+        .set_conditional_format(
+            "Sheet1!A1:A10",
+            ConditionalFormatRulePatch {
+                kind: CfRuleKind::ColorScale,
+                color_scale: Some(ColorScalePatch {
+                    values: vec![
+                        CfValueObject { kind: CfValueObjectKind::Min, value: None },
+                        CfValueObject { kind: CfValueObjectKind::Percentile, value: Some("50".into()) },
+                        CfValueObject { kind: CfValueObjectKind::Max, value: None },
+                    ],
+                    colors: vec!["#F8696B".into(), "#FFEB84".into(), "#63BE7B".into()],
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    let bytes = workbook.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let rules = reopened.conditional_formats("Sheet1").unwrap();
+    assert_eq!(rules.len(), 1);
+    let cs = rules[0].color_scale.as_ref().expect("color_scale");
+    assert_eq!(cs.values.len(), 3);
+    assert_eq!(cs.values[0].kind, CfValueObjectKind::Min);
+    assert_eq!(cs.values[1].kind, CfValueObjectKind::Percentile);
+    assert_eq!(cs.values[1].value.as_deref(), Some("50"));
+    assert_eq!(cs.colors.len(), 3);
+    assert!(cs.colors[0].to_uppercase().ends_with("F8696B"));
+}
+
+#[test]
+fn conditional_format_data_bar_round_trip() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook
+        .set_conditional_format(
+            "Sheet1!B1:B20",
+            ConditionalFormatRulePatch {
+                kind: CfRuleKind::DataBar,
+                data_bar: Some(DataBarPatch {
+                    min: CfValueObject { kind: CfValueObjectKind::Min, value: None },
+                    max: CfValueObject { kind: CfValueObjectKind::Max, value: None },
+                    color: "#638EC6".into(),
+                    min_length: Some(10),
+                    max_length: Some(90),
+                    show_value: Some(true),
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    let bytes = workbook.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let rules = reopened.conditional_formats("Sheet1").unwrap();
+    let db = rules[0].data_bar.as_ref().expect("data_bar");
+    assert_eq!(db.min.kind, CfValueObjectKind::Min);
+    assert_eq!(db.max.kind, CfValueObjectKind::Max);
+    assert_eq!(db.min_length, Some(10));
+    assert_eq!(db.max_length, Some(90));
+    assert_eq!(db.show_value, Some(true));
+    assert!(db.color.to_uppercase().ends_with("638EC6"));
+}
+
+#[test]
+fn conditional_format_icon_set_round_trip() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook
+        .set_conditional_format(
+            "Sheet1!C1:C30",
+            ConditionalFormatRulePatch {
+                kind: CfRuleKind::IconSet,
+                icon_set: Some(IconSetPatch {
+                    icon_set: CfIconSetKind::FourTrafficLights,
+                    values: vec![
+                        CfValueObject { kind: CfValueObjectKind::Percent, value: Some("0".into()) },
+                        CfValueObject { kind: CfValueObjectKind::Percent, value: Some("25".into()) },
+                        CfValueObject { kind: CfValueObjectKind::Percent, value: Some("50".into()) },
+                        CfValueObject { kind: CfValueObjectKind::Percent, value: Some("75".into()) },
+                    ],
+                    show_value: Some(false),
+                    percent: Some(true),
+                    reverse: Some(true),
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    let bytes = workbook.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let rules = reopened.conditional_formats("Sheet1").unwrap();
+    let is = rules[0].icon_set.as_ref().expect("icon_set");
+    assert_eq!(is.icon_set, CfIconSetKind::FourTrafficLights);
+    assert_eq!(is.values.len(), 4);
+    assert_eq!(is.show_value, Some(false));
+    assert_eq!(is.percent, Some(true));
+    assert_eq!(is.reverse, Some(true));
+}
+
+#[test]
+fn conditional_format_color_scale_rejects_mismatched_lengths() {
+    let mut workbook = Workbook::new().unwrap();
+    let err = workbook
+        .set_conditional_format(
+            "Sheet1!A1:A10",
+            ConditionalFormatRulePatch {
+                kind: CfRuleKind::ColorScale,
+                color_scale: Some(ColorScalePatch {
+                    values: vec![
+                        CfValueObject { kind: CfValueObjectKind::Min, value: None },
+                        CfValueObject { kind: CfValueObjectKind::Max, value: None },
+                    ],
+                    colors: vec!["#FF0000".into()],
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidConditionalFormat);
+}
+
+#[test]
+fn conditional_format_icon_set_rejects_wrong_arity() {
+    let mut workbook = Workbook::new().unwrap();
+    let err = workbook
+        .set_conditional_format(
+            "Sheet1!A1:A10",
+            ConditionalFormatRulePatch {
+                kind: CfRuleKind::IconSet,
+                icon_set: Some(IconSetPatch {
+                    icon_set: CfIconSetKind::ThreeTrafficLights1,
+                    values: vec![
+                        CfValueObject { kind: CfValueObjectKind::Percent, value: Some("0".into()) },
+                        CfValueObject { kind: CfValueObjectKind::Percent, value: Some("50".into()) },
+                    ],
+                    show_value: None,
+                    percent: None,
+                    reverse: None,
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidConditionalFormat);
+}

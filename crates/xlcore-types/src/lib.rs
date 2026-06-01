@@ -668,6 +668,123 @@ pub enum CfRuleKind {
     NotContainsErrors,
     TimePeriod,
     AboveAverage,
+    ColorScale,
+    DataBar,
+    IconSet,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub enum CfValueObjectKind {
+    #[default]
+    Number,
+    Percent,
+    Max,
+    Min,
+    Formula,
+    Percentile,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct CfValueObject {
+    pub kind: CfValueObjectKind,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ColorScalePatch {
+    pub values: Vec<CfValueObject>,
+    pub colors: Vec<String>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct DataBarPatch {
+    pub min: CfValueObject,
+    pub max: CfValueObject,
+    pub color: String,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min_length: Option<u32>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_length: Option<u32>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_value: Option<bool>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub enum CfIconSetKind {
+    #[default]
+    ThreeArrows,
+    ThreeArrowsGray,
+    ThreeFlags,
+    ThreeTrafficLights1,
+    ThreeTrafficLights2,
+    ThreeSigns,
+    ThreeSymbols,
+    ThreeSymbols2,
+    FourArrows,
+    FourArrowsGray,
+    FourRedToBlack,
+    FourRating,
+    FourTrafficLights,
+    FiveArrows,
+    FiveArrowsGray,
+    FiveRating,
+    FiveQuarters,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct IconSetPatch {
+    pub icon_set: CfIconSetKind,
+    pub values: Vec<CfValueObject>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_value: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub percent: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reverse: Option<bool>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -740,6 +857,15 @@ pub struct ConditionalFormatRulePatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dxf: Option<StylePatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_scale: Option<ColorScalePatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_bar: Option<DataBarPatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon_set: Option<IconSetPatch>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -786,6 +912,15 @@ pub struct ConditionalFormatRuleInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dxf_id: Option<u32>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_scale: Option<ColorScalePatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_bar: Option<DataBarPatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon_set: Option<IconSetPatch>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

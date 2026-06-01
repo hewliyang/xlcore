@@ -1,13 +1,14 @@
 use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
-    ApiError, ApiErrorCode, CfOperator, CfRuleKind, ConditionalFormatRuleInfo,
-    ConditionalFormatRulePatch,
+    ApiError, ApiErrorCode, CfIconSetKind, CfOperator, CfRuleKind, CfValueObject,
+    CfValueObjectKind, ColorScalePatch, ConditionalFormatRuleInfo, ConditionalFormatRulePatch,
+    DataBarPatch, IconSetPatch,
 };
 
 use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_range_a1, ranges_overlap};
-use crate::styles::upsert_dxf;
+use crate::styles::{parse_color, upsert_dxf};
 use crate::{Result, Workbook};
 
 impl Workbook {
@@ -52,12 +53,13 @@ impl Workbook {
         };
 
         let new_range = range_ref.range_reference();
+        let reference_owned = reference.to_string();
         let ws_part = self.worksheet_part_for_sheet(&range_ref.sheet)?;
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let next_priority = patch.priority.unwrap_or_else(|| next_priority(ws));
-        let rule = build_rule(&patch, dxf_id, next_priority);
+        let rule = build_rule(&patch, dxf_id, next_priority, &reference_owned)?;
 
         ws.conditional_formatting.push(x::ConditionalFormatting {
             sequence_of_references: Some(vec![new_range.clone()]),
@@ -82,6 +84,9 @@ impl Workbook {
             std_dev: patch.std_dev,
             stop_if_true: patch.stop_if_true.unwrap_or(false),
             dxf_id,
+            color_scale: patch.color_scale,
+            data_bar: patch.data_bar,
+            icon_set: patch.icon_set,
         })
     }
 
@@ -145,6 +150,75 @@ impl Workbook {
 
 fn validate_patch(patch: &ConditionalFormatRulePatch, reference: &str) -> Result<()> {
     use CfRuleKind::*;
+    match patch.kind {
+        ColorScale => {
+            let Some(cs) = patch.color_scale.as_ref() else {
+                return Err(ApiError::new(
+                    ApiErrorCode::InvalidConditionalFormat,
+                    "color_scale config is required for colorScale rules",
+                )
+                .with_ref(reference));
+            };
+            if cs.values.len() < 2 || cs.values.len() > 3 {
+                return Err(ApiError::new(
+                    ApiErrorCode::InvalidConditionalFormat,
+                    "color_scale.values must have 2 or 3 entries",
+                )
+                .with_ref(reference));
+            }
+            if cs.colors.len() != cs.values.len() {
+                return Err(ApiError::new(
+                    ApiErrorCode::InvalidConditionalFormat,
+                    "color_scale.colors must match values length",
+                )
+                .with_ref(reference));
+            }
+            for v in &cs.values {
+                validate_cfvo(v, reference)?;
+            }
+        }
+        DataBar => {
+            let Some(db) = patch.data_bar.as_ref() else {
+                return Err(ApiError::new(
+                    ApiErrorCode::InvalidConditionalFormat,
+                    "data_bar config is required for dataBar rules",
+                )
+                .with_ref(reference));
+            };
+            validate_cfvo(&db.min, reference)?;
+            validate_cfvo(&db.max, reference)?;
+            if db.color.trim().is_empty() {
+                return Err(ApiError::new(
+                    ApiErrorCode::InvalidConditionalFormat,
+                    "data_bar.color is required",
+                )
+                .with_ref(reference));
+            }
+        }
+        IconSet => {
+            let Some(is) = patch.icon_set.as_ref() else {
+                return Err(ApiError::new(
+                    ApiErrorCode::InvalidConditionalFormat,
+                    "icon_set config is required for iconSet rules",
+                )
+                .with_ref(reference));
+            };
+            let arity = icon_set_arity(is.icon_set);
+            if is.values.len() != arity {
+                return Err(ApiError::new(
+                    ApiErrorCode::InvalidConditionalFormat,
+                    format!(
+                        "icon_set.values must have {arity} entries for this iconSet kind"
+                    ),
+                )
+                .with_ref(reference));
+            }
+            for v in &is.values {
+                validate_cfvo(v, reference)?;
+            }
+        }
+        _ => {}
+    }
     let needs_f1 = matches!(
         patch.kind,
         CellIs | Expression | ContainsText | NotContainsText | BeginsWith | EndsWith
@@ -235,7 +309,8 @@ fn build_rule(
     patch: &ConditionalFormatRulePatch,
     dxf_id: Option<u32>,
     priority: i32,
-) -> x::ConditionalFormattingRule {
+    reference: &str,
+) -> Result<x::ConditionalFormattingRule> {
     let mut rule = x::ConditionalFormattingRule {
         r#type: kind_to_sdk(patch.kind),
         priority: priority.into(),
@@ -263,7 +338,55 @@ fn build_rule(
             ..Default::default()
         }));
     }
-    rule
+    if let Some(cs) = patch.color_scale.as_ref() {
+        let mut colors = Vec::with_capacity(cs.colors.len());
+        for c in &cs.colors {
+            colors.push(parse_color(c).map_err(|e| {
+                ApiError::new(
+                    ApiErrorCode::InvalidConditionalFormat,
+                    format!("invalid color_scale color: {}", e.message),
+                )
+                .with_ref(reference)
+            })?);
+        }
+        rule.color_scale = Some(x::ColorScale {
+            conditional_format_value_object: cs
+                .values
+                .iter()
+                .map(cfvo_to_sdk)
+                .collect(),
+            color: colors,
+        });
+    }
+    if let Some(db) = patch.data_bar.as_ref() {
+        let color = parse_color(&db.color).map_err(|e| {
+            ApiError::new(
+                ApiErrorCode::InvalidConditionalFormat,
+                format!("invalid data_bar color: {}", e.message),
+            )
+            .with_ref(reference)
+        })?;
+        rule.data_bar = Some(Box::new(x::DataBar {
+            min_length: db.min_length.map(Into::into),
+            max_length: db.max_length.map(Into::into),
+            show_value: db.show_value.map(BooleanValue::from_bool),
+            conditional_format_value_object: vec![
+                cfvo_to_sdk(&db.min),
+                cfvo_to_sdk(&db.max),
+            ],
+            color: Box::new(color),
+        }));
+    }
+    if let Some(is) = patch.icon_set.as_ref() {
+        rule.icon_set = Some(x::IconSet {
+            icon_set_value: Some(icon_set_to_sdk(is.icon_set)),
+            show_value: is.show_value.map(BooleanValue::from_bool),
+            percent: is.percent.map(BooleanValue::from_bool),
+            reverse: is.reverse.map(BooleanValue::from_bool),
+            conditional_format_value_object: is.values.iter().map(cfvo_to_sdk).collect(),
+        });
+    }
+    Ok(rule)
 }
 
 fn read_rule(
@@ -272,6 +395,33 @@ fn read_rule(
     rule: &x::ConditionalFormattingRule,
 ) -> Option<ConditionalFormatRuleInfo> {
     let kind = kind_from_sdk(rule.r#type)?;
+    let color_scale = rule.color_scale.as_ref().map(|cs| ColorScalePatch {
+        values: cs.conditional_format_value_object.iter().map(cfvo_from_sdk).collect(),
+        colors: cs.color.iter().map(color_to_hex).collect(),
+    });
+    let data_bar = rule.data_bar.as_ref().map(|db| {
+        let mut iter = db.conditional_format_value_object.iter();
+        let min = iter.next().map(cfvo_from_sdk).unwrap_or_default();
+        let max = iter.next().map(cfvo_from_sdk).unwrap_or_default();
+        DataBarPatch {
+            min,
+            max,
+            color: color_to_hex(&db.color),
+            min_length: db.min_length.map(Into::into),
+            max_length: db.max_length.map(Into::into),
+            show_value: db.show_value.map(bool::from),
+        }
+    });
+    let icon_set = rule.icon_set.as_ref().map(|is| IconSetPatch {
+        icon_set: is
+            .icon_set_value
+            .and_then(icon_set_from_sdk)
+            .unwrap_or_default(),
+        values: is.conditional_format_value_object.iter().map(cfvo_from_sdk).collect(),
+        show_value: is.show_value.map(bool::from),
+        percent: is.percent.map(bool::from),
+        reverse: is.reverse.map(bool::from),
+    });
     let formula1 = rule
         .formula
         .first()
@@ -309,7 +459,133 @@ fn read_rule(
             .map(bool::from)
             .unwrap_or(false),
         dxf_id: rule.format_id.map(Into::into),
+        color_scale,
+        data_bar,
+        icon_set,
     })
+}
+
+fn validate_cfvo(v: &CfValueObject, reference: &str) -> Result<()> {
+    use CfValueObjectKind::*;
+    let needs_value = matches!(v.kind, Number | Percent | Formula | Percentile);
+    if needs_value
+        && v.value
+            .as_deref()
+            .map(str::trim)
+            .unwrap_or("")
+            .is_empty()
+    {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidConditionalFormat,
+            "value is required for num/percent/formula/percentile cfvo",
+        )
+        .with_ref(reference));
+    }
+    Ok(())
+}
+
+fn icon_set_arity(kind: CfIconSetKind) -> usize {
+    use CfIconSetKind::*;
+    match kind {
+        ThreeArrows | ThreeArrowsGray | ThreeFlags | ThreeTrafficLights1
+        | ThreeTrafficLights2 | ThreeSigns | ThreeSymbols | ThreeSymbols2 => 3,
+        FourArrows | FourArrowsGray | FourRedToBlack | FourRating | FourTrafficLights => 4,
+        FiveArrows | FiveArrowsGray | FiveRating | FiveQuarters => 5,
+    }
+}
+
+fn cfvo_to_sdk(v: &CfValueObject) -> x::ConditionalFormatValueObject {
+    x::ConditionalFormatValueObject {
+        r#type: cfvo_kind_to_sdk(v.kind),
+        val: v.value.clone().map(Into::into),
+        ..Default::default()
+    }
+}
+
+fn cfvo_from_sdk(v: &x::ConditionalFormatValueObject) -> CfValueObject {
+    CfValueObject {
+        kind: cfvo_kind_from_sdk(v.r#type),
+        value: v.val.as_ref().map(|s| s.as_str().to_string()),
+    }
+}
+
+fn cfvo_kind_to_sdk(k: CfValueObjectKind) -> x::ConditionalFormatValueObjectValues {
+    use x::ConditionalFormatValueObjectValues as V;
+    match k {
+        CfValueObjectKind::Number => V::Number,
+        CfValueObjectKind::Percent => V::Percent,
+        CfValueObjectKind::Max => V::Max,
+        CfValueObjectKind::Min => V::Min,
+        CfValueObjectKind::Formula => V::Formula,
+        CfValueObjectKind::Percentile => V::Percentile,
+    }
+}
+
+fn cfvo_kind_from_sdk(v: x::ConditionalFormatValueObjectValues) -> CfValueObjectKind {
+    use x::ConditionalFormatValueObjectValues as V;
+    match v {
+        V::Number => CfValueObjectKind::Number,
+        V::Percent => CfValueObjectKind::Percent,
+        V::Max => CfValueObjectKind::Max,
+        V::Min => CfValueObjectKind::Min,
+        V::Formula => CfValueObjectKind::Formula,
+        V::Percentile => CfValueObjectKind::Percentile,
+    }
+}
+
+fn icon_set_to_sdk(k: CfIconSetKind) -> x::IconSetValues {
+    use x::IconSetValues as V;
+    use CfIconSetKind::*;
+    match k {
+        ThreeArrows => V::ThreeArrows,
+        ThreeArrowsGray => V::ThreeArrowsGray,
+        ThreeFlags => V::ThreeFlags,
+        ThreeTrafficLights1 => V::ThreeTrafficLights1,
+        ThreeTrafficLights2 => V::ThreeTrafficLights2,
+        ThreeSigns => V::ThreeSigns,
+        ThreeSymbols => V::ThreeSymbols,
+        ThreeSymbols2 => V::ThreeSymbols2,
+        FourArrows => V::FourArrows,
+        FourArrowsGray => V::FourArrowsGray,
+        FourRedToBlack => V::FourRedToBlack,
+        FourRating => V::FourRating,
+        FourTrafficLights => V::FourTrafficLights,
+        FiveArrows => V::FiveArrows,
+        FiveArrowsGray => V::FiveArrowsGray,
+        FiveRating => V::FiveRating,
+        FiveQuarters => V::FiveQuarters,
+    }
+}
+
+fn icon_set_from_sdk(v: x::IconSetValues) -> Option<CfIconSetKind> {
+    use x::IconSetValues as V;
+    use CfIconSetKind::*;
+    Some(match v {
+        V::ThreeArrows => ThreeArrows,
+        V::ThreeArrowsGray => ThreeArrowsGray,
+        V::ThreeFlags => ThreeFlags,
+        V::ThreeTrafficLights1 => ThreeTrafficLights1,
+        V::ThreeTrafficLights2 => ThreeTrafficLights2,
+        V::ThreeSigns => ThreeSigns,
+        V::ThreeSymbols => ThreeSymbols,
+        V::ThreeSymbols2 => ThreeSymbols2,
+        V::FourArrows => FourArrows,
+        V::FourArrowsGray => FourArrowsGray,
+        V::FourRedToBlack => FourRedToBlack,
+        V::FourRating => FourRating,
+        V::FourTrafficLights => FourTrafficLights,
+        V::FiveArrows => FiveArrows,
+        V::FiveArrowsGray => FiveArrowsGray,
+        V::FiveRating => FiveRating,
+        V::FiveQuarters => FiveQuarters,
+    })
+}
+
+fn color_to_hex(c: &x::Color) -> String {
+    c.rgb
+        .as_ref()
+        .map(|s| format!("#{}", s.as_str()))
+        .unwrap_or_default()
 }
 
 fn kind_to_sdk(kind: CfRuleKind) -> x::ConditionalFormatValues {
@@ -330,6 +606,9 @@ fn kind_to_sdk(kind: CfRuleKind) -> x::ConditionalFormatValues {
         CfRuleKind::NotContainsErrors => V::NotContainsErrors,
         CfRuleKind::TimePeriod => V::TimePeriod,
         CfRuleKind::AboveAverage => V::AboveAverage,
+        CfRuleKind::ColorScale => V::ColorScale,
+        CfRuleKind::DataBar => V::DataBar,
+        CfRuleKind::IconSet => V::IconSet,
     }
 }
 
@@ -351,7 +630,9 @@ fn kind_from_sdk(v: x::ConditionalFormatValues) -> Option<CfRuleKind> {
         V::NotContainsErrors => CfRuleKind::NotContainsErrors,
         V::TimePeriod => CfRuleKind::TimePeriod,
         V::AboveAverage => CfRuleKind::AboveAverage,
-        _ => return None,
+        V::ColorScale => CfRuleKind::ColorScale,
+        V::DataBar => CfRuleKind::DataBar,
+        V::IconSet => CfRuleKind::IconSet,
     })
 }
 

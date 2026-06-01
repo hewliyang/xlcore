@@ -15,4 +15,7 @@ export type CfRuleKind =
   | "containsErrors"
   | "notContainsErrors"
   | "timePeriod"
-  | "aboveAverage";
+  | "aboveAverage"
+  | "colorScale"
+  | "dataBar"
+  | "iconSet";

@@ -44,8 +44,10 @@ Known gaps:
 
 - Style write surface limited to font/fill/border/alignment/number format
   patch; themes, named styles, and table-style authoring still preserve-only
-- Conditional formatting, charts, images, shapes, sparklines, and pivot
-  tables are preserve-only — no authoring API yet
+- Charts, images, shapes, sparklines, and pivot tables are preserve-only —
+  no authoring API yet. Conditional formatting now authors classic rules
+  plus color scales / data bars / icon sets; `<extLst>` x14 extensions
+  (custom icons, multi-color data bars, etc.) remain preserve-only.
 - Threaded notes (modern `<threadedComment>`) author/list/reply/remove
   shipped through `xlcore-api`, with legacy `tc=<guid>`-authored classic
   comment shadow now mirrored into `xl/comments<n>.xml` so older Excel
@@ -131,7 +133,7 @@ Status key:
 | Tables | `Tables.TableManager`, `Table` | Create table from range, headers/totals, resize, style name | Done | Rust API + save/reopen |
 | AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | Done (range + per-column Top10/Custom/multi-value Values with optional blank) | Rust API + smoke |
 | Data validation | `DataValidation` APIs | Add/edit/delete/list list and scalar validations | Done | Rust API + save/reopen |
-| Conditional formatting | `ConditionalFormatting` APIs | Preserve existing; author basic rules once style writes exist | Partial (cellIs/expression/text/blanks/errors/top10/aboveAverage/duplicate/unique rules + dxf font/fill/border/numFmt/alignment authoring; color scales / data bars / icon sets still preserve-only) | Rust API + save/reopen |
+| Conditional formatting | `ConditionalFormatting` APIs | Preserve existing; author basic rules once style writes exist | Done (cellIs/expression/text/blanks/errors/top10/aboveAverage/duplicate/unique rules + dxf font/fill/border/numFmt/alignment authoring; 2/3-stop color scales, min/max data bars, 3/4/5-icon icon sets with cfvo round-trip; extLst x14 extensions still preserve-only) | Rust API + save/reopen |
 | Charts | `Charts`, `Shapes` | Preserve; create/edit chart types already rendered | P2 | Preview + OOXML |
 | Images | `Shapes.Picture`, shape collection | Insert image, position, size, crop/rotation later | P2 | Preview + OOXML |
 | Shapes | `Shapes.ShapeCollection` | Preserve first; author basic shape/text later | P2 | Preview + OOXML |
