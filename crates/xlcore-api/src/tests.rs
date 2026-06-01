@@ -1696,7 +1696,7 @@ fn threaded_notes_add_reply_list_remove_and_round_trip() {
         zip.by_name(names.iter().find(|n| n.starts_with("xl/comments")).unwrap()).unwrap().read_to_string(&mut buf).unwrap();
         assert!(buf.contains("tc="), "classic shadow author tc= missing in {buf}");
         assert!(buf.contains("check this"));
-        assert!(buf.contains("on it"));
+        assert!(!buf.contains("on it"), "replies must not produce a second legacy comment per cell");
     }
 
     let mut reopened = Workbook::open_bytes(bytes).unwrap();

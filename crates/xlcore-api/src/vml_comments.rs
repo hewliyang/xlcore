@@ -15,14 +15,13 @@ pub(crate) fn sync_vml_comment_indicators(
         return Ok(());
     }
 
-    let ws_root = ws_part.root_element_mut(doc).map_err(sdk_err_to_api)?;
-    if ws_root.legacy_drawing.is_some() {
-        return Ok(());
-    }
-
-    let vml_part: VmlDrawingPart = ws_part
-        .add_new_part_auto_id::<_, VmlDrawingPart>(doc)
-        .map_err(sdk_err_to_api)?;
+    let existing_vml = ws_part.vml_drawing_parts(doc).into_iter().next();
+    let vml_part: VmlDrawingPart = match existing_vml {
+        Some(part) => part,
+        None => ws_part
+            .add_new_part_auto_id::<_, VmlDrawingPart>(doc)
+            .map_err(sdk_err_to_api)?,
+    };
     let rid = vml_part
         .relationship_id()
         .map(|s| s.to_string())
@@ -33,7 +32,9 @@ pub(crate) fn sync_vml_comment_indicators(
         .map_err(sdk_err_to_api)?;
 
     let ws_root = ws_part.root_element_mut(doc).map_err(sdk_err_to_api)?;
-    ws_root.legacy_drawing = Some(x::LegacyDrawing { id: rid });
+    if ws_root.legacy_drawing.is_none() {
+        ws_root.legacy_drawing = Some(x::LegacyDrawing { id: rid });
+    }
     Ok(())
 }
 

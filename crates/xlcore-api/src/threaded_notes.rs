@@ -123,7 +123,6 @@ impl Workbook {
             ..Default::default()
         });
         let shadow_ws_part = self.worksheet_part_for_sheet(&sheet)?;
-        write_classic_shadow(&mut self.doc, &shadow_ws_part, &parent_ref, &id, &patch.text)?;
         sync_vml_comment_indicators(&mut self.doc, &shadow_ws_part)?;
 
         Ok(ThreadedNoteInfo {
@@ -333,20 +332,16 @@ fn create_person_part(
 
 fn default_person_list() -> tc::PersonList {
     tc::PersonList {
-        xmlns: vec![ooxmlsdk::common::XmlNamespaceDecl::new(
-            "xltc",
-            "http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments",
-        )],
+        xmlns: crate::ooxml_header::threaded_comments(),
+        xml_header: crate::ooxml_header::STANDALONE,
         ..Default::default()
     }
 }
 
 fn default_threaded_comments_root() -> tc::ThreadedComments {
     tc::ThreadedComments {
-        xmlns: vec![ooxmlsdk::common::XmlNamespaceDecl::new(
-            "xltc",
-            "http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments",
-        )],
+        xmlns: crate::ooxml_header::threaded_comments(),
+        xml_header: crate::ooxml_header::STANDALONE,
         ..Default::default()
     }
 }
@@ -410,11 +405,13 @@ fn now_iso8601() -> String {
 }
 
 fn shadow_author_for(tc_id: &str) -> String {
-    let stripped: String = tc_id
-        .chars()
-        .filter(|c| *c != '{' && *c != '}')
-        .collect();
-    format!("tc={}", stripped.to_ascii_lowercase())
+    let trimmed = tc_id.trim();
+    let needs_braces = !trimmed.starts_with('{');
+    if needs_braces {
+        format!("tc={{{}}}", trimmed)
+    } else {
+        format!("tc={}", trimmed)
+    }
 }
 
 fn write_classic_shadow(
