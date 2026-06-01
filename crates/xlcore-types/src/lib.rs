@@ -2336,6 +2336,19 @@ pub enum ChartKind {
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "snake_case")]
+pub enum ChartStacking {
+    Clustered,
+    Stacked,
+    PercentStacked,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "snake_case")]
 pub enum ChartLegendPosition {
     Right,
     Left,
@@ -2453,6 +2466,9 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_axis_title: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stacking: Option<ChartStacking>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -2484,6 +2500,9 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_axis_title: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stacking: Option<ChartStacking>,
 }
 
 fn parse_a1(reference: &str) -> Option<(u32, u32)> {

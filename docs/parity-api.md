@@ -45,10 +45,10 @@ Known gaps:
 - Style write surface limited to font/fill/border/alignment/number format
   patch; themes, named styles, and table-style authoring still preserve-only
 - Chart authoring (column/bar/line/pie/area/scatter/bubble/doughnut with
-  title/legend/categories ref + series, per-series solid color, axis titles)
-  is wired through `set_chart` / `charts` / `remove_chart`; richer chart
-  features (combo, dual axis, chartEx, marker/line styling, data labels) remain
-  preserve-only. Images, shapes, sparklines, and
+  title/legend/categories ref + series, per-series solid color, axis titles,
+  stacking for bar/column/line/area) is wired through `set_chart` / `charts`
+  / `remove_chart`; richer chart features (combo, dual axis, chartEx,
+  marker/line styling, data labels) remain preserve-only. Images, shapes, sparklines, and
   pivot tables are still preserve-only — no authoring API yet. Conditional formatting now authors classic rules
   plus color scales / data bars / icon sets; `<extLst>` x14 extensions
   (custom icons, multi-color data bars, etc.) remain preserve-only.

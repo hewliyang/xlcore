@@ -33,7 +33,7 @@ pub use xlcore_types::{
     AutoFilterInfo, AutoFilterOperator, BorderLinePatch, BorderLineStyle, BorderPatch, CalcMode, CalcProperties,
     CalcPropertiesPatch, CellInfo, CfIconSetKind, CfOperator, CfRuleKind, CfValueObject,
     CfValueObjectKind, ChartAnchor, ChartInfo, ChartKind, ChartLegendPosition, ChartPatch,
-    ChartSeriesInfo, ChartSeriesPatch, ClearMode, ColorScalePatch, CommentInfo, CommentPatch,
+    ChartSeriesInfo, ChartSeriesPatch, ChartStacking, ClearMode, ColorScalePatch, CommentInfo, CommentPatch,
     ConditionalFormatRuleInfo, ConditionalFormatRulePatch, DataBarPatch, DataValidationErrorStyle,
     DataValidationInfo, DataValidationOperator, DataValidationPatch, DataValidationType,
     DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference, FillPatch, FontPatch,

@@ -3,6 +3,7 @@ import type { ChartAnchor } from "./ChartAnchor.js";
 import type { ChartKind } from "./ChartKind.js";
 import type { ChartLegendPosition } from "./ChartLegendPosition.js";
 import type { ChartSeriesInfo } from "./ChartSeriesInfo.js";
+import type { ChartStacking } from "./ChartStacking.js";
 
 export type ChartInfo = {
   sheet: string;
@@ -16,4 +17,5 @@ export type ChartInfo = {
   anchor: ChartAnchor;
   categoryAxisTitle?: string;
   valueAxisTitle?: string;
+  stacking?: ChartStacking;
 };

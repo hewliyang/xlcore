@@ -7,8 +7,8 @@ use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_dra
 use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
-    ApiError, ApiErrorCode, ChartAnchor, ChartInfo, ChartKind, ChartLegendPosition, ChartPatch,
-    ChartSeriesInfo, ChartSeriesPatch,
+    ApiError, ApiErrorCode, ApiWarning, ChartAnchor, ChartInfo, ChartKind, ChartLegendPosition,
+    ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -87,6 +87,7 @@ impl Workbook {
                     anchor: anchor_to_chart_anchor(anchor),
                     category_axis_title: parsed.category_axis_title,
                     value_axis_title: parsed.value_axis_title,
+                    stacking: parsed.stacking,
                 });
             }
         }
@@ -144,6 +145,24 @@ impl Workbook {
                 format!("sheet not found: {}", patch.sheet),
             )
             .with_sheet(&patch.sheet));
+        }
+
+        if patch.stacking.is_some()
+            && !matches!(
+                patch.kind,
+                ChartKind::Column | ChartKind::Bar | ChartKind::Line | ChartKind::Area
+            )
+        {
+            self.push_warning(
+                ApiWarning::new(
+                    ApiErrorCode::LossyOperation,
+                    format!(
+                        "stacking is not supported on {:?} charts; ignored",
+                        patch.kind
+                    ),
+                )
+                .with_sheet(&patch.sheet),
+            );
         }
 
         let ws_part = self.worksheet_part_for_sheet(&patch.sheet)?;
@@ -235,6 +254,7 @@ impl Workbook {
             anchor: patch.anchor,
             category_axis_title: patch.category_axis_title.clone(),
             value_axis_title: patch.value_axis_title.clone(),
+            stacking: stacking_for_kind(patch.kind, patch.stacking),
         })
     }
 
@@ -328,6 +348,7 @@ struct ParsedChart {
     series: Vec<ChartSeriesInfo>,
     category_axis_title: Option<String>,
     value_axis_title: Option<String>,
+    stacking: Option<ChartStacking>,
 }
 
 fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
@@ -336,6 +357,7 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     let mut kind = ChartKind::Column;
     let mut series: Vec<ChartSeriesInfo> = Vec::new();
     let mut categories_ref: Option<String> = None;
+    let mut stacking: Option<ChartStacking> = None;
 
     for ch in &plot.plot_area_choice1 {
         match ch {
@@ -344,6 +366,16 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     c::BarDirectionValues::Bar => ChartKind::Bar,
                     c::BarDirectionValues::Column => ChartKind::Column,
                 };
+                stacking = bc
+                    .bar_grouping
+                    .as_ref()
+                    .and_then(|g| g.val.as_ref())
+                    .map(|v| match v {
+                        c::BarGroupingValues::Clustered => ChartStacking::Clustered,
+                        c::BarGroupingValues::Stacked => ChartStacking::Stacked,
+                        c::BarGroupingValues::PercentStacked => ChartStacking::PercentStacked,
+                        c::BarGroupingValues::Standard => ChartStacking::Clustered,
+                    });
                 for s in &bc.bar_chart_series {
                     series.push(read_series(
                         s.series_text.as_deref(),
@@ -355,6 +387,7 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
             }
             c::PlotAreaChoice::LineChart(lc) => {
                 kind = ChartKind::Line;
+                stacking = lc.grouping.val.as_ref().map(grouping_to_stacking);
                 for s in &lc.line_chart_series {
                     series.push(read_series(
                         s.series_text.as_deref(),
@@ -392,6 +425,11 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
             }
             c::PlotAreaChoice::AreaChart(ac) => {
                 kind = ChartKind::Area;
+                stacking = ac
+                    .grouping
+                    .as_ref()
+                    .and_then(|g| g.val.as_ref())
+                    .map(grouping_to_stacking);
                 for s in &ac.area_chart_series {
                     series.push(read_series(
                         s.series_text.as_deref(),
@@ -475,6 +513,38 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         series,
         category_axis_title,
         value_axis_title,
+        stacking,
+    }
+}
+
+fn grouping_to_stacking(v: &c::GroupingValues) -> ChartStacking {
+    match v {
+        c::GroupingValues::Standard => ChartStacking::Clustered,
+        c::GroupingValues::Stacked => ChartStacking::Stacked,
+        c::GroupingValues::PercentStacked => ChartStacking::PercentStacked,
+    }
+}
+
+fn stacking_for_kind(kind: ChartKind, requested: Option<ChartStacking>) -> Option<ChartStacking> {
+    match kind {
+        ChartKind::Column | ChartKind::Bar | ChartKind::Line | ChartKind::Area => requested,
+        _ => None,
+    }
+}
+
+fn line_area_grouping(stacking: Option<ChartStacking>) -> c::GroupingValues {
+    match stacking {
+        Some(ChartStacking::Stacked) => c::GroupingValues::Stacked,
+        Some(ChartStacking::PercentStacked) => c::GroupingValues::PercentStacked,
+        _ => c::GroupingValues::Standard,
+    }
+}
+
+fn bar_grouping(stacking: Option<ChartStacking>) -> c::BarGroupingValues {
+    match stacking {
+        Some(ChartStacking::Stacked) => c::BarGroupingValues::Stacked,
+        Some(ChartStacking::PercentStacked) => c::BarGroupingValues::PercentStacked,
+        _ => c::BarGroupingValues::Clustered,
     }
 }
 
@@ -760,7 +830,7 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
         })),
         ChartKind::Line => c::PlotAreaChoice::LineChart(Box::new(c::LineChart {
             grouping: Box::new(c::Grouping {
-                val: Some(c::GroupingValues::Standard),
+                val: Some(line_area_grouping(patch.stacking)),
             }),
             vary_colors: Some(c::VaryColors {
                 val: Some(BooleanValue::from_bool(false)),
@@ -779,7 +849,7 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
         })),
         ChartKind::Area => c::PlotAreaChoice::AreaChart(Box::new(c::AreaChart {
             grouping: Some(c::Grouping {
-                val: Some(c::GroupingValues::Standard),
+                val: Some(line_area_grouping(patch.stacking)),
             }),
             vary_colors: Some(c::VaryColors {
                 val: Some(BooleanValue::from_bool(false)),
@@ -803,7 +873,7 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                     },
                 }),
                 bar_grouping: Some(c::BarGrouping {
-                    val: Some(c::BarGroupingValues::Clustered),
+                    val: Some(bar_grouping(patch.stacking)),
                 }),
                 vary_colors: Some(c::VaryColors {
                     val: Some(BooleanValue::from_bool(false)),
@@ -814,6 +884,11 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                     .enumerate()
                     .map(|(i, s)| build_bar_series(i, s, patch.categories_ref.as_deref()))
                     .collect(),
+                overlap: matches!(
+                    patch.stacking,
+                    Some(ChartStacking::Stacked | ChartStacking::PercentStacked)
+                )
+                .then(|| c::Overlap { val: Some(100) }),
                 axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
                 ..Default::default()
             }))

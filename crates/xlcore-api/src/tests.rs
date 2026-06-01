@@ -2911,6 +2911,7 @@ fn charts_create_list_remove_roundtrip() {
             },
             category_axis_title: None,
             value_axis_title: None,
+            stacking: None,
         })
         .unwrap();
     assert_eq!(info.sheet, "Sheet1");
@@ -2975,6 +2976,7 @@ fn charts_supports_multiple_kinds() {
         },
         category_axis_title: None,
         value_axis_title: None,
+        stacking: None,
     };
     for kind in [
         ChartKind::Column,
@@ -3034,6 +3036,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
         },
         category_axis_title: Some("X-Axis".to_string()),
         value_axis_title: Some("Y-Axis".to_string()),
+        stacking: None,
     })
     .unwrap();
 
@@ -3054,6 +3057,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
         anchor: ChartAnchor { from_column: 1, from_row: 18, to_column: 8, to_row: 30, ..Default::default() },
         category_axis_title: None,
         value_axis_title: None,
+        stacking: None,
     })
     .unwrap();
 
@@ -3072,6 +3076,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
         anchor: ChartAnchor { from_column: 9, from_row: 18, to_column: 16, to_row: 30, ..Default::default() },
         category_axis_title: None,
         value_axis_title: None,
+        stacking: None,
     })
     .unwrap();
 
@@ -3097,6 +3102,116 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
 }
 
 #[test]
+fn charts_stacking_roundtrips_for_bar_line_area() {
+    let mut wb = Workbook::new().unwrap();
+    let base = |kind: ChartKind, stacking: Option<ChartStacking>, row: u32| ChartPatch {
+        sheet: "Sheet1".to_string(),
+        name: None,
+        kind,
+        title: None,
+        legend_position: None,
+        categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+        series: vec![
+            ChartSeriesPatch {
+                name: Some("S1".to_string()),
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                ..Default::default()
+            },
+            ChartSeriesPatch {
+                name: Some("S2".to_string()),
+                values_ref: "Sheet1!$C$2:$C$4".to_string(),
+                ..Default::default()
+            },
+        ],
+        anchor: ChartAnchor {
+            from_column: 1,
+            from_row: row,
+            to_column: 8,
+            to_row: row + 10,
+            ..Default::default()
+        },
+        category_axis_title: None,
+        value_axis_title: None,
+        stacking,
+    };
+
+    let col_stacked = wb
+        .set_chart(base(ChartKind::Column, Some(ChartStacking::Stacked), 1))
+        .unwrap();
+    assert_eq!(col_stacked.stacking, Some(ChartStacking::Stacked));
+
+    let bar_pct = wb
+        .set_chart(base(ChartKind::Bar, Some(ChartStacking::PercentStacked), 14))
+        .unwrap();
+    assert_eq!(bar_pct.stacking, Some(ChartStacking::PercentStacked));
+
+    let line_stacked = wb
+        .set_chart(base(ChartKind::Line, Some(ChartStacking::Stacked), 28))
+        .unwrap();
+    assert_eq!(line_stacked.stacking, Some(ChartStacking::Stacked));
+
+    let area_pct = wb
+        .set_chart(base(ChartKind::Area, Some(ChartStacking::PercentStacked), 42))
+        .unwrap();
+    assert_eq!(area_pct.stacking, Some(ChartStacking::PercentStacked));
+
+    let col_clustered = wb
+        .set_chart(base(ChartKind::Column, Some(ChartStacking::Clustered), 56))
+        .unwrap();
+    assert_eq!(col_clustered.stacking, Some(ChartStacking::Clustered));
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    let by_kind = |k: ChartKind, row: u32| -> ChartInfo {
+        charts
+            .iter()
+            .find(|c| c.kind == k && c.anchor.from_row == row)
+            .cloned()
+            .unwrap_or_else(|| panic!("missing {:?} chart at row {row}", k))
+    };
+    assert_eq!(by_kind(ChartKind::Column, 1).stacking, Some(ChartStacking::Stacked));
+    assert_eq!(by_kind(ChartKind::Bar, 14).stacking, Some(ChartStacking::PercentStacked));
+    assert_eq!(by_kind(ChartKind::Line, 28).stacking, Some(ChartStacking::Stacked));
+    assert_eq!(by_kind(ChartKind::Area, 42).stacking, Some(ChartStacking::PercentStacked));
+    assert_eq!(by_kind(ChartKind::Column, 56).stacking, Some(ChartStacking::Clustered));
+}
+
+#[test]
+fn charts_stacking_on_pie_emits_warning_and_drops() {
+    let mut wb = Workbook::new().unwrap();
+    let info = wb
+        .set_chart(ChartPatch {
+            sheet: "Sheet1".to_string(),
+            name: None,
+            kind: ChartKind::Pie,
+            title: None,
+            legend_position: None,
+            categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+            series: vec![ChartSeriesPatch {
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                ..Default::default()
+            }],
+            anchor: ChartAnchor {
+                from_column: 1,
+                from_row: 1,
+                to_column: 5,
+                to_row: 10,
+                ..Default::default()
+            },
+            category_axis_title: None,
+            value_axis_title: None,
+            stacking: Some(ChartStacking::Stacked),
+        })
+        .unwrap();
+    assert_eq!(info.stacking, None);
+    let warnings = wb.take_warnings();
+    assert_eq!(warnings.len(), 1);
+    assert_eq!(warnings[0].code, ApiErrorCode::LossyOperation);
+    assert!(warnings[0].message.contains("stacking"));
+}
+
+#[test]
 fn charts_scatter_requires_x_values_and_rejects_bad_color() {
     let mut wb = Workbook::new().unwrap();
     let missing_x = wb.set_chart(ChartPatch {
@@ -3113,6 +3228,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
         anchor: ChartAnchor::default(),
         category_axis_title: None,
         value_axis_title: None,
+        stacking: None,
     });
     assert!(missing_x.is_err());
 
@@ -3131,6 +3247,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
         anchor: ChartAnchor::default(),
         category_axis_title: None,
         value_axis_title: None,
+        stacking: None,
     });
     assert!(bad_color.is_err());
 }
