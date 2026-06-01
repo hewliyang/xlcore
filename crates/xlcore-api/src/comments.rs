@@ -1,5 +1,6 @@
 use ooxmlsdk::parts::worksheet_comments_part::WorksheetCommentsPart;
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
+use ooxmlsdk::sdk::SdkPart;
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{ApiError, ApiErrorCode, CommentInfo, CommentPatch};
 
@@ -32,6 +33,9 @@ impl Workbook {
                 .get(cmt.author_id as usize)
                 .cloned()
                 .unwrap_or_default();
+            if is_threaded_shadow_author(&author) {
+                continue;
+            }
             let text = comment_plain_text(cmt);
             out.push(CommentInfo {
                 sheet: sheet.clone(),
@@ -67,9 +71,18 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let author_id = upsert_author(root, &author);
-        root.comment_list
-            .comment
-            .retain(|cmt| cmt.reference.as_str() != cell_ref_str.as_str());
+        let shadow_author_ids: Vec<u32> = root
+            .authors
+            .author
+            .iter()
+            .enumerate()
+            .filter(|(_, a)| is_threaded_shadow_author(a.xml_content.as_deref().unwrap_or("")))
+            .map(|(i, _)| i as u32)
+            .collect();
+        root.comment_list.comment.retain(|cmt| {
+            cmt.reference.as_str() != cell_ref_str.as_str()
+                || shadow_author_ids.contains(&cmt.author_id)
+        });
         root.comment_list.comment.push(x::Comment {
             reference: cell_ref_str.clone().into(),
             author_id: (author_id as u32).into(),
@@ -114,19 +127,25 @@ impl Workbook {
         let mut removed = Vec::new();
         let mut kept = Vec::with_capacity(root.comment_list.comment.len());
         for cmt in root.comment_list.comment.drain(..) {
-            let hit = match xlcore_io::parse_a1(cmt.reference.as_str()) {
-                Some((row, column)) => ranges_overlap(
-                    range_ref.start_row,
-                    range_ref.start_column,
-                    range_ref.end_row,
-                    range_ref.end_column,
-                    row,
-                    column,
-                    row,
-                    column,
-                ),
-                None => false,
-            };
+            let author_str = authors
+                .get(cmt.author_id as usize)
+                .cloned()
+                .unwrap_or_default();
+            let is_shadow = is_threaded_shadow_author(&author_str);
+            let hit = !is_shadow
+                && match xlcore_io::parse_a1(cmt.reference.as_str()) {
+                    Some((row, column)) => ranges_overlap(
+                        range_ref.start_row,
+                        range_ref.start_column,
+                        range_ref.end_row,
+                        range_ref.end_column,
+                        row,
+                        column,
+                        row,
+                        column,
+                    ),
+                    None => false,
+                };
             if hit {
                 let (row, column) = xlcore_io::parse_a1(cmt.reference.as_str()).unwrap();
                 let author = authors
@@ -148,13 +167,17 @@ impl Workbook {
         root.comment_list.comment = kept;
         let part_empty = root.comment_list.comment.is_empty();
         if part_empty {
-            let _ = self.doc.delete_part(comments_part);
+            if let Some(rid) = comments_part.relationship_id().map(|s| s.to_string()) {
+                let _ = ws_part
+                    .delete_part_by_id(&mut self.doc, rid.as_str())
+                    .map_err(sdk_err_to_api);
+            }
         }
         Ok(removed)
     }
 }
 
-fn comment_plain_text(cmt: &x::Comment) -> String {
+pub(crate) fn comment_plain_text(cmt: &x::Comment) -> String {
     if !cmt.comment_text.run.is_empty() {
         let mut buf = String::new();
         for run in &cmt.comment_text.run {
@@ -170,7 +193,7 @@ fn comment_plain_text(cmt: &x::Comment) -> String {
     }
 }
 
-fn upsert_author(root: &mut x::Comments, author: &str) -> usize {
+pub(crate) fn upsert_author(root: &mut x::Comments, author: &str) -> usize {
     if let Some(idx) = root
         .authors
         .author
@@ -187,6 +210,10 @@ fn upsert_author(root: &mut x::Comments, author: &str) -> usize {
     idx
 }
 
+pub(crate) fn is_threaded_shadow_author(author: &str) -> bool {
+    author.starts_with("tc=")
+}
+
 fn default_comments_root() -> x::Comments {
     x::Comments {
         xmlns: vec![ooxmlsdk::common::XmlNamespaceDecl::new(
@@ -197,7 +224,7 @@ fn default_comments_root() -> x::Comments {
     }
 }
 
-fn ensure_comments_part(
+pub(crate) fn ensure_comments_part(
     doc: &mut xlcore_io::SpreadsheetDocument,
     ws_part: &WorksheetPart,
 ) -> Result<WorksheetCommentsPart> {

@@ -1683,20 +1683,83 @@ fn threaded_notes_add_reply_list_remove_and_round_trip() {
     assert_eq!(list.len(), 2);
     assert!(list.iter().any(|n| n.text == "check this" && n.author == "Mario"));
     assert!(list.iter().any(|n| n.text == "on it" && n.author == "Luigi"));
+    assert!(wb.comments("Sheet1").unwrap().is_empty());
 
     let bytes = wb.save_bytes().unwrap();
+    {
+        let cursor = std::io::Cursor::new(&bytes);
+        let mut zip = zip::ZipArchive::new(cursor).unwrap();
+        let names: Vec<String> = (0..zip.len()).map(|i| zip.by_index(i).unwrap().name().to_string()).collect();
+        assert!(names.iter().any(|n| n.starts_with("xl/comments") && n.ends_with(".xml")), "classic shadow comments part missing: {names:?}");
+        let mut buf = String::new();
+        use std::io::Read;
+        zip.by_name(names.iter().find(|n| n.starts_with("xl/comments")).unwrap()).unwrap().read_to_string(&mut buf).unwrap();
+        assert!(buf.contains("tc="), "classic shadow author tc= missing in {buf}");
+        assert!(buf.contains("check this"));
+        assert!(buf.contains("on it"));
+    }
+
     let mut reopened = Workbook::open_bytes(bytes).unwrap();
     let after = reopened.threaded_notes("Sheet1").unwrap();
     assert_eq!(after.len(), 2);
     assert!(after.iter().any(|n| n.author == "Luigi" && n.parent_id.is_some()));
+    assert!(reopened.comments("Sheet1").unwrap().is_empty());
 
     let removed = reopened.remove_threaded_thread("Sheet1!A1").unwrap();
     assert_eq!(removed.len(), 2);
     assert!(reopened.threaded_notes("Sheet1").unwrap().is_empty());
 
     let bytes = reopened.save_bytes().unwrap();
+    {
+        let cursor = std::io::Cursor::new(&bytes);
+        let mut zip = zip::ZipArchive::new(cursor).unwrap();
+        let names: Vec<String> = (0..zip.len()).map(|i| zip.by_index(i).unwrap().name().to_string()).collect();
+        assert!(!names.iter().any(|n| n.starts_with("xl/comments") && n.ends_with(".xml")), "classic shadow comments part should be gone: {names:?}");
+    }
     let mut reopened2 = Workbook::open_bytes(bytes).unwrap();
     assert!(reopened2.threaded_notes("Sheet1").unwrap().is_empty());
+}
+
+#[test]
+fn threaded_note_shadow_coexists_with_classic_comment() {
+    use crate::ThreadedNotePatch;
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_comment(
+        "Sheet1!B2",
+        CommentPatch { text: "old school".into(), author: Some("Peach".into()) },
+    )
+    .unwrap();
+    wb.add_threaded_note(
+        "Sheet1!A1",
+        ThreadedNotePatch { text: "modern".into(), author: Some("Mario".into()), date: None },
+    )
+    .unwrap();
+
+    let classics = wb.comments("Sheet1").unwrap();
+    assert_eq!(classics.len(), 1);
+    assert_eq!(classics[0].reference, "B2");
+    assert_eq!(classics[0].author, "Peach");
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let classics = reopened.comments("Sheet1").unwrap();
+    assert_eq!(classics.len(), 1);
+    assert_eq!(reopened.threaded_notes("Sheet1").unwrap().len(), 1);
+
+    reopened.set_comment(
+        "Sheet1!B2",
+        CommentPatch { text: "old school v2".into(), author: Some("Peach".into()) },
+    )
+    .unwrap();
+    assert_eq!(reopened.threaded_notes("Sheet1").unwrap().len(), 1);
+    let classics = reopened.comments("Sheet1").unwrap();
+    assert_eq!(classics.len(), 1);
+    assert_eq!(classics[0].text, "old school v2");
+
+    reopened.remove_comment("Sheet1!B2").unwrap();
+    assert!(reopened.comments("Sheet1").unwrap().is_empty());
+    assert_eq!(reopened.threaded_notes("Sheet1").unwrap().len(), 1);
 }
 
 #[test]

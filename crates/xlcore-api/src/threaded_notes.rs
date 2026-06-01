@@ -3,8 +3,11 @@ use ooxmlsdk::parts::workbook_person_part::WorkbookPersonPart;
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
 use ooxmlsdk::parts::worksheet_threaded_comments_part::WorksheetThreadedCommentsPart;
 use ooxmlsdk::schemas::schemas_microsoft_com_office_spreadsheetml_2018_threadedcomments as tc;
+use ooxmlsdk::sdk::SdkPart;
+use xlcore_io::spreadsheetml as x;
 use xlcore_types::{ApiError, ApiErrorCode, ThreadedNoteInfo, ThreadedNotePatch};
 
+use crate::comments::{ensure_comments_part, is_threaded_shadow_author, upsert_author};
 use crate::errors::sdk_err_to_api;
 use crate::refs::ranges_overlap;
 use crate::{Result, Workbook};
@@ -66,6 +69,8 @@ impl Workbook {
             threaded_comment_text: Some(patch.text.clone().into()),
             ..Default::default()
         });
+        let shadow_ws_part = self.worksheet_part_for_sheet(&cell_ref.sheet)?;
+        write_classic_shadow(&mut self.doc, &shadow_ws_part, &cell_ref_str, &id, &patch.text)?;
 
         Ok(ThreadedNoteInfo {
             sheet: cell_ref.sheet,
@@ -115,6 +120,8 @@ impl Workbook {
             threaded_comment_text: Some(patch.text.clone().into()),
             ..Default::default()
         });
+        let shadow_ws_part = self.worksheet_part_for_sheet(&sheet)?;
+        write_classic_shadow(&mut self.doc, &shadow_ws_part, &parent_ref, &id, &patch.text)?;
 
         Ok(ThreadedNoteInfo {
             sheet,
@@ -140,9 +147,12 @@ impl Workbook {
         let sheet = range_ref.sheet.clone();
         let person_map = load_person_map(&mut self.doc)?;
         let ws_part = self.worksheet_part_for_sheet(&sheet)?;
-        let parts: Vec<_> = ws_part.worksheet_threaded_comments_parts(&self.doc).collect();
+        let parts: Vec<_> = ws_part
+            .worksheet_threaded_comments_parts(&self.doc)
+            .map(|p| (p.relationship_id().map(|s| s.to_string()), p.clone()))
+            .collect();
         let mut removed = Vec::new();
-        for tc_part in parts {
+        for (rid, tc_part) in parts {
             let root = tc_part
                 .root_element_mut(&mut self.doc)
                 .map_err(sdk_err_to_api)?;
@@ -171,9 +181,22 @@ impl Workbook {
             let empty = kept.is_empty();
             root.threaded_comment = kept;
             if empty {
-                let _ = self.doc.delete_part(tc_part);
+                if let Some(rid) = rid {
+                    let _ = ws_part
+                        .delete_part_by_id(&mut self.doc, rid.as_str())
+                        .map_err(sdk_err_to_api);
+                }
             }
         }
+        let shadow_ws_part = self.worksheet_part_for_sheet(&sheet)?;
+        drop_classic_shadows(
+            &mut self.doc,
+            &shadow_ws_part,
+            range_ref.start_row,
+            range_ref.start_column,
+            range_ref.end_row,
+            range_ref.end_column,
+        )?;
         Ok(removed)
     }
 
@@ -381,6 +404,83 @@ fn now_iso8601() -> String {
         .unwrap_or(0);
     let (y, mo, d, h, mi, s) = epoch_to_ymdhms(secs);
     format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.00", y, mo, d, h, mi, s)
+}
+
+fn shadow_author_for(tc_id: &str) -> String {
+    let stripped: String = tc_id
+        .chars()
+        .filter(|c| *c != '{' && *c != '}')
+        .collect();
+    format!("tc={}", stripped.to_ascii_lowercase())
+}
+
+fn write_classic_shadow(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    ws_part: &ooxmlsdk::parts::worksheet_part::WorksheetPart,
+    cell_ref_str: &str,
+    tc_id: &str,
+    text: &str,
+) -> Result<()> {
+    let comments_part = ensure_comments_part(doc, ws_part)?;
+    let root = comments_part
+        .root_element_mut(doc)
+        .map_err(sdk_err_to_api)?;
+    let author = shadow_author_for(tc_id);
+    let author_id = upsert_author(root, &author);
+    root.comment_list.comment.push(x::Comment {
+        reference: cell_ref_str.to_string().into(),
+        author_id: author_id as u32,
+        comment_text: Box::new(x::CommentText {
+            text: Some(x::Text(x::XstringType {
+                space: Some(ooxmlsdk::schemas::xml::SpaceProcessingModeValues::Preserve),
+                xml_content: Some(text.to_string().into()),
+                ..Default::default()
+            })),
+            ..Default::default()
+        }),
+        ..Default::default()
+    });
+    Ok(())
+}
+
+fn drop_classic_shadows(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    ws_part: &ooxmlsdk::parts::worksheet_part::WorksheetPart,
+    sr: u32,
+    sc: u32,
+    er: u32,
+    ec: u32,
+) -> Result<()> {
+    let Some(comments_part) = ws_part.worksheet_comments_part(doc) else {
+        return Ok(());
+    };
+    let comments_part = comments_part.clone();
+    let root = comments_part.root_element_mut(doc).map_err(sdk_err_to_api)?;
+    let shadow_ids: Vec<u32> = root
+        .authors
+        .author
+        .iter()
+        .enumerate()
+        .filter(|(_, a)| is_threaded_shadow_author(a.xml_content.as_deref().unwrap_or("")))
+        .map(|(i, _)| i as u32)
+        .collect();
+    root.comment_list.comment.retain(|cmt| {
+        if !shadow_ids.contains(&cmt.author_id) {
+            return true;
+        }
+        match xlcore_io::parse_a1(cmt.reference.as_str()) {
+            Some((row, column)) => !ranges_overlap(sr, sc, er, ec, row, column, row, column),
+            None => true,
+        }
+    });
+    if root.comment_list.comment.is_empty() {
+        if let Some(rid) = comments_part.relationship_id().map(|s| s.to_string()) {
+            let _ = ws_part
+                .delete_part_by_id(doc, rid.as_str())
+                .map_err(sdk_err_to_api);
+        }
+    }
+    Ok(())
 }
 
 fn epoch_to_ymdhms(secs: i64) -> (i32, u32, u32, u32, u32, u32) {

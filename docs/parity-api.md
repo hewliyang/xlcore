@@ -47,8 +47,9 @@ Known gaps:
 - Conditional formatting, charts, images, shapes, sparklines, and pivot
   tables are preserve-only — no authoring API yet
 - Threaded notes (modern `<threadedComment>`) author/list/reply/remove
-  shipped through `xlcore-api`; legacy classic-comment shadow fallback
-  for older Excel still not emitted
+  shipped through `xlcore-api`, with legacy `tc=<guid>`-authored classic
+  comment shadow now mirrored into `xl/comments<n>.xml` so older Excel
+  viewers see the thread. VML drawing indicators still not emitted.
 - Batch is a simple Rust closure, not a diagnostic/transaction envelope
 - Defined names round-trip, but engine-side resolution of structured/table
   refs and most modern function names is still missing (see
@@ -125,7 +126,7 @@ Status key:
 | Copy/paste/fill | `copyTo`, fill APIs | Copy ranges, fill down/right, translate relative formulas | Done | Rust API + TS smoke |
 | Dependencies | Calc engine refs/deps behavior | Precedents/dependents from formula graph | Done | Rust API + TS smoke |
 | Defined names | `Workbook.names`, `NameInfo` | List/create/update/delete workbook and sheet names | Done (engine resolution still missing) | Rust API + TS smoke |
-| Comments/notes | `Comments.CommentManager` | Add/edit/delete/list comments and threaded notes when present | Done (classic comments + threaded notes add/reply/list/remove; legacy shadow fallback later) | Rust API + save/reopen |
+| Comments/notes | `Comments.CommentManager` | Add/edit/delete/list comments and threaded notes when present | Done (classic comments + threaded notes add/reply/list/remove + `tc=<guid>` classic shadow for legacy Excel; VML indicator drawing later) | Rust API + save/reopen |
 | Hyperlinks | Worksheet hyperlink APIs | Add/edit/delete/list cell hyperlinks | Done | Rust API + save/reopen |
 | Tables | `Tables.TableManager`, `Table` | Create table from range, headers/totals, resize, style name | Done | Rust API + save/reopen |
 | AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | Done (range + per-column Top10/Custom/multi-value Values with optional blank) | Rust API + smoke |
