@@ -59,7 +59,7 @@ Status key:
 - P2: report-generation/object-model breadth
 - Later: explicitly out of the current hillclimb
 
-| Area | SpreadJS reference | xlcore target | Status | Test oracle |
+| Area | SpreadJS reference | xlcore target | Status | Test approach |
 | --- | --- | --- | --- | --- |
 | Open/create/save | `Workbook`, JSON/file flows | Open bytes/path, create blank workbook, save bytes/path, preserve unrelated OOXML | Done | Rust API + save/reopen |
 | Shared DTOs | SpreadJS `.d.ts` surface | Rust DTOs generated to TS from `xlcore-types` | Done | `scripts/regen-api-schema.sh` |
@@ -78,10 +78,9 @@ Status key:
 | Freeze panes | `frozenRowCount/frozenColumnCount` | Freeze/unfreeze panes | Done | Rust API + save/reopen |
 | Merges | `addSpan/removeSpan/getSpans` | Merge/unmerge/list merged ranges | Done | Rust API + TS smoke |
 | Selections/view state | `setSelection/getSelections/showCell` | Persist active cell/selection only if OOXML-backed and useful | Later | OOXML inspection |
-| Search | `Worksheet.search` | Search values/formulas across sheets | P1 | hsx search oracle |
-| Copy/paste/fill | `copyTo`, fill APIs | Copy ranges, fill down/right, translate relative formulas | Done | Rust API + TS smoke; hsx oracle for fixtures still P1 |
-| Diff | Not a single SpreadJS API; hsx has diff | Compare workbook values/formulas/style subset/sheet structure | P1 | xlcore fixtures |
-| Dependencies | Calc engine refs/deps behavior | Precedents/dependents from formula graph | P1 | hsx deps/refs oracle |
+| Search | `Worksheet.search` | Search values/formulas across sheets | P1 | Rust API + TS smoke |
+| Copy/paste/fill | `copyTo`, fill APIs | Copy ranges, fill down/right, translate relative formulas | Done | Rust API + TS smoke |
+| Dependencies | Calc engine refs/deps behavior | Precedents/dependents from formula graph | P1 | Rust API + xlcore-engine |
 | Defined names | `Workbook.names`, `NameInfo` | List/create/update/delete workbook and sheet names | P1 | OOXML + formulas |
 | Comments/notes | `Comments.CommentManager` | Add/edit/delete/list comments and threaded notes when present | P1 | Renderer + OOXML |
 | Hyperlinks | Worksheet hyperlink APIs | Add/edit/delete/list cell hyperlinks | P1 | Renderer + OOXML |
@@ -143,7 +142,6 @@ through the public TS/WASM surface when exposed there.
 | Rust unit tests | Parsing, validation, DTO behavior, mutation invariants | `cargo test -p xlcore-api`, `cargo test -p xlcore-types` |
 | OOXML round trips | Save/reopen and preservation of unrelated parts | committed fixtures, targeted XML inspection |
 | TS/WASM tests | Public wrapper, generated types, save/reopen smoke | Vitest or package smoke scripts |
-| hsx/SpreadJS oracle | Ambiguous spreadsheet behavior: copy/fill, row/col movement, deps, search | `hsx`, `gc.spread.sheets.d.ts` |
 | Renderer/browser | Visual layout integration and WASM lifetime issues | existing renderer, browser harness, screenshots |
 
 Fixture builders:
@@ -152,7 +150,7 @@ Fixture builders:
   it is sufficient for sheet structure, values, styles, merges, comments, and
   tables.
 - Use `hsx`/SpreadJS when behavior is the thing under test: copy/fill,
-  insert/delete movement, dependency tracing, diffs, and screenshot comparisons.
+  insert/delete movement, dependency tracing, and screenshot comparisons.
 - Do not require byte-for-byte parity with SpreadJS. Compare semantic workbook
   state, rendered output, object inventory, and selected OOXML invariants.
 
@@ -180,11 +178,6 @@ Future batch calls should return all warnings plus the first fatal error. If we
 choose transactional semantics, the envelope must state whether mutations were
 committed or rolled back.
 
-## Next Slices
-
-1. hsx oracle fixtures for copy/fill, row/column insert/delete, search, deps,
-   and diff.
-
 ## Definition Of Done
 
 An API feature is done when:
@@ -195,5 +188,3 @@ An API feature is done when:
 - Layout extraction reflects the mutation when visible.
 - Recalc behavior is explicit when formulas are involved.
 - Existing unrelated OOXML survives the operation.
-- hsx/SpreadJS or Excel is used as the oracle for ambiguous spreadsheet
-  semantics.
