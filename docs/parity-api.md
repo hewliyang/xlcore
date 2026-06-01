@@ -42,9 +42,16 @@ Implemented:
 
 Known gaps:
 
-- Style write surface limited to font/fill/border/alignment/number format patch
-- No comments, hyperlinks, tables, names, validation, or object authoring
+- Style write surface limited to font/fill/border/alignment/number format
+  patch; themes, named styles, and table-style authoring still preserve-only
+- Conditional formatting, charts, images, shapes, sparklines, and pivot
+  tables are preserve-only — no authoring API yet
+- Threaded notes (modern `<threadedComment>`) still preserve-only; classic
+  `<comment>` authoring is Done
 - Batch is a simple Rust closure, not a diagnostic/transaction envelope
+- Defined names round-trip, but engine-side resolution of structured/table
+  refs and most modern function names is still missing (see
+  `docs/parity-engine.md`)
 
 ## Done: ooxmlsdk 0.7.0 Migration
 
@@ -120,7 +127,7 @@ Status key:
 | Comments/notes | `Comments.CommentManager` | Add/edit/delete/list comments and threaded notes when present | Done (classic comments; threaded notes later) | Rust API + save/reopen |
 | Hyperlinks | Worksheet hyperlink APIs | Add/edit/delete/list cell hyperlinks | Done | Rust API + save/reopen |
 | Tables | `Tables.TableManager`, `Table` | Create table from range, headers/totals, resize, style name | Done | Rust API + save/reopen |
-| AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | Done (range + per-column Top10/Custom/blank-only Values; multi-value Values blocked on ooxmlsdk choice handling) | Rust API + smoke |
+| AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | Done (range + per-column Top10/Custom/multi-value Values with optional blank) | Rust API + smoke |
 | Data validation | `DataValidation` APIs | Add/edit/delete/list list and scalar validations | Done | Rust API + save/reopen |
 | Conditional formatting | `ConditionalFormatting` APIs | Preserve existing; author basic rules once style writes exist | P2 | Renderer screenshot |
 | Charts | `Charts`, `Shapes` | Preserve; create/edit chart types already rendered | P2 | Preview + OOXML |
