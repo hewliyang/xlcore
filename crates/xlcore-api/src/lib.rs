@@ -19,6 +19,7 @@ mod refs;
 mod rowcols;
 mod search;
 mod sheets;
+mod sparklines;
 mod structural;
 mod styles;
 mod tables;
@@ -48,7 +49,8 @@ pub use xlcore_types::{
     RangeInfo, SearchHit,
     SearchMatch, SearchMode, SearchOptions, SearchTarget, SheetInfo, SheetPageSetup,
     SheetPageSetupPatch, SheetProtectionInfo,
-    SheetProtectionPatch, SheetVisibility, StylePatch, TableColumnInfo, TableColumnPatch,
+    SheetProtectionPatch, SheetVisibility, SparklineAxisType, SparklineDisplayBlanks, SparklineEntry,
+    SparklineGroupInfo, SparklineGroupPatch, SparklineKind, StylePatch, TableColumnInfo, TableColumnPatch,
     TableInfo, TablePatch, TableStylePatch, TableStyleSettings, TableTotalsFunction,
     ThreadedNoteInfo, ThreadedNotePatch,
     UnderlinePatch, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,

@@ -57,7 +57,13 @@ Known gaps:
   modernly there. Richer chart features (combo, dual axis, chartEx,
   marker/line styling, data labels, modern chartStyle/colorStyle
   companion parts) remain preserve-only. Images, shapes, sparklines, and
-  pivot tables are still preserve-only — no authoring API yet. Conditional formatting now authors classic rules
+  pivot tables are still preserve-only — no authoring API yet. Sparkline
+  groups now author/list/remove (line/column/win-loss stacked, per-cell
+  location + dataRef, markers/high/low/first/last/negative/displayXAxis
+  flags, per-color palette, axis types + manual min/max, line weight).
+  Sparklines live in worksheet `extLst` under the
+  `{05C60535-1F16-4fd2-B633-F4F36F0B64E0}` x14 extension; round-trips
+  through hsx/Excel cleanly. Conditional formatting now authors classic rules
   plus color scales / data bars / icon sets; `<extLst>` x14 extensions
   (custom icons, multi-color data bars, etc.) remain preserve-only.
 - Threaded notes (modern `<threadedComment>`) author/list/reply/remove
@@ -155,7 +161,7 @@ Status key:
 | Charts | `Charts`, `Shapes` | Preserve; create/edit chart types already rendered | Done (authoring column/bar/line/pie/area/scatter/bubble/doughnut with title/legend/categories ref/series literal-or-ref names + values_ref; scatter/bubble take xValuesRef + yVal; bubble takes bubbleSizesRef; per-series solid `color` (`RRGGBB`); `categoryAxisTitle`/`valueAxisTitle`; preserves richer existing chart XML) | Rust API + save/reopen |
 | Images | `Shapes.Picture`, shape collection | Insert image, position, size, crop/rotation later | Done (insert/list/remove PNG/JPEG/GIF/BMP/TIFF/WEBP/SVG with two-cell anchor; sniff or explicit `format`; crop/rotation still preserve-only) | Rust API + save/reopen |
 | Shapes | `Shapes.ShapeCollection` | Preserve first; author basic shape/text later | P2 | Preview + OOXML |
-| Sparklines | `Sparklines` APIs | Preserve; author simple line/column/win-loss later | P2 | Renderer screenshot |
+| Sparklines | `Sparklines` APIs | Preserve; author simple line/column/win-loss | Done (author/list/remove line/column/stacked groups with per-entry location + dataRef, markers/high/low/first/last/negative/displayXAxis flags, axis min/max kinds + manual values, line weight, full color palette) | Rust API + save/reopen |
 | Pivot tables | `PivotTableManager`, slicers/timelines | Preserve; refresh/create only after aggregation model exists | P2 | OOXML + Excel open |
 | Slicers/timelines | `Slicers`, pivot slicers | Preserve; authoring deferred | Later | OOXML diff |
 | Protection | Sheet/workbook protection APIs | Sheet/workbook protection metadata | Done | Rust API + save/reopen |
@@ -275,6 +281,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `invalid_conditional_format` | Conditional format rule patch is missing required formula/operator/text for the rule kind, or has a non-positive priority |
 | `invalid_chart` | Chart patch has no series, or a series `values_ref` is empty |
 | `invalid_image` | Image patch has empty bytes or an unrecognized format that wasn't explicitly specified |
+| `invalid_sparkline_group` | Sparkline group patch has no entries, an invalid location/dataRef, or a non-RRGGBB color |
 | `unsupported_formula` | Formula could not be evaluated; source/cache preserved where possible |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |

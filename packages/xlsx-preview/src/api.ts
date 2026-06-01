@@ -43,6 +43,12 @@ import type {
   SheetVisibility,
   SheetProtectionInfo,
   SheetProtectionPatch,
+  SparklineAxisType,
+  SparklineDisplayBlanks,
+  SparklineEntry,
+  SparklineGroupInfo,
+  SparklineGroupPatch,
+  SparklineKind,
   StylePatch,
   TableInfo,
   TablePatch,
@@ -138,6 +144,12 @@ export type {
   SheetProtectionInfo,
   SheetProtectionPatch,
   SheetVisibility,
+  SparklineAxisType,
+  SparklineDisplayBlanks,
+  SparklineEntry,
+  SparklineGroupInfo,
+  SparklineGroupPatch,
+  SparklineKind,
   StylePatch,
   TableColumnInfo,
   TableColumnPatch,
@@ -402,6 +414,18 @@ export class Workbook {
 
   removeImage(sheet: string, id: string): ImageInfo | null {
     return (this.handle.removeImage(sheet, id) as ImageInfo | null) ?? null;
+  }
+
+  sparklineGroups(sheet?: string | null): SparklineGroupInfo[] {
+    return this.handle.sparklineGroups(sheet ?? null) as SparklineGroupInfo[];
+  }
+
+  setSparklineGroup(patch: SparklineGroupPatch): SparklineGroupInfo {
+    return this.handle.setSparklineGroup(patch) as SparklineGroupInfo;
+  }
+
+  removeSparklineGroup(sheet: string, id: string): SparklineGroupInfo | null {
+    return (this.handle.removeSparklineGroup(sheet, id) as SparklineGroupInfo | null) ?? null;
   }
 
   properties(): WorkbookProperties {

@@ -54,6 +54,7 @@ export class WorkbookHandle {
     removeMerge(reference: string): any;
     removePageSetup(sheet: string): any;
     removeSheetProtection(sheet: string): any;
+    removeSparklineGroup(sheet: string, id: string): any;
     removeTable(name: string): any;
     removeThreadedThread(reference: string): any;
     removeWorkbookProtection(): any;
@@ -84,12 +85,14 @@ export class WorkbookHandle {
     setRowVisible(sheet: string, row: number, visible: boolean): void;
     setSheetProtection(sheet: string, patch: any): any;
     setSheetVisibility(name: string, visibility: string): any;
+    setSparklineGroup(patch: any): any;
     setStyle(reference: string, patch: any): any;
     setTable(patch: any): any;
     setValue(reference: string, value: any): any;
     setWorkbookProtection(patch: any): any;
     sheetProtection(sheet: string): any;
     sheets(): any;
+    sparklineGroups(sheet?: string | null): any;
     tables(sheet?: string | null): any;
     takeWarnings(): any;
     threadedNotes(sheet: string): any;
@@ -164,6 +167,7 @@ export interface InitOutput {
     readonly workbookhandle_removeMerge: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removePageSetup: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeSheetProtection: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_removeSparklineGroup: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_removeTable: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeThreadedThread: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeWorkbookProtection: (a: number, b: number) => void;
@@ -194,12 +198,14 @@ export interface InitOutput {
     readonly workbookhandle_setRowVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setSheetProtection: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setSheetVisibility: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+    readonly workbookhandle_setSparklineGroup: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setStyle: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setTable: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setValue: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setWorkbookProtection: (a: number, b: number, c: number) => void;
     readonly workbookhandle_sheetProtection: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_sheets: (a: number, b: number) => void;
+    readonly workbookhandle_sparklineGroups: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_tables: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_takeWarnings: (a: number, b: number) => void;
     readonly workbookhandle_threadedNotes: (a: number, b: number, c: number, d: number) => void;

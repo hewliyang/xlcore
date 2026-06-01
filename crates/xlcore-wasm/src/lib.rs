@@ -694,6 +694,35 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = sparklineGroups)]
+    pub fn sparkline_groups(&mut self, sheet: Option<String>) -> Result<JsValue, JsValue> {
+        let list = self
+            .workbook_mut()?
+            .sparkline_groups(sheet.as_deref())
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setSparklineGroup)]
+    pub fn set_sparkline_group(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::SparklineGroupPatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .set_sparkline_group(patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removeSparklineGroup)]
+    pub fn remove_sparkline_group(&mut self, sheet: &str, id: &str) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .remove_sparkline_group(sheet, id)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = properties)]
     pub fn properties(&mut self) -> Result<JsValue, JsValue> {
         let props = self.workbook_mut()?.properties().map_err(api_err_to_js)?;
