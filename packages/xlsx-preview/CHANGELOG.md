@@ -5,7 +5,14 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Blank workbooks (no `xl/styles.xml`) now expose `defaultFont="Calibri"` / `defaultFontSize=11` in layout instead of empty/0 — previewer renders cell text on freshly-created workbooks without requiring a `setStyle` call.
+- Playground `render()` honors `layout.activeSheetIndex` when a script calls `worksheet.activate()` (no longer pinned to the previously-active tab).
+
 ### Added
+
+- Workbook API redesigned as a hierarchical SpreadJS-style facade. `workbook.sheet(name)` / `workbook.worksheets()` / `workbook.activeSheet()` / `workbook.addSheet(name)` / `workbook.removeSheet(name)` return `Worksheet` objects. `Worksheet` owns per-sheet sub-collections (`merges`, `hyperlinks`, `comments`, `threadedNotes`, `dataValidations`, `conditionalFormats`, `autoFilter`, `tables`, `charts`, `images`, `sparklineGroups`) and leaf APIs (`freeze` / `pageSetup` / `protection`), plus structural verbs (`setRowHeight`, `insertRows`, …) and lifecycle (`rename`, `moveTo`, `remove`, `activate`, `setVisibility`). `sheet.range(addr)` / `sheet.cell(addr)` return `Range` / `Cell` with `.setValue` / `.setValues` / `.setFormula` / `.setStyle` / `.clear` / `.copyTo` / `.fillTo` / `.merge`. Workbook-scoped leafs: `workbook.definedNames` / `allTables` / `allCharts` / `allImages` / `allSparklineGroups` / `properties` / `calcProperties` / `protection`. `workbook.worksheets()` is the only sheet enumerator — all uniform `list/set/remove` or `get/set/remove`. Addresses accept A1 strings or `{row, column, rowCount?, columnCount?}`; sheet names are auto-quoted. `Worksheet` and its children share an internal `SheetRef` so `worksheet.rename(newName)` keeps existing handles valid against the new name.
 
 - Chart authoring: `ChartSeriesPatch` / `ChartSeriesInfo` gain `dataLabels` for per-series data labels (overrides chart-level when set). Chart-level dl no longer duplicates onto every series in the OOXML.
 - Image authoring: `ImagePatch` / `ImageInfo` gain `rotationDegrees` (°, normalized mod 360, written as `rot` in 60000ths on `<a:xfrm>`), `cropLeftPct`/`cropTopPct`/`cropRightPct`/`cropBottomPct` (% on `<a:srcRect>` l/t/r/b, 1000ths-of-a-percent units), and `flipHorizontal`/`flipVertical` (`<a:xfrm flipH/flipV>`). Round-trips through save/reopen. New `invalid_image` cases for non-finite rotation/crop values.

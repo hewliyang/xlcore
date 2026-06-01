@@ -63,7 +63,7 @@ pub fn extract_doc_with_options(
             let table_styles = styles::extract_table_styles(s);
             (styles::extract(s), dxfs, table_styles)
         } else {
-            (Styles::default(), Vec::new(), Vec::new())
+            (styles::empty_styles(), Vec::new(), Vec::new())
         }
     };
 

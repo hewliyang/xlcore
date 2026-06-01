@@ -220,50 +220,49 @@ import { loadXlsxPreviewRuntime } from "./shared/loadXlsxPreview.js";
 
 const SNIPPETS = {
   "hello": `// Build a tiny model from scratch.
-workbook.setValue("Sheet1!A1", "Region");
-workbook.setValue("Sheet1!B1", "Units");
-workbook.setValue("Sheet1!C1", "Price");
-workbook.setValue("Sheet1!D1", "Total");
-workbook.setRangeValues("Sheet1!A2:C4", [
+const s = workbook.sheet("Sheet1");
+s.range("A1:D1").setValues([["Region", "Units", "Price", "Total"]]);
+s.range("A2:C4").setValues([
   ["North", 10, 100],
   ["South", 25, 250],
   ["West",  17, 175],
 ]);
-workbook.setRangeFormulas("Sheet1!D2:D4", [["=B2*C2"],["=B3*C3"],["=B4*C4"]]);
-workbook.setValue("Sheet1!A5", "Total");
-workbook.setFormula("Sheet1!D5", "=SUM(D2:D4)");
-workbook.setStyle("Sheet1!A1:D1", { font: { bold: true }, fill: { color: "#E2F0D9" } });
-workbook.setStyle("Sheet1!A5:D5", { font: { bold: true } });
+s.range("D2:D4").setFormulas([["=B2*C2"],["=B3*C3"],["=B4*C4"]]);
+s.cell("A5").setValue("Total");
+s.cell("D5").setFormula("=SUM(D2:D4)");
+s.range("A1:D1").setStyle({ font: { bold: true }, fill: { color: "#E2F0D9" } });
+s.range("A5:D5").setStyle({ font: { bold: true } });
 `,
-  "merge + style": `workbook.setValue("Sheet1!A1", "Quarterly report");
-workbook.addMerge("Sheet1!A1:D1");
-workbook.setStyle("Sheet1!A1:D1", {
+  "merge + style": `const s = workbook.sheet("Sheet1");
+s.cell("A1").setValue("Quarterly report");
+s.range("A1:D1").merge().setStyle({
   font: { bold: true, size: 14, color: "#FFFFFF" },
   fill: { color: "#4F46E5" },
   alignment: { horizontal: "center", vertical: "center" },
 });
-workbook.setRowHeight("Sheet1", 1, 28);
+s.setRowHeight(1, 28);
 `,
-  "insert / delete rows": `workbook.setRangeValues("Sheet1!A1:B3", [
+  "insert / delete rows": `const s = workbook.sheet("Sheet1");
+s.range("A1:B3").setValues([
   ["one", 1],
   ["two", 2],
   ["three", 3],
 ]);
-workbook.insertRows("Sheet1", 2, 1);
-workbook.setValue("Sheet1!A2", "inserted");
-workbook.setValue("Sheet1!B2", 99);
-workbook.deleteRows("Sheet1", 4, 1);
+s.insertRows(2, 1);
+s.range("A2:B2").setValues([["inserted", 99]]);
+s.deleteRows(4, 1);
 `,
-  "copy + freeze": `workbook.setRangeValues("Sheet1!A1:C1", [["a","b","c"]]);
-workbook.setRangeFormulas("Sheet1!A2:C2", [["=A1&\"!\"","=B1*2","=LEN(C1)"]]);
-workbook.copyRange("Sheet1!A2:C2", "Sheet1!A3:C6");
-workbook.setFreeze("Sheet1", 1, 0);
+  "copy + freeze": `const s = workbook.sheet("Sheet1");
+s.range("A1:C1").setValues([["a","b","c"]]);
+s.range("A2:C2").setFormulas([["=A1&\\"!\\"","=B1*2","=LEN(C1)"]]);
+s.range("A2:C2").copyTo("A3:C6");
+s.freeze.set(1, 0);
 `,
-  "sheets": `workbook.createSheet("Inputs");
-workbook.createSheet("Calc");
-workbook.setValue("Inputs!A1", 42);
-workbook.setFormula("Calc!A1", "=Inputs!A1 * 2");
-workbook.setActiveSheet("Calc");
+  "sheets": `const inputs = workbook.addSheet("Inputs");
+const calc = workbook.addSheet("Calc");
+inputs.cell("A1").setValue(42);
+calc.cell("A1").setFormula("=Inputs!A1 * 2");
+calc.activate();
 `,
 };
 
@@ -340,10 +339,18 @@ function render() {
   previewer = null;
   previewRoot.innerHTML = "";
   const layout = workbook.layout();
-  const initialSheet =
-    activeSheetMem && layout.sheets.some((s) => s.name === activeSheetMem)
-      ? activeSheetMem
+  const layoutActiveName =
+    typeof layout.activeSheetIndex === "number" &&
+    layout.activeSheetIndex >= 0 &&
+    layout.activeSheetIndex < layout.sheets.length
+      ? layout.sheets[layout.activeSheetIndex].name
       : undefined;
+  const initialSheet =
+    layoutActiveName && layoutActiveName !== activeSheetMem
+      ? layoutActiveName
+      : activeSheetMem && layout.sheets.some((s) => s.name === activeSheetMem)
+        ? activeSheetMem
+        : undefined;
   previewer = createWorkbookPreviewer(previewRoot, layout, { initialSheet });
   previewRoot.appendChild(previewer.root);
 }

@@ -73,6 +73,18 @@ pub fn extract(s: &x::Stylesheet) -> Styles {
     }
 }
 
+pub fn empty_styles() -> Styles {
+    Styles {
+        fonts: Vec::new(),
+        fills: Vec::new(),
+        borders: Vec::new(),
+        cell_xfs: Vec::new(),
+        num_fmts: Vec::new(),
+        default_font: "Calibri".to_string(),
+        default_font_size: 11.0,
+    }
+}
+
 pub fn extract_dxfs(s: &x::Stylesheet) -> Vec<crate::schema::Dxf> {
     let Some(dxfs) = s.differential_formats.as_ref() else {
         return Vec::new();
