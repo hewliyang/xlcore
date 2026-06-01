@@ -19,6 +19,7 @@ export class WorkbookHandle {
     getCell(reference: string): any;
     getFreeze(sheet: string): any;
     getRange(reference: string): any;
+    hyperlinks(sheet: string): any;
     insertColumns(sheet: string, before: number, count: number): void;
     insertRows(sheet: string, before: number, count: number): void;
     layout(options: any): any;
@@ -27,6 +28,7 @@ export class WorkbookHandle {
     constructor();
     static open(bytes: Uint8Array): WorkbookHandle;
     recalculate(): any;
+    removeHyperlink(reference: string): any;
     removeMerge(reference: string): any;
     renameSheet(old_name: string, new_name: string): void;
     save(): Uint8Array;
@@ -36,6 +38,7 @@ export class WorkbookHandle {
     setColumnWidth(sheet: string, column: number, width: number): void;
     setFormula(reference: string, formula: string): any;
     setFreeze(sheet: string, frozen_rows: number, frozen_columns: number): any;
+    setHyperlink(reference: string, patch: any): any;
     setRangeFormulas(reference: string, formulas: any): any;
     setRangeValues(reference: string, values: any): any;
     setRowHeight(sheet: string, row: number, height: number): void;
@@ -78,6 +81,7 @@ export interface InitOutput {
     readonly workbookhandle_getCell: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_getFreeze: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_getRange: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_hyperlinks: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_insertColumns: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_insertRows: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_layout: (a: number, b: number, c: number) => void;
@@ -86,6 +90,7 @@ export interface InitOutput {
     readonly workbookhandle_new: (a: number) => void;
     readonly workbookhandle_open: (a: number, b: number, c: number) => void;
     readonly workbookhandle_recalculate: (a: number, b: number) => void;
+    readonly workbookhandle_removeHyperlink: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeMerge: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_renameSheet: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_save: (a: number, b: number) => void;
@@ -95,6 +100,7 @@ export interface InitOutput {
     readonly workbookhandle_setColumnWidth: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setFormula: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setFreeze: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+    readonly workbookhandle_setHyperlink: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setRangeFormulas: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setRangeValues: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setRowHeight: (a: number, b: number, c: number, d: number, e: number, f: number) => void;

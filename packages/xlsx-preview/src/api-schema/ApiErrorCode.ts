@@ -9,6 +9,7 @@ export type ApiErrorCode =
   | "shape_mismatch"
   | "unsupported_style"
   | "merge_overlap"
+  | "invalid_hyperlink"
   | "invalid_search_query"
   | "ooxml_write_error"
   | "other";

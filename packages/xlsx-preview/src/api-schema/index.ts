@@ -13,6 +13,8 @@ export type { FontPatch } from "./FontPatch.js";
 export type { FormulaFallback } from "./FormulaFallback.js";
 export type { FreezeInfo } from "./FreezeInfo.js";
 export type { HorizontalAlign } from "./HorizontalAlign.js";
+export type { HyperlinkInfo } from "./HyperlinkInfo.js";
+export type { HyperlinkPatch } from "./HyperlinkPatch.js";
 export type { LayoutOptions } from "./LayoutOptions.js";
 export type { MergeInfo } from "./MergeInfo.js";
 export type { RangeInfo } from "./RangeInfo.js";

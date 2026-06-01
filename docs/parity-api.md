@@ -81,7 +81,7 @@ Status key:
 | Dependencies | Calc engine refs/deps behavior | Precedents/dependents from formula graph | P1 | Rust API + xlcore-engine |
 | Defined names | `Workbook.names`, `NameInfo` | List/create/update/delete workbook and sheet names | P1 | OOXML + formulas |
 | Comments/notes | `Comments.CommentManager` | Add/edit/delete/list comments and threaded notes when present | P1 | Renderer + OOXML |
-| Hyperlinks | Worksheet hyperlink APIs | Add/edit/delete/list cell hyperlinks | P1 | Renderer + OOXML |
+| Hyperlinks | Worksheet hyperlink APIs | Add/edit/delete/list cell hyperlinks | Done | Rust API + save/reopen |
 | Tables | `Tables.TableManager`, `Table` | Create table from range, headers/totals, resize, style name | P1/P2 | Excel/hsx + renderer |
 | AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | P1/P2 | OOXML diff |
 | Data validation | `DataValidation` APIs | Add/edit/delete/list list and scalar validations | P1 | OOXML + Excel open |
@@ -194,6 +194,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `unsupported_formula` | Formula could not be evaluated; source/cache preserved where possible |
 | `unsupported_style` | Style patch contains values we cannot serialize (e.g. invalid color) |
 | `merge_overlap` | Requested merge overlaps an existing merge on the sheet |
+| `invalid_hyperlink` | Hyperlink patch is missing both target and location, or has an empty target |
 | `invalid_search_query` | Search query is empty or contains an invalid regex/wildcard pattern |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |

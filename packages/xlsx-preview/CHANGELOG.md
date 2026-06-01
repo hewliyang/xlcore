@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Workbook API: `hyperlinks(sheet)` / `setHyperlink(ref, patch)` / `removeHyperlink(ref)` with `HyperlinkInfo` + `HyperlinkPatch` DTOs. Targets dedupe to existing worksheet relationships, overlapping hyperlinks on `set` are replaced, orphaned hyperlink relationships are deleted from `sheetN.xml.rels`, and `invalid_hyperlink` `ApiError` covers empty/missing target+location patches. OOXML `<hyperlinks>` block round-trips on save/reopen.
 - Workbook API: `search(query, options)` across one sheet or all sheets, with `SearchOptions` (sheet/range scope, target = values/formulas/both, mode = substring/exact/wildcard/regex, case sensitivity, max results) and `SearchMatch` DTOs (`hit: value | formula`, matched substring, cell value, formula). Substring + case-insensitive defaults match `hsx search`. New `invalid_search_query` `ApiError` for empty queries and bad regex/wildcard patterns.
 - `examples/xlsx-playground.html` browser mutation harness: open → mutate via a small JS editor (with snippet presets) → recalc → re-render via `createWorkbookPreviewer` → download `.xlsx`. Wired into the site build at `/playground`.
 - Workbook API: `copyRange(src, dst)` / `fillRange(src, dst)` with relative-formula translation; copy supports same-shape, single-cell, or whole-multiple destinations (tiles source); fill requires dst to contain src and be a whole multiple; absolute markers and cross-sheet refs preserved; out-of-bounds collapses to `#REF!`.

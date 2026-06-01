@@ -4,6 +4,8 @@ import type {
   CellInfo,
   ClearMode,
   FreezeInfo,
+  HyperlinkInfo,
+  HyperlinkPatch,
   LayoutOptions as WorkbookLayoutOptions,
   MergeInfo,
   RangeInfo,
@@ -33,6 +35,8 @@ export type {
   FormulaFallback,
   FreezeInfo,
   HorizontalAlign,
+  HyperlinkInfo,
+  HyperlinkPatch,
   LayoutOptions as WorkbookLayoutOptions,
   MergeInfo,
   RangeInfo,
@@ -141,6 +145,18 @@ export class Workbook {
 
   removeMerge(reference: string): MergeInfo | null {
     return (this.handle.removeMerge(reference) as MergeInfo | null) ?? null;
+  }
+
+  hyperlinks(sheet: string): HyperlinkInfo[] {
+    return this.handle.hyperlinks(sheet) as HyperlinkInfo[];
+  }
+
+  setHyperlink(reference: string, patch: HyperlinkPatch): HyperlinkInfo {
+    return this.handle.setHyperlink(reference, patch) as HyperlinkInfo;
+  }
+
+  removeHyperlink(reference: string): HyperlinkInfo[] {
+    return this.handle.removeHyperlink(reference) as HyperlinkInfo[];
   }
 
   createSheet(name: string): SheetInfo {
