@@ -215,10 +215,8 @@ impl Workbook {
             .map(|i| build_table_column(i, &resolved_names[i as usize], column_patches.get(i as usize)))
             .collect();
         let mut table = x::Table {
-            xmlns: vec![ooxmlsdk::common::XmlNamespaceDecl::new(
-                "",
-                "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
-            )],
+            xmlns: crate::ooxml_header::spreadsheetml_default_only(),
+            xml_header: crate::ooxml_header::STANDALONE,
             id: id.into(),
             name: Some(patch.name.clone().into()),
             display_name: display_name.clone().into(),

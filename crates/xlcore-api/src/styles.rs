@@ -7,6 +7,7 @@ pub use xlcore_types::{
 };
 
 use crate::errors::sdk_err_to_api;
+use crate::ooxml_header;
 use crate::{ApiError, ApiErrorCode, Result};
 
 pub(crate) fn ensure_styles_part(
@@ -26,6 +27,8 @@ pub(crate) fn ensure_styles_part(
 
 fn default_stylesheet() -> x::Stylesheet {
     x::Stylesheet {
+        xmlns: ooxml_header::spreadsheetml_default_only(),
+        xml_header: ooxml_header::STANDALONE,
         fonts: Some(x::Fonts {
             count: Some(1),
             font: vec![default_font()],

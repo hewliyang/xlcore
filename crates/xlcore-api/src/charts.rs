@@ -174,8 +174,8 @@ impl Workbook {
                     .add_new_part_auto_id(&mut self.doc)
                     .map_err(sdk_err_to_api)?;
                 let empty = xdr::WorksheetDrawing {
-                    xmlns: drawing_xmlns(),
-                    xml_header: ooxmlsdk::common::XmlHeaderType::Standalone,
+                    xmlns: crate::ooxml_header::drawing_root(),
+                    xml_header: crate::ooxml_header::STANDALONE,
                     ..Default::default()
                 };
                 p.set_root_element(&mut self.doc, empty)
@@ -752,51 +752,11 @@ fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
     };
 
     c::ChartSpace {
-        xmlns: chart_space_xmlns(),
-        xml_header: ooxmlsdk::common::XmlHeaderType::Standalone,
+        xmlns: crate::ooxml_header::chart_space(),
+        xml_header: crate::ooxml_header::STANDALONE,
         chart: Box::new(chart),
         ..Default::default()
     }
-}
-
-fn drawing_xmlns() -> Vec<ooxmlsdk::common::XmlNamespaceDecl> {
-    use ooxmlsdk::common::XmlNamespaceDecl;
-    vec![
-        XmlNamespaceDecl {
-            prefix: "xdr".into(),
-            uri: "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing".into(),
-        },
-        XmlNamespaceDecl {
-            prefix: "a".into(),
-            uri: "http://schemas.openxmlformats.org/drawingml/2006/main".into(),
-        },
-        XmlNamespaceDecl {
-            prefix: "r".into(),
-            uri: "http://schemas.openxmlformats.org/officeDocument/2006/relationships".into(),
-        },
-        XmlNamespaceDecl {
-            prefix: "c".into(),
-            uri: "http://schemas.openxmlformats.org/drawingml/2006/chart".into(),
-        },
-    ]
-}
-
-fn chart_space_xmlns() -> Vec<ooxmlsdk::common::XmlNamespaceDecl> {
-    use ooxmlsdk::common::XmlNamespaceDecl;
-    vec![
-        XmlNamespaceDecl {
-            prefix: "c".into(),
-            uri: "http://schemas.openxmlformats.org/drawingml/2006/chart".into(),
-        },
-        XmlNamespaceDecl {
-            prefix: "a".into(),
-            uri: "http://schemas.openxmlformats.org/drawingml/2006/main".into(),
-        },
-        XmlNamespaceDecl {
-            prefix: "r".into(),
-            uri: "http://schemas.openxmlformats.org/officeDocument/2006/relationships".into(),
-        },
-    ]
 }
 
 fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {

@@ -23,6 +23,7 @@ mod styles;
 mod tables;
 mod threaded_notes;
 mod vml_comments;
+mod ooxml_header;
 mod xml;
 
 use std::path::Path;

@@ -221,10 +221,8 @@ pub(crate) fn is_threaded_shadow_author(author: &str) -> bool {
 
 fn default_comments_root() -> x::Comments {
     x::Comments {
-        xmlns: vec![ooxmlsdk::common::XmlNamespaceDecl::new(
-            "",
-            "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
-        )],
+        xmlns: crate::ooxml_header::spreadsheetml_default_only(),
+        xml_header: crate::ooxml_header::STANDALONE,
         ..Default::default()
     }
 }

@@ -6,10 +6,13 @@ use xlcore_io::spreadsheetml as x;
 use xlcore_types::{ApiCellValue as CellValue, CellInfo, ClearMode};
 
 use crate::errors::{sdk_err_to_api, zip_err};
+use crate::ooxml_header;
 use crate::Result;
 
 pub(crate) fn empty_worksheet() -> x::Worksheet {
     x::Worksheet {
+        xmlns: ooxml_header::spreadsheetml_default(),
+        xml_header: ooxml_header::STANDALONE,
         sheet_data: Box::new(x::SheetData::default()),
         ..Default::default()
     }

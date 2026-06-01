@@ -3102,6 +3102,113 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
 }
 
 #[test]
+fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
+    use std::io::Read;
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A1", "header").unwrap();
+    wb.set_value("Sheet1!A2", "row").unwrap();
+    wb.create_sheet("Fresh").unwrap();
+    wb.set_value("Fresh!B2", 42.0).unwrap();
+    wb.set_style(
+        "Sheet1!A1",
+        StylePatch {
+            font: Some(FontPatch {
+                bold: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    wb.set_comment(
+        "Sheet1!A1",
+        CommentPatch {
+            author: Some("a".into()),
+            text: "hello".into(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    wb.add_threaded_note(
+        "Sheet1!A2",
+        ThreadedNotePatch {
+            author: Some("a".into()),
+            text: "modern".into(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    wb.set_table(TablePatch {
+        name: "T".into(),
+        reference: Some("Sheet1!A1:A2".into()),
+        ..Default::default()
+    })
+    .unwrap();
+    wb.set_chart(ChartPatch {
+        sheet: "Sheet1".into(),
+        name: Some("C".into()),
+        kind: ChartKind::Column,
+        title: None,
+        legend_position: None,
+        categories_ref: None,
+        series: vec![ChartSeriesPatch {
+            values_ref: "Sheet1!$A$1:$A$2".into(),
+            ..Default::default()
+        }],
+        anchor: ChartAnchor {
+            from_column: 3,
+            from_row: 1,
+            to_column: 9,
+            to_row: 12,
+            ..Default::default()
+        },
+        category_axis_title: None,
+        value_axis_title: None,
+        stacking: None,
+    })
+    .unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let cursor = std::io::Cursor::new(&bytes);
+    let mut zip = zip::ZipArchive::new(cursor).unwrap();
+    let names: Vec<String> = (0..zip.len())
+        .map(|i| zip.by_index(i).unwrap().name().to_string())
+        .collect();
+
+    for name in &names {
+        if !name.ends_with(".xml") || name.contains(".rels") {
+            continue;
+        }
+        let mut f = zip.by_name(name).unwrap();
+        let mut buf = String::new();
+        f.read_to_string(&mut buf).unwrap();
+        assert!(
+            buf.starts_with("<?xml "),
+            "part {name} missing XML prolog; head: {:?}",
+            &buf[..buf.len().min(120)]
+        );
+        let after_prolog = buf.splitn(2, "?>").nth(1).unwrap_or("").trim_start();
+        let lt = after_prolog
+            .find('<')
+            .expect("no root element after prolog");
+        let tag = &after_prolog[lt + 1..];
+        let tag_end = tag
+            .find(|c: char| c.is_whitespace() || c == '>' || c == '/')
+            .unwrap_or(tag.len());
+        let tag_name = &tag[..tag_end];
+        if let Some(colon) = tag_name.find(':') {
+            let prefix = &tag_name[..colon];
+            let needle = format!("xmlns:{prefix}=");
+            assert!(
+                tag.contains(&needle),
+                "root element <{tag_name}> in {name} uses unbound prefix {prefix:?}; root: {:?}",
+                &tag[..tag.len().min(240)]
+            );
+        }
+    }
+}
+
+#[test]
 fn charts_stacking_roundtrips_for_bar_line_area() {
     let mut wb = Workbook::new().unwrap();
     let base = |kind: ChartKind, stacking: Option<ChartStacking>, row: u32| ChartPatch {
