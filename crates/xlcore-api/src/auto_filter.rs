@@ -15,7 +15,7 @@ impl Workbook {
         let ws = ws_part
             .root_element(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        Ok(read_auto_filter(&sheet, ws.x_auto_filter.as_deref()))
+        Ok(read_auto_filter(&sheet, ws.auto_filter.as_deref()))
     }
 
     pub fn set_auto_filter(&mut self, reference: impl AsRef<str>) -> Result<AutoFilterInfo> {
@@ -26,11 +26,11 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let af = ws
-            .x_auto_filter
+            .auto_filter
             .get_or_insert_with(|| Box::new(x::AutoFilter::default()));
         af.reference = Some(new_ref.clone().into());
-        af.x_filter_column.clear();
-        af.x_sort_state = None;
+        af.filter_column.clear();
+        af.sort_state = None;
         Ok(AutoFilterInfo {
             sheet: range_ref.sheet.clone(),
             reference: new_ref,
@@ -51,8 +51,8 @@ impl Workbook {
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        let removed = read_auto_filter(&sheet, ws.x_auto_filter.as_deref());
-        ws.x_auto_filter = None;
+        let removed = read_auto_filter(&sheet, ws.auto_filter.as_deref());
+        ws.auto_filter = None;
         Ok(removed)
     }
 
@@ -81,14 +81,14 @@ impl Workbook {
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        let af = ws.x_auto_filter.as_mut().ok_or_else(|| {
+        let af = ws.auto_filter.as_mut().ok_or_else(|| {
             ApiError::new(
                 ApiErrorCode::InvalidAutoFilter,
                 "sheet has no auto filter range; call set_auto_filter first",
             )
             .with_sheet(&sheet)
         })?;
-        af.x_filter_column
+        af.filter_column
             .retain(|fc| u32::from(fc.column_id) != patch.column_offset);
         let mut fc = x::FilterColumn {
             column_id: patch.column_offset.into(),
@@ -97,8 +97,8 @@ impl Workbook {
             ..Default::default()
         };
         fc.filter_column_choice = Some(build_choice(&patch.criteria));
-        af.x_filter_column.push(fc);
-        af.x_filter_column
+        af.filter_column.push(fc);
+        af.filter_column
             .sort_by_key(|fc| u32::from(fc.column_id));
         Ok(AutoFilterColumnInfo {
             column_offset: patch.column_offset,
@@ -118,11 +118,11 @@ impl Workbook {
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        let Some(af) = ws.x_auto_filter.as_mut() else {
+        let Some(af) = ws.auto_filter.as_mut() else {
             return Ok(None);
         };
         let mut removed: Option<AutoFilterColumnInfo> = None;
-        af.x_filter_column.retain(|fc| {
+        af.filter_column.retain(|fc| {
             if u32::from(fc.column_id) == column_offset {
                 removed = read_filter_column(fc);
                 false
@@ -138,7 +138,7 @@ impl Workbook {
         let ws = ws_part
             .root_element(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        let af = ws.x_auto_filter.as_deref().ok_or_else(|| {
+        let af = ws.auto_filter.as_deref().ok_or_else(|| {
             ApiError::new(
                 ApiErrorCode::InvalidAutoFilter,
                 "sheet has no auto filter range",
@@ -169,13 +169,13 @@ fn validate_criteria(criteria: &AutoFilterCriteria, sheet: &str) -> Result<()> {
     };
     match criteria {
         AutoFilterCriteria::Values { values, blank } => {
-            if !values.is_empty() {
-                return err(
-                    "value-list <filters> are not yet supported (ooxmlsdk limitation); use Custom criteria instead",
-                );
+            if values.is_empty() && !*blank {
+                return err("values criteria requires at least one value or blank=true");
             }
-            if !*blank {
-                return err("values criteria with no values requires blank=true");
+            for v in values {
+                if v.is_empty() {
+                    return err("values criteria entries must be non-empty");
+                }
             }
         }
         AutoFilterCriteria::Top10 { val, percent, .. } => {
@@ -212,12 +212,12 @@ fn build_choice(criteria: &AutoFilterCriteria) -> x::FilterColumnChoice {
                 blank: if *blank { Some(true.into()) } else { None },
                 ..Default::default()
             };
-            if let Some(v) = values.first() {
-                filters.filters_choice = Some(x::FiltersChoice::XFilter(Box::new(x::Filter {
+            for v in values {
+                filters.filters_choice.push(x::FiltersChoice::XFilter(Box::new(x::Filter {
                     val: v.clone().into(),
                 })));
             }
-            x::FilterColumnChoice::XFilters(Box::new(filters))
+            x::FilterColumnChoice::Filters(Box::new(filters))
         }
         AutoFilterCriteria::Top10 { top, percent, val } => {
             let t10 = x::Top10 {
@@ -226,7 +226,7 @@ fn build_choice(criteria: &AutoFilterCriteria) -> x::FilterColumnChoice {
                 val: (*val).into(),
                 filter_value: None,
             };
-            x::FilterColumnChoice::XTop10(Box::new(t10))
+            x::FilterColumnChoice::Top10(Box::new(t10))
         }
         AutoFilterCriteria::Custom {
             logical_and,
@@ -234,10 +234,10 @@ fn build_choice(criteria: &AutoFilterCriteria) -> x::FilterColumnChoice {
         } => {
             let mut cf = x::CustomFilters {
                 and: Some((*logical_and).into()),
-                x_custom_filter: Vec::new(),
+                custom_filter: Vec::new(),
             };
             for c in criteria {
-                cf.x_custom_filter.push(x::CustomFilter {
+                cf.custom_filter.push(x::CustomFilter {
                     operator: Some(operator_to_sdk(c.operator)),
                     val: Some(c.value.clone().into()),
                 });
@@ -253,7 +253,7 @@ fn read_auto_filter(sheet: &str, af: Option<&x::AutoFilter>) -> Option<AutoFilte
     let reference = af.reference.as_ref()?;
     let (r1, c1, r2, c2) = parse_range_a1(reference.as_str())?;
     let mut columns: Vec<AutoFilterColumnInfo> = af
-        .x_filter_column
+        .filter_column
         .iter()
         .filter_map(read_filter_column)
         .collect();
@@ -278,19 +278,21 @@ fn read_auto_filter(sheet: &str, af: Option<&x::AutoFilter>) -> Option<AutoFilte
 fn read_filter_column(fc: &x::FilterColumn) -> Option<AutoFilterColumnInfo> {
     let column_offset = u32::from(fc.column_id);
     let criteria = match fc.filter_column_choice.as_ref() {
-        Some(x::FilterColumnChoice::XFilters(filters)) => {
+        Some(x::FilterColumnChoice::Filters(filters)) => {
             let blank = filters
                 .blank
                 .as_ref()
                 .map(|b| bool::from(*b))
                 .unwrap_or(false);
             let mut values: Vec<String> = Vec::new();
-            if let Some(x::FiltersChoice::XFilter(f)) = filters.filters_choice.as_ref() {
-                values.push(f.val.as_str().to_string());
+            for fc in &filters.filters_choice {
+                if let x::FiltersChoice::XFilter(f) = fc {
+                    values.push(f.val.as_str().to_string());
+                }
             }
             AutoFilterCriteria::Values { values, blank }
         }
-        Some(x::FilterColumnChoice::XTop10(t10)) => AutoFilterCriteria::Top10 {
+        Some(x::FilterColumnChoice::Top10(t10)) => AutoFilterCriteria::Top10 {
             top: t10.top.as_ref().map(|b| bool::from(*b)).unwrap_or(true),
             percent: t10
                 .percent
@@ -302,7 +304,7 @@ fn read_filter_column(fc: &x::FilterColumn) -> Option<AutoFilterColumnInfo> {
         Some(x::FilterColumnChoice::XCustomFilters(cf)) => {
             let logical_and = cf.and.as_ref().map(|b| bool::from(*b)).unwrap_or(false);
             let criteria = cf
-                .x_custom_filter
+                .custom_filter
                 .iter()
                 .map(|c| AutoFilterCustomCriterion {
                     operator: c
@@ -321,10 +323,10 @@ fn read_filter_column(fc: &x::FilterColumn) -> Option<AutoFilterColumnInfo> {
                 criteria,
             }
         }
-        Some(x::FilterColumnChoice::XDynamicFilter(_)) => AutoFilterCriteria::Unsupported {
+        Some(x::FilterColumnChoice::DynamicFilter(_)) => AutoFilterCriteria::Unsupported {
             name: "dynamicFilter".to_string(),
         },
-        Some(x::FilterColumnChoice::XColorFilter(_)) => AutoFilterCriteria::Unsupported {
+        Some(x::FilterColumnChoice::ColorFilter(_)) => AutoFilterCriteria::Unsupported {
             name: "colorFilter".to_string(),
         },
         Some(x::FilterColumnChoice::XIconFilter(_)) => AutoFilterCriteria::Unsupported {
@@ -333,7 +335,7 @@ fn read_filter_column(fc: &x::FilterColumn) -> Option<AutoFilterColumnInfo> {
         Some(x::FilterColumnChoice::X14CustomFilters(cf)) => {
             let logical_and = cf.and.as_ref().map(|b| bool::from(*b)).unwrap_or(false);
             let criteria = cf
-                .x14_custom_filter
+                .custom_filter
                 .iter()
                 .map(|c| AutoFilterCustomCriterion {
                     operator: c
@@ -355,7 +357,7 @@ fn read_filter_column(fc: &x::FilterColumn) -> Option<AutoFilterColumnInfo> {
         Some(x::FilterColumnChoice::X14IconFilter(_)) => AutoFilterCriteria::Unsupported {
             name: "x14IconFilter".to_string(),
         },
-        Some(x::FilterColumnChoice::XExtLst(_)) => AutoFilterCriteria::Unsupported {
+        Some(x::FilterColumnChoice::ExtensionList(_)) => AutoFilterCriteria::Unsupported {
             name: "extLst".to_string(),
         },
         None => AutoFilterCriteria::Values {

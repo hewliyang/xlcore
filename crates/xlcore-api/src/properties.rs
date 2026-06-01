@@ -1,3 +1,4 @@
+use ooxmlsdk::simple_type::BooleanValue;
 use ooxmlsdk::common::XmlNamespaceDecl;
 use ooxmlsdk::schemas::opc_core_properties as cp;
 use xlcore_io::spreadsheetml as x;
@@ -181,14 +182,14 @@ fn read_calc(calc: Option<&x::CalculationProperties>) -> CalcProperties {
     };
     CalcProperties {
         calc_mode: calc.calculation_mode.map(calc_mode_from_sdk),
-        full_calc_on_load: calc.full_calculation_on_load,
-        force_full_calc: calc.force_full_calculation,
-        calc_on_save: calc.calculation_on_save,
-        concurrent_calc: calc.concurrent_calculation,
-        iterate: calc.iterate,
+        full_calc_on_load: (calc.full_calculation_on_load).map(bool::from),
+        force_full_calc: (calc.force_full_calculation).map(bool::from),
+        calc_on_save: (calc.calculation_on_save).map(bool::from),
+        concurrent_calc: (calc.concurrent_calculation).map(bool::from),
+        iterate: (calc.iterate).map(bool::from),
         iterate_count: calc.iterate_count,
         iterate_delta: calc.iterate_delta,
-        full_precision: calc.full_precision,
+        full_precision: (calc.full_precision).map(bool::from),
         calculation_id: calc.calculation_id,
     }
 }
@@ -198,19 +199,19 @@ fn apply_calc_patch(calc: &mut x::CalculationProperties, patch: &CalcPropertiesP
         calc.calculation_mode = Some(calc_mode_to_sdk(mode));
     }
     if let Some(v) = patch.full_calc_on_load {
-        calc.full_calculation_on_load = Some(v);
+        calc.full_calculation_on_load = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.force_full_calc {
-        calc.force_full_calculation = Some(v);
+        calc.force_full_calculation = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.calc_on_save {
-        calc.calculation_on_save = Some(v);
+        calc.calculation_on_save = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.concurrent_calc {
-        calc.concurrent_calculation = Some(v);
+        calc.concurrent_calculation = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.iterate {
-        calc.iterate = Some(v);
+        calc.iterate = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.iterate_count {
         calc.iterate_count = Some(v);
@@ -219,7 +220,7 @@ fn apply_calc_patch(calc: &mut x::CalculationProperties, patch: &CalcPropertiesP
         calc.iterate_delta = Some(v);
     }
     if let Some(v) = patch.full_precision {
-        calc.full_precision = Some(v);
+        calc.full_precision = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.calculation_id {
         calc.calculation_id = Some(v);

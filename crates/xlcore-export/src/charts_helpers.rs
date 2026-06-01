@@ -34,30 +34,30 @@ pub(crate) fn extract_disp_units(du: Option<&c::DisplayUnits>) -> Option<(f64, O
     let du = du?;
     let choice = du.display_units_choice.as_ref()?;
     let factor = match choice {
-        c::DisplayUnitsChoice::CBuiltInUnit(b) => {
+        c::DisplayUnitsChoice::BuiltInUnit(b) => {
             built_in_unit_factor(b.val.as_ref().unwrap_or(&c::BuiltInUnitValues::Hundreds))
         }
-        c::DisplayUnitsChoice::CCustUnit(cu) => cu.val,
+        c::DisplayUnitsChoice::CustomDisplayUnit(cu) => cu.val,
     };
     if factor <= 0.0 {
         return None;
     }
-    let lbl_present = du.c_disp_units_lbl.is_some();
+    let lbl_present = du.display_units_label.is_some();
     let explicit = du
-        .c_disp_units_lbl
+        .display_units_label
         .as_deref()
         .and_then(extract_disp_units_lbl_text);
     let label = match explicit {
         Some(s) => Some(s),
         None if lbl_present => match choice {
-            c::DisplayUnitsChoice::CBuiltInUnit(b) => Some(
+            c::DisplayUnitsChoice::BuiltInUnit(b) => Some(
                 built_in_unit_default_label(
                     b.val.as_ref().unwrap_or(&c::BuiltInUnitValues::Hundreds),
                 )
                 .to_string(),
             ),
 
-            c::DisplayUnitsChoice::CCustUnit(_) => None,
+            c::DisplayUnitsChoice::CustomDisplayUnit(_) => None,
         },
         None => None,
     };
@@ -67,16 +67,16 @@ pub(crate) fn extract_disp_units(du: Option<&c::DisplayUnits>) -> Option<(f64, O
 pub(crate) fn extract_disp_units_lbl_text(lbl: &c::DisplayUnitsLabel) -> Option<String> {
     let txt = lbl.chart_text.as_ref()?;
     match txt.chart_text_choice.as_ref()? {
-        c::ChartTextChoice::CStrRef(sr) => sr.string_cache.as_ref().and_then(|sc| {
-            sc.c_pt
+        c::ChartTextChoice::StringReference(sr) => sr.string_cache.as_ref().and_then(|sc| {
+            sc.string_point
                 .first()
                 .map(|p| p.numeric_value.as_str().to_string())
         }),
-        c::ChartTextChoice::CRich(rich) => {
+        c::ChartTextChoice::RichText(rich) => {
             let mut s = String::new();
-            for p in &rich.a_p {
+            for p in &rich.paragraph {
                 for ch in &p.paragraph_choice {
-                    if let ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main::ParagraphChoice::AR(run) = ch {
+                    if let ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main::ParagraphChoice::Run(run) = ch {
                         s.push_str(run.text.as_str());
                     }
                 }
@@ -87,8 +87,8 @@ pub(crate) fn extract_disp_units_lbl_text(lbl: &c::DisplayUnitsLabel) -> Option<
                 Some(s)
             }
         }
-        c::ChartTextChoice::CStrLit(lit) => lit
-            .c_pt
+        c::ChartTextChoice::StringLiteral(lit) => lit
+            .string_point
             .first()
             .map(|p| p.numeric_value.as_str().to_string()),
     }
@@ -98,12 +98,12 @@ pub(crate) fn extract_data_labels(dl: Option<&c::DataLabels>) -> Option<DataLabe
     let dl = dl?;
 
     let point_overrides: Vec<PointDataLabel> = dl
-        .c_d_lbl
+        .data_label
         .iter()
         .filter_map(extract_point_data_label)
         .collect();
     let seq = match dl.data_labels_choice.as_ref() {
-        Some(c::DataLabelsChoice::CDelete(_)) => return None,
+        Some(c::DataLabelsChoice::Delete(_)) => return None,
         Some(c::DataLabelsChoice::Sequence(s)) => Some(s.as_ref()),
         None => None,
     };
@@ -120,19 +120,19 @@ pub(crate) fn extract_data_labels(dl: Option<&c::DataLabels>) -> Option<DataLabe
     let show_value = seq
         .show_value
         .as_ref()
-        .is_some_and(|b| b.val.unwrap_or(true));
+        .is_some_and(|b| b.val.unwrap_or(true.into()).into());
     let show_category = seq
         .show_category_name
         .as_ref()
-        .is_some_and(|b| b.val.unwrap_or(true));
+        .is_some_and(|b| b.val.unwrap_or(true.into()).into());
     let show_series_name = seq
         .show_series_name
         .as_ref()
-        .is_some_and(|b| b.val.unwrap_or(true));
+        .is_some_and(|b| b.val.unwrap_or(true.into()).into());
     let show_percent = seq
         .show_percent
         .as_ref()
-        .is_some_and(|b| b.val.unwrap_or(true));
+        .is_some_and(|b| b.val.unwrap_or(true.into()).into());
     if !show_value
         && !show_category
         && !show_series_name
@@ -173,9 +173,9 @@ pub(crate) fn extract_data_labels(dl: Option<&c::DataLabels>) -> Option<DataLabe
 }
 
 pub(crate) fn extract_point_data_label(dl: &c::DataLabel) -> Option<PointDataLabel> {
-    let idx: u32 = dl.index.as_ref().map(|i| i.val).unwrap_or(0);
+    let idx: u32 = dl.index.val;
     match dl.data_label_choice.as_ref() {
-        Some(c::DataLabelChoice::CDelete(_)) => Some(PointDataLabel {
+        Some(c::DataLabelChoice::Delete(_)) => Some(PointDataLabel {
             idx,
             delete: true,
             ..Default::default()
@@ -199,32 +199,32 @@ pub(crate) fn extract_point_data_label(dl: &c::DataLabel) -> Option<PointDataLab
                 .numbering_format
                 .as_ref()
                 .map(|nf| nf.format_code.as_str().to_string());
-            let show_value = seq.show_value.as_ref().map(|b| b.val.unwrap_or(true));
+            let show_value = seq.show_value.as_ref().map(|b| b.val.unwrap_or(true.into()));
             let show_category = seq
                 .show_category_name
                 .as_ref()
-                .map(|b| b.val.unwrap_or(true));
-            let show_series_name = seq.show_series_name.as_ref().map(|b| b.val.unwrap_or(true));
-            let show_percent = seq.show_percent.as_ref().map(|b| b.val.unwrap_or(true));
+                .map(|b| b.val.unwrap_or(true.into()));
+            let show_series_name = seq.show_series_name.as_ref().map(|b| b.val.unwrap_or(true.into()));
+            let show_percent = seq.show_percent.as_ref().map(|b| b.val.unwrap_or(true.into()));
 
             let text = seq.chart_text.as_deref().and_then(|txt| {
                 match txt.chart_text_choice.as_ref()? {
-                    c::ChartTextChoice::CStrRef(sr) => sr.string_cache.as_ref().and_then(
-                        |sc| sc.c_pt.first().map(|p| p.numeric_value.as_str().to_string()),
+                    c::ChartTextChoice::StringReference(sr) => sr.string_cache.as_ref().and_then(
+                        |sc| sc.string_point.first().map(|p| p.numeric_value.as_str().to_string()),
                     ),
-                    c::ChartTextChoice::CRich(rich) => {
+                    c::ChartTextChoice::RichText(rich) => {
                         let mut s = String::new();
-                        for p in &rich.a_p {
+                        for p in &rich.paragraph {
                             for ch in &p.paragraph_choice {
-                                if let ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main::ParagraphChoice::AR(run) = ch {
+                                if let ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main::ParagraphChoice::Run(run) = ch {
                                     s.push_str(run.text.as_str());
                                 }
                             }
                         }
                         if s.is_empty() { None } else { Some(s) }
                     }
-                    c::ChartTextChoice::CStrLit(lit) => lit
-                        .c_pt
+                    c::ChartTextChoice::StringLiteral(lit) => lit
+                        .string_point
                         .first()
                         .map(|p| p.numeric_value.as_str().to_string()),
                 }
@@ -246,10 +246,10 @@ pub(crate) fn extract_point_data_label(dl: &c::DataLabel) -> Option<PointDataLab
                 text,
                 position,
                 num_fmt,
-                show_value,
-                show_category,
-                show_series_name,
-                show_percent,
+                show_value: show_value.map(bool::from),
+                show_category: show_category.map(bool::from),
+                show_series_name: show_series_name.map(bool::from),
+                show_percent: show_percent.map(bool::from),
             })
         }
         None => None,
@@ -376,20 +376,20 @@ pub(crate) fn ax_data_values(
         return (Vec::new(), None, None);
     };
     match choice {
-        c::CategoryAxisDataChoice::CStrRef(sr) => (
+        c::CategoryAxisDataChoice::StringReference(sr) => (
             string_cache_values(&sr.string_cache),
             Some(sr.formula.as_str().to_string()),
             None,
         ),
-        c::CategoryAxisDataChoice::CMultiLvlStrRef(mlsr) => {
+        c::CategoryAxisDataChoice::MultiLevelStringReference(mlsr) => {
             (Vec::new(), Some(mlsr.formula.as_str().to_string()), None)
         }
-        c::CategoryAxisDataChoice::CNumRef(nr) => {
+        c::CategoryAxisDataChoice::NumberReference(nr) => {
             let vals = nr
                 .numbering_cache
                 .as_ref()
                 .map(|nc| {
-                    nc.c_pt
+                    nc.numeric_point
                         .iter()
                         .map(|p| p.numeric_value.as_str().to_string())
                         .collect()
@@ -403,16 +403,16 @@ pub(crate) fn ax_data_values(
                     .and_then(|nc| nc.format_code.as_ref().map(|s| s.as_str().to_string())),
             )
         }
-        c::CategoryAxisDataChoice::CStrLit(lit) => (
-            lit.c_pt
+        c::CategoryAxisDataChoice::StringLiteral(lit) => (
+            lit.string_point
                 .iter()
                 .map(|p| p.numeric_value.as_str().to_string())
                 .collect(),
             None,
             None,
         ),
-        c::CategoryAxisDataChoice::CNumLit(lit) => (
-            lit.c_pt
+        c::CategoryAxisDataChoice::NumberLiteral(lit) => (
+            lit.numeric_point
                 .iter()
                 .map(|p| p.numeric_value.as_str().to_string())
                 .collect(),
@@ -425,11 +425,11 @@ pub(crate) fn ax_data_values(
 pub(crate) fn values_format(v: Option<&c::Values>) -> Option<String> {
     let v = v?;
     match v.values_choice.as_ref()? {
-        c::ValuesChoice::CNumRef(nr) => nr
+        c::ValuesChoice::NumberReference(nr) => nr
             .numbering_cache
             .as_ref()
             .and_then(|nc| nc.format_code.as_ref().map(|s| s.as_str().to_string())),
-        c::ValuesChoice::CNumLit(lit) => lit.format_code.as_ref().map(|s| s.as_str().to_string()),
+        c::ValuesChoice::NumberLiteral(lit) => lit.format_code.as_ref().map(|s| s.as_str().to_string()),
     }
 }
 
@@ -441,13 +441,13 @@ pub(crate) fn y_values_values(v: Option<&c::YValues>) -> (Vec<f64>, Option<Strin
         return (Vec::new(), None);
     };
     match choice {
-        c::YValuesChoice::CNumRef(nr) => {
+        c::YValuesChoice::NumberReference(nr) => {
             let vals = nr
                 .numbering_cache
                 .as_ref()
                 .map(|nc| {
                     let mut indexed: Vec<(u32, f64)> = nc
-                        .c_pt
+                        .numeric_point
                         .iter()
                         .filter_map(|p| {
                             p.numeric_value
@@ -463,9 +463,9 @@ pub(crate) fn y_values_values(v: Option<&c::YValues>) -> (Vec<f64>, Option<Strin
                 .unwrap_or_default();
             (vals, Some(nr.formula.as_str().to_string()))
         }
-        c::YValuesChoice::CNumLit(lit) => {
+        c::YValuesChoice::NumberLiteral(lit) => {
             let mut indexed: Vec<(u32, f64)> = lit
-                .c_pt
+                .numeric_point
                 .iter()
                 .filter_map(|p| {
                     p.numeric_value
@@ -489,13 +489,13 @@ pub(crate) fn bubble_size_values(v: Option<&c::BubbleSize>) -> (Vec<f64>, Option
         return (Vec::new(), None);
     };
     match choice {
-        c::BubbleSizeChoice::CNumRef(nr) => {
+        c::BubbleSizeChoice::NumberReference(nr) => {
             let vals = nr
                 .numbering_cache
                 .as_ref()
                 .map(|nc| {
                     let mut indexed: Vec<(u32, f64)> = nc
-                        .c_pt
+                        .numeric_point
                         .iter()
                         .filter_map(|p| {
                             p.numeric_value
@@ -511,9 +511,9 @@ pub(crate) fn bubble_size_values(v: Option<&c::BubbleSize>) -> (Vec<f64>, Option
                 .unwrap_or_default();
             (vals, Some(nr.formula.as_str().to_string()))
         }
-        c::BubbleSizeChoice::CNumLit(lit) => {
+        c::BubbleSizeChoice::NumberLiteral(lit) => {
             let mut indexed: Vec<(u32, f64)> = lit
-                .c_pt
+                .numeric_point
                 .iter()
                 .filter_map(|p| {
                     p.numeric_value
@@ -532,11 +532,11 @@ pub(crate) fn bubble_size_values(v: Option<&c::BubbleSize>) -> (Vec<f64>, Option
 pub(crate) fn y_values_format(v: Option<&c::YValues>) -> Option<String> {
     let v = v?;
     match v.y_values_choice.as_ref()? {
-        c::YValuesChoice::CNumRef(nr) => nr
+        c::YValuesChoice::NumberReference(nr) => nr
             .numbering_cache
             .as_ref()
             .and_then(|nc| nc.format_code.as_ref().map(|s| s.as_str().to_string())),
-        c::YValuesChoice::CNumLit(lit) => lit.format_code.as_ref().map(|s| s.as_str().to_string()),
+        c::YValuesChoice::NumberLiteral(lit) => lit.format_code.as_ref().map(|s| s.as_str().to_string()),
     }
 }
 
@@ -550,17 +550,17 @@ pub(crate) fn x_axis_values(
         return (Vec::new(), None, None);
     };
     match choice {
-        c::XValuesChoice::CStrRef(sr) => (
+        c::XValuesChoice::StringReference(sr) => (
             string_cache_values(&sr.string_cache),
             Some(sr.formula.as_str().to_string()),
             None,
         ),
-        c::XValuesChoice::CNumRef(nr) => {
+        c::XValuesChoice::NumberReference(nr) => {
             let vals = nr
                 .numbering_cache
                 .as_ref()
                 .map(|nc| {
-                    nc.c_pt
+                    nc.numeric_point
                         .iter()
                         .map(|p| p.numeric_value.as_str().to_string())
                         .collect()
@@ -574,16 +574,16 @@ pub(crate) fn x_axis_values(
                     .and_then(|nc| nc.format_code.as_ref().map(|s| s.as_str().to_string())),
             )
         }
-        c::XValuesChoice::CStrLit(lit) => (
-            lit.c_pt
+        c::XValuesChoice::StringLiteral(lit) => (
+            lit.string_point
                 .iter()
                 .map(|p| p.numeric_value.as_str().to_string())
                 .collect(),
             None,
             None,
         ),
-        c::XValuesChoice::CNumLit(lit) => (
-            lit.c_pt
+        c::XValuesChoice::NumberLiteral(lit) => (
+            lit.numeric_point
                 .iter()
                 .map(|p| p.numeric_value.as_str().to_string())
                 .collect(),
@@ -602,13 +602,13 @@ pub(crate) fn scatter_x_values(x: Option<&c::XValues>) -> (Vec<f64>, Option<Stri
         return (Vec::new(), None);
     };
     match choice {
-        c::XValuesChoice::CNumRef(nr) => {
+        c::XValuesChoice::NumberReference(nr) => {
             let vals = nr
                 .numbering_cache
                 .as_ref()
                 .map(|nc| {
                     let mut indexed: Vec<(u32, f64)> = nc
-                        .c_pt
+                        .numeric_point
                         .iter()
                         .filter_map(|p| {
                             p.numeric_value
@@ -624,9 +624,9 @@ pub(crate) fn scatter_x_values(x: Option<&c::XValues>) -> (Vec<f64>, Option<Stri
                 .unwrap_or_default();
             (vals, Some(nr.formula.as_str().to_string()))
         }
-        c::XValuesChoice::CNumLit(lit) => {
+        c::XValuesChoice::NumberLiteral(lit) => {
             let mut indexed: Vec<(u32, f64)> = lit
-                .c_pt
+                .numeric_point
                 .iter()
                 .filter_map(|p| {
                     p.numeric_value
@@ -651,15 +651,15 @@ pub(crate) fn series_text_or_ref(t: Option<&c::SeriesText>) -> (Option<String>, 
         return (None, None);
     };
     match choice {
-        c::SeriesTextChoice::CStrRef(sr) => {
+        c::SeriesTextChoice::StringReference(sr) => {
             let cached = sr.string_cache.as_ref().and_then(|sc| {
-                sc.c_pt
+                sc.string_point
                     .first()
                     .map(|p| p.numeric_value.as_str().to_string())
             });
             (cached, Some(sr.formula.as_str().to_string()))
         }
-        c::SeriesTextChoice::CV(v) => (Some(v.as_str().to_string()), None),
+        c::SeriesTextChoice::NumericValue(v) => (Some(v.as_str().to_string()), None),
     }
 }
 
@@ -671,13 +671,13 @@ pub(crate) fn number_reference_values(v: Option<&c::Values>) -> (Vec<f64>, Optio
         return (Vec::new(), None);
     };
     match choice {
-        c::ValuesChoice::CNumRef(nr) => {
+        c::ValuesChoice::NumberReference(nr) => {
             let vals = nr
                 .numbering_cache
                 .as_ref()
                 .map(|nc| {
                     let mut indexed: Vec<(u32, f64)> = nc
-                        .c_pt
+                        .numeric_point
                         .iter()
                         .filter_map(|p| {
                             p.numeric_value
@@ -693,9 +693,9 @@ pub(crate) fn number_reference_values(v: Option<&c::Values>) -> (Vec<f64>, Optio
                 .unwrap_or_default();
             (vals, Some(nr.formula.as_str().to_string()))
         }
-        c::ValuesChoice::CNumLit(lit) => {
+        c::ValuesChoice::NumberLiteral(lit) => {
             let mut indexed: Vec<(u32, f64)> = lit
-                .c_pt
+                .numeric_point
                 .iter()
                 .filter_map(|p| {
                     p.numeric_value
@@ -716,7 +716,7 @@ pub(crate) fn string_cache_values(sc: &Option<Box<c::StringCache>>) -> Vec<Strin
         return Vec::new();
     };
     let mut indexed: Vec<(u32, String)> = sc
-        .c_pt
+        .string_point
         .iter()
         .map(|p| (p.index, p.numeric_value.as_str().to_string()))
         .collect();

@@ -1,3 +1,4 @@
+use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
     ApiError, ApiErrorCode, HeaderFooterInfo, HeaderFooterPatch, PageMarginsInfo, PageMarginsPatch,
@@ -30,24 +31,24 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         if let Some(p) = patch.page.as_ref() {
-            let target = ws.x_page_setup.get_or_insert_with(x::PageSetup::default);
+            let target = ws.page_setup.get_or_insert_with(x::PageSetup::default);
             apply_page_patch(target, p);
         }
         if let Some(p) = patch.margins.as_ref() {
             let target = ws
-                .x_page_margins
+                .page_margins
                 .get_or_insert_with(x::PageMargins::default);
             apply_margins_patch(target, p);
         }
         if let Some(p) = patch.print_options.as_ref() {
             let target = ws
-                .x_print_options
+                .print_options
                 .get_or_insert_with(x::PrintOptions::default);
             apply_print_options_patch(target, p);
         }
         if let Some(p) = patch.header_footer.as_ref() {
             let target = ws
-                .x_header_footer
+                .header_footer
                 .get_or_insert_with(|| Box::new(x::HeaderFooter::default()));
             apply_header_footer_patch(target.as_mut(), p);
         }
@@ -61,10 +62,10 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let removed = read_page_setup(&sheet, ws);
-        ws.x_page_setup = None;
-        ws.x_page_margins = None;
-        ws.x_print_options = None;
-        ws.x_header_footer = None;
+        ws.page_setup = None;
+        ws.page_margins = None;
+        ws.print_options = None;
+        ws.header_footer = None;
         Ok(removed)
     }
 }
@@ -72,11 +73,11 @@ impl Workbook {
 fn read_page_setup(sheet: &str, ws: &x::Worksheet) -> SheetPageSetup {
     SheetPageSetup {
         sheet: sheet.to_string(),
-        page: ws.x_page_setup.as_ref().map(read_page),
-        margins: ws.x_page_margins.as_ref().map(read_margins),
-        print_options: ws.x_print_options.as_ref().map(read_print_options),
+        page: ws.page_setup.as_ref().map(read_page),
+        margins: ws.page_margins.as_ref().map(read_margins),
+        print_options: ws.print_options.as_ref().map(read_print_options),
         header_footer: ws
-            .x_header_footer
+            .header_footer
             .as_deref()
             .map(read_header_footer),
     }
@@ -91,11 +92,11 @@ fn read_page(p: &x::PageSetup) -> PageSetupSettings {
         fit_to_height: p.fit_to_height,
         page_order: p.page_order.map(page_order_from_sdk),
         orientation: p.orientation.map(orientation_from_sdk),
-        use_printer_defaults: p.use_printer_defaults,
-        black_and_white: p.black_and_white,
-        draft: p.draft,
+        use_printer_defaults: (p.use_printer_defaults).map(bool::from),
+        black_and_white: (p.black_and_white).map(bool::from),
+        draft: (p.draft).map(bool::from),
         cell_comments: p.cell_comments.map(cell_comments_from_sdk),
-        use_first_page_number: p.use_first_page_number,
+        use_first_page_number: (p.use_first_page_number).map(bool::from),
         errors: p.errors.map(errors_from_sdk),
         horizontal_dpi: p.horizontal_dpi,
         vertical_dpi: p.vertical_dpi,
@@ -126,19 +127,19 @@ fn apply_page_patch(target: &mut x::PageSetup, patch: &PageSetupSettingsPatch) {
         target.orientation = Some(orientation_to_sdk(v));
     }
     if let Some(v) = patch.use_printer_defaults {
-        target.use_printer_defaults = Some(v);
+        target.use_printer_defaults = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.black_and_white {
-        target.black_and_white = Some(v);
+        target.black_and_white = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.draft {
-        target.draft = Some(v);
+        target.draft = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.cell_comments {
         target.cell_comments = Some(cell_comments_to_sdk(v));
     }
     if let Some(v) = patch.use_first_page_number {
-        target.use_first_page_number = Some(v);
+        target.use_first_page_number = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.errors {
         target.errors = Some(errors_to_sdk(v));
@@ -188,38 +189,38 @@ fn apply_margins_patch(target: &mut x::PageMargins, patch: &PageMarginsPatch) {
 
 fn read_print_options(po: &x::PrintOptions) -> PrintOptionsInfo {
     PrintOptionsInfo {
-        horizontal_centered: po.horizontal_centered,
-        vertical_centered: po.vertical_centered,
-        headings: po.headings,
-        grid_lines: po.grid_lines,
-        grid_lines_set: po.grid_lines_set,
+        horizontal_centered: (po.horizontal_centered).map(bool::from),
+        vertical_centered: (po.vertical_centered).map(bool::from),
+        headings: (po.headings).map(bool::from),
+        grid_lines: (po.grid_lines).map(bool::from),
+        grid_lines_set: (po.grid_lines_set).map(bool::from),
     }
 }
 
 fn apply_print_options_patch(target: &mut x::PrintOptions, patch: &PrintOptionsPatch) {
     if let Some(v) = patch.horizontal_centered {
-        target.horizontal_centered = Some(v);
+        target.horizontal_centered = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.vertical_centered {
-        target.vertical_centered = Some(v);
+        target.vertical_centered = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.headings {
-        target.headings = Some(v);
+        target.headings = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.grid_lines {
-        target.grid_lines = Some(v);
+        target.grid_lines = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.grid_lines_set {
-        target.grid_lines_set = Some(v);
+        target.grid_lines_set = Some(BooleanValue::from_bool(v));
     }
 }
 
 fn read_header_footer(hf: &x::HeaderFooter) -> HeaderFooterInfo {
     HeaderFooterInfo {
-        different_odd_even: hf.different_odd_even,
-        different_first: hf.different_first,
-        scale_with_doc: hf.scale_with_doc,
-        align_with_margins: hf.align_with_margins,
+        different_odd_even: (hf.different_odd_even).map(bool::from),
+        different_first: (hf.different_first).map(bool::from),
+        scale_with_doc: (hf.scale_with_doc).map(bool::from),
+        align_with_margins: (hf.align_with_margins).map(bool::from),
         odd_header: hf.odd_header.as_ref().and_then(|v| v.xml_content.clone()),
         odd_footer: hf.odd_footer.as_ref().and_then(|v| v.xml_content.clone()),
         even_header: hf.even_header.as_ref().and_then(|v| v.xml_content.clone()),
@@ -231,52 +232,34 @@ fn read_header_footer(hf: &x::HeaderFooter) -> HeaderFooterInfo {
 
 fn apply_header_footer_patch(target: &mut x::HeaderFooter, patch: &HeaderFooterPatch) {
     if let Some(v) = patch.different_odd_even {
-        target.different_odd_even = Some(v);
+        target.different_odd_even = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.different_first {
-        target.different_first = Some(v);
+        target.different_first = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.scale_with_doc {
-        target.scale_with_doc = Some(v);
+        target.scale_with_doc = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.align_with_margins {
-        target.align_with_margins = Some(v);
+        target.align_with_margins = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.odd_header.clone() {
-        target.odd_header = Some(x::OddHeader {
-            xml_content: Some(v),
-            ..Default::default()
-        });
+        target.odd_header = Some(x::OddHeader(x::XstringType { xml_content: Some(v), ..Default::default() }));
     }
     if let Some(v) = patch.odd_footer.clone() {
-        target.odd_footer = Some(x::OddFooter {
-            xml_content: Some(v),
-            ..Default::default()
-        });
+        target.odd_footer = Some(x::OddFooter(x::XstringType { xml_content: Some(v), ..Default::default() }));
     }
     if let Some(v) = patch.even_header.clone() {
-        target.even_header = Some(x::EvenHeader {
-            xml_content: Some(v),
-            ..Default::default()
-        });
+        target.even_header = Some(x::EvenHeader(x::XstringType { xml_content: Some(v), ..Default::default() }));
     }
     if let Some(v) = patch.even_footer.clone() {
-        target.even_footer = Some(x::EvenFooter {
-            xml_content: Some(v),
-            ..Default::default()
-        });
+        target.even_footer = Some(x::EvenFooter(x::XstringType { xml_content: Some(v), ..Default::default() }));
     }
     if let Some(v) = patch.first_header.clone() {
-        target.first_header = Some(x::FirstHeader {
-            xml_content: Some(v),
-            ..Default::default()
-        });
+        target.first_header = Some(x::FirstHeader(x::XstringType { xml_content: Some(v), ..Default::default() }));
     }
     if let Some(v) = patch.first_footer.clone() {
-        target.first_footer = Some(x::FirstFooter {
-            xml_content: Some(v),
-            ..Default::default()
-        });
+        target.first_footer = Some(x::FirstFooter(x::XstringType { xml_content: Some(v), ..Default::default() }));
     }
 }
 

@@ -6,6 +6,7 @@ mod charts_helpers;
 mod charts_legacy;
 mod columnar;
 mod fmt_scheme;
+mod font_flat;
 mod pivots;
 mod refs;
 mod schema;
@@ -79,12 +80,12 @@ pub fn extract_doc_with_options(
 
     let wb_part = doc.workbook_part()?;
     let workbook = wb_part.root_element(doc)?.clone();
-    let workbook_sheets = workbook.sheets.x_sheet.clone();
+    let workbook_sheets = workbook.sheets.sheet.clone();
 
     let active_sheet_index = workbook
         .book_views
         .as_ref()
-        .and_then(|bv| bv.x_workbook_view.first())
+        .and_then(|bv| bv.workbook_view.first())
         .and_then(|wv| wv.active_tab);
 
     let wb_part = doc.workbook_part()?;
@@ -168,7 +169,7 @@ pub fn extract_doc_with_options(
         .defined_names
         .as_ref()
         .map(|dn| {
-            dn.x_defined_name
+            dn.defined_name
                 .iter()
                 .filter_map(|d| {
                     let formula = d.xml_content.as_ref()?.clone();

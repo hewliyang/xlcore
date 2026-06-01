@@ -18,12 +18,12 @@ impl Workbook {
             .root_element(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let cell = ws
-            .x_sheet_data
-            .x_row
+            .sheet_data
+            .row
             .iter()
             .find(|row| row.row_index == Some(cell_ref.row))
             .and_then(|row| {
-                row.x_c.iter().find(|cell| {
+                row.cell.iter().find(|cell| {
                     cell.cell_reference
                         .as_ref()
                         .and_then(|r| xlcore_io::parse_a1(r.as_str()))

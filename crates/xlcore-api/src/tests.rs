@@ -713,7 +713,7 @@ fn structural_shifts_defined_names() {
             .map_err(sdk_err_to_api)
             .unwrap();
         wb.defined_names = Some(x::DefinedNames {
-            x_defined_name: vec![
+            defined_name: vec![
                 x::DefinedName {
                     name: "Global".to_string(),
                     xml_content: Some("Sheet1!$A$1:$B$10".to_string()),
@@ -746,7 +746,7 @@ fn structural_shifts_defined_names() {
         .root_element(&mut workbook.doc)
         .map_err(sdk_err_to_api)
         .unwrap();
-    let names = &wb.defined_names.as_ref().unwrap().x_defined_name;
+    let names = &wb.defined_names.as_ref().unwrap().defined_name;
     assert_eq!(names[0].xml_content.as_deref(), Some("Sheet1!$A$1:$B$13"));
     assert_eq!(names[1].xml_content.as_deref(), Some("$A$1:$B$13"));
     assert_eq!(names[2].xml_content.as_deref(), Some("Data!$C$5"));
@@ -762,14 +762,13 @@ fn structural_shifts_defined_names() {
         .root_element(&mut workbook.doc)
         .map_err(sdk_err_to_api)
         .unwrap();
-    let names = &wb.defined_names.as_ref().unwrap().x_defined_name;
+    let names = &wb.defined_names.as_ref().unwrap().defined_name;
     assert_eq!(names[0].xml_content.as_deref(), Some("Sheet1!#REF!"));
 }
 
 #[test]
 fn structural_shifts_conditional_formatting() {
     use crate::errors::sdk_err_to_api;
-    use ooxmlsdk::simple_type::ListValue;
     use xlcore_io::spreadsheetml as x;
 
     let mut workbook = Workbook::new().unwrap();
@@ -779,13 +778,13 @@ fn structural_shifts_conditional_formatting() {
             .root_element_mut(&mut workbook.doc)
             .map_err(sdk_err_to_api)
             .unwrap();
-        ws.x_conditional_formatting.push(x::ConditionalFormatting {
-            sequence_of_references: Some(ListValue(vec!["A1:B5".to_string(), "D10".to_string()])),
-            x_cf_rule: vec![x::ConditionalFormattingRule {
-                x_formula: vec![x::Formula {
+        ws.conditional_formatting.push(x::ConditionalFormatting {
+            sequence_of_references: Some(vec!["A1:B5".to_string(), "D10".to_string()]),
+            conditional_formatting_rule: vec![x::ConditionalFormattingRule {
+                formula: vec![x::Formula(x::XstringType {
                     xml_content: Some("A1>0".to_string()),
                     ..Default::default()
-                }],
+                })],
                 ..Default::default()
             }],
             ..Default::default()
@@ -799,11 +798,10 @@ fn structural_shifts_conditional_formatting() {
         .root_element(&mut workbook.doc)
         .map_err(sdk_err_to_api)
         .unwrap();
-    let cf = &ws.x_conditional_formatting[0];
-    let sqref = cf.sequence_of_references.as_ref().unwrap();
-    assert_eq!(sqref.0, vec!["A3:B7".to_string(), "D12".to_string()]);
+    let cf = &ws.conditional_formatting[0];
+    assert_eq!(cf.sequence_of_references.as_deref(), Some(&vec!["A3:B7".to_string(), "D12".to_string()][..]));
     assert_eq!(
-        cf.x_cf_rule[0].x_formula[0].xml_content.as_deref(),
+        cf.conditional_formatting_rule[0].formula[0].0.xml_content.as_deref(),
         Some("A3>0"),
     );
 }
@@ -1819,6 +1817,41 @@ fn auto_filter_column_criteria_round_trip() {
 }
 
 #[test]
+fn auto_filter_column_values_multi_value_round_trip() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A1", "H").unwrap();
+    wb.set_value("Sheet1!A2", "alpha").unwrap();
+    wb.set_value("Sheet1!A3", "beta").unwrap();
+    wb.set_value("Sheet1!A4", "gamma").unwrap();
+    wb.set_auto_filter("Sheet1!A1:A4").unwrap();
+
+    wb.set_auto_filter_column(
+        "Sheet1",
+        AutoFilterColumnPatch {
+            column_offset: 0,
+            hidden_button: None,
+            show_button: None,
+            criteria: AutoFilterCriteria::Values {
+                values: vec!["alpha".into(), "gamma".into()],
+                blank: true,
+            },
+        },
+    )
+    .unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let after = reopened.auto_filter("Sheet1").unwrap().unwrap();
+    match &after.columns[0].criteria {
+        AutoFilterCriteria::Values { values, blank } => {
+            assert_eq!(values, &vec!["alpha".to_string(), "gamma".to_string()]);
+            assert!(*blank);
+        }
+        other => panic!("expected Values, got {other:?}"),
+    }
+}
+
+#[test]
 fn auto_filter_column_validation_errors() {
     let mut wb = Workbook::new().unwrap();
     wb.set_value("Sheet1!A1", "H").unwrap();
@@ -1867,7 +1900,7 @@ fn auto_filter_column_validation_errors() {
                 hidden_button: None,
                 show_button: None,
                 criteria: AutoFilterCriteria::Values {
-                    values: vec!["a".into()],
+                    values: vec!["".into()],
                     blank: false,
                 },
             },

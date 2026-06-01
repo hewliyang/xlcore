@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use anyhow::Result;
+use ooxmlsdk::simple_type::BooleanValue;
 use ooxmlsdk::sdk::SdkPart;
 use xlcore_engine::{CellValue, FormulaError, WorkbookEngine};
 use xlcore_io::spreadsheetml as x;
@@ -34,7 +35,7 @@ pub fn recalculate_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<Recal
     let shared_strings = load_shared_strings(doc);
     let workbook_sheets = {
         let wb_part = doc.workbook_part()?;
-        wb_part.root_element(doc)?.sheets.x_sheet.clone()
+        wb_part.root_element(doc)?.sheets.sheet.clone()
     };
 
     let ws_parts_by_rel_id = {
@@ -256,7 +257,7 @@ fn write_cached_formula_values(
 ) -> Result<()> {
     let workbook_sheets = {
         let wb_part = doc.workbook_part()?;
-        wb_part.root_element(doc)?.sheets.x_sheet.clone()
+        wb_part.root_element(doc)?.sheets.sheet.clone()
     };
     let ws_parts = {
         let wb_part = doc.workbook_part()?;
@@ -294,8 +295,8 @@ fn write_cached_formula_values(
             .collect::<HashMap<_, _>>();
 
         let ws = ws_part.root_element_mut(doc)?;
-        for row in &mut ws.x_sheet_data.x_row {
-            for cell in &mut row.x_c {
+        for row in &mut ws.sheet_data.row {
+            for cell in &mut row.cell {
                 if cell.cell_formula.is_none() {
                     continue;
                 }
@@ -328,24 +329,15 @@ fn set_cached_formula_value(cell: &mut x::Cell, value: &CellValue) {
         }
         CellValue::Number(value) => {
             cell.data_type = None;
-            cell.cell_value = Some(x::CellValue {
-                xml_content: Some(format_number(*value)),
-                ..Default::default()
-            });
+            cell.cell_value = Some(x::CellValue(x::XstringType { xml_content: Some(format_number(*value)), ..Default::default() }));
         }
         CellValue::Boolean(value) => {
             cell.data_type = Some(x::CellValues::Boolean);
-            cell.cell_value = Some(x::CellValue {
-                xml_content: Some(if *value { "1" } else { "0" }.to_string()),
-                ..Default::default()
-            });
+            cell.cell_value = Some(x::CellValue(x::XstringType { xml_content: Some(if *value { "1" } else { "0" }.to_string()), ..Default::default() }));
         }
         CellValue::String(value) => {
             cell.data_type = Some(x::CellValues::String);
-            cell.cell_value = Some(x::CellValue {
-                xml_content: Some(value.clone()),
-                ..Default::default()
-            });
+            cell.cell_value = Some(x::CellValue(x::XstringType { xml_content: Some(value.clone()), ..Default::default() }));
         }
     }
 }
@@ -364,17 +356,17 @@ fn mark_cached_formula_values_current(doc: &mut xlcore_io::SpreadsheetDocument) 
     let calc = workbook
         .calculation_properties
         .get_or_insert_with(Default::default);
-    calc.full_calculation_on_load = Some(false);
-    calc.force_full_calculation = Some(false);
-    calc.calculation_completed = Some(true);
+    calc.full_calculation_on_load = Some(BooleanValue::from_bool(false));
+    calc.force_full_calculation = Some(BooleanValue::from_bool(false));
+    calc.calculation_completed = Some(BooleanValue::from_bool(true));
     Ok(())
 }
 
 fn harvest_sheet_cells(ws: &x::Worksheet, shared_strings: &[String]) -> Vec<HarvestedCell> {
     let shared_formulas = collect_shared_formulas(ws);
     let mut cells = Vec::new();
-    for row in &ws.x_sheet_data.x_row {
-        for cell in &row.x_c {
+    for row in &ws.sheet_data.row {
+        for cell in &row.cell {
             let Some(r_attr) = cell.cell_reference.as_ref() else {
                 continue;
             };
@@ -385,7 +377,7 @@ fn harvest_sheet_cells(ws: &x::Worksheet, shared_strings: &[String]) -> Vec<Harv
             let raw_v = cell
                 .cell_value
                 .as_ref()
-                .and_then(|v| v.xml_content.as_deref());
+                .and_then(|v| v.0.xml_content.as_deref());
             let value = cell_value(cell, raw_v, shared_strings);
             let (literal, cached_value) = if formula.is_some() {
                 (None, value)
@@ -409,8 +401,8 @@ fn harvest_sheet_cells(ws: &x::Worksheet, shared_strings: &[String]) -> Vec<Harv
 
 fn collect_shared_formulas(ws: &x::Worksheet) -> HashMap<u32, SharedFormula> {
     let mut formulas = HashMap::new();
-    for row in &ws.x_sheet_data.x_row {
-        for cell in &row.x_c {
+    for row in &ws.sheet_data.row {
+        for cell in &row.cell {
             let Some(formula) = cell.cell_formula.as_ref() else {
                 continue;
             };
@@ -687,17 +679,17 @@ fn inline_string_text(cell: &x::Cell) -> String {
     let Some(inline) = cell.inline_string.as_ref() else {
         return String::new();
     };
-    if !inline.x_r.is_empty() {
+    if !inline.run.is_empty() {
         let mut out = String::new();
-        for run in &inline.x_r {
-            out.push_str(run.text.xml_content.as_deref().unwrap_or(""));
+        for run in &inline.run {
+            out.push_str(run.text.0.xml_content.as_deref().unwrap_or(""));
         }
         return out;
     }
     inline
         .text
         .as_ref()
-        .and_then(|text| text.xml_content.as_deref())
+        .and_then(|text| text.0.xml_content.as_deref())
         .unwrap_or("")
         .to_string()
 }
@@ -713,16 +705,16 @@ fn load_shared_strings(doc: &mut xlcore_io::SpreadsheetDocument) -> Vec<String> 
         return Vec::new();
     };
 
-    let mut strings = Vec::with_capacity(sst.x_si.len());
-    for item in &sst.x_si {
+    let mut strings = Vec::with_capacity(sst.shared_string_item.len());
+    for item in &sst.shared_string_item {
         if let Some(text) = &item.text {
-            strings.push(text.xml_content.as_deref().unwrap_or("").to_string());
+            strings.push(text.0.xml_content.as_deref().unwrap_or("").to_string());
             continue;
         }
 
         let mut out = String::new();
-        for run in &item.x_r {
-            out.push_str(run.text.xml_content.as_deref().unwrap_or(""));
+        for run in &item.run {
+            out.push_str(run.text.0.xml_content.as_deref().unwrap_or(""));
         }
         strings.push(out);
     }

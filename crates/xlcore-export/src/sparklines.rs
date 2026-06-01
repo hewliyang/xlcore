@@ -6,18 +6,18 @@ use xlcore_io::parse_a1;
 use xspread::WorksheetExtensionChoice;
 
 pub fn extract(ws: &xspread::Worksheet) -> Vec<SparklineGroup> {
-    let Some(ext_lst) = &ws.x_ext_lst else {
+    let Some(ext_lst) = &ws.worksheet_extension_list else {
         return Vec::new();
     };
     let mut out = Vec::new();
-    for ext in &ext_lst.x_ext {
+    for ext in &ext_lst.worksheet_extension {
         let Some(choice) = &ext.worksheet_extension_choice else {
             continue;
         };
-        let xspread::WorksheetExtensionChoice::X14SparklineGroups(groups) = choice else {
+        let xspread::WorksheetExtensionChoice::SparklineGroups(groups) = choice else {
             continue;
         };
-        for g in &groups.x14_sparkline_group {
+        for g in &groups.sparkline_group {
             out.push(extract_group(g));
         }
     }
@@ -49,8 +49,8 @@ fn extract_group(g: &x14::SparklineGroup) -> SparklineGroup {
     .to_string();
 
     let mut sparklines = Vec::new();
-    for sp in &g.sparklines.x14_sparkline {
-        let sqref = sp.reference_sequence.as_str().trim();
+    for sp in &g.sparklines.sparkline {
+        let sqref = sp.reference_sequence.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(" ").trim().to_string();
         if sqref.is_empty() {
             continue;
         }
@@ -71,14 +71,14 @@ fn extract_group(g: &x14::SparklineGroup) -> SparklineGroup {
     SparklineGroup {
         spark_type,
         line_weight: g.line_weight.map(|v| v as f32).unwrap_or(0.75),
-        markers: g.markers.unwrap_or(false),
-        high: g.high.unwrap_or(false),
-        low: g.low.unwrap_or(false),
-        first: g.first.unwrap_or(false),
-        last: g.last.unwrap_or(false),
-        negative: g.negative.unwrap_or(false),
-        display_x_axis: g.display_x_axis.unwrap_or(false),
-        right_to_left: g.right_to_left.unwrap_or(false),
+        markers: g.markers.unwrap_or(false.into()).into(),
+        high: g.high.unwrap_or(false.into()).into(),
+        low: g.low.unwrap_or(false.into()).into(),
+        first: g.first.unwrap_or(false.into()).into(),
+        last: g.last.unwrap_or(false.into()).into(),
+        negative: g.negative.unwrap_or(false.into()).into(),
+        display_x_axis: g.display_x_axis.unwrap_or(false.into()).into(),
+        right_to_left: g.right_to_left.unwrap_or(false.into()).into(),
         display_empty_cells_as: display_empty,
         min_axis_type: axis_kind(g.min_axis_type),
         max_axis_type: axis_kind(g.max_axis_type),

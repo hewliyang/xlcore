@@ -1,3 +1,4 @@
+use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
     ApiError, ApiErrorCode, SheetProtectionInfo, SheetProtectionPatch, WorkbookProtectionInfo,
@@ -18,7 +19,7 @@ impl Workbook {
             .root_element(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         Ok(ws
-            .x_sheet_protection
+            .sheet_protection
             .as_ref()
             .map(|sp| read_sheet_protection(&sheet, sp)))
     }
@@ -35,7 +36,7 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let sp = ws
-            .x_sheet_protection
+            .sheet_protection
             .get_or_insert_with(x::SheetProtection::default);
         apply_sheet_patch(sp, &patch);
         Ok(read_sheet_protection(&sheet, sp))
@@ -51,10 +52,10 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let removed = ws
-            .x_sheet_protection
+            .sheet_protection
             .as_ref()
             .map(|sp| read_sheet_protection(&sheet, sp));
-        ws.x_sheet_protection = None;
+        ws.sheet_protection = None;
         Ok(removed)
     }
 
@@ -96,33 +97,33 @@ impl Workbook {
 fn read_sheet_protection(sheet: &str, sp: &x::SheetProtection) -> SheetProtectionInfo {
     SheetProtectionInfo {
         sheet: sheet.to_string(),
-        enabled: sp.sheet.unwrap_or(false),
+        enabled: bool::from(sp.sheet.unwrap_or(BooleanValue::from_bool(false))),
         password: opt_clone(sp.password.as_ref()),
         algorithm_name: opt_clone(sp.algorithm_name.as_ref()),
         hash_value: opt_clone(sp.hash_value.as_ref()),
         salt_value: opt_clone(sp.salt_value.as_ref()),
         spin_count: sp.spin_count,
-        objects: sp.objects,
-        scenarios: sp.scenarios,
-        format_cells: sp.format_cells,
-        format_columns: sp.format_columns,
-        format_rows: sp.format_rows,
-        insert_columns: sp.insert_columns,
-        insert_rows: sp.insert_rows,
-        insert_hyperlinks: sp.insert_hyperlinks,
-        delete_columns: sp.delete_columns,
-        delete_rows: sp.delete_rows,
-        select_locked_cells: sp.select_locked_cells,
-        sort: sp.sort,
-        auto_filter: sp.auto_filter,
-        pivot_tables: sp.pivot_tables,
-        select_unlocked_cells: sp.select_unlocked_cells,
+        objects: (sp.objects).map(bool::from),
+        scenarios: (sp.scenarios).map(bool::from),
+        format_cells: (sp.format_cells).map(bool::from),
+        format_columns: (sp.format_columns).map(bool::from),
+        format_rows: (sp.format_rows).map(bool::from),
+        insert_columns: (sp.insert_columns).map(bool::from),
+        insert_rows: (sp.insert_rows).map(bool::from),
+        insert_hyperlinks: (sp.insert_hyperlinks).map(bool::from),
+        delete_columns: (sp.delete_columns).map(bool::from),
+        delete_rows: (sp.delete_rows).map(bool::from),
+        select_locked_cells: (sp.select_locked_cells).map(bool::from),
+        sort: (sp.sort).map(bool::from),
+        auto_filter: (sp.auto_filter).map(bool::from),
+        pivot_tables: (sp.pivot_tables).map(bool::from),
+        select_unlocked_cells: (sp.select_unlocked_cells).map(bool::from),
     }
 }
 
 fn apply_sheet_patch(sp: &mut x::SheetProtection, patch: &SheetProtectionPatch) {
     if let Some(v) = patch.enabled {
-        sp.sheet = Some(v);
+        sp.sheet = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.password.clone() {
         sp.password = Some(v);
@@ -140,57 +141,57 @@ fn apply_sheet_patch(sp: &mut x::SheetProtection, patch: &SheetProtectionPatch) 
         sp.spin_count = Some(v);
     }
     if let Some(v) = patch.objects {
-        sp.objects = Some(v);
+        sp.objects = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.scenarios {
-        sp.scenarios = Some(v);
+        sp.scenarios = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.format_cells {
-        sp.format_cells = Some(v);
+        sp.format_cells = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.format_columns {
-        sp.format_columns = Some(v);
+        sp.format_columns = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.format_rows {
-        sp.format_rows = Some(v);
+        sp.format_rows = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.insert_columns {
-        sp.insert_columns = Some(v);
+        sp.insert_columns = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.insert_rows {
-        sp.insert_rows = Some(v);
+        sp.insert_rows = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.insert_hyperlinks {
-        sp.insert_hyperlinks = Some(v);
+        sp.insert_hyperlinks = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.delete_columns {
-        sp.delete_columns = Some(v);
+        sp.delete_columns = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.delete_rows {
-        sp.delete_rows = Some(v);
+        sp.delete_rows = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.select_locked_cells {
-        sp.select_locked_cells = Some(v);
+        sp.select_locked_cells = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.sort {
-        sp.sort = Some(v);
+        sp.sort = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.auto_filter {
-        sp.auto_filter = Some(v);
+        sp.auto_filter = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.pivot_tables {
-        sp.pivot_tables = Some(v);
+        sp.pivot_tables = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.select_unlocked_cells {
-        sp.select_unlocked_cells = Some(v);
+        sp.select_unlocked_cells = Some(BooleanValue::from_bool(v));
     }
 }
 
 fn read_workbook_protection(wp: &x::WorkbookProtection) -> WorkbookProtectionInfo {
     WorkbookProtectionInfo {
-        lock_structure: wp.lock_structure,
-        lock_windows: wp.lock_windows,
-        lock_revision: wp.lock_revision,
+        lock_structure: (wp.lock_structure).map(bool::from),
+        lock_windows: (wp.lock_windows).map(bool::from),
+        lock_revision: (wp.lock_revision).map(bool::from),
         workbook_password: opt_clone(wp.workbook_password.as_ref()),
         workbook_algorithm_name: opt_clone(wp.workbook_algorithm_name.as_ref()),
         workbook_hash_value: opt_clone(wp.workbook_hash_value.as_ref()),
@@ -206,13 +207,13 @@ fn read_workbook_protection(wp: &x::WorkbookProtection) -> WorkbookProtectionInf
 
 fn apply_workbook_patch(wp: &mut x::WorkbookProtection, patch: &WorkbookProtectionPatch) {
     if let Some(v) = patch.lock_structure {
-        wp.lock_structure = Some(v);
+        wp.lock_structure = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.lock_windows {
-        wp.lock_windows = Some(v);
+        wp.lock_windows = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.lock_revision {
-        wp.lock_revision = Some(v);
+        wp.lock_revision = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.workbook_password.clone() {
         wp.workbook_password = Some(v);

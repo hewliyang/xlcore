@@ -19,8 +19,8 @@ impl Workbook {
             .root_element(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let mut out = Vec::new();
-        if let Some(block) = ws.x_hyperlinks.as_ref() {
-            for h in &block.x_hyperlink {
+        if let Some(block) = ws.hyperlinks.as_ref() {
+            for h in &block.hyperlink {
                 let Some((r1, c1, r2, c2)) = parse_range_a1(h.reference.as_str()) else {
                     continue;
                 };
@@ -77,10 +77,10 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let block = ws
-            .x_hyperlinks
+            .hyperlinks
             .get_or_insert_with(x::Hyperlinks::default);
         let mut orphaned_rids: Vec<String> = Vec::new();
-        block.x_hyperlink.retain(|h| {
+        block.hyperlink.retain(|h| {
             let Some((r1, c1, r2, c2)) = parse_range_a1(h.reference.as_str()) else {
                 return true;
             };
@@ -101,7 +101,7 @@ impl Workbook {
             }
             !overlaps
         });
-        block.x_hyperlink.push(x::Hyperlink {
+        block.hyperlink.push(x::Hyperlink {
             reference: new_ref.clone(),
             id: rid.clone().map(Into::into),
             location: patch.location.clone().map(Into::into),
@@ -110,7 +110,7 @@ impl Workbook {
             ..Default::default()
         });
         let still_used: std::collections::HashSet<String> = block
-            .x_hyperlink
+            .hyperlink
             .iter()
             .filter_map(|h| h.id.as_ref().map(|s| s.as_str().to_string()))
             .collect();
@@ -137,12 +137,12 @@ impl Workbook {
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        let Some(block) = ws.x_hyperlinks.as_mut() else {
+        let Some(block) = ws.hyperlinks.as_mut() else {
             return Ok(Vec::new());
         };
         let mut removed = Vec::new();
-        let mut kept = Vec::with_capacity(block.x_hyperlink.len());
-        for h in block.x_hyperlink.drain(..) {
+        let mut kept = Vec::with_capacity(block.hyperlink.len());
+        for h in block.hyperlink.drain(..) {
             let hit = match parse_range_a1(h.reference.as_str()) {
                 Some((r1, c1, r2, c2)) => ranges_overlap(
                     range_ref.start_row,
@@ -187,9 +187,9 @@ impl Workbook {
             .filter_map(|h| h.id.as_ref().map(|s| s.as_str().to_string()))
             .collect();
         if kept.is_empty() {
-            ws.x_hyperlinks = None;
+            ws.hyperlinks = None;
         } else {
-            block.x_hyperlink = kept;
+            block.hyperlink = kept;
         }
         for info in &removed {
             let Some(rid) = info_rid(info, &rels) else {

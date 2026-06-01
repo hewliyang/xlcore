@@ -10,32 +10,32 @@ pub fn extract(s: &x::Stylesheet) -> Styles {
     let fonts: Vec<Font> = s
         .fonts
         .as_ref()
-        .map(|f| f.x_font.iter().map(extract_font).collect())
+        .map(|f| f.font.iter().map(extract_font).collect())
         .unwrap_or_default();
 
     let fills: Vec<Fill> = s
         .fills
         .as_ref()
-        .map(|f| f.x_fill.iter().map(extract_fill).collect())
+        .map(|f| f.fill.iter().map(extract_fill).collect())
         .unwrap_or_default();
 
     let borders: Vec<Border> = s
         .borders
         .as_ref()
-        .map(|b| b.x_border.iter().map(extract_border).collect())
+        .map(|b| b.border.iter().map(extract_border).collect())
         .unwrap_or_default();
 
     let cell_style_xfs: Vec<CellFormat> = s
         .cell_style_formats
         .as_ref()
-        .map(|cf| cf.x_xf.iter().map(extract_xf).collect())
+        .map(|cf| cf.cell_format.iter().map(extract_xf).collect())
         .unwrap_or_default();
 
     let cell_xfs: Vec<CellFormat> = s
         .cell_formats
         .as_ref()
         .map(|cf| {
-            cf.x_xf
+            cf.cell_format
                 .iter()
                 .map(|xf| extract_xf_with_inheritance(xf, &cell_style_xfs))
                 .collect()
@@ -46,7 +46,7 @@ pub fn extract(s: &x::Stylesheet) -> Styles {
         .numbering_formats
         .as_ref()
         .map(|n| {
-            n.x_num_fmt
+            n.numbering_format
                 .iter()
                 .map(|nf| NumberFormat {
                     id: nf.number_format_id,
@@ -77,21 +77,21 @@ pub fn extract_dxfs(s: &x::Stylesheet) -> Vec<crate::schema::Dxf> {
     let Some(dxfs) = s.differential_formats.as_ref() else {
         return Vec::new();
     };
-    dxfs.x_dxf.iter().map(extract_dxf).collect()
+    dxfs.differential_format.iter().map(extract_dxf).collect()
 }
 
 pub fn extract_table_styles(s: &x::Stylesheet) -> Vec<crate::schema::CustomTableStyle> {
     let Some(ts) = s.table_styles.as_ref() else {
         return Vec::new();
     };
-    ts.x_table_style
+    ts.table_style
         .iter()
         .map(|style| {
             let mut out = crate::schema::CustomTableStyle {
                 name: style.name.as_str().to_string(),
                 ..Default::default()
             };
-            for el in &style.x_table_style_element {
+            for el in &style.table_style_element {
                 let Some(dxf_id) = el.format_id else { continue };
                 use x::TableStyleValues as T;
                 match el.r#type {
@@ -114,16 +114,17 @@ pub fn extract_table_styles(s: &x::Stylesheet) -> Vec<crate::schema::CustomTable
 fn extract_dxf(d: &XDxf) -> crate::schema::Dxf {
     let mut out = crate::schema::Dxf::default();
     if let Some(f) = d.font.as_ref() {
-        if let Some(b) = f.bold.as_ref() {
-            out.bold = Some(b.val.unwrap_or(true));
+        let ff = crate::font_flat::flatten_font(f);
+        if let Some(b) = ff.bold {
+            out.bold = Some(b.val.map(bool::from).unwrap_or(true));
         }
-        if let Some(i) = f.italic.as_ref() {
-            out.italic = Some(i.val.unwrap_or(true));
+        if let Some(i) = ff.italic {
+            out.italic = Some(i.val.map(bool::from).unwrap_or(true));
         }
-        if let Some(s) = f.strike.as_ref() {
-            out.strike = Some(s.val.unwrap_or(true));
+        if let Some(s) = ff.strike {
+            out.strike = Some(s.val.map(bool::from).unwrap_or(true));
         }
-        if let Some(u) = f.underline.as_ref() {
+        if let Some(u) = ff.underline {
             match crate::underline_variant(u.val) {
                 Some("none") => {}
                 Some(v) => {
@@ -137,15 +138,15 @@ fn extract_dxf(d: &XDxf) -> crate::schema::Dxf {
                 }
             }
         }
-        if let Some(c) = f.color.as_ref() {
+        if let Some(c) = ff.color {
             out.font_color = extract_color_x(c);
         }
-        if let Some(v) = f.vertical_text_alignment.as_ref() {
+        if let Some(v) = ff.vertical_text_alignment {
             out.vert_align = crate::vert_align_variant(v.val);
         }
     }
     if let Some(fill) = d.fill.as_ref() {
-        if let Some(x::FillChoice::XPatternFill(pf)) = &fill.fill_choice {
+        if let Some(x::FillChoice::PatternFill(pf)) = &fill.fill_choice {
             let fg = pf.foreground_color.as_ref().and_then(|c| {
                 extract_color_x(&x::Color {
                     auto: c.auto,
@@ -174,41 +175,26 @@ fn extract_dxf(d: &XDxf) -> crate::schema::Dxf {
 }
 
 fn extract_font(f: &XFont) -> Font {
+    let ff = crate::font_flat::flatten_font(f);
     Font {
-        name: f.font_name.as_ref().map(|n| n.val.as_str().to_string()),
-        size: f.font_size.as_ref().map(|s| s.val as f32),
-        bold: f
-            .bold
-            .as_ref()
-            .map(|b| b.val.unwrap_or(true))
-            .unwrap_or(false),
-        italic: f
-            .italic
-            .as_ref()
-            .map(|i| i.val.unwrap_or(true))
-            .unwrap_or(false),
-        underline: match f.underline.as_ref() {
+        name: ff.font_name.map(|n| n.val.as_str().to_string()),
+        size: ff.font_size.map(|s| s.val as f32),
+        bold: ff.bold.map(|b| b.val.map(bool::from).unwrap_or(true)).unwrap_or(false),
+        italic: ff.italic.map(|i| i.val.map(bool::from).unwrap_or(true)).unwrap_or(false),
+        underline: match ff.underline {
             Some(u) => !matches!(crate::underline_variant(u.val), Some("none")),
             None => false,
         },
-        underline_style: f
-            .underline
-            .as_ref()
-            .and_then(|u| match crate::underline_variant(u.val) {
-                Some(v) if v != "single" && v != "none" => Some(v.to_string()),
-                _ => None,
-            }),
-        strike: f
-            .strike
-            .as_ref()
-            .map(|s| s.val.unwrap_or(true))
-            .unwrap_or(false),
-        color: f.color.as_ref().and_then(extract_color_x),
-        vert_align: f
+        underline_style: ff.underline.and_then(|u| match crate::underline_variant(u.val) {
+            Some(v) if v != "single" && v != "none" => Some(v.to_string()),
+            _ => None,
+        }),
+        strike: ff.strike.map(|s| s.val.map(bool::from).unwrap_or(true)).unwrap_or(false),
+        color: ff.color.and_then(extract_color_x),
+        vert_align: ff
             .vertical_text_alignment
-            .as_ref()
             .and_then(|v| crate::vert_align_variant(v.val)),
-        family: f.font_family_numbering.as_ref().and_then(|fm| {
+        family: ff.font_family_numbering.and_then(|fm| {
             let v = fm.val;
             if (0..=5).contains(&v) {
                 Some(v as u8)
@@ -216,16 +202,13 @@ fn extract_font(f: &XFont) -> Font {
                 None
             }
         }),
-        scheme: f
-            .font_scheme
-            .as_ref()
-            .and_then(|s| crate::font_scheme_variant(s.val)),
+        scheme: ff.font_scheme.and_then(|s| crate::font_scheme_variant(s.val)),
     }
 }
 
 fn extract_fill(f: &XFill) -> Fill {
     match &f.fill_choice {
-        Some(x::FillChoice::XPatternFill(pf)) => {
+        Some(x::FillChoice::PatternFill(pf)) => {
             let pattern_type = pf
                 .pattern_type
                 .as_ref()
@@ -255,10 +238,10 @@ fn extract_fill(f: &XFill) -> Fill {
                 ..Fill::default()
             }
         }
-        Some(x::FillChoice::XGradientFill(gf)) => {
+        Some(x::FillChoice::GradientFill(gf)) => {
             use crate::schema::GradientStop as Gs;
             let gradient_stops: Vec<Gs> = gf
-                .x_stop
+                .gradient_stop
                 .iter()
                 .filter_map(|stop| {
                     extract_color_x(&stop.color).map(|color| Gs {
@@ -372,8 +355,8 @@ fn extract_border(b: &XBorder) -> Border {
             });
             style.map(|st| BorderLine { style: st, color })
         }),
-        diagonal_up: b.diagonal_up.unwrap_or(false),
-        diagonal_down: b.diagonal_down.unwrap_or(false),
+        diagonal_up: b.diagonal_up.unwrap_or(false.into()).into(),
+        diagonal_down: b.diagonal_down.unwrap_or(false.into()).into(),
         diagonal: b.diagonal_border.as_ref().and_then(|s| {
             let style = border_style_str(s.style.as_ref().map(|s| format!("{s:?}")).as_deref());
             let color = s.color.as_ref().and_then(|c| {
@@ -434,19 +417,19 @@ fn extract_xf_with_inheritance(xf: &XCellFormat, parents: &[CellFormat]) -> Cell
     let Some(parent) = parent else {
         return cf;
     };
-    if xf.apply_font == Some(false) {
+    if xf.apply_font == Some(false.into()) {
         cf.font_id = parent.font_id;
     }
-    if xf.apply_fill == Some(false) {
+    if xf.apply_fill == Some(false.into()) {
         cf.fill_id = parent.fill_id;
     }
-    if xf.apply_border == Some(false) {
+    if xf.apply_border == Some(false.into()) {
         cf.border_id = parent.border_id;
     }
-    if xf.apply_number_format == Some(false) {
+    if xf.apply_number_format == Some(false.into()) {
         cf.num_fmt_id = parent.num_fmt_id;
     }
-    if xf.apply_alignment == Some(false) {
+    if xf.apply_alignment == Some(false.into()) {
         cf.horizontal_alignment = parent.horizontal_alignment.clone();
         cf.vertical_alignment = parent.vertical_alignment.clone();
         cf.wrap_text = parent.wrap_text;
@@ -495,7 +478,7 @@ fn extract_xf(xf: &XCellFormat) -> CellFormat {
                 .to_string(),
             );
         }
-        cf.wrap_text = align.wrap_text.unwrap_or(false);
+        cf.wrap_text = align.wrap_text.unwrap_or(false.into()).into();
         cf.indent = align.indent;
         cf.text_rotation = align.text_rotation.map(|v| v as i32);
     }

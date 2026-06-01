@@ -96,12 +96,12 @@ impl Workbook {
                 let ws = ws_part
                     .root_element(&mut self.doc)
                     .map_err(sdk_err_to_api)?;
-                for row in &ws.x_sheet_data.x_row {
+                for row in &ws.sheet_data.row {
                     let Some(row_idx) = row.row_index else { continue };
                     if row_idx < range_ref.start_row || row_idx > range_ref.end_row {
                         continue;
                     }
-                    for cell in &row.x_c {
+                    for cell in &row.cell {
                         if let Some((r, c)) = cell
                             .cell_reference
                             .as_ref()
@@ -177,13 +177,13 @@ impl Workbook {
         let cols = (range_ref.end_column - range_ref.start_column + 1) as usize;
         let mut values = vec![vec![CellValue::Blank; cols]; rows];
         let mut formulas: Vec<Vec<Option<String>>> = vec![vec![None; cols]; rows];
-        for row in &ws.x_sheet_data.x_row {
+        for row in &ws.sheet_data.row {
             let Some(row_idx) = row.row_index else { continue };
             if row_idx < range_ref.start_row || row_idx > range_ref.end_row {
                 continue;
             }
             let r_off = (row_idx - range_ref.start_row) as usize;
-            for cell in &row.x_c {
+            for cell in &row.cell {
                 let Some((cr, cc)) = cell
                     .cell_reference
                     .as_ref()

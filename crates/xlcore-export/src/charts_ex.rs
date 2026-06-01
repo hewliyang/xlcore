@@ -20,13 +20,13 @@ fn extract_chart_ex_title(t: Option<&cx::ChartTitle>) -> Option<String> {
     let text = t.text.as_deref()?;
     let choice = text.text_choice.as_ref()?;
     match choice {
-        cx::TextChoice::CxTxData(td) => extract_text_data_v(td),
-        cx::TextChoice::CxRich(rich) => {
+        cx::TextChoice::TextData(td) => extract_text_data_v(td),
+        cx::TextChoice::RichTextBody(rich) => {
             use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
             let mut out = String::new();
-            for p in &rich.a_p {
+            for p in &rich.paragraph {
                 for ch in &p.paragraph_choice {
-                    if let a::ParagraphChoice::AR(run) = ch {
+                    if let a::ParagraphChoice::Run(run) = ch {
                         out.push_str(run.text.as_str());
                     }
                 }
@@ -42,7 +42,7 @@ fn extract_chart_ex_title(t: Option<&cx::ChartTitle>) -> Option<String> {
 
 fn extract_text_data_v(td: &cx::TextData) -> Option<String> {
     match td.text_data_choice.as_ref()? {
-        cx::TextDataChoice::CxV(s) => Some(s.clone()),
+        cx::TextDataChoice::VXsdstring(s) => Some(s.clone()),
         cx::TextDataChoice::Sequence { v_xsdstring, .. } => v_xsdstring.clone(),
     }
 }
@@ -56,16 +56,16 @@ struct ParsedSeriesData {
 }
 
 fn parse_series_data(space: &cx::ChartSpace, series: &cx::Series) -> Option<ParsedSeriesData> {
-    let data_id = series.cx_data_id.as_ref().map(|d| d.val).unwrap_or(0);
+    let data_id = series.data_id.as_ref().map(|d| d.val).unwrap_or(0);
     let data_block = space
         .chart_data
         .as_deref()
-        .and_then(|cd| cd.cx_data.iter().find(|d| d.id == data_id))
+        .and_then(|cd| cd.data.iter().find(|d| d.id == data_id))
         .or_else(|| {
             space
                 .chart_data
                 .as_deref()
-                .and_then(|cd| cd.cx_data.first())
+                .and_then(|cd| cd.data.first())
         })?;
 
     let mut categories: Vec<String> = Vec::new();
@@ -76,7 +76,7 @@ fn parse_series_data(space: &cx::ChartSpace, series: &cx::Series) -> Option<Pars
 
     for choice in &data_block.data_choice {
         match choice {
-            cx::DataChoice::CxStrDim(sd) => {
+            cx::DataChoice::StringDimension(sd) => {
                 if !matches!(sd.r#type, cx::StringDimensionType::Cat) {
                     continue;
                 }
@@ -87,13 +87,13 @@ fn parse_series_data(space: &cx::ChartSpace, series: &cx::Series) -> Option<Pars
                         }
                         seq.string_level.iter().collect()
                     }
-                    Some(cx::StringDimensionChoice::CxLvl(lvl)) => vec![lvl.as_ref()],
+                    Some(cx::StringDimensionChoice::StringLevel(lvl)) => vec![lvl.as_ref()],
                     None => Vec::new(),
                 };
                 if let Some(lvl) = levels.first() {
                     let n = lvl.pt_count as usize;
                     categories = vec![String::new(); n];
-                    for pt in &lvl.cx_pt {
+                    for pt in &lvl.chart_string_value {
                         let i = pt.index as usize;
                         if i < n {
                             categories[i] = pt.xml_content.clone().unwrap_or_default();
@@ -101,7 +101,7 @@ fn parse_series_data(space: &cx::ChartSpace, series: &cx::Series) -> Option<Pars
                     }
                 }
             }
-            cx::DataChoice::CxNumDim(nd) => {
+            cx::DataChoice::NumericDimension(nd) => {
                 if !matches!(
                     nd.r#type,
                     cx::NumericDimensionType::Val
@@ -117,13 +117,13 @@ fn parse_series_data(space: &cx::ChartSpace, series: &cx::Series) -> Option<Pars
                         }
                         seq.numeric_level.iter().collect()
                     }
-                    Some(cx::NumericDimensionChoice::CxLvl(lvl)) => vec![lvl.as_ref()],
+                    Some(cx::NumericDimensionChoice::NumericLevel(lvl)) => vec![lvl.as_ref()],
                     None => Vec::new(),
                 };
                 if let Some(lvl) = levels.first() {
                     let n = lvl.pt_count as usize;
                     values = vec![0.0; n];
-                    for pt in &lvl.cx_pt {
+                    for pt in &lvl.numeric_value {
                         let i = pt.idx as usize;
                         if i < n {
                             values[i] = pt.xml_content.unwrap_or(0.0);
@@ -152,8 +152,8 @@ fn parse_series_name(series: &cx::Series) -> String {
         .as_deref()
         .and_then(|t| t.text_choice.as_ref())
         .and_then(|c| match c {
-            cx::TextChoice::CxTxData(td) => extract_text_data_v(td),
-            cx::TextChoice::CxRich(_) => None,
+            cx::TextChoice::TextData(td) => extract_text_data_v(td),
+            cx::TextChoice::RichTextBody(_) => None,
         })
         .unwrap_or_default()
 }
@@ -179,17 +179,17 @@ fn make_chart_series(name: String, values: Vec<f64>, values_ref: Option<String>)
 
 fn series_has_binning(series: &cx::Series) -> bool {
     series
-        .cx_layout_pr
+        .series_layout_properties
         .as_deref()
         .and_then(|lp| lp.series_layout_properties_choice.as_ref())
-        .is_some_and(|c| matches!(c, cx::SeriesLayoutPropertiesChoice::CxBinning(_)))
+        .is_some_and(|c| matches!(c, cx::SeriesLayoutPropertiesChoice::Binning(_)))
 }
 
 pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) -> Option<Chart> {
     let chart = space.chart.as_ref();
     let plot_area = chart.plot_area.as_ref();
     let region = plot_area.plot_area_region.as_ref();
-    let series_list = &region.cx_series;
+    let series_list = &region.series;
     let first = series_list.first()?;
 
     let has_pareto_line = series_list
@@ -215,7 +215,7 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
     let primary_series: &cx::Series = if layout == "regionMap" {
         series_list
             .iter()
-            .find(|s| !s.hidden.unwrap_or(false))
+            .find(|s| !s.hidden.map(bool::from).unwrap_or(false))
             .unwrap_or(first)
     } else {
         first
@@ -264,10 +264,10 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
     };
 
     let subtotal_indices: Vec<u32> = first
-        .cx_layout_pr
+        .series_layout_properties
         .as_deref()
-        .and_then(|lp| lp.cx_subtotals.as_ref())
-        .map(|sub| sub.cx_idx.iter().map(|i| i.val).collect())
+        .and_then(|lp| lp.subtotals.as_ref())
+        .map(|sub| sub.unsigned_integer_type.iter().map(|i| i.val).collect())
         .unwrap_or_default();
 
     let title = extract_chart_ex_title(chart.chart_title.as_deref());
@@ -371,8 +371,8 @@ fn min_color_choice_hex(
 ) -> Option<String> {
     use cx::MinColorSolidColorFillPropertiesChoice as C;
     match c {
-        C::ASrgbClr(rgb) => resolve_chartex_srgb(&rgb.val),
-        C::ASchemeClr(sc) => resolve_chartex_scheme(&format!("{:?}", sc), theme),
+        C::RgbColorModelHex(rgb) => resolve_chartex_srgb(&rgb.val),
+        C::SchemeColor(sc) => resolve_chartex_scheme(&format!("{:?}", sc), theme),
         _ => None,
     }
 }
@@ -383,8 +383,8 @@ fn mid_color_choice_hex(
 ) -> Option<String> {
     use cx::MidColorSolidColorFillPropertiesChoice as C;
     match c {
-        C::ASrgbClr(rgb) => resolve_chartex_srgb(&rgb.val),
-        C::ASchemeClr(sc) => resolve_chartex_scheme(&format!("{:?}", sc), theme),
+        C::RgbColorModelHex(rgb) => resolve_chartex_srgb(&rgb.val),
+        C::SchemeColor(sc) => resolve_chartex_scheme(&format!("{:?}", sc), theme),
         _ => None,
     }
 }
@@ -395,8 +395,8 @@ fn max_color_choice_hex(
 ) -> Option<String> {
     use cx::MaxColorSolidColorFillPropertiesChoice as C;
     match c {
-        C::ASrgbClr(rgb) => resolve_chartex_srgb(&rgb.val),
-        C::ASchemeClr(sc) => resolve_chartex_scheme(&format!("{:?}", sc), theme),
+        C::RgbColorModelHex(rgb) => resolve_chartex_srgb(&rgb.val),
+        C::SchemeColor(sc) => resolve_chartex_scheme(&format!("{:?}", sc), theme),
         _ => None,
     }
 }

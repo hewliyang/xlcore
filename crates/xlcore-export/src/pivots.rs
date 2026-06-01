@@ -20,12 +20,12 @@ pub fn extract(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) -> Vec<Pi
         let has_row_fields = pt
             .row_fields
             .as_ref()
-            .map(|rf| !rf.x_field.is_empty())
+            .map(|rf| !rf.field.is_empty())
             .unwrap_or(false);
         let has_col_fields = pt
             .column_fields
             .as_ref()
-            .map(|cf| !cf.x_field.is_empty())
+            .map(|cf| !cf.field.is_empty())
             .unwrap_or(false);
 
         let mut filter_arrow_cells = Vec::new();

@@ -46,37 +46,42 @@ Known gaps:
 - No comments, hyperlinks, tables, names, validation, or object authoring
 - Batch is a simple Rust closure, not a diagnostic/transaction envelope
 
-## Next Up: ooxmlsdk 0.7.0 Migration
+## Done: ooxmlsdk 0.7.0 Migration
 
-Upstream ooxmlsdk 0.7.0 (273 commits since 0.6.1) lands a batch of fixes that
-matter to us:
+Upgraded to ooxmlsdk 0.7.0. Breaking schema rename pass touched
+`xlcore-io`, `xlcore-export`, `xlcore-bridge`, `xlcore-api`, and
+`xlcore-tabular`. Key structural shifts handled:
 
-- Repeating particles model as `Vec<Choice>` instead of `Option<Choice>` —
-  unblocks multi-value `<filters><filter/>…</filters>` round-trip, which is
-  what limits AutoFilter `Values` authoring to blank-only today.
-- Choice read dispatch + qname inference rework — likely fixes the
-  `x:CustomFilters` vs `x14:CustomFilters` arm precedence bug the AutoFilter
-  reader currently works around.
-- Better preservation of MCE content, extension XML, and overlapping nested
-  choice branches — closes silent-drop holes in our preservation paths.
-- `Use Vec for OOXML list values` and `Tighten round-trip XML compatibility
-  rules` — semantic correctness across schemas we already touch.
+- Variant/field prefixes (`X` / `Xdr` / `C` / `Cx` / `A` and matching
+  `x_` / `xdr_` / `c_` / `cx_` / `a_`) dropped across the schema.
+- `Font` / `RunProperties` are now choice particles
+  (`Vec<FontChoice>` / `Vec<RunPropertiesChoice>`). Added
+  `xlcore-export/src/font_flat.rs` for read paths and a retain/push
+  pattern for write paths (`xlcore-api/src/styles.rs`).
+- `BooleanValue` is an enum (no longer `bool` alias); converted with
+  `bool::from` / `BooleanValue::from_bool`.
+- `CoordinateValue` / `Coordinate32Value` / `DrawingmlPercentageValue` /
+  `TextBulletSizeValue` are wrapper enums; converted via `to_emu()` /
+  `as_drawingml_percent()`.
+- `<x:t>`, `<x:v>`, `<x:author>`, `<x:formula>`, `<x:totalsRowFormula>`,
+  header/footer text nodes are now tuple structs wrapping `XstringType`
+  / `TableFormulaType`.
+- `Worksheet.sequence_of_references` / `DataValidation.sequence_of_references`
+  are now `Vec<String>` / `Option<Vec<String>>` directly (list-value
+  wrapper gone).
+- `GraphicData.xml_children` is now
+  `graphic_data_choice: Vec<GraphicDataChoice>`; chart-frame relationship
+  lookup walks `GraphicDataChoice::ChartReference`.
 
-The upgrade is a breaking schema-naming pass (`X` / `Xdr` / `C` / `Cx` / `A`
-variant prefixes and matching `x_` / `xdr_` / `c_` / `cx_` / `a_` field
-prefixes dropped). A `cargo check --workspace` against 0.7.0 emits ~540
-errors, mostly mechanical renames across `xlcore-io`, `xlcore-export`,
-`xlcore-api`, `xlcore-bridge`, and `xlcore-tabular`. After the rename pass,
-revisit:
+Leveraged the upgrade:
 
-- Lift the blank-only restriction on `AutoFilterCriteria::Values` and drop the
-  `X14CustomFilters` reader fallback in `crates/xlcore-api/src/auto_filter.rs`.
-- Audit other choice-particle preservation paths (charts, drawings, CF,
-  comments, hyperlinks) for cases we previously had to special-case.
-- Re-run all OOXML round-trip and renderer fixtures.
+- Lifted the blank-only restriction on `AutoFilterCriteria::Values` and
+  emit one `<x:filter/>` per value
+  (`crates/xlcore-api/src/auto_filter.rs`).
+- Added `auto_filter_column_values_multi_value_round_trip` regression
+  test.
 
-This pass should be its own change — do not fold it into an unrelated feature
-slice.
+1184 tests passing across the workspace.
 
 ## API Parity Table
 

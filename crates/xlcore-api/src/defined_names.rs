@@ -1,3 +1,4 @@
+use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{ApiError, ApiErrorCode, DefinedNameInfo, DefinedNamePatch};
 
@@ -15,7 +16,7 @@ impl Workbook {
             return Ok(Vec::new());
         };
         Ok(dns
-            .x_defined_name
+            .defined_name
             .iter()
             .map(|dn| defined_name_info(dn, &sheet_names))
             .collect())
@@ -35,18 +36,18 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let dns = wb.defined_names.get_or_insert_with(x::DefinedNames::default);
         let trimmed_formula = patch.formula.trim().to_string();
-        let pos = dns.x_defined_name.iter().position(|dn| {
+        let pos = dns.defined_name.iter().position(|dn| {
             dn.name.as_str() == patch.name && dn.local_sheet_id == local_sheet_id
         });
         let comment = patch.comment.clone().map(Into::into);
         let hidden = patch.hidden.map(|h| h.into());
         if let Some(idx) = pos {
-            let existing = &mut dns.x_defined_name[idx];
+            let existing = &mut dns.defined_name[idx];
             existing.xml_content = Some(trimmed_formula.clone().into());
             existing.comment = comment;
             existing.hidden = hidden;
         } else {
-            dns.x_defined_name.push(x::DefinedName {
+            dns.defined_name.push(x::DefinedName {
                 name: patch.name.clone(),
                 local_sheet_id,
                 xml_content: Some(trimmed_formula.clone().into()),
@@ -84,14 +85,14 @@ impl Workbook {
             return Ok(None);
         };
         let pos = dns
-            .x_defined_name
+            .defined_name
             .iter()
             .position(|dn| dn.name.as_str() == name && dn.local_sheet_id == local_sheet_id);
         let removed = pos.map(|idx| {
-            let dn = dns.x_defined_name.remove(idx);
+            let dn = dns.defined_name.remove(idx);
             defined_name_info(&dn, &sheet_names)
         });
-        if dns.x_defined_name.is_empty() {
+        if dns.defined_name.is_empty() {
             wb.defined_names = None;
         }
         Ok(removed)
@@ -119,7 +120,7 @@ fn defined_name_info(dn: &x::DefinedName, sheet_names: &[String]) -> DefinedName
             .unwrap_or_default(),
         scope,
         comment: dn.comment.as_ref().map(|s| s.as_str().to_string()),
-        hidden: dn.hidden.unwrap_or(false),
+        hidden: bool::from(dn.hidden.unwrap_or(BooleanValue::from_bool(false))),
     }
 }
 

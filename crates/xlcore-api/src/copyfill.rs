@@ -146,12 +146,12 @@ impl Workbook {
             .root_element(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let mut out: HashMap<(u32, u32), CellSnapshot> = HashMap::new();
-        for row in &ws.x_sheet_data.x_row {
+        for row in &ws.sheet_data.row {
             let Some(row_idx) = row.row_index else { continue };
             if row_idx < range_ref.start_row || row_idx > range_ref.end_row {
                 continue;
             }
-            for cell in &row.x_c {
+            for cell in &row.cell {
                 let Some((cr, cc)) = cell
                     .cell_reference
                     .as_ref()

@@ -1,3 +1,4 @@
+use ooxmlsdk::simple_type::BooleanValue;
 use ooxmlsdk::parts::table_definition_part::TableDefinitionPart;
 use ooxmlsdk::sdk::SdkPart;
 use xlcore_io::spreadsheetml as x;
@@ -82,11 +83,11 @@ impl Workbook {
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        if let Some(tp) = ws.x_table_parts.as_mut() {
-            tp.x_table_part.retain(|p| p.id.as_str() != rid);
-            tp.count = Some(tp.x_table_part.len() as u32);
-            if tp.x_table_part.is_empty() {
-                ws.x_table_parts = None;
+        if let Some(tp) = ws.table_parts.as_mut() {
+            tp.table_part.retain(|p| p.id.as_str() != rid);
+            tp.count = Some(tp.table_part.len() as u32);
+            if tp.table_part.is_empty() {
+                ws.table_parts = None;
             }
         }
         Ok(info)
@@ -232,7 +233,7 @@ impl Workbook {
             auto_filter,
             table_columns: Box::new(x::TableColumns {
                 count: Some(column_count.into()),
-                x_table_column: columns,
+                table_column: columns,
             }),
             table_style_info: patch.style.as_ref().map(build_table_style_info),
             ..Default::default()
@@ -258,13 +259,13 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let tp = ws
-            .x_table_parts
+            .table_parts
             .get_or_insert_with(x::TableParts::default);
-        tp.x_table_part.push(x::TablePart {
+        tp.table_part.push(x::TablePart {
             id: rid.clone().into(),
             ..Default::default()
         });
-        tp.count = Some(tp.x_table_part.len() as u32);
+        tp.count = Some(tp.table_part.len() as u32);
 
         mark_formulas_stale(&mut self.doc)?;
 
@@ -338,7 +339,7 @@ impl Workbook {
             let table = tp.root_element(&mut self.doc).map_err(sdk_err_to_api)?;
             let column_count = match new_range.as_ref() {
                 Some(r) => r.end_column - r.start_column + 1,
-                None => table.table_columns.x_table_column.len() as u32,
+                None => table.table_columns.table_column.len() as u32,
             };
             if cols.len() as u32 != column_count {
                 return Err(ApiError::new(
@@ -353,7 +354,7 @@ impl Workbook {
             }
             let existing: Vec<String> = table
                 .table_columns
-                .x_table_column
+                .table_column
                 .iter()
                 .map(|c| c.name.as_str().to_string())
                 .collect();
@@ -424,7 +425,7 @@ impl Workbook {
             let column_count = names.len() as u32;
             let mut new_columns: Vec<x::TableColumn> = Vec::with_capacity(column_count as usize);
             for i in 0..column_count {
-                let prev = table.table_columns.x_table_column.get(i as usize).cloned();
+                let prev = table.table_columns.table_column.get(i as usize).cloned();
                 let mut col = match prev {
                     Some(mut c) => {
                         c.id = ((i + 1) as u32).into();
@@ -440,21 +441,21 @@ impl Workbook {
                 apply_column_patch(&mut col, &cols[i as usize]);
                 new_columns.push(col);
             }
-            table.table_columns.x_table_column = new_columns;
+            table.table_columns.table_column = new_columns;
             table.table_columns.count = Some(column_count.into());
         } else if let Some(r) = new_range.as_ref() {
             let column_count = r.end_column - r.start_column + 1;
-            let existing_len = table.table_columns.x_table_column.len() as u32;
+            let existing_len = table.table_columns.table_column.len() as u32;
             if column_count > existing_len {
                 for i in existing_len..column_count {
-                    table.table_columns.x_table_column.push(x::TableColumn {
+                    table.table_columns.table_column.push(x::TableColumn {
                         id: ((i + 1) as u32).into(),
                         name: format!("Column{}", i + 1).into(),
                         ..Default::default()
                     });
                 }
             } else if column_count < existing_len {
-                table.table_columns.x_table_column.truncate(column_count as usize);
+                table.table_columns.table_column.truncate(column_count as usize);
             }
             table.table_columns.count = Some(column_count.into());
         }
@@ -462,7 +463,7 @@ impl Workbook {
         let final_header_count: u32 = table.header_row_count.map(|v| v.into()).unwrap_or(1);
         let column_names: Vec<String> = table
             .table_columns
-            .x_table_column
+            .table_column
             .iter()
             .map(|c| c.name.as_str().to_string())
             .collect();
@@ -556,7 +557,7 @@ fn info_from_table(sheet: &str, table: &x::Table) -> Option<TableInfo> {
         .unwrap_or_else(|| table.display_name.as_str().to_string());
     let columns: Vec<TableColumnInfo> = table
         .table_columns
-        .x_table_column
+        .table_column
         .iter()
         .map(|c| TableColumnInfo {
             id: c.id.into(),
@@ -579,10 +580,10 @@ fn info_from_table(sheet: &str, table: &x::Table) -> Option<TableInfo> {
         .collect();
     let style = table.table_style_info.as_ref().map(|s| TableStyleSettings {
         name: s.name.as_ref().map(|n| n.as_str().to_string()),
-        show_first_column: s.show_first_column.unwrap_or(false),
-        show_last_column: s.show_last_column.unwrap_or(false),
-        show_row_stripes: s.show_row_stripes.unwrap_or(false),
-        show_column_stripes: s.show_column_stripes.unwrap_or(false),
+        show_first_column: bool::from(s.show_first_column.unwrap_or(BooleanValue::from_bool(false))),
+        show_last_column: bool::from(s.show_last_column.unwrap_or(BooleanValue::from_bool(false))),
+        show_row_stripes: bool::from(s.show_row_stripes.unwrap_or(BooleanValue::from_bool(false))),
+        show_column_stripes: bool::from(s.show_column_stripes.unwrap_or(BooleanValue::from_bool(false))),
     });
     let header_row_count = table.header_row_count.map(u32::from).unwrap_or(1);
     let totals_row_count = table.totals_row_count.map(u32::from).unwrap_or(0);
@@ -663,16 +664,10 @@ fn apply_column_patch(col: &mut x::TableColumn, patch: &TableColumnPatch) {
         col.totals_row_label = Some(label.clone().into());
     }
     if let Some(formula) = patch.totals_formula.as_ref() {
-        col.totals_row_formula = Some(x::TotalsRowFormula {
-            xml_content: Some(formula.clone().into()),
-            ..Default::default()
-        });
+        col.totals_row_formula = Some(x::TotalsRowFormula(x::TableFormulaType { xml_content: Some(formula.clone().into()), ..Default::default() }));
     }
     if let Some(formula) = patch.calculated_column_formula.as_ref() {
-        col.calculated_column_formula = Some(x::CalculatedColumnFormula {
-            xml_content: Some(formula.clone().into()),
-            ..Default::default()
-        });
+        col.calculated_column_formula = Some(x::CalculatedColumnFormula(x::TableFormulaType { xml_content: Some(formula.clone().into()), ..Default::default() }));
     }
 }
 
@@ -791,13 +786,13 @@ fn read_header_names(
         .map_err(sdk_err_to_api)?;
     let header_row_index = range_ref.start_row;
     let row = ws
-        .x_sheet_data
-        .x_row
+        .sheet_data
+        .row
         .iter()
         .find(|r| r.row_index == Some(header_row_index));
     for col in range_ref.start_column..=range_ref.end_column {
         let cell = row.and_then(|r| {
-            r.x_c.iter().find(|c| {
+            r.cell.iter().find(|c| {
                 c.cell_reference
                     .as_ref()
                     .and_then(|s| xlcore_io::parse_a1(s.as_str()))
@@ -842,10 +837,7 @@ fn write_header_row(
         cell.cell_value = None;
         cell.data_type = Some(x::CellValues::InlineString);
         cell.inline_string = Some(Box::new(x::InlineString {
-            text: Some(x::Text {
-                xml_content: Some(names[i].clone()),
-                ..Default::default()
-            }),
+            text: Some(x::Text(x::XstringType { xml_content: Some(names[i].clone()), ..Default::default() })),
             ..Default::default()
         }));
     }

@@ -184,20 +184,20 @@ pub fn extract(
 
 fn parse_worksheet_drawing_choice(choice: &xdr::WorksheetDrawingChoice) -> Option<ParsedAnchor> {
     match choice {
-        xdr::WorksheetDrawingChoice::XdrTwoCellAnchor(a) => {
-            let from = a.from_marker.as_ref()?;
-            let to = a.to_marker.as_ref()?;
+        xdr::WorksheetDrawingChoice::TwoCellAnchor(a) => {
+            let from = &a.from_marker;
+            let to = &a.to_marker;
             let anchor = DrawingAnchor {
                 anchor_kind: Some("twoCell".to_string()),
                 edit_as: a.edit_as.map(edit_as_token),
                 from_col: from.column_id as u32,
-                from_col_off_emu: from.column_offset,
+                from_col_off_emu: from.column_offset.to_emu(),
                 from_row: from.row_id as u32,
-                from_row_off_emu: from.row_offset,
+                from_row_off_emu: from.row_offset.to_emu(),
                 to_col: to.column_id as u32,
-                to_col_off_emu: to.column_offset,
+                to_col_off_emu: to.column_offset.to_emu(),
                 to_row: to.row_id as u32,
-                to_row_off_emu: to.row_offset,
+                to_row_off_emu: to.row_offset.to_emu(),
                 ext_emu_cx: None,
                 ext_emu_cy: None,
             };
@@ -208,9 +208,9 @@ fn parse_worksheet_drawing_choice(choice: &xdr::WorksheetDrawingChoice) -> Optio
                 cnv_pr,
             })
         }
-        xdr::WorksheetDrawingChoice::XdrOneCellAnchor(a) => {
-            let from = a.from_marker.as_ref()?;
-            let ext = a.extent.as_ref()?;
+        xdr::WorksheetDrawingChoice::OneCellAnchor(a) => {
+            let from = &a.from_marker;
+            let ext = &a.extent;
             const EMU_PER_DEFAULT_COL: i64 = 64 * 9525;
             const EMU_PER_DEFAULT_ROW: i64 = 20 * 9525;
             let col_span = ((ext.cx + EMU_PER_DEFAULT_COL - 1) / EMU_PER_DEFAULT_COL).max(1);
@@ -219,9 +219,9 @@ fn parse_worksheet_drawing_choice(choice: &xdr::WorksheetDrawingChoice) -> Optio
                 anchor_kind: Some("oneCell".to_string()),
                 edit_as: None,
                 from_col: from.column_id as u32,
-                from_col_off_emu: from.column_offset,
+                from_col_off_emu: from.column_offset.to_emu(),
                 from_row: from.row_id as u32,
-                from_row_off_emu: from.row_offset,
+                from_row_off_emu: from.row_offset.to_emu(),
                 to_col: from.column_id as u32 + col_span as u32,
                 to_col_off_emu: 0,
                 to_row: from.row_id as u32 + row_span as u32,
@@ -236,9 +236,9 @@ fn parse_worksheet_drawing_choice(choice: &xdr::WorksheetDrawingChoice) -> Optio
                 cnv_pr,
             })
         }
-        xdr::WorksheetDrawingChoice::XdrAbsoluteAnchor(a) => {
-            let pos = a.position.as_ref()?;
-            let ext = a.extent.as_ref()?;
+        xdr::WorksheetDrawingChoice::AbsoluteAnchor(a) => {
+            let pos = &a.position;
+            let ext = &a.extent;
             let anchor = DrawingAnchor {
                 anchor_kind: Some("absolute".to_string()),
                 edit_as: None,
@@ -260,6 +260,7 @@ fn parse_worksheet_drawing_choice(choice: &xdr::WorksheetDrawingChoice) -> Optio
                 cnv_pr,
             })
         }
+        xdr::WorksheetDrawingChoice::XmlAny(_) => None,
     }
 }
 
@@ -279,15 +280,15 @@ fn anchor_target_from_two_cell(
     Option<std::boxed::Box<xdr::NonVisualDrawingProperties>>,
 )> {
     match choice {
-        xdr::TwoCellAnchorChoice::XdrGraphicFrame(gf) => {
-            let rid = find_relationship_id(&gf.graphic.graphic_data.xml_children)?;
+        xdr::TwoCellAnchorChoice::GraphicFrame(gf) => {
+            let rid = find_relationship_id(&gf.graphic.graphic_data.graphic_data_choice)?;
             if gf.graphic.graphic_data.uri.as_str() == CHARTEX_GRAPHIC_DATA_URI {
                 Some((AnchorTarget::ChartEx(rid), None))
             } else {
                 Some((AnchorTarget::Chart(rid), None))
             }
         }
-        xdr::TwoCellAnchorChoice::XdrPic(pic) => {
+        xdr::TwoCellAnchorChoice::Picture(pic) => {
             let blip = pic.blip_fill.blip.as_ref()?;
             let embed = blip.embed.as_ref()?;
             let cnv = pic
@@ -296,21 +297,18 @@ fn anchor_target_from_two_cell(
                 .clone();
             Some((AnchorTarget::Image(embed.as_str().to_string()), Some(cnv)))
         }
-        xdr::TwoCellAnchorChoice::XdrSp(sp) => {
+        xdr::TwoCellAnchorChoice::Shape(sp) => {
             let cnv = sp
                 .non_visual_shape_properties
                 .non_visual_drawing_properties
                 .clone();
             Some((AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())), Some(cnv)))
         }
-        xdr::TwoCellAnchorChoice::XdrGrpSp(g) => {
-            let cnv = g
-                .non_visual_group_shape_properties
-                .as_ref()
-                .map(|nv| nv.non_visual_drawing_properties.clone());
+        xdr::TwoCellAnchorChoice::GroupShape(g) => {
+            let cnv = Some(g.non_visual_group_shape_properties.non_visual_drawing_properties.clone());
             Some((AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone())), cnv))
         }
-        xdr::TwoCellAnchorChoice::XdrCxnSp(c) => {
+        xdr::TwoCellAnchorChoice::ConnectionShape(c) => {
             let cnv = c
                 .non_visual_connection_shape_properties
                 .non_visual_drawing_properties
@@ -328,15 +326,15 @@ fn anchor_target_from_one_cell(
     Option<std::boxed::Box<xdr::NonVisualDrawingProperties>>,
 )> {
     match choice {
-        xdr::OneCellAnchorChoice::XdrGraphicFrame(gf) => {
-            let rid = find_relationship_id(&gf.graphic.graphic_data.xml_children)?;
+        xdr::OneCellAnchorChoice::GraphicFrame(gf) => {
+            let rid = find_relationship_id(&gf.graphic.graphic_data.graphic_data_choice)?;
             if gf.graphic.graphic_data.uri.as_str() == CHARTEX_GRAPHIC_DATA_URI {
                 Some((AnchorTarget::ChartEx(rid), None))
             } else {
                 Some((AnchorTarget::Chart(rid), None))
             }
         }
-        xdr::OneCellAnchorChoice::XdrPic(pic) => {
+        xdr::OneCellAnchorChoice::Picture(pic) => {
             let blip = pic.blip_fill.blip.as_ref()?;
             let embed = blip.embed.as_ref()?;
             let cnv = pic
@@ -345,21 +343,18 @@ fn anchor_target_from_one_cell(
                 .clone();
             Some((AnchorTarget::Image(embed.as_str().to_string()), Some(cnv)))
         }
-        xdr::OneCellAnchorChoice::XdrSp(sp) => {
+        xdr::OneCellAnchorChoice::Shape(sp) => {
             let cnv = sp
                 .non_visual_shape_properties
                 .non_visual_drawing_properties
                 .clone();
             Some((AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())), Some(cnv)))
         }
-        xdr::OneCellAnchorChoice::XdrGrpSp(g) => {
-            let cnv = g
-                .non_visual_group_shape_properties
-                .as_ref()
-                .map(|nv| nv.non_visual_drawing_properties.clone());
+        xdr::OneCellAnchorChoice::GroupShape(g) => {
+            let cnv = Some(g.non_visual_group_shape_properties.non_visual_drawing_properties.clone());
             Some((AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone())), cnv))
         }
-        xdr::OneCellAnchorChoice::XdrCxnSp(c) => {
+        xdr::OneCellAnchorChoice::ConnectionShape(c) => {
             let cnv = c
                 .non_visual_connection_shape_properties
                 .non_visual_drawing_properties
@@ -377,15 +372,15 @@ fn anchor_target_from_absolute(
     Option<std::boxed::Box<xdr::NonVisualDrawingProperties>>,
 )> {
     match choice {
-        xdr::AbsoluteAnchorChoice::XdrGraphicFrame(gf) => {
-            let rid = find_relationship_id(&gf.graphic.graphic_data.xml_children)?;
+        xdr::AbsoluteAnchorChoice::GraphicFrame(gf) => {
+            let rid = find_relationship_id(&gf.graphic.graphic_data.graphic_data_choice)?;
             if gf.graphic.graphic_data.uri.as_str() == CHARTEX_GRAPHIC_DATA_URI {
                 Some((AnchorTarget::ChartEx(rid), None))
             } else {
                 Some((AnchorTarget::Chart(rid), None))
             }
         }
-        xdr::AbsoluteAnchorChoice::XdrPic(pic) => {
+        xdr::AbsoluteAnchorChoice::Picture(pic) => {
             let blip = pic.blip_fill.blip.as_ref()?;
             let embed = blip.embed.as_ref()?;
             let cnv = pic
@@ -394,21 +389,18 @@ fn anchor_target_from_absolute(
                 .clone();
             Some((AnchorTarget::Image(embed.as_str().to_string()), Some(cnv)))
         }
-        xdr::AbsoluteAnchorChoice::XdrSp(sp) => {
+        xdr::AbsoluteAnchorChoice::Shape(sp) => {
             let cnv = sp
                 .non_visual_shape_properties
                 .non_visual_drawing_properties
                 .clone();
             Some((AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())), Some(cnv)))
         }
-        xdr::AbsoluteAnchorChoice::XdrGrpSp(g) => {
-            let cnv = g
-                .non_visual_group_shape_properties
-                .as_ref()
-                .map(|nv| nv.non_visual_drawing_properties.clone());
+        xdr::AbsoluteAnchorChoice::GroupShape(g) => {
+            let cnv = Some(g.non_visual_group_shape_properties.non_visual_drawing_properties.clone());
             Some((AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone())), cnv))
         }
-        xdr::AbsoluteAnchorChoice::XdrCxnSp(c) => {
+        xdr::AbsoluteAnchorChoice::ConnectionShape(c) => {
             let cnv = c
                 .non_visual_connection_shape_properties
                 .non_visual_drawing_properties
@@ -506,14 +498,23 @@ fn part_relationship_id_dbg<T: std::fmt::Debug>(p: &T) -> Option<String> {
     Some(rest[..end].to_string())
 }
 
-fn find_relationship_id(children: &[Box<str>]) -> Option<String> {
-    for child in children {
-        let s: &str = child;
-        if let Some(idx) = s.find("r:id=\"") {
-            let rest = &s[idx + 6..];
-            if let Some(end) = rest.find('"') {
-                return Some(rest[..end].to_string());
+fn find_relationship_id(
+    choices: &[ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main::GraphicDataChoice],
+) -> Option<String> {
+    use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main::GraphicDataChoice as G;
+    for c in choices {
+        match c {
+            G::ChartReference(r) => return Some(r.id.as_str().to_string()),
+            G::XmlAny(s) => {
+                let raw: &str = s;
+                if let Some(idx) = raw.find("r:id=\"") {
+                    let rest = &raw[idx + 6..];
+                    if let Some(end) = rest.find('"') {
+                        return Some(rest[..end].to_string());
+                    }
+                }
             }
+            _ => {}
         }
     }
     None

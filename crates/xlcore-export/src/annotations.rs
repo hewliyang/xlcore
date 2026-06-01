@@ -8,11 +8,11 @@ pub fn extract_hyperlinks(
     ws_part: &WorksheetPart,
     ws: &ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main::Worksheet,
 ) -> Vec<Hyperlink> {
-    let Some(hl_block) = ws.x_hyperlinks.as_ref() else {
+    let Some(hl_block) = ws.hyperlinks.as_ref() else {
         return Vec::new();
     };
-    let mut out = Vec::with_capacity(hl_block.x_hyperlink.len());
-    for h in &hl_block.x_hyperlink {
+    let mut out = Vec::with_capacity(hl_block.hyperlink.len());
+    for h in &hl_block.hyperlink {
         let r = h.reference.as_str();
         let range = if let Some(((r1, c1), (r2, c2))) = parse_range(r) {
             Merge { r1, c1, r2, c2 }
@@ -53,12 +53,12 @@ pub fn extract_comments(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) 
     };
     let authors: Vec<String> = comments_root
         .authors
-        .x_author
+        .author
         .iter()
         .map(|a| a.xml_content.as_deref().unwrap_or("").to_string())
         .collect();
-    let mut out = Vec::with_capacity(comments_root.comment_list.x_comment.len());
-    for cmt in &comments_root.comment_list.x_comment {
+    let mut out = Vec::with_capacity(comments_root.comment_list.comment.len());
+    for cmt in &comments_root.comment_list.comment {
         let Some((r, c)) = parse_a1(cmt.reference.as_str()) else {
             continue;
         };
@@ -69,8 +69,8 @@ pub fn extract_comments(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) 
 
         let mut text = String::new();
         let mut runs: Vec<TextRun> = Vec::new();
-        if !cmt.comment_text.x_r.is_empty() {
-            for run in &cmt.comment_text.x_r {
+        if !cmt.comment_text.run.is_empty() {
+            for run in &cmt.comment_text.run {
                 let txt = run.text.xml_content.as_deref().unwrap_or("").to_string();
                 text.push_str(&txt);
                 runs.push(crate::text_run_from(run, txt));

@@ -111,11 +111,11 @@ impl Workbook {
             let ws = ws_part
                 .root_element(&mut self.doc)
                 .map_err(sdk_err_to_api)?;
-            for row in &ws.x_sheet_data.x_row {
+            for row in &ws.sheet_data.row {
                 if row.row_index.is_none() {
                     continue;
                 }
-                for cell in &row.x_c {
+                for cell in &row.cell {
                     let Some(formula) = cell
                         .cell_formula
                         .as_ref()

@@ -1,3 +1,4 @@
+use ooxmlsdk::simple_type::BooleanValue;
 use std::io::{Cursor, Write};
 
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
@@ -9,20 +10,20 @@ use crate::Result;
 
 pub(crate) fn empty_worksheet() -> x::Worksheet {
     x::Worksheet {
-        x_sheet_data: Box::new(x::SheetData::default()),
+        sheet_data: Box::new(x::SheetData::default()),
         ..Default::default()
     }
 }
 
 pub(crate) fn ensure_cell(ws: &mut x::Worksheet, row: u32, column: u32) -> &mut x::Cell {
     let row_pos = match ws
-        .x_sheet_data
-        .x_row
+        .sheet_data
+        .row
         .binary_search_by_key(&row, |existing| existing.row_index.unwrap_or(u32::MAX))
     {
         Ok(pos) => pos,
         Err(pos) => {
-            ws.x_sheet_data.x_row.insert(
+            ws.sheet_data.row.insert(
                 pos,
                 x::Row {
                     row_index: Some(row),
@@ -33,9 +34,9 @@ pub(crate) fn ensure_cell(ws: &mut x::Worksheet, row: u32, column: u32) -> &mut 
         }
     };
 
-    let row_ref = &mut ws.x_sheet_data.x_row[row_pos];
+    let row_ref = &mut ws.sheet_data.row[row_pos];
     let cell_ref = format!("{}{}", xlcore_io::col_label(column), row);
-    let cell_pos = match row_ref.x_c.binary_search_by_key(&column, |existing| {
+    let cell_pos = match row_ref.cell.binary_search_by_key(&column, |existing| {
         existing
             .cell_reference
             .as_ref()
@@ -45,7 +46,7 @@ pub(crate) fn ensure_cell(ws: &mut x::Worksheet, row: u32, column: u32) -> &mut 
     }) {
         Ok(pos) => pos,
         Err(pos) => {
-            row_ref.x_c.insert(
+            row_ref.cell.insert(
                 pos,
                 x::Cell {
                     cell_reference: Some(cell_ref),
@@ -55,7 +56,7 @@ pub(crate) fn ensure_cell(ws: &mut x::Worksheet, row: u32, column: u32) -> &mut 
             pos
         }
     };
-    &mut row_ref.x_c[cell_pos]
+    &mut row_ref.cell[cell_pos]
 }
 
 pub(crate) fn apply_clear_mode(cell: &mut x::Cell, mode: ClearMode) {
@@ -93,33 +94,24 @@ pub(crate) fn set_cell_value(cell: &mut x::Cell, value: &CellValue) {
             cell.data_type = Some(x::CellValues::InlineString);
             cell.cell_value = None;
             cell.inline_string = Some(Box::new(x::InlineString {
-                text: Some(x::Text {
-                    xml_content: Some(value.clone()),
-                    ..Default::default()
-                }),
+                text: Some(x::Text(x::XstringType { xml_content: Some(value.clone()), ..Default::default() })),
                 ..Default::default()
             }));
         }
         CellValue::Number(value) => {
             cell.data_type = None;
-            cell.cell_value = Some(x::CellValue {
-                xml_content: Some(format_number(*value)),
-                ..Default::default()
-            });
+            cell.cell_value = Some(x::CellValue(x::XstringType { xml_content: Some(format_number(*value)), ..Default::default() }));
         }
         CellValue::Boolean(value) => {
             cell.data_type = Some(x::CellValues::Boolean);
-            cell.cell_value = Some(x::CellValue {
+            cell.cell_value = Some(x::CellValue(x::XstringType {
                 xml_content: Some(if *value { "1" } else { "0" }.to_string()),
                 ..Default::default()
-            });
+            }));
         }
         CellValue::Error(value) => {
             cell.data_type = Some(x::CellValues::Error);
-            cell.cell_value = Some(x::CellValue {
-                xml_content: Some(value.clone()),
-                ..Default::default()
-            });
+            cell.cell_value = Some(x::CellValue(x::XstringType { xml_content: Some(value.clone()), ..Default::default() }));
         }
     }
 }
@@ -189,9 +181,9 @@ fn inline_string_text(cell: &x::Cell) -> String {
     let Some(inline) = cell.inline_string.as_ref() else {
         return String::new();
     };
-    if !inline.x_r.is_empty() {
+    if !inline.run.is_empty() {
         let mut out = String::new();
-        for run in &inline.x_r {
+        for run in &inline.run {
             out.push_str(run.text.xml_content.as_deref().unwrap_or(""));
         }
         return out;
@@ -214,14 +206,14 @@ pub(crate) fn load_shared_strings(doc: &mut xlcore_io::SpreadsheetDocument) -> V
     let Ok(sst) = sst_part.root_element(doc) else {
         return Vec::new();
     };
-    let mut strings = Vec::with_capacity(sst.x_si.len());
-    for item in &sst.x_si {
+    let mut strings = Vec::with_capacity(sst.shared_string_item.len());
+    for item in &sst.shared_string_item {
         if let Some(text) = &item.text {
             strings.push(text.xml_content.as_deref().unwrap_or("").to_string());
             continue;
         }
         let mut out = String::new();
-        for run in &item.x_r {
+        for run in &item.run {
             out.push_str(run.text.xml_content.as_deref().unwrap_or(""));
         }
         strings.push(out);
@@ -236,10 +228,10 @@ pub(crate) fn sheet_dimensions(
     let ws = part.root_element(doc).map_err(sdk_err_to_api)?;
     let mut rows = 0;
     let mut cols = 0;
-    for row in &ws.x_sheet_data.x_row {
+    for row in &ws.sheet_data.row {
         let row_idx = row.row_index.unwrap_or(0);
         rows = rows.max(row_idx);
-        for cell in &row.x_c {
+        for cell in &row.cell {
             if let Some((_, c)) = cell
                 .cell_reference
                 .as_ref()
@@ -254,7 +246,7 @@ pub(crate) fn sheet_dimensions(
 
 pub(crate) fn sheet_state_name(state: &x::SheetStateValues) -> Option<String> {
     match state {
-        x::SheetStateValues::Visible => None,
+        x::SheetStateValues::Visible | x::SheetStateValues::Show => None,
         x::SheetStateValues::Hidden => Some("hidden".to_string()),
         x::SheetStateValues::VeryHidden => Some("veryHidden".to_string()),
     }
@@ -282,9 +274,9 @@ pub(crate) fn mark_formulas_stale(doc: &mut xlcore_io::SpreadsheetDocument) -> R
     let calc = workbook
         .calculation_properties
         .get_or_insert_with(Default::default);
-    calc.full_calculation_on_load = Some(true);
-    calc.force_full_calculation = Some(true);
-    calc.calculation_completed = Some(false);
+    calc.full_calculation_on_load = Some(BooleanValue::from_bool(true));
+    calc.force_full_calculation = Some(BooleanValue::from_bool(true));
+    calc.calculation_completed = Some(BooleanValue::from_bool(false));
     Ok(())
 }
 

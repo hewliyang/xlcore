@@ -68,13 +68,13 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let next_sheet_id = workbook
             .sheets
-            .x_sheet
+            .sheet
             .iter()
             .map(|sheet| sheet.sheet_id)
             .max()
             .unwrap_or(0)
             + 1;
-        workbook.sheets.x_sheet.push(x::Sheet {
+        workbook.sheets.sheet.push(x::Sheet {
             name: name.to_string(),
             sheet_id: next_sheet_id,
             state: None,
@@ -82,7 +82,7 @@ impl Workbook {
             ..Default::default()
         });
 
-        let index = workbook.sheets.x_sheet.len() - 1;
+        let index = workbook.sheets.sheet.len() - 1;
         Ok(SheetInfo {
             index,
             id: next_sheet_id,
@@ -115,7 +115,7 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let Some(sheet) = workbook
             .sheets
-            .x_sheet
+            .sheet
             .iter_mut()
             .find(|sheet| sheet.name.as_str() == old_name)
         else {
@@ -135,7 +135,7 @@ impl Workbook {
         let workbook = wb_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        if workbook.sheets.x_sheet.len() <= 1 {
+        if workbook.sheets.sheet.len() <= 1 {
             return Err(ApiError::new(
                 ApiErrorCode::CannotDeleteLastSheet,
                 "cannot delete the last worksheet",
@@ -143,7 +143,7 @@ impl Workbook {
         }
         let Some(index) = workbook
             .sheets
-            .x_sheet
+            .sheet
             .iter()
             .position(|sheet| sheet.name.as_str() == name)
         else {
@@ -153,7 +153,7 @@ impl Workbook {
             )
             .with_sheet(name));
         };
-        let relationship_id = workbook.sheets.x_sheet.remove(index).id;
+        let relationship_id = workbook.sheets.sheet.remove(index).id;
         let _ = wb_part
             .delete_part_by_id(&mut self.doc, relationship_id.as_str())
             .map_err(sdk_err_to_api)?;
@@ -167,10 +167,10 @@ impl Workbook {
         let workbook = wb_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        let len = workbook.sheets.x_sheet.len();
+        let len = workbook.sheets.sheet.len();
         let Some(from) = workbook
             .sheets
-            .x_sheet
+            .sheet
             .iter()
             .position(|sheet| sheet.name.as_str() == name)
         else {
@@ -182,8 +182,8 @@ impl Workbook {
         };
         let to = to_index.min(len.saturating_sub(1));
         if from != to {
-            let sheet = workbook.sheets.x_sheet.remove(from);
-            workbook.sheets.x_sheet.insert(to, sheet);
+            let sheet = workbook.sheets.sheet.remove(from);
+            workbook.sheets.sheet.insert(to, sheet);
             self.normalize_active_sheet_after_move(from as u32, to as u32)?;
         }
         self.sheet_info_by_name(name)
@@ -201,13 +201,13 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let visible_count = workbook
             .sheets
-            .x_sheet
+            .sheet
             .iter()
             .filter(|sheet| matches!(sheet.state, None | Some(x::SheetStateValues::Visible)))
             .count();
         let Some(sheet) = workbook
             .sheets
-            .x_sheet
+            .sheet
             .iter_mut()
             .find(|sheet| sheet.name.as_str() == name)
         else {
@@ -243,7 +243,7 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let Some(index) = workbook
             .sheets
-            .x_sheet
+            .sheet
             .iter()
             .position(|sheet| sheet.name.as_str() == name)
         else {
@@ -253,7 +253,7 @@ impl Workbook {
             )
             .with_sheet(name));
         };
-        let sheet = &workbook.sheets.x_sheet[index];
+        let sheet = &workbook.sheets.sheet[index];
         if !matches!(sheet.state, None | Some(x::SheetStateValues::Visible)) {
             return Err(ApiError::new(
                 ApiErrorCode::Other,
@@ -262,10 +262,10 @@ impl Workbook {
             .with_sheet(name));
         }
         let book_views = workbook.book_views.get_or_insert_with(Default::default);
-        if book_views.x_workbook_view.is_empty() {
-            book_views.x_workbook_view.push(x::WorkbookView::default());
+        if book_views.workbook_view.is_empty() {
+            book_views.workbook_view.push(x::WorkbookView::default());
         }
-        book_views.x_workbook_view[0].active_tab = Some(index as u32);
+        book_views.workbook_view[0].active_tab = Some(index as u32);
         self.sheet_info_by_name(name)
     }
 
@@ -290,7 +290,7 @@ impl Workbook {
         let Some(book_views) = workbook.book_views.as_mut() else {
             return Ok(());
         };
-        let Some(view) = book_views.x_workbook_view.first_mut() else {
+        let Some(view) = book_views.workbook_view.first_mut() else {
             return Ok(());
         };
         let Some(active) = view.active_tab else {
@@ -316,7 +316,7 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let states: Vec<bool> = workbook
             .sheets
-            .x_sheet
+            .sheet
             .iter()
             .map(|sheet| matches!(sheet.state, None | Some(x::SheetStateValues::Visible)))
             .collect();
@@ -324,7 +324,7 @@ impl Workbook {
         let Some(book_views) = workbook.book_views.as_mut() else {
             return Ok(());
         };
-        let Some(view) = book_views.x_workbook_view.first_mut() else {
+        let Some(view) = book_views.workbook_view.first_mut() else {
             return Ok(());
         };
         let active = view.active_tab.unwrap_or(0) as usize;
@@ -343,7 +343,7 @@ impl Workbook {
             .root_element(&mut self.doc)
             .map_err(sdk_err_to_api)?
             .sheets
-            .x_sheet
+            .sheet
             .clone())
     }
 
@@ -354,7 +354,7 @@ impl Workbook {
             .map_err(sdk_err_to_api)?
             .book_views
             .as_ref()
-            .and_then(|views| views.x_workbook_view.first())
+            .and_then(|views| views.workbook_view.first())
             .and_then(|view| view.active_tab))
     }
 
@@ -366,7 +366,7 @@ impl Workbook {
         let Some(book_views) = workbook.book_views.as_mut() else {
             return Ok(());
         };
-        let Some(view) = book_views.x_workbook_view.first_mut() else {
+        let Some(view) = book_views.workbook_view.first_mut() else {
             return Ok(());
         };
         if let Some(active) = view.active_tab {

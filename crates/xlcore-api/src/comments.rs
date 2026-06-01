@@ -19,12 +19,12 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let authors: Vec<String> = root
             .authors
-            .x_author
+            .author
             .iter()
             .map(|a| a.xml_content.as_deref().unwrap_or("").to_string())
             .collect();
-        let mut out = Vec::with_capacity(root.comment_list.x_comment.len());
-        for cmt in &root.comment_list.x_comment {
+        let mut out = Vec::with_capacity(root.comment_list.comment.len());
+        for cmt in &root.comment_list.comment {
             let Some((row, column)) = xlcore_io::parse_a1(cmt.reference.as_str()) else {
                 continue;
             };
@@ -68,17 +68,17 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let author_id = upsert_author(root, &author);
         root.comment_list
-            .x_comment
+            .comment
             .retain(|cmt| cmt.reference.as_str() != cell_ref_str.as_str());
-        root.comment_list.x_comment.push(x::Comment {
+        root.comment_list.comment.push(x::Comment {
             reference: cell_ref_str.clone().into(),
             author_id: (author_id as u32).into(),
             comment_text: Box::new(x::CommentText {
-                text: Some(x::Text {
+                text: Some(x::Text(x::XstringType {
                     space: Some(ooxmlsdk::schemas::xml::SpaceProcessingModeValues::Preserve),
                     xml_content: Some(patch.text.clone().into()),
                     ..Default::default()
-                }),
+                })),
                 ..Default::default()
             }),
             ..Default::default()
@@ -107,13 +107,13 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let authors: Vec<String> = root
             .authors
-            .x_author
+            .author
             .iter()
             .map(|a| a.xml_content.as_deref().unwrap_or("").to_string())
             .collect();
         let mut removed = Vec::new();
-        let mut kept = Vec::with_capacity(root.comment_list.x_comment.len());
-        for cmt in root.comment_list.x_comment.drain(..) {
+        let mut kept = Vec::with_capacity(root.comment_list.comment.len());
+        for cmt in root.comment_list.comment.drain(..) {
             let hit = match xlcore_io::parse_a1(cmt.reference.as_str()) {
                 Some((row, column)) => ranges_overlap(
                     range_ref.start_row,
@@ -145,8 +145,8 @@ impl Workbook {
                 kept.push(cmt);
             }
         }
-        root.comment_list.x_comment = kept;
-        let part_empty = root.comment_list.x_comment.is_empty();
+        root.comment_list.comment = kept;
+        let part_empty = root.comment_list.comment.is_empty();
         if part_empty {
             let _ = self.doc.delete_part(comments_part);
         }
@@ -155,9 +155,9 @@ impl Workbook {
 }
 
 fn comment_plain_text(cmt: &x::Comment) -> String {
-    if !cmt.comment_text.x_r.is_empty() {
+    if !cmt.comment_text.run.is_empty() {
         let mut buf = String::new();
-        for run in &cmt.comment_text.x_r {
+        for run in &cmt.comment_text.run {
             if let Some(t) = run.text.xml_content.as_deref() {
                 buf.push_str(t);
             }
@@ -173,17 +173,17 @@ fn comment_plain_text(cmt: &x::Comment) -> String {
 fn upsert_author(root: &mut x::Comments, author: &str) -> usize {
     if let Some(idx) = root
         .authors
-        .x_author
+        .author
         .iter()
         .position(|a| a.xml_content.as_deref().unwrap_or("") == author)
     {
         return idx;
     }
-    let idx = root.authors.x_author.len();
-    root.authors.x_author.push(x::Author {
+    let idx = root.authors.author.len();
+    root.authors.author.push(x::Author(x::XstringType {
         xml_content: Some(author.to_string().into()),
         ..Default::default()
-    });
+    }));
     idx
 }
 

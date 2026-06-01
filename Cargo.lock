@@ -714,21 +714,21 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "ooxmlsdk"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34b45ea6f1e1469abaeb80b98b8dd35e29e31359af15866aece1c9f9f9c407d8"
+checksum = "a8daa59c2b62c40999d41b9909b7815944f96a54060339ae56ca2f18f7badb43"
 dependencies = [
  "ooxmlsdk-derive",
- "quick-xml",
+ "quick-xml 0.40.1",
  "thiserror 2.0.18",
  "zip",
 ]
 
 [[package]]
 name = "ooxmlsdk-derive"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de826c426342d25b29162cebe20472b9361b41d423336ac68b85774eccef97c6"
+checksum = "2ca5f17526dbb3b061ad8707b69afd93a48d8865140db6e23a46bd654db7f668"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -833,6 +833,15 @@ name = "quick-xml"
 version = "0.39.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "721da970c312655cde9b4ffe0547f20a8494866a4af5ff51f18b7c633d0c870b"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "quick-xml"
+version = "0.40.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2474bd2e5029e7ccb6abb2ba48cf2383a333851dedf495901544281590c7da7f"
 dependencies = [
  "memchr",
 ]
@@ -1458,7 +1467,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "ooxmlsdk",
- "quick-xml",
+ "quick-xml 0.39.3",
  "serde",
  "thiserror 1.0.69",
  "zip",

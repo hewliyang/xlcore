@@ -16,8 +16,8 @@ impl Workbook {
             .root_element(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let mut out = Vec::new();
-        if let Some(mc) = ws.x_merge_cells.as_ref() {
-            for m in &mc.x_merge_cell {
+        if let Some(mc) = ws.merge_cells.as_ref() {
+            for m in &mc.merge_cell {
                 if let Some(info) = merge_info_from_ref(&sheet, m.reference.as_str()) {
                     out.push(info);
                 }
@@ -34,9 +34,9 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let new_ref = range_ref.range_reference();
         let merges = ws
-            .x_merge_cells
+            .merge_cells
             .get_or_insert_with(x::MergeCells::default);
-        for existing in &merges.x_merge_cell {
+        for existing in &merges.merge_cell {
             let Some((r1, c1, r2, c2)) = parse_range_a1(existing.reference.as_str()) else {
                 continue;
             };
@@ -61,10 +61,10 @@ impl Workbook {
                 .with_ref(&new_ref));
             }
         }
-        merges.x_merge_cell.push(x::MergeCell {
+        merges.merge_cell.push(x::MergeCell {
             reference: new_ref.clone(),
         });
-        merges.count = Some(merges.x_merge_cell.len() as u32);
+        merges.count = Some(merges.merge_cell.len() as u32);
         Ok(merge_info(&range_ref.sheet, &range_ref))
     }
 
@@ -103,11 +103,11 @@ impl Workbook {
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        let Some(merges) = ws.x_merge_cells.as_mut() else {
+        let Some(merges) = ws.merge_cells.as_mut() else {
             return Ok(None);
         };
         let mut found: Option<usize> = None;
-        for (idx, existing) in merges.x_merge_cell.iter().enumerate() {
+        for (idx, existing) in merges.merge_cell.iter().enumerate() {
             let Some((r1, c1, r2, c2)) = parse_range_a1(existing.reference.as_str()) else {
                 continue;
             };
@@ -128,11 +128,11 @@ impl Workbook {
             }
         }
         let Some(idx) = found else { return Ok(None) };
-        let removed = merges.x_merge_cell.remove(idx);
-        if merges.x_merge_cell.is_empty() {
-            ws.x_merge_cells = None;
+        let removed = merges.merge_cell.remove(idx);
+        if merges.merge_cell.is_empty() {
+            ws.merge_cells = None;
         } else {
-            let len = merges.x_merge_cell.len() as u32;
+            let len = merges.merge_cell.len() as u32;
             merges.count = Some(len);
         }
         Ok(merge_info_from_ref(&sheet, removed.reference.as_str()))

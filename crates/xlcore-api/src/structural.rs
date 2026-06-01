@@ -132,7 +132,7 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         if let Some(dns) = workbook.defined_names.as_mut() {
-            for dn in &mut dns.x_defined_name {
+            for dn in &mut dns.defined_name {
                 let owning = dn
                     .local_sheet_id
                     .and_then(|i| sheet_names.get(i as usize).cloned())
@@ -181,7 +181,7 @@ fn validate_count(count: u32) -> Result<()> {
 }
 
 fn shift_sheet_data(ws: &mut x::Worksheet, op: ShiftOp) {
-    let rows = &mut ws.x_sheet_data.x_row;
+    let rows = &mut ws.sheet_data.row;
     match op {
         ShiftOp::InsertRow { before, count } => {
             for row in rows.iter_mut() {
@@ -211,7 +211,7 @@ fn shift_sheet_data(ws: &mut x::Worksheet, op: ShiftOp) {
         }
         ShiftOp::InsertCol { before, count } => {
             for row in rows.iter_mut() {
-                for cell in &mut row.x_c {
+                for cell in &mut row.cell {
                     if let Some(reference) = cell.cell_reference.as_ref() {
                         if let Some((r, c)) = xlcore_io::parse_a1(reference) {
                             if c >= before {
@@ -222,7 +222,7 @@ fn shift_sheet_data(ws: &mut x::Worksheet, op: ShiftOp) {
                         }
                     }
                 }
-                row.x_c.retain(|cell| {
+                row.cell.retain(|cell| {
                     cell.cell_reference
                         .as_ref()
                         .and_then(|r| xlcore_io::parse_a1(r))
@@ -234,7 +234,7 @@ fn shift_sheet_data(ws: &mut x::Worksheet, op: ShiftOp) {
         ShiftOp::DeleteCol { start, count } => {
             let end = start + count - 1;
             for row in rows.iter_mut() {
-                row.x_c.retain_mut(|cell| {
+                row.cell.retain_mut(|cell| {
                     let Some(reference) = cell.cell_reference.as_ref() else {
                         return true;
                     };
@@ -257,7 +257,7 @@ fn shift_sheet_data(ws: &mut x::Worksheet, op: ShiftOp) {
 }
 
 fn update_cell_refs<F: Fn(u32, u32) -> (u32, u32)>(row: &mut x::Row, f: F) {
-    for cell in &mut row.x_c {
+    for cell in &mut row.cell {
         if let Some(reference) = cell.cell_reference.as_ref() {
             if let Some((r, c)) = xlcore_io::parse_a1(reference) {
                 let (nr, nc) = f(r, c);
@@ -270,8 +270,8 @@ fn update_cell_refs<F: Fn(u32, u32) -> (u32, u32)>(row: &mut x::Row, f: F) {
 fn shift_columns_metadata(ws: &mut x::Worksheet, op: ShiftOp) {
     match op {
         ShiftOp::InsertCol { before, count } => {
-            for cols in &mut ws.x_cols {
-                cols.x_col.retain_mut(|c| {
+            for cols in &mut ws.columns {
+                cols.column.retain_mut(|c| {
                     if c.max < before {
                     } else if c.min >= before {
                         c.min = (c.min + count).min(MAX_COLUMN);
@@ -285,8 +285,8 @@ fn shift_columns_metadata(ws: &mut x::Worksheet, op: ShiftOp) {
         }
         ShiftOp::DeleteCol { start, count } => {
             let end = start + count - 1;
-            for cols in &mut ws.x_cols {
-                cols.x_col.retain_mut(|c| {
+            for cols in &mut ws.columns {
+                cols.column.retain_mut(|c| {
                     let new_min = if c.min < start {
                         c.min
                     } else if c.min > end {
@@ -317,11 +317,11 @@ fn shift_columns_metadata(ws: &mut x::Worksheet, op: ShiftOp) {
 }
 
 fn shift_merges(ws: &mut x::Worksheet, op: ShiftOp) {
-    let Some(merges) = ws.x_merge_cells.as_mut() else {
+    let Some(merges) = ws.merge_cells.as_mut() else {
         return;
     };
     let mut kept: Vec<x::MergeCell> = Vec::new();
-    for m in std::mem::take(&mut merges.x_merge_cell) {
+    for m in std::mem::take(&mut merges.merge_cell) {
         let Some((r1, c1, r2, c2)) = parse_range_a1(m.reference.as_str()) else {
             kept.push(m);
             continue;
@@ -358,20 +358,20 @@ fn shift_merges(ws: &mut x::Worksheet, op: ShiftOp) {
         }
     }
     if kept.is_empty() {
-        ws.x_merge_cells = None;
+        ws.merge_cells = None;
     } else {
         merges.count = Some(kept.len() as u32);
-        merges.x_merge_cell = kept;
+        merges.merge_cell = kept;
     }
 }
 
 fn shift_auto_filter(ws: &mut x::Worksheet, op: ShiftOp) {
-    if let Some(af) = ws.x_auto_filter.as_mut() {
+    if let Some(af) = ws.auto_filter.as_mut() {
         if let Some(reference) = af.reference.as_mut() {
             match shift_a1_range_str(reference, op) {
                 RangeShift::Kept(s) => *reference = s,
                 RangeShift::Collapsed => {
-                    ws.x_auto_filter = None;
+                    ws.auto_filter = None;
                     return;
                 }
                 RangeShift::Unparsed => {}
@@ -381,11 +381,11 @@ fn shift_auto_filter(ws: &mut x::Worksheet, op: ShiftOp) {
 }
 
 fn shift_conditional_formatting_sqref(ws: &mut x::Worksheet, op: ShiftOp) {
-    ws.x_conditional_formatting.retain_mut(|cf| {
+    ws.conditional_formatting.retain_mut(|cf| {
         let Some(sqref) = cf.sequence_of_references.as_mut() else {
             return true;
         };
-        let combined = format!("{sqref}");
+        let combined = sqref.join(" ");
         let mut new_parts: Vec<String> = Vec::new();
         for part in combined.split_whitespace() {
             match shift_a1_range_str(part, op) {
@@ -397,7 +397,7 @@ fn shift_conditional_formatting_sqref(ws: &mut x::Worksheet, op: ShiftOp) {
         if new_parts.is_empty() {
             return false;
         }
-        sqref.0 = new_parts;
+        *sqref = new_parts;
         true
     });
 }
@@ -408,9 +408,9 @@ fn shift_conditional_formatting_formulas(
     target: &str,
     op: ShiftOp,
 ) {
-    for cf in &mut ws.x_conditional_formatting {
-        for rule in &mut cf.x_cf_rule {
-            for f in &mut rule.x_formula {
+    for cf in &mut ws.conditional_formatting {
+        for rule in &mut cf.conditional_formatting_rule {
+            for f in &mut rule.formula {
                 if let Some(text) = f.xml_content.as_mut() {
                     *text = shift_formula_refs(text, owning, target, op);
                 }
@@ -528,8 +528,8 @@ fn shift_single_delete(v: u32, start: u32, count: u32) -> Option<u32> {
 }
 
 fn rewrite_formulas(ws: &mut x::Worksheet, owning: &str, target: &str, op: ShiftOp) {
-    for row in &mut ws.x_sheet_data.x_row {
-        for cell in &mut row.x_c {
+    for row in &mut ws.sheet_data.row {
+        for cell in &mut row.cell {
             if let Some(formula) = cell.cell_formula.as_mut() {
                 if let Some(text) = formula.xml_content.as_mut() {
                     *text = shift_formula_refs(text, owning, target, op);

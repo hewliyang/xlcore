@@ -1,3 +1,4 @@
+use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
     ApiError, ApiErrorCode, DataValidationErrorStyle, DataValidationInfo, DataValidationOperator,
@@ -16,8 +17,8 @@ impl Workbook {
             .root_element(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let mut out = Vec::new();
-        if let Some(block) = ws.x_data_validations.as_ref() {
-            for dv in &block.x_data_validation {
+        if let Some(block) = ws.data_validations.as_ref() {
+            for dv in &block.data_validation {
                 if let Some(info) = read_dv(&sheet, dv) {
                     out.push(info);
                 }
@@ -48,14 +49,13 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let block = ws
-            .x_data_validations
+            .data_validations
             .get_or_insert_with(x::DataValidations::default);
 
-        let mut kept = Vec::with_capacity(block.x_data_validation.len());
-        for dv in block.x_data_validation.drain(..) {
+        let mut kept = Vec::with_capacity(block.data_validation.len());
+        for dv in block.data_validation.drain(..) {
             let mut surviving: Vec<String> = dv
                 .sequence_of_references
-                .0
                 .iter()
                 .filter_map(|s| {
                     let raw = s.as_str();
@@ -70,12 +70,12 @@ impl Workbook {
             if surviving.is_empty() {
                 continue;
             }
-            let original_len = dv.sequence_of_references.0.len();
+            let original_len = dv.sequence_of_references.len();
             if surviving.len() == original_len {
                 kept.push(dv);
             } else {
                 let mut updated = dv;
-                updated.sequence_of_references.0 = surviving
+                updated.sequence_of_references = surviving
                     .drain(..)
                     .map(|s| s.into())
                     .collect();
@@ -83,8 +83,8 @@ impl Workbook {
             }
         }
         kept.push(build_dv(&new_range_str, &patch));
-        block.x_data_validation = kept;
-        block.count = Some((block.x_data_validation.len() as u32).into());
+        block.data_validation = kept;
+        block.count = Some((block.data_validation.len() as u32).into());
 
         Ok(info_from_patch(
             &range_ref.sheet,
@@ -111,16 +111,16 @@ impl Workbook {
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        let Some(block) = ws.x_data_validations.as_mut() else {
+        let Some(block) = ws.data_validations.as_mut() else {
             return Ok(Vec::new());
         };
 
         let mut removed = Vec::new();
-        let mut kept = Vec::with_capacity(block.x_data_validation.len());
-        for dv in block.x_data_validation.drain(..) {
+        let mut kept = Vec::with_capacity(block.data_validation.len());
+        for dv in block.data_validation.drain(..) {
             let mut hit_ranges: Vec<String> = Vec::new();
             let mut surviving: Vec<String> = Vec::new();
-            for s in &dv.sequence_of_references.0 {
+            for s in &dv.sequence_of_references {
                 let raw = s.as_str();
                 match parse_range_a1(raw) {
                     Some((r1, c1, r2, c2))
@@ -145,15 +145,15 @@ impl Workbook {
             }
             if !surviving.is_empty() {
                 let mut updated = dv;
-                updated.sequence_of_references.0 = surviving.into_iter().map(Into::into).collect();
+                updated.sequence_of_references = surviving.into_iter().map(Into::into).collect();
                 kept.push(updated);
             }
         }
         if kept.is_empty() {
-            ws.x_data_validations = None;
+            ws.data_validations = None;
         } else {
-            block.x_data_validation = kept;
-            block.count = Some((block.x_data_validation.len() as u32).into());
+            block.data_validation = kept;
+            block.count = Some((block.data_validation.len() as u32).into());
         }
         Ok(removed)
     }
@@ -224,18 +224,12 @@ fn build_dv(range_str: &str, patch: &DataValidationPatch) -> x::DataValidation {
         prompt: patch.prompt.clone().map(Into::into),
         ..Default::default()
     };
-    dv.sequence_of_references.0 = vec![range_str.to_string().into()];
+    dv.sequence_of_references = vec![range_str.to_string().into()];
     if let Some(f1) = patch.formula1.as_deref() {
-        dv.formula1 = Some(x::Formula1 {
-            xml_content: Some(f1.to_string().into()),
-            ..Default::default()
-        });
+        dv.formula1 = Some(x::Formula1(x::XstringType { xml_content: Some(f1.to_string().into()), ..Default::default() }));
     }
     if let Some(f2) = patch.formula2.as_deref() {
-        dv.formula2 = Some(x::Formula2 {
-            xml_content: Some(f2.to_string().into()),
-            ..Default::default()
-        });
+        dv.formula2 = Some(x::Formula2(x::XstringType { xml_content: Some(f2.to_string().into()), ..Default::default() }));
     }
     dv
 }
@@ -244,7 +238,6 @@ fn read_dv(sheet: &str, dv: &x::DataValidation) -> Option<DataValidationInfo> {
     let rule_type = type_from_sdk(dv.r#type.unwrap_or_default())?;
     let ranges: Vec<String> = dv
         .sequence_of_references
-        .0
         .iter()
         .map(|s| s.as_str().to_string())
         .collect();
@@ -258,10 +251,10 @@ fn read_dv(sheet: &str, dv: &x::DataValidation) -> Option<DataValidationInfo> {
         ranges,
         rule_type,
         operator: dv.operator.and_then(operator_from_sdk),
-        allow_blank: dv.allow_blank.unwrap_or(false),
-        show_drop_down: dv.show_drop_down.unwrap_or(false),
-        show_input_message: dv.show_input_message.unwrap_or(false),
-        show_error_message: dv.show_error_message.unwrap_or(false),
+        allow_blank: bool::from(dv.allow_blank.unwrap_or(BooleanValue::from_bool(false))),
+        show_drop_down: bool::from(dv.show_drop_down.unwrap_or(BooleanValue::from_bool(false))),
+        show_input_message: bool::from(dv.show_input_message.unwrap_or(BooleanValue::from_bool(false))),
+        show_error_message: bool::from(dv.show_error_message.unwrap_or(BooleanValue::from_bool(false))),
         error_style: dv.error_style.and_then(error_style_from_sdk),
         error_title: dv.error_title.as_ref().map(|s| s.as_str().to_string()),
         error: dv.error.as_ref().map(|s| s.as_str().to_string()),

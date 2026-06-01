@@ -70,14 +70,14 @@ impl Workbook {
             let ws = ws_part
                 .root_element(&mut self.doc)
                 .map_err(sdk_err_to_api)?;
-            for row in &ws.x_sheet_data.x_row {
+            for row in &ws.sheet_data.row {
                 let Some(row_idx) = row.row_index else { continue };
                 if let Some(rr) = &range_filter {
                     if row_idx < rr.start_row || row_idx > rr.end_row {
                         continue;
                     }
                 }
-                for cell in &row.x_c {
+                for cell in &row.cell {
                     let Some((r, c)) = cell
                         .cell_reference
                         .as_ref()

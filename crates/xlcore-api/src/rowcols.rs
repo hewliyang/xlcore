@@ -1,3 +1,4 @@
+use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{ApiError, ApiErrorCode, FreezeInfo};
 
@@ -23,7 +24,7 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let row_entry = ensure_row(ws, row);
         row_entry.height = Some(height);
-        row_entry.custom_height = Some(true);
+        row_entry.custom_height = Some(BooleanValue::from_bool(true));
         Ok(())
     }
 
@@ -40,7 +41,7 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let row_entry = ensure_row(ws, row);
-        row_entry.hidden = if visible { None } else { Some(true) };
+        row_entry.hidden = if visible { None } else { Some(BooleanValue::from_bool(true)) };
         Ok(())
     }
 
@@ -59,7 +60,7 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let col = ensure_single_column(ws, column);
         col.width = Some(width);
-        col.custom_width = Some(true);
+        col.custom_width = Some(BooleanValue::from_bool(true));
         Ok(())
     }
 
@@ -76,7 +77,7 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let col = ensure_single_column(ws, column);
-        col.hidden = if visible { None } else { Some(true) };
+        col.hidden = if visible { None } else { Some(BooleanValue::from_bool(true)) };
         Ok(())
     }
 
@@ -101,10 +102,10 @@ impl Workbook {
         let views = ws
             .sheet_views
             .get_or_insert_with(|| Box::new(x::SheetViews::default()));
-        if views.x_sheet_view.is_empty() {
-            views.x_sheet_view.push(x::SheetView::default());
+        if views.sheet_view.is_empty() {
+            views.sheet_view.push(x::SheetView::default());
         }
-        let view = &mut views.x_sheet_view[0];
+        let view = &mut views.sheet_view[0];
         if frozen_rows == 0 && frozen_columns == 0 {
             view.pane = None;
         } else {
@@ -152,7 +153,7 @@ impl Workbook {
         let (frozen_rows, frozen_columns) = ws
             .sheet_views
             .as_ref()
-            .and_then(|views| views.x_sheet_view.first())
+            .and_then(|views| views.sheet_view.first())
             .and_then(|view| view.pane.as_ref())
             .filter(|pane| matches!(pane.state, Some(x::PaneStateValues::Frozen)))
             .map(|pane| {
@@ -204,13 +205,13 @@ fn validate_size(value: f64, label: &str) -> Result<()> {
 
 fn ensure_row(ws: &mut x::Worksheet, row: u32) -> &mut x::Row {
     let pos = match ws
-        .x_sheet_data
-        .x_row
+        .sheet_data
+        .row
         .binary_search_by_key(&row, |existing| existing.row_index.unwrap_or(u32::MAX))
     {
         Ok(pos) => pos,
         Err(pos) => {
-            ws.x_sheet_data.x_row.insert(
+            ws.sheet_data.row.insert(
                 pos,
                 x::Row {
                     row_index: Some(row),
@@ -220,53 +221,53 @@ fn ensure_row(ws: &mut x::Worksheet, row: u32) -> &mut x::Row {
             pos
         }
     };
-    &mut ws.x_sheet_data.x_row[pos]
+    &mut ws.sheet_data.row[pos]
 }
 
 fn ensure_single_column(ws: &mut x::Worksheet, column: u32) -> &mut x::Column {
-    if ws.x_cols.is_empty() {
-        ws.x_cols.push(x::Columns::default());
+    if ws.columns.is_empty() {
+        ws.columns.push(x::Columns::default());
     }
-    let cols = &mut ws.x_cols[0];
+    let cols = &mut ws.columns[0];
     if let Some(pos) = cols
-        .x_col
+        .column
         .iter()
         .position(|c| c.min == column && c.max == column)
     {
-        return &mut cols.x_col[pos];
+        return &mut cols.column[pos];
     }
     if let Some(pos) = cols
-        .x_col
+        .column
         .iter()
         .position(|c| c.min <= column && column <= c.max)
     {
-        let entry = cols.x_col.remove(pos);
+        let entry = cols.column.remove(pos);
         let mut insert_at = pos;
         if entry.min < column {
             let mut left = entry.clone();
             left.max = column - 1;
-            cols.x_col.insert(insert_at, left);
+            cols.column.insert(insert_at, left);
             insert_at += 1;
         }
         let mut mid = entry.clone();
         mid.min = column;
         mid.max = column;
-        cols.x_col.insert(insert_at, mid);
+        cols.column.insert(insert_at, mid);
         let mid_index = insert_at;
         insert_at += 1;
         if entry.max > column {
             let mut right = entry.clone();
             right.min = column + 1;
-            cols.x_col.insert(insert_at, right);
+            cols.column.insert(insert_at, right);
         }
-        return &mut cols.x_col[mid_index];
+        return &mut cols.column[mid_index];
     }
     let pos = cols
-        .x_col
+        .column
         .iter()
         .position(|c| c.min > column)
-        .unwrap_or(cols.x_col.len());
-    cols.x_col.insert(
+        .unwrap_or(cols.column.len());
+    cols.column.insert(
         pos,
         x::Column {
             min: column,
@@ -274,5 +275,5 @@ fn ensure_single_column(ws: &mut x::Worksheet, column: u32) -> &mut x::Column {
             ..Default::default()
         },
     );
-    &mut cols.x_col[pos]
+    &mut cols.column[pos]
 }
