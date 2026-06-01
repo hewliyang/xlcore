@@ -7,8 +7,9 @@ use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_dra
 use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
-    ApiError, ApiErrorCode, ApiWarning, ChartAnchor, ChartInfo, ChartKind, ChartLegendPosition,
-    ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking,
+    ApiError, ApiErrorCode, ApiWarning, ChartAnchor, ChartDataLabelPosition, ChartDataLabels,
+    ChartInfo, ChartKind, ChartLegendPosition, ChartPatch, ChartSeriesInfo, ChartSeriesPatch,
+    ChartStacking,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -88,6 +89,7 @@ impl Workbook {
                     category_axis_title: parsed.category_axis_title,
                     value_axis_title: parsed.value_axis_title,
                     stacking: parsed.stacking,
+                    data_labels: parsed.data_labels,
                 });
             }
         }
@@ -259,6 +261,7 @@ impl Workbook {
             category_axis_title: patch.category_axis_title.clone(),
             value_axis_title: patch.value_axis_title.clone(),
             stacking: stacking_for_kind(patch.kind, patch.stacking),
+            data_labels: patch.data_labels.clone(),
         })
     }
 
@@ -353,6 +356,7 @@ struct ParsedChart {
     category_axis_title: Option<String>,
     value_axis_title: Option<String>,
     stacking: Option<ChartStacking>,
+    data_labels: Option<ChartDataLabels>,
 }
 
 fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
@@ -362,6 +366,7 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     let mut series: Vec<ChartSeriesInfo> = Vec::new();
     let mut categories_ref: Option<String> = None;
     let mut stacking: Option<ChartStacking> = None;
+    let mut data_labels: Option<ChartDataLabels> = None;
 
     for ch in &plot.plot_area_choice1 {
         match ch {
@@ -388,6 +393,9 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         &mut categories_ref,
                     ));
                 }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(bc.data_labels.as_deref());
+                }
             }
             c::PlotAreaChoice::LineChart(lc) => {
                 kind = ChartKind::Line;
@@ -399,6 +407,9 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.values.as_deref(),
                         &mut categories_ref,
                     ));
+                }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(lc.data_labels.as_deref());
                 }
             }
             c::PlotAreaChoice::PieChart(pc) => {
@@ -413,6 +424,9 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     series.push(info);
                 }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(pc.data_labels.as_deref());
+                }
             }
             c::PlotAreaChoice::DoughnutChart(dc) => {
                 kind = ChartKind::Doughnut;
@@ -425,6 +439,9 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     series.push(info);
+                }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(dc.data_labels.as_deref());
                 }
             }
             c::PlotAreaChoice::AreaChart(ac) => {
@@ -442,6 +459,9 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         &mut categories_ref,
                     ));
                 }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(ac.data_labels.as_deref());
+                }
             }
             c::PlotAreaChoice::ScatterChart(sc) => {
                 kind = ChartKind::Scatter;
@@ -453,6 +473,9 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     series.push(info);
+                }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(sc.data_labels.as_deref());
                 }
             }
             c::PlotAreaChoice::BubbleChart(bc) => {
@@ -470,6 +493,9 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         });
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     series.push(info);
+                }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(bc.data_labels.as_deref());
                 }
             }
             _ => {}
@@ -518,6 +544,7 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         category_axis_title,
         value_axis_title,
         stacking,
+        data_labels,
     }
 }
 
@@ -760,6 +787,8 @@ fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
 }
 
 fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
+    let dl_ref = patch.data_labels.as_ref();
+    let dl = build_data_labels(dl_ref);
     match patch.kind {
         ChartKind::Pie => c::PlotAreaChoice::PieChart(Box::new(c::PieChart {
             vary_colors: Some(c::VaryColors {
@@ -769,8 +798,9 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .series
                 .iter()
                 .enumerate()
-                .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref()))
+                .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref(), dl_ref))
                 .collect(),
+            data_labels: dl,
             ..Default::default()
         })),
         ChartKind::Doughnut => c::PlotAreaChoice::DoughnutChart(Box::new(c::DoughnutChart {
@@ -781,8 +811,9 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .series
                 .iter()
                 .enumerate()
-                .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref()))
+                .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref(), dl_ref))
                 .collect(),
+            data_labels: dl,
             hole_size: Box::new(c::HoleSize { val: 50 }),
             ..Default::default()
         })),
@@ -797,8 +828,9 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .series
                 .iter()
                 .enumerate()
-                .map(|(i, s)| build_scatter_series(i, s))
+                .map(|(i, s)| build_scatter_series(i, s, dl_ref))
                 .collect(),
+            data_labels: dl,
             axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
             ..Default::default()
         })),
@@ -810,8 +842,9 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .series
                 .iter()
                 .enumerate()
-                .map(|(i, s)| build_bubble_series(i, s))
+                .map(|(i, s)| build_bubble_series(i, s, dl_ref))
                 .collect(),
+            data_labels: dl,
             axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
             ..Default::default()
         })),
@@ -826,8 +859,9 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .series
                 .iter()
                 .enumerate()
-                .map(|(i, s)| build_line_series(i, s, patch.categories_ref.as_deref()))
+                .map(|(i, s)| build_line_series(i, s, patch.categories_ref.as_deref(), dl_ref))
                 .collect(),
+            data_labels: dl,
             show_marker: Some(c::ShowMarker {
                 val: Some(BooleanValue::from_bool(true)),
             }),
@@ -845,8 +879,9 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .series
                 .iter()
                 .enumerate()
-                .map(|(i, s)| build_area_series(i, s, patch.categories_ref.as_deref()))
+                .map(|(i, s)| build_area_series(i, s, patch.categories_ref.as_deref(), dl_ref))
                 .collect(),
+            data_labels: dl,
             axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
             ..Default::default()
         })),
@@ -869,8 +904,9 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                     .series
                     .iter()
                     .enumerate()
-                    .map(|(i, s)| build_bar_series(i, s, patch.categories_ref.as_deref()))
+                    .map(|(i, s)| build_bar_series(i, s, patch.categories_ref.as_deref(), dl_ref))
                     .collect(),
+                data_labels: dl,
                 overlap: matches!(
                     patch.stacking,
                     Some(ChartStacking::Stacked | ChartStacking::PercentStacked)
@@ -880,6 +916,96 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 ..Default::default()
             }))
         }
+    }
+}
+
+fn build_data_labels(dl: Option<&ChartDataLabels>) -> Option<Box<c::DataLabels>> {
+    let dl = dl?;
+    fn b(v: Option<bool>) -> Option<BooleanValue> {
+        v.map(BooleanValue::from_bool)
+    }
+    let seq = c::DataLabelsChoiceSequence {
+        data_label_position: dl.position.map(|p| c::DataLabelPosition {
+            val: data_label_pos_to(p),
+        }),
+        show_legend_key: Some(c::ShowLegendKey {
+            val: b(dl.show_legend_key).or(Some(BooleanValue::from_bool(false))),
+        }),
+        show_value: Some(c::ShowValue {
+            val: b(dl.show_value).or(Some(BooleanValue::from_bool(false))),
+        }),
+        show_category_name: Some(c::ShowCategoryName {
+            val: b(dl.show_category_name).or(Some(BooleanValue::from_bool(false))),
+        }),
+        show_series_name: Some(c::ShowSeriesName {
+            val: b(dl.show_series_name).or(Some(BooleanValue::from_bool(false))),
+        }),
+        show_percent: Some(c::ShowPercent {
+            val: b(dl.show_percent).or(Some(BooleanValue::from_bool(false))),
+        }),
+        show_bubble_size: Some(c::ShowBubbleSize {
+            val: Some(BooleanValue::from_bool(false)),
+        }),
+        separator: dl.separator.clone(),
+        ..Default::default()
+    };
+    Some(Box::new(c::DataLabels {
+        data_labels_choice: Some(c::DataLabelsChoice::Sequence(Box::new(seq))),
+        ..Default::default()
+    }))
+}
+
+fn data_label_pos_to(p: ChartDataLabelPosition) -> c::DataLabelPositionValues {
+    match p {
+        ChartDataLabelPosition::Center => c::DataLabelPositionValues::Center,
+        ChartDataLabelPosition::InsideEnd => c::DataLabelPositionValues::InsideEnd,
+        ChartDataLabelPosition::InsideBase => c::DataLabelPositionValues::InsideBase,
+        ChartDataLabelPosition::OutsideEnd => c::DataLabelPositionValues::OutsideEnd,
+        ChartDataLabelPosition::Top => c::DataLabelPositionValues::Top,
+        ChartDataLabelPosition::Bottom => c::DataLabelPositionValues::Bottom,
+        ChartDataLabelPosition::Left => c::DataLabelPositionValues::Left,
+        ChartDataLabelPosition::Right => c::DataLabelPositionValues::Right,
+        ChartDataLabelPosition::BestFit => c::DataLabelPositionValues::BestFit,
+    }
+}
+
+fn data_label_pos_from(v: &c::DataLabelPositionValues) -> ChartDataLabelPosition {
+    match v {
+        c::DataLabelPositionValues::Center => ChartDataLabelPosition::Center,
+        c::DataLabelPositionValues::InsideEnd => ChartDataLabelPosition::InsideEnd,
+        c::DataLabelPositionValues::InsideBase => ChartDataLabelPosition::InsideBase,
+        c::DataLabelPositionValues::OutsideEnd => ChartDataLabelPosition::OutsideEnd,
+        c::DataLabelPositionValues::Top => ChartDataLabelPosition::Top,
+        c::DataLabelPositionValues::Bottom => ChartDataLabelPosition::Bottom,
+        c::DataLabelPositionValues::Left => ChartDataLabelPosition::Left,
+        c::DataLabelPositionValues::Right => ChartDataLabelPosition::Right,
+        c::DataLabelPositionValues::BestFit => ChartDataLabelPosition::BestFit,
+    }
+}
+
+fn read_data_labels(dl: Option<&c::DataLabels>) -> Option<ChartDataLabels> {
+    let dl = dl?;
+    let choice = dl.data_labels_choice.as_ref()?;
+    let seq = match choice {
+        c::DataLabelsChoice::Sequence(s) => s,
+        _ => return None,
+    };
+    let bv = |b: Option<&BooleanValue>| b.map(|v| bool::from(*v));
+    let out = ChartDataLabels {
+        show_value: bv(seq.show_value.as_ref().and_then(|s| s.val.as_ref())),
+        show_category_name: bv(
+            seq.show_category_name.as_ref().and_then(|s| s.val.as_ref()),
+        ),
+        show_series_name: bv(seq.show_series_name.as_ref().and_then(|s| s.val.as_ref())),
+        show_percent: bv(seq.show_percent.as_ref().and_then(|s| s.val.as_ref())),
+        show_legend_key: bv(seq.show_legend_key.as_ref().and_then(|s| s.val.as_ref())),
+        position: seq.data_label_position.as_ref().map(|p| data_label_pos_from(&p.val)),
+        separator: seq.separator.clone(),
+    };
+    if out == ChartDataLabels::default() {
+        None
+    } else {
+        Some(out)
     }
 }
 
@@ -936,11 +1062,13 @@ fn build_bar_series(
     idx: usize,
     s: &ChartSeriesPatch,
     cat_ref: Option<&str>,
+    dl: Option<&ChartDataLabels>,
 ) -> c::BarChartSeries {
     c::BarChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
+        data_labels: build_data_labels(dl),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
@@ -951,11 +1079,13 @@ fn build_line_series(
     idx: usize,
     s: &ChartSeriesPatch,
     cat_ref: Option<&str>,
+    dl: Option<&ChartDataLabels>,
 ) -> c::LineChartSeries {
     c::LineChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
+        data_labels: build_data_labels(dl),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
@@ -966,11 +1096,13 @@ fn build_area_series(
     idx: usize,
     s: &ChartSeriesPatch,
     cat_ref: Option<&str>,
+    dl: Option<&ChartDataLabels>,
 ) -> c::AreaChartSeries {
     c::AreaChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
+        data_labels: build_data_labels(dl),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
@@ -981,24 +1113,31 @@ fn build_pie_series(
     idx: usize,
     s: &ChartSeriesPatch,
     cat_ref: Option<&str>,
+    dl: Option<&ChartDataLabels>,
 ) -> c::PieChartSeries {
     c::PieChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
+        data_labels: build_data_labels(dl),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
     }
 }
 
-fn build_scatter_series(idx: usize, s: &ChartSeriesPatch) -> c::ScatterChartSeries {
+fn build_scatter_series(
+    idx: usize,
+    s: &ChartSeriesPatch,
+    dl: Option<&ChartDataLabels>,
+) -> c::ScatterChartSeries {
     c::ScatterChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
+        data_labels: build_data_labels(dl),
         x_values: s.x_values_ref.as_deref().map(build_x_values),
         y_values: Some(build_y_values(&s.values_ref)),
         smooth: Some(c::Smooth {
@@ -1008,12 +1147,17 @@ fn build_scatter_series(idx: usize, s: &ChartSeriesPatch) -> c::ScatterChartSeri
     }
 }
 
-fn build_bubble_series(idx: usize, s: &ChartSeriesPatch) -> c::BubbleChartSeries {
+fn build_bubble_series(
+    idx: usize,
+    s: &ChartSeriesPatch,
+    dl: Option<&ChartDataLabels>,
+) -> c::BubbleChartSeries {
     c::BubbleChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
+        data_labels: build_data_labels(dl),
         x_values: s.x_values_ref.as_deref().map(build_x_values),
         y_values: Some(build_y_values(&s.values_ref)),
         bubble_size: s.bubble_sizes_ref.as_deref().map(build_bubble_size),

@@ -2912,6 +2912,7 @@ fn charts_create_list_remove_roundtrip() {
             category_axis_title: None,
             value_axis_title: None,
             stacking: None,
+            data_labels: None,
         })
         .unwrap();
     assert_eq!(info.sheet, "Sheet1");
@@ -2977,6 +2978,7 @@ fn charts_supports_multiple_kinds() {
         category_axis_title: None,
         value_axis_title: None,
         stacking: None,
+        data_labels: None,
     };
     for kind in [
         ChartKind::Column,
@@ -3037,6 +3039,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
         category_axis_title: Some("X-Axis".to_string()),
         value_axis_title: Some("Y-Axis".to_string()),
         stacking: None,
+        data_labels: None,
     })
     .unwrap();
 
@@ -3058,6 +3061,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
         category_axis_title: None,
         value_axis_title: None,
         stacking: None,
+        data_labels: None,
     })
     .unwrap();
 
@@ -3077,6 +3081,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
         category_axis_title: None,
         value_axis_title: None,
         stacking: None,
+        data_labels: None,
     })
     .unwrap();
 
@@ -3165,6 +3170,7 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
         category_axis_title: None,
         value_axis_title: None,
         stacking: None,
+        data_labels: None,
     })
     .unwrap();
 
@@ -3240,6 +3246,7 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
         category_axis_title: None,
         value_axis_title: None,
         stacking,
+        data_labels: None,
     };
 
     let col_stacked = wb
@@ -3309,6 +3316,7 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
             category_axis_title: None,
             value_axis_title: None,
             stacking: Some(ChartStacking::Stacked),
+            data_labels: None,
         })
         .unwrap();
     assert_eq!(info.stacking, None);
@@ -3336,6 +3344,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
         category_axis_title: None,
         value_axis_title: None,
         stacking: None,
+        data_labels: None,
     });
     assert!(missing_x.is_err());
 
@@ -3355,8 +3364,104 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
         category_axis_title: None,
         value_axis_title: None,
         stacking: None,
+        data_labels: None,
     });
     assert!(bad_color.is_err());
+}
+
+#[test]
+fn charts_data_labels_roundtrip() {
+    use xlcore_types::{ChartDataLabelPosition, ChartDataLabels};
+    let mut wb = Workbook::new().unwrap();
+    let info = wb
+        .set_chart(ChartPatch {
+            sheet: "Sheet1".to_string(),
+            name: Some("WithLabels".to_string()),
+            kind: ChartKind::Column,
+            title: None,
+            legend_position: None,
+            categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+            series: vec![ChartSeriesPatch {
+                name: Some("S1".to_string()),
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                ..Default::default()
+            }],
+            anchor: ChartAnchor {
+                from_column: 1,
+                from_row: 1,
+                to_column: 8,
+                to_row: 12,
+                ..Default::default()
+            },
+            category_axis_title: None,
+            value_axis_title: None,
+            stacking: None,
+            data_labels: Some(ChartDataLabels {
+                show_value: Some(true),
+                show_category_name: Some(false),
+                show_series_name: Some(false),
+                show_percent: None,
+                show_legend_key: Some(false),
+                position: Some(ChartDataLabelPosition::OutsideEnd),
+                separator: Some(", ".to_string()),
+            }),
+        })
+        .unwrap();
+    let dl = info.data_labels.as_ref().expect("data_labels echoed");
+    assert_eq!(dl.show_value, Some(true));
+    assert_eq!(dl.position, Some(ChartDataLabelPosition::OutsideEnd));
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut wb2 = Workbook::open_bytes(bytes).unwrap();
+    let charts = wb2.charts(Some("Sheet1")).unwrap();
+    assert_eq!(charts.len(), 1);
+    let dl = charts[0].data_labels.as_ref().expect("data_labels survives reopen");
+    assert_eq!(dl.show_value, Some(true));
+    assert_eq!(dl.show_category_name, Some(false));
+    assert_eq!(dl.position, Some(ChartDataLabelPosition::OutsideEnd));
+    assert_eq!(dl.separator.as_deref(), Some(", "));
+}
+
+#[test]
+fn charts_data_labels_pie_show_percent_roundtrip() {
+    use xlcore_types::{ChartDataLabelPosition, ChartDataLabels};
+    let mut wb = Workbook::new().unwrap();
+    wb.set_chart(ChartPatch {
+        sheet: "Sheet1".to_string(),
+        name: Some("Pie".to_string()),
+        kind: ChartKind::Pie,
+        title: None,
+        legend_position: None,
+        categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+        series: vec![ChartSeriesPatch {
+            values_ref: "Sheet1!$B$2:$B$4".to_string(),
+            ..Default::default()
+        }],
+        anchor: ChartAnchor {
+            from_column: 1,
+            from_row: 1,
+            to_column: 6,
+            to_row: 10,
+            ..Default::default()
+        },
+        category_axis_title: None,
+        value_axis_title: None,
+        stacking: None,
+        data_labels: Some(ChartDataLabels {
+            show_percent: Some(true),
+            show_category_name: Some(true),
+            position: Some(ChartDataLabelPosition::Center),
+            ..Default::default()
+        }),
+    })
+    .unwrap();
+    let bytes = wb.save_bytes().unwrap();
+    let mut wb2 = Workbook::open_bytes(bytes).unwrap();
+    let charts = wb2.charts(Some("Sheet1")).unwrap();
+    let dl = charts[0].data_labels.as_ref().unwrap();
+    assert_eq!(dl.show_percent, Some(true));
+    assert_eq!(dl.show_category_name, Some(true));
+    assert_eq!(dl.position, Some(ChartDataLabelPosition::Center));
 }
 
 const PNG_1X1: &[u8] = &[

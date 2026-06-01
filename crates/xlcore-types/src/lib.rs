@@ -2361,6 +2361,56 @@ pub enum ChartLegendPosition {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "snake_case")]
+pub enum ChartDataLabelPosition {
+    Center,
+    InsideEnd,
+    InsideBase,
+    OutsideEnd,
+    Top,
+    Bottom,
+    Left,
+    Right,
+    BestFit,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ChartDataLabels {
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_value: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_category_name: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_series_name: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_percent: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_legend_key: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<ChartDataLabelPosition>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub separator: Option<String>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
@@ -2471,6 +2521,9 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stacking: Option<ChartStacking>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_labels: Option<ChartDataLabels>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -2505,6 +2558,9 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stacking: Option<ChartStacking>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_labels: Option<ChartDataLabels>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
