@@ -11,6 +11,7 @@ export type ApiErrorCode =
   | "merge_overlap"
   | "invalid_hyperlink"
   | "invalid_comment"
+  | "invalid_threaded_note"
   | "invalid_data_validation"
   | "invalid_search_query"
   | "invalid_defined_name"

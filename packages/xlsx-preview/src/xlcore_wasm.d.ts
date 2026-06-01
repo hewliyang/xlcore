@@ -5,6 +5,7 @@ export class WorkbookHandle {
     free(): void;
     [Symbol.dispose](): void;
     addMerge(reference: string): any;
+    addThreadedNote(reference: string, patch: any): any;
     autoFilter(sheet: string): any;
     calcProperties(): any;
     clear(reference: string): any;
@@ -48,8 +49,10 @@ export class WorkbookHandle {
     removePageSetup(sheet: string): any;
     removeSheetProtection(sheet: string): any;
     removeTable(name: string): any;
+    removeThreadedThread(reference: string): any;
     removeWorkbookProtection(): any;
     renameSheet(old_name: string, new_name: string): void;
+    replyThreadedNote(parent_id: string, patch: any): any;
     save(): Uint8Array;
     search(query: string, options: any): any;
     setActiveSheet(name: string): any;
@@ -79,6 +82,7 @@ export class WorkbookHandle {
     sheetProtection(sheet: string): any;
     sheets(): any;
     tables(sheet?: string | null): any;
+    threadedNotes(sheet: string): any;
     workbookProtection(): any;
 }
 
@@ -100,6 +104,7 @@ export interface InitOutput {
     readonly extract_parquet: (a: number, b: number, c: number, d: number) => void;
     readonly extract_xlsx: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_addMerge: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_addThreadedNote: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_autoFilter: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_calcProperties: (a: number, b: number) => void;
     readonly workbookhandle_clear: (a: number, b: number, c: number, d: number) => void;
@@ -143,8 +148,10 @@ export interface InitOutput {
     readonly workbookhandle_removePageSetup: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeSheetProtection: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeTable: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_removeThreadedThread: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeWorkbookProtection: (a: number, b: number) => void;
     readonly workbookhandle_renameSheet: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+    readonly workbookhandle_replyThreadedNote: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_save: (a: number, b: number) => void;
     readonly workbookhandle_search: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setActiveSheet: (a: number, b: number, c: number, d: number) => void;
@@ -174,6 +181,7 @@ export interface InitOutput {
     readonly workbookhandle_sheetProtection: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_sheets: (a: number, b: number) => void;
     readonly workbookhandle_tables: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_threadedNotes: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_workbookProtection: (a: number, b: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;

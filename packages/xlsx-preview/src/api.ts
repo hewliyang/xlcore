@@ -12,6 +12,8 @@ import type {
   CommentPatch,
   DataValidationInfo,
   DataValidationPatch,
+  ThreadedNoteInfo,
+  ThreadedNotePatch,
   DefinedNameInfo,
   DefinedNamePatch,
   DependencyInfo,
@@ -63,6 +65,8 @@ export type {
   ClearMode,
   CommentInfo,
   CommentPatch,
+  ThreadedNoteInfo,
+  ThreadedNotePatch,
   DataValidationErrorStyle,
   DataValidationInfo,
   DataValidationOperator,
@@ -253,21 +257,14 @@ export class Workbook {
     return (this.handle.removeAutoFilter(sheet) as AutoFilterInfo | null) ?? null;
   }
 
-  setAutoFilterColumn(
-    sheet: string,
-    patch: AutoFilterColumnPatch,
-  ): AutoFilterColumnInfo {
+  setAutoFilterColumn(sheet: string, patch: AutoFilterColumnPatch): AutoFilterColumnInfo {
     return this.handle.setAutoFilterColumn(sheet, patch) as AutoFilterColumnInfo;
   }
 
-  removeAutoFilterColumn(
-    sheet: string,
-    columnOffset: number,
-  ): AutoFilterColumnInfo | null {
+  removeAutoFilterColumn(sheet: string, columnOffset: number): AutoFilterColumnInfo | null {
     return (
-      (this.handle.removeAutoFilterColumn(sheet, columnOffset) as
-        | AutoFilterColumnInfo
-        | null) ?? null
+      (this.handle.removeAutoFilterColumn(sheet, columnOffset) as AutoFilterColumnInfo | null) ??
+      null
     );
   }
 
@@ -281,6 +278,22 @@ export class Workbook {
 
   removeComment(reference: string): CommentInfo[] {
     return this.handle.removeComment(reference) as CommentInfo[];
+  }
+
+  threadedNotes(sheet: string): ThreadedNoteInfo[] {
+    return this.handle.threadedNotes(sheet) as ThreadedNoteInfo[];
+  }
+
+  addThreadedNote(reference: string, patch: ThreadedNotePatch): ThreadedNoteInfo {
+    return this.handle.addThreadedNote(reference, patch) as ThreadedNoteInfo;
+  }
+
+  replyThreadedNote(parentId: string, patch: ThreadedNotePatch): ThreadedNoteInfo {
+    return this.handle.replyThreadedNote(parentId, patch) as ThreadedNoteInfo;
+  }
+
+  removeThreadedThread(reference: string): ThreadedNoteInfo[] {
+    return this.handle.removeThreadedThread(reference) as ThreadedNoteInfo[];
   }
 
   dataValidations(sheet: string): DataValidationInfo[] {

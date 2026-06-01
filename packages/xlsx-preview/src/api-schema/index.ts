@@ -72,6 +72,8 @@ export type { TablePatch } from "./TablePatch.js";
 export type { TableStylePatch } from "./TableStylePatch.js";
 export type { TableStyleSettings } from "./TableStyleSettings.js";
 export type { TableTotalsFunction } from "./TableTotalsFunction.js";
+export type { ThreadedNoteInfo } from "./ThreadedNoteInfo.js";
+export type { ThreadedNotePatch } from "./ThreadedNotePatch.js";
 export type { UnderlinePatch } from "./UnderlinePatch.js";
 export type { VerticalAlign } from "./VerticalAlign.js";
 export type { WorkbookProperties } from "./WorkbookProperties.js";

@@ -19,6 +19,7 @@ mod sheets;
 mod structural;
 mod styles;
 mod tables;
+mod threaded_notes;
 mod xml;
 
 use std::path::Path;
@@ -40,6 +41,7 @@ pub use xlcore_types::{
     SheetPageSetupPatch, SheetProtectionInfo,
     SheetProtectionPatch, SheetVisibility, StylePatch, TableColumnInfo, TableColumnPatch,
     TableInfo, TablePatch, TableStylePatch, TableStyleSettings, TableTotalsFunction,
+    ThreadedNoteInfo, ThreadedNotePatch,
     UnderlinePatch, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,
     WorkbookProtectionInfo, WorkbookProtectionPatch,
 };

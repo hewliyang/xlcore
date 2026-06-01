@@ -451,6 +451,54 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = threadedNotes)]
+    pub fn threaded_notes(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
+        let list = self
+            .workbook_mut()?
+            .threaded_notes(sheet)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = addThreadedNote)]
+    pub fn add_threaded_note(
+        &mut self,
+        reference: &str,
+        patch: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::ThreadedNotePatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .add_threaded_note(reference, patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = replyThreadedNote)]
+    pub fn reply_threaded_note(
+        &mut self,
+        parent_id: &str,
+        patch: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::ThreadedNotePatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .reply_threaded_note(parent_id, patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removeThreadedThread)]
+    pub fn remove_threaded_thread(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .remove_threaded_thread(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = dataValidations)]
     pub fn data_validations(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
         let list = self

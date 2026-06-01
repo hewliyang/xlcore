@@ -1643,6 +1643,63 @@ fn comments_add_list_update_remove_and_round_trip() {
 }
 
 #[test]
+fn threaded_notes_add_reply_list_remove_and_round_trip() {
+    use crate::ThreadedNotePatch;
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A1", "Units").unwrap();
+    let root = wb
+        .add_threaded_note(
+            "Sheet1!A1",
+            ThreadedNotePatch {
+                text: "check this".to_string(),
+                author: Some("Mario".to_string()),
+                date: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(root.reference, "A1");
+    assert_eq!(root.author, "Mario");
+    assert!(root.parent_id.is_none());
+
+    let reply = wb
+        .reply_threaded_note(
+            &root.id,
+            ThreadedNotePatch {
+                text: "on it".to_string(),
+                author: Some("Luigi".to_string()),
+                date: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(reply.reference, "A1");
+    assert_eq!(reply.parent_id.as_deref(), Some(root.id.as_str()));
+    assert_ne!(reply.person_id, root.person_id);
+
+    let empty = wb.add_threaded_note("Sheet1!B2", ThreadedNotePatch::default());
+    assert_eq!(empty.unwrap_err().code, ApiErrorCode::InvalidThreadedNote);
+
+    let list = wb.threaded_notes("Sheet1").unwrap();
+    assert_eq!(list.len(), 2);
+    assert!(list.iter().any(|n| n.text == "check this" && n.author == "Mario"));
+    assert!(list.iter().any(|n| n.text == "on it" && n.author == "Luigi"));
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let after = reopened.threaded_notes("Sheet1").unwrap();
+    assert_eq!(after.len(), 2);
+    assert!(after.iter().any(|n| n.author == "Luigi" && n.parent_id.is_some()));
+
+    let removed = reopened.remove_threaded_thread("Sheet1!A1").unwrap();
+    assert_eq!(removed.len(), 2);
+    assert!(reopened.threaded_notes("Sheet1").unwrap().is_empty());
+
+    let bytes = reopened.save_bytes().unwrap();
+    let mut reopened2 = Workbook::open_bytes(bytes).unwrap();
+    assert!(reopened2.threaded_notes("Sheet1").unwrap().is_empty());
+}
+
+#[test]
 fn auto_filter_set_get_remove_and_round_trip() {
     let mut wb = Workbook::new().unwrap();
     wb.set_range_values(

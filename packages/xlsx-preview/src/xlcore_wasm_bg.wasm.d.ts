@@ -7,6 +7,7 @@ export const extract_csv: (a: number, b: number, c: number, d: number) => void;
 export const extract_parquet: (a: number, b: number, c: number, d: number) => void;
 export const extract_xlsx: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_addMerge: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_addThreadedNote: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_autoFilter: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_calcProperties: (a: number, b: number) => void;
 export const workbookhandle_clear: (a: number, b: number, c: number, d: number) => void;
@@ -50,8 +51,10 @@ export const workbookhandle_removeMerge: (a: number, b: number, c: number, d: nu
 export const workbookhandle_removePageSetup: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeSheetProtection: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeTable: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_removeThreadedThread: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeWorkbookProtection: (a: number, b: number) => void;
 export const workbookhandle_renameSheet: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+export const workbookhandle_replyThreadedNote: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_save: (a: number, b: number) => void;
 export const workbookhandle_search: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setActiveSheet: (a: number, b: number, c: number, d: number) => void;
@@ -81,6 +84,7 @@ export const workbookhandle_setWorkbookProtection: (a: number, b: number, c: num
 export const workbookhandle_sheetProtection: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_sheets: (a: number, b: number) => void;
 export const workbookhandle_tables: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_threadedNotes: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_workbookProtection: (a: number, b: number) => void;
 export const __wbindgen_export: (a: number, b: number) => number;
 export const __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
