@@ -47,8 +47,16 @@ Known gaps:
 - Chart authoring (column/bar/line/pie/area/scatter/bubble/doughnut with
   title/legend/categories ref + series, per-series solid color, axis titles,
   stacking for bar/column/line/area) is wired through `set_chart` / `charts`
-  / `remove_chart`; richer chart features (combo, dual axis, chartEx,
-  marker/line styling, data labels) remain preserve-only. Images, shapes, sparklines, and
+  / `remove_chart`. Authored charts open clean in Excel desktop (no repair
+  dialog) — fresh `drawing<n>.xml` and `chart<n>.xml` parts emit the
+  `<?xml ... standalone="yes"?>` header plus xdr/a/r/c xmlns declarations
+  on the root. Charts use the legacy `c:chartSpace` schema only — no
+  companion `chartStyle`/`colorStyle` parts — so Excel falls back to its
+  Excel-2007-era painter (flat fills, default accent palette, basic axis
+  fonts). SpreadJS applies its own theme so authored charts render more
+  modernly there. Richer chart features (combo, dual axis, chartEx,
+  marker/line styling, data labels, modern chartStyle/colorStyle
+  companion parts) remain preserve-only. Images, shapes, sparklines, and
   pivot tables are still preserve-only — no authoring API yet. Conditional formatting now authors classic rules
   plus color scales / data bars / icon sets; `<extLst>` x14 extensions
   (custom icons, multi-color data bars, etc.) remain preserve-only.

@@ -300,6 +300,7 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
 function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   const horizontal = chart.type === "bar";
   const stacked = chart.grouping === "stacked" || chart.grouping === "percentstacked";
+  const percent = chart.grouping === "percentstacked";
 
   const series = chart.series.filter((s) => s.values.length > 0);
   if (series.length === 0) {
@@ -337,21 +338,30 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   if (!Number.isFinite(minV)) minV = 0;
   if (!Number.isFinite(maxV)) maxV = 1;
 
-  const _bcRange = resolveAxisRange(
-    minV,
-    maxV,
-    chart.valueMin,
-    chart.valueMax,
-    true,
-    AXIS_TICK_COUNT,
-    chart.majorUnit,
-  );
-  minV = _bcRange.minV;
-  maxV = _bcRange.maxV;
-  const ticks = _bcRange.ticks;
+  let ticks: number[];
+  if (percent) {
+    minV = 0;
+    maxV = 100;
+    ticks = [0, 25, 50, 75, 100];
+  } else {
+    const _bcRange = resolveAxisRange(
+      minV,
+      maxV,
+      chart.valueMin,
+      chart.valueMax,
+      true,
+      AXIS_TICK_COUNT,
+      chart.majorUnit,
+    );
+    minV = _bcRange.minV;
+    maxV = _bcRange.maxV;
+    ticks = _bcRange.ticks;
+  }
 
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
-  const labelStrings = ticks.map((t) => formatAxisValue(t, chart.valueFormat, chart.dispUnits));
+  const labelStrings = ticks.map((t) =>
+    percent ? `${Math.round(t)}%` : formatAxisValue(t, chart.valueFormat, chart.dispUnits),
+  );
   const yAxisW = Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
   const xAxisH = AXIS_FONT_SIZE + 8 + (horizontal ? 0 : categoryAxisExtraHeight(chart));
 
@@ -453,8 +463,10 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
 
       let catTotal = 0;
       for (const s of series) catTotal += Math.max(0, s.values[i] ?? 0);
+      const scale = percent && catTotal > 0 ? 100 / catTotal : 1;
       for (const s of series) {
-        const v = s.values[i] ?? 0;
+        const raw = s.values[i] ?? 0;
+        const v = raw * scale;
         const start = v >= 0 ? pos : neg;
         const end = v >= 0 ? pos + v : neg + v;
 
@@ -492,7 +504,7 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
           const po = pointLabel(dl, i);
           if (po !== null) {
             const edl = po?.dl ?? dl;
-            const text = po?.text ?? buildLabelText(edl, chart, s, i, v, catTotal);
+            const text = po?.text ?? buildLabelText(edl, chart, s, i, raw, catTotal);
             drawLabel(ctx, text, bx + bw / 2, by + bh / 2);
           }
         }

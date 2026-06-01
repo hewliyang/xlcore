@@ -173,7 +173,11 @@ impl Workbook {
                 let p: DrawingsPart = ws_part
                     .add_new_part_auto_id(&mut self.doc)
                     .map_err(sdk_err_to_api)?;
-                let empty = xdr::WorksheetDrawing::default();
+                let empty = xdr::WorksheetDrawing {
+                    xmlns: drawing_xmlns(),
+                    xml_header: ooxmlsdk::common::XmlHeaderType::Standalone,
+                    ..Default::default()
+                };
                 p.set_root_element(&mut self.doc, empty)
                     .map_err(sdk_err_to_api)?;
                 (p, true)
@@ -749,9 +753,32 @@ fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
 
     c::ChartSpace {
         xmlns: chart_space_xmlns(),
+        xml_header: ooxmlsdk::common::XmlHeaderType::Standalone,
         chart: Box::new(chart),
         ..Default::default()
     }
+}
+
+fn drawing_xmlns() -> Vec<ooxmlsdk::common::XmlNamespaceDecl> {
+    use ooxmlsdk::common::XmlNamespaceDecl;
+    vec![
+        XmlNamespaceDecl {
+            prefix: "xdr".into(),
+            uri: "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing".into(),
+        },
+        XmlNamespaceDecl {
+            prefix: "a".into(),
+            uri: "http://schemas.openxmlformats.org/drawingml/2006/main".into(),
+        },
+        XmlNamespaceDecl {
+            prefix: "r".into(),
+            uri: "http://schemas.openxmlformats.org/officeDocument/2006/relationships".into(),
+        },
+        XmlNamespaceDecl {
+            prefix: "c".into(),
+            uri: "http://schemas.openxmlformats.org/drawingml/2006/chart".into(),
+        },
+    ]
 }
 
 fn chart_space_xmlns() -> Vec<ooxmlsdk::common::XmlNamespaceDecl> {

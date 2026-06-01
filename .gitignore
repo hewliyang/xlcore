@@ -18,3 +18,4 @@ ecma-376/
 epplus/
 ironcalc/
 tests/fixtures/shapes/dotnet-builder/
+crates/xlcore-api/examples/
