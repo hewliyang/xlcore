@@ -4,6 +4,7 @@ use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_chart as c;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_drawing as xdr;
+use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
     ApiError, ApiErrorCode, ChartAnchor, ChartInfo, ChartKind, ChartLegendPosition, ChartPatch,
@@ -15,6 +16,8 @@ use crate::refs::quote_sheet_name;
 use crate::{Result, Workbook};
 
 const CHART_GRAPHIC_DATA_URI: &str = "http://schemas.openxmlformats.org/drawingml/2006/chart";
+const CAT_AX_ID: u32 = 111_111_111;
+const VAL_AX_ID: u32 = 222_222_222;
 
 impl Workbook {
     pub fn charts(&mut self, sheet: Option<&str>) -> Result<Vec<ChartInfo>> {
@@ -67,13 +70,11 @@ impl Workbook {
                 let Some(chart_part) = chart_by_rid.get(&rid).cloned() else {
                     continue;
                 };
-                let space_xml = {
-                    let space = chart_part
-                        .root_element(&mut self.doc)
-                        .map_err(sdk_err_to_api)?;
-                    space.to_xml().map_err(sdk_err_to_api)?
-                };
-                let parsed = parse_chart_space_xml(&space_xml);
+                let space = chart_part
+                    .root_element(&mut self.doc)
+                    .map_err(sdk_err_to_api)?
+                    .clone();
+                let parsed = read_chart_space(&space);
                 out.push(ChartInfo {
                     sheet: sheet_name.clone(),
                     id: rid,
@@ -155,9 +156,7 @@ impl Workbook {
             .ok_or_else(|| ApiError::new(ApiErrorCode::Other, "new chart part missing rid"))?
             .to_string();
 
-        let chart_xml = build_chart_space_xml(&patch);
-        let chart_space = c::ChartSpace::from_bytes(chart_xml.as_bytes())
-            .map_err(sdk_err_to_api)?;
+        let chart_space = build_chart_space(&patch);
         chart_part
             .set_root_element(&mut self.doc, chart_space)
             .map_err(sdk_err_to_api)?;
@@ -173,9 +172,7 @@ impl Workbook {
             .clone()
             .unwrap_or_else(|| format!("Chart {chart_index}"));
 
-        let anchor_xml = build_two_cell_anchor_xml(&patch.anchor, &chart_name, chart_index, &chart_rid);
-        let new_anchor = xdr::TwoCellAnchor::from_bytes(anchor_xml.as_bytes())
-            .map_err(sdk_err_to_api)?;
+        let new_anchor = build_two_cell_anchor(&patch.anchor, &chart_name, chart_index, &chart_rid);
 
         let drawing_mut = drawings_part
             .root_element_mut(&mut self.doc)
@@ -297,69 +294,74 @@ struct ParsedChart {
     series: Vec<ChartSeriesInfo>,
 }
 
-fn parse_chart_space_xml(xml: &str) -> ParsedChart {
-    let kind = if xml.contains("<c:barChart>") {
-        if let Some(pos) = xml.find("<c:barDir") {
-            let slice = &xml[pos..];
-            if slice.contains("val=\"bar\"") {
-                ChartKind::Bar
-            } else {
-                ChartKind::Column
+fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
+    let plot = &space.chart.plot_area;
+
+    let mut kind = ChartKind::Column;
+    let mut series: Vec<ChartSeriesInfo> = Vec::new();
+    let mut categories_ref: Option<String> = None;
+
+    for ch in &plot.plot_area_choice1 {
+        match ch {
+            c::PlotAreaChoice::BarChart(bc) => {
+                kind = match bc.bar_direction.val {
+                    c::BarDirectionValues::Bar => ChartKind::Bar,
+                    c::BarDirectionValues::Column => ChartKind::Column,
+                };
+                for s in &bc.bar_chart_series {
+                    series.push(read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                    ));
+                }
             }
-        } else {
-            ChartKind::Column
+            c::PlotAreaChoice::LineChart(lc) => {
+                kind = ChartKind::Line;
+                for s in &lc.line_chart_series {
+                    series.push(read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                    ));
+                }
+            }
+            c::PlotAreaChoice::PieChart(pc) => {
+                kind = ChartKind::Pie;
+                for s in &pc.pie_chart_series {
+                    series.push(read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                    ));
+                }
+            }
+            c::PlotAreaChoice::AreaChart(ac) => {
+                kind = ChartKind::Area;
+                for s in &ac.area_chart_series {
+                    series.push(read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                    ));
+                }
+            }
+            _ => {}
         }
-    } else if xml.contains("<c:lineChart>") {
-        ChartKind::Line
-    } else if xml.contains("<c:pieChart>") {
-        ChartKind::Pie
-    } else if xml.contains("<c:areaChart>") {
-        ChartKind::Area
-    } else {
-        ChartKind::Column
-    };
-
-    let title = extract_first_between(xml, "<c:title>", "</c:title>")
-        .and_then(|inner| extract_first_between(inner, "<a:t>", "</a:t>").map(|s| s.to_string()));
-
-    let legend = extract_first_attr(xml, "<c:legendPos", "val=\"").and_then(|v| match v {
-        "r" => Some(ChartLegendPosition::Right),
-        "l" => Some(ChartLegendPosition::Left),
-        "t" => Some(ChartLegendPosition::Top),
-        "b" => Some(ChartLegendPosition::Bottom),
-        "tr" => Some(ChartLegendPosition::TopRight),
-        _ => None,
-    });
-
-    let categories_ref = extract_first_between(xml, "<c:cat>", "</c:cat>")
-        .and_then(|inner| extract_first_between(inner, "<c:f>", "</c:f>").map(|s| s.to_string()));
-
-    let mut series = Vec::new();
-    let mut cursor = xml;
-    while let Some(start) = cursor.find("<c:ser>") {
-        let after = &cursor[start + "<c:ser>".len()..];
-        let Some(end) = after.find("</c:ser>") else {
-            break;
-        };
-        let body = &after[..end];
-
-        let tx = extract_first_between(body, "<c:tx>", "</c:tx>");
-        let name_literal = tx.and_then(|t| extract_first_between(t, "<c:v>", "</c:v>"));
-        let name_ref = tx.and_then(|t| extract_first_between(t, "<c:f>", "</c:f>"));
-
-        let values_ref = extract_first_between(body, "<c:val>", "</c:val>")
-            .and_then(|inner| extract_first_between(inner, "<c:f>", "</c:f>"))
-            .map(|s| s.to_string())
-            .unwrap_or_default();
-
-        series.push(ChartSeriesInfo {
-            name: name_literal.map(|s| s.to_string()),
-            name_ref: name_ref.map(|s| s.to_string()),
-            values_ref,
-        });
-
-        cursor = &after[end + "</c:ser>".len()..];
     }
+
+    let title = space.chart.title.as_ref().and_then(|t| extract_title_text(t));
+
+    let legend = space.chart.legend.as_ref().and_then(|l| {
+        l.legend_position
+            .as_ref()
+            .and_then(|p| p.val.as_ref())
+            .map(legend_pos_from)
+    });
 
     ParsedChart {
         kind,
@@ -370,223 +372,514 @@ fn parse_chart_space_xml(xml: &str) -> ParsedChart {
     }
 }
 
-fn extract_first_between<'a>(haystack: &'a str, open: &str, close: &str) -> Option<&'a str> {
-    let start = haystack.find(open)? + open.len();
-    let rest = &haystack[start..];
-    let end = rest.find(close)?;
-    Some(&rest[..end])
+fn read_series(
+    tx: Option<&c::SeriesText>,
+    cat: Option<&c::CategoryAxisData>,
+    val: Option<&c::Values>,
+    categories_ref: &mut Option<String>,
+) -> ChartSeriesInfo {
+    let (name, name_ref) = match tx.and_then(|t| t.series_text_choice.as_ref()) {
+        Some(c::SeriesTextChoice::StringReference(sr)) => (None, Some(sr.formula.clone())),
+        Some(c::SeriesTextChoice::NumericValue(nv)) => (Some(nv.clone()), None),
+        None => (None, None),
+    };
+    if categories_ref.is_none() {
+        if let Some(cat_data) = cat {
+            if let Some(c::CategoryAxisDataChoice::StringReference(sr)) =
+                cat_data.category_axis_data_choice.as_ref()
+            {
+                *categories_ref = Some(sr.formula.clone());
+            } else if let Some(c::CategoryAxisDataChoice::NumberReference(nr)) =
+                cat_data.category_axis_data_choice.as_ref()
+            {
+                *categories_ref = Some(nr.formula.clone());
+            }
+        }
+    }
+    let values_ref = val
+        .and_then(|v| v.values_choice.as_ref())
+        .and_then(|choice| match choice {
+            c::ValuesChoice::NumberReference(nr) => Some(nr.formula.clone()),
+            c::ValuesChoice::NumberLiteral(_) => None,
+        })
+        .unwrap_or_default();
+    ChartSeriesInfo {
+        name,
+        name_ref,
+        values_ref,
+    }
 }
 
-fn extract_first_attr<'a>(haystack: &'a str, tag: &str, attr_prefix: &str) -> Option<&'a str> {
-    let pos = haystack.find(tag)?;
-    let after = &haystack[pos..];
-    let close = after.find('>')?;
-    let inside = &after[..close];
-    let attr_start = inside.find(attr_prefix)? + attr_prefix.len();
-    let after_attr = &inside[attr_start..];
-    let end = after_attr.find('"')?;
-    Some(&after_attr[..end])
+fn extract_title_text(title: &c::Title) -> Option<String> {
+    let choice = title.chart_text.as_ref()?.chart_text_choice.as_ref()?;
+    match choice {
+        c::ChartTextChoice::RichText(rt) => rt.paragraph.iter().find_map(|p| {
+            p.paragraph_choice.iter().find_map(|pc| match pc {
+                a::ParagraphChoice::Run(r) => Some(r.text.clone()),
+                _ => None,
+            })
+        }),
+        c::ChartTextChoice::StringReference(sr) => Some(sr.formula.clone()),
+        c::ChartTextChoice::StringLiteral(sl) => sl
+            .string_point
+            .first()
+            .map(|p| p.numeric_value.clone()),
+    }
 }
 
-fn build_two_cell_anchor_xml(
+fn legend_pos_from(v: &c::LegendPositionValues) -> ChartLegendPosition {
+    match v {
+        c::LegendPositionValues::Right => ChartLegendPosition::Right,
+        c::LegendPositionValues::Left => ChartLegendPosition::Left,
+        c::LegendPositionValues::Top => ChartLegendPosition::Top,
+        c::LegendPositionValues::Bottom => ChartLegendPosition::Bottom,
+        c::LegendPositionValues::TopRight => ChartLegendPosition::TopRight,
+    }
+}
+
+fn legend_pos_to(p: ChartLegendPosition) -> c::LegendPositionValues {
+    match p {
+        ChartLegendPosition::Right => c::LegendPositionValues::Right,
+        ChartLegendPosition::Left => c::LegendPositionValues::Left,
+        ChartLegendPosition::Top => c::LegendPositionValues::Top,
+        ChartLegendPosition::Bottom => c::LegendPositionValues::Bottom,
+        ChartLegendPosition::TopRight => c::LegendPositionValues::TopRight,
+        ChartLegendPosition::None => c::LegendPositionValues::Right,
+    }
+}
+
+fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
+    let plot_chart = build_plot_chart(patch);
+
+    let mut plot_area = c::PlotArea {
+        layout: Some(Box::new(c::Layout::default())),
+        plot_area_choice1: vec![plot_chart],
+        plot_area_choice2: Vec::new(),
+        ..Default::default()
+    };
+
+    if !matches!(patch.kind, ChartKind::Pie) {
+        plot_area
+            .plot_area_choice2
+            .push(c::PlotAreaChoice2::CategoryAxis(Box::new(build_cat_axis())));
+        plot_area
+            .plot_area_choice2
+            .push(c::PlotAreaChoice2::ValueAxis(Box::new(build_val_axis())));
+    }
+
+    let title = patch
+        .title
+        .as_deref()
+        .filter(|t| !t.is_empty())
+        .map(build_title);
+
+    let auto_title_deleted = if title.is_none() {
+        Some(c::AutoTitleDeleted {
+            val: Some(BooleanValue::from_bool(true)),
+        })
+    } else {
+        Some(c::AutoTitleDeleted {
+            val: Some(BooleanValue::from_bool(false)),
+        })
+    };
+
+    let legend = match patch.legend_position {
+        Some(ChartLegendPosition::None) => None,
+        Some(pos) => Some(Box::new(build_legend(legend_pos_to(pos)))),
+        None => Some(Box::new(build_legend(c::LegendPositionValues::Right))),
+    };
+
+    let chart = c::Chart {
+        title: title.map(Box::new),
+        auto_title_deleted,
+        plot_area: Box::new(plot_area),
+        legend,
+        plot_visible_only: Some(c::PlotVisibleOnly {
+            val: Some(BooleanValue::from_bool(true)),
+        }),
+        display_blanks_as: Some(c::DisplayBlanksAs {
+            val: Some(c::DisplayBlanksAsValues::Gap),
+        }),
+        ..Default::default()
+    };
+
+    c::ChartSpace {
+        xmlns: chart_space_xmlns(),
+        chart: Box::new(chart),
+        ..Default::default()
+    }
+}
+
+fn chart_space_xmlns() -> Vec<ooxmlsdk::common::XmlNamespaceDecl> {
+    use ooxmlsdk::common::XmlNamespaceDecl;
+    vec![
+        XmlNamespaceDecl {
+            prefix: "c".into(),
+            uri: "http://schemas.openxmlformats.org/drawingml/2006/chart".into(),
+        },
+        XmlNamespaceDecl {
+            prefix: "a".into(),
+            uri: "http://schemas.openxmlformats.org/drawingml/2006/main".into(),
+        },
+        XmlNamespaceDecl {
+            prefix: "r".into(),
+            uri: "http://schemas.openxmlformats.org/officeDocument/2006/relationships".into(),
+        },
+    ]
+}
+
+fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
+    match patch.kind {
+        ChartKind::Pie => c::PlotAreaChoice::PieChart(Box::new(c::PieChart {
+            vary_colors: Some(c::VaryColors {
+                val: Some(BooleanValue::from_bool(true)),
+            }),
+            pie_chart_series: patch
+                .series
+                .iter()
+                .enumerate()
+                .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref()))
+                .collect(),
+            ..Default::default()
+        })),
+        ChartKind::Line => c::PlotAreaChoice::LineChart(Box::new(c::LineChart {
+            grouping: Box::new(c::Grouping {
+                val: Some(c::GroupingValues::Standard),
+            }),
+            vary_colors: Some(c::VaryColors {
+                val: Some(BooleanValue::from_bool(false)),
+            }),
+            line_chart_series: patch
+                .series
+                .iter()
+                .enumerate()
+                .map(|(i, s)| build_line_series(i, s, patch.categories_ref.as_deref()))
+                .collect(),
+            show_marker: Some(c::ShowMarker {
+                val: Some(BooleanValue::from_bool(true)),
+            }),
+            axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
+            ..Default::default()
+        })),
+        ChartKind::Area => c::PlotAreaChoice::AreaChart(Box::new(c::AreaChart {
+            grouping: Some(c::Grouping {
+                val: Some(c::GroupingValues::Standard),
+            }),
+            vary_colors: Some(c::VaryColors {
+                val: Some(BooleanValue::from_bool(false)),
+            }),
+            area_chart_series: patch
+                .series
+                .iter()
+                .enumerate()
+                .map(|(i, s)| build_area_series(i, s, patch.categories_ref.as_deref()))
+                .collect(),
+            axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
+            ..Default::default()
+        })),
+        ChartKind::Column | ChartKind::Bar => {
+            c::PlotAreaChoice::BarChart(Box::new(c::BarChart {
+                bar_direction: Box::new(c::BarDirection {
+                    val: if matches!(patch.kind, ChartKind::Bar) {
+                        c::BarDirectionValues::Bar
+                    } else {
+                        c::BarDirectionValues::Column
+                    },
+                }),
+                bar_grouping: Some(c::BarGrouping {
+                    val: Some(c::BarGroupingValues::Clustered),
+                }),
+                vary_colors: Some(c::VaryColors {
+                    val: Some(BooleanValue::from_bool(false)),
+                }),
+                bar_chart_series: patch
+                    .series
+                    .iter()
+                    .enumerate()
+                    .map(|(i, s)| build_bar_series(i, s, patch.categories_ref.as_deref()))
+                    .collect(),
+                axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
+                ..Default::default()
+            }))
+        }
+    }
+}
+
+fn axis_id(val: u32) -> c::AxisId {
+    c::AxisId { val }
+}
+
+fn build_series_text(s: &ChartSeriesPatch) -> Option<Box<c::SeriesText>> {
+    if let Some(r) = s.name_ref.as_deref() {
+        Some(Box::new(c::SeriesText {
+            series_text_choice: Some(c::SeriesTextChoice::StringReference(Box::new(
+                c::StringReference {
+                    formula: r.to_string(),
+                    ..Default::default()
+                },
+            ))),
+        }))
+    } else if let Some(name) = s.name.as_deref() {
+        Some(Box::new(c::SeriesText {
+            series_text_choice: Some(c::SeriesTextChoice::NumericValue(name.to_string())),
+        }))
+    } else {
+        None
+    }
+}
+
+fn build_categories(categories_ref: Option<&str>) -> Option<Box<c::CategoryAxisData>> {
+    let r = categories_ref?;
+    if r.is_empty() {
+        return None;
+    }
+    Some(Box::new(c::CategoryAxisData {
+        category_axis_data_choice: Some(c::CategoryAxisDataChoice::StringReference(Box::new(
+            c::StringReference {
+                formula: r.to_string(),
+                ..Default::default()
+            },
+        ))),
+    }))
+}
+
+fn build_values(values_ref: &str) -> Box<c::Values> {
+    Box::new(c::Values {
+        values_choice: Some(c::ValuesChoice::NumberReference(Box::new(
+            c::NumberReference {
+                formula: values_ref.to_string(),
+                ..Default::default()
+            },
+        ))),
+    })
+}
+
+fn build_bar_series(
+    idx: usize,
+    s: &ChartSeriesPatch,
+    cat_ref: Option<&str>,
+) -> c::BarChartSeries {
+    c::BarChartSeries {
+        index: Box::new(c::Index { val: idx as u32 }),
+        order: Box::new(c::Order { val: idx as u32 }),
+        series_text: build_series_text(s),
+        category_axis_data: build_categories(cat_ref),
+        values: Some(build_values(&s.values_ref)),
+        ..Default::default()
+    }
+}
+
+fn build_line_series(
+    idx: usize,
+    s: &ChartSeriesPatch,
+    cat_ref: Option<&str>,
+) -> c::LineChartSeries {
+    c::LineChartSeries {
+        index: Box::new(c::Index { val: idx as u32 }),
+        order: Box::new(c::Order { val: idx as u32 }),
+        series_text: build_series_text(s),
+        category_axis_data: build_categories(cat_ref),
+        values: Some(build_values(&s.values_ref)),
+        ..Default::default()
+    }
+}
+
+fn build_area_series(
+    idx: usize,
+    s: &ChartSeriesPatch,
+    cat_ref: Option<&str>,
+) -> c::AreaChartSeries {
+    c::AreaChartSeries {
+        index: Box::new(c::Index { val: idx as u32 }),
+        order: Box::new(c::Order { val: idx as u32 }),
+        series_text: build_series_text(s),
+        category_axis_data: build_categories(cat_ref),
+        values: Some(build_values(&s.values_ref)),
+        ..Default::default()
+    }
+}
+
+fn build_pie_series(
+    idx: usize,
+    s: &ChartSeriesPatch,
+    cat_ref: Option<&str>,
+) -> c::PieChartSeries {
+    c::PieChartSeries {
+        index: Box::new(c::Index { val: idx as u32 }),
+        order: Box::new(c::Order { val: idx as u32 }),
+        series_text: build_series_text(s),
+        category_axis_data: build_categories(cat_ref),
+        values: Some(build_values(&s.values_ref)),
+        ..Default::default()
+    }
+}
+
+fn build_title(text: &str) -> c::Title {
+    let run = a::Run {
+        run_properties: Some(Box::new(a::RunProperties {
+            language: Some("en-US".to_string()),
+            ..Default::default()
+        })),
+        text: text.to_string(),
+        ..Default::default()
+    };
+    let paragraph = a::Paragraph {
+        paragraph_choice: vec![a::ParagraphChoice::Run(Box::new(run))],
+        ..Default::default()
+    };
+    let rich = c::RichText {
+        body_properties: Box::new(a::BodyProperties {
+            rotation: Some(0),
+            use_paragraph_spacing: Some(BooleanValue::from_bool(true)),
+            vertical_overflow: Some(a::TextVerticalOverflowValues::Ellipsis),
+            wrap: Some(a::TextWrappingValues::Square),
+            anchor: Some(a::TextAnchoringTypeValues::Center),
+            anchor_center: Some(BooleanValue::from_bool(true)),
+            ..Default::default()
+        }),
+        list_style: Some(Box::new(a::ListStyle::default())),
+        paragraph: vec![paragraph],
+        ..Default::default()
+    };
+    c::Title {
+        chart_text: Some(Box::new(c::ChartText {
+            chart_text_choice: Some(c::ChartTextChoice::RichText(Box::new(rich))),
+        })),
+        overlay: Some(c::Overlay {
+            val: Some(BooleanValue::from_bool(false)),
+        }),
+        ..Default::default()
+    }
+}
+
+fn build_legend(pos: c::LegendPositionValues) -> c::Legend {
+    c::Legend {
+        legend_position: Some(c::LegendPosition { val: Some(pos) }),
+        overlay: Some(c::Overlay {
+            val: Some(BooleanValue::from_bool(false)),
+        }),
+        ..Default::default()
+    }
+}
+
+fn build_cat_axis() -> c::CategoryAxis {
+    c::CategoryAxis {
+        axis_id: Box::new(axis_id(CAT_AX_ID)),
+        scaling: Box::new(c::Scaling {
+            orientation: Some(c::Orientation {
+                val: Some(c::OrientationValues::MinMax),
+            }),
+            ..Default::default()
+        }),
+        delete: Some(c::Delete {
+            val: Some(BooleanValue::from_bool(false)),
+        }),
+        axis_position: Box::new(c::AxisPosition {
+            val: c::AxisPositionValues::Bottom,
+        }),
+        crossing_axis: Box::new(c::CrossingAxis { val: VAL_AX_ID }),
+        ..Default::default()
+    }
+}
+
+fn build_val_axis() -> c::ValueAxis {
+    c::ValueAxis {
+        axis_id: Box::new(axis_id(VAL_AX_ID)),
+        scaling: Box::new(c::Scaling {
+            orientation: Some(c::Orientation {
+                val: Some(c::OrientationValues::MinMax),
+            }),
+            ..Default::default()
+        }),
+        delete: Some(c::Delete {
+            val: Some(BooleanValue::from_bool(false)),
+        }),
+        axis_position: Box::new(c::AxisPosition {
+            val: c::AxisPositionValues::Left,
+        }),
+        crossing_axis: Box::new(c::CrossingAxis { val: CAT_AX_ID }),
+        ..Default::default()
+    }
+}
+
+fn build_two_cell_anchor(
     anchor: &ChartAnchor,
     chart_name: &str,
     chart_index: usize,
     chart_rid: &str,
-) -> String {
-    let from_col_off = anchor.from_column_offset_emu.unwrap_or(0);
-    let from_row_off = anchor.from_row_offset_emu.unwrap_or(0);
-    let to_col_off = anchor.to_column_offset_emu.unwrap_or(0);
-    let to_row_off = anchor.to_row_offset_emu.unwrap_or(0);
-    let cnv_id = chart_index as u32 + 1;
-    let chart_name_esc = escape_xml(chart_name);
-    format!(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\
-<xdr:twoCellAnchor \
-xmlns:xdr=\"http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing\" \
-xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" \
-xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\" \
-xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
-<xdr:from><xdr:col>{from_col}</xdr:col><xdr:colOff>{from_col_off}</xdr:colOff>\
-<xdr:row>{from_row}</xdr:row><xdr:rowOff>{from_row_off}</xdr:rowOff></xdr:from>\
-<xdr:to><xdr:col>{to_col}</xdr:col><xdr:colOff>{to_col_off}</xdr:colOff>\
-<xdr:row>{to_row}</xdr:row><xdr:rowOff>{to_row_off}</xdr:rowOff></xdr:to>\
-<xdr:graphicFrame macro=\"\">\
-<xdr:nvGraphicFramePr>\
-<xdr:cNvPr id=\"{cnv_id}\" name=\"{chart_name_esc}\"/>\
-<xdr:cNvGraphicFramePr/>\
-</xdr:nvGraphicFramePr>\
-<xdr:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"0\" cy=\"0\"/></xdr:xfrm>\
-<a:graphic><a:graphicData uri=\"{uri}\">\
-<c:chart xmlns:c=\"{uri}\" r:id=\"{rid}\"/>\
-</a:graphicData></a:graphic>\
-</xdr:graphicFrame>\
-<xdr:clientData/>\
-</xdr:twoCellAnchor>",
-        from_col = anchor.from_column,
-        from_row = anchor.from_row,
-        to_col = anchor.to_column,
-        to_row = anchor.to_row,
-        uri = CHART_GRAPHIC_DATA_URI,
-        rid = chart_rid,
-    )
-}
+) -> xdr::TwoCellAnchor {
+    let from = xdr::FromMarker {
+        column_id: anchor.from_column as i32,
+        column_offset: CoordinateValue::Emu(anchor.from_column_offset_emu.unwrap_or(0)),
+        row_id: anchor.from_row as i32,
+        row_offset: CoordinateValue::Emu(anchor.from_row_offset_emu.unwrap_or(0)),
+        ..Default::default()
+    };
+    let to = xdr::ToMarker {
+        column_id: anchor.to_column as i32,
+        column_offset: CoordinateValue::Emu(anchor.to_column_offset_emu.unwrap_or(0)),
+        row_id: anchor.to_row as i32,
+        row_offset: CoordinateValue::Emu(anchor.to_row_offset_emu.unwrap_or(0)),
+        ..Default::default()
+    };
 
-fn build_chart_space_xml(patch: &ChartPatch) -> String {
-    let title_xml = match patch.title.as_deref() {
-        Some(text) if !text.is_empty() => format!(
-            "<c:title><c:tx><c:rich>\
-<a:bodyPr rot=\"0\" spcFirstLastPara=\"1\" vertOverflow=\"ellipsis\" wrap=\"square\" anchor=\"ctr\" anchorCtr=\"1\"/>\
-<a:lstStyle/>\
-<a:p><a:r><a:rPr lang=\"en-US\"/><a:t>{}</a:t></a:r></a:p>\
-</c:rich></c:tx><c:overlay val=\"0\"/></c:title>\
-<c:autoTitleDeleted val=\"0\"/>",
-            escape_xml(text)
+    let nv_drawing = xdr::NonVisualDrawingProperties {
+        id: chart_index as u32 + 1,
+        name: chart_name.to_string(),
+        ..Default::default()
+    };
+    let nv_props = xdr::NonVisualGraphicFrameProperties {
+        non_visual_drawing_properties: Box::new(nv_drawing),
+        non_visual_graphic_frame_drawing_properties: Box::new(
+            xdr::NonVisualGraphicFrameDrawingProperties::default(),
         ),
-        _ => "<c:autoTitleDeleted val=\"1\"/>".to_string(),
     };
 
-    let legend_xml = match patch.legend_position {
-        Some(ChartLegendPosition::None) => String::new(),
-        Some(pos) => {
-            let val = legend_pos_val(pos);
-            format!(
-                "<c:legend><c:legendPos val=\"{val}\"/><c:overlay val=\"0\"/></c:legend>"
-            )
-        }
-        None => {
-            "<c:legend><c:legendPos val=\"r\"/><c:overlay val=\"0\"/></c:legend>".to_string()
-        }
+    let xfrm = xdr::Transform {
+        offset: Some(a::Offset {
+            x: CoordinateValue::Emu(0),
+            y: CoordinateValue::Emu(0),
+        }),
+        extents: Some(a::Extents {
+            cx: CoordinateValue::Emu(0),
+            cy: CoordinateValue::Emu(0),
+        }),
+        ..Default::default()
     };
 
-    let plot_inner = match patch.kind {
-        ChartKind::Pie => build_pie_chart_xml(patch),
-        ChartKind::Line => build_line_chart_xml(patch),
-        ChartKind::Area => build_area_chart_xml(patch),
-        ChartKind::Column | ChartKind::Bar => build_bar_chart_xml(patch),
+    let chart_ref = c::ChartReference {
+        id: chart_rid.to_string(),
+        ..Default::default()
     };
 
-    let axes_xml = match patch.kind {
-        ChartKind::Pie => String::new(),
-        _ => build_axes_xml(),
+    let graphic_data = a::GraphicData {
+        uri: CHART_GRAPHIC_DATA_URI.to_string(),
+        graphic_data_choice: vec![a::GraphicDataChoice::ChartReference(Box::new(chart_ref))],
+        ..Default::default()
     };
 
-    format!(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\
-<c:chartSpace \
-xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\" \
-xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" \
-xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
-<c:chart>{title_xml}<c:plotArea><c:layout/>{plot_inner}{axes_xml}</c:plotArea>{legend_xml}\
-<c:plotVisOnly val=\"1\"/><c:dispBlanksAs val=\"gap\"/></c:chart></c:chartSpace>"
-    )
-}
+    let graphic = a::Graphic {
+        graphic_data: Box::new(graphic_data),
+        ..Default::default()
+    };
 
-fn legend_pos_val(pos: ChartLegendPosition) -> &'static str {
-    match pos {
-        ChartLegendPosition::Right => "r",
-        ChartLegendPosition::Left => "l",
-        ChartLegendPosition::Top => "t",
-        ChartLegendPosition::Bottom => "b",
-        ChartLegendPosition::TopRight => "tr",
-        ChartLegendPosition::None => "r",
+    let graphic_frame = xdr::GraphicFrame {
+        r#macro: Some(String::new()),
+        non_visual_graphic_frame_properties: Box::new(nv_props),
+        transform: Box::new(xfrm),
+        graphic: Box::new(graphic),
+        ..Default::default()
+    };
+
+    xdr::TwoCellAnchor {
+        from_marker: Box::new(from),
+        to_marker: Box::new(to),
+        two_cell_anchor_choice: Some(xdr::TwoCellAnchorChoice::GraphicFrame(Box::new(
+            graphic_frame,
+        ))),
+        client_data: Box::new(xdr::ClientData::default()),
+        ..Default::default()
     }
-}
-
-fn build_bar_chart_xml(patch: &ChartPatch) -> String {
-    let bar_dir = if matches!(patch.kind, ChartKind::Bar) {
-        "bar"
-    } else {
-        "col"
-    };
-    let series = patch
-        .series
-        .iter()
-        .enumerate()
-        .map(|(i, s)| build_series_xml(i, s, patch.categories_ref.as_deref()))
-        .collect::<String>();
-    format!(
-        "<c:barChart><c:barDir val=\"{bar_dir}\"/><c:grouping val=\"clustered\"/>\
-<c:varyColors val=\"0\"/>{series}<c:axId val=\"111111111\"/><c:axId val=\"222222222\"/></c:barChart>"
-    )
-}
-
-fn build_line_chart_xml(patch: &ChartPatch) -> String {
-    let series = patch
-        .series
-        .iter()
-        .enumerate()
-        .map(|(i, s)| build_series_xml(i, s, patch.categories_ref.as_deref()))
-        .collect::<String>();
-    format!(
-        "<c:lineChart><c:grouping val=\"standard\"/><c:varyColors val=\"0\"/>{series}\
-<c:marker val=\"1\"/><c:axId val=\"111111111\"/><c:axId val=\"222222222\"/></c:lineChart>"
-    )
-}
-
-fn build_area_chart_xml(patch: &ChartPatch) -> String {
-    let series = patch
-        .series
-        .iter()
-        .enumerate()
-        .map(|(i, s)| build_series_xml(i, s, patch.categories_ref.as_deref()))
-        .collect::<String>();
-    format!(
-        "<c:areaChart><c:grouping val=\"standard\"/><c:varyColors val=\"0\"/>{series}\
-<c:axId val=\"111111111\"/><c:axId val=\"222222222\"/></c:areaChart>"
-    )
-}
-
-fn build_pie_chart_xml(patch: &ChartPatch) -> String {
-    let series = patch
-        .series
-        .iter()
-        .enumerate()
-        .map(|(i, s)| build_series_xml(i, s, patch.categories_ref.as_deref()))
-        .collect::<String>();
-    format!("<c:pieChart><c:varyColors val=\"1\"/>{series}</c:pieChart>")
-}
-
-fn build_series_xml(idx: usize, series: &ChartSeriesPatch, categories_ref: Option<&str>) -> String {
-    let tx = if let Some(r) = series.name_ref.as_deref() {
-        format!(
-            "<c:tx><c:strRef><c:f>{}</c:f></c:strRef></c:tx>",
-            escape_xml(r)
-        )
-    } else if let Some(name) = series.name.as_deref() {
-        format!("<c:tx><c:v>{}</c:v></c:tx>", escape_xml(name))
-    } else {
-        String::new()
-    };
-    let cat = match categories_ref {
-        Some(r) if !r.is_empty() => format!(
-            "<c:cat><c:strRef><c:f>{}</c:f></c:strRef></c:cat>",
-            escape_xml(r)
-        ),
-        _ => String::new(),
-    };
-    format!(
-        "<c:ser><c:idx val=\"{idx}\"/><c:order val=\"{idx}\"/>{tx}{cat}\
-<c:val><c:numRef><c:f>{val}</c:f></c:numRef></c:val></c:ser>",
-        val = escape_xml(&series.values_ref)
-    )
-}
-
-fn build_axes_xml() -> String {
-    "<c:catAx><c:axId val=\"111111111\"/><c:scaling><c:orientation val=\"minMax\"/></c:scaling>\
-<c:delete val=\"0\"/><c:axPos val=\"b\"/><c:crossAx val=\"222222222\"/></c:catAx>\
-<c:valAx><c:axId val=\"222222222\"/><c:scaling><c:orientation val=\"minMax\"/></c:scaling>\
-<c:delete val=\"0\"/><c:axPos val=\"l\"/><c:crossAx val=\"111111111\"/></c:valAx>"
-        .to_string()
-}
-
-fn escape_xml(input: &str) -> String {
-    input
-        .replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-        .replace('\'', "&apos;")
 }
 
 #[allow(dead_code)]

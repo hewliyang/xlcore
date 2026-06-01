@@ -5,6 +5,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Chart authoring now builds typed `c::ChartSpace` / `xdr::TwoCellAnchor` structs instead of raw XML string templates; reader path also uses typed `PlotAreaChoice` traversal. No behavior change to the public API or output OOXML shape.
+
 ### Added
 
 - Workbook API: `charts(sheet?)` / `setChart(patch)` / `removeChart(sheet, id)` with `ChartInfo` + `ChartPatch` (+ `ChartKind` `column|bar|line|pie|area`, `ChartLegendPosition`, `ChartAnchor`, `ChartSeriesInfo`, `ChartSeriesPatch`) DTOs. Creates a chart part + drawings part if missing, anchors via two-cell (col/row + optional EMU offsets), authors title/legend/categories ref/series (literal name or `name_ref`, `values_ref`), and round-trips through save/reopen. New `invalid_chart` `ApiError` for empty series or empty `values_ref`.
