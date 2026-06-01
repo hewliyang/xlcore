@@ -255,6 +255,7 @@ impl Workbook {
                     x_values_ref: s.x_values_ref.clone(),
                     bubble_sizes_ref: s.bubble_sizes_ref.clone(),
                     color: s.color.clone(),
+                    data_labels: s.data_labels.clone(),
                 })
                 .collect(),
             anchor: patch.anchor,
@@ -391,6 +392,7 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.category_axis_data.as_deref(),
                         s.values.as_deref(),
                         &mut categories_ref,
+                        s.data_labels.as_deref(),
                     ));
                 }
                 if data_labels.is_none() {
@@ -406,6 +408,7 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.category_axis_data.as_deref(),
                         s.values.as_deref(),
                         &mut categories_ref,
+                        s.data_labels.as_deref(),
                     ));
                 }
                 if data_labels.is_none() {
@@ -420,6 +423,7 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.category_axis_data.as_deref(),
                         s.values.as_deref(),
                         &mut categories_ref,
+                        s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     series.push(info);
@@ -436,6 +440,7 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.category_axis_data.as_deref(),
                         s.values.as_deref(),
                         &mut categories_ref,
+                        s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     series.push(info);
@@ -457,6 +462,7 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.category_axis_data.as_deref(),
                         s.values.as_deref(),
                         &mut categories_ref,
+                        s.data_labels.as_deref(),
                     ));
                 }
                 if data_labels.is_none() {
@@ -470,6 +476,7 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.series_text.as_deref(),
                         s.x_values.as_deref().and_then(|x| x.x_values_choice.as_ref()),
                         s.y_values.as_deref().and_then(|y| y.y_values_choice.as_ref()),
+                        s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     series.push(info);
@@ -485,6 +492,7 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.series_text.as_deref(),
                         s.x_values.as_deref().and_then(|x| x.x_values_choice.as_ref()),
                         s.y_values.as_deref().and_then(|y| y.y_values_choice.as_ref()),
+                        s.data_labels.as_deref(),
                     );
                     info.bubble_sizes_ref =
                         s.bubble_size.as_deref().and_then(|b| match b.bubble_size_choice.as_ref()? {
@@ -583,6 +591,7 @@ fn read_xy_series(
     tx: Option<&c::SeriesText>,
     x_choice: Option<&c::XValuesChoice>,
     y_choice: Option<&c::YValuesChoice>,
+    dl: Option<&c::DataLabels>,
 ) -> ChartSeriesInfo {
     let (name, name_ref) = match tx.and_then(|t| t.series_text_choice.as_ref()) {
         Some(c::SeriesTextChoice::StringReference(sr)) => (None, Some(sr.formula.clone())),
@@ -607,6 +616,7 @@ fn read_xy_series(
         x_values_ref,
         bubble_sizes_ref: None,
         color: None,
+        data_labels: read_data_labels(dl),
     }
 }
 
@@ -624,6 +634,7 @@ fn read_series(
     cat: Option<&c::CategoryAxisData>,
     val: Option<&c::Values>,
     categories_ref: &mut Option<String>,
+    dl: Option<&c::DataLabels>,
 ) -> ChartSeriesInfo {
     let (name, name_ref) = match tx.and_then(|t| t.series_text_choice.as_ref()) {
         Some(c::SeriesTextChoice::StringReference(sr)) => (None, Some(sr.formula.clone())),
@@ -657,6 +668,7 @@ fn read_series(
         x_values_ref: None,
         bubble_sizes_ref: None,
         color: None,
+        data_labels: read_data_labels(dl),
     }
 }
 
@@ -798,7 +810,7 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .series
                 .iter()
                 .enumerate()
-                .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref(), dl_ref))
+                .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref()))
                 .collect(),
             data_labels: dl,
             ..Default::default()
@@ -811,7 +823,7 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .series
                 .iter()
                 .enumerate()
-                .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref(), dl_ref))
+                .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref()))
                 .collect(),
             data_labels: dl,
             hole_size: Box::new(c::HoleSize { val: 50 }),
@@ -828,7 +840,7 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .series
                 .iter()
                 .enumerate()
-                .map(|(i, s)| build_scatter_series(i, s, dl_ref))
+                .map(|(i, s)| build_scatter_series(i, s))
                 .collect(),
             data_labels: dl,
             axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
@@ -842,7 +854,7 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .series
                 .iter()
                 .enumerate()
-                .map(|(i, s)| build_bubble_series(i, s, dl_ref))
+                .map(|(i, s)| build_bubble_series(i, s))
                 .collect(),
             data_labels: dl,
             axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
@@ -859,7 +871,7 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .series
                 .iter()
                 .enumerate()
-                .map(|(i, s)| build_line_series(i, s, patch.categories_ref.as_deref(), dl_ref))
+                .map(|(i, s)| build_line_series(i, s, patch.categories_ref.as_deref()))
                 .collect(),
             data_labels: dl,
             show_marker: Some(c::ShowMarker {
@@ -879,7 +891,7 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .series
                 .iter()
                 .enumerate()
-                .map(|(i, s)| build_area_series(i, s, patch.categories_ref.as_deref(), dl_ref))
+                .map(|(i, s)| build_area_series(i, s, patch.categories_ref.as_deref()))
                 .collect(),
             data_labels: dl,
             axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
@@ -904,7 +916,7 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                     .series
                     .iter()
                     .enumerate()
-                    .map(|(i, s)| build_bar_series(i, s, patch.categories_ref.as_deref(), dl_ref))
+                    .map(|(i, s)| build_bar_series(i, s, patch.categories_ref.as_deref()))
                     .collect(),
                 data_labels: dl,
                 overlap: matches!(
@@ -1062,13 +1074,12 @@ fn build_bar_series(
     idx: usize,
     s: &ChartSeriesPatch,
     cat_ref: Option<&str>,
-    dl: Option<&ChartDataLabels>,
 ) -> c::BarChartSeries {
     c::BarChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
-        data_labels: build_data_labels(dl),
+        data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
@@ -1079,13 +1090,12 @@ fn build_line_series(
     idx: usize,
     s: &ChartSeriesPatch,
     cat_ref: Option<&str>,
-    dl: Option<&ChartDataLabels>,
 ) -> c::LineChartSeries {
     c::LineChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
-        data_labels: build_data_labels(dl),
+        data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
@@ -1096,13 +1106,12 @@ fn build_area_series(
     idx: usize,
     s: &ChartSeriesPatch,
     cat_ref: Option<&str>,
-    dl: Option<&ChartDataLabels>,
 ) -> c::AreaChartSeries {
     c::AreaChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
-        data_labels: build_data_labels(dl),
+        data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
@@ -1113,14 +1122,13 @@ fn build_pie_series(
     idx: usize,
     s: &ChartSeriesPatch,
     cat_ref: Option<&str>,
-    dl: Option<&ChartDataLabels>,
 ) -> c::PieChartSeries {
     c::PieChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
-        data_labels: build_data_labels(dl),
+        data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
@@ -1130,14 +1138,13 @@ fn build_pie_series(
 fn build_scatter_series(
     idx: usize,
     s: &ChartSeriesPatch,
-    dl: Option<&ChartDataLabels>,
 ) -> c::ScatterChartSeries {
     c::ScatterChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
-        data_labels: build_data_labels(dl),
+        data_labels: build_data_labels(s.data_labels.as_ref()),
         x_values: s.x_values_ref.as_deref().map(build_x_values),
         y_values: Some(build_y_values(&s.values_ref)),
         smooth: Some(c::Smooth {
@@ -1150,14 +1157,13 @@ fn build_scatter_series(
 fn build_bubble_series(
     idx: usize,
     s: &ChartSeriesPatch,
-    dl: Option<&ChartDataLabels>,
 ) -> c::BubbleChartSeries {
     c::BubbleChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
-        data_labels: build_data_labels(dl),
+        data_labels: build_data_labels(s.data_labels.as_ref()),
         x_values: s.x_values_ref.as_deref().map(build_x_values),
         y_values: Some(build_y_values(&s.values_ref)),
         bubble_size: s.bubble_sizes_ref.as_deref().map(build_bubble_size),

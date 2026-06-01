@@ -56,8 +56,10 @@ Known gaps:
   fonts). SpreadJS applies its own theme so authored charts render more
   modernly there. Chart-level data labels now author/read for all chart
   kinds (show value / category / series / percent / legend-key, position,
-  separator). Richer chart features (combo, dual axis, chartEx,
-  marker/line styling, per-series and per-point data labels, modern
+  separator). Per-series data labels also author/round-trip via
+  `ChartSeriesPatch.data_labels` (overrides chart-level when set; chart-level
+  dl no longer duplicates onto every series). Richer chart features (combo,
+  dual axis, chartEx, marker/line styling, per-point data labels, modern
   chartStyle/colorStyle companion parts) remain preserve-only. Image authoring now covers
   position, rotation, flips, and crop; shapes and pivot tables are still
   preserve-only — no authoring API yet. Sparkline
@@ -161,7 +163,7 @@ Status key:
 | AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | Done (range + per-column Top10/Custom/multi-value Values with optional blank) | Rust API + smoke |
 | Data validation | `DataValidation` APIs | Add/edit/delete/list list and scalar validations | Done | Rust API + save/reopen |
 | Conditional formatting | `ConditionalFormatting` APIs | Preserve existing; author basic rules once style writes exist | Done (cellIs/expression/text/blanks/errors/top10/aboveAverage/duplicate/unique rules + dxf font/fill/border/numFmt/alignment authoring; 2/3-stop color scales, min/max data bars, 3/4/5-icon icon sets with cfvo round-trip; extLst x14 extensions still preserve-only) | Rust API + save/reopen |
-| Charts | `Charts`, `Shapes` | Preserve; create/edit chart types already rendered | Done (authoring column/bar/line/pie/area/scatter/bubble/doughnut with title/legend/categories ref/series literal-or-ref names + values_ref; scatter/bubble take xValuesRef + yVal; bubble takes bubbleSizesRef; per-series solid `color` (`RRGGBB`); `categoryAxisTitle`/`valueAxisTitle`; chart-level `dataLabels` with show flags, position, separator; preserves richer existing chart XML) | Rust API + save/reopen |
+| Charts | `Charts`, `Shapes` | Preserve; create/edit chart types already rendered | Done (authoring column/bar/line/pie/area/scatter/bubble/doughnut with title/legend/categories ref/series literal-or-ref names + values_ref; scatter/bubble take xValuesRef + yVal; bubble takes bubbleSizesRef; per-series solid `color` (`RRGGBB`); `categoryAxisTitle`/`valueAxisTitle`; chart-level `dataLabels` with show flags, position, separator; per-series `dataLabels` override; preserves richer existing chart XML) | Rust API + save/reopen |
 | Images | `Shapes.Picture`, shape collection | Insert image, position, size, crop/rotation later | Done (insert/list/remove PNG/JPEG/GIF/BMP/TIFF/WEBP/SVG with two-cell anchor; sniff or explicit `format`; crop/rotation still preserve-only) | Rust API + save/reopen |
 | Shapes | `Shapes.ShapeCollection` | Preserve first; author basic shape/text later | P2 | Preview + OOXML |
 | Sparklines | `Sparklines` APIs | Preserve; author simple line/column/win-loss | Done (author/list/remove line/column/stacked groups with per-entry location + dataRef, markers/high/low/first/last/negative/displayXAxis flags, axis min/max kinds + manual values, line weight, full color palette) | Rust API + save/reopen |

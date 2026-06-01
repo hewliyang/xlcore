@@ -2967,6 +2967,7 @@ fn charts_supports_multiple_kinds() {
             bubble_sizes_ref: matches!(kind, ChartKind::Bubble)
                 .then(|| "Sheet1!$C$2:$C$4".to_string()),
             color: None,
+            data_labels: None,
         }],
         anchor: ChartAnchor {
             from_column: 1,
@@ -3031,6 +3032,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             x_values_ref: Some("Sheet1!$A$2:$A$4".to_string()),
             bubble_sizes_ref: None,
             color: Some("FF8800".to_string()),
+            data_labels: None,
         }],
         anchor: ChartAnchor {
             from_column: 4, from_row: 1, to_column: 12, to_row: 16,
@@ -3462,6 +3464,73 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
     assert_eq!(dl.show_percent, Some(true));
     assert_eq!(dl.show_category_name, Some(true));
     assert_eq!(dl.position, Some(ChartDataLabelPosition::Center));
+}
+
+#[test]
+fn charts_per_series_data_labels_override_chart_level() {
+    use xlcore_types::{ChartDataLabelPosition, ChartDataLabels};
+    let mut wb = Workbook::new().unwrap();
+    wb.set_chart(ChartPatch {
+        sheet: "Sheet1".to_string(),
+        name: Some("PerSeries".to_string()),
+        kind: ChartKind::Column,
+        title: None,
+        legend_position: None,
+        categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+        series: vec![
+            ChartSeriesPatch {
+                name: Some("A".to_string()),
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                data_labels: Some(ChartDataLabels {
+                    show_value: Some(true),
+                    position: Some(ChartDataLabelPosition::OutsideEnd),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            ChartSeriesPatch {
+                name: Some("B".to_string()),
+                values_ref: "Sheet1!$C$2:$C$4".to_string(),
+                ..Default::default()
+            },
+        ],
+        anchor: ChartAnchor {
+            from_column: 1,
+            from_row: 1,
+            to_column: 8,
+            to_row: 12,
+            ..Default::default()
+        },
+        category_axis_title: None,
+        value_axis_title: None,
+        stacking: None,
+        data_labels: Some(ChartDataLabels {
+            show_series_name: Some(true),
+            position: Some(ChartDataLabelPosition::Center),
+            ..Default::default()
+        }),
+    })
+    .unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut wb2 = Workbook::open_bytes(bytes).unwrap();
+    let charts = wb2.charts(Some("Sheet1")).unwrap();
+    assert_eq!(charts.len(), 1);
+    let info = &charts[0];
+    assert_eq!(info.series.len(), 2);
+
+    let s0 = info.series[0].data_labels.as_ref().expect("series 0 has dl");
+    assert_eq!(s0.show_value, Some(true));
+    assert_eq!(s0.position, Some(ChartDataLabelPosition::OutsideEnd));
+
+    assert!(
+        info.series[1].data_labels.is_none(),
+        "series without explicit dl should not echo chart-level dl",
+    );
+
+    let chart_dl = info.data_labels.as_ref().expect("chart-level dl preserved");
+    assert_eq!(chart_dl.show_series_name, Some(true));
+    assert_eq!(chart_dl.position, Some(ChartDataLabelPosition::Center));
 }
 
 const PNG_1X1: &[u8] = &[
