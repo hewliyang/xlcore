@@ -14,4 +14,6 @@ export type ChartInfo = {
   categoriesRef?: string;
   series: Array<ChartSeriesInfo>;
   anchor: ChartAnchor;
+  categoryAxisTitle?: string;
+  valueAxisTitle?: string;
 };

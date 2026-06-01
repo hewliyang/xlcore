@@ -5,6 +5,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Chart authoring: `ChartKind` gains `scatter` | `bubble` | `doughnut`. Scatter/bubble series take `xValuesRef` (required) + `valuesRef` (yVal); bubble adds `bubbleSizesRef` (required). Per-series solid color via `ChartSeriesPatch.color` (`RRGGBB` hex, `#` accepted). Axis titles via `ChartPatch.categoryAxisTitle` / `valueAxisTitle`. New `invalid_chart` errors for missing xVal on scatter/bubble, missing bubble sizes, and non-hex color.
+
 ### Changed
 
 - Chart authoring now builds typed `c::ChartSpace` / `xdr::TwoCellAnchor` structs instead of raw XML string templates; reader path also uses typed `PlotAreaChoice` traversal. No behavior change to the public API or output OOXML shape.

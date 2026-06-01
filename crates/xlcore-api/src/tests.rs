@@ -2900,6 +2900,7 @@ fn charts_create_list_remove_roundtrip() {
                 name: None,
                 name_ref: Some("Sheet1!$B$1".to_string()),
                 values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                ..Default::default()
             }],
             anchor: ChartAnchor {
                 from_column: 3,
@@ -2908,6 +2909,8 @@ fn charts_create_list_remove_roundtrip() {
                 to_row: 16,
                 ..Default::default()
             },
+            category_axis_title: None,
+            value_axis_title: None,
         })
         .unwrap();
     assert_eq!(info.sheet, "Sheet1");
@@ -2957,6 +2960,11 @@ fn charts_supports_multiple_kinds() {
             name: Some("Series 1".to_string()),
             name_ref: None,
             values_ref: "Sheet1!$B$2:$B$4".to_string(),
+            x_values_ref: matches!(kind, ChartKind::Scatter | ChartKind::Bubble)
+                .then(|| "Sheet1!$A$2:$A$4".to_string()),
+            bubble_sizes_ref: matches!(kind, ChartKind::Bubble)
+                .then(|| "Sheet1!$C$2:$C$4".to_string()),
+            color: None,
         }],
         anchor: ChartAnchor {
             from_column: 1,
@@ -2965,6 +2973,8 @@ fn charts_supports_multiple_kinds() {
             to_row: 10,
             ..Default::default()
         },
+        category_axis_title: None,
+        value_axis_title: None,
     };
     for kind in [
         ChartKind::Column,
@@ -2972,6 +2982,9 @@ fn charts_supports_multiple_kinds() {
         ChartKind::Line,
         ChartKind::Pie,
         ChartKind::Area,
+        ChartKind::Scatter,
+        ChartKind::Bubble,
+        ChartKind::Doughnut,
     ] {
         let info = wb.set_chart(patch(kind)).unwrap();
         assert_eq!(info.kind, kind);
@@ -2979,11 +2992,145 @@ fn charts_supports_multiple_kinds() {
     let bytes = wb.save_bytes().unwrap();
     let mut reopened = Workbook::open_bytes(bytes).unwrap();
     let charts = reopened.charts(None).unwrap();
-    assert_eq!(charts.len(), 5);
+    assert_eq!(charts.len(), 8);
     let kinds: Vec<ChartKind> = charts.iter().map(|c| c.kind).collect();
     assert!(kinds.contains(&ChartKind::Column));
     assert!(kinds.contains(&ChartKind::Bar));
     assert!(kinds.contains(&ChartKind::Line));
     assert!(kinds.contains(&ChartKind::Pie));
     assert!(kinds.contains(&ChartKind::Area));
+    assert!(kinds.contains(&ChartKind::Scatter));
+    assert!(kinds.contains(&ChartKind::Bubble));
+    assert!(kinds.contains(&ChartKind::Doughnut));
+}
+
+#[test]
+fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
+    let mut wb = Workbook::new().unwrap();
+    for r in 2..=4 {
+        wb.set_value(format!("Sheet1!A{r}").as_str(), (r as f64) * 1.5).unwrap();
+        wb.set_value(format!("Sheet1!B{r}").as_str(), (r as f64) * 2.0).unwrap();
+        wb.set_value(format!("Sheet1!C{r}").as_str(), (r as f64) * 5.0).unwrap();
+    }
+
+    wb.set_chart(ChartPatch {
+        sheet: "Sheet1".to_string(),
+        name: Some("Sc".to_string()),
+        kind: ChartKind::Scatter,
+        title: Some("S".to_string()),
+        legend_position: Some(ChartLegendPosition::Right),
+        categories_ref: None,
+        series: vec![ChartSeriesPatch {
+            name: Some("P".to_string()),
+            name_ref: None,
+            values_ref: "Sheet1!$B$2:$B$4".to_string(),
+            x_values_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+            bubble_sizes_ref: None,
+            color: Some("FF8800".to_string()),
+        }],
+        anchor: ChartAnchor {
+            from_column: 4, from_row: 1, to_column: 12, to_row: 16,
+            ..Default::default()
+        },
+        category_axis_title: Some("X-Axis".to_string()),
+        value_axis_title: Some("Y-Axis".to_string()),
+    })
+    .unwrap();
+
+    wb.set_chart(ChartPatch {
+        sheet: "Sheet1".to_string(),
+        name: Some("Bu".to_string()),
+        kind: ChartKind::Bubble,
+        title: None,
+        legend_position: None,
+        categories_ref: None,
+        series: vec![ChartSeriesPatch {
+            name_ref: Some("Sheet1!$B$1".to_string()),
+            values_ref: "Sheet1!$B$2:$B$4".to_string(),
+            x_values_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+            bubble_sizes_ref: Some("Sheet1!$C$2:$C$4".to_string()),
+            ..Default::default()
+        }],
+        anchor: ChartAnchor { from_column: 1, from_row: 18, to_column: 8, to_row: 30, ..Default::default() },
+        category_axis_title: None,
+        value_axis_title: None,
+    })
+    .unwrap();
+
+    wb.set_chart(ChartPatch {
+        sheet: "Sheet1".to_string(),
+        name: Some("Do".to_string()),
+        kind: ChartKind::Doughnut,
+        title: None,
+        legend_position: Some(ChartLegendPosition::None),
+        categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+        series: vec![ChartSeriesPatch {
+            values_ref: "Sheet1!$B$2:$B$4".to_string(),
+            color: Some("#00aacc".to_string()),
+            ..Default::default()
+        }],
+        anchor: ChartAnchor { from_column: 9, from_row: 18, to_column: 16, to_row: 30, ..Default::default() },
+        category_axis_title: None,
+        value_axis_title: None,
+    })
+    .unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    assert_eq!(charts.len(), 3);
+
+    let sc = charts.iter().find(|c| c.kind == ChartKind::Scatter).unwrap();
+    assert_eq!(sc.series[0].x_values_ref.as_deref(), Some("Sheet1!$A$2:$A$4"));
+    assert_eq!(sc.series[0].values_ref, "Sheet1!$B$2:$B$4");
+    assert_eq!(sc.series[0].color.as_deref(), Some("FF8800"));
+    assert_eq!(sc.category_axis_title.as_deref(), Some("X-Axis"));
+    assert_eq!(sc.value_axis_title.as_deref(), Some("Y-Axis"));
+
+    let bu = charts.iter().find(|c| c.kind == ChartKind::Bubble).unwrap();
+    assert_eq!(bu.series[0].x_values_ref.as_deref(), Some("Sheet1!$A$2:$A$4"));
+    assert_eq!(bu.series[0].bubble_sizes_ref.as_deref(), Some("Sheet1!$C$2:$C$4"));
+
+    let dn = charts.iter().find(|c| c.kind == ChartKind::Doughnut).unwrap();
+    assert_eq!(dn.categories_ref.as_deref(), Some("Sheet1!$A$2:$A$4"));
+    assert_eq!(dn.series[0].color.as_deref(), Some("00AACC"));
+}
+
+#[test]
+fn charts_scatter_requires_x_values_and_rejects_bad_color() {
+    let mut wb = Workbook::new().unwrap();
+    let missing_x = wb.set_chart(ChartPatch {
+        sheet: "Sheet1".to_string(),
+        name: None,
+        kind: ChartKind::Scatter,
+        title: None,
+        legend_position: None,
+        categories_ref: None,
+        series: vec![ChartSeriesPatch {
+            values_ref: "Sheet1!$B$2:$B$4".to_string(),
+            ..Default::default()
+        }],
+        anchor: ChartAnchor::default(),
+        category_axis_title: None,
+        value_axis_title: None,
+    });
+    assert!(missing_x.is_err());
+
+    let bad_color = wb.set_chart(ChartPatch {
+        sheet: "Sheet1".to_string(),
+        name: None,
+        kind: ChartKind::Column,
+        title: None,
+        legend_position: None,
+        categories_ref: None,
+        series: vec![ChartSeriesPatch {
+            values_ref: "Sheet1!$B$2:$B$4".to_string(),
+            color: Some("nope".to_string()),
+            ..Default::default()
+        }],
+        anchor: ChartAnchor::default(),
+        category_axis_title: None,
+        value_axis_title: None,
+    });
+    assert!(bad_color.is_err());
 }

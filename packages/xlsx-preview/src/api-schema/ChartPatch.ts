@@ -13,4 +13,6 @@ export type ChartPatch = {
   categoriesRef?: string;
   series: Array<ChartSeriesPatch>;
   anchor: ChartAnchor;
+  categoryAxisTitle?: string;
+  valueAxisTitle?: string;
 };

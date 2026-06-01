@@ -85,6 +85,8 @@ impl Workbook {
                     categories_ref: parsed.categories_ref,
                     series: parsed.series,
                     anchor: anchor_to_chart_anchor(anchor),
+                    category_axis_title: parsed.category_axis_title,
+                    value_axis_title: parsed.value_axis_title,
                 });
             }
         }
@@ -106,6 +108,33 @@ impl Workbook {
                     "chart series values_ref must not be empty",
                 )
                 .with_sheet(&patch.sheet));
+            }
+            if matches!(patch.kind, ChartKind::Scatter | ChartKind::Bubble)
+                && s.x_values_ref.as_deref().map(|v| v.trim().is_empty()).unwrap_or(true)
+            {
+                return Err(ApiError::new(
+                    ApiErrorCode::InvalidChart,
+                    "scatter/bubble chart series require x_values_ref",
+                )
+                .with_sheet(&patch.sheet));
+            }
+            if matches!(patch.kind, ChartKind::Bubble)
+                && s.bubble_sizes_ref.as_deref().map(|v| v.trim().is_empty()).unwrap_or(true)
+            {
+                return Err(ApiError::new(
+                    ApiErrorCode::InvalidChart,
+                    "bubble chart series require bubble_sizes_ref",
+                )
+                .with_sheet(&patch.sheet));
+            }
+            if let Some(color) = s.color.as_deref() {
+                if !is_valid_hex_color(color) {
+                    return Err(ApiError::new(
+                        ApiErrorCode::InvalidChart,
+                        format!("chart series color must be 6-hex RRGGBB, got: {color}"),
+                    )
+                    .with_sheet(&patch.sheet));
+                }
             }
         }
 
@@ -198,9 +227,14 @@ impl Workbook {
                     name: s.name.clone(),
                     name_ref: s.name_ref.clone(),
                     values_ref: s.values_ref.clone(),
+                    x_values_ref: s.x_values_ref.clone(),
+                    bubble_sizes_ref: s.bubble_sizes_ref.clone(),
+                    color: s.color.clone(),
                 })
                 .collect(),
             anchor: patch.anchor,
+            category_axis_title: patch.category_axis_title.clone(),
+            value_axis_title: patch.value_axis_title.clone(),
         })
     }
 
@@ -292,6 +326,8 @@ struct ParsedChart {
     legend: Option<ChartLegendPosition>,
     categories_ref: Option<String>,
     series: Vec<ChartSeriesInfo>,
+    category_axis_title: Option<String>,
+    value_axis_title: Option<String>,
 }
 
 fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
@@ -331,12 +367,27 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
             c::PlotAreaChoice::PieChart(pc) => {
                 kind = ChartKind::Pie;
                 for s in &pc.pie_chart_series {
-                    series.push(read_series(
+                    let mut info = read_series(
                         s.series_text.as_deref(),
                         s.category_axis_data.as_deref(),
                         s.values.as_deref(),
                         &mut categories_ref,
-                    ));
+                    );
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    series.push(info);
+                }
+            }
+            c::PlotAreaChoice::DoughnutChart(dc) => {
+                kind = ChartKind::Doughnut;
+                for s in &dc.pie_chart_series {
+                    let mut info = read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                    );
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    series.push(info);
                 }
             }
             c::PlotAreaChoice::AreaChart(ac) => {
@@ -348,6 +399,59 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.values.as_deref(),
                         &mut categories_ref,
                     ));
+                }
+            }
+            c::PlotAreaChoice::ScatterChart(sc) => {
+                kind = ChartKind::Scatter;
+                for s in &sc.scatter_chart_series {
+                    let mut info = read_xy_series(
+                        s.series_text.as_deref(),
+                        s.x_values.as_deref().and_then(|x| x.x_values_choice.as_ref()),
+                        s.y_values.as_deref().and_then(|y| y.y_values_choice.as_ref()),
+                    );
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    series.push(info);
+                }
+            }
+            c::PlotAreaChoice::BubbleChart(bc) => {
+                kind = ChartKind::Bubble;
+                for s in &bc.bubble_chart_series {
+                    let mut info = read_xy_series(
+                        s.series_text.as_deref(),
+                        s.x_values.as_deref().and_then(|x| x.x_values_choice.as_ref()),
+                        s.y_values.as_deref().and_then(|y| y.y_values_choice.as_ref()),
+                    );
+                    info.bubble_sizes_ref =
+                        s.bubble_size.as_deref().and_then(|b| match b.bubble_size_choice.as_ref()? {
+                            c::BubbleSizeChoice::NumberReference(nr) => Some(nr.formula.clone()),
+                            _ => None,
+                        });
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    series.push(info);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let mut category_axis_title: Option<String> = None;
+    let mut value_axis_title: Option<String> = None;
+    for ax in &plot.plot_area_choice2 {
+        match ax {
+            c::PlotAreaChoice2::CategoryAxis(c) => {
+                if let Some(t) = c.title.as_deref() {
+                    category_axis_title = extract_title_text(t);
+                }
+            }
+            c::PlotAreaChoice2::ValueAxis(v) => {
+                if let Some(t) = v.title.as_deref() {
+                    if v.axis_position.val == c::AxisPositionValues::Bottom
+                        && category_axis_title.is_none()
+                    {
+                        category_axis_title = extract_title_text(t);
+                    } else if value_axis_title.is_none() {
+                        value_axis_title = extract_title_text(t);
+                    }
                 }
             }
             _ => {}
@@ -369,7 +473,49 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         legend,
         categories_ref,
         series,
+        category_axis_title,
+        value_axis_title,
     }
+}
+
+fn read_xy_series(
+    tx: Option<&c::SeriesText>,
+    x_choice: Option<&c::XValuesChoice>,
+    y_choice: Option<&c::YValuesChoice>,
+) -> ChartSeriesInfo {
+    let (name, name_ref) = match tx.and_then(|t| t.series_text_choice.as_ref()) {
+        Some(c::SeriesTextChoice::StringReference(sr)) => (None, Some(sr.formula.clone())),
+        Some(c::SeriesTextChoice::NumericValue(nv)) => (Some(nv.clone()), None),
+        None => (None, None),
+    };
+    let x_values_ref = x_choice.and_then(|c| match c {
+        c::XValuesChoice::NumberReference(nr) => Some(nr.formula.clone()),
+        c::XValuesChoice::StringReference(sr) => Some(sr.formula.clone()),
+        _ => None,
+    });
+    let values_ref = y_choice
+        .and_then(|c| match c {
+            c::YValuesChoice::NumberReference(nr) => Some(nr.formula.clone()),
+            _ => None,
+        })
+        .unwrap_or_default();
+    ChartSeriesInfo {
+        name,
+        name_ref,
+        values_ref,
+        x_values_ref,
+        bubble_sizes_ref: None,
+        color: None,
+    }
+}
+
+fn read_series_color(sp: Option<&c::ChartShapeProperties>) -> Option<String> {
+    let sp = sp?;
+    let choice = sp.chart_shape_properties_choice2.as_ref()?;
+    let c::ChartShapePropertiesChoice2::SolidFill(sf) = choice else { return None };
+    let inner = sf.solid_fill_choice.as_ref()?;
+    let a::SolidFillChoice::RgbColorModelHex(rgb) = inner else { return None };
+    Some(rgb.val.to_string().to_uppercase())
 }
 
 fn read_series(
@@ -407,6 +553,9 @@ fn read_series(
         name,
         name_ref,
         values_ref,
+        x_values_ref: None,
+        bubble_sizes_ref: None,
+        color: None,
     }
 }
 
@@ -458,13 +607,38 @@ fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
         ..Default::default()
     };
 
-    if !matches!(patch.kind, ChartKind::Pie) {
-        plot_area
-            .plot_area_choice2
-            .push(c::PlotAreaChoice2::CategoryAxis(Box::new(build_cat_axis())));
-        plot_area
-            .plot_area_choice2
-            .push(c::PlotAreaChoice2::ValueAxis(Box::new(build_val_axis())));
+    match patch.kind {
+        ChartKind::Pie | ChartKind::Doughnut => {}
+        ChartKind::Scatter | ChartKind::Bubble => {
+            plot_area
+                .plot_area_choice2
+                .push(c::PlotAreaChoice2::ValueAxis(Box::new(build_val_axis_xy(
+                    CAT_AX_ID,
+                    VAL_AX_ID,
+                    c::AxisPositionValues::Bottom,
+                    patch.category_axis_title.as_deref(),
+                ))));
+            plot_area
+                .plot_area_choice2
+                .push(c::PlotAreaChoice2::ValueAxis(Box::new(build_val_axis_xy(
+                    VAL_AX_ID,
+                    CAT_AX_ID,
+                    c::AxisPositionValues::Left,
+                    patch.value_axis_title.as_deref(),
+                ))));
+        }
+        _ => {
+            plot_area
+                .plot_area_choice2
+                .push(c::PlotAreaChoice2::CategoryAxis(Box::new(build_cat_axis(
+                    patch.category_axis_title.as_deref(),
+                ))));
+            plot_area
+                .plot_area_choice2
+                .push(c::PlotAreaChoice2::ValueAxis(Box::new(build_val_axis(
+                    patch.value_axis_title.as_deref(),
+                ))));
+        }
     }
 
     let title = patch
@@ -540,6 +714,48 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .enumerate()
                 .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref()))
                 .collect(),
+            ..Default::default()
+        })),
+        ChartKind::Doughnut => c::PlotAreaChoice::DoughnutChart(Box::new(c::DoughnutChart {
+            vary_colors: Some(c::VaryColors {
+                val: Some(BooleanValue::from_bool(true)),
+            }),
+            pie_chart_series: patch
+                .series
+                .iter()
+                .enumerate()
+                .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref()))
+                .collect(),
+            hole_size: Box::new(c::HoleSize { val: 50 }),
+            ..Default::default()
+        })),
+        ChartKind::Scatter => c::PlotAreaChoice::ScatterChart(Box::new(c::ScatterChart {
+            scatter_style: Box::new(c::ScatterStyle {
+                val: Some(c::ScatterStyleValues::LineMarker),
+            }),
+            vary_colors: Some(c::VaryColors {
+                val: Some(BooleanValue::from_bool(false)),
+            }),
+            scatter_chart_series: patch
+                .series
+                .iter()
+                .enumerate()
+                .map(|(i, s)| build_scatter_series(i, s))
+                .collect(),
+            axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
+            ..Default::default()
+        })),
+        ChartKind::Bubble => c::PlotAreaChoice::BubbleChart(Box::new(c::BubbleChart {
+            vary_colors: Some(c::VaryColors {
+                val: Some(BooleanValue::from_bool(true)),
+            }),
+            bubble_chart_series: patch
+                .series
+                .iter()
+                .enumerate()
+                .map(|(i, s)| build_bubble_series(i, s))
+                .collect(),
+            axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
             ..Default::default()
         })),
         ChartKind::Line => c::PlotAreaChoice::LineChart(Box::new(c::LineChart {
@@ -708,10 +924,96 @@ fn build_pie_series(
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
+        chart_shape_properties: build_series_shape(s.color.as_deref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
     }
+}
+
+fn build_scatter_series(idx: usize, s: &ChartSeriesPatch) -> c::ScatterChartSeries {
+    c::ScatterChartSeries {
+        index: Box::new(c::Index { val: idx as u32 }),
+        order: Box::new(c::Order { val: idx as u32 }),
+        series_text: build_series_text(s),
+        chart_shape_properties: build_series_shape(s.color.as_deref()),
+        x_values: s.x_values_ref.as_deref().map(build_x_values),
+        y_values: Some(build_y_values(&s.values_ref)),
+        smooth: Some(c::Smooth {
+            val: Some(BooleanValue::from_bool(false)),
+        }),
+        ..Default::default()
+    }
+}
+
+fn build_bubble_series(idx: usize, s: &ChartSeriesPatch) -> c::BubbleChartSeries {
+    c::BubbleChartSeries {
+        index: Box::new(c::Index { val: idx as u32 }),
+        order: Box::new(c::Order { val: idx as u32 }),
+        series_text: build_series_text(s),
+        chart_shape_properties: build_series_shape(s.color.as_deref()),
+        x_values: s.x_values_ref.as_deref().map(build_x_values),
+        y_values: Some(build_y_values(&s.values_ref)),
+        bubble_size: s.bubble_sizes_ref.as_deref().map(build_bubble_size),
+        ..Default::default()
+    }
+}
+
+fn build_x_values(r: &str) -> Box<c::XValues> {
+    Box::new(c::XValues {
+        x_values_choice: Some(c::XValuesChoice::NumberReference(Box::new(
+            c::NumberReference {
+                formula: r.to_string(),
+                ..Default::default()
+            },
+        ))),
+    })
+}
+
+fn build_y_values(r: &str) -> Box<c::YValues> {
+    Box::new(c::YValues {
+        y_values_choice: Some(c::YValuesChoice::NumberReference(Box::new(
+            c::NumberReference {
+                formula: r.to_string(),
+                ..Default::default()
+            },
+        ))),
+    })
+}
+
+fn build_bubble_size(r: &str) -> Box<c::BubbleSize> {
+    Box::new(c::BubbleSize {
+        bubble_size_choice: Some(c::BubbleSizeChoice::NumberReference(Box::new(
+            c::NumberReference {
+                formula: r.to_string(),
+                ..Default::default()
+            },
+        ))),
+    })
+}
+
+fn build_series_shape(color: Option<&str>) -> Option<Box<c::ChartShapeProperties>> {
+    let hex = color?;
+    let solid = a::SolidFill {
+        solid_fill_choice: Some(a::SolidFillChoice::RgbColorModelHex(Box::new(
+            a::RgbColorModelHex {
+                val: hex.trim_start_matches('#').to_uppercase(),
+                ..Default::default()
+            },
+        ))),
+        ..Default::default()
+    };
+    Some(Box::new(c::ChartShapeProperties {
+        chart_shape_properties_choice2: Some(c::ChartShapePropertiesChoice2::SolidFill(
+            Box::new(solid),
+        )),
+        ..Default::default()
+    }))
+}
+
+fn is_valid_hex_color(s: &str) -> bool {
+    let s = s.trim_start_matches('#');
+    s.len() == 6 && s.chars().all(|c| c.is_ascii_hexdigit())
 }
 
 fn build_title(text: &str) -> c::Title {
@@ -762,7 +1064,7 @@ fn build_legend(pos: c::LegendPositionValues) -> c::Legend {
     }
 }
 
-fn build_cat_axis() -> c::CategoryAxis {
+fn build_cat_axis(title: Option<&str>) -> c::CategoryAxis {
     c::CategoryAxis {
         axis_id: Box::new(axis_id(CAT_AX_ID)),
         scaling: Box::new(c::Scaling {
@@ -777,14 +1079,31 @@ fn build_cat_axis() -> c::CategoryAxis {
         axis_position: Box::new(c::AxisPosition {
             val: c::AxisPositionValues::Bottom,
         }),
+        title: title
+            .filter(|t| !t.is_empty())
+            .map(|t| Box::new(build_title(t))),
         crossing_axis: Box::new(c::CrossingAxis { val: VAL_AX_ID }),
         ..Default::default()
     }
 }
 
-fn build_val_axis() -> c::ValueAxis {
+fn build_val_axis(title: Option<&str>) -> c::ValueAxis {
+    build_val_axis_xy(
+        VAL_AX_ID,
+        CAT_AX_ID,
+        c::AxisPositionValues::Left,
+        title,
+    )
+}
+
+fn build_val_axis_xy(
+    id: u32,
+    cross: u32,
+    pos: c::AxisPositionValues,
+    title: Option<&str>,
+) -> c::ValueAxis {
     c::ValueAxis {
-        axis_id: Box::new(axis_id(VAL_AX_ID)),
+        axis_id: Box::new(axis_id(id)),
         scaling: Box::new(c::Scaling {
             orientation: Some(c::Orientation {
                 val: Some(c::OrientationValues::MinMax),
@@ -794,10 +1113,11 @@ fn build_val_axis() -> c::ValueAxis {
         delete: Some(c::Delete {
             val: Some(BooleanValue::from_bool(false)),
         }),
-        axis_position: Box::new(c::AxisPosition {
-            val: c::AxisPositionValues::Left,
-        }),
-        crossing_axis: Box::new(c::CrossingAxis { val: CAT_AX_ID }),
+        axis_position: Box::new(c::AxisPosition { val: pos }),
+        title: title
+            .filter(|t| !t.is_empty())
+            .map(|t| Box::new(build_title(t))),
+        crossing_axis: Box::new(c::CrossingAxis { val: cross }),
         ..Default::default()
     }
 }

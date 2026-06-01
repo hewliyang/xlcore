@@ -2324,6 +2324,9 @@ pub enum ChartKind {
     Line,
     Pie,
     Area,
+    Scatter,
+    Bubble,
+    Doughnut,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -2383,6 +2386,15 @@ pub struct ChartSeriesPatch {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name_ref: Option<String>,
     pub values_ref: String,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x_values_ref: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bubble_sizes_ref: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -2400,6 +2412,15 @@ pub struct ChartSeriesInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name_ref: Option<String>,
     pub values_ref: String,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x_values_ref: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bubble_sizes_ref: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -2426,6 +2447,12 @@ pub struct ChartPatch {
     pub categories_ref: Option<String>,
     pub series: Vec<ChartSeriesPatch>,
     pub anchor: ChartAnchor,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category_axis_title: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value_axis_title: Option<String>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -2451,6 +2478,12 @@ pub struct ChartInfo {
     pub categories_ref: Option<String>,
     pub series: Vec<ChartSeriesInfo>,
     pub anchor: ChartAnchor,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category_axis_title: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value_axis_title: Option<String>,
 }
 
 fn parse_a1(reference: &str) -> Option<(u32, u32)> {
