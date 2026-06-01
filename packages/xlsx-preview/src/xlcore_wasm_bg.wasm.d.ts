@@ -41,6 +41,7 @@ export const workbookhandle_precedents: (a: number, b: number, c: number, d: num
 export const workbookhandle_properties: (a: number, b: number) => void;
 export const workbookhandle_recalculate: (a: number, b: number) => void;
 export const workbookhandle_removeAutoFilter: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_removeAutoFilterColumn: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_removeComment: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeDataValidation: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
@@ -55,6 +56,7 @@ export const workbookhandle_save: (a: number, b: number) => void;
 export const workbookhandle_search: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setActiveSheet: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_setAutoFilter: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_setAutoFilterColumn: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setCalcProperties: (a: number, b: number, c: number) => void;
 export const workbookhandle_setColumnVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setColumnWidth: (a: number, b: number, c: number, d: number, e: number, f: number) => void;

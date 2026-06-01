@@ -25,7 +25,8 @@ use std::path::Path;
 
 pub use xlcore_types::{
     AlignmentPatch, ApiCellValue, ApiCellValue as CellValue, ApiError, ApiErrorCode,
-    AutoFilterInfo, BorderLinePatch, BorderLineStyle, BorderPatch, CalcMode, CalcProperties,
+    AutoFilterColumnInfo, AutoFilterColumnPatch, AutoFilterCriteria, AutoFilterCustomCriterion,
+    AutoFilterInfo, AutoFilterOperator, BorderLinePatch, BorderLineStyle, BorderPatch, CalcMode, CalcProperties,
     CalcPropertiesPatch, CellInfo, ClearMode, CommentInfo, CommentPatch, DataValidationErrorStyle,
     DataValidationInfo, DataValidationOperator, DataValidationPatch, DataValidationType,
     DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference, FillPatch, FontPatch,

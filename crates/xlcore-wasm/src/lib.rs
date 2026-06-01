@@ -395,6 +395,34 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = setAutoFilterColumn)]
+    pub fn set_auto_filter_column(
+        &mut self,
+        sheet: &str,
+        patch: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::AutoFilterColumnPatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .set_auto_filter_column(sheet, patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removeAutoFilterColumn)]
+    pub fn remove_auto_filter_column(
+        &mut self,
+        sheet: &str,
+        column_offset: u32,
+    ) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .remove_auto_filter_column(sheet, column_offset)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
     pub fn comments(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
         let list = self
             .workbook_mut()?

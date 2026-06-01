@@ -1,6 +1,8 @@
 import init, { WorkbookHandle as WasmWorkbookHandle } from "./xlcore_wasm.js";
 import type {
   ApiCellValue,
+  AutoFilterColumnInfo,
+  AutoFilterColumnPatch,
   AutoFilterInfo,
   CalcProperties,
   CalcPropertiesPatch,
@@ -45,7 +47,12 @@ export type {
   ApiError,
   ApiError as ApiErrorPayload,
   ApiErrorCode,
+  AutoFilterColumnInfo,
+  AutoFilterColumnPatch,
+  AutoFilterCriteria,
+  AutoFilterCustomCriterion,
   AutoFilterInfo,
+  AutoFilterOperator,
   BorderLinePatch,
   BorderLineStyle,
   BorderPatch,
@@ -244,6 +251,24 @@ export class Workbook {
 
   removeAutoFilter(sheet: string): AutoFilterInfo | null {
     return (this.handle.removeAutoFilter(sheet) as AutoFilterInfo | null) ?? null;
+  }
+
+  setAutoFilterColumn(
+    sheet: string,
+    patch: AutoFilterColumnPatch,
+  ): AutoFilterColumnInfo {
+    return this.handle.setAutoFilterColumn(sheet, patch) as AutoFilterColumnInfo;
+  }
+
+  removeAutoFilterColumn(
+    sheet: string,
+    columnOffset: number,
+  ): AutoFilterColumnInfo | null {
+    return (
+      (this.handle.removeAutoFilterColumn(sheet, columnOffset) as
+        | AutoFilterColumnInfo
+        | null) ?? null
+    );
   }
 
   comments(sheet: string): CommentInfo[] {

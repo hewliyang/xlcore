@@ -26,6 +26,7 @@ pub enum ApiErrorCode {
     DuplicateTable,
     InvalidProtection,
     InvalidPageSetup,
+    InvalidAutoFilter,
     OoxmlWriteError,
     Other,
 }
@@ -268,7 +269,7 @@ pub struct MergeInfo {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
@@ -281,6 +282,104 @@ pub struct AutoFilterInfo {
     pub start_column: u32,
     pub end_row: u32,
     pub end_column: u32,
+    #[serde(default)]
+    pub columns: Vec<AutoFilterColumnInfo>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct AutoFilterColumnInfo {
+    pub column_offset: u32,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hidden_button: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_button: Option<bool>,
+    pub criteria: AutoFilterCriteria,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum AutoFilterCriteria {
+    Values {
+        #[serde(default)]
+        values: Vec<String>,
+        #[serde(default)]
+        blank: bool,
+    },
+    Top10 {
+        #[serde(default)]
+        top: bool,
+        #[serde(default)]
+        percent: bool,
+        val: f64,
+    },
+    Custom {
+        #[serde(default)]
+        logical_and: bool,
+        #[serde(default)]
+        criteria: Vec<AutoFilterCustomCriterion>,
+    },
+    Unsupported {
+        name: String,
+    },
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct AutoFilterCustomCriterion {
+    pub operator: AutoFilterOperator,
+    pub value: String,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub enum AutoFilterOperator {
+    Equal,
+    NotEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+    LessThan,
+    LessThanOrEqual,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct AutoFilterColumnPatch {
+    pub column_offset: u32,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hidden_button: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_button: Option<bool>,
+    pub criteria: AutoFilterCriteria,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

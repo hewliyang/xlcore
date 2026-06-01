@@ -39,6 +39,7 @@ export class WorkbookHandle {
     properties(): any;
     recalculate(): any;
     removeAutoFilter(sheet: string): any;
+    removeAutoFilterColumn(sheet: string, column_offset: number): any;
     removeComment(reference: string): any;
     removeDataValidation(reference: string): any;
     removeDefinedName(name: string, scope?: string | null): any;
@@ -53,6 +54,7 @@ export class WorkbookHandle {
     search(query: string, options: any): any;
     setActiveSheet(name: string): any;
     setAutoFilter(reference: string): any;
+    setAutoFilterColumn(sheet: string, patch: any): any;
     setCalcProperties(patch: any): any;
     setColumnVisible(sheet: string, column: number, visible: boolean): void;
     setColumnWidth(sheet: string, column: number, width: number): void;
@@ -132,6 +134,7 @@ export interface InitOutput {
     readonly workbookhandle_properties: (a: number, b: number) => void;
     readonly workbookhandle_recalculate: (a: number, b: number) => void;
     readonly workbookhandle_removeAutoFilter: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_removeAutoFilterColumn: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_removeComment: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeDataValidation: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
@@ -146,6 +149,7 @@ export interface InitOutput {
     readonly workbookhandle_search: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setActiveSheet: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_setAutoFilter: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_setAutoFilterColumn: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setCalcProperties: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setColumnVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setColumnWidth: (a: number, b: number, c: number, d: number, e: number, f: number) => void;

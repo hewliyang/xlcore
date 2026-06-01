@@ -46,6 +46,38 @@ Known gaps:
 - No comments, hyperlinks, tables, names, validation, or object authoring
 - Batch is a simple Rust closure, not a diagnostic/transaction envelope
 
+## Next Up: ooxmlsdk 0.7.0 Migration
+
+Upstream ooxmlsdk 0.7.0 (273 commits since 0.6.1) lands a batch of fixes that
+matter to us:
+
+- Repeating particles model as `Vec<Choice>` instead of `Option<Choice>` —
+  unblocks multi-value `<filters><filter/>…</filters>` round-trip, which is
+  what limits AutoFilter `Values` authoring to blank-only today.
+- Choice read dispatch + qname inference rework — likely fixes the
+  `x:CustomFilters` vs `x14:CustomFilters` arm precedence bug the AutoFilter
+  reader currently works around.
+- Better preservation of MCE content, extension XML, and overlapping nested
+  choice branches — closes silent-drop holes in our preservation paths.
+- `Use Vec for OOXML list values` and `Tighten round-trip XML compatibility
+  rules` — semantic correctness across schemas we already touch.
+
+The upgrade is a breaking schema-naming pass (`X` / `Xdr` / `C` / `Cx` / `A`
+variant prefixes and matching `x_` / `xdr_` / `c_` / `cx_` / `a_` field
+prefixes dropped). A `cargo check --workspace` against 0.7.0 emits ~540
+errors, mostly mechanical renames across `xlcore-io`, `xlcore-export`,
+`xlcore-api`, `xlcore-bridge`, and `xlcore-tabular`. After the rename pass,
+revisit:
+
+- Lift the blank-only restriction on `AutoFilterCriteria::Values` and drop the
+  `X14CustomFilters` reader fallback in `crates/xlcore-api/src/auto_filter.rs`.
+- Audit other choice-particle preservation paths (charts, drawings, CF,
+  comments, hyperlinks) for cases we previously had to special-case.
+- Re-run all OOXML round-trip and renderer fixtures.
+
+This pass should be its own change — do not fold it into an unrelated feature
+slice.
+
 ## API Parity Table
 
 Status key:
@@ -83,7 +115,7 @@ Status key:
 | Comments/notes | `Comments.CommentManager` | Add/edit/delete/list comments and threaded notes when present | Done (classic comments; threaded notes later) | Rust API + save/reopen |
 | Hyperlinks | Worksheet hyperlink APIs | Add/edit/delete/list cell hyperlinks | Done | Rust API + save/reopen |
 | Tables | `Tables.TableManager`, `Table` | Create table from range, headers/totals, resize, style name | Done | Rust API + save/reopen |
-| AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | Done (range author/read/remove; filter criteria later) | Rust API + smoke |
+| AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | Done (range + per-column Top10/Custom/blank-only Values; multi-value Values blocked on ooxmlsdk choice handling) | Rust API + smoke |
 | Data validation | `DataValidation` APIs | Add/edit/delete/list list and scalar validations | Done | Rust API + save/reopen |
 | Conditional formatting | `ConditionalFormatting` APIs | Preserve existing; author basic rules once style writes exist | P2 | Renderer screenshot |
 | Charts | `Charts`, `Shapes` | Preserve; create/edit chart types already rendered | P2 | Preview + OOXML |
@@ -204,6 +236,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `duplicate_table` | Reserved for future use; table upsert currently treats duplicate names as updates |
 | `invalid_protection` | Protection patch has a non-hex password, an empty hash/salt/algorithm string, or other malformed credential field |
 | `invalid_page_setup` | Page setup patch has an out-of-range scale, zero copies, or a negative/non-finite margin |
+| `invalid_auto_filter` | Auto-filter column patch references a non-existent filter, an out-of-range column offset, or an empty/unsupported criteria shape |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |
 | `ooxml_write_error` | Writer could not serialize a valid workbook |

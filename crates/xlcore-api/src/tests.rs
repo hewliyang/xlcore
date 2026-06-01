@@ -1704,6 +1704,196 @@ fn auto_filter_set_get_remove_and_round_trip() {
 }
 
 #[test]
+fn auto_filter_column_criteria_round_trip() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_range_values(
+        "Sheet1!A1:C1",
+        vec![vec![
+            CellValue::String("Region".into()),
+            CellValue::String("Units".into()),
+            CellValue::String("Rev".into()),
+        ]],
+    )
+    .unwrap();
+    wb.set_auto_filter("Sheet1!A1:C3").unwrap();
+
+    let info = wb
+        .set_auto_filter_column(
+            "Sheet1",
+            AutoFilterColumnPatch {
+                column_offset: 0,
+                hidden_button: None,
+                show_button: None,
+                criteria: AutoFilterCriteria::Values {
+                    values: Vec::new(),
+                    blank: true,
+                },
+            },
+        )
+        .unwrap();
+    assert_eq!(info.column_offset, 0);
+    assert!(matches!(info.criteria, AutoFilterCriteria::Values { .. }));
+
+    wb.set_auto_filter_column(
+        "Sheet1",
+        AutoFilterColumnPatch {
+            column_offset: 1,
+            hidden_button: None,
+            show_button: None,
+            criteria: AutoFilterCriteria::Top10 {
+                top: true,
+                percent: false,
+                val: 5.0,
+            },
+        },
+    )
+    .unwrap();
+
+    wb.set_auto_filter_column(
+        "Sheet1",
+        AutoFilterColumnPatch {
+            column_offset: 2,
+            hidden_button: None,
+            show_button: None,
+            criteria: AutoFilterCriteria::Custom {
+                logical_and: true,
+                criteria: vec![
+                    AutoFilterCustomCriterion {
+                        operator: AutoFilterOperator::GreaterThanOrEqual,
+                        value: "50".to_string(),
+                    },
+                    AutoFilterCustomCriterion {
+                        operator: AutoFilterOperator::LessThan,
+                        value: "500".to_string(),
+                    },
+                ],
+            },
+        },
+    )
+    .unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let after = reopened.auto_filter("Sheet1").unwrap().unwrap();
+    assert_eq!(after.columns.len(), 3);
+    match &after.columns[0].criteria {
+        AutoFilterCriteria::Values { values, blank } => {
+            assert!(values.is_empty());
+            assert!(*blank);
+        }
+        other => panic!("expected Values, got {other:?}"),
+    }
+    match &after.columns[1].criteria {
+        AutoFilterCriteria::Top10 {
+            top,
+            percent,
+            val,
+        } => {
+            assert!(*top);
+            assert!(!*percent);
+            assert_eq!(*val, 5.0);
+        }
+        other => panic!("expected Top10, got {other:?}"),
+    }
+    match &after.columns[2].criteria {
+        AutoFilterCriteria::Custom {
+            logical_and,
+            criteria,
+        } => {
+            assert!(*logical_and);
+            assert_eq!(criteria.len(), 2);
+            assert_eq!(criteria[0].operator, AutoFilterOperator::GreaterThanOrEqual);
+            assert_eq!(criteria[0].value, "50");
+            assert_eq!(criteria[1].operator, AutoFilterOperator::LessThan);
+        }
+        other => panic!("expected Custom, got {other:?}"),
+    }
+
+    let removed = reopened
+        .remove_auto_filter_column("Sheet1", 1)
+        .unwrap()
+        .unwrap();
+    assert!(matches!(removed.criteria, AutoFilterCriteria::Top10 { .. }));
+    let after_remove = reopened.auto_filter("Sheet1").unwrap().unwrap();
+    assert_eq!(after_remove.columns.len(), 2);
+}
+
+#[test]
+fn auto_filter_column_validation_errors() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A1", "H").unwrap();
+
+    let err = wb
+        .set_auto_filter_column(
+            "Sheet1",
+            AutoFilterColumnPatch {
+                column_offset: 0,
+                hidden_button: None,
+                show_button: None,
+                criteria: AutoFilterCriteria::Top10 {
+                    top: true,
+                    percent: false,
+                    val: 5.0,
+                },
+            },
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidAutoFilter);
+
+    wb.set_auto_filter("Sheet1!A1:B5").unwrap();
+
+    let err = wb
+        .set_auto_filter_column(
+            "Sheet1",
+            AutoFilterColumnPatch {
+                column_offset: 5,
+                hidden_button: None,
+                show_button: None,
+                criteria: AutoFilterCriteria::Top10 {
+                    top: true,
+                    percent: false,
+                    val: 5.0,
+                },
+            },
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidAutoFilter);
+
+    let err = wb
+        .set_auto_filter_column(
+            "Sheet1",
+            AutoFilterColumnPatch {
+                column_offset: 0,
+                hidden_button: None,
+                show_button: None,
+                criteria: AutoFilterCriteria::Values {
+                    values: vec!["a".into()],
+                    blank: false,
+                },
+            },
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidAutoFilter);
+
+    let err = wb
+        .set_auto_filter_column(
+            "Sheet1",
+            AutoFilterColumnPatch {
+                column_offset: 0,
+                hidden_button: None,
+                show_button: None,
+                criteria: AutoFilterCriteria::Top10 {
+                    top: true,
+                    percent: false,
+                    val: 0.0,
+                },
+            },
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidAutoFilter);
+}
+
+#[test]
 fn data_validation_add_list_remove_and_round_trip() {
     let mut wb = Workbook::new().unwrap();
     wb.set_value("Sheet1!A1", "pick").unwrap();
