@@ -61,7 +61,7 @@ Status key:
 | --- | --- | --- | --- | --- |
 | Open/create/save | `Workbook`, JSON/file flows | Open bytes/path, create blank workbook, save bytes/path, preserve unrelated OOXML | Done | Rust API + save/reopen |
 | Shared DTOs | SpreadJS `.d.ts` surface | Rust DTOs generated to TS from `xlcore-types` | Done | `scripts/regen-api-schema.sh` |
-| Workbook metadata | `Workbook.options`, `docProps`, workbook name | Read/write core properties, active sheet, calc properties | P1 | OOXML inspection |
+| Workbook metadata | `Workbook.options`, `docProps`, workbook name | Read/write core properties, active sheet, calc properties | Done | Rust API + save/reopen |
 | Sheet collection | `Workbook.getSheet/addSheet/removeSheet/setSheet` | List/create/rename/delete/move/hide/show/active sheet | Done | Rust API + TS smoke |
 | Cell scalar IO | `Worksheet.getValue/setValue`, `Range.value` | Get/set scalar values and errors by A1 ref | Done | Rust API + TS smoke |
 | Cell formulas | `getFormula/setFormula`, calc APIs | Set formula text, preserve formula, explicit recalc/writeback | Partial | xlcore-engine + Excel fixtures |
@@ -197,6 +197,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `invalid_hyperlink` | Hyperlink patch is missing both target and location, or has an empty target |
 | `invalid_search_query` | Search query is empty or contains an invalid regex/wildcard pattern |
 | `invalid_defined_name` | Defined name violates Excel naming rules or has empty formula |
+| `invalid_property` | Workbook property patch has an unparseable value (e.g. non-ISO timestamp) |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |
 | `ooxml_write_error` | Writer could not serialize a valid workbook |

@@ -5,6 +5,7 @@ export class WorkbookHandle {
     free(): void;
     [Symbol.dispose](): void;
     addMerge(reference: string): any;
+    calcProperties(): any;
     clear(reference: string): any;
     clearRange(reference: string): any;
     clearRangeWith(reference: string, mode: any): any;
@@ -28,6 +29,7 @@ export class WorkbookHandle {
     moveSheet(name: string, to_index: number): any;
     constructor();
     static open(bytes: Uint8Array): WorkbookHandle;
+    properties(): any;
     recalculate(): any;
     removeDefinedName(name: string, scope?: string | null): any;
     removeHyperlink(reference: string): any;
@@ -36,12 +38,14 @@ export class WorkbookHandle {
     save(): Uint8Array;
     search(query: string, options: any): any;
     setActiveSheet(name: string): any;
+    setCalcProperties(patch: any): any;
     setColumnVisible(sheet: string, column: number, visible: boolean): void;
     setColumnWidth(sheet: string, column: number, width: number): void;
     setDefinedName(patch: any): any;
     setFormula(reference: string, formula: string): any;
     setFreeze(sheet: string, frozen_rows: number, frozen_columns: number): any;
     setHyperlink(reference: string, patch: any): any;
+    setProperties(patch: any): any;
     setRangeFormulas(reference: string, formulas: any): any;
     setRangeValues(reference: string, values: any): any;
     setRowHeight(sheet: string, row: number, height: number): void;
@@ -70,6 +74,7 @@ export interface InitOutput {
     readonly extract_parquet: (a: number, b: number, c: number, d: number) => void;
     readonly extract_xlsx: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_addMerge: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_calcProperties: (a: number, b: number) => void;
     readonly workbookhandle_clear: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_clearRange: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_clearRangeWith: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -93,6 +98,7 @@ export interface InitOutput {
     readonly workbookhandle_moveSheet: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_new: (a: number) => void;
     readonly workbookhandle_open: (a: number, b: number, c: number) => void;
+    readonly workbookhandle_properties: (a: number, b: number) => void;
     readonly workbookhandle_recalculate: (a: number, b: number) => void;
     readonly workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_removeHyperlink: (a: number, b: number, c: number, d: number) => void;
@@ -101,12 +107,14 @@ export interface InitOutput {
     readonly workbookhandle_save: (a: number, b: number) => void;
     readonly workbookhandle_search: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setActiveSheet: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_setCalcProperties: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setColumnVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setColumnWidth: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setDefinedName: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setFormula: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setFreeze: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setHyperlink: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly workbookhandle_setProperties: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setRangeFormulas: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setRangeValues: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setRowHeight: (a: number, b: number, c: number, d: number, e: number, f: number) => void;

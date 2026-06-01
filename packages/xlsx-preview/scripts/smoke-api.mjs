@@ -191,6 +191,19 @@ if (removedName?.name !== "LocalRange") {
   throw new Error("unexpected removeDefinedName: " + JSON.stringify(removedName));
 }
 
+workbook.setProperties({ title: "Smoke Plan", creator: "smoke-api", keywords: "smoke,test" });
+workbook.setCalcProperties({ calcMode: "manual", iterate: true, iterateCount: 12 });
+const reBytesProps = workbook.save();
+const reopenedProps = await Workbook.open(reBytesProps, { wasmBinaryUrl: wasm });
+const props = reopenedProps.properties();
+if (props.title !== "Smoke Plan" || props.creator !== "smoke-api") {
+  throw new Error("unexpected properties round-trip: " + JSON.stringify(props));
+}
+const calc = reopenedProps.calcProperties();
+if (calc.calcMode !== "manual" || calc.iterate !== true || calc.iterateCount !== 12) {
+  throw new Error("unexpected calc properties round-trip: " + JSON.stringify(calc));
+}
+
 console.log(
   JSON.stringify({
     ok: true,

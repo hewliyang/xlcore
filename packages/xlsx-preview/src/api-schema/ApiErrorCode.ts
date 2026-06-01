@@ -12,5 +12,6 @@ export type ApiErrorCode =
   | "invalid_hyperlink"
   | "invalid_search_query"
   | "invalid_defined_name"
+  | "invalid_property"
   | "ooxml_write_error"
   | "other";

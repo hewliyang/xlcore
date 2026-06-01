@@ -377,6 +377,43 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = properties)]
+    pub fn properties(&mut self) -> Result<JsValue, JsValue> {
+        let props = self.workbook_mut()?.properties().map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&props).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setProperties)]
+    pub fn set_properties(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::WorkbookPropertiesPatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let props = self
+            .workbook_mut()?
+            .set_properties(patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&props).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = calcProperties)]
+    pub fn calc_properties(&mut self) -> Result<JsValue, JsValue> {
+        let calc = self
+            .workbook_mut()?
+            .calc_properties()
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&calc).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setCalcProperties)]
+    pub fn set_calc_properties(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::CalcPropertiesPatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let calc = self
+            .workbook_mut()?
+            .set_calc_properties(patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&calc).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = clearRange)]
     pub fn clear_range(&mut self, reference: &str) -> Result<JsValue, JsValue> {
         let range = self

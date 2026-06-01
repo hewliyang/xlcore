@@ -4,6 +4,7 @@ mod defined_names;
 mod errors;
 mod hyperlinks;
 mod merges;
+mod properties;
 mod ranges;
 mod refs;
 mod rowcols;
@@ -17,11 +18,11 @@ use std::path::Path;
 
 pub use xlcore_types::{
     AlignmentPatch, ApiCellValue, ApiCellValue as CellValue, ApiError, ApiErrorCode,
-    BorderLinePatch, BorderLineStyle, BorderPatch, CellInfo, ClearMode, DefinedNameInfo,
-    DefinedNamePatch, FillPatch, FontPatch, FreezeInfo, HorizontalAlign, HyperlinkInfo,
-    HyperlinkPatch, LayoutOptions, MergeInfo, RangeInfo, SearchHit, SearchMatch, SearchMode,
-    SearchOptions, SearchTarget, SheetInfo, SheetVisibility, StylePatch, UnderlinePatch,
-    VerticalAlign,
+    BorderLinePatch, BorderLineStyle, BorderPatch, CalcMode, CalcProperties, CalcPropertiesPatch,
+    CellInfo, ClearMode, DefinedNameInfo, DefinedNamePatch, FillPatch, FontPatch, FreezeInfo,
+    HorizontalAlign, HyperlinkInfo, HyperlinkPatch, LayoutOptions, MergeInfo, RangeInfo,
+    SearchHit, SearchMatch, SearchMode, SearchOptions, SearchTarget, SheetInfo, SheetVisibility,
+    StylePatch, UnderlinePatch, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,
 };
 
 use crate::errors::{anyhow_err_to_api, load_err_to_api};

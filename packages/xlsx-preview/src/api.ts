@@ -1,6 +1,8 @@
 import init, { WorkbookHandle as WasmWorkbookHandle } from "./xlcore_wasm.js";
 import type {
   ApiCellValue,
+  CalcProperties,
+  CalcPropertiesPatch,
   CellInfo,
   ClearMode,
   DefinedNameInfo,
@@ -17,6 +19,8 @@ import type {
   SheetInfo,
   SheetVisibility,
   StylePatch,
+  WorkbookProperties,
+  WorkbookPropertiesPatch,
 } from "./api-schema/index.js";
 import type { WorkbookLayout } from "./types.js";
 
@@ -29,6 +33,9 @@ export type {
   BorderLinePatch,
   BorderLineStyle,
   BorderPatch,
+  CalcMode,
+  CalcProperties,
+  CalcPropertiesPatch,
   CellInfo,
   ClearMode,
   DefinedNameInfo,
@@ -57,6 +64,8 @@ export type {
   StylePatch,
   UnderlinePatch,
   VerticalAlign,
+  WorkbookProperties,
+  WorkbookPropertiesPatch,
 } from "./api-schema/index.js";
 
 const DEFAULT_WASM_BINARY_URL = new URL("./xlcore_wasm_bg.wasm", import.meta.url).href;
@@ -173,6 +182,22 @@ export class Workbook {
 
   removeDefinedName(name: string, scope?: string | null): DefinedNameInfo | null {
     return (this.handle.removeDefinedName(name, scope ?? null) as DefinedNameInfo | null) ?? null;
+  }
+
+  properties(): WorkbookProperties {
+    return this.handle.properties() as WorkbookProperties;
+  }
+
+  setProperties(patch: WorkbookPropertiesPatch): WorkbookProperties {
+    return this.handle.setProperties(patch) as WorkbookProperties;
+  }
+
+  calcProperties(): CalcProperties {
+    return this.handle.calcProperties() as CalcProperties;
+  }
+
+  setCalcProperties(patch: CalcPropertiesPatch): CalcProperties {
+    return this.handle.setCalcProperties(patch) as CalcProperties;
   }
 
   createSheet(name: string): SheetInfo {
