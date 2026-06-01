@@ -45,6 +45,9 @@ export const workbookhandle_removeDataValidation: (a: number, b: number, c: numb
 export const workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removeHyperlink: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeMerge: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_removeSheetProtection: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_removeTable: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_removeWorkbookProtection: (a: number, b: number) => void;
 export const workbookhandle_renameSheet: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_save: (a: number, b: number) => void;
 export const workbookhandle_search: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -64,10 +67,16 @@ export const workbookhandle_setRangeFormulas: (a: number, b: number, c: number, 
 export const workbookhandle_setRangeValues: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setRowHeight: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setRowVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+export const workbookhandle_setSheetProtection: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setSheetVisibility: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setStyle: (a: number, b: number, c: number, d: number, e: number) => void;
+export const workbookhandle_setTable: (a: number, b: number, c: number) => void;
 export const workbookhandle_setValue: (a: number, b: number, c: number, d: number, e: number) => void;
+export const workbookhandle_setWorkbookProtection: (a: number, b: number, c: number) => void;
+export const workbookhandle_sheetProtection: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_sheets: (a: number, b: number) => void;
+export const workbookhandle_tables: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_workbookProtection: (a: number, b: number) => void;
 export const __wbindgen_export: (a: number, b: number) => number;
 export const __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
 export const __wbindgen_export3: (a: number) => void;

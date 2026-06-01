@@ -554,6 +554,68 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&calc).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = sheetProtection)]
+    pub fn sheet_protection(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
+        let info = self
+            .workbook_mut()?
+            .sheet_protection(sheet)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setSheetProtection)]
+    pub fn set_sheet_protection(
+        &mut self,
+        sheet: &str,
+        patch: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::SheetProtectionPatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .set_sheet_protection(sheet, patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removeSheetProtection)]
+    pub fn remove_sheet_protection(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .remove_sheet_protection(sheet)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = workbookProtection)]
+    pub fn workbook_protection(&mut self) -> Result<JsValue, JsValue> {
+        let info = self
+            .workbook_mut()?
+            .workbook_protection()
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setWorkbookProtection)]
+    pub fn set_workbook_protection(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::WorkbookProtectionPatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .set_workbook_protection(patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removeWorkbookProtection)]
+    pub fn remove_workbook_protection(&mut self) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .remove_workbook_protection()
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = clearRange)]
     pub fn clear_range(&mut self, reference: &str) -> Result<JsValue, JsValue> {
         let range = self

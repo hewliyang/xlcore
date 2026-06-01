@@ -9,6 +9,7 @@ mod errors;
 mod hyperlinks;
 mod merges;
 mod properties;
+mod protection;
 mod ranges;
 mod refs;
 mod rowcols;
@@ -29,10 +30,11 @@ pub use xlcore_types::{
     DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference, FillPatch, FontPatch,
     FreezeInfo,
     HorizontalAlign, HyperlinkInfo, HyperlinkPatch, LayoutOptions, MergeInfo, RangeInfo, SearchHit,
-    SearchMatch, SearchMode, SearchOptions, SearchTarget, SheetInfo, SheetVisibility, StylePatch,
-    TableColumnInfo, TableColumnPatch, TableInfo, TablePatch, TableStylePatch, TableStyleSettings,
-    TableTotalsFunction, UnderlinePatch, VerticalAlign, WorkbookProperties,
-    WorkbookPropertiesPatch,
+    SearchMatch, SearchMode, SearchOptions, SearchTarget, SheetInfo, SheetProtectionInfo,
+    SheetProtectionPatch, SheetVisibility, StylePatch, TableColumnInfo, TableColumnPatch,
+    TableInfo, TablePatch, TableStylePatch, TableStyleSettings, TableTotalsFunction,
+    UnderlinePatch, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,
+    WorkbookProtectionInfo, WorkbookProtectionPatch,
 };
 
 use crate::errors::{anyhow_err_to_api, load_err_to_api};

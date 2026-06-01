@@ -92,7 +92,7 @@ Status key:
 | Sparklines | `Sparklines` APIs | Preserve; author simple line/column/win-loss later | P2 | Renderer screenshot |
 | Pivot tables | `PivotTableManager`, slicers/timelines | Preserve; refresh/create only after aggregation model exists | P2 | OOXML + Excel open |
 | Slicers/timelines | `Slicers`, pivot slicers | Preserve; authoring deferred | Later | OOXML diff |
-| Protection | Sheet/workbook protection APIs | Sheet/workbook protection metadata | P2 | OOXML + Excel open |
+| Protection | Sheet/workbook protection APIs | Sheet/workbook protection metadata | Done | Rust API + save/reopen |
 | Print/page setup | Print, page setup, headers/footers | Page setup, print areas, headers/footers | P2 | OOXML inspection |
 | JSON import/export | `toJSON/fromJSON` | Optional xlcore JSON for app state, not SpreadJS-compatible by default | Later | Round-trip tests |
 | Undo/redo/commands | Command manager, undo manager | Optional command journal/replay log | Later | Unit tests |
@@ -202,6 +202,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `invalid_property` | Workbook property patch has an unparseable value (e.g. non-ISO timestamp) |
 | `invalid_table` | Table patch is missing a range when creating, has an invalid name, overlaps an existing table, or uses incompatible geometry |
 | `duplicate_table` | Reserved for future use; table upsert currently treats duplicate names as updates |
+| `invalid_protection` | Protection patch has a non-hex password, an empty hash/salt/algorithm string, or other malformed credential field |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |
 | `ooxml_write_error` | Writer could not serialize a valid workbook |

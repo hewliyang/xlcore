@@ -25,11 +25,15 @@ import type {
   SearchOptions,
   SheetInfo,
   SheetVisibility,
+  SheetProtectionInfo,
+  SheetProtectionPatch,
   StylePatch,
   TableInfo,
   TablePatch,
   WorkbookProperties,
   WorkbookPropertiesPatch,
+  WorkbookProtectionInfo,
+  WorkbookProtectionPatch,
 } from "./api-schema/index.js";
 import type { WorkbookLayout } from "./types.js";
 
@@ -79,6 +83,8 @@ export type {
   SearchOptions,
   SearchTarget,
   SheetInfo,
+  SheetProtectionInfo,
+  SheetProtectionPatch,
   SheetVisibility,
   StylePatch,
   TableColumnInfo,
@@ -92,6 +98,8 @@ export type {
   VerticalAlign,
   WorkbookProperties,
   WorkbookPropertiesPatch,
+  WorkbookProtectionInfo,
+  WorkbookProtectionPatch,
 } from "./api-schema/index.js";
 
 const DEFAULT_WASM_BINARY_URL = new URL("./xlcore_wasm_bg.wasm", import.meta.url).href;
@@ -284,6 +292,30 @@ export class Workbook {
 
   setCalcProperties(patch: CalcPropertiesPatch): CalcProperties {
     return this.handle.setCalcProperties(patch) as CalcProperties;
+  }
+
+  sheetProtection(sheet: string): SheetProtectionInfo | null {
+    return (this.handle.sheetProtection(sheet) as SheetProtectionInfo | null) ?? null;
+  }
+
+  setSheetProtection(sheet: string, patch: SheetProtectionPatch): SheetProtectionInfo {
+    return this.handle.setSheetProtection(sheet, patch) as SheetProtectionInfo;
+  }
+
+  removeSheetProtection(sheet: string): SheetProtectionInfo | null {
+    return (this.handle.removeSheetProtection(sheet) as SheetProtectionInfo | null) ?? null;
+  }
+
+  workbookProtection(): WorkbookProtectionInfo | null {
+    return (this.handle.workbookProtection() as WorkbookProtectionInfo | null) ?? null;
+  }
+
+  setWorkbookProtection(patch: WorkbookProtectionPatch): WorkbookProtectionInfo {
+    return this.handle.setWorkbookProtection(patch) as WorkbookProtectionInfo;
+  }
+
+  removeWorkbookProtection(): WorkbookProtectionInfo | null {
+    return (this.handle.removeWorkbookProtection() as WorkbookProtectionInfo | null) ?? null;
   }
 
   createSheet(name: string): SheetInfo {

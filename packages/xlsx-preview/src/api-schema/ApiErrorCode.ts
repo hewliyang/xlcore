@@ -17,5 +17,6 @@ export type ApiErrorCode =
   | "invalid_property"
   | "invalid_table"
   | "duplicate_table"
+  | "invalid_protection"
   | "ooxml_write_error"
   | "other";

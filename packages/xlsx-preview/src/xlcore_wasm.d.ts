@@ -43,7 +43,9 @@ export class WorkbookHandle {
     removeDefinedName(name: string, scope?: string | null): any;
     removeHyperlink(reference: string): any;
     removeMerge(reference: string): any;
+    removeSheetProtection(sheet: string): any;
     removeTable(name: string): any;
+    removeWorkbookProtection(): any;
     renameSheet(old_name: string, new_name: string): void;
     save(): Uint8Array;
     search(query: string, options: any): any;
@@ -63,12 +65,16 @@ export class WorkbookHandle {
     setRangeValues(reference: string, values: any): any;
     setRowHeight(sheet: string, row: number, height: number): void;
     setRowVisible(sheet: string, row: number, visible: boolean): void;
+    setSheetProtection(sheet: string, patch: any): any;
     setSheetVisibility(name: string, visibility: string): any;
     setStyle(reference: string, patch: any): any;
     setTable(patch: any): any;
     setValue(reference: string, value: any): any;
+    setWorkbookProtection(patch: any): any;
+    sheetProtection(sheet: string): any;
     sheets(): any;
     tables(sheet?: string | null): any;
+    workbookProtection(): any;
 }
 
 export function extractXlsxJson(bytes: Uint8Array, options: any): string;
@@ -127,7 +133,9 @@ export interface InitOutput {
     readonly workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_removeHyperlink: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeMerge: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_removeSheetProtection: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeTable: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_removeWorkbookProtection: (a: number, b: number) => void;
     readonly workbookhandle_renameSheet: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_save: (a: number, b: number) => void;
     readonly workbookhandle_search: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -147,12 +155,16 @@ export interface InitOutput {
     readonly workbookhandle_setRangeValues: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setRowHeight: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setRowVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+    readonly workbookhandle_setSheetProtection: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setSheetVisibility: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setStyle: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setTable: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setValue: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly workbookhandle_setWorkbookProtection: (a: number, b: number, c: number) => void;
+    readonly workbookhandle_sheetProtection: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_sheets: (a: number, b: number) => void;
     readonly workbookhandle_tables: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_workbookProtection: (a: number, b: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;
