@@ -44,8 +44,11 @@ Known gaps:
 
 - Style write surface limited to font/fill/border/alignment/number format
   patch; themes, named styles, and table-style authoring still preserve-only
-- Charts, images, shapes, sparklines, and pivot tables are preserve-only —
-  no authoring API yet. Conditional formatting now authors classic rules
+- Basic chart authoring (column/bar/line/pie/area with title/legend/categories
+  ref + series) is wired through `set_chart` / `charts` / `remove_chart`; richer
+  chart features (combo, dual axis, scatter/bubble, chartEx, formatting,
+  per-series styling) remain preserve-only. Images, shapes, sparklines, and
+  pivot tables are still preserve-only — no authoring API yet. Conditional formatting now authors classic rules
   plus color scales / data bars / icon sets; `<extLst>` x14 extensions
   (custom icons, multi-color data bars, etc.) remain preserve-only.
 - Threaded notes (modern `<threadedComment>`) author/list/reply/remove
@@ -140,7 +143,7 @@ Status key:
 | AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | Done (range + per-column Top10/Custom/multi-value Values with optional blank) | Rust API + smoke |
 | Data validation | `DataValidation` APIs | Add/edit/delete/list list and scalar validations | Done | Rust API + save/reopen |
 | Conditional formatting | `ConditionalFormatting` APIs | Preserve existing; author basic rules once style writes exist | Done (cellIs/expression/text/blanks/errors/top10/aboveAverage/duplicate/unique rules + dxf font/fill/border/numFmt/alignment authoring; 2/3-stop color scales, min/max data bars, 3/4/5-icon icon sets with cfvo round-trip; extLst x14 extensions still preserve-only) | Rust API + save/reopen |
-| Charts | `Charts`, `Shapes` | Preserve; create/edit chart types already rendered | P2 | Preview + OOXML |
+| Charts | `Charts`, `Shapes` | Preserve; create/edit chart types already rendered | Done (authoring column/bar/line/pie/area with title/legend/categories ref/series literal-or-ref names + values_ref; preserves richer existing chart XML) | Rust API + save/reopen |
 | Images | `Shapes.Picture`, shape collection | Insert image, position, size, crop/rotation later | P2 | Preview + OOXML |
 | Shapes | `Shapes.ShapeCollection` | Preserve first; author basic shape/text later | P2 | Preview + OOXML |
 | Sparklines | `Sparklines` APIs | Preserve; author simple line/column/win-loss later | P2 | Renderer screenshot |
@@ -261,6 +264,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `invalid_page_setup` | Page setup patch has an out-of-range scale, zero copies, or a negative/non-finite margin |
 | `invalid_auto_filter` | Auto-filter column patch references a non-existent filter, an out-of-range column offset, or an empty/unsupported criteria shape |
 | `invalid_conditional_format` | Conditional format rule patch is missing required formula/operator/text for the rule kind, or has a non-positive priority |
+| `invalid_chart` | Chart patch has no series, or a series `values_ref` is empty |
 | `unsupported_formula` | Formula could not be evaluated; source/cache preserved where possible |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |

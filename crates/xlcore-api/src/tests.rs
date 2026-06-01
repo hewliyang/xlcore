@@ -2875,3 +2875,115 @@ fn batch_restores_prior_warnings_buffer() {
     assert_eq!(workbook.warnings().len(), 1);
     assert_eq!(workbook.warnings()[0].message, "outer");
 }
+
+#[test]
+fn charts_create_list_remove_roundtrip() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A1", "Region").unwrap();
+    wb.set_value("Sheet1!B1", "Units").unwrap();
+    wb.set_value("Sheet1!A2", "North").unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!A3", "South").unwrap();
+    wb.set_value("Sheet1!B3", 20.0).unwrap();
+    wb.set_value("Sheet1!A4", "East").unwrap();
+    wb.set_value("Sheet1!B4", 30.0).unwrap();
+
+    let info = wb
+        .set_chart(ChartPatch {
+            sheet: "Sheet1".to_string(),
+            name: Some("Sales".to_string()),
+            kind: ChartKind::Column,
+            title: Some("Units by Region".to_string()),
+            legend_position: Some(ChartLegendPosition::Bottom),
+            categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+            series: vec![ChartSeriesPatch {
+                name: None,
+                name_ref: Some("Sheet1!$B$1".to_string()),
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+            }],
+            anchor: ChartAnchor {
+                from_column: 3,
+                from_row: 1,
+                to_column: 10,
+                to_row: 16,
+                ..Default::default()
+            },
+        })
+        .unwrap();
+    assert_eq!(info.sheet, "Sheet1");
+    assert_eq!(info.kind, ChartKind::Column);
+    assert_eq!(info.name, "Sales");
+    assert!(!info.id.is_empty());
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    assert_eq!(charts.len(), 1);
+    let chart = &charts[0];
+    assert_eq!(chart.kind, ChartKind::Column);
+    assert_eq!(chart.sheet, "Sheet1");
+    assert_eq!(chart.title.as_deref(), Some("Units by Region"));
+    assert_eq!(chart.legend_position, Some(ChartLegendPosition::Bottom));
+    assert_eq!(chart.categories_ref.as_deref(), Some("Sheet1!$A$2:$A$4"));
+    assert_eq!(chart.series.len(), 1);
+    assert_eq!(chart.series[0].name_ref.as_deref(), Some("Sheet1!$B$1"));
+    assert_eq!(chart.series[0].values_ref, "Sheet1!$B$2:$B$4");
+    assert_eq!(chart.anchor.from_column, 3);
+    assert_eq!(chart.anchor.to_row, 16);
+
+    let removed = reopened
+        .remove_chart("Sheet1", &chart.id)
+        .unwrap()
+        .unwrap();
+    assert_eq!(removed.id, chart.id);
+    assert!(reopened.charts(None).unwrap().is_empty());
+
+    let bytes2 = reopened.save_bytes().unwrap();
+    let mut reopened2 = Workbook::open_bytes(bytes2).unwrap();
+    assert!(reopened2.charts(None).unwrap().is_empty());
+}
+
+#[test]
+fn charts_supports_multiple_kinds() {
+    let mut wb = Workbook::new().unwrap();
+    let patch = |kind: ChartKind| ChartPatch {
+        sheet: "Sheet1".to_string(),
+        name: None,
+        kind,
+        title: None,
+        legend_position: None,
+        categories_ref: None,
+        series: vec![ChartSeriesPatch {
+            name: Some("Series 1".to_string()),
+            name_ref: None,
+            values_ref: "Sheet1!$B$2:$B$4".to_string(),
+        }],
+        anchor: ChartAnchor {
+            from_column: 1,
+            from_row: 1,
+            to_column: 5,
+            to_row: 10,
+            ..Default::default()
+        },
+    };
+    for kind in [
+        ChartKind::Column,
+        ChartKind::Bar,
+        ChartKind::Line,
+        ChartKind::Pie,
+        ChartKind::Area,
+    ] {
+        let info = wb.set_chart(patch(kind)).unwrap();
+        assert_eq!(info.kind, kind);
+    }
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    assert_eq!(charts.len(), 5);
+    let kinds: Vec<ChartKind> = charts.iter().map(|c| c.kind).collect();
+    assert!(kinds.contains(&ChartKind::Column));
+    assert!(kinds.contains(&ChartKind::Bar));
+    assert!(kinds.contains(&ChartKind::Line));
+    assert!(kinds.contains(&ChartKind::Pie));
+    assert!(kinds.contains(&ChartKind::Area));
+}

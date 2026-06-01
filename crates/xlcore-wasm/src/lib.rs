@@ -638,6 +638,34 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
+    pub fn charts(&mut self, sheet: Option<String>) -> Result<JsValue, JsValue> {
+        let list = self
+            .workbook_mut()?
+            .charts(sheet.as_deref())
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setChart)]
+    pub fn set_chart(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::ChartPatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .set_chart(patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removeChart)]
+    pub fn remove_chart(&mut self, sheet: &str, id: &str) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .remove_chart(sheet, id)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = properties)]
     pub fn properties(&mut self) -> Result<JsValue, JsValue> {
         let props = self.workbook_mut()?.properties().map_err(api_err_to_js)?;

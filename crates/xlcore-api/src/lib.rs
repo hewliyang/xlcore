@@ -1,5 +1,6 @@
 mod auto_filter;
 mod cells;
+mod charts;
 mod comments;
 mod conditional_format;
 mod copyfill;
@@ -31,7 +32,8 @@ pub use xlcore_types::{
     AutoFilterColumnInfo, AutoFilterColumnPatch, AutoFilterCriteria, AutoFilterCustomCriterion,
     AutoFilterInfo, AutoFilterOperator, BorderLinePatch, BorderLineStyle, BorderPatch, CalcMode, CalcProperties,
     CalcPropertiesPatch, CellInfo, CfIconSetKind, CfOperator, CfRuleKind, CfValueObject,
-    CfValueObjectKind, ClearMode, ColorScalePatch, CommentInfo, CommentPatch,
+    CfValueObjectKind, ChartAnchor, ChartInfo, ChartKind, ChartLegendPosition, ChartPatch,
+    ChartSeriesInfo, ChartSeriesPatch, ClearMode, ColorScalePatch, CommentInfo, CommentPatch,
     ConditionalFormatRuleInfo, ConditionalFormatRulePatch, DataBarPatch, DataValidationErrorStyle,
     DataValidationInfo, DataValidationOperator, DataValidationPatch, DataValidationType,
     DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference, FillPatch, FontPatch,

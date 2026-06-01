@@ -22,6 +22,7 @@ export type ApiErrorCode =
   | "invalid_page_setup"
   | "invalid_auto_filter"
   | "invalid_conditional_format"
+  | "invalid_chart"
   | "unsupported_formula"
   | "unsupported_object"
   | "lossy_operation"

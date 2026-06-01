@@ -10,6 +10,8 @@ import type {
   CellInfo,
   CfOperator,
   CfRuleKind,
+  ChartInfo,
+  ChartPatch,
   ClearMode,
   CommentInfo,
   CommentPatch,
@@ -70,6 +72,13 @@ export type {
   CellInfo,
   CfOperator,
   CfRuleKind,
+  ChartAnchor,
+  ChartInfo,
+  ChartKind,
+  ChartLegendPosition,
+  ChartPatch,
+  ChartSeriesInfo,
+  ChartSeriesPatch,
   ClearMode,
   CommentInfo,
   CommentPatch,
@@ -363,6 +372,18 @@ export class Workbook {
 
   removeTable(name: string): TableInfo | null {
     return (this.handle.removeTable(name) as TableInfo | null) ?? null;
+  }
+
+  charts(sheet?: string | null): ChartInfo[] {
+    return this.handle.charts(sheet ?? null) as ChartInfo[];
+  }
+
+  setChart(patch: ChartPatch): ChartInfo {
+    return this.handle.setChart(patch) as ChartInfo;
+  }
+
+  removeChart(sheet: string, id: string): ChartInfo | null {
+    return (this.handle.removeChart(sheet, id) as ChartInfo | null) ?? null;
   }
 
   properties(): WorkbookProperties {

@@ -8,6 +8,7 @@ export class WorkbookHandle {
     addThreadedNote(reference: string, patch: any): any;
     autoFilter(sheet: string): any;
     calcProperties(): any;
+    charts(sheet?: string | null): any;
     clear(reference: string): any;
     clearConditionalFormats(reference: string): any;
     clearRange(reference: string): any;
@@ -43,6 +44,7 @@ export class WorkbookHandle {
     recalculate(): any;
     removeAutoFilter(sheet: string): any;
     removeAutoFilterColumn(sheet: string, column_offset: number): any;
+    removeChart(sheet: string, id: string): any;
     removeComment(reference: string): any;
     removeDataValidation(reference: string): any;
     removeDefinedName(name: string, scope?: string | null): any;
@@ -61,6 +63,7 @@ export class WorkbookHandle {
     setAutoFilter(reference: string): any;
     setAutoFilterColumn(sheet: string, patch: any): any;
     setCalcProperties(patch: any): any;
+    setChart(patch: any): any;
     setColumnVisible(sheet: string, column: number, visible: boolean): void;
     setColumnWidth(sheet: string, column: number, width: number): void;
     setComment(reference: string, patch: any): any;
@@ -112,6 +115,7 @@ export interface InitOutput {
     readonly workbookhandle_addThreadedNote: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_autoFilter: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_calcProperties: (a: number, b: number) => void;
+    readonly workbookhandle_charts: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_clear: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_clearConditionalFormats: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_clearRange: (a: number, b: number, c: number, d: number) => void;
@@ -147,6 +151,7 @@ export interface InitOutput {
     readonly workbookhandle_recalculate: (a: number, b: number) => void;
     readonly workbookhandle_removeAutoFilter: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeAutoFilterColumn: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly workbookhandle_removeChart: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_removeComment: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeDataValidation: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
@@ -165,6 +170,7 @@ export interface InitOutput {
     readonly workbookhandle_setAutoFilter: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_setAutoFilterColumn: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setCalcProperties: (a: number, b: number, c: number) => void;
+    readonly workbookhandle_setChart: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setColumnVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setColumnWidth: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setComment: (a: number, b: number, c: number, d: number, e: number) => void;
