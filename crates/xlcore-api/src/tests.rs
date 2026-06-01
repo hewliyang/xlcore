@@ -3358,3 +3358,82 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
     });
     assert!(bad_color.is_err());
 }
+
+const PNG_1X1: &[u8] = &[
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+    0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+    0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+];
+
+#[test]
+fn images_create_list_remove_roundtrip() {
+    let mut wb = Workbook::new().unwrap();
+    let info = wb
+        .set_image(ImagePatch {
+            sheet: "Sheet1".to_string(),
+            name: Some("Logo".to_string()),
+            anchor: ChartAnchor {
+                from_column: 1,
+                from_row: 1,
+                to_column: 5,
+                to_row: 10,
+                ..Default::default()
+            },
+            bytes: PNG_1X1.to_vec(),
+            format: None,
+        })
+        .unwrap();
+    assert_eq!(info.sheet, "Sheet1");
+    assert_eq!(info.name, "Logo");
+    assert_eq!(info.format, ImageFormat::Png);
+    assert_eq!(info.byte_len as usize, PNG_1X1.len());
+    assert!(!info.id.is_empty());
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let images = reopened.images(None).unwrap();
+    assert_eq!(images.len(), 1);
+    assert_eq!(images[0].format, ImageFormat::Png);
+    assert_eq!(images[0].name, "Logo");
+    assert_eq!(images[0].anchor.from_column, 1);
+    assert_eq!(images[0].anchor.to_row, 10);
+    assert_eq!(images[0].byte_len as usize, PNG_1X1.len());
+
+    let id = images[0].id.clone();
+    let removed = reopened.remove_image("Sheet1", &id).unwrap().unwrap();
+    assert_eq!(removed.id, id);
+    assert!(reopened.images(None).unwrap().is_empty());
+
+    let bytes2 = reopened.save_bytes().unwrap();
+    let mut reopened2 = Workbook::open_bytes(bytes2).unwrap();
+    assert!(reopened2.images(None).unwrap().is_empty());
+}
+
+#[test]
+fn images_rejects_empty_bytes_and_unknown_format() {
+    let mut wb = Workbook::new().unwrap();
+    let err = wb
+        .set_image(ImagePatch {
+            sheet: "Sheet1".to_string(),
+            name: None,
+            anchor: ChartAnchor::default(),
+            bytes: Vec::new(),
+            format: None,
+        })
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidImage);
+
+    let err = wb
+        .set_image(ImagePatch {
+            sheet: "Sheet1".to_string(),
+            name: None,
+            anchor: ChartAnchor::default(),
+            bytes: b"not an image".to_vec(),
+            format: None,
+        })
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidImage);
+}

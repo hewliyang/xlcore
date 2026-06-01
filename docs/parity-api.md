@@ -153,7 +153,7 @@ Status key:
 | Data validation | `DataValidation` APIs | Add/edit/delete/list list and scalar validations | Done | Rust API + save/reopen |
 | Conditional formatting | `ConditionalFormatting` APIs | Preserve existing; author basic rules once style writes exist | Done (cellIs/expression/text/blanks/errors/top10/aboveAverage/duplicate/unique rules + dxf font/fill/border/numFmt/alignment authoring; 2/3-stop color scales, min/max data bars, 3/4/5-icon icon sets with cfvo round-trip; extLst x14 extensions still preserve-only) | Rust API + save/reopen |
 | Charts | `Charts`, `Shapes` | Preserve; create/edit chart types already rendered | Done (authoring column/bar/line/pie/area/scatter/bubble/doughnut with title/legend/categories ref/series literal-or-ref names + values_ref; scatter/bubble take xValuesRef + yVal; bubble takes bubbleSizesRef; per-series solid `color` (`RRGGBB`); `categoryAxisTitle`/`valueAxisTitle`; preserves richer existing chart XML) | Rust API + save/reopen |
-| Images | `Shapes.Picture`, shape collection | Insert image, position, size, crop/rotation later | P2 | Preview + OOXML |
+| Images | `Shapes.Picture`, shape collection | Insert image, position, size, crop/rotation later | Done (insert/list/remove PNG/JPEG/GIF/BMP/TIFF/WEBP/SVG with two-cell anchor; sniff or explicit `format`; crop/rotation still preserve-only) | Rust API + save/reopen |
 | Shapes | `Shapes.ShapeCollection` | Preserve first; author basic shape/text later | P2 | Preview + OOXML |
 | Sparklines | `Sparklines` APIs | Preserve; author simple line/column/win-loss later | P2 | Renderer screenshot |
 | Pivot tables | `PivotTableManager`, slicers/timelines | Preserve; refresh/create only after aggregation model exists | P2 | OOXML + Excel open |
@@ -274,6 +274,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `invalid_auto_filter` | Auto-filter column patch references a non-existent filter, an out-of-range column offset, or an empty/unsupported criteria shape |
 | `invalid_conditional_format` | Conditional format rule patch is missing required formula/operator/text for the rule kind, or has a non-positive priority |
 | `invalid_chart` | Chart patch has no series, or a series `values_ref` is empty |
+| `invalid_image` | Image patch has empty bytes or an unrecognized format that wasn't explicitly specified |
 | `unsupported_formula` | Formula could not be evaluated; source/cache preserved where possible |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |

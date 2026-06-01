@@ -28,6 +28,9 @@ import type {
   FreezeInfo,
   HyperlinkInfo,
   HyperlinkPatch,
+  ImageFormat,
+  ImageInfo,
+  ImagePatch,
   LayoutOptions as WorkbookLayoutOptions,
   MergeInfo,
   RangeInfo,
@@ -103,6 +106,9 @@ export type {
   HorizontalAlign,
   HyperlinkInfo,
   HyperlinkPatch,
+  ImageFormat,
+  ImageInfo,
+  ImagePatch,
   LayoutOptions as WorkbookLayoutOptions,
   MergeInfo,
   RangeInfo,
@@ -384,6 +390,18 @@ export class Workbook {
 
   removeChart(sheet: string, id: string): ChartInfo | null {
     return (this.handle.removeChart(sheet, id) as ChartInfo | null) ?? null;
+  }
+
+  images(sheet?: string | null): ImageInfo[] {
+    return this.handle.images(sheet ?? null) as ImageInfo[];
+  }
+
+  setImage(patch: ImagePatch): ImageInfo {
+    return this.handle.setImage(patch) as ImageInfo;
+  }
+
+  removeImage(sheet: string, id: string): ImageInfo | null {
+    return (this.handle.removeImage(sheet, id) as ImageInfo | null) ?? null;
   }
 
   properties(): WorkbookProperties {

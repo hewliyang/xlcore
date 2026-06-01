@@ -666,6 +666,34 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
+    pub fn images(&mut self, sheet: Option<String>) -> Result<JsValue, JsValue> {
+        let list = self
+            .workbook_mut()?
+            .images(sheet.as_deref())
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setImage)]
+    pub fn set_image(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::ImagePatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .set_image(patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removeImage)]
+    pub fn remove_image(&mut self, sheet: &str, id: &str) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .remove_image(sheet, id)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = properties)]
     pub fn properties(&mut self) -> Result<JsValue, JsValue> {
         let props = self.workbook_mut()?.properties().map_err(api_err_to_js)?;

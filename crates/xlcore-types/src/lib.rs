@@ -30,6 +30,7 @@ pub enum ApiErrorCode {
     InvalidAutoFilter,
     InvalidConditionalFormat,
     InvalidChart,
+    InvalidImage,
     UnsupportedFormula,
     UnsupportedObject,
     LossyOperation,
@@ -2503,6 +2504,110 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stacking: Option<ChartStacking>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "snake_case")]
+pub enum ImageFormat {
+    Png,
+    Jpeg,
+    Gif,
+    Bmp,
+    Tiff,
+    Webp,
+    Svg,
+}
+
+impl ImageFormat {
+    pub fn content_type(self) -> &'static str {
+        match self {
+            ImageFormat::Png => "image/png",
+            ImageFormat::Jpeg => "image/jpeg",
+            ImageFormat::Gif => "image/gif",
+            ImageFormat::Bmp => "image/bmp",
+            ImageFormat::Tiff => "image/tiff",
+            ImageFormat::Webp => "image/webp",
+            ImageFormat::Svg => "image/svg+xml",
+        }
+    }
+
+    pub fn extension(self) -> &'static str {
+        match self {
+            ImageFormat::Png => "png",
+            ImageFormat::Jpeg => "jpeg",
+            ImageFormat::Gif => "gif",
+            ImageFormat::Bmp => "bmp",
+            ImageFormat::Tiff => "tiff",
+            ImageFormat::Webp => "webp",
+            ImageFormat::Svg => "svg",
+        }
+    }
+
+    pub fn sniff(bytes: &[u8]) -> Option<Self> {
+        if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]) {
+            Some(ImageFormat::Png)
+        } else if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+            Some(ImageFormat::Jpeg)
+        } else if bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a") {
+            Some(ImageFormat::Gif)
+        } else if bytes.starts_with(b"BM") {
+            Some(ImageFormat::Bmp)
+        } else if bytes.starts_with(&[0x49, 0x49, 0x2A, 0x00])
+            || bytes.starts_with(&[0x4D, 0x4D, 0x00, 0x2A])
+        {
+            Some(ImageFormat::Tiff)
+        } else if bytes.len() >= 12
+            && &bytes[0..4] == b"RIFF"
+            && &bytes[8..12] == b"WEBP"
+        {
+            Some(ImageFormat::Webp)
+        } else if bytes.starts_with(b"<?xml") || bytes.starts_with(b"<svg") {
+            Some(ImageFormat::Svg)
+        } else {
+            None
+        }
+    }
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ImagePatch {
+    pub sheet: String,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub anchor: ChartAnchor,
+    #[cfg_attr(feature = "typescript", ts(type = "Uint8Array | number[]"))]
+    pub bytes: Vec<u8>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub format: Option<ImageFormat>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageInfo {
+    pub sheet: String,
+    pub id: String,
+    pub name: String,
+    pub anchor: ChartAnchor,
+    pub format: ImageFormat,
+    pub byte_len: u64,
 }
 
 fn parse_a1(reference: &str) -> Option<(u32, u32)> {

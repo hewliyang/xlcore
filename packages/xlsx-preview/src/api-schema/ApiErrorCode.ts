@@ -23,6 +23,7 @@ export type ApiErrorCode =
   | "invalid_auto_filter"
   | "invalid_conditional_format"
   | "invalid_chart"
+  | "invalid_image"
   | "unsupported_formula"
   | "unsupported_object"
   | "lossy_operation"

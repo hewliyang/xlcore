@@ -9,6 +9,7 @@ mod defined_names;
 mod dependencies;
 mod errors;
 mod hyperlinks;
+mod images;
 mod merges;
 mod page_setup;
 mod properties;
@@ -40,7 +41,8 @@ pub use xlcore_types::{
     DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference, FillPatch, FontPatch,
     FreezeInfo,
     HeaderFooterInfo, HeaderFooterPatch,
-    HorizontalAlign, HyperlinkInfo, HyperlinkPatch, IconSetPatch, LayoutOptions, MergeInfo,
+    HorizontalAlign, HyperlinkInfo, HyperlinkPatch, IconSetPatch, ImageFormat, ImageInfo,
+    ImagePatch, LayoutOptions, MergeInfo,
     PageMarginsInfo, PageMarginsPatch, PageOrder, PageOrientation, PageSetupSettings,
     PageSetupSettingsPatch, PrintCellComments, PrintErrors, PrintOptionsInfo, PrintOptionsPatch,
     RangeInfo, SearchHit,
