@@ -172,6 +172,24 @@ if (freeze.frozenRows !== 1 || freeze.frozenColumns !== 2) {
 
 workbook.setDefinedName({ name: "TaxRate", formula: "Sheet1!$B$1" });
 workbook.setDefinedName({ name: "LocalRange", formula: "$A$1:$B$5", scope: "Inputs" });
+
+workbook.setValue("Outputs!A1", "Region");
+workbook.setValue("Outputs!B1", "Units");
+workbook.setValue("Outputs!A2", "North");
+workbook.setValue("Outputs!B2", 10);
+workbook.setValue("Outputs!A3", "South");
+workbook.setValue("Outputs!B3", 20);
+const createdTable = workbook.setTable({
+  name: "Sales",
+  reference: "Outputs!A1:B3",
+  style: { name: "TableStyleMedium2", showRowStripes: true },
+});
+if (createdTable.columns.length !== 2 || createdTable.columns[0].name !== "Region") {
+  throw new Error("unexpected setTable result: " + JSON.stringify(createdTable));
+}
+if (workbook.tables("Outputs").length !== 1) {
+  throw new Error("expected one table on Outputs");
+}
 const names = workbook.definedNames();
 if (names.length !== 2 || !names.some((n) => n.name === "LocalRange" && n.scope === "Inputs")) {
   throw new Error("unexpected definedNames: " + JSON.stringify(names));
@@ -233,5 +251,6 @@ console.log(
     merges: reopenedMerges.length,
     active: reopenedActive?.name,
     definedNames: reopened.definedNames().length,
+    tables: reopened.tables(null).length,
   }),
 );

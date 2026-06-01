@@ -15,5 +15,7 @@ export type ApiErrorCode =
   | "invalid_search_query"
   | "invalid_defined_name"
   | "invalid_property"
+  | "invalid_table"
+  | "duplicate_table"
   | "ooxml_write_error"
   | "other";

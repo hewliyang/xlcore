@@ -16,6 +16,7 @@ mod search;
 mod sheets;
 mod structural;
 mod styles;
+mod tables;
 mod xml;
 
 use std::path::Path;
@@ -29,7 +30,9 @@ pub use xlcore_types::{
     FreezeInfo,
     HorizontalAlign, HyperlinkInfo, HyperlinkPatch, LayoutOptions, MergeInfo, RangeInfo, SearchHit,
     SearchMatch, SearchMode, SearchOptions, SearchTarget, SheetInfo, SheetVisibility, StylePatch,
-    UnderlinePatch, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,
+    TableColumnInfo, TableColumnPatch, TableInfo, TablePatch, TableStylePatch, TableStyleSettings,
+    TableTotalsFunction, UnderlinePatch, VerticalAlign, WorkbookProperties,
+    WorkbookPropertiesPatch,
 };
 
 use crate::errors::{anyhow_err_to_api, load_err_to_api};

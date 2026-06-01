@@ -43,6 +43,7 @@ export class WorkbookHandle {
     removeDefinedName(name: string, scope?: string | null): any;
     removeHyperlink(reference: string): any;
     removeMerge(reference: string): any;
+    removeTable(name: string): any;
     renameSheet(old_name: string, new_name: string): void;
     save(): Uint8Array;
     search(query: string, options: any): any;
@@ -64,8 +65,10 @@ export class WorkbookHandle {
     setRowVisible(sheet: string, row: number, visible: boolean): void;
     setSheetVisibility(name: string, visibility: string): any;
     setStyle(reference: string, patch: any): any;
+    setTable(patch: any): any;
     setValue(reference: string, value: any): any;
     sheets(): any;
+    tables(sheet?: string | null): any;
 }
 
 export function extractXlsxJson(bytes: Uint8Array, options: any): string;
@@ -124,6 +127,7 @@ export interface InitOutput {
     readonly workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_removeHyperlink: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeMerge: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_removeTable: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_renameSheet: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_save: (a: number, b: number) => void;
     readonly workbookhandle_search: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -145,8 +149,10 @@ export interface InitOutput {
     readonly workbookhandle_setRowVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setSheetVisibility: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setStyle: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly workbookhandle_setTable: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setValue: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_sheets: (a: number, b: number) => void;
+    readonly workbookhandle_tables: (a: number, b: number, c: number, d: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_export3: (a: number) => void;

@@ -82,7 +82,7 @@ Status key:
 | Defined names | `Workbook.names`, `NameInfo` | List/create/update/delete workbook and sheet names | Done (engine resolution still missing) | Rust API + TS smoke |
 | Comments/notes | `Comments.CommentManager` | Add/edit/delete/list comments and threaded notes when present | Done (classic comments; threaded notes later) | Rust API + save/reopen |
 | Hyperlinks | Worksheet hyperlink APIs | Add/edit/delete/list cell hyperlinks | Done | Rust API + save/reopen |
-| Tables | `Tables.TableManager`, `Table` | Create table from range, headers/totals, resize, style name | P1/P2 | Excel/hsx + renderer |
+| Tables | `Tables.TableManager`, `Table` | Create table from range, headers/totals, resize, style name | Done | Rust API + save/reopen |
 | AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | Done (range author/read/remove; filter criteria later) | Rust API + smoke |
 | Data validation | `DataValidation` APIs | Add/edit/delete/list list and scalar validations | Done | Rust API + save/reopen |
 | Conditional formatting | `ConditionalFormatting` APIs | Preserve existing; author basic rules once style writes exist | P2 | Renderer screenshot |
@@ -200,6 +200,8 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `invalid_data_validation` | Data validation patch is missing required formulas/operator or mixes incompatible fields |
 | `invalid_defined_name` | Defined name violates Excel naming rules or has empty formula |
 | `invalid_property` | Workbook property patch has an unparseable value (e.g. non-ISO timestamp) |
+| `invalid_table` | Table patch is missing a range when creating, has an invalid name, overlaps an existing table, or uses incompatible geometry |
+| `duplicate_table` | Reserved for future use; table upsert currently treats duplicate names as updates |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |
 | `ooxml_write_error` | Writer could not serialize a valid workbook |

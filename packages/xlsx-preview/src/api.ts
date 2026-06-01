@@ -26,6 +26,8 @@ import type {
   SheetInfo,
   SheetVisibility,
   StylePatch,
+  TableInfo,
+  TablePatch,
   WorkbookProperties,
   WorkbookPropertiesPatch,
 } from "./api-schema/index.js";
@@ -79,6 +81,13 @@ export type {
   SheetInfo,
   SheetVisibility,
   StylePatch,
+  TableColumnInfo,
+  TableColumnPatch,
+  TableInfo,
+  TablePatch,
+  TableStylePatch,
+  TableStyleSettings,
+  TableTotalsFunction,
   UnderlinePatch,
   VerticalAlign,
   WorkbookProperties,
@@ -247,6 +256,18 @@ export class Workbook {
 
   removeDefinedName(name: string, scope?: string | null): DefinedNameInfo | null {
     return (this.handle.removeDefinedName(name, scope ?? null) as DefinedNameInfo | null) ?? null;
+  }
+
+  tables(sheet?: string | null): TableInfo[] {
+    return this.handle.tables(sheet ?? null) as TableInfo[];
+  }
+
+  setTable(patch: TablePatch): TableInfo {
+    return this.handle.setTable(patch) as TableInfo;
+  }
+
+  removeTable(name: string): TableInfo | null {
+    return (this.handle.removeTable(name) as TableInfo | null) ?? null;
   }
 
   properties(): WorkbookProperties {
