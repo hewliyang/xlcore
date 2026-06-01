@@ -1,63 +1,50 @@
 import init, { WorkbookHandle as WasmWorkbookHandle } from "./xlcore_wasm.js";
+import {
+  CalcPropertiesApi,
+  DefinedNamesCollection,
+  WorkbookCharts,
+  WorkbookImages,
+  WorkbookPropertiesApi,
+  WorkbookProtection,
+  WorkbookSparklineGroups,
+  WorkbookTables,
+} from "./api-collections.js";
+import { Worksheet } from "./api-worksheet.js";
 import type {
-  ApiCellValue,
   ApiWarning,
-  AutoFilterColumnInfo,
-  AutoFilterColumnPatch,
-  AutoFilterInfo,
-  CalcProperties,
-  CalcPropertiesPatch,
-  CellInfo,
-  CfOperator,
-  CfRuleKind,
-  ChartInfo,
-  ChartPatch,
-  ClearMode,
-  CommentInfo,
-  CommentPatch,
-  ConditionalFormatRuleInfo,
-  ConditionalFormatRulePatch,
-  DataValidationInfo,
-  DataValidationPatch,
-  ThreadedNoteInfo,
-  ThreadedNotePatch,
-  DefinedNameInfo,
-  DefinedNamePatch,
-  DependencyInfo,
-  DependencyReference,
-  FreezeInfo,
-  HyperlinkInfo,
-  HyperlinkPatch,
-  ImageFormat,
-  ImageInfo,
-  ImagePatch,
   LayoutOptions as WorkbookLayoutOptions,
-  MergeInfo,
-  RangeInfo,
   RecalcWorkbook,
   SearchMatch,
   SearchOptions,
   SheetInfo,
-  SheetPageSetup,
-  SheetPageSetupPatch,
-  SheetVisibility,
-  SheetProtectionInfo,
-  SheetProtectionPatch,
-  SparklineAxisType,
-  SparklineDisplayBlanks,
-  SparklineEntry,
-  SparklineGroupInfo,
-  SparklineGroupPatch,
-  SparklineKind,
-  StylePatch,
-  TableInfo,
-  TablePatch,
-  WorkbookProperties,
-  WorkbookPropertiesPatch,
-  WorkbookProtectionInfo,
-  WorkbookProtectionPatch,
 } from "./api-schema/index.js";
 import type { WorkbookLayout } from "./types.js";
+
+export { Cell, Range } from "./api-range.js";
+export { Worksheet } from "./api-worksheet.js";
+export {
+  AutoFilterApi,
+  CalcPropertiesApi,
+  ChartCollection,
+  CommentCollection,
+  ConditionalFormatCollection,
+  DataValidationCollection,
+  DefinedNamesCollection,
+  HyperlinkCollection,
+  ImageCollection,
+  MergeCollection,
+  SparklineGroupCollection,
+  TableCollection,
+  ThreadedNotesCollection,
+  WorkbookCharts,
+  WorkbookImages,
+  WorkbookPropertiesApi,
+  WorkbookProtection,
+  WorkbookSparklineGroups,
+  WorkbookTables,
+} from "./api-collections.js";
+export { SheetFreeze, SheetPageSetupApi, SheetProtection } from "./api-worksheet.js";
+export type { CellAddress, RangeAddress } from "./api-refs.js";
 
 export type {
   AlignmentPatch,
@@ -174,7 +161,7 @@ export interface WorkbookApiOptions {
   wasmBinaryUrl?: string | URL | RequestInfo | BufferSource | WebAssembly.Module;
 }
 
-export type CellInput = string | number | boolean | null | ApiCellValue;
+export type { CellInput } from "./api-range.js";
 
 export class Workbook {
   static async create(options: WorkbookApiOptions = {}): Promise<Workbook> {
@@ -190,10 +177,56 @@ export class Workbook {
     return new Workbook(WasmWorkbookHandle.open(toUint8Array(bytes)));
   }
 
-  private constructor(private handle: WasmWorkbookHandle) {}
+  readonly definedNames: DefinedNamesCollection;
+  readonly allTables: WorkbookTables;
+  readonly allCharts: WorkbookCharts;
+  readonly allImages: WorkbookImages;
+  readonly allSparklineGroups: WorkbookSparklineGroups;
+  readonly properties: WorkbookPropertiesApi;
+  readonly calcProperties: CalcPropertiesApi;
+  readonly protection: WorkbookProtection;
 
-  sheets(): SheetInfo[] {
-    return this.handle.sheets() as SheetInfo[];
+  private constructor(private handle: WasmWorkbookHandle) {
+    this.definedNames = new DefinedNamesCollection(handle);
+    this.allTables = new WorkbookTables(handle);
+    this.allCharts = new WorkbookCharts(handle);
+    this.allImages = new WorkbookImages(handle);
+    this.allSparklineGroups = new WorkbookSparklineGroups(handle);
+    this.properties = new WorkbookPropertiesApi(handle);
+    this.calcProperties = new CalcPropertiesApi(handle);
+    this.protection = new WorkbookProtection(handle);
+  }
+
+  sheet(name: string): Worksheet {
+    const exists = (this.handle.sheets() as SheetInfo[]).some((s) => s.name === name);
+    if (!exists) {
+      throw new Error(`worksheet '${name}' does not exist`);
+    }
+    return new Worksheet(this.handle, name);
+  }
+
+  worksheets(): Worksheet[] {
+    return (this.handle.sheets() as SheetInfo[]).map(
+      (s) => new Worksheet(this.handle, s.name),
+    );
+  }
+
+  activeSheet(): Worksheet {
+    const infos = this.handle.sheets() as SheetInfo[];
+    const active = infos.find((s) => s.active) ?? infos[0];
+    if (!active) {
+      throw new Error("workbook has no sheets");
+    }
+    return new Worksheet(this.handle, active.name);
+  }
+
+  addSheet(name: string): Worksheet {
+    this.handle.createSheet(name);
+    return new Worksheet(this.handle, name);
+  }
+
+  removeSheet(name: string): void {
+    this.handle.deleteSheet(name);
   }
 
   warnings(): ApiWarning[] {
@@ -202,346 +235,6 @@ export class Workbook {
 
   takeWarnings(): ApiWarning[] {
     return this.handle.takeWarnings() as ApiWarning[];
-  }
-
-  getCell(reference: string): CellInfo {
-    return this.handle.getCell(reference) as CellInfo;
-  }
-
-  setValue(reference: string, value: CellInput): CellInfo {
-    return this.handle.setValue(reference, value) as CellInfo;
-  }
-
-  setFormula(reference: string, formula: string): CellInfo {
-    return this.handle.setFormula(reference, formula) as CellInfo;
-  }
-
-  clear(reference: string, mode?: ClearMode): CellInfo {
-    if (mode === undefined) {
-      return this.handle.clear(reference) as CellInfo;
-    }
-    return this.handle.clearWith(reference, mode) as CellInfo;
-  }
-
-  getRange(reference: string): RangeInfo {
-    return this.handle.getRange(reference) as RangeInfo;
-  }
-
-  setRangeValues(reference: string, values: CellInput[][]): RangeInfo {
-    return this.handle.setRangeValues(reference, values) as RangeInfo;
-  }
-
-  setRangeFormulas(reference: string, formulas: Array<Array<string | null>>): RangeInfo {
-    return this.handle.setRangeFormulas(reference, formulas) as RangeInfo;
-  }
-
-  dependencies(reference: string): DependencyInfo {
-    return this.handle.dependencies(reference) as DependencyInfo;
-  }
-
-  precedents(reference: string): DependencyReference[] {
-    return this.handle.precedents(reference) as DependencyReference[];
-  }
-
-  dependents(reference: string): DependencyReference[] {
-    return this.handle.dependents(reference) as DependencyReference[];
-  }
-
-  setStyle(reference: string, patch: StylePatch): RangeInfo {
-    return this.handle.setStyle(reference, patch) as RangeInfo;
-  }
-
-  copyRange(sourceReference: string, destinationReference: string): RangeInfo {
-    return this.handle.copyRange(sourceReference, destinationReference) as RangeInfo;
-  }
-
-  fillRange(sourceReference: string, destinationReference: string): RangeInfo {
-    return this.handle.fillRange(sourceReference, destinationReference) as RangeInfo;
-  }
-
-  clearRange(reference: string, mode?: ClearMode): RangeInfo {
-    if (mode === undefined) {
-      return this.handle.clearRange(reference) as RangeInfo;
-    }
-    return this.handle.clearRangeWith(reference, mode) as RangeInfo;
-  }
-
-  merges(sheet: string): MergeInfo[] {
-    return this.handle.merges(sheet) as MergeInfo[];
-  }
-
-  addMerge(reference: string): MergeInfo {
-    return this.handle.addMerge(reference) as MergeInfo;
-  }
-
-  removeMerge(reference: string): MergeInfo | null {
-    return (this.handle.removeMerge(reference) as MergeInfo | null) ?? null;
-  }
-
-  hyperlinks(sheet: string): HyperlinkInfo[] {
-    return this.handle.hyperlinks(sheet) as HyperlinkInfo[];
-  }
-
-  setHyperlink(reference: string, patch: HyperlinkPatch): HyperlinkInfo {
-    return this.handle.setHyperlink(reference, patch) as HyperlinkInfo;
-  }
-
-  removeHyperlink(reference: string): HyperlinkInfo[] {
-    return this.handle.removeHyperlink(reference) as HyperlinkInfo[];
-  }
-
-  autoFilter(sheet: string): AutoFilterInfo | null {
-    return (this.handle.autoFilter(sheet) as AutoFilterInfo | null) ?? null;
-  }
-
-  setAutoFilter(reference: string): AutoFilterInfo {
-    return this.handle.setAutoFilter(reference) as AutoFilterInfo;
-  }
-
-  removeAutoFilter(sheet: string): AutoFilterInfo | null {
-    return (this.handle.removeAutoFilter(sheet) as AutoFilterInfo | null) ?? null;
-  }
-
-  setAutoFilterColumn(sheet: string, patch: AutoFilterColumnPatch): AutoFilterColumnInfo {
-    return this.handle.setAutoFilterColumn(sheet, patch) as AutoFilterColumnInfo;
-  }
-
-  removeAutoFilterColumn(sheet: string, columnOffset: number): AutoFilterColumnInfo | null {
-    return (
-      (this.handle.removeAutoFilterColumn(sheet, columnOffset) as AutoFilterColumnInfo | null) ??
-      null
-    );
-  }
-
-  comments(sheet: string): CommentInfo[] {
-    return this.handle.comments(sheet) as CommentInfo[];
-  }
-
-  setComment(reference: string, patch: CommentPatch): CommentInfo {
-    return this.handle.setComment(reference, patch) as CommentInfo;
-  }
-
-  removeComment(reference: string): CommentInfo[] {
-    return this.handle.removeComment(reference) as CommentInfo[];
-  }
-
-  threadedNotes(sheet: string): ThreadedNoteInfo[] {
-    return this.handle.threadedNotes(sheet) as ThreadedNoteInfo[];
-  }
-
-  addThreadedNote(reference: string, patch: ThreadedNotePatch): ThreadedNoteInfo {
-    return this.handle.addThreadedNote(reference, patch) as ThreadedNoteInfo;
-  }
-
-  replyThreadedNote(parentId: string, patch: ThreadedNotePatch): ThreadedNoteInfo {
-    return this.handle.replyThreadedNote(parentId, patch) as ThreadedNoteInfo;
-  }
-
-  removeThreadedThread(reference: string): ThreadedNoteInfo[] {
-    return this.handle.removeThreadedThread(reference) as ThreadedNoteInfo[];
-  }
-
-  dataValidations(sheet: string): DataValidationInfo[] {
-    return this.handle.dataValidations(sheet) as DataValidationInfo[];
-  }
-
-  setDataValidation(reference: string, patch: DataValidationPatch): DataValidationInfo {
-    return this.handle.setDataValidation(reference, patch) as DataValidationInfo;
-  }
-
-  removeDataValidation(reference: string): DataValidationInfo[] {
-    return this.handle.removeDataValidation(reference) as DataValidationInfo[];
-  }
-
-  conditionalFormats(sheet: string): ConditionalFormatRuleInfo[] {
-    return this.handle.conditionalFormats(sheet) as ConditionalFormatRuleInfo[];
-  }
-
-  setConditionalFormat(
-    reference: string,
-    patch: ConditionalFormatRulePatch,
-  ): ConditionalFormatRuleInfo {
-    return this.handle.setConditionalFormat(reference, patch) as ConditionalFormatRuleInfo;
-  }
-
-  clearConditionalFormats(reference: string): ConditionalFormatRuleInfo[] {
-    return this.handle.clearConditionalFormats(reference) as ConditionalFormatRuleInfo[];
-  }
-
-  definedNames(): DefinedNameInfo[] {
-    return this.handle.definedNames() as DefinedNameInfo[];
-  }
-
-  setDefinedName(patch: DefinedNamePatch): DefinedNameInfo {
-    return this.handle.setDefinedName(patch) as DefinedNameInfo;
-  }
-
-  removeDefinedName(name: string, scope?: string | null): DefinedNameInfo | null {
-    return (this.handle.removeDefinedName(name, scope ?? null) as DefinedNameInfo | null) ?? null;
-  }
-
-  tables(sheet?: string | null): TableInfo[] {
-    return this.handle.tables(sheet ?? null) as TableInfo[];
-  }
-
-  setTable(patch: TablePatch): TableInfo {
-    return this.handle.setTable(patch) as TableInfo;
-  }
-
-  removeTable(name: string): TableInfo | null {
-    return (this.handle.removeTable(name) as TableInfo | null) ?? null;
-  }
-
-  charts(sheet?: string | null): ChartInfo[] {
-    return this.handle.charts(sheet ?? null) as ChartInfo[];
-  }
-
-  setChart(patch: ChartPatch): ChartInfo {
-    return this.handle.setChart(patch) as ChartInfo;
-  }
-
-  removeChart(sheet: string, id: string): ChartInfo | null {
-    return (this.handle.removeChart(sheet, id) as ChartInfo | null) ?? null;
-  }
-
-  images(sheet?: string | null): ImageInfo[] {
-    return this.handle.images(sheet ?? null) as ImageInfo[];
-  }
-
-  setImage(patch: ImagePatch): ImageInfo {
-    return this.handle.setImage(patch) as ImageInfo;
-  }
-
-  removeImage(sheet: string, id: string): ImageInfo | null {
-    return (this.handle.removeImage(sheet, id) as ImageInfo | null) ?? null;
-  }
-
-  sparklineGroups(sheet?: string | null): SparklineGroupInfo[] {
-    return this.handle.sparklineGroups(sheet ?? null) as SparklineGroupInfo[];
-  }
-
-  setSparklineGroup(patch: SparklineGroupPatch): SparklineGroupInfo {
-    return this.handle.setSparklineGroup(patch) as SparklineGroupInfo;
-  }
-
-  removeSparklineGroup(sheet: string, id: string): SparklineGroupInfo | null {
-    return (this.handle.removeSparklineGroup(sheet, id) as SparklineGroupInfo | null) ?? null;
-  }
-
-  properties(): WorkbookProperties {
-    return this.handle.properties() as WorkbookProperties;
-  }
-
-  setProperties(patch: WorkbookPropertiesPatch): WorkbookProperties {
-    return this.handle.setProperties(patch) as WorkbookProperties;
-  }
-
-  calcProperties(): CalcProperties {
-    return this.handle.calcProperties() as CalcProperties;
-  }
-
-  setCalcProperties(patch: CalcPropertiesPatch): CalcProperties {
-    return this.handle.setCalcProperties(patch) as CalcProperties;
-  }
-
-  sheetProtection(sheet: string): SheetProtectionInfo | null {
-    return (this.handle.sheetProtection(sheet) as SheetProtectionInfo | null) ?? null;
-  }
-
-  setSheetProtection(sheet: string, patch: SheetProtectionPatch): SheetProtectionInfo {
-    return this.handle.setSheetProtection(sheet, patch) as SheetProtectionInfo;
-  }
-
-  removeSheetProtection(sheet: string): SheetProtectionInfo | null {
-    return (this.handle.removeSheetProtection(sheet) as SheetProtectionInfo | null) ?? null;
-  }
-
-  workbookProtection(): WorkbookProtectionInfo | null {
-    return (this.handle.workbookProtection() as WorkbookProtectionInfo | null) ?? null;
-  }
-
-  setWorkbookProtection(patch: WorkbookProtectionPatch): WorkbookProtectionInfo {
-    return this.handle.setWorkbookProtection(patch) as WorkbookProtectionInfo;
-  }
-
-  removeWorkbookProtection(): WorkbookProtectionInfo | null {
-    return (this.handle.removeWorkbookProtection() as WorkbookProtectionInfo | null) ?? null;
-  }
-
-  pageSetup(sheet: string): SheetPageSetup {
-    return this.handle.pageSetup(sheet) as SheetPageSetup;
-  }
-
-  setPageSetup(sheet: string, patch: SheetPageSetupPatch): SheetPageSetup {
-    return this.handle.setPageSetup(sheet, patch) as SheetPageSetup;
-  }
-
-  removePageSetup(sheet: string): SheetPageSetup {
-    return this.handle.removePageSetup(sheet) as SheetPageSetup;
-  }
-
-  createSheet(name: string): SheetInfo {
-    return this.handle.createSheet(name) as SheetInfo;
-  }
-
-  renameSheet(oldName: string, newName: string): void {
-    this.handle.renameSheet(oldName, newName);
-  }
-
-  deleteSheet(name: string): void {
-    this.handle.deleteSheet(name);
-  }
-
-  moveSheet(name: string, toIndex: number): SheetInfo {
-    return this.handle.moveSheet(name, toIndex) as SheetInfo;
-  }
-
-  setSheetVisibility(name: string, visibility: SheetVisibility): SheetInfo {
-    return this.handle.setSheetVisibility(name, visibility) as SheetInfo;
-  }
-
-  setActiveSheet(name: string): SheetInfo {
-    return this.handle.setActiveSheet(name) as SheetInfo;
-  }
-
-  setRowHeight(sheet: string, row: number, height: number): void {
-    this.handle.setRowHeight(sheet, row, height);
-  }
-
-  setRowVisible(sheet: string, row: number, visible: boolean): void {
-    this.handle.setRowVisible(sheet, row, visible);
-  }
-
-  setColumnWidth(sheet: string, column: number, width: number): void {
-    this.handle.setColumnWidth(sheet, column, width);
-  }
-
-  setColumnVisible(sheet: string, column: number, visible: boolean): void {
-    this.handle.setColumnVisible(sheet, column, visible);
-  }
-
-  insertRows(sheet: string, before: number, count: number): void {
-    this.handle.insertRows(sheet, before, count);
-  }
-
-  deleteRows(sheet: string, start: number, count: number): void {
-    this.handle.deleteRows(sheet, start, count);
-  }
-
-  insertColumns(sheet: string, before: number, count: number): void {
-    this.handle.insertColumns(sheet, before, count);
-  }
-
-  deleteColumns(sheet: string, start: number, count: number): void {
-    this.handle.deleteColumns(sheet, start, count);
-  }
-
-  setFreeze(sheet: string, frozenRows: number, frozenColumns: number): FreezeInfo {
-    return this.handle.setFreeze(sheet, frozenRows, frozenColumns) as FreezeInfo;
-  }
-
-  getFreeze(sheet: string): FreezeInfo {
-    return this.handle.getFreeze(sheet) as FreezeInfo;
   }
 
   search(query: string, options: Partial<SearchOptions> = {}): SearchMatch[] {
@@ -586,3 +279,4 @@ function toUint8Array(bytes: ArrayBuffer | Uint8Array): Uint8Array {
   }
   return new Uint8Array(bytes);
 }
+

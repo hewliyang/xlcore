@@ -1,5 +1,30 @@
 export { render, buildGrid, HEADER_H, HEADER_W } from "./render.js";
-export { Workbook } from "./api.js";
+export {
+  AutoFilterApi,
+  Cell,
+  ChartCollection,
+  CommentCollection,
+  ConditionalFormatCollection,
+  DataValidationCollection,
+  DefinedNamesCollection,
+  HyperlinkCollection,
+  ImageCollection,
+  MergeCollection,
+  Range,
+  SheetFreeze,
+  SheetPageSetupApi,
+  SheetProtection,
+  SparklineGroupCollection,
+  TableCollection,
+  ThreadedNotesCollection,
+  Workbook,
+  WorkbookCharts,
+  WorkbookImages,
+  WorkbookSparklineGroups,
+  WorkbookTables,
+  Worksheet,
+} from "./api.js";
+export type { CellAddress, RangeAddress } from "./api.js";
 export { attachInteractivity } from "./interact.js";
 export { createWorkbookPreviewer } from "./previewer.js";
 export {
