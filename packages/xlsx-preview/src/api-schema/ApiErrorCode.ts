@@ -22,5 +22,8 @@ export type ApiErrorCode =
   | "invalid_page_setup"
   | "invalid_auto_filter"
   | "invalid_conditional_format"
+  | "unsupported_formula"
+  | "unsupported_object"
+  | "lossy_operation"
   | "ooxml_write_error"
   | "other";

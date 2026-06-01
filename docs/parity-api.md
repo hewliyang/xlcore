@@ -52,7 +52,11 @@ Known gaps:
   shipped through `xlcore-api`, with legacy `tc=<guid>`-authored classic
   comment shadow now mirrored into `xl/comments<n>.xml` so older Excel
   viewers see the thread. VML drawing indicators still not emitted.
-- Batch is a simple Rust closure, not a diagnostic/transaction envelope
+- Batch returns a diagnostic envelope (`BatchOutcome { value, warnings, error }`)
+  and a workbook-level warnings buffer is exposed via `warnings()` / `take_warnings()`
+  (Rust, WASM, TS). Real warning emitters (lossy normalizations, unsupported
+  formula/object surfaces) are added per-feature as needed; rollback/transactional
+  semantics are still out of scope.
 - Defined names round-trip, but engine-side resolution of structured/table
   refs and most modern function names is still missing (see
   `docs/parity-engine.md`)
@@ -145,7 +149,7 @@ Status key:
 | JSON import/export | `toJSON/fromJSON` | Optional xlcore JSON for app state, not SpreadJS-compatible by default | Later | Round-trip tests |
 | Undo/redo/commands | Command manager, undo manager | Optional command journal/replay log | Later | Unit tests |
 | Events/UI options | Events, context menu, scrollbars, hit testing | Out of scope unless needed by previewer harness | Later | Browser harness only |
-| Diagnostics | SpreadJS often throws or mutates silently | Stable `ApiError` and future batch diagnostics | Partial | Snapshot tests |
+| Diagnostics | SpreadJS often throws or mutates silently | Stable `ApiError`, `ApiWarning`, `BatchOutcome` envelope with workbook warnings buffer | Done (envelope + buffer; real emitters added per feature) | Rust unit tests + TS surface |
 | Browser harness | SpreadJS UI runtime | Minimal local page to mutate/recalc/render via TS wrapper | Done (`examples/xlsx-playground.html`, site `/playground`) | Playwright/screenshot |
 
 ## Target TypeScript Shape
@@ -255,13 +259,17 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `invalid_page_setup` | Page setup patch has an out-of-range scale, zero copies, or a negative/non-finite margin |
 | `invalid_auto_filter` | Auto-filter column patch references a non-existent filter, an out-of-range column offset, or an empty/unsupported criteria shape |
 | `invalid_conditional_format` | Conditional format rule patch is missing required formula/operator/text for the rule kind, or has a non-positive priority |
+| `unsupported_formula` | Formula could not be evaluated; source/cache preserved where possible |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |
 | `ooxml_write_error` | Writer could not serialize a valid workbook |
 
-Future batch calls should return all warnings plus the first fatal error. If we
-choose transactional semantics, the envelope must state whether mutations were
-committed or rolled back.
+`Workbook::batch` returns a `BatchOutcome<T> { value, warnings, error }`:
+warnings accumulated during the closure are always surfaced, and the first
+fatal error short-circuits but does not roll back already-applied mutations.
+Outside of `batch`, callers can collect ambient warnings with `warnings()` /
+`take_warnings()` (TS: `workbook.warnings()` / `workbook.takeWarnings()`).
+Transactional/rollback semantics remain out of scope.
 
 ## Definition Of Done
 

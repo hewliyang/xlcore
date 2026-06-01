@@ -1,6 +1,7 @@
 import init, { WorkbookHandle as WasmWorkbookHandle } from "./xlcore_wasm.js";
 import type {
   ApiCellValue,
+  ApiWarning,
   AutoFilterColumnInfo,
   AutoFilterColumnPatch,
   AutoFilterInfo,
@@ -53,6 +54,7 @@ export type {
   ApiError,
   ApiError as ApiErrorPayload,
   ApiErrorCode,
+  ApiWarning,
   AutoFilterColumnInfo,
   AutoFilterColumnPatch,
   AutoFilterCriteria,
@@ -165,6 +167,14 @@ export class Workbook {
 
   sheets(): SheetInfo[] {
     return this.handle.sheets() as SheetInfo[];
+  }
+
+  warnings(): ApiWarning[] {
+    return this.handle.warnings() as ApiWarning[];
+  }
+
+  takeWarnings(): ApiWarning[] {
+    return this.handle.takeWarnings() as ApiWarning[];
   }
 
   getCell(reference: string): CellInfo {

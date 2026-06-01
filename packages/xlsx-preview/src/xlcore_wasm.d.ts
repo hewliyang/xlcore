@@ -85,7 +85,9 @@ export class WorkbookHandle {
     sheetProtection(sheet: string): any;
     sheets(): any;
     tables(sheet?: string | null): any;
+    takeWarnings(): any;
     threadedNotes(sheet: string): any;
+    warnings(): any;
     workbookProtection(): any;
 }
 
@@ -187,7 +189,9 @@ export interface InitOutput {
     readonly workbookhandle_sheetProtection: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_sheets: (a: number, b: number) => void;
     readonly workbookhandle_tables: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_takeWarnings: (a: number, b: number) => void;
     readonly workbookhandle_threadedNotes: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_warnings: (a: number, b: number) => void;
     readonly workbookhandle_workbookProtection: (a: number, b: number) => void;
     readonly __wbindgen_export: (a: number, b: number) => number;
     readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;

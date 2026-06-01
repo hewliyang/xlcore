@@ -189,6 +189,18 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&sheets).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = warnings)]
+    pub fn warnings(&mut self) -> Result<JsValue, JsValue> {
+        let warnings = self.workbook_mut()?.warnings().to_vec();
+        serde_wasm_bindgen::to_value(&warnings).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = takeWarnings)]
+    pub fn take_warnings(&mut self) -> Result<JsValue, JsValue> {
+        let warnings = self.workbook_mut()?.take_warnings();
+        serde_wasm_bindgen::to_value(&warnings).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = getCell)]
     pub fn get_cell(&mut self, reference: &str) -> Result<JsValue, JsValue> {
         let cell = self

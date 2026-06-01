@@ -2,6 +2,7 @@ export type { AlignmentPatch } from "./AlignmentPatch.js";
 export type { ApiCellValue } from "./ApiCellValue.js";
 export type { ApiError } from "./ApiError.js";
 export type { ApiErrorCode } from "./ApiErrorCode.js";
+export type { ApiWarning } from "./ApiWarning.js";
 export type { AutoFilterColumnInfo } from "./AutoFilterColumnInfo.js";
 export type { AutoFilterColumnPatch } from "./AutoFilterColumnPatch.js";
 export type { AutoFilterCriteria } from "./AutoFilterCriteria.js";
