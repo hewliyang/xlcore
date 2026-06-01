@@ -1,6 +1,7 @@
 import init, { WorkbookHandle as WasmWorkbookHandle } from "./xlcore_wasm.js";
 import type {
   ApiCellValue,
+  AutoFilterInfo,
   CalcProperties,
   CalcPropertiesPatch,
   CellInfo,
@@ -34,6 +35,7 @@ export type {
   ApiError,
   ApiError as ApiErrorPayload,
   ApiErrorCode,
+  AutoFilterInfo,
   BorderLinePatch,
   BorderLineStyle,
   BorderPatch,
@@ -190,6 +192,18 @@ export class Workbook {
 
   removeHyperlink(reference: string): HyperlinkInfo[] {
     return this.handle.removeHyperlink(reference) as HyperlinkInfo[];
+  }
+
+  autoFilter(sheet: string): AutoFilterInfo | null {
+    return (this.handle.autoFilter(sheet) as AutoFilterInfo | null) ?? null;
+  }
+
+  setAutoFilter(reference: string): AutoFilterInfo {
+    return this.handle.setAutoFilter(reference) as AutoFilterInfo;
+  }
+
+  removeAutoFilter(sheet: string): AutoFilterInfo | null {
+    return (this.handle.removeAutoFilter(sheet) as AutoFilterInfo | null) ?? null;
   }
 
   comments(sheet: string): CommentInfo[] {

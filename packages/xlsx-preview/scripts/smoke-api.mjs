@@ -73,6 +73,18 @@ if (!shapeErr || shapeErr.code !== "shape_mismatch" || shapeErr.reference !== "A
 
 workbook.addMerge("Sheet1!A10:B11");
 workbook.addMerge("Sheet1!C10:D11");
+const af = workbook.setAutoFilter("Sheet1!A1:C5");
+if (af.reference !== "A1:C5") {
+  throw new Error("unexpected setAutoFilter result: " + JSON.stringify(af));
+}
+if (workbook.autoFilter("Sheet1")?.reference !== "A1:C5") {
+  throw new Error("unexpected autoFilter read");
+}
+workbook.removeAutoFilter("Sheet1");
+if (workbook.autoFilter("Sheet1") !== null) {
+  throw new Error("expected autoFilter null after remove");
+}
+workbook.setAutoFilter("Sheet1!A1:C5");
 let mergeOverlapErr;
 try {
   workbook.addMerge("Sheet1!B11:C12");

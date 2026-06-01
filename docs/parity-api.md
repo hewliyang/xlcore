@@ -83,7 +83,7 @@ Status key:
 | Comments/notes | `Comments.CommentManager` | Add/edit/delete/list comments and threaded notes when present | Done (classic comments; threaded notes later) | Rust API + save/reopen |
 | Hyperlinks | Worksheet hyperlink APIs | Add/edit/delete/list cell hyperlinks | Done | Rust API + save/reopen |
 | Tables | `Tables.TableManager`, `Table` | Create table from range, headers/totals, resize, style name | P1/P2 | Excel/hsx + renderer |
-| AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | P1/P2 | OOXML diff |
+| AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | Done (range author/read/remove; filter criteria later) | Rust API + smoke |
 | Data validation | `DataValidation` APIs | Add/edit/delete/list list and scalar validations | P1 | OOXML + Excel open |
 | Conditional formatting | `ConditionalFormatting` APIs | Preserve existing; author basic rules once style writes exist | P2 | Renderer screenshot |
 | Charts | `Charts`, `Shapes` | Preserve; create/edit chart types already rendered | P2 | Preview + OOXML |

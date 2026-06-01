@@ -1643,3 +1643,62 @@ fn comments_add_list_update_remove_and_round_trip() {
     let mut reopened2 = Workbook::open_bytes(bytes).unwrap();
     assert!(reopened2.comments("Sheet1").unwrap().is_empty());
 }
+
+#[test]
+fn auto_filter_set_get_remove_and_round_trip() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_range_values(
+        "Sheet1!A1:C1",
+        vec![vec![
+            CellValue::String("Region".into()),
+            CellValue::String("Units".into()),
+            CellValue::String("Rev".into()),
+        ]],
+    )
+    .unwrap();
+    wb.set_range_values(
+        "Sheet1!A2:C3",
+        vec![
+            vec![
+                CellValue::String("North".into()),
+                CellValue::Number(10.0),
+                CellValue::Number(99.0),
+            ],
+            vec![
+                CellValue::String("South".into()),
+                CellValue::Number(20.0),
+                CellValue::Number(199.0),
+            ],
+        ],
+    )
+    .unwrap();
+
+    assert!(wb.auto_filter("Sheet1").unwrap().is_none());
+
+    let info = wb.set_auto_filter("Sheet1!A1:C3").unwrap();
+    assert_eq!(info.sheet, "Sheet1");
+    assert_eq!(info.reference, "A1:C3");
+    assert_eq!(info.start_row, 1);
+    assert_eq!(info.end_row, 3);
+    assert_eq!(info.end_column, 3);
+
+    let got = wb.auto_filter("Sheet1").unwrap().unwrap();
+    assert_eq!(got.reference, "A1:C3");
+
+    wb.set_auto_filter("Sheet1!A1:B3").unwrap();
+    let replaced = wb.auto_filter("Sheet1").unwrap().unwrap();
+    assert_eq!(replaced.reference, "A1:B3");
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let after = reopened.auto_filter("Sheet1").unwrap().unwrap();
+    assert_eq!(after.reference, "A1:B3");
+
+    let removed = reopened.remove_auto_filter("Sheet1").unwrap().unwrap();
+    assert_eq!(removed.reference, "A1:B3");
+    assert!(reopened.auto_filter("Sheet1").unwrap().is_none());
+    assert!(reopened.remove_auto_filter("Sheet1").unwrap().is_none());
+
+    let err = reopened.set_auto_filter("Ghost!A1:B2").unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::MissingSheet);
+}

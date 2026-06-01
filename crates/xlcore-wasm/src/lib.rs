@@ -368,6 +368,33 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = autoFilter)]
+    pub fn auto_filter(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
+        let info = self
+            .workbook_mut()?
+            .auto_filter(sheet)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setAutoFilter)]
+    pub fn set_auto_filter(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let info = self
+            .workbook_mut()?
+            .set_auto_filter(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removeAutoFilter)]
+    pub fn remove_auto_filter(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
+        let info = self
+            .workbook_mut()?
+            .remove_auto_filter(sheet)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
     pub fn comments(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
         let list = self
             .workbook_mut()?

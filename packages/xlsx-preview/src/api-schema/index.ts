@@ -2,6 +2,7 @@ export type { AlignmentPatch } from "./AlignmentPatch.js";
 export type { ApiCellValue } from "./ApiCellValue.js";
 export type { ApiError } from "./ApiError.js";
 export type { ApiErrorCode } from "./ApiErrorCode.js";
+export type { AutoFilterInfo } from "./AutoFilterInfo.js";
 export type { BorderLinePatch } from "./BorderLinePatch.js";
 export type { BorderLineStyle } from "./BorderLineStyle.js";
 export type { BorderPatch } from "./BorderPatch.js";

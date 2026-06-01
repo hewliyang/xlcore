@@ -5,6 +5,7 @@ export class WorkbookHandle {
     free(): void;
     [Symbol.dispose](): void;
     addMerge(reference: string): any;
+    autoFilter(sheet: string): any;
     calcProperties(): any;
     clear(reference: string): any;
     clearRange(reference: string): any;
@@ -35,6 +36,7 @@ export class WorkbookHandle {
     precedents(reference: string): any;
     properties(): any;
     recalculate(): any;
+    removeAutoFilter(sheet: string): any;
     removeComment(reference: string): any;
     removeDefinedName(name: string, scope?: string | null): any;
     removeHyperlink(reference: string): any;
@@ -43,6 +45,7 @@ export class WorkbookHandle {
     save(): Uint8Array;
     search(query: string, options: any): any;
     setActiveSheet(name: string): any;
+    setAutoFilter(reference: string): any;
     setCalcProperties(patch: any): any;
     setColumnVisible(sheet: string, column: number, visible: boolean): void;
     setColumnWidth(sheet: string, column: number, width: number): void;
@@ -80,6 +83,7 @@ export interface InitOutput {
     readonly extract_parquet: (a: number, b: number, c: number, d: number) => void;
     readonly extract_xlsx: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_addMerge: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_autoFilter: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_calcProperties: (a: number, b: number) => void;
     readonly workbookhandle_clear: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_clearRange: (a: number, b: number, c: number, d: number) => void;
@@ -110,6 +114,7 @@ export interface InitOutput {
     readonly workbookhandle_precedents: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_properties: (a: number, b: number) => void;
     readonly workbookhandle_recalculate: (a: number, b: number) => void;
+    readonly workbookhandle_removeAutoFilter: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeComment: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_removeHyperlink: (a: number, b: number, c: number, d: number) => void;
@@ -118,6 +123,7 @@ export interface InitOutput {
     readonly workbookhandle_save: (a: number, b: number) => void;
     readonly workbookhandle_search: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setActiveSheet: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_setAutoFilter: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_setCalcProperties: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setColumnVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setColumnWidth: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
