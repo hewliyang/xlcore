@@ -24,6 +24,8 @@ import type {
   SearchMatch,
   SearchOptions,
   SheetInfo,
+  SheetPageSetup,
+  SheetPageSetupPatch,
   SheetVisibility,
   SheetProtectionInfo,
   SheetProtectionPatch,
@@ -82,7 +84,21 @@ export type {
   SearchMode,
   SearchOptions,
   SearchTarget,
+  HeaderFooterInfo,
+  HeaderFooterPatch,
+  PageMarginsInfo,
+  PageMarginsPatch,
+  PageOrder,
+  PageOrientation,
+  PageSetupSettings,
+  PageSetupSettingsPatch,
+  PrintCellComments,
+  PrintErrors,
+  PrintOptionsInfo,
+  PrintOptionsPatch,
   SheetInfo,
+  SheetPageSetup,
+  SheetPageSetupPatch,
   SheetProtectionInfo,
   SheetProtectionPatch,
   SheetVisibility,
@@ -316,6 +332,18 @@ export class Workbook {
 
   removeWorkbookProtection(): WorkbookProtectionInfo | null {
     return (this.handle.removeWorkbookProtection() as WorkbookProtectionInfo | null) ?? null;
+  }
+
+  pageSetup(sheet: string): SheetPageSetup {
+    return this.handle.pageSetup(sheet) as SheetPageSetup;
+  }
+
+  setPageSetup(sheet: string, patch: SheetPageSetupPatch): SheetPageSetup {
+    return this.handle.setPageSetup(sheet, patch) as SheetPageSetup;
+  }
+
+  removePageSetup(sheet: string): SheetPageSetup {
+    return this.handle.removePageSetup(sheet) as SheetPageSetup;
   }
 
   createSheet(name: string): SheetInfo {

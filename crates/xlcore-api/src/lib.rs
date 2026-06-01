@@ -8,6 +8,7 @@ mod dependencies;
 mod errors;
 mod hyperlinks;
 mod merges;
+mod page_setup;
 mod properties;
 mod protection;
 mod ranges;
@@ -29,8 +30,13 @@ pub use xlcore_types::{
     DataValidationInfo, DataValidationOperator, DataValidationPatch, DataValidationType,
     DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference, FillPatch, FontPatch,
     FreezeInfo,
-    HorizontalAlign, HyperlinkInfo, HyperlinkPatch, LayoutOptions, MergeInfo, RangeInfo, SearchHit,
-    SearchMatch, SearchMode, SearchOptions, SearchTarget, SheetInfo, SheetProtectionInfo,
+    HeaderFooterInfo, HeaderFooterPatch,
+    HorizontalAlign, HyperlinkInfo, HyperlinkPatch, LayoutOptions, MergeInfo,
+    PageMarginsInfo, PageMarginsPatch, PageOrder, PageOrientation, PageSetupSettings,
+    PageSetupSettingsPatch, PrintCellComments, PrintErrors, PrintOptionsInfo, PrintOptionsPatch,
+    RangeInfo, SearchHit,
+    SearchMatch, SearchMode, SearchOptions, SearchTarget, SheetInfo, SheetPageSetup,
+    SheetPageSetupPatch, SheetProtectionInfo,
     SheetProtectionPatch, SheetVisibility, StylePatch, TableColumnInfo, TableColumnPatch,
     TableInfo, TablePatch, TableStylePatch, TableStyleSettings, TableTotalsFunction,
     UnderlinePatch, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,

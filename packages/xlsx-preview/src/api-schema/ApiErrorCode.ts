@@ -18,5 +18,6 @@ export type ApiErrorCode =
   | "invalid_table"
   | "duplicate_table"
   | "invalid_protection"
+  | "invalid_page_setup"
   | "ooxml_write_error"
   | "other";

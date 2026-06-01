@@ -243,6 +243,24 @@ if (calc.calcMode !== "manual" || calc.iterate !== true || calc.iterateCount !==
   throw new Error("unexpected calc properties round-trip: " + JSON.stringify(calc));
 }
 
+workbook.setPageSetup("Sheet1", {
+  page: { orientation: "landscape", scale: 80, fitToWidth: 1, fitToHeight: 0 },
+  margins: { left: 0.5, right: 0.5, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3 },
+  printOptions: { horizontalCentered: true, gridLines: true },
+  headerFooter: { oddHeader: "&CSmoke", oddFooter: "&CPage &P of &N" },
+});
+const reBytesPage = workbook.save();
+const reopenedPage = await Workbook.open(reBytesPage, { wasmBinaryUrl: wasm });
+const pageSetup = reopenedPage.pageSetup("Sheet1");
+if (
+  pageSetup.page?.orientation !== "landscape" ||
+  pageSetup.page?.scale !== 80 ||
+  pageSetup.printOptions?.horizontalCentered !== true ||
+  pageSetup.headerFooter?.oddHeader !== "&CSmoke"
+) {
+  throw new Error("unexpected page setup round-trip: " + JSON.stringify(pageSetup));
+}
+
 console.log(
   JSON.stringify({
     ok: true,

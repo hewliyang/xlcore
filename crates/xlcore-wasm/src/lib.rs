@@ -616,6 +616,35 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = pageSetup)]
+    pub fn page_setup(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
+        let info = self
+            .workbook_mut()?
+            .page_setup(sheet)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setPageSetup)]
+    pub fn set_page_setup(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::SheetPageSetupPatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .set_page_setup(sheet, patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removePageSetup)]
+    pub fn remove_page_setup(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .remove_page_setup(sheet)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = clearRange)]
     pub fn clear_range(&mut self, reference: &str) -> Result<JsValue, JsValue> {
         let range = self

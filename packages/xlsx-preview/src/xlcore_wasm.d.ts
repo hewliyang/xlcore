@@ -34,6 +34,7 @@ export class WorkbookHandle {
     moveSheet(name: string, to_index: number): any;
     constructor();
     static open(bytes: Uint8Array): WorkbookHandle;
+    pageSetup(sheet: string): any;
     precedents(reference: string): any;
     properties(): any;
     recalculate(): any;
@@ -43,6 +44,7 @@ export class WorkbookHandle {
     removeDefinedName(name: string, scope?: string | null): any;
     removeHyperlink(reference: string): any;
     removeMerge(reference: string): any;
+    removePageSetup(sheet: string): any;
     removeSheetProtection(sheet: string): any;
     removeTable(name: string): any;
     removeWorkbookProtection(): any;
@@ -60,6 +62,7 @@ export class WorkbookHandle {
     setFormula(reference: string, formula: string): any;
     setFreeze(sheet: string, frozen_rows: number, frozen_columns: number): any;
     setHyperlink(reference: string, patch: any): any;
+    setPageSetup(sheet: string, patch: any): any;
     setProperties(patch: any): any;
     setRangeFormulas(reference: string, formulas: any): any;
     setRangeValues(reference: string, values: any): any;
@@ -124,6 +127,7 @@ export interface InitOutput {
     readonly workbookhandle_moveSheet: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_new: (a: number) => void;
     readonly workbookhandle_open: (a: number, b: number, c: number) => void;
+    readonly workbookhandle_pageSetup: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_precedents: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_properties: (a: number, b: number) => void;
     readonly workbookhandle_recalculate: (a: number, b: number) => void;
@@ -133,6 +137,7 @@ export interface InitOutput {
     readonly workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_removeHyperlink: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeMerge: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_removePageSetup: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeSheetProtection: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeTable: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeWorkbookProtection: (a: number, b: number) => void;
@@ -150,6 +155,7 @@ export interface InitOutput {
     readonly workbookhandle_setFormula: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setFreeze: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setHyperlink: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly workbookhandle_setPageSetup: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setProperties: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setRangeFormulas: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setRangeValues: (a: number, b: number, c: number, d: number, e: number) => void;

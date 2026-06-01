@@ -36,6 +36,7 @@ export const workbookhandle_merges: (a: number, b: number, c: number, d: number)
 export const workbookhandle_moveSheet: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_new: (a: number) => void;
 export const workbookhandle_open: (a: number, b: number, c: number) => void;
+export const workbookhandle_pageSetup: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_precedents: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_properties: (a: number, b: number) => void;
 export const workbookhandle_recalculate: (a: number, b: number) => void;
@@ -45,6 +46,7 @@ export const workbookhandle_removeDataValidation: (a: number, b: number, c: numb
 export const workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removeHyperlink: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeMerge: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_removePageSetup: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeSheetProtection: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeTable: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeWorkbookProtection: (a: number, b: number) => void;
@@ -62,6 +64,7 @@ export const workbookhandle_setDefinedName: (a: number, b: number, c: number) =>
 export const workbookhandle_setFormula: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setFreeze: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setHyperlink: (a: number, b: number, c: number, d: number, e: number) => void;
+export const workbookhandle_setPageSetup: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setProperties: (a: number, b: number, c: number) => void;
 export const workbookhandle_setRangeFormulas: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setRangeValues: (a: number, b: number, c: number, d: number, e: number) => void;
