@@ -131,7 +131,7 @@ Status key:
 | Tables | `Tables.TableManager`, `Table` | Create table from range, headers/totals, resize, style name | Done | Rust API + save/reopen |
 | AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | Done (range + per-column Top10/Custom/multi-value Values with optional blank) | Rust API + smoke |
 | Data validation | `DataValidation` APIs | Add/edit/delete/list list and scalar validations | Done | Rust API + save/reopen |
-| Conditional formatting | `ConditionalFormatting` APIs | Preserve existing; author basic rules once style writes exist | P2 | Renderer screenshot |
+| Conditional formatting | `ConditionalFormatting` APIs | Preserve existing; author basic rules once style writes exist | Partial (cellIs/expression/text/blanks/errors/top10/aboveAverage/duplicate/unique rules + dxf font/fill/border/numFmt/alignment authoring; color scales / data bars / icon sets still preserve-only) | Rust API + save/reopen |
 | Charts | `Charts`, `Shapes` | Preserve; create/edit chart types already rendered | P2 | Preview + OOXML |
 | Images | `Shapes.Picture`, shape collection | Insert image, position, size, crop/rotation later | P2 | Preview + OOXML |
 | Shapes | `Shapes.ShapeCollection` | Preserve first; author basic shape/text later | P2 | Preview + OOXML |
@@ -252,6 +252,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `invalid_protection` | Protection patch has a non-hex password, an empty hash/salt/algorithm string, or other malformed credential field |
 | `invalid_page_setup` | Page setup patch has an out-of-range scale, zero copies, or a negative/non-finite margin |
 | `invalid_auto_filter` | Auto-filter column patch references a non-existent filter, an out-of-range column offset, or an empty/unsupported criteria shape |
+| `invalid_conditional_format` | Conditional format rule patch is missing required formula/operator/text for the rule kind, or has a non-positive priority |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |
 | `ooxml_write_error` | Writer could not serialize a valid workbook |

@@ -1,6 +1,7 @@
 mod auto_filter;
 mod cells;
 mod comments;
+mod conditional_format;
 mod copyfill;
 mod data_validation;
 mod defined_names;
@@ -28,7 +29,8 @@ pub use xlcore_types::{
     AlignmentPatch, ApiCellValue, ApiCellValue as CellValue, ApiError, ApiErrorCode,
     AutoFilterColumnInfo, AutoFilterColumnPatch, AutoFilterCriteria, AutoFilterCustomCriterion,
     AutoFilterInfo, AutoFilterOperator, BorderLinePatch, BorderLineStyle, BorderPatch, CalcMode, CalcProperties,
-    CalcPropertiesPatch, CellInfo, ClearMode, CommentInfo, CommentPatch, DataValidationErrorStyle,
+    CalcPropertiesPatch, CellInfo, CfOperator, CfRuleKind, ClearMode, CommentInfo, CommentPatch,
+    ConditionalFormatRuleInfo, ConditionalFormatRulePatch, DataValidationErrorStyle,
     DataValidationInfo, DataValidationOperator, DataValidationPatch, DataValidationType,
     DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference, FillPatch, FontPatch,
     FreezeInfo,

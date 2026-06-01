@@ -21,5 +21,6 @@ export type ApiErrorCode =
   | "invalid_protection"
   | "invalid_page_setup"
   | "invalid_auto_filter"
+  | "invalid_conditional_format"
   | "ooxml_write_error"
   | "other";

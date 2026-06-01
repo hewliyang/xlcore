@@ -11,10 +11,12 @@ export const workbookhandle_addThreadedNote: (a: number, b: number, c: number, d
 export const workbookhandle_autoFilter: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_calcProperties: (a: number, b: number) => void;
 export const workbookhandle_clear: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_clearConditionalFormats: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_clearRange: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_clearRangeWith: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_clearWith: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_comments: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_conditionalFormats: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_copyRange: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_createSheet: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_dataValidations: (a: number, b: number, c: number, d: number) => void;
@@ -64,6 +66,7 @@ export const workbookhandle_setCalcProperties: (a: number, b: number, c: number)
 export const workbookhandle_setColumnVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setColumnWidth: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setComment: (a: number, b: number, c: number, d: number, e: number) => void;
+export const workbookhandle_setConditionalFormat: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setDataValidation: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setDefinedName: (a: number, b: number, c: number) => void;
 export const workbookhandle_setFormula: (a: number, b: number, c: number, d: number, e: number, f: number) => void;

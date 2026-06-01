@@ -9,10 +9,12 @@ export class WorkbookHandle {
     autoFilter(sheet: string): any;
     calcProperties(): any;
     clear(reference: string): any;
+    clearConditionalFormats(reference: string): any;
     clearRange(reference: string): any;
     clearRangeWith(reference: string, mode: any): any;
     clearWith(reference: string, mode: any): any;
     comments(sheet: string): any;
+    conditionalFormats(sheet: string): any;
     copyRange(src_reference: string, dst_reference: string): any;
     createSheet(name: string): any;
     dataValidations(sheet: string): any;
@@ -62,6 +64,7 @@ export class WorkbookHandle {
     setColumnVisible(sheet: string, column: number, visible: boolean): void;
     setColumnWidth(sheet: string, column: number, width: number): void;
     setComment(reference: string, patch: any): any;
+    setConditionalFormat(reference: string, patch: any): any;
     setDataValidation(reference: string, patch: any): any;
     setDefinedName(patch: any): any;
     setFormula(reference: string, formula: string): any;
@@ -108,10 +111,12 @@ export interface InitOutput {
     readonly workbookhandle_autoFilter: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_calcProperties: (a: number, b: number) => void;
     readonly workbookhandle_clear: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_clearConditionalFormats: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_clearRange: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_clearRangeWith: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_clearWith: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_comments: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_conditionalFormats: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_copyRange: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_createSheet: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_dataValidations: (a: number, b: number, c: number, d: number) => void;
@@ -161,6 +166,7 @@ export interface InitOutput {
     readonly workbookhandle_setColumnVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setColumnWidth: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setComment: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly workbookhandle_setConditionalFormat: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setDataValidation: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setDefinedName: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setFormula: (a: number, b: number, c: number, d: number, e: number, f: number) => void;

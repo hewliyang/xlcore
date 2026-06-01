@@ -532,6 +532,39 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = conditionalFormats)]
+    pub fn conditional_formats(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
+        let list = self
+            .workbook_mut()?
+            .conditional_formats(sheet)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setConditionalFormat)]
+    pub fn set_conditional_format(
+        &mut self,
+        reference: &str,
+        patch: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::ConditionalFormatRulePatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .set_conditional_format(reference, patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = clearConditionalFormats)]
+    pub fn clear_conditional_formats(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .clear_conditional_formats(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = definedNames)]
     pub fn defined_names(&mut self) -> Result<JsValue, JsValue> {
         let list = self

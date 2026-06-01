@@ -2549,3 +2549,79 @@ fn page_setup_set_read_remove_and_round_trip() {
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::MissingSheet);
 }
+
+#[test]
+fn conditional_format_add_list_remove_round_trip() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value("Sheet1!A1", 5.0).unwrap();
+    workbook.set_value("Sheet1!A2", 10.0).unwrap();
+
+    workbook
+        .set_conditional_format(
+            "Sheet1!A1:A10",
+            ConditionalFormatRulePatch {
+                kind: CfRuleKind::CellIs,
+                operator: Some(CfOperator::GreaterThan),
+                formula1: Some("7".into()),
+                dxf: Some(StylePatch {
+                    fill: Some(FillPatch {
+                        color: Some("#FFEB3B".into()),
+                    }),
+                    font: Some(FontPatch {
+                        bold: Some(true),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    workbook
+        .set_conditional_format(
+            "Sheet1!A1:A10",
+            ConditionalFormatRulePatch {
+                kind: CfRuleKind::Expression,
+                formula1: Some("MOD(ROW(),2)=0".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    let listed = workbook.conditional_formats("Sheet1").unwrap();
+    assert_eq!(listed.len(), 2);
+    assert_eq!(listed[0].kind, CfRuleKind::CellIs);
+    assert_eq!(listed[0].operator, Some(CfOperator::GreaterThan));
+    assert_eq!(listed[0].formula1.as_deref(), Some("7"));
+    assert!(listed[0].dxf_id.is_some());
+    assert_eq!(listed[1].kind, CfRuleKind::Expression);
+    assert!(listed[1].priority > listed[0].priority);
+
+    let bytes = workbook.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let after = reopened.conditional_formats("Sheet1").unwrap();
+    assert_eq!(after.len(), 2);
+    assert_eq!(after[0].formula1.as_deref(), Some("7"));
+    assert!(after[0].dxf_id.is_some());
+
+    let removed = reopened.clear_conditional_formats("Sheet1!A1:A10").unwrap();
+    assert_eq!(removed.len(), 2);
+    assert!(reopened.conditional_formats("Sheet1").unwrap().is_empty());
+}
+
+#[test]
+fn conditional_format_rejects_missing_formula() {
+    let mut workbook = Workbook::new().unwrap();
+    let err = workbook
+        .set_conditional_format(
+            "Sheet1!A1:A10",
+            ConditionalFormatRulePatch {
+                kind: CfRuleKind::CellIs,
+                operator: Some(CfOperator::Equal),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidConditionalFormat);
+}

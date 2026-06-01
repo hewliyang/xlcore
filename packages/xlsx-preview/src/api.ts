@@ -7,9 +7,13 @@ import type {
   CalcProperties,
   CalcPropertiesPatch,
   CellInfo,
+  CfOperator,
+  CfRuleKind,
   ClearMode,
   CommentInfo,
   CommentPatch,
+  ConditionalFormatRuleInfo,
+  ConditionalFormatRulePatch,
   DataValidationInfo,
   DataValidationPatch,
   ThreadedNoteInfo,
@@ -62,9 +66,13 @@ export type {
   CalcProperties,
   CalcPropertiesPatch,
   CellInfo,
+  CfOperator,
+  CfRuleKind,
   ClearMode,
   CommentInfo,
   CommentPatch,
+  ConditionalFormatRuleInfo,
+  ConditionalFormatRulePatch,
   ThreadedNoteInfo,
   ThreadedNotePatch,
   DataValidationErrorStyle,
@@ -306,6 +314,21 @@ export class Workbook {
 
   removeDataValidation(reference: string): DataValidationInfo[] {
     return this.handle.removeDataValidation(reference) as DataValidationInfo[];
+  }
+
+  conditionalFormats(sheet: string): ConditionalFormatRuleInfo[] {
+    return this.handle.conditionalFormats(sheet) as ConditionalFormatRuleInfo[];
+  }
+
+  setConditionalFormat(
+    reference: string,
+    patch: ConditionalFormatRulePatch,
+  ): ConditionalFormatRuleInfo {
+    return this.handle.setConditionalFormat(reference, patch) as ConditionalFormatRuleInfo;
+  }
+
+  clearConditionalFormats(reference: string): ConditionalFormatRuleInfo[] {
+    return this.handle.clearConditionalFormats(reference) as ConditionalFormatRuleInfo[];
   }
 
   definedNames(): DefinedNameInfo[] {

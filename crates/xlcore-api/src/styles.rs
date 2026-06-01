@@ -157,6 +157,47 @@ pub(crate) fn resolve_style_index(
     Ok(intern_cell_format(sheet, new_xf))
 }
 
+pub(crate) fn upsert_dxf(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    patch: &StylePatch,
+) -> Result<u32> {
+    let part = ensure_styles_part(doc)?;
+    let sheet = part.root_element_mut(doc).map_err(sdk_err_to_api)?;
+    let mut dxf = x::DifferentialFormat::default();
+    if let Some(font_patch) = patch.font.as_ref() {
+        dxf.font = Some(build_font(sheet, usize::MAX, font_patch)?);
+    }
+    if let Some(fill_patch) = patch.fill.as_ref() {
+        dxf.fill = Some(Box::new(build_fill(fill_patch)?));
+    }
+    if let Some(border_patch) = patch.border.as_ref() {
+        dxf.border = Some(Box::new(build_border(sheet, usize::MAX, border_patch)?));
+    }
+    if let Some(num_fmt) = patch.number_format.as_deref() {
+        let id = builtin_num_fmt_id(num_fmt).unwrap_or(0);
+        dxf.numbering_format = Some(x::NumberingFormat {
+            number_format_id: id,
+            format_code: num_fmt.to_string(),
+            ..Default::default()
+        });
+    }
+    if let Some(align_patch) = patch.alignment.as_ref() {
+        let mut tmp = x::CellFormat::default();
+        apply_alignment(&mut tmp, align_patch);
+        dxf.alignment = tmp.alignment;
+    }
+    let dxfs = sheet
+        .differential_formats
+        .get_or_insert_with(x::DifferentialFormats::default);
+    if let Some(idx) = dxfs.differential_format.iter().position(|d| d == &dxf) {
+        return Ok(idx as u32);
+    }
+    dxfs.differential_format.push(dxf);
+    let idx = dxfs.differential_format.len() - 1;
+    dxfs.count = Some(dxfs.differential_format.len() as u32);
+    Ok(idx as u32)
+}
+
 fn ensure_default_collections(sheet: &mut x::Stylesheet) {
     if sheet.fonts.is_none() {
         sheet.fonts = Some(x::Fonts {
