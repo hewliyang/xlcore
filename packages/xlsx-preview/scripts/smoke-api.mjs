@@ -9,6 +9,15 @@ workbook.setValue("Sheet1!A1", "Units");
 workbook.setValue("Sheet1!B1", 10);
 workbook.setFormula("Sheet1!C1", "=B1*3");
 
+const dependencies = workbook.dependencies("Sheet1!C1");
+if (dependencies.precedents[0]?.reference !== "B1" || dependencies.precedents[0]?.sheet !== "Sheet1") {
+  throw new Error("unexpected dependencies: " + JSON.stringify(dependencies));
+}
+const dependents = workbook.dependents("Sheet1!B1");
+if (dependents[0]?.reference !== "C1" || dependents[0]?.sheet !== "Sheet1") {
+  throw new Error("unexpected dependents: " + JSON.stringify(dependents));
+}
+
 const recalc = workbook.recalculate();
 const c1Result = recalc.sheets[0]?.cells.find((cell) => cell.r === 1 && cell.c === 3);
 if (c1Result?.value.type !== "number" || c1Result.value.value !== 30) {

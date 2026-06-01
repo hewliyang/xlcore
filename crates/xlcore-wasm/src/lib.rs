@@ -245,6 +245,30 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
     }
 
+    pub fn dependencies(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let info = self
+            .workbook_mut()?
+            .dependencies(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    pub fn precedents(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let list = self
+            .workbook_mut()?
+            .precedents(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
+    }
+
+    pub fn dependents(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let list = self
+            .workbook_mut()?
+            .dependents(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = setRangeValues)]
     pub fn set_range_values(
         &mut self,
@@ -340,6 +364,34 @@ impl WorkbookHandle {
         let removed = self
             .workbook_mut()?
             .remove_hyperlink(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
+    pub fn comments(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
+        let list = self
+            .workbook_mut()?
+            .comments(sheet)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setComment)]
+    pub fn set_comment(&mut self, reference: &str, patch: JsValue) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::CommentPatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .set_comment(reference, patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removeComment)]
+    pub fn remove_comment(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .remove_comment(reference)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }

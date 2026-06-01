@@ -78,9 +78,9 @@ Status key:
 | Selections/view state | `setSelection/getSelections/showCell` | Persist active cell/selection only if OOXML-backed and useful | Later | OOXML inspection |
 | Search | `Worksheet.search` | Search values/formulas across sheets | Done | Rust API + TS smoke |
 | Copy/paste/fill | `copyTo`, fill APIs | Copy ranges, fill down/right, translate relative formulas | Done | Rust API + TS smoke |
-| Dependencies | Calc engine refs/deps behavior | Precedents/dependents from formula graph | P1 | Rust API + xlcore-engine |
+| Dependencies | Calc engine refs/deps behavior | Precedents/dependents from formula graph | Done | Rust API + TS smoke |
 | Defined names | `Workbook.names`, `NameInfo` | List/create/update/delete workbook and sheet names | Done (engine resolution still missing) | Rust API + TS smoke |
-| Comments/notes | `Comments.CommentManager` | Add/edit/delete/list comments and threaded notes when present | P1 | Renderer + OOXML |
+| Comments/notes | `Comments.CommentManager` | Add/edit/delete/list comments and threaded notes when present | Done (classic comments; threaded notes later) | Rust API + save/reopen |
 | Hyperlinks | Worksheet hyperlink APIs | Add/edit/delete/list cell hyperlinks | Done | Rust API + save/reopen |
 | Tables | `Tables.TableManager`, `Table` | Create table from range, headers/totals, resize, style name | P1/P2 | Excel/hsx + renderer |
 | AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | P1/P2 | OOXML diff |
@@ -195,6 +195,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `unsupported_style` | Style patch contains values we cannot serialize (e.g. invalid color) |
 | `merge_overlap` | Requested merge overlaps an existing merge on the sheet |
 | `invalid_hyperlink` | Hyperlink patch is missing both target and location, or has an empty target |
+| `invalid_comment` | Comment patch has empty text |
 | `invalid_search_query` | Search query is empty or contains an invalid regex/wildcard pattern |
 | `invalid_defined_name` | Defined name violates Excel naming rules or has empty formula |
 | `invalid_property` | Workbook property patch has an unparseable value (e.g. non-ISO timestamp) |

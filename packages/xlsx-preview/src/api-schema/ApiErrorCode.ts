@@ -10,6 +10,7 @@ export type ApiErrorCode =
   | "unsupported_style"
   | "merge_overlap"
   | "invalid_hyperlink"
+  | "invalid_comment"
   | "invalid_search_query"
   | "invalid_defined_name"
   | "invalid_property"

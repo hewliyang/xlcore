@@ -8,6 +8,7 @@ description = "Workbook manipulation facade for xlcore"
 
 [dependencies]
 anyhow = { workspace = true }
+ironcalc_base = { workspace = true }
 ooxmlsdk = { workspace = true }
 xlcore-bridge = { path = "../xlcore-bridge" }
 xlcore-export = { path = "../xlcore-export" }

@@ -1,3 +1,4 @@
 - Never write comments/docstrings
 - Keep changelog entries terse, most should be one liners.
 - Dont use `find` - it will hang. Use `fd` instead
+- Follow conventional commit messages

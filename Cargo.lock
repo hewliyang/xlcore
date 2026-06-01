@@ -1393,6 +1393,7 @@ name = "xlcore-api"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "ironcalc_base",
  "ooxmlsdk",
  "regex",
  "xlcore-bridge",

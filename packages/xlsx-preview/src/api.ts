@@ -5,8 +5,12 @@ import type {
   CalcPropertiesPatch,
   CellInfo,
   ClearMode,
+  CommentInfo,
+  CommentPatch,
   DefinedNameInfo,
   DefinedNamePatch,
+  DependencyInfo,
+  DependencyReference,
   FreezeInfo,
   HyperlinkInfo,
   HyperlinkPatch,
@@ -38,8 +42,12 @@ export type {
   CalcPropertiesPatch,
   CellInfo,
   ClearMode,
+  CommentInfo,
+  CommentPatch,
   DefinedNameInfo,
   DefinedNamePatch,
+  DependencyInfo,
+  DependencyReference,
   EngineCellValue,
   FillPatch,
   FontPatch,
@@ -129,6 +137,18 @@ export class Workbook {
     return this.handle.setRangeFormulas(reference, formulas) as RangeInfo;
   }
 
+  dependencies(reference: string): DependencyInfo {
+    return this.handle.dependencies(reference) as DependencyInfo;
+  }
+
+  precedents(reference: string): DependencyReference[] {
+    return this.handle.precedents(reference) as DependencyReference[];
+  }
+
+  dependents(reference: string): DependencyReference[] {
+    return this.handle.dependents(reference) as DependencyReference[];
+  }
+
   setStyle(reference: string, patch: StylePatch): RangeInfo {
     return this.handle.setStyle(reference, patch) as RangeInfo;
   }
@@ -170,6 +190,18 @@ export class Workbook {
 
   removeHyperlink(reference: string): HyperlinkInfo[] {
     return this.handle.removeHyperlink(reference) as HyperlinkInfo[];
+  }
+
+  comments(sheet: string): CommentInfo[] {
+    return this.handle.comments(sheet) as CommentInfo[];
+  }
+
+  setComment(reference: string, patch: CommentPatch): CommentInfo {
+    return this.handle.setComment(reference, patch) as CommentInfo;
+  }
+
+  removeComment(reference: string): CommentInfo[] {
+    return this.handle.removeComment(reference) as CommentInfo[];
   }
 
   definedNames(): DefinedNameInfo[] {
