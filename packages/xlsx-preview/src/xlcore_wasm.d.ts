@@ -14,6 +14,7 @@ export class WorkbookHandle {
     comments(sheet: string): any;
     copyRange(src_reference: string, dst_reference: string): any;
     createSheet(name: string): any;
+    dataValidations(sheet: string): any;
     definedNames(): any;
     deleteColumns(sheet: string, start: number, count: number): void;
     deleteRows(sheet: string, start: number, count: number): void;
@@ -38,6 +39,7 @@ export class WorkbookHandle {
     recalculate(): any;
     removeAutoFilter(sheet: string): any;
     removeComment(reference: string): any;
+    removeDataValidation(reference: string): any;
     removeDefinedName(name: string, scope?: string | null): any;
     removeHyperlink(reference: string): any;
     removeMerge(reference: string): any;
@@ -50,6 +52,7 @@ export class WorkbookHandle {
     setColumnVisible(sheet: string, column: number, visible: boolean): void;
     setColumnWidth(sheet: string, column: number, width: number): void;
     setComment(reference: string, patch: any): any;
+    setDataValidation(reference: string, patch: any): any;
     setDefinedName(patch: any): any;
     setFormula(reference: string, formula: string): any;
     setFreeze(sheet: string, frozen_rows: number, frozen_columns: number): any;
@@ -92,6 +95,7 @@ export interface InitOutput {
     readonly workbookhandle_comments: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_copyRange: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_createSheet: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_dataValidations: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_definedNames: (a: number, b: number) => void;
     readonly workbookhandle_deleteColumns: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_deleteRows: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
@@ -116,6 +120,7 @@ export interface InitOutput {
     readonly workbookhandle_recalculate: (a: number, b: number) => void;
     readonly workbookhandle_removeAutoFilter: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeComment: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_removeDataValidation: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_removeHyperlink: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removeMerge: (a: number, b: number, c: number, d: number) => void;
@@ -128,6 +133,7 @@ export interface InitOutput {
     readonly workbookhandle_setColumnVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setColumnWidth: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setComment: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly workbookhandle_setDataValidation: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setDefinedName: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setFormula: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setFreeze: (a: number, b: number, c: number, d: number, e: number, f: number) => void;

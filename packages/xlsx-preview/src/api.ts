@@ -8,6 +8,8 @@ import type {
   ClearMode,
   CommentInfo,
   CommentPatch,
+  DataValidationInfo,
+  DataValidationPatch,
   DefinedNameInfo,
   DefinedNamePatch,
   DependencyInfo,
@@ -46,6 +48,11 @@ export type {
   ClearMode,
   CommentInfo,
   CommentPatch,
+  DataValidationErrorStyle,
+  DataValidationInfo,
+  DataValidationOperator,
+  DataValidationPatch,
+  DataValidationType,
   DefinedNameInfo,
   DefinedNamePatch,
   DependencyInfo,
@@ -216,6 +223,18 @@ export class Workbook {
 
   removeComment(reference: string): CommentInfo[] {
     return this.handle.removeComment(reference) as CommentInfo[];
+  }
+
+  dataValidations(sheet: string): DataValidationInfo[] {
+    return this.handle.dataValidations(sheet) as DataValidationInfo[];
+  }
+
+  setDataValidation(reference: string, patch: DataValidationPatch): DataValidationInfo {
+    return this.handle.setDataValidation(reference, patch) as DataValidationInfo;
+  }
+
+  removeDataValidation(reference: string): DataValidationInfo[] {
+    return this.handle.removeDataValidation(reference) as DataValidationInfo[];
   }
 
   definedNames(): DefinedNameInfo[] {

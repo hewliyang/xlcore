@@ -423,6 +423,39 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = dataValidations)]
+    pub fn data_validations(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
+        let list = self
+            .workbook_mut()?
+            .data_validations(sheet)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setDataValidation)]
+    pub fn set_data_validation(
+        &mut self,
+        reference: &str,
+        patch: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::DataValidationPatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .set_data_validation(reference, patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removeDataValidation)]
+    pub fn remove_data_validation(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .remove_data_validation(reference)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = definedNames)]
     pub fn defined_names(&mut self) -> Result<JsValue, JsValue> {
         let list = self

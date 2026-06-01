@@ -2,6 +2,7 @@ mod auto_filter;
 mod cells;
 mod comments;
 mod copyfill;
+mod data_validation;
 mod defined_names;
 mod dependencies;
 mod errors;
@@ -22,8 +23,10 @@ use std::path::Path;
 pub use xlcore_types::{
     AlignmentPatch, ApiCellValue, ApiCellValue as CellValue, ApiError, ApiErrorCode,
     AutoFilterInfo, BorderLinePatch, BorderLineStyle, BorderPatch, CalcMode, CalcProperties,
-    CalcPropertiesPatch, CellInfo, ClearMode, CommentInfo, CommentPatch, DefinedNameInfo,
-    DefinedNamePatch, DependencyInfo, DependencyReference, FillPatch, FontPatch, FreezeInfo,
+    CalcPropertiesPatch, CellInfo, ClearMode, CommentInfo, CommentPatch, DataValidationErrorStyle,
+    DataValidationInfo, DataValidationOperator, DataValidationPatch, DataValidationType,
+    DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference, FillPatch, FontPatch,
+    FreezeInfo,
     HorizontalAlign, HyperlinkInfo, HyperlinkPatch, LayoutOptions, MergeInfo, RangeInfo, SearchHit,
     SearchMatch, SearchMode, SearchOptions, SearchTarget, SheetInfo, SheetVisibility, StylePatch,
     UnderlinePatch, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,

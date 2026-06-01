@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Workbook API: `dataValidations(sheet)` / `setDataValidation(ref, patch)` / `removeDataValidation(ref)` with `DataValidationInfo` + `DataValidationPatch` DTOs and `DataValidationType` (`list` | `custom` | `whole` | `decimal` | `date` | `time` | `textLength`), `DataValidationOperator`, and `DataValidationErrorStyle` enums. Writes `<dataValidations>`, merges sqref ranges (overlapping ranges on `set` are dropped from existing rules; rules emptied of all ranges are removed), supports input/error messages, prompts, and formula1/formula2. New `invalid_data_validation` `ApiError` for missing formulas/operator or incompatible field combos.
 - Workbook API: `autoFilter(sheet)` / `setAutoFilter(ref)` / `removeAutoFilter(sheet)` with `AutoFilterInfo` DTO. Writes/clears the worksheet-level `<autoFilter>` range; filter criteria authoring deferred.
 - Workbook API: `dependencies(ref)` / `precedents(ref)` / `dependents(ref)` with `DependencyInfo` + `DependencyReference` DTOs.
 - Workbook API: `comments(sheet)` / `setComment(ref, patch)` / `removeComment(ref)` with `CommentInfo` + `CommentPatch` DTOs. Lazily creates the worksheet's `commentsN.xml` part (with the spreadsheetml namespace), upserts authors, replaces a comment on the same cell, deletes the part when emptied, and adds `invalid_comment` `ApiError` for empty text. Round-trips through save/reopen.

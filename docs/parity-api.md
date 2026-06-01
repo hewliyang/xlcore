@@ -84,7 +84,7 @@ Status key:
 | Hyperlinks | Worksheet hyperlink APIs | Add/edit/delete/list cell hyperlinks | Done | Rust API + save/reopen |
 | Tables | `Tables.TableManager`, `Table` | Create table from range, headers/totals, resize, style name | P1/P2 | Excel/hsx + renderer |
 | AutoFilter | Table/filter APIs | Preserve filters first; author simple filters later | Done (range author/read/remove; filter criteria later) | Rust API + smoke |
-| Data validation | `DataValidation` APIs | Add/edit/delete/list list and scalar validations | P1 | OOXML + Excel open |
+| Data validation | `DataValidation` APIs | Add/edit/delete/list list and scalar validations | Done | Rust API + save/reopen |
 | Conditional formatting | `ConditionalFormatting` APIs | Preserve existing; author basic rules once style writes exist | P2 | Renderer screenshot |
 | Charts | `Charts`, `Shapes` | Preserve; create/edit chart types already rendered | P2 | Preview + OOXML |
 | Images | `Shapes.Picture`, shape collection | Insert image, position, size, crop/rotation later | P2 | Preview + OOXML |
@@ -197,6 +197,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `invalid_hyperlink` | Hyperlink patch is missing both target and location, or has an empty target |
 | `invalid_comment` | Comment patch has empty text |
 | `invalid_search_query` | Search query is empty or contains an invalid regex/wildcard pattern |
+| `invalid_data_validation` | Data validation patch is missing required formulas/operator or mixes incompatible fields |
 | `invalid_defined_name` | Defined name violates Excel naming rules or has empty formula |
 | `invalid_property` | Workbook property patch has an unparseable value (e.g. non-ISO timestamp) |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
