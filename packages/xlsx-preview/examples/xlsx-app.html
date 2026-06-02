@@ -612,7 +612,7 @@
 import { loadXlsxPreviewRuntime } from "./shared/loadXlsxPreview.js";
 let runtime;
 try {
-  runtime = await loadXlsxPreviewRuntime();
+  runtime = await loadXlsxPreviewRuntime({ modules: ["browserLoader.js", "color.js", "api.js"] });
 } catch (error) {
   document.body.innerHTML =
     `<pre style="margin: 24px; padding: 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font: 13px/1.5 ui-monospace, monospace; color: #7f1d1d; white-space: pre-wrap;">` +
@@ -622,7 +622,7 @@ try {
   throw error;
 }
 const ASSET_BASE = runtime.assetBase;
-const { createWorkbookPreviewerFromFile } = runtime;
+const { createWorkbookPreviewerFromFile, Workbook, distinctValuesFor } = runtime;
 const colorToCssWithTheme = runtime.colorToCssWithTheme ?? fallbackColorToCssWithTheme;
 const picker = document.getElementById("picker");
 const status = document.getElementById("status");
@@ -1040,6 +1040,49 @@ function formatBytes(n) {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
+async function buildPivotController(file) {
+  if (Workbook == null || !/\.xlsx$/i.test(file.name)) return null;
+  let wb;
+  try {
+    wb = await Workbook.open(await file.arrayBuffer(), {
+      wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
+    });
+  } catch {
+    return null;
+  }
+  const byName = new Map();
+  for (const sheet of wb.worksheets()) {
+    for (const info of sheet.pivots.list()) {
+      byName.set(info.name, { sheet: sheet.name, id: info.id, sourceRef: info.sourceRef });
+    }
+  }
+  if (byName.size === 0) return null;
+  const hidden = new Map();
+  const key = (pivot, field) => `${pivot}\u0000${field}`;
+  const recompute = (pivot) => {
+    const meta = byName.get(pivot);
+    if (!meta) return;
+    const hiddenItems = [];
+    for (const [k, hide] of hidden) {
+      const [p, field] = k.split("\u0000");
+      if (p === pivot && hide.length > 0) hiddenItems.push({ field, hide });
+    }
+    wb.sheet(meta.sheet).pivots.update(meta.id, { hiddenItems });
+    return wb.layout();
+  };
+  return {
+    items: ({ pivot, field }) => {
+      const meta = byName.get(pivot);
+      return meta ? distinctValuesFor(wb, meta.sourceRef, field) : [];
+    },
+    hiddenValues: ({ pivot, field }) => hidden.get(key(pivot, field)) ?? [],
+    setHidden: ({ pivot, field, hidden: hide }) => {
+      hidden.set(key(pivot, field), hide);
+      return recompute(pivot);
+    },
+  };
+}
+
 async function loadWorkbookFile(file) {
   if (!file) return;
   hideErrorOverlay();
@@ -1051,10 +1094,12 @@ async function loadWorkbookFile(file) {
     Array.from(previewRoot.children).forEach((node) => {
       if (node.id !== "load-error" && node.id !== "leniency-chip") node.remove();
     });
+    const pivotController = await buildPivotController(file);
     previewer = await createWorkbookPreviewerFromFile(previewRoot, file, {
       wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
       workerUrl: `${ASSET_BASE}xlsxWorker.js`,
       showHidden: showHiddenSheets,
+      pivotController,
       onProgress: ({ label }) => setLoadingStage(label),
     });
     window.xlcorePreviewer = previewer;

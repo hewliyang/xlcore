@@ -50,6 +50,7 @@ export { SheetFreeze, SheetPageSetupApi, SheetProtection } from "./api-worksheet
 export { NumberFormat } from "./number-formats.js";
 export type { NumberFormatCode, NumberFormatKey } from "./number-formats.js";
 export { anchorA1, cellA1, colLetter, rangeA1 } from "./api-refs.js";
+export { distinctValuesFor } from "./pivotSource.js";
 export type { AnchorA1, CellAddress, RangeAddress } from "./api-refs.js";
 
 export type {

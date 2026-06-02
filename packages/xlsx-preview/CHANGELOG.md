@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Pivot extract no longer paints the computed grid on top of the file's static cell values: cells inside a pivot's range are cleared before merging the engine-computed cells, so a filtered pivot that shrinks no longer leaves stale rows/overlapping text (regression test: `pivot_cells_do_not_duplicate_static_worksheet_cells`).
 - Bar/column and line chart series `color` was silently dropped on write (only pie/scatter/bubble/doughnut/area persisted it); now authored and read back for all chart kinds.
 - Chart series `color` now accepts 8-hex `AARRGGBB` (alpha stripped) in addition to 6-hex `RRGGBB`, matching every other color field.
 - `Workbook.create()` / `Workbook.open()` from `@hewliyang/xlsx-preview/api` now load the bundled wasm via `readFileSync` on Node (auto-detected) instead of a `file://` URL that Node `fetch` rejects; no more manual `wasmBinaryUrl` plumbing required.
@@ -14,7 +15,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Interactive pivot filter dropdowns: clicking a canvas-painted filter arrow opens a built-in (framework-agnostic, vanilla-DOM) item popover wired via the new `pivotController` option (`items`/`hiddenValues`/`setHidden`); `setHidden` returns a fresh `WorkbookLayout` (e.g. `pivots.update(...)` + `workbook.layout()`) that the previewer swaps in place via the new `replaceLayout()` — no Blob reload or wasm reparse. A lower-level `onPivotFilter` event (`{ pivot, field, axis, rect }`) is also emitted for custom UIs. Engine pivot metadata now carries `filterArrowCells: PivotFilterArrow[]` (`{ r, c, field, axis }`); `distinctValuesFor` helper exported for populating the dropdown.
+- Interactive pivot filter dropdowns: clicking a canvas-painted filter arrow opens a built-in (framework-agnostic, vanilla-DOM) item popover wired via the new `pivotController` option (`items`/`hiddenValues`/`setHidden`); `setHidden` returns a fresh `WorkbookLayout` (e.g. `pivots.update(...)` + `workbook.layout()`) that the previewer swaps in place via the new `replaceLayout()` — no Blob reload or wasm reparse. A lower-level `onPivotFilter` event (`{ pivot, field, axis, rect }`) is also emitted for custom UIs. Engine pivot metadata now carries `filterArrowCells: PivotFilterArrow[]` (`{ r, c, field, axis }`); `distinctValuesFor` is exported from both `./react` and `./api` for populating the dropdown. The vanilla `examples/xlsx-app.html` demo (served by `pnpm preview`) wires a `pivotController` backed by a main-thread `Workbook`, so the dropdown works there with no React.
 
 - Pivot per-item filtering: `PivotPatch`/`PivotInfo` gain optional `hiddenItems` (`PivotFieldFilter[]` — `{ field, hide }`). Authoring marks the matching `pivotField` items `h="1"`; both `pivots.set` (in-sheet render) and `pivots.preview` honor it, and the getter reverse-maps hidden items so `update()` round-trips.
 

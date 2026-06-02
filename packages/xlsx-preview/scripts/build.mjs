@@ -49,6 +49,7 @@ await build({
     "src/api-range.ts",
     "src/api-worksheet.ts",
     "src/api-collections.ts",
+    "src/pivotSource.ts",
     "src/number-formats.ts",
     "src/errors.ts",
     "src/sourceFormat.ts",

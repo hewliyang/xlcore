@@ -58,6 +58,34 @@ fn filter_arrows_carry_field_identity() {
 }
 
 #[test]
+fn pivot_cells_do_not_duplicate_static_worksheet_cells() {
+    let root = env!("CARGO_MANIFEST_DIR");
+    let path = format!("{root}/../../tests/fixtures/pivot/pivot-simple.xlsx");
+    let layout = xlcore_export::extract(Path::new(&path)).expect("extract");
+    let sheet = layout
+        .sheets
+        .iter()
+        .find(|s| s.name == "Pivot")
+        .expect("pivot sheet");
+    let pivot = sheet.pivots.first().expect("pivot");
+    let (r1, c1, r2, c2) = (
+        pivot.range.r1,
+        pivot.range.c1,
+        pivot.range.r2,
+        pivot.range.c2,
+    );
+    let rs = u32s(&sheet.cells.r);
+    let cs = u32s(&sheet.cells.c);
+    let mut seen = std::collections::HashSet::new();
+    for i in 0..sheet.cells.count as usize {
+        let (r, c) = (rs[i], cs[i]);
+        if r >= r1 && r <= r2 && c >= c1 && c <= c2 {
+            assert!(seen.insert((r, c)), "duplicate cell at ({r},{c}) in pivot range");
+        }
+    }
+}
+
+#[test]
 fn synthesizes_records_from_worksheet_source_when_cache_empty() {
     let root = env!("CARGO_MANIFEST_DIR");
     let base = format!("{root}/../../tests/fixtures/pivot");

@@ -233,6 +233,20 @@ fn merge_pivot_cells(sheet: &mut Sheet, cells: Vec<Cell>) {
     if cells.is_empty() {
         return;
     }
+    let ranges: Vec<(u32, u32, u32, u32)> = sheet
+        .pivots
+        .iter()
+        .map(|p| (p.range.r1, p.range.c1, p.range.r2, p.range.c2))
+        .collect();
+    if !ranges.is_empty() {
+        for row in sheet.rows.iter_mut() {
+            row.cells.retain(|c| {
+                !ranges
+                    .iter()
+                    .any(|&(r1, c1, r2, c2)| c.r >= r1 && c.r <= r2 && c.c >= c1 && c.c <= c2)
+            });
+        }
+    }
     let mut by_row: HashMap<u32, usize> = HashMap::new();
     for (i, row) in sheet.rows.iter().enumerate() {
         by_row.insert(row.index, i);
