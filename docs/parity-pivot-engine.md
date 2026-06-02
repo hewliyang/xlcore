@@ -46,10 +46,13 @@ Aggregation/render engine (`crates/xlcore-export/src/pivot_engine.rs`):
 
 ### Supported shapes (engine)
 
-- One or more row fields, 0–1 column fields, exactly one data field.
-- Unsupported shapes (multi data field, >1 column field, zero row fields)
-  return no cells → renderer falls back to the previous empty-grid behavior;
-  nothing breaks.
+- One or more row fields, 0–1 column fields.
+- Multiple data fields when there are **no** column fields (each data field
+  becomes an extra value column with its own caption header).
+- With a column field, exactly one data field.
+- Unsupported shapes (multi data field + column field, >1 column field, zero
+  row fields) return no cells → renderer falls back to the previous empty-grid
+  behavior; nothing breaks.
 
 ## Architecture
 
@@ -95,8 +98,9 @@ materializes actual cell values for our renderer).
 
 ### P1: Wider layout coverage
 
-- [ ] Multiple data fields (the `-2` "values" marker axis); expand along
-      columns under each column group, with the data-field caption row.
+- [x] Multiple data fields in the no-column layout (extra value column +
+      caption per data field). Still TODO: the `-2` "values" marker axis when a
+      column field is present (expand along columns under each column group).
 - [ ] More than one column field (nested column headers).
 - [ ] Multiple row fields beyond the current tabular side-by-side labels:
       outline/compact layouts and per-level subtotals.
