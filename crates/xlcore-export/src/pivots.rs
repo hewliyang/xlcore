@@ -178,7 +178,10 @@ fn synthesize_records(
 }
 
 fn cell_choice(cell: &XCell, shared_strings: &[String]) -> x::PivotCacheRecordChoice {
-    let raw = cell.cell_value.as_ref().and_then(|v| v.xml_content.as_deref());
+    let raw = cell
+        .cell_value
+        .as_ref()
+        .and_then(|v| v.xml_content.as_deref());
     let dt = cell
         .data_type
         .as_ref()

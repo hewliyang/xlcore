@@ -4555,7 +4555,10 @@ fn pivot_hidden_items_filter_and_roundtrip() {
     };
 
     let grid = wb.pivot_preview(patch.clone()).unwrap();
-    assert!(!grid.cells.iter().any(|c| c.value.as_deref() == Some("South")));
+    assert!(!grid
+        .cells
+        .iter()
+        .any(|c| c.value.as_deref() == Some("South")));
     let north = grid
         .cells
         .iter()

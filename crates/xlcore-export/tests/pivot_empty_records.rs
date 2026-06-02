@@ -80,7 +80,10 @@ fn pivot_cells_do_not_duplicate_static_worksheet_cells() {
     for i in 0..sheet.cells.count as usize {
         let (r, c) = (rs[i], cs[i]);
         if r >= r1 && r <= r2 && c >= c1 && c <= c2 {
-            assert!(seen.insert((r, c)), "duplicate cell at ({r},{c}) in pivot range");
+            assert!(
+                seen.insert((r, c)),
+                "duplicate cell at ({r},{c}) in pivot range"
+            );
         }
     }
 }

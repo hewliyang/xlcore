@@ -384,8 +384,10 @@ pub fn compute_cells(
                         .get(i)
                         .map(|h| h.contains(&b.val))
                         .unwrap_or(false);
-                    let page_excluded =
-                        page_filters.get(&i).map(|want| *want != b.val).unwrap_or(false);
+                    let page_excluded = page_filters
+                        .get(&i)
+                        .map(|want| *want != b.val)
+                        .unwrap_or(false);
                     is_hidden || page_excluded
                 } else {
                     false
@@ -435,23 +437,28 @@ pub fn compute_cells(
                 .collect()
         })
         .unwrap_or_default();
-    let data_fields: Vec<(usize, Option<x::DataConsolidateFunctionValues>, String, Option<u32>)> =
-        pt.data_fields
-            .as_ref()
-            .map(|df| {
-                df.data_field
-                    .iter()
-                    .map(|d| {
-                        let fld = d.field as usize;
-                        let name = d
-                            .name
-                            .clone()
-                            .unwrap_or_else(|| field_names.get(fld).cloned().unwrap_or_default());
-                        (fld, d.subtotal.clone(), name, d.number_format_id)
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
+    let data_fields: Vec<(
+        usize,
+        Option<x::DataConsolidateFunctionValues>,
+        String,
+        Option<u32>,
+    )> = pt
+        .data_fields
+        .as_ref()
+        .map(|df| {
+            df.data_field
+                .iter()
+                .map(|d| {
+                    let fld = d.field as usize;
+                    let name = d
+                        .name
+                        .clone()
+                        .unwrap_or_else(|| field_names.get(fld).cloned().unwrap_or_default());
+                    (fld, d.subtotal.clone(), name, d.number_format_id)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
 
     if row_fields.is_empty()
         || data_fields.is_empty()
@@ -497,7 +504,13 @@ pub fn compute_cells(
     let to_labels = |t: &[PVal]| -> Vec<String> { t.iter().map(PVal::label).collect() };
 
     let field_order = |f: usize| -> Option<Vec<PVal>> {
-        let items = pt.pivot_fields.as_ref()?.pivot_field.get(f)?.items.as_ref()?;
+        let items = pt
+            .pivot_fields
+            .as_ref()?
+            .pivot_field
+            .get(f)?
+            .items
+            .as_ref()?;
         let order: Vec<PVal> = items
             .item
             .iter()
@@ -506,10 +519,8 @@ pub fn compute_cells(
             .collect();
         (!order.is_empty()).then_some(order)
     };
-    let row_orders: Vec<Option<Vec<PVal>>> =
-        row_fields.iter().map(|&f| field_order(f)).collect();
-    let col_orders: Vec<Option<Vec<PVal>>> =
-        col_fields.iter().map(|&f| field_order(f)).collect();
+    let row_orders: Vec<Option<Vec<PVal>>> = row_fields.iter().map(|&f| field_order(f)).collect();
+    let col_orders: Vec<Option<Vec<PVal>>> = col_fields.iter().map(|&f| field_order(f)).collect();
 
     let row_keys: Vec<Vec<String>> = ordered_unique(
         decoded.iter().map(|rec| tuple(&row_fields, rec)).collect(),
@@ -560,7 +571,10 @@ pub fn compute_cells(
     if col_fields.is_empty() {
         let row_names: Vec<String> = row_fields.iter().map(|&f| field_names[f].clone()).collect();
         for (j, name) in row_names.iter().enumerate() {
-            cells.push(styled(text_cell(r1, c1 + j as u32, name.clone()), st.header));
+            cells.push(styled(
+                text_cell(r1, c1 + j as u32, name.clone()),
+                st.header,
+            ));
         }
         for (d, (_, _, name, _)) in data_fields.iter().enumerate() {
             cells.push(styled(
@@ -575,12 +589,18 @@ pub fn compute_cells(
             }
             for (d, (fld, func, _, _)) in data_fields.iter().enumerate() {
                 if let Some(v) = value_for(rk, None, *fld, func.as_ref()) {
-                    cells.push(opt_styled(num_cell(rr, c1 + r + d as u32, v), field_xfs[d].0));
+                    cells.push(opt_styled(
+                        num_cell(rr, c1 + r + d as u32, v),
+                        field_xfs[d].0,
+                    ));
                 }
             }
         }
         let gr = r1 + 1 + row_keys.len() as u32;
-        cells.push(styled(text_cell(gr, c1, "Grand Total".to_string()), st.total_label));
+        cells.push(styled(
+            text_cell(gr, c1, "Grand Total".to_string()),
+            st.total_label,
+        ));
         for (d, (fld, func, _, _)) in data_fields.iter().enumerate() {
             if let Some(v) = value_for_all(&decoded, *fld, func.as_ref()) {
                 cells.push(styled(num_cell(gr, c1 + r + d as u32, v), field_xfs[d].1));
@@ -594,8 +614,7 @@ pub fn compute_cells(
         let (value_xf, total_xf) = field_xfs[0];
         let outer_name = field_names[col_fields[0]].clone();
         let inner_name = field_names[col_fields[1]].clone();
-        let row_names: Vec<String> =
-            row_fields.iter().map(|&f| field_names[f].clone()).collect();
+        let row_names: Vec<String> = row_fields.iter().map(|&f| field_names[f].clone()).collect();
         let base = c1 + r;
 
         enum Slot {
@@ -620,7 +639,11 @@ pub fn compute_cells(
         let value_cols = |row_key: Option<&[String]>, cflds: &[usize], clabels: &[String]| {
             let vals: Vec<PVal> = decoded
                 .iter()
-                .filter(|rec| row_key.map(|rk| matches(&row_fields, rk, rec)).unwrap_or(true))
+                .filter(|rec| {
+                    row_key
+                        .map(|rk| matches(&row_fields, rk, rec))
+                        .unwrap_or(true)
+                })
                 .filter(|rec| matches(cflds, clabels, rec))
                 .map(|rec| rec.get(data_fld).cloned().unwrap_or(PVal::Blank))
                 .collect();
@@ -631,7 +654,10 @@ pub fn compute_cells(
         cells.push(styled(text_cell(r1, base, outer_name), st.header));
         cells.push(styled(text_cell(r1, base + 1, inner_name), st.header));
         for (jx, name) in row_names.iter().enumerate() {
-            cells.push(styled(text_cell(r1 + 2, c1 + jx as u32, name.clone()), st.header));
+            cells.push(styled(
+                text_cell(r1 + 2, c1 + jx as u32, name.clone()),
+                st.header,
+            ));
         }
 
         let mut prev_outer: Option<String> = None;
@@ -649,11 +675,17 @@ pub fn compute_cells(
                     cells.push(styled(text_cell(r1 + 2, col, inner.clone()), st.header));
                 }
                 Slot::Sub(outer) => {
-                    cells.push(styled(text_cell(r1 + 1, col, format!("{outer} Total")), st.header));
+                    cells.push(styled(
+                        text_cell(r1 + 1, col, format!("{outer} Total")),
+                        st.header,
+                    ));
                     cells.push(styled(text_cell(r1 + 2, col, String::new()), st.header));
                 }
                 Slot::Grand => {
-                    cells.push(styled(text_cell(r1 + 1, col, "Grand Total".to_string()), st.header));
+                    cells.push(styled(
+                        text_cell(r1 + 1, col, "Grand Total".to_string()),
+                        st.header,
+                    ));
                     cells.push(styled(text_cell(r1 + 2, col, String::new()), st.header));
                 }
             }
@@ -671,9 +703,10 @@ pub fn compute_cells(
                         value_cols(Some(rk), &col_fields, &[o.clone(), inn.clone()]),
                         value_xf,
                     ),
-                    Slot::Sub(o) => {
-                        (value_cols(Some(rk), &col_fields[..1], &[o.clone()]), Some(total_xf))
-                    }
+                    Slot::Sub(o) => (
+                        value_cols(Some(rk), &col_fields[..1], &[o.clone()]),
+                        Some(total_xf),
+                    ),
                     Slot::Grand => (value_cols(Some(rk), &[], &[]), Some(total_xf)),
                 };
                 if let Some(v) = v {
@@ -683,7 +716,10 @@ pub fn compute_cells(
         }
 
         let gr = r1 + 3 + row_keys.len() as u32;
-        cells.push(styled(text_cell(gr, c1, "Grand Total".to_string()), st.total_label));
+        cells.push(styled(
+            text_cell(gr, c1, "Grand Total".to_string()),
+            st.total_label,
+        ));
         for (sidx, slot) in slots.iter().enumerate() {
             let col = base + sidx as u32;
             let v = match slot {
@@ -700,8 +736,7 @@ pub fn compute_cells(
 
     if data_fields.len() > 1 {
         let col_name = field_names[col_fields[0]].clone();
-        let row_names: Vec<String> =
-            row_fields.iter().map(|&f| field_names[f].clone()).collect();
+        let row_names: Vec<String> = row_fields.iter().map(|&f| field_names[f].clone()).collect();
         let dcount = data_fields.len() as u32;
         let base = c1 + r;
         let m = col_keys.len() as u32;
@@ -725,7 +760,11 @@ pub fn compute_cells(
         }
         for (d, (_, _, name, _)) in data_fields.iter().enumerate() {
             cells.push(styled(
-                text_cell(r1 + 1, base + m * dcount + d as u32, format!("Total {name}")),
+                text_cell(
+                    r1 + 1,
+                    base + m * dcount + d as u32,
+                    format!("Total {name}"),
+                ),
                 st.header,
             ));
         }
@@ -793,10 +832,16 @@ pub fn compute_cells(
     cells.push(styled(text_cell(r1, c1 + r, col_name), st.header));
 
     for (j, name) in row_names.iter().enumerate() {
-        cells.push(styled(text_cell(r1 + 1, c1 + j as u32, name.clone()), st.header));
+        cells.push(styled(
+            text_cell(r1 + 1, c1 + j as u32, name.clone()),
+            st.header,
+        ));
     }
     for (k, ck) in col_keys.iter().enumerate() {
-        cells.push(styled(text_cell(r1 + 1, c1 + r + k as u32, ck[0].clone()), st.header));
+        cells.push(styled(
+            text_cell(r1 + 1, c1 + r + k as u32, ck[0].clone()),
+            st.header,
+        ));
     }
     cells.push(styled(
         text_cell(r1 + 1, c1 + r + m, "Grand Total".to_string()),
@@ -819,7 +864,10 @@ pub fn compute_cells(
     }
 
     let gr = r1 + 2 + row_keys.len() as u32;
-    cells.push(styled(text_cell(gr, c1, "Grand Total".to_string()), st.total_label));
+    cells.push(styled(
+        text_cell(gr, c1, "Grand Total".to_string()),
+        st.total_label,
+    ));
     for (k, ck) in col_keys.iter().enumerate() {
         let vals: Vec<PVal> = decoded
             .iter()
@@ -1579,6 +1627,8 @@ mod tests {
         let fill = &styles.fills[header_xf.fill_id.unwrap() as usize];
         assert_eq!(fill.pattern_type.as_deref(), Some("solid"));
         assert!(styles.fonts[header_xf.font_id.unwrap() as usize].bold);
-        assert!(styles.fonts[styles.cell_xfs[st.total_value as usize].font_id.unwrap() as usize].bold);
+        assert!(
+            styles.fonts[styles.cell_xfs[st.total_value as usize].font_id.unwrap() as usize].bold
+        );
     }
 }

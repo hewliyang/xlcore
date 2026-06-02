@@ -636,10 +636,7 @@ fn builtin_num_fmt_code(id: u32) -> Option<&'static str> {
     })
 }
 
-pub(crate) fn num_fmt_code(
-    doc: &mut xlcore_io::SpreadsheetDocument,
-    id: u32,
-) -> Option<String> {
+pub(crate) fn num_fmt_code(doc: &mut xlcore_io::SpreadsheetDocument, id: u32) -> Option<String> {
     if let Some(code) = builtin_num_fmt_code(id) {
         return Some(code.to_string());
     }
