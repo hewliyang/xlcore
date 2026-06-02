@@ -454,7 +454,7 @@ pub struct BorderLine {
     pub color: Option<Color>,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[cfg_attr(
     feature = "typescript",
     ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")

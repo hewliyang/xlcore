@@ -109,20 +109,33 @@ impl Workbook {
                     .as_ref()
                     .map(|pf| pf.page_field.iter().map(|f| name_of(f.field)).collect())
                     .unwrap_or_default();
-                let data_fields = def
-                    .data_fields
-                    .as_ref()
-                    .map(|df| {
-                        df.data_field
-                            .iter()
-                            .map(|f| PivotDataField {
-                                field: name_of(f.field as i32),
-                                aggregation: aggregation_from_sdk(f.subtotal),
-                                name: f.name.as_ref().map(|n| n.as_str().to_string()),
-                            })
-                            .collect()
+                let raw_data_fields: Vec<(i32, PivotAggregation, Option<String>, Option<u32>)> =
+                    def.data_fields
+                        .as_ref()
+                        .map(|df| {
+                            df.data_field
+                                .iter()
+                                .map(|f| {
+                                    (
+                                        f.field as i32,
+                                        aggregation_from_sdk(f.subtotal),
+                                        f.name.as_ref().map(|n| n.as_str().to_string()),
+                                        f.number_format_id,
+                                    )
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                let data_fields: Vec<PivotDataField> = raw_data_fields
+                    .into_iter()
+                    .map(|(field, aggregation, name, num_fmt_id)| PivotDataField {
+                        field: name_of(field),
+                        aggregation,
+                        name,
+                        number_format: num_fmt_id
+                            .and_then(|id| crate::styles::num_fmt_code(&mut self.doc, id)),
                     })
-                    .unwrap_or_default();
+                    .collect();
 
                 let source_ref = cache
                     .as_ref()
@@ -282,8 +295,22 @@ impl Workbook {
             .name
             .clone()
             .unwrap_or_else(|| format!("PivotTable{cache_id}"));
-        let definition =
-            build_pivot_definition(&patch, &name, cache_id, &columns, &headers, &anchor);
+        let mut data_field_num_fmts = Vec::with_capacity(patch.data_fields.len());
+        for d in &patch.data_fields {
+            data_field_num_fmts.push(match &d.number_format {
+                Some(code) => Some(crate::styles::resolve_num_fmt_id(&mut self.doc, code)?),
+                None => None,
+            });
+        }
+        let definition = build_pivot_definition(
+            &patch,
+            &name,
+            cache_id,
+            &columns,
+            &headers,
+            &anchor,
+            &data_field_num_fmts,
+        );
 
         let ws_part = self.worksheet_part_for_sheet(&patch.sheet)?;
 
@@ -603,6 +630,7 @@ fn build_pivot_definition(
     columns: &[SourceColumn],
     headers: &[String],
     anchor: &crate::refs::ResolvedCellRef,
+    data_field_num_fmts: &[Option<u32>],
 ) -> x::PivotTableDefinition {
     let index_of =
         |field: &str| -> i32 { headers.iter().position(|h| h == field).unwrap_or(0) as i32 };
@@ -715,7 +743,8 @@ fn build_pivot_definition(
         data_field: patch
             .data_fields
             .iter()
-            .map(|d| {
+            .enumerate()
+            .map(|(i, d)| {
                 let header = &d.field;
                 let default_name = format!("{} of {}", agg_label(d.aggregation), header);
                 x::DataField {
@@ -723,6 +752,7 @@ fn build_pivot_definition(
                     name: Some(d.name.clone().unwrap_or(default_name)),
                     field: index_of(header) as u32,
                     subtotal: Some(aggregation_to_sdk(d.aggregation)),
+                    number_format_id: data_field_num_fmts.get(i).copied().flatten(),
                     ..Default::default()
                 }
             })

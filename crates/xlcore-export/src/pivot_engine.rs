@@ -255,6 +255,21 @@ fn styled(mut c: Cell, idx: u32) -> Cell {
     c
 }
 
+fn opt_styled(mut c: Cell, idx: Option<u32>) -> Cell {
+    c.style_index = idx;
+    c
+}
+
+fn intern_xf(styles: &mut Styles, cf: CellFormat) -> u32 {
+    if let Some(i) = styles.cell_xfs.iter().position(|e| *e == cf) {
+        i as u32
+    } else {
+        let i = styles.cell_xfs.len() as u32;
+        styles.cell_xfs.push(cf);
+        i
+    }
+}
+
 pub fn compute_cells(
     pt: &x::PivotTableDefinition,
     cache_def: &x::PivotCacheDefinition,
@@ -326,23 +341,23 @@ pub fn compute_cells(
                 .collect()
         })
         .unwrap_or_default();
-    let data_fields: Vec<(usize, Option<x::DataConsolidateFunctionValues>, String)> = pt
-        .data_fields
-        .as_ref()
-        .map(|df| {
-            df.data_field
-                .iter()
-                .map(|d| {
-                    let fld = d.field as usize;
-                    let name = d
-                        .name
-                        .clone()
-                        .unwrap_or_else(|| field_names.get(fld).cloned().unwrap_or_default());
-                    (fld, d.subtotal.clone(), name)
-                })
-                .collect()
-        })
-        .unwrap_or_default();
+    let data_fields: Vec<(usize, Option<x::DataConsolidateFunctionValues>, String, Option<u32>)> =
+        pt.data_fields
+            .as_ref()
+            .map(|df| {
+                df.data_field
+                    .iter()
+                    .map(|d| {
+                        let fld = d.field as usize;
+                        let name = d
+                            .name
+                            .clone()
+                            .unwrap_or_else(|| field_names.get(fld).cloned().unwrap_or_default());
+                        (fld, d.subtotal.clone(), name, d.number_format_id)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
 
     if row_fields.is_empty() || col_fields.len() > 1 || data_fields.is_empty() {
         return Vec::new();
@@ -356,6 +371,27 @@ pub fn compute_cells(
     };
 
     let st = *style_memo.get_or_insert_with(|| register_styles(styles));
+
+    let field_xfs: Vec<(Option<u32>, u32)> = data_fields
+        .iter()
+        .map(|(_, _, _, num_fmt)| match num_fmt {
+            Some(id) => {
+                let val = intern_xf(
+                    styles,
+                    CellFormat {
+                        num_fmt_id: Some(*id),
+                        horizontal_alignment: Some("right".to_string()),
+                        ..Default::default()
+                    },
+                );
+                let mut tcf = styles.cell_xfs[st.total_value as usize].clone();
+                tcf.num_fmt_id = Some(*id);
+                let tot = intern_xf(styles, tcf);
+                (Some(val), tot)
+            }
+            None => (None, st.total_value),
+        })
+        .collect();
 
     let tuple = |fields: &[usize], rec: &[PVal]| -> Vec<PVal> {
         fields
@@ -411,7 +447,7 @@ pub fn compute_cells(
         for (j, name) in row_names.iter().enumerate() {
             cells.push(styled(text_cell(r1, c1 + j as u32, name.clone()), st.header));
         }
-        for (d, (_, _, name)) in data_fields.iter().enumerate() {
+        for (d, (_, _, name, _)) in data_fields.iter().enumerate() {
             cells.push(styled(
                 text_cell(r1, c1 + r + d as u32, name.clone()),
                 st.header,
@@ -422,23 +458,24 @@ pub fn compute_cells(
             for (j, lbl) in rk.iter().enumerate() {
                 cells.push(text_cell(rr, c1 + j as u32, lbl.clone()));
             }
-            for (d, (fld, func, _)) in data_fields.iter().enumerate() {
+            for (d, (fld, func, _, _)) in data_fields.iter().enumerate() {
                 if let Some(v) = value_for(rk, None, *fld, func.as_ref()) {
-                    cells.push(num_cell(rr, c1 + r + d as u32, v));
+                    cells.push(opt_styled(num_cell(rr, c1 + r + d as u32, v), field_xfs[d].0));
                 }
             }
         }
         let gr = r1 + 1 + row_keys.len() as u32;
         cells.push(styled(text_cell(gr, c1, "Grand Total".to_string()), st.total_label));
-        for (d, (fld, func, _)) in data_fields.iter().enumerate() {
+        for (d, (fld, func, _, _)) in data_fields.iter().enumerate() {
             if let Some(v) = value_for_all(&decoded, *fld, func.as_ref()) {
-                cells.push(styled(num_cell(gr, c1 + r + d as u32, v), st.total_value));
+                cells.push(styled(num_cell(gr, c1 + r + d as u32, v), field_xfs[d].1));
             }
         }
         return cells;
     }
 
-    let (data_fld, ref data_func, ref data_name) = data_fields[0];
+    let (data_fld, ref data_func, ref data_name, _) = data_fields[0];
+    let (value_xf, total_xf) = field_xfs[0];
 
     let col_name = field_names[col_fields[0]].clone();
     let row_names: Vec<String> = row_fields.iter().map(|&f| field_names[f].clone()).collect();
@@ -465,11 +502,11 @@ pub fn compute_cells(
         }
         for (k, ck) in col_keys.iter().enumerate() {
             if let Some(v) = value_for(rk, Some(ck), data_fld, data_func.as_ref()) {
-                cells.push(num_cell(rr, c1 + r + k as u32, v));
+                cells.push(opt_styled(num_cell(rr, c1 + r + k as u32, v), value_xf));
             }
         }
         if let Some(v) = value_for(rk, None, data_fld, data_func.as_ref()) {
-            cells.push(styled(num_cell(rr, c1 + r + m, v), st.total_value));
+            cells.push(styled(num_cell(rr, c1 + r + m, v), total_xf));
         }
     }
 
@@ -482,11 +519,11 @@ pub fn compute_cells(
             .map(|rec| rec.get(data_fld).cloned().unwrap_or(PVal::Blank))
             .collect();
         if let Some(v) = aggregate(&vals, data_func.as_ref()) {
-            cells.push(styled(num_cell(gr, c1 + r + k as u32, v), st.total_value));
+            cells.push(styled(num_cell(gr, c1 + r + k as u32, v), total_xf));
         }
     }
     if let Some(v) = value_for_all(&decoded, data_fld, data_func.as_ref()) {
-        cells.push(styled(num_cell(gr, c1 + r + m, v), st.total_value));
+        cells.push(styled(num_cell(gr, c1 + r + m, v), total_xf));
     }
 
     cells
@@ -675,6 +712,61 @@ mod tests {
         assert_eq!(find(&cells, 4, 1).value.as_deref(), Some("Grand Total"));
         assert_eq!(find(&cells, 4, 2).value.as_deref(), Some("225"));
         assert_eq!(find(&cells, 4, 3).value.as_deref(), Some("3"));
+    }
+
+    #[test]
+    fn data_field_num_fmt_propagates_to_value_and_total_cells() {
+        let cache_def = x::PivotCacheDefinition {
+            cache_fields: Box::new(x::CacheFields {
+                count: Some(2),
+                cache_field: vec![
+                    s_field("Region", &["North", "South"]),
+                    n_field("Amount", &[100.0, 50.0, 75.0]),
+                ],
+            }),
+            ..Default::default()
+        };
+        let records = x::PivotCacheRecords {
+            pivot_cache_record: vec![rec(&[0, 0]), rec(&[0, 1]), rec(&[1, 2])],
+            ..Default::default()
+        };
+        let pt = x::PivotTableDefinition {
+            location: Box::new(x::Location {
+                reference: "A1:B4".to_string(),
+                first_header_row: 1,
+                first_data_row: 1,
+                first_data_column: 1,
+                ..Default::default()
+            }),
+            row_fields: Some(x::RowFields {
+                count: Some(1),
+                field: vec![x::Field { index: 0 }],
+            }),
+            data_fields: Some(x::DataFields {
+                count: Some(1),
+                data_field: vec![x::DataField {
+                    name: Some("Sum of Amount".to_string()),
+                    field: 1,
+                    subtotal: Some(F::Sum),
+                    number_format_id: Some(44),
+                    ..Default::default()
+                }],
+            }),
+            ..Default::default()
+        };
+
+        let mut styles = Styles::default();
+        let mut memo = None;
+        let cells = compute_cells(&pt, &cache_def, &records, &mut styles, &mut memo);
+
+        let value = find(&cells, 2, 2);
+        let vxf = &styles.cell_xfs[value.style_index.unwrap() as usize];
+        assert_eq!(vxf.num_fmt_id, Some(44));
+
+        let total = find(&cells, 4, 2);
+        let txf = &styles.cell_xfs[total.style_index.unwrap() as usize];
+        assert_eq!(txf.num_fmt_id, Some(44));
+        assert!(styles.fonts[txf.font_id.unwrap() as usize].bold);
     }
 
     #[test]

@@ -179,6 +179,15 @@ pub(crate) fn resolve_style_index(
     Ok(intern_cell_format(sheet, new_xf))
 }
 
+pub(crate) fn resolve_num_fmt_id(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    code: &str,
+) -> Result<u32> {
+    let part = ensure_styles_part(doc)?;
+    let sheet = part.root_element_mut(doc).map_err(sdk_err_to_api)?;
+    Ok(intern_num_fmt(sheet, code))
+}
+
 pub(crate) fn upsert_dxf(
     doc: &mut xlcore_io::SpreadsheetDocument,
     patch: &StylePatch,
@@ -591,6 +600,58 @@ fn builtin_num_fmt_id(code: &str) -> Option<u32> {
         "@" => Some(49),
         _ => None,
     }
+}
+
+fn builtin_num_fmt_code(id: u32) -> Option<&'static str> {
+    Some(match id {
+        0 => "General",
+        1 => "0",
+        2 => "0.00",
+        3 => "#,##0",
+        4 => "#,##0.00",
+        9 => "0%",
+        10 => "0.00%",
+        11 => "0.00E+00",
+        12 => "# ?/?",
+        13 => "# ??/??",
+        14 => "mm-dd-yy",
+        15 => "d-mmm-yy",
+        16 => "d-mmm",
+        17 => "mmm-yy",
+        18 => "h:mm AM/PM",
+        19 => "h:mm:ss AM/PM",
+        20 => "h:mm",
+        21 => "h:mm:ss",
+        22 => "m/d/yy h:mm",
+        37 => "#,##0 ;(#,##0)",
+        38 => "#,##0 ;[Red](#,##0)",
+        39 => "#,##0.00;(#,##0.00)",
+        40 => "#,##0.00;[Red](#,##0.00)",
+        45 => "mm:ss",
+        46 => "[h]:mm:ss",
+        47 => "mmss.0",
+        48 => "##0.0E+0",
+        49 => "@",
+        _ => return None,
+    })
+}
+
+pub(crate) fn num_fmt_code(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    id: u32,
+) -> Option<String> {
+    if let Some(code) = builtin_num_fmt_code(id) {
+        return Some(code.to_string());
+    }
+    let wb_part = doc.workbook_part().ok()?.clone();
+    let part = wb_part.workbook_styles_part(doc)?;
+    let sheet = part.root_element(doc).ok()?;
+    sheet.numbering_formats.as_ref().and_then(|fmts| {
+        fmts.numbering_format
+            .iter()
+            .find(|nf| nf.number_format_id == id)
+            .map(|nf| nf.format_code.to_string())
+    })
 }
 
 pub(crate) fn parse_color(text: &str) -> Result<x::Color> {

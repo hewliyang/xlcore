@@ -112,8 +112,10 @@ materializes actual cell values for our renderer).
       recomputing from records (matters when the author set a manual sort or
       when not all field-item combinations appear in the data; Excel shows all
       items, we currently show only combinations present).
-- [ ] Data-field number formats (pipe `numFmt` onto the value cells / the
-      `dataField`) so currency/percent render correctly.
+- [x] Data-field number formats: engine pipes the `dataField` `numFmtId` onto
+      value + total cells (interned xfs, right-aligned); authoring accepts
+      `numberFormat` on `PivotDataField` (resolved/interned into workbook
+      styles), getter reverse-maps `numFmtId` → code. Verified vs SpreadJS.
 - [ ] Empty-records fallback: aggregate from the `worksheetSource` range when
       `pivotCacheRecords` is empty + `refreshOnLoad="1"`.
 

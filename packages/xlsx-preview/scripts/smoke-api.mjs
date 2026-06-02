@@ -264,7 +264,7 @@ const pivot = pivotSheet.pivots.set({
   name: "SmokePivot",
   rowFields: ["Region"],
   columnFields: ["Product"],
-  dataFields: [{ field: "Amount", aggregation: "sum" }],
+  dataFields: [{ field: "Amount", aggregation: "sum", numberFormat: "$#,##0.00" }],
 });
 if (pivot.name !== "SmokePivot" || pivot.rowFields[0] !== "Region") {
   throw new Error("unexpected pivot: " + JSON.stringify(pivot));
@@ -311,6 +311,9 @@ if (roPivots.length !== 1 || roPivots[0].name !== "SmokePivot") {
 }
 if (roPivots[0].dataFields[0].field !== "Amount") {
   throw new Error("reopened pivot data field lost: " + JSON.stringify(roPivots[0]));
+}
+if (roPivots[0].dataFields[0].numberFormat !== "$#,##0.00") {
+  throw new Error("reopened pivot numberFormat lost: " + JSON.stringify(roPivots[0]));
 }
 
 {

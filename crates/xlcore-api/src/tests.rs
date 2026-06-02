@@ -4376,6 +4376,7 @@ fn pivots_create_list_remove_roundtrip() {
                 field: "Amount".to_string(),
                 aggregation: PivotAggregation::Sum,
                 name: None,
+                number_format: Some("0.00%".to_string()),
             }],
         })
         .unwrap();
@@ -4396,6 +4397,7 @@ fn pivots_create_list_remove_roundtrip() {
     assert_eq!(p.source_ref, "Sheet1!A1:C7");
     assert_eq!(p.row_fields, vec!["Region".to_string()]);
     assert_eq!(p.data_fields[0].aggregation, PivotAggregation::Sum);
+    assert_eq!(p.data_fields[0].number_format.as_deref(), Some("0.00%"));
 
     let removed = reopened.remove_pivot("Pivot", &p.id).unwrap().unwrap();
     assert_eq!(removed.id, p.id);
@@ -4438,6 +4440,7 @@ fn pivot_requires_data_field_and_axis() {
             field: "Amount".to_string(),
             aggregation: PivotAggregation::Sum,
             name: None,
+                number_format: None,
         }],
     });
     assert_eq!(no_axis.unwrap_err().code, ApiErrorCode::InvalidPivot);
