@@ -14,9 +14,9 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Pivot per-item filtering: `PivotPatch`/`PivotInfo` gain optional `hiddenItems` (`PivotFieldFilter[]` — `{ field, hide }`). Authoring marks the matching `pivotField` items `h="1"`; both `pivots.set` (in-sheet render) and `pivots.preview` honor it, and the getter reverse-maps hidden items so `update()` round-trips.
+- Interactive pivot filter dropdowns: clicking a canvas-painted filter arrow opens a built-in (framework-agnostic, vanilla-DOM) item popover wired via the new `pivotController` option (`items`/`hiddenValues`/`setHidden`); `setHidden` returns a fresh `WorkbookLayout` (e.g. `pivots.update(...)` + `workbook.layout()`) that the previewer swaps in place via the new `replaceLayout()` — no Blob reload or wasm reparse. A lower-level `onPivotFilter` event (`{ pivot, field, axis, rect }`) is also emitted for custom UIs. Engine pivot metadata now carries `filterArrowCells: PivotFilterArrow[]` (`{ r, c, field, axis }`); `distinctValuesFor` helper exported for populating the dropdown.
 
-- Pivot builder UI: new `PivotBuilder` React component (`@hewliyang/xlsx-preview/react`) with drag-and-drop field buckets (Fields/Filters/Columns/Rows/Values) and per-value aggregation selection. Each Row/Column/Filter field has a `▾` button opening a checkbox popover to hide/show items (recomputes live). Emits the config (incl. `hiddenItems`) via `onChange`; `showPreview` (default `true`) renders an inline `pivots.preview` grid. The `examples/react-vite` demo authors the config into a real worksheet and renders it **inside the sheet** via `ExcelPreviewer`.
+- Pivot per-item filtering: `PivotPatch`/`PivotInfo` gain optional `hiddenItems` (`PivotFieldFilter[]` — `{ field, hide }`). Authoring marks the matching `pivotField` items `h="1"`; both `pivots.set` (in-sheet render) and `pivots.preview` honor it, and the getter reverse-maps hidden items so `update()` round-trips.
 
 - Pivot table rendering: axis members now follow the stored `pivotField` item order (honors manual sorts), falling back to value sort for items absent from that list.
 

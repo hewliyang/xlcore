@@ -38,6 +38,26 @@ fn pivot_grid(path: &str) -> BTreeMap<(u32, u32), String> {
 }
 
 #[test]
+fn filter_arrows_carry_field_identity() {
+    let root = env!("CARGO_MANIFEST_DIR");
+    let path = format!("{root}/../../tests/fixtures/pivot/pivot-simple.xlsx");
+    let layout = xlcore_export::extract(Path::new(&path)).expect("extract");
+    let sheet = layout
+        .sheets
+        .iter()
+        .find(|s| s.name == "Pivot")
+        .expect("pivot sheet");
+    let pivot = sheet.pivots.first().expect("pivot");
+    let arrows = &pivot.filter_arrow_cells;
+    assert!(!arrows.is_empty());
+    let row_arrow = arrows
+        .iter()
+        .find(|a| a.axis == xlcore_export::PivotFilterAxis::Row)
+        .expect("row arrow");
+    assert_eq!(row_arrow.field, "Region");
+}
+
+#[test]
 fn synthesizes_records_from_worksheet_source_when_cache_empty() {
     let root = env!("CARGO_MANIFEST_DIR");
     let base = format!("{root}/../../tests/fixtures/pivot");

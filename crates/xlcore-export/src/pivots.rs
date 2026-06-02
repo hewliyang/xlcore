@@ -1,5 +1,5 @@
 use crate::pivot_engine::PivotStyleIndices;
-use crate::schema::{Cell, CellRef, Merge, Pivot, Styles};
+use crate::schema::{Cell, Merge, Pivot, PivotFilterArrow, PivotFilterAxis, Styles};
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as x;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main::Cell as XCell;
@@ -32,7 +32,14 @@ pub fn extract(
                 let records = rec_part.root_element(doc).ok()?.clone();
                 Some((cache_def, records))
             });
+        let mut field_names: Vec<String> = Vec::new();
         if let Some((cache_def, mut records)) = cache {
+            field_names = cache_def
+                .cache_fields
+                .cache_field
+                .iter()
+                .map(|f| f.name.clone())
+                .collect();
             if records.pivot_cache_record.is_empty() {
                 if let Some(synth) =
                     synthesize_records(doc, &cache_def, shared_strings, sheet_parts)
@@ -44,6 +51,26 @@ pub fn extract(
                 &pt, &cache_def, &records, styles, style_memo,
             ));
         }
+
+        let field_name = |idx: i32| -> String {
+            usize::try_from(idx)
+                .ok()
+                .and_then(|i| field_names.get(i))
+                .cloned()
+                .unwrap_or_default()
+        };
+        let row_field_name = pt
+            .row_fields
+            .as_ref()
+            .and_then(|rf| rf.field.first())
+            .map(|f| field_name(f.index))
+            .unwrap_or_default();
+        let col_field_name = pt
+            .column_fields
+            .as_ref()
+            .and_then(|cf| cf.field.iter().find(|f| f.index >= 0))
+            .map(|f| field_name(f.index))
+            .unwrap_or_default();
 
         let Some(((r1, c1), (r2, c2))) = parse_range(pt.location.reference.as_str()) else {
             continue;
@@ -69,7 +96,12 @@ pub fn extract(
             let r = r1 + first_data_row - 1;
             let c = c1 + (first_data_col - 1);
             if r >= r1 && r <= r2 && c >= c1 && c <= c2 {
-                filter_arrow_cells.push(CellRef { r, c });
+                filter_arrow_cells.push(PivotFilterArrow {
+                    r,
+                    c,
+                    field: row_field_name.clone(),
+                    axis: PivotFilterAxis::Row,
+                });
             }
         }
 
@@ -77,7 +109,12 @@ pub fn extract(
             let r = r1 + (first_header_row - 1);
             let c = c1 + first_data_col;
             if r >= r1 && r <= r2 && c >= c1 && c <= c2 {
-                filter_arrow_cells.push(CellRef { r, c });
+                filter_arrow_cells.push(PivotFilterArrow {
+                    r,
+                    c,
+                    field: col_field_name.clone(),
+                    axis: PivotFilterAxis::Column,
+                });
             }
         }
 

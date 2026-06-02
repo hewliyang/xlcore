@@ -1,6 +1,12 @@
 import { useRef, useState } from "react";
 import { Workbook } from "@hewliyang/xlsx-preview/api";
-import { ExcelPreviewer, PivotBuilder, type PivotBuilderConfig } from "@hewliyang/xlsx-preview/react";
+import type { PivotFieldFilter } from "@hewliyang/xlsx-preview/api";
+import {
+  ExcelPreviewer,
+  distinctValuesFor,
+  type PivotFilterController,
+} from "@hewliyang/xlsx-preview/react";
+import type { WorkbookPreviewer } from "@hewliyang/xlsx-preview/previewer";
 
 const OUTPUT_SHEET = "PivotView";
 
@@ -16,59 +22,67 @@ function colLetter(n: number): string {
 }
 
 export function App() {
-  const [workbook, setWorkbook] = useState<Workbook | null>(null);
-  const [sourceRef, setSourceRef] = useState("");
   const [fileBlob, setFileBlob] = useState<Blob | null>(null);
   const wbRef = useRef<Workbook | null>(null);
+  const previewerRef = useRef<WorkbookPreviewer | null>(null);
   const pivotIdRef = useRef<string | null>(null);
   const sourceRefRef = useRef("");
+  const hiddenRef = useRef<Record<string, string[]>>({});
 
   async function onFile(f: File | null) {
-    setWorkbook(null);
     setFileBlob(null);
     wbRef.current = null;
     pivotIdRef.current = null;
+    hiddenRef.current = {};
     if (!f) return;
+
     const wb = await Workbook.open(await f.arrayBuffer());
-    const dataSheet = wb.activeSheet();
-    const ref = `${dataSheet.name}!A1:${colLetter(dataSheet.columnCount)}${dataSheet.rowCount}`;
+    const data = wb.activeSheet();
+    const ref = `${data.name}!A1:${colLetter(data.columnCount)}${data.rowCount}`;
+    const headerRow = data.range(`A1:${colLetter(data.columnCount)}1`).values()[0] ?? [];
+    const headers = headerRow.map((c, i) => (c.type === "blank" ? `Column ${i + 1}` : String(c.value)));
+    if (headers.length < 2) return;
+
     if (!wb.worksheets().some((w) => w.name === OUTPUT_SHEET)) wb.addSheet(OUTPUT_SHEET);
-    wbRef.current = wb;
+    const out = wb.sheet(OUTPUT_SHEET);
+    const info = out.pivots.set({
+      anchorCell: `${OUTPUT_SHEET}!A1`,
+      sourceRef: ref,
+      name: "DemoPivot",
+      rowFields: [headers[0]!],
+      columnFields: headers.length > 2 ? [headers[1]!] : [],
+      filterFields: [],
+      dataFields: [{ field: headers[headers.length - 1]!, aggregation: "sum" }],
+    });
+
+    pivotIdRef.current = info.id;
     sourceRefRef.current = ref;
-    setWorkbook(wb);
-    setSourceRef(ref);
-    setFileBlob(new Blob([wb.save()]));
+    wbRef.current = wb;
+    setFileBlob(new Blob([wb.save() as BlobPart]));
   }
 
-  function onConfig(cfg: PivotBuilderConfig) {
-    const wb = wbRef.current;
-    if (!wb) return;
-    const out = wb.sheet(OUTPUT_SHEET);
-    if (pivotIdRef.current) {
-      try {
-        out.pivots.remove(pivotIdRef.current);
-      } catch {}
-      pivotIdRef.current = null;
-    }
-    if (cfg.rowFields.length > 0 && cfg.dataFields.length > 0) {
-      try {
-        const info = out.pivots.set({
-          anchorCell: `${OUTPUT_SHEET}!A1`,
-          sourceRef: sourceRefRef.current,
-          name: "BuilderPivot",
-          ...cfg,
-        });
-        pivotIdRef.current = info.id;
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    setFileBlob(new Blob([wb.save()]));
-  }
+  const pivotController: PivotFilterController = {
+    items: ({ field }) => distinctValuesFor(wbRef.current!, sourceRefRef.current, field),
+    hiddenValues: ({ field }) => hiddenRef.current[field] ?? [],
+    setHidden: ({ field, hidden }) => {
+      hiddenRef.current = { ...hiddenRef.current, [field]: hidden };
+      const wb = wbRef.current;
+      if (!wb || !pivotIdRef.current) return;
+      const hiddenItems: PivotFieldFilter[] = Object.entries(hiddenRef.current)
+        .filter(([, hide]) => hide.length > 0)
+        .map(([f, hide]) => ({ field: f, hide }));
+      wb.sheet(OUTPUT_SHEET).pivots.update(pivotIdRef.current, { hiddenItems });
+      return wb.layout();
+    },
+  };
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", padding: 16 }}>
-      <h1 style={{ margin: 0 }}>xlsx-preview · Pivot Builder</h1>
+      <h1 style={{ margin: 0 }}>xlsx-preview · Pivot filter dropdown</h1>
+      <p style={{ color: "#666", marginTop: 4 }}>
+        The pivot is authored via <code>xlcore-api</code>. Click a filter arrow on the table to
+        hide/show items — it recomputes in place.
+      </p>
       <p>
         <input
           type="file"
@@ -77,26 +91,14 @@ export function App() {
         />
       </p>
 
-      {workbook && (
-        <>
-          <p>
-            <label>
-              Source range:{" "}
-              <input value={sourceRef} onChange={(e) => setSourceRef(e.target.value)} style={{ width: 320 }} />
-            </label>
-          </p>
-          <PivotBuilder
-            workbook={workbook}
-            sourceRef={sourceRef}
-            showPreview={false}
-            onChange={onConfig}
-            style={{ marginBottom: 16 }}
-          />
-        </>
-      )}
-
-      <div style={{ height: "60vh", border: "1px solid #ddd", borderRadius: 8, overflow: "hidden" }}>
-        <ExcelPreviewer file={fileBlob} initialSheet={OUTPUT_SHEET} style={{ width: "100%", height: "100%" }} />
+      <div style={{ height: "70vh", border: "1px solid #ddd", borderRadius: 8, overflow: "hidden" }}>
+        <ExcelPreviewer
+          file={fileBlob}
+          initialSheet={OUTPUT_SHEET}
+          previewerRef={previewerRef}
+          pivotController={pivotController}
+          style={{ width: "100%", height: "100%" }}
+        />
       </div>
     </div>
   );

@@ -101,29 +101,32 @@ materializes actual cell values for our renderer).
 - [x] Grid DTO: `PivotGrid { rows, cols, cells: PivotGridCell[] }` with
       0-based `{ row, col, role, kind, value }`; `role` derived from the engine
       `style_index` (header / label / value / totalLabel / totalValue).
-- [x] Frontend: `PivotBuilder` React component (`@hewliyang/xlsx-preview/react`)
-      with drag-and-drop between Fields/Filters/Columns/Rows/Values buckets and
-      a per-value aggregation dropdown. Derives field names from the source
-      header row, emits the live config via `onChange`, and (when
-      `showPreview`) renders an inline `pivots.preview` grid. The
-      `examples/react-vite` demo wires `onChange` to author the pivot into a
-      dedicated worksheet and render it **in-sheet** via `ExcelPreviewer`
-      (author → `save()` → reload the Blob), so the result shows up in the
-      spreadsheet grid like Excel — recomputing on every change. Verified in a
-      real browser (in-sheet pivot, aggregation-change recompute, item filter
-      popover) and unit-tested pure helpers (`pivotBuilder.test.ts`:
-      `applyMove`/`parseRef`/`headerRange`).
+- [x] Grid DTO + `pivots.preview` are exposed for headless aggregation, but
+      pivot *structure* (row/col/value/filter fields, aggregations) is authored
+      directly via `xlcore-api` (`worksheet.pivots.set/update`), not a UI. The
+      drag-and-drop `PivotBuilder` was prototyped then removed — see the
+      interactive filter dropdown below for the shipped surface.
 - [x] Per-item filter toggling: `PivotPatch`/`PivotInfo` carry optional
       `hiddenItems: PivotFieldFilter[]` (`{ field, hide }`). Authoring sets
       `pivotField/items[@h="1"]` for hidden values; `set` (authored render) and
       `preview` both honor it; getter reverse-maps so `update()` round-trips
-      (rust: `pivot_hidden_items_filter_and_roundtrip`). The `PivotBuilder`
-      Row/Column/Filter chips expose a `▾` checkbox popover that toggles items
-      and recomputes the in-sheet pivot live (verified in a real browser).
-      Remaining: wire the canvas-painted filter arrows *on the table itself* to
-      open the popover (needs renderer hit-testing in `interact.ts` +
-      arrow→field identity in the layout); today the menus anchor to the
-      builder's field chips.
+      (rust: `pivot_hidden_items_filter_and_roundtrip`).
+- [x] Canvas-painted filter arrows *on the table itself* open an item dropdown,
+      end-to-end and framework-agnostic. Engine arrows carry field identity
+      (`PivotFilterArrow { r, c, field, axis }` resolved from the row/col
+      field's cache name in `pivots::extract`); `interact.ts` hit-tests the
+      arrow box (`filterArrowRect`/`pivotFilterArrows` in `sheetChrome.ts`).
+      When a `pivotController` (`items`/`hiddenValues`/`setHidden`) is supplied,
+      the **previewer itself** renders a vanilla-DOM popover at the arrow
+      (`pivotFilterPopover.ts`) — works without React. Toggling an item calls
+      `setHidden`, whose returned `WorkbookLayout` (host does
+      `pivots.update({ hiddenItems })` + `workbook.layout()`, in-process, no
+      Blob/wasm reparse) is swapped in via the new `previewer.replaceLayout()`,
+      repainting just the canvas. A lower-level `onPivotFilter` event is also
+      emitted for custom UIs. Verified end-to-end in a real browser (open
+      dropdown → uncheck item → in-place recompute, Grand Total updates). Units:
+      `filter_arrows_carry_field_identity` (rust), `sheetChrome.test.ts` (arrow
+      geometry + lookup), `pivotSource.test.ts` (`distinctValuesFor` helpers).
 
 ### P1: Wider layout coverage
 

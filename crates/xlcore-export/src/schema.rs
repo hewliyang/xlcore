@@ -320,7 +320,35 @@ pub struct Pivot {
 
     pub range: Merge,
 
-    pub filter_arrow_cells: Vec<CellRef>,
+    pub filter_arrow_cells: Vec<PivotFilterArrow>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct PivotFilterArrow {
+    pub r: u32,
+    pub c: u32,
+
+    pub field: String,
+
+    pub axis: PivotFilterAxis,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub enum PivotFilterAxis {
+    Row,
+    Column,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

@@ -1,8 +1,18 @@
 import { decodeWorkbookLayout, findCell, iterRows } from "./columnar.js";
 import { colorToCssWithTheme } from "./color.js";
 import type { LoadReport } from "./errors.js";
-import { attachInteractivity, type InteractHandle, type Selection } from "./interact.js";
+import {
+  attachInteractivity,
+  type InteractHandle,
+  type PivotFilterEvent,
+  type Selection,
+} from "./interact.js";
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
+import {
+  createPivotFilterPopover,
+  type PivotFilterController,
+  type PivotFilterPopoverHandle,
+} from "./pivotFilterPopover.js";
 import type { Sheet as WireSheet } from "./schema/Sheet.js";
 import type { Sheet, WorkbookLayout } from "./types.js";
 
@@ -12,7 +22,11 @@ export interface PreviewerOptions {
   className?: string;
   report?: LoadReport;
   showHidden?: boolean;
+
+  pivotController?: PivotFilterController;
 }
+
+export type { PivotFilterController, PivotFilterContext } from "./pivotFilterPopover.js";
 
 function isTabVisible(sheet: WireSheet, showHidden: boolean): boolean {
   const state = sheet.state;
@@ -28,7 +42,14 @@ export interface PreviewerState {
   zoom: number;
 }
 
-export type PreviewerEventName = "selectionchange" | "sheetchange" | "zoomchange" | "layoutchange";
+export type PreviewerEventName =
+  | "selectionchange"
+  | "sheetchange"
+  | "zoomchange"
+  | "layoutchange"
+  | "pivotfilter";
+
+export type { PivotFilterEvent } from "./interact.js";
 
 export interface WorkbookPreviewer {
   readonly root: HTMLElement;
@@ -38,6 +59,7 @@ export interface WorkbookPreviewer {
   readonly report?: LoadReport;
   destroy(): void;
   redraw(): void;
+  replaceLayout(layout: WorkbookLayout): void;
   getState(): PreviewerState;
   getActiveSheet(): Sheet;
   getActiveSheetIndex(): number;
@@ -77,8 +99,10 @@ export function createWorkbookPreviewer(
 class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   readonly root: HTMLElement;
   readonly canvas: HTMLCanvasElement;
-  readonly layout: WorkbookLayout;
+  layout: WorkbookLayout;
   readonly report?: LoadReport;
+  private readonly pivotController?: PivotFilterController;
+  private pivotPopover: PivotFilterPopoverHandle | null = null;
 
   private readonly tabs: HTMLDivElement;
   private readonly sheetTabs: HTMLDivElement;
@@ -105,6 +129,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     super();
     this.layout = decodeWorkbookLayout(rawLayout);
     this.report = options.report;
+    this.pivotController = options.pivotController;
     this.zoom = clamp(options.initialZoom ?? 1, 0.25, 4);
     this.showHidden = options.showHidden === true;
     this.sheetStates = this.layout.sheets.map(() => ({
@@ -192,7 +217,36 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.draw();
   }
 
+  replaceLayout(rawLayout: WorkbookLayout): void {
+    const prevIndex = this.activeSheetIndex;
+    const prevScroll = { top: this.stage.scrollTop, left: this.stage.scrollLeft };
+    this.layout = decodeWorkbookLayout(rawLayout);
+    if (this.sheetStates.length !== this.layout.sheets.length) {
+      const next = this.layout.sheets.map(
+        (_, i) =>
+          this.sheetStates[i] ?? {
+            colOverrides: new Map<number, number>(),
+            rowOverrides: new Map<number, number>(),
+            activeCell: { r: 1, c: 1 },
+            selection: { r1: 1, c1: 1, r2: 1, c2: 1 },
+          },
+      );
+      this.sheetStates.length = 0;
+      this.sheetStates.push(...next);
+    }
+    this.activeSheetIndex = Math.min(prevIndex, this.layout.sheets.length - 1);
+    this.renderTabs();
+    this.attachInteractivity();
+    this.updateSpacerSize();
+    this.stage.scrollTop = prevScroll.top;
+    this.stage.scrollLeft = prevScroll.left;
+    this.draw();
+    this.emit("layoutchange");
+  }
+
   destroy(): void {
+    this.pivotPopover?.destroy();
+    this.pivotPopover = null;
     this.interactHandle?.destroy();
     this.interactHandle = null;
     this.resizeObserver.disconnect();
@@ -396,6 +450,21 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       },
       scrollContainer: this.stage,
       getViewport: () => this.viewport,
+      onPivotFilter: (info: PivotFilterEvent) => {
+        this.dispatchEvent(new CustomEvent("pivotfilter", { detail: info }));
+        if (this.pivotController) {
+          if (!this.pivotPopover) {
+            this.pivotPopover = createPivotFilterPopover(this.pivotController, (layout) => {
+              if (layout) this.replaceLayout(layout);
+              else this.scheduleDraw();
+            });
+          }
+          this.pivotPopover.open(
+            { pivot: info.pivot, field: info.field, axis: info.axis },
+            info.rect,
+          );
+        }
+      },
       redraw: this.scheduleDraw,
     });
   }
