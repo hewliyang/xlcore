@@ -1,8 +1,14 @@
-use crate::schema::{Cell, CellRef, Merge, Pivot};
+use crate::pivot_engine::PivotStyleIndices;
+use crate::schema::{Cell, CellRef, Merge, Pivot, Styles};
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
 use xlcore_io::{parse_range, SpreadsheetDocument};
 
-pub fn extract(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) -> (Vec<Pivot>, Vec<Cell>) {
+pub fn extract(
+    doc: &mut SpreadsheetDocument,
+    ws_part: &WorksheetPart,
+    styles: &mut Styles,
+    style_memo: &mut Option<PivotStyleIndices>,
+) -> (Vec<Pivot>, Vec<Cell>) {
     let mut out = Vec::new();
     let mut cells = Vec::new();
     let pivot_parts: Vec<_> = ws_part.pivot_table_parts(doc).collect();
@@ -23,7 +29,7 @@ pub fn extract(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) -> (Vec<P
             });
         if let Some((cache_def, records)) = cache {
             cells.extend(crate::pivot_engine::compute_cells(
-                &pt, &cache_def, &records,
+                &pt, &cache_def, &records, styles, style_memo,
             ));
         }
 

@@ -1,7 +1,87 @@
-use crate::schema::Cell;
+use crate::schema::{Cell, CellFormat, Color, Fill, Font, Styles};
 use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as x;
 use std::cmp::Ordering;
 use xlcore_io::parse_range;
+
+#[derive(Clone, Copy)]
+pub struct PivotStyleIndices {
+    header: u32,
+    total_label: u32,
+    total_value: u32,
+}
+
+fn register_styles(styles: &mut Styles) -> PivotStyleIndices {
+    if styles.fonts.is_empty() {
+        styles.fonts.push(Font {
+            name: Some(styles.default_font.clone()),
+            size: Some(styles.default_font_size),
+            ..Default::default()
+        });
+    }
+    if styles.fills.is_empty() {
+        styles.fills.push(Fill {
+            pattern_type: Some("none".to_string()),
+            ..Default::default()
+        });
+    }
+    if styles.cell_xfs.is_empty() {
+        styles.cell_xfs.push(CellFormat::default());
+    }
+    let bold_white = Font {
+        name: Some(styles.default_font.clone()),
+        size: Some(styles.default_font_size),
+        bold: true,
+        color: Some(Color {
+            rgb: Some("FFFFFFFF".to_string()),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    let bold_dark = Font {
+        name: Some(styles.default_font.clone()),
+        size: Some(styles.default_font_size),
+        bold: true,
+        ..Default::default()
+    };
+    let white_font = styles.fonts.len() as u32;
+    styles.fonts.push(bold_white);
+    let dark_font = styles.fonts.len() as u32;
+    styles.fonts.push(bold_dark);
+
+    let header_fill = styles.fills.len() as u32;
+    styles.fills.push(Fill {
+        pattern_type: Some("solid".to_string()),
+        fg_color: Some(Color {
+            rgb: Some("FF4472C4".to_string()),
+            ..Default::default()
+        }),
+        ..Default::default()
+    });
+
+    let header = styles.cell_xfs.len() as u32;
+    styles.cell_xfs.push(CellFormat {
+        font_id: Some(white_font),
+        fill_id: Some(header_fill),
+        ..Default::default()
+    });
+    let total_label = styles.cell_xfs.len() as u32;
+    styles.cell_xfs.push(CellFormat {
+        font_id: Some(dark_font),
+        ..Default::default()
+    });
+    let total_value = styles.cell_xfs.len() as u32;
+    styles.cell_xfs.push(CellFormat {
+        font_id: Some(dark_font),
+        horizontal_alignment: Some("right".to_string()),
+        ..Default::default()
+    });
+
+    PivotStyleIndices {
+        header,
+        total_label,
+        total_value,
+    }
+}
 
 #[derive(Clone, PartialEq)]
 enum PVal {
@@ -170,10 +250,17 @@ fn num_cell(r: u32, c: u32, n: f64) -> Cell {
     }
 }
 
+fn styled(mut c: Cell, idx: u32) -> Cell {
+    c.style_index = Some(idx);
+    c
+}
+
 pub fn compute_cells(
     pt: &x::PivotTableDefinition,
     cache_def: &x::PivotCacheDefinition,
     records: &x::PivotCacheRecords,
+    styles: &mut Styles,
+    style_memo: &mut Option<PivotStyleIndices>,
 ) -> Vec<Cell> {
     let field_names: Vec<String> = cache_def
         .cache_fields
@@ -265,6 +352,8 @@ pub fn compute_cells(
         return Vec::new();
     };
 
+    let st = *style_memo.get_or_insert_with(|| register_styles(styles));
+
     let (data_fld, ref data_func, ref data_name) = data_fields[0];
 
     let tuple = |fields: &[usize], rec: &[PVal]| -> Vec<PVal> {
@@ -315,9 +404,9 @@ pub fn compute_cells(
     if col_fields.is_empty() {
         let row_names: Vec<String> = row_fields.iter().map(|&f| field_names[f].clone()).collect();
         for (j, name) in row_names.iter().enumerate() {
-            cells.push(text_cell(r1, c1 + j as u32, name.clone()));
+            cells.push(styled(text_cell(r1, c1 + j as u32, name.clone()), st.header));
         }
-        cells.push(text_cell(r1, c1 + r, data_name.clone()));
+        cells.push(styled(text_cell(r1, c1 + r, data_name.clone()), st.header));
         for (i, rk) in row_keys.iter().enumerate() {
             let rr = r1 + 1 + i as u32;
             for (j, lbl) in rk.iter().enumerate() {
@@ -328,9 +417,9 @@ pub fn compute_cells(
             }
         }
         let gr = r1 + 1 + row_keys.len() as u32;
-        cells.push(text_cell(gr, c1, "Grand Total".to_string()));
+        cells.push(styled(text_cell(gr, c1, "Grand Total".to_string()), st.total_label));
         if let Some(v) = value_for_all(&decoded, data_fld, data_func.as_ref()) {
-            cells.push(num_cell(gr, c1 + r, v));
+            cells.push(styled(num_cell(gr, c1 + r, v), st.total_value));
         }
         return cells;
     }
@@ -339,16 +428,19 @@ pub fn compute_cells(
     let row_names: Vec<String> = row_fields.iter().map(|&f| field_names[f].clone()).collect();
     let m = col_keys.len() as u32;
 
-    cells.push(text_cell(r1, c1, data_name.clone()));
-    cells.push(text_cell(r1, c1 + r, col_name));
+    cells.push(styled(text_cell(r1, c1, data_name.clone()), st.header));
+    cells.push(styled(text_cell(r1, c1 + r, col_name), st.header));
 
     for (j, name) in row_names.iter().enumerate() {
-        cells.push(text_cell(r1 + 1, c1 + j as u32, name.clone()));
+        cells.push(styled(text_cell(r1 + 1, c1 + j as u32, name.clone()), st.header));
     }
     for (k, ck) in col_keys.iter().enumerate() {
-        cells.push(text_cell(r1 + 1, c1 + r + k as u32, ck[0].clone()));
+        cells.push(styled(text_cell(r1 + 1, c1 + r + k as u32, ck[0].clone()), st.header));
     }
-    cells.push(text_cell(r1 + 1, c1 + r + m, "Grand Total".to_string()));
+    cells.push(styled(
+        text_cell(r1 + 1, c1 + r + m, "Grand Total".to_string()),
+        st.header,
+    ));
 
     for (i, rk) in row_keys.iter().enumerate() {
         let rr = r1 + 2 + i as u32;
@@ -361,12 +453,12 @@ pub fn compute_cells(
             }
         }
         if let Some(v) = value_for(rk, None) {
-            cells.push(num_cell(rr, c1 + r + m, v));
+            cells.push(styled(num_cell(rr, c1 + r + m, v), st.total_value));
         }
     }
 
     let gr = r1 + 2 + row_keys.len() as u32;
-    cells.push(text_cell(gr, c1, "Grand Total".to_string()));
+    cells.push(styled(text_cell(gr, c1, "Grand Total".to_string()), st.total_label));
     for (k, ck) in col_keys.iter().enumerate() {
         let vals: Vec<PVal> = decoded
             .iter()
@@ -374,11 +466,11 @@ pub fn compute_cells(
             .map(|rec| rec.get(data_fld).cloned().unwrap_or(PVal::Blank))
             .collect();
         if let Some(v) = aggregate(&vals, data_func.as_ref()) {
-            cells.push(num_cell(gr, c1 + r + k as u32, v));
+            cells.push(styled(num_cell(gr, c1 + r + k as u32, v), st.total_value));
         }
     }
     if let Some(v) = value_for_all(&decoded, data_fld, data_func.as_ref()) {
-        cells.push(num_cell(gr, c1 + r + m, v));
+        cells.push(styled(num_cell(gr, c1 + r + m, v), st.total_value));
     }
 
     cells
@@ -550,7 +642,9 @@ mod tests {
             ..Default::default()
         };
 
-        let cells = compute_cells(&pt, &cache_def, &records);
+        let mut styles = Styles::default();
+        let mut memo = None;
+        let cells = compute_cells(&pt, &cache_def, &records, &mut styles, &mut memo);
 
         assert_eq!(find(&cells, 1, 1).value.as_deref(), Some("Sum of Amount"));
         assert_eq!(find(&cells, 1, 2).value.as_deref(), Some("Product"));
@@ -571,5 +665,20 @@ mod tests {
         assert_eq!(find(&cells, 5, 2).value.as_deref(), Some("135"));
         assert_eq!(find(&cells, 5, 3).value.as_deref(), Some("175"));
         assert_eq!(find(&cells, 5, 4).value.as_deref(), Some("310"));
+
+        let st = memo.unwrap();
+        assert_eq!(find(&cells, 1, 1).style_index, Some(st.header));
+        assert_eq!(find(&cells, 2, 4).style_index, Some(st.header));
+        assert_eq!(find(&cells, 3, 1).style_index, None);
+        assert_eq!(find(&cells, 3, 2).style_index, None);
+        assert_eq!(find(&cells, 3, 4).style_index, Some(st.total_value));
+        assert_eq!(find(&cells, 5, 1).style_index, Some(st.total_label));
+        assert_eq!(find(&cells, 5, 4).style_index, Some(st.total_value));
+
+        let header_xf = &styles.cell_xfs[st.header as usize];
+        let fill = &styles.fills[header_xf.fill_id.unwrap() as usize];
+        assert_eq!(fill.pattern_type.as_deref(), Some("solid"));
+        assert!(styles.fonts[header_xf.font_id.unwrap() as usize].bold);
+        assert!(styles.fonts[styles.cell_xfs[st.total_value as usize].font_id.unwrap() as usize].bold);
     }
 }

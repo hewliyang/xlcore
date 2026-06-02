@@ -14,6 +14,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Pivot table styling: the materialized grid now carries `style_index` so the header band (bold white on accent fill) and grand-total row/column (bold) render, matching the SpreadJS look.
 - Pivot table rendering: the layout extractor now runs a self-contained aggregation engine over `pivotCacheRecords` (group-by + sum/count/avg/max/min/product/countNums/stdDev/var, with row/column/grand totals and Excel-style item sort) and materializes the value grid into the sheet, so the preview component renders pivot values/labels/totals instead of an empty grid. Supports one+ row fields, 0-1 column fields, one data field; no formula engine required.
 - Pivot table authoring: `worksheet.pivots.set/list/remove` + `workbook.allPivots` (and Rust `set_pivot`/`pivots`/`remove_pivot`, WASM `setPivot`/`pivots`/`removePivot`) create a worksheet-source pivot with row/column/filter fields and sum/count/avg/etc. data fields; values compute in Excel/SpreadJS from the authored cache + materialized row/col item layout.
 - `charts.set`/`charts.update`/`images.set` now accept a 1-based A1 range string (e.g. `"B20:H36"`) for `anchor`, normalized via `anchorA1`, alongside the 0-based `ChartAnchor`.

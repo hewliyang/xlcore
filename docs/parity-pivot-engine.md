@@ -72,11 +72,15 @@ materializes actual cell values for our renderer).
 
 ### P0: Styling parity
 
-- [ ] Bold the Grand Total row/column and the header rows.
-- [ ] Header fill + label indentation to match the SpreadJS look.
-- [ ] Extend the `Pivot` schema struct (or emit `style_index` on the cells)
-      with cell roles (header / row-label / value / total) so the renderer can
-      style them. Currently cells carry no `style_index`.
+- [x] Bold the Grand Total row/column and the header rows.
+- [x] Header fill (bold white on accent `4472C4`) to match the SpreadJS look.
+- [x] Emit `style_index` on the engine cells (header / total-label /
+      total-value roles). `register_styles` appends pivot fonts/fills/xfs to the
+      workbook `Styles` once per extract (memoized via `pivot_style_memo` in
+      `lib.rs`); ensures index-0 defaults exist first so authored workbooks with
+      empty `cell_xfs` don't have their implicit-default cells styled.
+- [ ] Label indentation for nested row fields (no-op for the current
+      single-level tabular layout; revisit with outline/compact layouts).
 
 ### P1: Interactive live re-pivot (the big frontend win)
 

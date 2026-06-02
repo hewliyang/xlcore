@@ -55,7 +55,7 @@ pub fn extract_doc_with_options(
 ) -> Result<WorkbookLayout> {
     let shared_strings = shared_strings::preload(doc);
 
-    let (styles, dxfs, table_styles) = {
+    let (mut styles, dxfs, table_styles) = {
         let wb_part = doc.workbook_part()?;
         if let Some(sp) = wb_part.workbook_styles_part(doc) {
             let sp = sp.clone();
@@ -103,6 +103,7 @@ pub fn extract_doc_with_options(
     };
     let mut sheets = Vec::with_capacity(sheet_capacity);
     let mut selected_original_sheet_index: Option<u32> = None;
+    let mut pivot_style_memo: Option<pivot_engine::PivotStyleIndices> = None;
     for (idx, wb_sheet) in workbook_sheets.iter().enumerate() {
         if let Some(wanted_idx) = options.sheet_index {
             if idx != wanted_idx {
@@ -124,7 +125,8 @@ pub fn extract_doc_with_options(
 
         let drawings = charts::extract(doc, &ws_part, theme.as_ref());
         let tables = tables::extract(doc, &ws_part);
-        let (pivots, pivot_cells) = pivots::extract(doc, &ws_part);
+        let (pivots, pivot_cells) =
+            pivots::extract(doc, &ws_part, &mut styles, &mut pivot_style_memo);
         let comments = annotations::extract_comments(doc, &ws_part);
         let ws_for_sparks = ws_part.root_element(doc)?.clone();
         let sparkline_groups = sparklines::extract(&ws_for_sparks);
