@@ -107,7 +107,13 @@ materializes actual cell values for our renderer).
 
 ### P2: Filtering + correctness
 
-- [ ] Honor page/filter field selection (currently all items always included).
+- [x] Honor page/filter field selection. Engine builds per-field hidden
+      shared-item sets from `pivotFields/items[@h="1" @x=i]` and drops any
+      record whose `FieldItem` value is hidden, before decode — so hidden items
+      vanish from row/col keys *and* every total. Covers row/col filters and
+      page fields expressed via hidden items (the common case; `pageField/@item`
+      single-select still TODO). Unit:
+      `hidden_items_excluded_from_keys_and_totals`.
 - [ ] Honor stored `rowItems`/`colItems` order for imported pivots instead of
       recomputing from records (matters when the author set a manual sort or
       when not all field-item combinations appear in the data; Excel shows all

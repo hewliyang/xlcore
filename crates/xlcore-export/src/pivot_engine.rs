@@ -300,9 +300,49 @@ pub fn compute_cells(
         })
         .collect();
 
+    let hidden_items: Vec<std::collections::HashSet<u32>> = pt
+        .pivot_fields
+        .as_ref()
+        .map(|pf| {
+            pf.pivot_field
+                .iter()
+                .map(|f| {
+                    f.items
+                        .as_ref()
+                        .map(|items| {
+                            items
+                                .item
+                                .iter()
+                                .filter(|it| it.hidden.map(Into::into).unwrap_or(false))
+                                .filter_map(|it| it.index.map(Into::into))
+                                .collect()
+                        })
+                        .unwrap_or_default()
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let record_hidden = |rec: &x::PivotCacheRecord| -> bool {
+        rec.pivot_cache_record_choice
+            .iter()
+            .enumerate()
+            .any(|(i, choice)| {
+                if let x::PivotCacheRecordChoice::FieldItem(b) = choice {
+                    hidden_items
+                        .get(i)
+                        .map(|h| h.contains(&b.val))
+                        .unwrap_or(false)
+                } else {
+                    false
+                }
+            })
+    };
+
     let decoded: Vec<Vec<PVal>> = records
         .pivot_cache_record
         .iter()
+        .filter(|rec| !record_hidden(rec))
         .map(|rec| {
             rec.pivot_cache_record_choice
                 .iter()
@@ -767,6 +807,78 @@ mod tests {
         let txf = &styles.cell_xfs[total.style_index.unwrap() as usize];
         assert_eq!(txf.num_fmt_id, Some(44));
         assert!(styles.fonts[txf.font_id.unwrap() as usize].bold);
+    }
+
+    fn pivot_field_hiding(indices: &[u32]) -> x::PivotField {
+        x::PivotField {
+            items: Some(x::Items {
+                item: indices
+                    .iter()
+                    .map(|i| x::Item {
+                        index: Some(*i),
+                        hidden: Some(true.into()),
+                        ..Default::default()
+                    })
+                    .collect(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn hidden_items_excluded_from_keys_and_totals() {
+        let cache_def = x::PivotCacheDefinition {
+            cache_fields: Box::new(x::CacheFields {
+                count: Some(2),
+                cache_field: vec![
+                    s_field("Region", &["North", "South"]),
+                    n_field("Amount", &[100.0, 50.0, 75.0]),
+                ],
+            }),
+            ..Default::default()
+        };
+        let records = x::PivotCacheRecords {
+            pivot_cache_record: vec![rec(&[0, 0]), rec(&[0, 1]), rec(&[1, 2])],
+            ..Default::default()
+        };
+        let pt = x::PivotTableDefinition {
+            location: Box::new(x::Location {
+                reference: "A1:B4".to_string(),
+                first_header_row: 1,
+                first_data_row: 1,
+                first_data_column: 1,
+                ..Default::default()
+            }),
+            pivot_fields: Some(x::PivotFields {
+                count: Some(2),
+                pivot_field: vec![pivot_field_hiding(&[1]), x::PivotField::default()],
+            }),
+            row_fields: Some(x::RowFields {
+                count: Some(1),
+                field: vec![x::Field { index: 0 }],
+            }),
+            data_fields: Some(x::DataFields {
+                count: Some(1),
+                data_field: vec![x::DataField {
+                    name: Some("Sum of Amount".to_string()),
+                    field: 1,
+                    subtotal: Some(F::Sum),
+                    ..Default::default()
+                }],
+            }),
+            ..Default::default()
+        };
+
+        let mut styles = Styles::default();
+        let mut memo = None;
+        let cells = compute_cells(&pt, &cache_def, &records, &mut styles, &mut memo);
+
+        assert_eq!(find(&cells, 2, 1).value.as_deref(), Some("North"));
+        assert_eq!(find(&cells, 2, 2).value.as_deref(), Some("150"));
+        assert!(!cells.iter().any(|c| c.value.as_deref() == Some("South")));
+        assert_eq!(find(&cells, 3, 1).value.as_deref(), Some("Grand Total"));
+        assert_eq!(find(&cells, 3, 2).value.as_deref(), Some("150"));
     }
 
     #[test]
