@@ -4340,3 +4340,105 @@ fn defined_names_non_reference_formula_emits_warning() {
     .unwrap();
     assert!(wb.take_warnings().is_empty());
 }
+
+#[test]
+fn pivots_create_list_remove_roundtrip() {
+    let mut wb = Workbook::new().unwrap();
+    let rows = [
+        ("North", "Widget", 100.0),
+        ("North", "Gadget", 50.0),
+        ("South", "Widget", 75.0),
+        ("South", "Gadget", 25.0),
+        ("North", "Widget", 30.0),
+        ("South", "Gadget", 60.0),
+    ];
+    wb.set_value("Sheet1!A1", "Region").unwrap();
+    wb.set_value("Sheet1!B1", "Product").unwrap();
+    wb.set_value("Sheet1!C1", "Amount").unwrap();
+    for (i, (region, product, amount)) in rows.iter().enumerate() {
+        let r = i as u32 + 2;
+        wb.set_value(format!("Sheet1!A{r}"), *region).unwrap();
+        wb.set_value(format!("Sheet1!B{r}"), *product).unwrap();
+        wb.set_value(format!("Sheet1!C{r}"), *amount).unwrap();
+    }
+    wb.create_sheet("Pivot").unwrap();
+
+    let info = wb
+        .set_pivot(PivotPatch {
+            sheet: "Pivot".to_string(),
+            anchor_cell: "Pivot!A1".to_string(),
+            source_ref: "Sheet1!A1:C7".to_string(),
+            name: Some("SalesPivot".to_string()),
+            row_fields: vec!["Region".to_string()],
+            column_fields: vec!["Product".to_string()],
+            filter_fields: vec![],
+            data_fields: vec![PivotDataField {
+                field: "Amount".to_string(),
+                aggregation: PivotAggregation::Sum,
+                name: None,
+            }],
+        })
+        .unwrap();
+    assert_eq!(info.name, "SalesPivot");
+    assert_eq!(info.row_fields, vec!["Region".to_string()]);
+    assert_eq!(info.column_fields, vec!["Product".to_string()]);
+    assert_eq!(info.data_fields.len(), 1);
+    assert_eq!(info.data_fields[0].field, "Amount");
+    assert!(!info.id.is_empty());
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let pivots = reopened.pivots(None).unwrap();
+    assert_eq!(pivots.len(), 1);
+    let p = &pivots[0];
+    assert_eq!(p.sheet, "Pivot");
+    assert_eq!(p.name, "SalesPivot");
+    assert_eq!(p.source_ref, "Sheet1!A1:C7");
+    assert_eq!(p.row_fields, vec!["Region".to_string()]);
+    assert_eq!(p.data_fields[0].aggregation, PivotAggregation::Sum);
+
+    let removed = reopened.remove_pivot("Pivot", &p.id).unwrap().unwrap();
+    assert_eq!(removed.id, p.id);
+    assert!(reopened.pivots(None).unwrap().is_empty());
+
+    let bytes2 = reopened.save_bytes().unwrap();
+    let mut reopened2 = Workbook::open_bytes(bytes2).unwrap();
+    assert!(reopened2.pivots(None).unwrap().is_empty());
+}
+
+#[test]
+fn pivot_requires_data_field_and_axis() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A1", "Region").unwrap();
+    wb.set_value("Sheet1!B1", "Amount").unwrap();
+    wb.set_value("Sheet1!A2", "North").unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+
+    let no_data = wb.set_pivot(PivotPatch {
+        sheet: "Sheet1".to_string(),
+        anchor_cell: "Sheet1!D1".to_string(),
+        source_ref: "Sheet1!A1:B2".to_string(),
+        name: None,
+        row_fields: vec!["Region".to_string()],
+        column_fields: vec![],
+        filter_fields: vec![],
+        data_fields: vec![],
+    });
+    assert_eq!(no_data.unwrap_err().code, ApiErrorCode::InvalidPivot);
+
+    let no_axis = wb.set_pivot(PivotPatch {
+        sheet: "Sheet1".to_string(),
+        anchor_cell: "Sheet1!D1".to_string(),
+        source_ref: "Sheet1!A1:B2".to_string(),
+        name: None,
+        row_fields: vec![],
+        column_fields: vec![],
+        filter_fields: vec![],
+        data_fields: vec![PivotDataField {
+            field: "Amount".to_string(),
+            aggregation: PivotAggregation::Sum,
+            name: None,
+        }],
+    });
+    assert_eq!(no_axis.unwrap_err().code, ApiErrorCode::InvalidPivot);
+}

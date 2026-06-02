@@ -61,8 +61,19 @@ Known gaps:
   dl no longer duplicates onto every series). Richer chart features (combo,
   dual axis, chartEx, marker/line styling, per-point data labels, modern
   chartStyle/colorStyle companion parts) remain preserve-only. Image authoring now covers
-  position, rotation, flips, and crop; shapes and pivot tables are still
-  preserve-only — no authoring API yet. Sparkline
+  position, rotation, flips, and crop; shapes are still
+  preserve-only — no authoring API yet. Pivot tables now author a single
+  worksheet-source pivot (`set_pivot` / `pivots` / `remove_pivot`): row/column/
+  filter fields plus sum/count/avg/max/min/product/countNums/stdDev/var data
+  fields. The cache enumerates shared items for every field and records use
+  index references; rowItems/colItems are materialized (subtotals disabled) so
+  Excel and SpreadJS compute the value grid from the cache. The
+  `pivotCacheDefinition`/`pivotCacheRecords` parts land at `/pivotCache`
+  (SDK `PATH_PREFIX` relative to `xl/workbook.xml`) and are wired with absolute
+  relationship targets; the `pivotTable` part gets its own cacheDefinition
+  relationship via `create_relationship_to_part`. Slicers/timelines,
+  calculated fields, grouping, and multi-level subtotals remain out of scope.
+  Sparkline
   groups now author/list/remove (line/column/win-loss stacked, per-cell
   location + dataRef, markers/high/low/first/last/negative/displayXAxis
   flags, per-color palette, axis types + manual min/max, line weight).
@@ -167,7 +178,7 @@ Status key:
 | Images | `Shapes.Picture`, shape collection | Insert image, position, size, crop/rotation later | Done (insert/list/remove PNG/JPEG/GIF/BMP/TIFF/WEBP/SVG with two-cell anchor; sniff or explicit `format`; crop/rotation still preserve-only) | Rust API + save/reopen |
 | Shapes | `Shapes.ShapeCollection` | Preserve first; author basic shape/text later | P2 | Preview + OOXML |
 | Sparklines | `Sparklines` APIs | Preserve; author simple line/column/win-loss | Done (author/list/remove line/column/stacked groups with per-entry location + dataRef, markers/high/low/first/last/negative/displayXAxis flags, axis min/max kinds + manual values, line weight, full color palette) | Rust API + save/reopen |
-| Pivot tables | `PivotTableManager`, slicers/timelines | Preserve; refresh/create only after aggregation model exists | P2 | OOXML + Excel open |
+| Pivot tables | `PivotTableManager`, slicers/timelines | Preserve; refresh/create only after aggregation model exists | Partial (author single worksheet-source pivot: row/column/filter fields + sum/count/avg/max/min/product/countNums/stdDev/var data fields; enumerated cache + materialized rowItems/colItems so Excel/SpreadJS compute values; subtotals disabled, single-level fine, no slicers/timelines/calculated fields/grouping; cache part emits at `/pivotCache` via absolute rels) | Rust API + SpreadJS load/compute + save/reopen |
 | Slicers/timelines | `Slicers`, pivot slicers | Preserve; authoring deferred | Later | OOXML diff |
 | Protection | Sheet/workbook protection APIs | Sheet/workbook protection metadata | Done | Rust API + save/reopen |
 | Print/page setup | Print, page setup, headers/footers | Page setup, print areas, headers/footers | Done (orientation/scale/fit/margins/print options/header+footer; print areas via defined names) | Rust API + save/reopen |
@@ -287,6 +298,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `invalid_chart` | Chart patch has no series, or a series `values_ref` is empty |
 | `invalid_image` | Image patch has empty bytes, an unrecognized format that wasn't explicitly specified, or a non-finite rotation/crop value |
 | `invalid_sparkline_group` | Sparkline group patch has no entries, an invalid location/dataRef, or a non-RRGGBB color |
+| `invalid_pivot` | Pivot patch has no data field, no row/column field, a source with no data rows, or references a field missing from the source header |
 | `unsupported_formula` | Formula could not be evaluated; source/cache preserved where possible |
 | `unsupported_object` | Requested chart/table/drawing/pivot operation is not implemented |
 | `lossy_operation` | Operation completed but normalized/discarded unsupported details |

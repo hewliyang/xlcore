@@ -17,6 +17,7 @@ import {
   DataValidationCollection,
   HyperlinkCollection,
   ImageCollection,
+  PivotCollection,
   MergeCollection,
   SparklineGroupCollection,
   TableCollection,
@@ -81,6 +82,7 @@ export class Worksheet {
   readonly charts: ChartCollection;
   readonly images: ImageCollection;
   readonly sparklineGroups: SparklineGroupCollection;
+  readonly pivots: PivotCollection;
   readonly freeze: SheetFreeze;
   readonly pageSetup: SheetPageSetupApi;
   readonly protection: SheetProtection;
@@ -101,6 +103,7 @@ export class Worksheet {
     this.charts = new ChartCollection(handle, this.sheetRef);
     this.images = new ImageCollection(handle, this.sheetRef);
     this.sparklineGroups = new SparklineGroupCollection(handle, this.sheetRef);
+    this.pivots = new PivotCollection(handle, this.sheetRef);
     this.freeze = new SheetFreeze(handle, this.sheetRef);
     this.pageSetup = new SheetPageSetupApi(handle, this.sheetRef);
     this.protection = new SheetProtection(handle, this.sheetRef);

@@ -4,6 +4,7 @@ import {
   DefinedNamesCollection,
   WorkbookCharts,
   WorkbookImages,
+  WorkbookPivots,
   WorkbookPropertiesApi,
   WorkbookProtection,
   WorkbookSparklineGroups,
@@ -33,11 +34,13 @@ export {
   HyperlinkCollection,
   ImageCollection,
   MergeCollection,
+  PivotCollection,
   SparklineGroupCollection,
   TableCollection,
   ThreadedNotesCollection,
   WorkbookCharts,
   WorkbookImages,
+  WorkbookPivots,
   WorkbookPropertiesApi,
   WorkbookProtection,
   WorkbookSparklineGroups,
@@ -186,7 +189,6 @@ export interface RecalcOptions {
   errorsOnly?: boolean;
 }
 
-
 export type { CellInput } from "./api-range.js";
 
 export class Workbook {
@@ -208,6 +210,7 @@ export class Workbook {
   readonly allCharts: WorkbookCharts;
   readonly allImages: WorkbookImages;
   readonly allSparklineGroups: WorkbookSparklineGroups;
+  readonly allPivots: WorkbookPivots;
   readonly properties: WorkbookPropertiesApi;
   readonly calcProperties: CalcPropertiesApi;
   readonly protection: WorkbookProtection;
@@ -218,6 +221,7 @@ export class Workbook {
     this.allCharts = new WorkbookCharts(handle);
     this.allImages = new WorkbookImages(handle);
     this.allSparklineGroups = new WorkbookSparklineGroups(handle);
+    this.allPivots = new WorkbookPivots(handle);
     this.properties = new WorkbookPropertiesApi(handle);
     this.calcProperties = new CalcPropertiesApi(handle);
     this.protection = new WorkbookProtection(handle);

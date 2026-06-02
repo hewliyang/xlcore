@@ -22,6 +22,8 @@ import type {
   ImageInfo,
   ImagePatch,
   MergeInfo,
+  PivotInfo,
+  PivotPatch,
   SparklineGroupInfo,
   SparklineGroupPatch,
   TableInfo,
@@ -319,6 +321,25 @@ export class SparklineGroupCollection extends SheetScopedCollection {
   }
   remove(id: string): SparklineGroupInfo | null {
     return (this.handle.removeSparklineGroup(this.sheet, id) as SparklineGroupInfo | null) ?? null;
+  }
+}
+
+export class PivotCollection extends SheetScopedCollection {
+  list(): PivotInfo[] {
+    return this.handle.pivots(this.sheet) as PivotInfo[];
+  }
+  set(patch: Omit<PivotPatch, "sheet">): PivotInfo {
+    return this.handle.setPivot({ ...patch, sheet: this.sheet }) as PivotInfo;
+  }
+  remove(id: string): PivotInfo | null {
+    return (this.handle.removePivot(this.sheet, id) as PivotInfo | null) ?? null;
+  }
+}
+
+export class WorkbookPivots {
+  constructor(private readonly handle: WasmWorkbookHandle) {}
+  list(): PivotInfo[] {
+    return this.handle.pivots(null) as PivotInfo[];
   }
 }
 

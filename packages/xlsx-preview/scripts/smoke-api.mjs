@@ -247,6 +247,35 @@ if (outputs.charts.list().length !== 1) {
   throw new Error("charts.update should not duplicate: " + outputs.charts.list().length);
 }
 
+const pivotSrc = wb.addSheet("PivotSrc");
+pivotSrc.range("A1:C7").setValues([
+  ["Region", "Product", "Amount"],
+  ["North", "Widget", 100],
+  ["North", "Gadget", 50],
+  ["South", "Widget", 75],
+  ["South", "Gadget", 25],
+  ["North", "Widget", 30],
+  ["South", "Gadget", 60],
+]);
+const pivotSheet = wb.addSheet("PivotOut");
+const pivot = pivotSheet.pivots.set({
+  anchorCell: "PivotOut!A1",
+  sourceRef: "PivotSrc!A1:C7",
+  name: "SmokePivot",
+  rowFields: ["Region"],
+  columnFields: ["Product"],
+  dataFields: [{ field: "Amount", aggregation: "sum" }],
+});
+if (pivot.name !== "SmokePivot" || pivot.rowFields[0] !== "Region") {
+  throw new Error("unexpected pivot: " + JSON.stringify(pivot));
+}
+if (pivotSheet.pivots.list().length !== 1) {
+  throw new Error("expected one pivot on PivotOut");
+}
+if (wb.allPivots.list().length !== 1) {
+  throw new Error("expected one workbook pivot");
+}
+
 const noteAdded = s1.threadedNotes.add("A1", { text: "hello", author: "smoke" });
 if (!noteAdded.id) throw new Error("threadedNotes.add returned no id");
 s1.cell("A2").setValue("post-note");
@@ -275,6 +304,13 @@ if (reopened.properties.get().title !== "Smoke Plan") {
 }
 if (reopened.calcProperties.get().calcMode !== "manual") {
   throw new Error("reopened calcProperties.calcMode not manual");
+}
+const roPivots = reopened.sheet("PivotOut").pivots.list();
+if (roPivots.length !== 1 || roPivots[0].name !== "SmokePivot") {
+  throw new Error("reopened pivot missing: " + JSON.stringify(roPivots));
+}
+if (roPivots[0].dataFields[0].field !== "Amount") {
+  throw new Error("reopened pivot data field lost: " + JSON.stringify(roPivots[0]));
 }
 
 {

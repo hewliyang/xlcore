@@ -13,6 +13,7 @@ mod images;
 mod merges;
 mod ooxml_header;
 mod page_setup;
+mod pivots;
 mod properties;
 mod protection;
 mod ranges;
@@ -43,10 +44,11 @@ pub use xlcore_types::{
     FillPatch, FontPatch, FreezeInfo, HeaderFooterInfo, HeaderFooterPatch, HorizontalAlign,
     HyperlinkInfo, HyperlinkPatch, IconSetPatch, ImageFormat, ImageInfo, ImagePatch, LayoutOptions,
     MergeInfo, PageMarginsInfo, PageMarginsPatch, PageOrder, PageOrientation, PageSetupSettings,
-    PageSetupSettingsPatch, PrintCellComments, PrintErrors, PrintOptionsInfo, PrintOptionsPatch,
-    RangeInfo, SearchHit, SearchMatch, SearchMode, SearchOptions, SearchTarget, SheetInfo,
-    SheetPageSetup, SheetPageSetupPatch, SheetProtectionInfo, SheetProtectionPatch,
-    SheetVisibility, SparklineAxisType, SparklineDisplayBlanks, SparklineEntry, SparklineGroupInfo,
+    PageSetupSettingsPatch, PivotAggregation, PivotDataField, PivotInfo, PivotPatch,
+    PrintCellComments, PrintErrors, PrintOptionsInfo, PrintOptionsPatch, RangeInfo, SearchHit,
+    SearchMatch, SearchMode, SearchOptions, SearchTarget, SheetInfo, SheetPageSetup,
+    SheetPageSetupPatch, SheetProtectionInfo, SheetProtectionPatch, SheetVisibility,
+    SparklineAxisType, SparklineDisplayBlanks, SparklineEntry, SparklineGroupInfo,
     SparklineGroupPatch, SparklineKind, StylePatch, TableColumnInfo, TableColumnPatch, TableInfo,
     TablePatch, TableStylePatch, TableStyleSettings, TableTotalsFunction, ThreadedNoteInfo,
     ThreadedNotePatch, UnderlinePatch, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,

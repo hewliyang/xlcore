@@ -32,6 +32,7 @@ pub enum ApiErrorCode {
     InvalidChart,
     InvalidImage,
     InvalidSparklineGroup,
+    InvalidPivot,
     UnsupportedFormula,
     UnsupportedObject,
     LossyOperation,
@@ -2960,6 +2961,84 @@ fn parse_a1(reference: &str) -> Option<(u32, u32)> {
         }
     }
     (row > 0 && col > 0).then_some((row, col))
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "snake_case")]
+pub enum PivotAggregation {
+    Sum,
+    Count,
+    Average,
+    Max,
+    Min,
+    Product,
+    CountNums,
+    StdDev,
+    StdDevp,
+    Var,
+    Varp,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct PivotDataField {
+    pub field: String,
+    pub aggregation: PivotAggregation,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct PivotPatch {
+    pub sheet: String,
+    pub anchor_cell: String,
+    pub source_ref: String,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub row_fields: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub column_fields: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub filter_fields: Vec<String>,
+    pub data_fields: Vec<PivotDataField>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct PivotInfo {
+    pub sheet: String,
+    pub id: String,
+    pub name: String,
+    pub location_ref: String,
+    pub source_ref: String,
+    pub row_fields: Vec<String>,
+    pub column_fields: Vec<String>,
+    pub filter_fields: Vec<String>,
+    pub data_fields: Vec<PivotDataField>,
 }
 
 #[cfg(test)]

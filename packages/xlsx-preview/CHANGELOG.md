@@ -14,6 +14,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Pivot table authoring: `worksheet.pivots.set/list/remove` + `workbook.allPivots` (and Rust `set_pivot`/`pivots`/`remove_pivot`, WASM `setPivot`/`pivots`/`removePivot`) create a worksheet-source pivot with row/column/filter fields and sum/count/avg/etc. data fields; values compute in Excel/SpreadJS from the authored cache + materialized row/col item layout.
 - `charts.set`/`charts.update`/`images.set` now accept a 1-based A1 range string (e.g. `"B20:H36"`) for `anchor`, normalized via `anchorA1`, alongside the 0-based `ChartAnchor`.
 - `recalculate()` now returns only cells with an engine `fallback` (dropping error-free sheets) for cheap agent verification; pass `{ errorsOnly: false }` for the full cell-by-cell report.
 - Export `colLetter`, `cellA1`, `rangeA1` ref helpers from the public API/entrypoints.

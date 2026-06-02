@@ -747,6 +747,27 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string | null} [sheet]
+     * @returns {any}
+     */
+    pivots(sheet) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            var ptr0 = isLikeNone(sheet) ? 0 : passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            var len0 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_pivots(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
+            }
+            return takeObject(r0);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
      * @param {string} reference
      * @returns {any}
      */
@@ -1012,6 +1033,30 @@ export class WorkbookHandle {
             const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
             wasm.workbookhandle_removePageSetup(retptr, this.__wbg_ptr, ptr0, len0);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
+            }
+            return takeObject(r0);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * @param {string} sheet
+     * @param {string} id
+     * @returns {any}
+     */
+    removePivot(sheet, id) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            const ptr1 = passStringToWasm0(id, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_removePivot(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1540,6 +1585,25 @@ export class WorkbookHandle {
             const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
             wasm.workbookhandle_setPageSetup(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(patch));
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            if (r2) {
+                throw takeObject(r1);
+            }
+            return takeObject(r0);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
+    }
+    /**
+     * @param {any} patch
+     * @returns {any}
+     */
+    setPivot(patch) {
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.workbookhandle_setPivot(retptr, this.__wbg_ptr, addHeapObject(patch));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -2162,6 +2226,17 @@ function __wbg_get_imports() {
             const ret = Object.entries(getObject(arg0));
             return addHeapObject(ret);
         },
+        __wbg_error_a6fa202b58aa1cd3: function(arg0, arg1) {
+            let deferred0_0;
+            let deferred0_1;
+            try {
+                deferred0_0 = arg0;
+                deferred0_1 = arg1;
+                console.error(getStringFromWasm0(arg0, arg1));
+            } finally {
+                wasm.__wbindgen_export4(deferred0_0, deferred0_1, 1);
+            }
+        },
         __wbg_get_3e9a707ab7d352eb: function() { return handleError(function (arg0, arg1) {
             const ret = Reflect.get(getObject(arg0), getObject(arg1));
             return addHeapObject(ret);
@@ -2236,6 +2311,10 @@ function __wbg_get_imports() {
             const ret = new Error(getStringFromWasm0(arg0, arg1));
             return addHeapObject(ret);
         },
+        __wbg_new_227d7c05414eb861: function() {
+            const ret = new Error();
+            return addHeapObject(ret);
+        },
         __wbg_new_310879b66b6e95e1: function() {
             const ret = new Array();
             return addHeapObject(ret);
@@ -2273,6 +2352,13 @@ function __wbg_get_imports() {
             const ret = Reflect.set(getObject(arg0), getObject(arg1), getObject(arg2));
             return ret;
         }, arguments); },
+        __wbg_stack_3b0d974bbf31e44f: function(arg0, arg1) {
+            const ret = getObject(arg1).stack;
+            const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
+            getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
+        },
         __wbg_value_9cc0518af87a489c: function(arg0) {
             const ret = getObject(arg0).value;
             return addHeapObject(ret);

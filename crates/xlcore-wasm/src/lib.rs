@@ -664,6 +664,34 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
+    pub fn pivots(&mut self, sheet: Option<String>) -> Result<JsValue, JsValue> {
+        let list = self
+            .workbook_mut()?
+            .pivots(sheet.as_deref())
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setPivot)]
+    pub fn set_pivot(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::PivotPatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .set_pivot(patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removePivot)]
+    pub fn remove_pivot(&mut self, sheet: &str, id: &str) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .remove_pivot(sheet, id)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
     pub fn images(&mut self, sheet: Option<String>) -> Result<JsValue, JsValue> {
         let list = self
             .workbook_mut()?
