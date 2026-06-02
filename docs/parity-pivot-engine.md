@@ -137,8 +137,14 @@ materializes actual cell values for our renderer).
       value + total cells (interned xfs, right-aligned); authoring accepts
       `numberFormat` on `PivotDataField` (resolved/interned into workbook
       styles), getter reverse-maps `numFmtId` → code. Verified vs SpreadJS.
-- [ ] Empty-records fallback: aggregate from the `worksheetSource` range when
-      `pivotCacheRecords` is empty + `refreshOnLoad="1"`.
+- [x] Empty-records fallback: when `pivotCacheRecords` is empty, synthesize
+      records from the `worksheetSource` range (same-document sheet lookup by
+      name, resolves shared/inline strings, builds inline-literal records so no
+      `sharedItems` needed). `synthesize_records` in `pivot_engine`'s sibling
+      `pivots::extract`; engine path unchanged. Verified vs the populated cache:
+      `tests/pivot_empty_records.rs` (fixture `pivot-empty-records.xlsx`).
+      Note: hidden-item / page-field filtering by shared-item index is skipped
+      on this path (records carry literal values, not `FieldItem` indices).
 
 ### P2: Author/export robustness
 

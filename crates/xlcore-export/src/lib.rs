@@ -101,6 +101,15 @@ pub fn extract_doc_with_options(
     } else {
         workbook_sheets.len()
     };
+    let sheet_parts_by_name: HashMap<String, _> = workbook_sheets
+        .iter()
+        .filter_map(|s| {
+            ws_parts_by_rel_id
+                .get(s.id.as_str())
+                .map(|p| (s.name.as_str().to_string(), p.clone()))
+        })
+        .collect();
+
     let mut sheets = Vec::with_capacity(sheet_capacity);
     let mut selected_original_sheet_index: Option<u32> = None;
     let mut pivot_style_memo: Option<pivot_engine::PivotStyleIndices> = None;
@@ -125,8 +134,14 @@ pub fn extract_doc_with_options(
 
         let drawings = charts::extract(doc, &ws_part, theme.as_ref());
         let tables = tables::extract(doc, &ws_part);
-        let (pivots, pivot_cells) =
-            pivots::extract(doc, &ws_part, &mut styles, &mut pivot_style_memo);
+        let (pivots, pivot_cells) = pivots::extract(
+            doc,
+            &ws_part,
+            &mut styles,
+            &mut pivot_style_memo,
+            &shared_strings.0,
+            &sheet_parts_by_name,
+        );
         let comments = annotations::extract_comments(doc, &ws_part);
         let ws_for_sparks = ws_part.root_element(doc)?.clone();
         let sparkline_groups = sparklines::extract(&ws_for_sparks);
