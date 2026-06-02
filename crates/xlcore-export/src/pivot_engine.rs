@@ -399,7 +399,11 @@ pub fn compute_cells(
             })
             .unwrap_or_default();
 
-    if row_fields.is_empty() || col_fields.len() > 1 || data_fields.is_empty() {
+    if row_fields.is_empty()
+        || data_fields.is_empty()
+        || col_fields.len() > 2
+        || (col_fields.len() == 2 && data_fields.len() > 1)
+    {
         return Vec::new();
     }
 
@@ -506,6 +510,115 @@ pub fn compute_cells(
         for (d, (fld, func, _, _)) in data_fields.iter().enumerate() {
             if let Some(v) = value_for_all(&decoded, *fld, func.as_ref()) {
                 cells.push(styled(num_cell(gr, c1 + r + d as u32, v), field_xfs[d].1));
+            }
+        }
+        return cells;
+    }
+
+    if col_fields.len() == 2 {
+        let (data_fld, ref data_func, ref data_name, _) = data_fields[0];
+        let (value_xf, total_xf) = field_xfs[0];
+        let outer_name = field_names[col_fields[0]].clone();
+        let inner_name = field_names[col_fields[1]].clone();
+        let row_names: Vec<String> =
+            row_fields.iter().map(|&f| field_names[f].clone()).collect();
+        let base = c1 + r;
+
+        enum Slot {
+            Leaf(String, String),
+            Sub(String),
+            Grand,
+        }
+        let mut slots: Vec<Slot> = Vec::new();
+        let mut i = 0;
+        while i < col_keys.len() {
+            let outer = col_keys[i][0].clone();
+            let mut j = i;
+            while j < col_keys.len() && col_keys[j][0] == outer {
+                slots.push(Slot::Leaf(outer.clone(), col_keys[j][1].clone()));
+                j += 1;
+            }
+            slots.push(Slot::Sub(outer.clone()));
+            i = j;
+        }
+        slots.push(Slot::Grand);
+
+        let value_cols = |row_key: Option<&[String]>, cflds: &[usize], clabels: &[String]| {
+            let vals: Vec<PVal> = decoded
+                .iter()
+                .filter(|rec| row_key.map(|rk| matches(&row_fields, rk, rec)).unwrap_or(true))
+                .filter(|rec| matches(cflds, clabels, rec))
+                .map(|rec| rec.get(data_fld).cloned().unwrap_or(PVal::Blank))
+                .collect();
+            aggregate(&vals, data_func.as_ref())
+        };
+
+        cells.push(styled(text_cell(r1, c1, data_name.clone()), st.header));
+        cells.push(styled(text_cell(r1, base, outer_name), st.header));
+        cells.push(styled(text_cell(r1, base + 1, inner_name), st.header));
+        for (jx, name) in row_names.iter().enumerate() {
+            cells.push(styled(text_cell(r1 + 2, c1 + jx as u32, name.clone()), st.header));
+        }
+
+        let mut prev_outer: Option<String> = None;
+        for (sidx, slot) in slots.iter().enumerate() {
+            let col = base + sidx as u32;
+            match slot {
+                Slot::Leaf(outer, inner) => {
+                    let outer_lbl = if prev_outer.as_deref() != Some(outer.as_str()) {
+                        prev_outer = Some(outer.clone());
+                        outer.clone()
+                    } else {
+                        String::new()
+                    };
+                    cells.push(styled(text_cell(r1 + 1, col, outer_lbl), st.header));
+                    cells.push(styled(text_cell(r1 + 2, col, inner.clone()), st.header));
+                }
+                Slot::Sub(outer) => {
+                    cells.push(styled(text_cell(r1 + 1, col, format!("{outer} Total")), st.header));
+                    cells.push(styled(text_cell(r1 + 2, col, String::new()), st.header));
+                }
+                Slot::Grand => {
+                    cells.push(styled(text_cell(r1 + 1, col, "Grand Total".to_string()), st.header));
+                    cells.push(styled(text_cell(r1 + 2, col, String::new()), st.header));
+                }
+            }
+        }
+
+        for (ri, rk) in row_keys.iter().enumerate() {
+            let rr = r1 + 3 + ri as u32;
+            for (jx, lbl) in rk.iter().enumerate() {
+                cells.push(text_cell(rr, c1 + jx as u32, lbl.clone()));
+            }
+            for (sidx, slot) in slots.iter().enumerate() {
+                let col = base + sidx as u32;
+                let (v, xf) = match slot {
+                    Slot::Leaf(o, inn) => (
+                        value_cols(Some(rk), &col_fields, &[o.clone(), inn.clone()]),
+                        value_xf,
+                    ),
+                    Slot::Sub(o) => {
+                        (value_cols(Some(rk), &col_fields[..1], &[o.clone()]), Some(total_xf))
+                    }
+                    Slot::Grand => (value_cols(Some(rk), &[], &[]), Some(total_xf)),
+                };
+                if let Some(v) = v {
+                    cells.push(opt_styled(num_cell(rr, col, v), xf));
+                }
+            }
+        }
+
+        let gr = r1 + 3 + row_keys.len() as u32;
+        cells.push(styled(text_cell(gr, c1, "Grand Total".to_string()), st.total_label));
+        for (sidx, slot) in slots.iter().enumerate() {
+            let col = base + sidx as u32;
+            let v = match slot {
+                Slot::Leaf(o, inn) => value_cols(None, &col_fields, &[o.clone(), inn.clone()]),
+                Slot::Sub(o) => value_cols(None, &col_fields[..1], &[o.clone()]),
+                Slot::Grand => value_cols(None, &[], &[]),
+            };
+            if let Some(v) = v {
+                cells.push(styled(num_cell(gr, col, v), total_xf));
             }
         }
         return cells;
@@ -1063,6 +1176,98 @@ mod tests {
         assert_eq!(find(&cells, 1, 2).style_index, Some(st.header));
         assert_eq!(find(&cells, 4, 6).style_index, Some(st.total_value));
         assert_eq!(find(&cells, 4, 2).style_index, None);
+        assert_eq!(find(&cells, 6, 1).style_index, Some(st.total_label));
+    }
+
+    #[test]
+    fn computes_nested_column_fields() {
+        let cache_def = x::PivotCacheDefinition {
+            cache_fields: Box::new(x::CacheFields {
+                count: Some(4),
+                cache_field: vec![
+                    n_field("Year", &[2020.0, 2021.0]),
+                    s_field("Region", &["North", "South"]),
+                    s_field("Product", &["Widget", "Gadget"]),
+                    n_field("Amount", &[100.0, 50.0, 75.0, 25.0, 30.0, 60.0, 40.0, 20.0]),
+                ],
+            }),
+            ..Default::default()
+        };
+        let records = x::PivotCacheRecords {
+            pivot_cache_record: vec![
+                rec(&[0, 0, 0, 0]),
+                rec(&[0, 0, 1, 1]),
+                rec(&[0, 1, 0, 2]),
+                rec(&[0, 1, 1, 3]),
+                rec(&[1, 0, 0, 4]),
+                rec(&[1, 0, 1, 5]),
+                rec(&[1, 1, 0, 6]),
+                rec(&[1, 1, 1, 7]),
+            ],
+            ..Default::default()
+        };
+        let pt = x::PivotTableDefinition {
+            location: Box::new(x::Location {
+                reference: "A1:H6".to_string(),
+                first_header_row: 1,
+                first_data_row: 3,
+                first_data_column: 1,
+                ..Default::default()
+            }),
+            row_fields: Some(x::RowFields {
+                count: Some(1),
+                field: vec![x::Field { index: 0 }],
+            }),
+            column_fields: Some(x::ColumnFields {
+                count: Some(2),
+                field: vec![x::Field { index: 1 }, x::Field { index: 2 }],
+            }),
+            data_fields: Some(x::DataFields {
+                count: Some(1),
+                data_field: vec![x::DataField {
+                    name: Some("Sum of Amount".to_string()),
+                    field: 3,
+                    subtotal: Some(F::Sum),
+                    ..Default::default()
+                }],
+            }),
+            ..Default::default()
+        };
+
+        let mut styles = Styles::default();
+        let mut memo = None;
+        let cells = compute_cells(&pt, &cache_def, &records, &mut styles, &mut memo);
+        let st = memo.unwrap();
+
+        assert_eq!(find(&cells, 1, 1).value.as_deref(), Some("Sum of Amount"));
+        assert_eq!(find(&cells, 1, 2).value.as_deref(), Some("Region"));
+        assert_eq!(find(&cells, 1, 3).value.as_deref(), Some("Product"));
+
+        assert_eq!(find(&cells, 2, 2).value.as_deref(), Some("North"));
+        assert_eq!(find(&cells, 2, 4).value.as_deref(), Some("North Total"));
+        assert_eq!(find(&cells, 2, 5).value.as_deref(), Some("South"));
+        assert_eq!(find(&cells, 2, 7).value.as_deref(), Some("South Total"));
+        assert_eq!(find(&cells, 2, 8).value.as_deref(), Some("Grand Total"));
+
+        assert_eq!(find(&cells, 3, 1).value.as_deref(), Some("Year"));
+        assert_eq!(find(&cells, 3, 2).value.as_deref(), Some("Gadget"));
+        assert_eq!(find(&cells, 3, 3).value.as_deref(), Some("Widget"));
+
+        assert_eq!(find(&cells, 4, 1).value.as_deref(), Some("2020"));
+        assert_eq!(find(&cells, 4, 2).value.as_deref(), Some("50"));
+        assert_eq!(find(&cells, 4, 3).value.as_deref(), Some("100"));
+        assert_eq!(find(&cells, 4, 4).value.as_deref(), Some("150"));
+        assert_eq!(find(&cells, 4, 7).value.as_deref(), Some("100"));
+        assert_eq!(find(&cells, 4, 8).value.as_deref(), Some("250"));
+
+        assert_eq!(find(&cells, 6, 1).value.as_deref(), Some("Grand Total"));
+        assert_eq!(find(&cells, 6, 4).value.as_deref(), Some("240"));
+        assert_eq!(find(&cells, 6, 8).value.as_deref(), Some("400"));
+
+        assert_eq!(find(&cells, 1, 1).style_index, Some(st.header));
+        assert_eq!(find(&cells, 4, 2).style_index, None);
+        assert_eq!(find(&cells, 4, 4).style_index, Some(st.total_value));
+        assert_eq!(find(&cells, 4, 8).style_index, Some(st.total_value));
         assert_eq!(find(&cells, 6, 1).style_index, Some(st.total_label));
     }
 

@@ -52,8 +52,9 @@ Aggregation/render engine (`crates/xlcore-export/src/pivot_engine.rs`):
 - Multiple data fields **with** a single column field (the `-2` "values"
   marker axis): 3-row header, each column group expands into one sub-column
   per data field, grand-total group emits `Total <dataname>` per data field.
-- Unsupported shapes (>1 column field, zero
-  row fields) return no cells → renderer falls back to the previous empty-grid
+- Two column fields (nested headers) with a single data field.
+- Unsupported shapes (>2 column fields, nested columns + multiple data
+  fields, zero row fields) return no cells → renderer falls back to the previous empty-grid
   behavior; nothing breaks.
 
 ## Architecture
@@ -106,7 +107,13 @@ materializes actual cell values for our renderer).
       marker axis): expands each column group into one sub-column per data
       field with a 3-row header; verified vs SpreadJS. Unit:
       `computes_multiple_data_fields_with_column_field`.
-- [ ] More than one column field (nested column headers).
+- [x] More than one column field (nested column headers): two column fields
+      with a single data field. Builds per-outer-group leaf columns + an
+      `{outer} Total` subtotal column + grand-total column, with a 3-row header
+      (caption/field-names, outer values + subtotal labels, inner values +
+      row-field names). Verified vs SpreadJS. Unit:
+      `computes_nested_column_fields`. >2 column fields, or 2 columns with
+      multiple data fields, still fall back to empty.
 - [ ] Multiple row fields beyond the current tabular side-by-side labels:
       outline/compact layouts and per-level subtotals.
 
