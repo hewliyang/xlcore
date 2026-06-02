@@ -101,9 +101,15 @@ materializes actual cell values for our renderer).
 - [x] Grid DTO: `PivotGrid { rows, cols, cells: PivotGridCell[] }` with
       0-based `{ row, col, role, kind, value }`; `role` derived from the engine
       `style_index` (header / label / value / totalLabel / totalValue).
-- [ ] Frontend: drag fields between row/column/filter/values, change
-      aggregation, toggle filter items, recompute in-browser with no
-      save/reopen round-trip.
+- [x] Frontend: `PivotBuilder` React component (`@hewliyang/xlsx-preview/react`)
+      with drag-and-drop between Fields/Filters/Columns/Rows/Values buckets,
+      per-value aggregation dropdown, and live in-browser recompute via
+      `pivots.preview` (no save/reopen). Derives field names from the source
+      header row; renders the `PivotGrid` with header/total/value styling.
+      Wired into `examples/react-vite`. Verified in a real browser (DnD layout +
+      aggregation change recompute) and unit-tested pure helpers
+      (`pivotBuilder.test.ts`: `applyMove`/`parseRef`/`headerRange`).
+      Still TODO: per-item filter toggling (needs `PivotPatch` item selection).
 
 ### P1: Wider layout coverage
 

@@ -14,6 +14,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Pivot builder UI: new `PivotBuilder` React component (`@hewliyang/xlsx-preview/react`) with drag-and-drop field buckets (Fields/Filters/Columns/Rows/Values), per-value aggregation selection, and live in-browser recompute via `pivots.preview` — no save/reopen round-trip. Demoed in `examples/react-vite`.
+
 - Pivot table rendering: axis members now follow the stored `pivotField` item order (honors manual sorts), falling back to value sort for items absent from that list.
 
 - Pivot table editing: `worksheet.pivots.update(id, partial)` merges a partial patch over the existing pivot and re-authors it (remove + re-set with rollback), mirroring `charts.update`. `PivotInfo` now exposes `anchorCell` (top-left of the location, page-field offset removed) so updates round-trip in place.

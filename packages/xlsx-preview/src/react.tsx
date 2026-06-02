@@ -493,3 +493,5 @@ const CHIP_CLOSE_STYLE: CSSProperties = {
   lineHeight: 1,
   cursor: "pointer",
 };
+
+export { PivotBuilder, type PivotBuilderProps } from "./pivotBuilder.js";
