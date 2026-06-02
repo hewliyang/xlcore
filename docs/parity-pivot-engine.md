@@ -135,10 +135,11 @@ materializes actual cell values for our renderer).
       item index → shared-item index and drops non-matching records before
       decode (combined with hidden-item filtering). Unit:
       `page_field_single_select_filters_records`.
-- [ ] Honor stored `rowItems`/`colItems` order for imported pivots instead of
-      recomputing from records (matters when the author set a manual sort or
-      when not all field-item combinations appear in the data; Excel shows all
-      items, we currently show only combinations present).
+- [x] Honor stored `pivotField` item order for axis sorting (manual sorts):
+      axis members are ranked by their position in `pivotFields/items` when
+      present, falling back to the value sort for items absent from that list.
+      Unit: `axis_honors_pivot_field_item_order`. Still recompute *membership*
+      from records (items with no data don't get empty rows yet).
 - [x] Data-field number formats: engine pipes the `dataField` `numFmtId` onto
       value + total cells (interned xfs, right-aligned); authoring accepts
       `numberFormat` on `PivotDataField` (resolved/interned into workbook

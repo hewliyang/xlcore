@@ -157,7 +157,7 @@ fn cmp_pval(a: &PVal, b: &PVal) -> Ordering {
     }
 }
 
-fn unique_sorted(tuples: Vec<Vec<PVal>>) -> Vec<Vec<PVal>> {
+fn ordered_unique(tuples: Vec<Vec<PVal>>, orders: &[Option<Vec<PVal>>]) -> Vec<Vec<PVal>> {
     let mut out: Vec<Vec<PVal>> = Vec::new();
     for t in tuples {
         if !out.iter().any(|e| e == &t) {
@@ -165,8 +165,21 @@ fn unique_sorted(tuples: Vec<Vec<PVal>>) -> Vec<Vec<PVal>> {
         }
     }
     out.sort_by(|a, b| {
-        for (x, y) in a.iter().zip(b) {
-            match cmp_pval(x, y) {
+        for (i, (x, y)) in a.iter().zip(b).enumerate() {
+            let ord = match orders.get(i).and_then(|o| o.as_ref()) {
+                Some(order) => {
+                    let rx = order.iter().position(|p| p == x);
+                    let ry = order.iter().position(|p| p == y);
+                    match (rx, ry) {
+                        (Some(px), Some(py)) => px.cmp(&py),
+                        (Some(_), None) => Ordering::Less,
+                        (None, Some(_)) => Ordering::Greater,
+                        (None, None) => cmp_pval(x, y),
+                    }
+                }
+                None => cmp_pval(x, y),
+            };
+            match ord {
                 Ordering::Equal => continue,
                 other => return other,
             }
@@ -483,18 +496,38 @@ pub fn compute_cells(
     };
     let to_labels = |t: &[PVal]| -> Vec<String> { t.iter().map(PVal::label).collect() };
 
-    let row_keys: Vec<Vec<String>> =
-        unique_sorted(decoded.iter().map(|rec| tuple(&row_fields, rec)).collect())
+    let field_order = |f: usize| -> Option<Vec<PVal>> {
+        let items = pt.pivot_fields.as_ref()?.pivot_field.get(f)?.items.as_ref()?;
+        let order: Vec<PVal> = items
+            .item
             .iter()
-            .map(|t| to_labels(t))
+            .filter_map(|it| it.index.map(Into::into))
+            .filter_map(|ix: u32| field_items.get(f).and_then(|v| v.get(ix as usize)).cloned())
             .collect();
+        (!order.is_empty()).then_some(order)
+    };
+    let row_orders: Vec<Option<Vec<PVal>>> =
+        row_fields.iter().map(|&f| field_order(f)).collect();
+    let col_orders: Vec<Option<Vec<PVal>>> =
+        col_fields.iter().map(|&f| field_order(f)).collect();
+
+    let row_keys: Vec<Vec<String>> = ordered_unique(
+        decoded.iter().map(|rec| tuple(&row_fields, rec)).collect(),
+        &row_orders,
+    )
+    .iter()
+    .map(|t| to_labels(t))
+    .collect();
     let col_keys: Vec<Vec<String>> = if col_fields.is_empty() {
         Vec::new()
     } else {
-        unique_sorted(decoded.iter().map(|rec| tuple(&col_fields, rec)).collect())
-            .iter()
-            .map(|t| to_labels(t))
-            .collect()
+        ordered_unique(
+            decoded.iter().map(|rec| tuple(&col_fields, rec)).collect(),
+            &col_orders,
+        )
+        .iter()
+        .map(|t| to_labels(t))
+        .collect()
     };
 
     let matches = |fields: &[usize], key: &[String], rec: &[PVal]| -> bool {
@@ -854,14 +887,71 @@ mod tests {
 
     #[test]
     fn sort_orders_numbers_then_text_case_insensitively() {
-        let t = unique_sorted(vec![
-            vec![PVal::Text("Widget".into())],
-            vec![PVal::Text("gadget".into())],
-            vec![PVal::Text("Widget".into())],
-            vec![PVal::Num(2.0)],
-        ]);
+        let t = ordered_unique(
+            vec![
+                vec![PVal::Text("Widget".into())],
+                vec![PVal::Text("gadget".into())],
+                vec![PVal::Text("Widget".into())],
+                vec![PVal::Num(2.0)],
+            ],
+            &[None],
+        );
         let labels: Vec<String> = t.iter().map(|x| x[0].label()).collect();
         assert_eq!(labels, vec!["2", "gadget", "Widget"]);
+    }
+
+    #[test]
+    fn axis_honors_pivot_field_item_order() {
+        let cache_def = x::PivotCacheDefinition {
+            cache_fields: Box::new(x::CacheFields {
+                count: Some(2),
+                cache_field: vec![
+                    s_field("Region", &["North", "South"]),
+                    n_field("Amount", &[100.0, 50.0, 75.0]),
+                ],
+            }),
+            ..Default::default()
+        };
+        let records = x::PivotCacheRecords {
+            pivot_cache_record: vec![rec(&[0, 0]), rec(&[0, 1]), rec(&[1, 2])],
+            ..Default::default()
+        };
+        let pt = x::PivotTableDefinition {
+            location: Box::new(x::Location {
+                reference: "A1:B4".to_string(),
+                first_header_row: 1,
+                first_data_row: 1,
+                first_data_column: 1,
+                ..Default::default()
+            }),
+            pivot_fields: Some(x::PivotFields {
+                count: Some(2),
+                pivot_field: vec![pivot_field_items(&[1, 0]), x::PivotField::default()],
+            }),
+            row_fields: Some(x::RowFields {
+                count: Some(1),
+                field: vec![x::Field { index: 0 }],
+            }),
+            data_fields: Some(x::DataFields {
+                count: Some(1),
+                data_field: vec![x::DataField {
+                    name: Some("Sum of Amount".to_string()),
+                    field: 1,
+                    subtotal: Some(F::Sum),
+                    ..Default::default()
+                }],
+            }),
+            ..Default::default()
+        };
+
+        let mut styles = Styles::default();
+        let mut memo = None;
+        let cells = compute_cells(&pt, &cache_def, &records, &mut styles, &mut memo);
+
+        assert_eq!(find(&cells, 2, 1).value.as_deref(), Some("South"));
+        assert_eq!(find(&cells, 2, 2).value.as_deref(), Some("75"));
+        assert_eq!(find(&cells, 3, 1).value.as_deref(), Some("North"));
+        assert_eq!(find(&cells, 3, 2).value.as_deref(), Some("150"));
     }
 
     fn s_field(name: &str, vals: &[&str]) -> x::CacheField {
