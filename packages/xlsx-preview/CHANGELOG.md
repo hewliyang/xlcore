@@ -12,7 +12,11 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `charts.set`/`charts.update`/`images.set` now accept a 1-based A1 range string (e.g. `"B20:H36"`) for `anchor`, normalized via `anchorA1`, alongside the 0-based `ChartAnchor`.
+- `recalculate()` now returns only cells with an engine `fallback` (dropping error-free sheets) for cheap agent verification; pass `{ errorsOnly: false }` for the full cell-by-cell report.
+- Export `colLetter`, `cellA1`, `rangeA1` ref helpers from the public API/entrypoints.
 - `ChartAnchor` rustdoc + generated TS JSDoc now state the 0-based row/column convention.
+- `Worksheet` row/column width/height/visible/insert/delete methods now document their 1-based row/column indexing in JSDoc.
 - `ChartLegendPosition` rustdoc + generated TS JSDoc now document `"none"` and the `TopRight` ("Overlay Legend at Right") variant.
 - `Range.setStyle` / `Cell.setStyle` / `Worksheet.setStyles` JSDoc now call out that merged ranges only persist style on the top-left anchor.
 - `Workbook.search` accepts `includeHidden` (defaults to `true` for backward compatibility) to opt out of searching hidden / very-hidden sheets; documented in JSDoc + rustdoc.

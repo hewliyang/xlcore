@@ -61,6 +61,36 @@ export function rangeA1(row1: number, col1: number, rowCount: number, colCount: 
   return `${start}:${end}`;
 }
 
+export interface AnchorA1 {
+  fromColumn: number;
+  fromRow: number;
+  toColumn: number;
+  toRow: number;
+}
+
+export function anchorA1(range: string): AnchorA1 {
+  const bare = range.includes("!") ? range.slice(range.lastIndexOf("!") + 1) : range;
+  const parts = bare.split(":");
+  if (parts.length !== 2) {
+    throw new RangeError(`anchorA1: expected a two-cell range like "A1:E15", got "${range}"`);
+  }
+  const a = CELL_RE.exec(parts[0] ?? "");
+  const b = CELL_RE.exec(parts[1] ?? "");
+  if (!a || !b) {
+    throw new RangeError(`anchorA1: expected a two-cell range like "A1:E15", got "${range}"`);
+  }
+  const c1 = colNum(a[1] ?? "") - 1;
+  const c2 = colNum(b[1] ?? "") - 1;
+  const r1 = parseInt(a[2] ?? "0", 10) - 1;
+  const r2 = parseInt(b[2] ?? "0", 10) - 1;
+  return {
+    fromColumn: Math.min(c1, c2),
+    fromRow: Math.min(r1, r2),
+    toColumn: Math.max(c1, c2) + 1,
+    toRow: Math.max(r1, r2) + 1,
+  };
+}
+
 export type CellAddress = string | { row: number; column: number };
 export type RangeAddress =
   | string

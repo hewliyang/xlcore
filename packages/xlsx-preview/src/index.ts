@@ -25,6 +25,7 @@ export {
   WorkbookTables,
   Worksheet,
 } from "./api.js";
+export { cellA1, colLetter, rangeA1 } from "./api.js";
 export type { CellAddress, RangeAddress, NumberFormatCode, NumberFormatKey } from "./api.js";
 export { attachInteractivity } from "./interact.js";
 export { createWorkbookPreviewer } from "./previewer.js";
@@ -67,6 +68,7 @@ export type {
   EngineCellValue,
   FormulaFallback,
   RecalcCell,
+  RecalcOptions,
   RecalcSheet,
   RecalcWorkbook,
   SheetInfo,

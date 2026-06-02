@@ -166,34 +166,42 @@ export class Worksheet {
     return this;
   }
 
+  /** @param row 1-based row index (row 1 = A1's row). */
   setRowHeight(row: number, height: number): this {
     this.handle.setRowHeight(this.name, row, height);
     return this;
   }
+  /** @param row 1-based row index (row 1 = A1's row). */
   setRowVisible(row: number, visible: boolean): this {
     this.handle.setRowVisible(this.name, row, visible);
     return this;
   }
+  /** @param column 1-based column index (column 1 = A). */
   setColumnWidth(column: number, width: number): this {
     this.handle.setColumnWidth(this.name, column, width);
     return this;
   }
+  /** @param column 1-based column index (column 1 = A). */
   setColumnVisible(column: number, visible: boolean): this {
     this.handle.setColumnVisible(this.name, column, visible);
     return this;
   }
+  /** @param before 1-based row index to insert before (row 1 = A1's row). */
   insertRows(before: number, count: number): this {
     this.handle.insertRows(this.name, before, count);
     return this;
   }
+  /** @param start 1-based row index of the first row to delete (row 1 = A1's row). */
   deleteRows(start: number, count: number): this {
     this.handle.deleteRows(this.name, start, count);
     return this;
   }
+  /** @param before 1-based column index to insert before (column 1 = A). */
   insertColumns(before: number, count: number): this {
     this.handle.insertColumns(this.name, before, count);
     return this;
   }
+  /** @param start 1-based column index of the first column to delete (column 1 = A). */
   deleteColumns(start: number, count: number): this {
     this.handle.deleteColumns(this.name, start, count);
     return this;

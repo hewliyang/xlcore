@@ -1,5 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { rangeDims, validateMatrixShape } from "./api-refs.js";
+import { anchorA1, rangeDims, validateMatrixShape } from "./api-refs.js";
+
+describe("anchorA1", () => {
+  it("converts 1-based A1 range to 0-based half-open anchor", () => {
+    expect(anchorA1("A1:E15")).toEqual({ fromColumn: 0, fromRow: 0, toColumn: 5, toRow: 15 });
+  });
+  it("handles a single-cell range", () => {
+    expect(anchorA1("B2:B2")).toEqual({ fromColumn: 1, fromRow: 1, toColumn: 2, toRow: 2 });
+  });
+  it("strips a sheet prefix", () => {
+    expect(anchorA1("Sheet1!C3:F20")).toEqual({
+      fromColumn: 2,
+      fromRow: 2,
+      toColumn: 6,
+      toRow: 20,
+    });
+  });
+  it("throws on a non-range", () => {
+    expect(() => anchorA1("A1")).toThrow();
+  });
+});
 
 describe("rangeDims", () => {
   it("single cell", () => {

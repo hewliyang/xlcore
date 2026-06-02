@@ -46,7 +46,8 @@ export {
 export { SheetFreeze, SheetPageSetupApi, SheetProtection } from "./api-worksheet.js";
 export { NumberFormat } from "./number-formats.js";
 export type { NumberFormatCode, NumberFormatKey } from "./number-formats.js";
-export type { CellAddress, RangeAddress } from "./api-refs.js";
+export { anchorA1, cellA1, colLetter, rangeA1 } from "./api-refs.js";
+export type { AnchorA1, CellAddress, RangeAddress } from "./api-refs.js";
 
 export type {
   AlignmentPatch,
@@ -181,6 +182,11 @@ export interface WorkbookApiOptions {
   wasmBinaryUrl?: string | URL | RequestInfo | BufferSource | WebAssembly.Module;
 }
 
+export interface RecalcOptions {
+  errorsOnly?: boolean;
+}
+
+
 export type { CellInput } from "./api-range.js";
 
 export class Workbook {
@@ -277,8 +283,26 @@ export class Workbook {
     return this.handle.search(query, full) as SearchMatch[];
   }
 
-  recalculate(): RecalcWorkbook {
-    return this.handle.recalculate() as RecalcWorkbook;
+  /**
+   * Recalculate all formulas. By default the returned report lists only cells
+   * that produced an engine error (those with a `fallback`), dropping sheets
+   * with no errors — recalc always evaluates every cell, so read computed
+   * values via `Cell.info()` / `Range.values()`. Pass `{ errorsOnly: false }`
+   * to get the full cell-by-cell report.
+   */
+  recalculate(options: RecalcOptions = {}): RecalcWorkbook {
+    const result = this.handle.recalculate() as RecalcWorkbook;
+    if (options.errorsOnly === false) {
+      return result;
+    }
+    return {
+      sheets: result.sheets
+        .map((sheet) => ({
+          ...sheet,
+          cells: sheet.cells.filter((cell) => cell.fallback !== undefined),
+        }))
+        .filter((sheet) => sheet.cells.length > 0),
+    };
   }
 
   layout(options: WorkbookLayoutOptions = {}): WorkbookLayout {

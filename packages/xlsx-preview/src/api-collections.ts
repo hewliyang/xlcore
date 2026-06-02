@@ -33,7 +33,14 @@ import type {
   WorkbookProtectionInfo,
   WorkbookProtectionPatch,
 } from "./api-schema/index.js";
-import { type SheetRef, qualify } from "./api-refs.js";
+import { type SheetRef, anchorA1, qualify } from "./api-refs.js";
+import type { ChartAnchor } from "./api-schema/index.js";
+
+type AnchorInput = ChartAnchor | string;
+
+function normalizeAnchor(anchor: AnchorInput): ChartAnchor {
+  return typeof anchor === "string" ? anchorA1(anchor) : anchor;
+}
 
 abstract class SheetScopedCollection {
   constructor(
@@ -229,16 +236,25 @@ export class ChartCollection extends SheetScopedCollection {
   list(): ChartInfo[] {
     return this.handle.charts(this.sheet) as ChartInfo[];
   }
-  set(patch: ChartPatch): ChartInfo {
-    return this.handle.setChart(patch) as ChartInfo;
+  set(patch: Omit<ChartPatch, "anchor"> & { anchor: AnchorInput }): ChartInfo {
+    const normalized: ChartPatch = { ...patch, anchor: normalizeAnchor(patch.anchor) };
+    return this.handle.setChart(normalized) as ChartInfo;
   }
-  update(id: string, partial: Partial<Omit<ChartPatch, "sheet">>): ChartInfo {
+  update(
+    id: string,
+    partial: Partial<Omit<ChartPatch, "sheet" | "anchor">> & { anchor?: AnchorInput },
+  ): ChartInfo {
     const existing = (this.handle.charts(this.sheet) as ChartInfo[]).find((c) => c.id === id);
     if (!existing) {
       throw new Error(`chart not found on sheet '${this.sheet}': ${id}`);
     }
     const base: ChartPatch = chartInfoToPatch(existing);
-    const merged: ChartPatch = { ...base, ...partial, sheet: this.sheet };
+    const merged: ChartPatch = {
+      ...base,
+      ...partial,
+      anchor: partial.anchor === undefined ? base.anchor : normalizeAnchor(partial.anchor),
+      sheet: this.sheet,
+    };
     const removed = this.handle.removeChart(this.sheet, id) as ChartInfo | null;
     try {
       return this.handle.setChart(merged) as ChartInfo;
@@ -285,8 +301,9 @@ export class ImageCollection extends SheetScopedCollection {
   list(): ImageInfo[] {
     return this.handle.images(this.sheet) as ImageInfo[];
   }
-  set(patch: ImagePatch): ImageInfo {
-    return this.handle.setImage(patch) as ImageInfo;
+  set(patch: Omit<ImagePatch, "anchor"> & { anchor: AnchorInput }): ImageInfo {
+    const normalized: ImagePatch = { ...patch, anchor: normalizeAnchor(patch.anchor) };
+    return this.handle.setImage(normalized) as ImageInfo;
   }
   remove(id: string): ImageInfo | null {
     return (this.handle.removeImage(this.sheet, id) as ImageInfo | null) ?? null;
