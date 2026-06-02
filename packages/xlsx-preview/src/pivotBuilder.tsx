@@ -32,17 +32,21 @@ const AGG_LABEL: Record<PivotAggregation, string> = {
   varp: "Varp",
 };
 
+export interface PivotBuilderConfig {
+  rowFields: string[];
+  columnFields: string[];
+  filterFields: string[];
+  dataFields: PivotDataField[];
+}
+
 export interface PivotBuilderProps {
   workbook: Workbook;
   sourceRef: string;
   outputSheet?: string;
   anchorCell?: string;
-  initial?: {
-    rowFields?: string[];
-    columnFields?: string[];
-    filterFields?: string[];
-    dataFields?: PivotDataField[];
-  };
+  initial?: Partial<PivotBuilderConfig>;
+  onChange?: (config: PivotBuilderConfig) => void;
+  showPreview?: boolean;
   className?: string;
   style?: CSSProperties;
 }
@@ -99,6 +103,8 @@ export function PivotBuilder({
   outputSheet,
   anchorCell,
   initial,
+  onChange,
+  showPreview = true,
   className,
   style,
 }: PivotBuilderProps) {
@@ -154,11 +160,22 @@ export function PivotBuilder({
     }));
   };
 
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  useEffect(() => {
+    onChangeRef.current?.({
+      rowFields: state.rows,
+      columnFields: state.columns,
+      filterFields: state.filters,
+      dataFields: state.values,
+    });
+  }, [state]);
+
   const [grid, setGrid] = useState<PivotGrid | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (state.rows.length === 0 || state.values.length === 0) {
+    if (!showPreview || state.rows.length === 0 || state.values.length === 0) {
       setGrid(null);
       setError(null);
       return;
@@ -180,7 +197,7 @@ export function PivotBuilder({
       setGrid(null);
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [workbook, sourceRef, srcSheet, outputSheet, anchorCell, state]);
+  }, [workbook, sourceRef, srcSheet, outputSheet, anchorCell, state, showPreview]);
 
   return (
     <div className={className} style={{ ...CONTAINER_STYLE, ...style }}>
@@ -222,15 +239,17 @@ export function PivotBuilder({
           />
         </div>
       </div>
-      <div style={PREVIEW_STYLE}>
-        {error ? (
-          <p style={MESSAGE_STYLE}>{error}</p>
-        ) : grid ? (
-          <GridTable grid={grid} />
-        ) : (
-          <p style={MESSAGE_STYLE}>Drag a field into Rows and Values to build a pivot.</p>
-        )}
-      </div>
+      {showPreview && (
+        <div style={PREVIEW_STYLE}>
+          {error ? (
+            <p style={MESSAGE_STYLE}>{error}</p>
+          ) : grid ? (
+            <GridTable grid={grid} />
+          ) : (
+            <p style={MESSAGE_STYLE}>Drag a field into Rows and Values to build a pivot.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

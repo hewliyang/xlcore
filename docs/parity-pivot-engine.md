@@ -102,13 +102,17 @@ materializes actual cell values for our renderer).
       0-based `{ row, col, role, kind, value }`; `role` derived from the engine
       `style_index` (header / label / value / totalLabel / totalValue).
 - [x] Frontend: `PivotBuilder` React component (`@hewliyang/xlsx-preview/react`)
-      with drag-and-drop between Fields/Filters/Columns/Rows/Values buckets,
-      per-value aggregation dropdown, and live in-browser recompute via
-      `pivots.preview` (no save/reopen). Derives field names from the source
-      header row; renders the `PivotGrid` with header/total/value styling.
-      Wired into `examples/react-vite`. Verified in a real browser (DnD layout +
-      aggregation change recompute) and unit-tested pure helpers
-      (`pivotBuilder.test.ts`: `applyMove`/`parseRef`/`headerRange`).
+      with drag-and-drop between Fields/Filters/Columns/Rows/Values buckets and
+      a per-value aggregation dropdown. Derives field names from the source
+      header row, emits the live config via `onChange`, and (when
+      `showPreview`) renders an inline `pivots.preview` grid. The
+      `examples/react-vite` demo wires `onChange` to author the pivot into a
+      dedicated worksheet and render it **in-sheet** via `ExcelPreviewer`
+      (author → `save()` → reload the Blob), so the result shows up in the
+      spreadsheet grid like Excel — recomputing on every change. Verified in a
+      real browser (in-sheet pivot, aggregation-change recompute) and
+      unit-tested pure helpers (`pivotBuilder.test.ts`:
+      `applyMove`/`parseRef`/`headerRange`).
       Still TODO: per-item filter toggling (needs `PivotPatch` item selection).
 
 ### P1: Wider layout coverage
