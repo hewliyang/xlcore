@@ -6,6 +6,7 @@ export type PivotInfo = {
   id: string;
   name: string;
   locationRef: string;
+  anchorCell: string;
   sourceRef: string;
   rowFields: Array<string>;
   columnFields: Array<string>;

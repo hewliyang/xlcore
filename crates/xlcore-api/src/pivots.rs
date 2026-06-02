@@ -208,11 +208,20 @@ impl Workbook {
                     })
                     .unwrap_or_default();
 
+                let location_ref = def.location.reference.as_str().to_string();
+                let n_page = def
+                    .page_fields
+                    .as_ref()
+                    .map(|pf| pf.page_field.len() as u32)
+                    .unwrap_or(0);
+                let anchor_cell = anchor_from_location(&location_ref, n_page);
+
                 out.push(PivotInfo {
                     sheet: sheet_name.clone(),
                     id,
                     name: def.name.as_str().to_string(),
-                    location_ref: def.location.reference.as_str().to_string(),
+                    location_ref,
+                    anchor_cell,
                     source_ref,
                     row_fields,
                     column_fields,
@@ -509,6 +518,17 @@ impl Workbook {
             id: rid.to_string(),
         });
         Ok(())
+    }
+}
+
+fn anchor_from_location(location_ref: &str, n_page: u32) -> String {
+    let top_left = location_ref.split(':').next().unwrap_or(location_ref);
+    match xlcore_io::parse_a1(top_left) {
+        Some((row, col)) => {
+            let offset = if n_page > 0 { n_page + 1 } else { 0 };
+            cell_a1(row.saturating_sub(offset).max(1), col)
+        }
+        None => top_left.to_string(),
     }
 }
 

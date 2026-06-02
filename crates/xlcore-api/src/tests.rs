@@ -4385,6 +4385,7 @@ fn pivots_create_list_remove_roundtrip() {
     assert_eq!(info.column_fields, vec!["Product".to_string()]);
     assert_eq!(info.data_fields.len(), 1);
     assert_eq!(info.data_fields[0].field, "Amount");
+    assert_eq!(info.anchor_cell, "A1");
     assert!(!info.id.is_empty());
 
     let bytes = wb.save_bytes().unwrap();

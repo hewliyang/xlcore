@@ -3037,6 +3037,7 @@ pub struct PivotInfo {
     pub id: String,
     pub name: String,
     pub location_ref: String,
+    pub anchor_cell: String,
     pub source_ref: String,
     pub row_fields: Vec<String>,
     pub column_fields: Vec<String>,

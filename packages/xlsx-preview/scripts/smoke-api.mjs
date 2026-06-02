@@ -296,6 +296,19 @@ if (pivotSheet.pivots.list().length !== 1) {
   throw new Error("preview should not author a pivot");
 }
 
+const pivotUpdated = pivotSheet.pivots.update(pivot.id, {
+  dataFields: [{ field: "Amount", aggregation: "count", numberFormat: "$#,##0.00" }],
+});
+if (pivotUpdated.dataFields[0].aggregation !== "count") {
+  throw new Error("pivot update did not change aggregation: " + JSON.stringify(pivotUpdated));
+}
+if (pivotSheet.pivots.list().length !== 1) {
+  throw new Error("pivot update should not duplicate the pivot");
+}
+if (pivotUpdated.anchorCell !== "A1") {
+  throw new Error("pivot update moved the anchor: " + JSON.stringify(pivotUpdated));
+}
+
 const noteAdded = s1.threadedNotes.add("A1", { text: "hello", author: "smoke" });
 if (!noteAdded.id) throw new Error("threadedNotes.add returned no id");
 s1.cell("A2").setValue("post-note");

@@ -14,6 +14,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Pivot table editing: `worksheet.pivots.update(id, partial)` merges a partial patch over the existing pivot and re-authors it (remove + re-set with rollback), mirroring `charts.update`. `PivotInfo` now exposes `anchorCell` (top-left of the location, page-field offset removed) so updates round-trip in place.
 - Pivot live preview: `worksheet.pivots.preview(patch)` (WASM `pivotPreview`) aggregates a `PivotGrid` in-memory without authoring any parts, enabling drag/recompute UIs with no save/reopen round-trip.
 - Pivot table rendering: empty `pivotCacheRecords` now fall back to aggregating the `worksheetSource` range, so caches stripped before save (common with `refreshOnLoad`) still render.
 - Pivot table rendering: nested column headers (two column fields, single data field) now materialize with per-outer-group leaf columns, `{outer} Total` subtotal columns, a grand-total column, and a 3-row header; verified vs SpreadJS.

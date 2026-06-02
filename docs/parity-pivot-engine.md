@@ -157,7 +157,12 @@ materializes actual cell values for our renderer).
 - [ ] Relocate cache parts from `/pivotCache` to the conventional
       `/xl/pivotCache` (ooxmlsdk `PATH_PREFIX = "../pivotCache"`); valid today
       via absolute rels and Excel-clean, but non-standard.
-- [ ] `update()` for pivots (mirror the chart remove+re-set merge pattern).
+- [x] `update()` for pivots (mirror the chart remove+re-set merge pattern).
+      `worksheet.pivots.update(id, partial)` in `api-collections.ts` rebuilds a
+      `PivotPatch` from the existing `PivotInfo`, merges the partial, then
+      `removePivot` + `setPivot` with rollback. `PivotInfo.anchor_cell`
+      (location top-left minus the page-field row offset) is the recovered
+      anchor so re-set lands in place. Smoke: `smoke:api`.
 - [ ] Author-time cell write: optionally write the computed grid into real
       worksheet `<c>` cells on save so non-SpreadJS tools see values too.
 
