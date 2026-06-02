@@ -14,6 +14,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Pivot table rendering: multiple data fields combined with a single column field now materialize (3-row header, each column group expands into one sub-column per data field, grand-total group emits `Total <dataname>` per field); verified vs SpreadJS.
 - Pivot table filtering: the render engine now honors hidden `pivotField` items (`items[@h="1"]`), dropping filtered records before aggregation so hidden items disappear from row/column keys and all totals.
 - Pivot table data-field number formats: `PivotDataField.numberFormat` is authored onto the `dataField` `numFmtId` (interned into workbook styles) and read back; the render engine applies it to value + total cells so currency/percent pivots match SpreadJS.
 - Pivot table styling: the materialized grid now carries `style_index` so the header band (bold white on accent fill) and grand-total row/column (bold) render, matching the SpreadJS look.

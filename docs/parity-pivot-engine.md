@@ -49,8 +49,10 @@ Aggregation/render engine (`crates/xlcore-export/src/pivot_engine.rs`):
 - One or more row fields, 0–1 column fields.
 - Multiple data fields when there are **no** column fields (each data field
   becomes an extra value column with its own caption header).
-- With a column field, exactly one data field.
-- Unsupported shapes (multi data field + column field, >1 column field, zero
+- Multiple data fields **with** a single column field (the `-2` "values"
+  marker axis): 3-row header, each column group expands into one sub-column
+  per data field, grand-total group emits `Total <dataname>` per data field.
+- Unsupported shapes (>1 column field, zero
   row fields) return no cells → renderer falls back to the previous empty-grid
   behavior; nothing breaks.
 
@@ -99,8 +101,11 @@ materializes actual cell values for our renderer).
 ### P1: Wider layout coverage
 
 - [x] Multiple data fields in the no-column layout (extra value column +
-      caption per data field). Still TODO: the `-2` "values" marker axis when a
-      column field is present (expand along columns under each column group).
+      caption per data field).
+- [x] Multiple data fields with a single column field (the `-2` "values"
+      marker axis): expands each column group into one sub-column per data
+      field with a 3-row header; verified vs SpreadJS. Unit:
+      `computes_multiple_data_fields_with_column_field`.
 - [ ] More than one column field (nested column headers).
 - [ ] Multiple row fields beyond the current tabular side-by-side labels:
       outline/compact layouts and per-level subtotals.

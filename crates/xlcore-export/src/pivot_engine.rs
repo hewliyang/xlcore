@@ -402,9 +402,6 @@ pub fn compute_cells(
     if row_fields.is_empty() || col_fields.len() > 1 || data_fields.is_empty() {
         return Vec::new();
     }
-    if !col_fields.is_empty() && data_fields.len() > 1 {
-        return Vec::new();
-    }
 
     let Some(((r1, c1), _)) = parse_range(pt.location.reference.as_str()) else {
         return Vec::new();
@@ -509,6 +506,90 @@ pub fn compute_cells(
         for (d, (fld, func, _, _)) in data_fields.iter().enumerate() {
             if let Some(v) = value_for_all(&decoded, *fld, func.as_ref()) {
                 cells.push(styled(num_cell(gr, c1 + r + d as u32, v), field_xfs[d].1));
+            }
+        }
+        return cells;
+    }
+
+    if data_fields.len() > 1 {
+        let col_name = field_names[col_fields[0]].clone();
+        let row_names: Vec<String> =
+            row_fields.iter().map(|&f| field_names[f].clone()).collect();
+        let dcount = data_fields.len() as u32;
+        let base = c1 + r;
+        let m = col_keys.len() as u32;
+
+        cells.push(styled(text_cell(r1, base, col_name), st.header));
+        for (j, name) in row_names.iter().enumerate() {
+            cells.push(styled(
+                text_cell(r1 + 2, c1 + j as u32, name.clone()),
+                st.header,
+            ));
+        }
+        for (k, ck) in col_keys.iter().enumerate() {
+            let gc = base + k as u32 * dcount;
+            cells.push(styled(text_cell(r1 + 1, gc, ck[0].clone()), st.header));
+            for (d, (_, _, name, _)) in data_fields.iter().enumerate() {
+                cells.push(styled(
+                    text_cell(r1 + 2, gc + d as u32, name.clone()),
+                    st.header,
+                ));
+            }
+        }
+        for (d, (_, _, name, _)) in data_fields.iter().enumerate() {
+            cells.push(styled(
+                text_cell(r1 + 1, base + m * dcount + d as u32, format!("Total {name}")),
+                st.header,
+            ));
+        }
+
+        for (i, rk) in row_keys.iter().enumerate() {
+            let rr = r1 + 3 + i as u32;
+            for (j, lbl) in rk.iter().enumerate() {
+                cells.push(text_cell(rr, c1 + j as u32, lbl.clone()));
+            }
+            for (k, ck) in col_keys.iter().enumerate() {
+                let gc = base + k as u32 * dcount;
+                for (d, (fld, func, _, _)) in data_fields.iter().enumerate() {
+                    if let Some(v) = value_for(rk, Some(ck), *fld, func.as_ref()) {
+                        cells.push(opt_styled(num_cell(rr, gc + d as u32, v), field_xfs[d].0));
+                    }
+                }
+            }
+            for (d, (fld, func, _, _)) in data_fields.iter().enumerate() {
+                if let Some(v) = value_for(rk, None, *fld, func.as_ref()) {
+                    cells.push(styled(
+                        num_cell(rr, base + m * dcount + d as u32, v),
+                        field_xfs[d].1,
+                    ));
+                }
+            }
+        }
+
+        let gr = r1 + 3 + row_keys.len() as u32;
+        cells.push(styled(
+            text_cell(gr, c1, "Grand Total".to_string()),
+            st.total_label,
+        ));
+        for (k, ck) in col_keys.iter().enumerate() {
+            let gc = base + k as u32 * dcount;
+            for (d, (fld, func, _, _)) in data_fields.iter().enumerate() {
+                let vals: Vec<PVal> = decoded
+                    .iter()
+                    .filter(|rec| matches(&col_fields, ck, rec))
+                    .map(|rec| rec.get(*fld).cloned().unwrap_or(PVal::Blank))
+                    .collect();
+                if let Some(v) = aggregate(&vals, func.as_ref()) {
+                    cells.push(styled(num_cell(gr, gc + d as u32, v), field_xfs[d].1));
+                }
+            }
+        }
+        for (d, (fld, func, _, _)) in data_fields.iter().enumerate() {
+            if let Some(v) = value_for_all(&decoded, *fld, func.as_ref()) {
+                cells.push(styled(
+                    num_cell(gr, base + m * dcount + d as u32, v),
+                    field_xfs[d].1,
+                ));
             }
         }
         return cells;
@@ -879,6 +960,110 @@ mod tests {
         assert!(!cells.iter().any(|c| c.value.as_deref() == Some("South")));
         assert_eq!(find(&cells, 3, 1).value.as_deref(), Some("Grand Total"));
         assert_eq!(find(&cells, 3, 2).value.as_deref(), Some("150"));
+    }
+
+    #[test]
+    fn computes_multiple_data_fields_with_column_field() {
+        let cache_def = x::PivotCacheDefinition {
+            cache_fields: Box::new(x::CacheFields {
+                count: Some(3),
+                cache_field: vec![
+                    s_field("Region", &["North", "South"]),
+                    s_field("Product", &["Widget", "Gadget"]),
+                    n_field("Amount", &[100.0, 50.0, 75.0, 25.0, 30.0, 60.0]),
+                ],
+            }),
+            ..Default::default()
+        };
+        let records = x::PivotCacheRecords {
+            pivot_cache_record: vec![
+                rec(&[0, 0, 0]),
+                rec(&[0, 1, 1]),
+                rec(&[1, 0, 2]),
+                rec(&[1, 1, 3]),
+                rec(&[0, 0, 4]),
+                rec(&[1, 1, 5]),
+            ],
+            ..Default::default()
+        };
+        let pt = x::PivotTableDefinition {
+            location: Box::new(x::Location {
+                reference: "A1:G6".to_string(),
+                first_header_row: 1,
+                first_data_row: 2,
+                first_data_column: 1,
+                ..Default::default()
+            }),
+            row_fields: Some(x::RowFields {
+                count: Some(1),
+                field: vec![x::Field { index: 0 }],
+            }),
+            column_fields: Some(x::ColumnFields {
+                count: Some(2),
+                field: vec![x::Field { index: 1 }, x::Field { index: -2 }],
+            }),
+            data_fields: Some(x::DataFields {
+                count: Some(2),
+                data_field: vec![
+                    x::DataField {
+                        name: Some("Sum of Amount".to_string()),
+                        field: 2,
+                        subtotal: Some(F::Sum),
+                        ..Default::default()
+                    },
+                    x::DataField {
+                        name: Some("Count of Amount".to_string()),
+                        field: 2,
+                        subtotal: Some(F::Count),
+                        ..Default::default()
+                    },
+                ],
+            }),
+            ..Default::default()
+        };
+
+        let mut styles = Styles::default();
+        let mut memo = None;
+        let cells = compute_cells(&pt, &cache_def, &records, &mut styles, &mut memo);
+        let st = memo.unwrap();
+
+        assert_eq!(find(&cells, 1, 2).value.as_deref(), Some("Product"));
+        assert_eq!(find(&cells, 2, 2).value.as_deref(), Some("Gadget"));
+        assert_eq!(find(&cells, 2, 4).value.as_deref(), Some("Widget"));
+        assert_eq!(
+            find(&cells, 2, 6).value.as_deref(),
+            Some("Total Sum of Amount")
+        );
+        assert_eq!(
+            find(&cells, 2, 7).value.as_deref(),
+            Some("Total Count of Amount")
+        );
+        assert_eq!(find(&cells, 3, 1).value.as_deref(), Some("Region"));
+        assert_eq!(find(&cells, 3, 2).value.as_deref(), Some("Sum of Amount"));
+        assert_eq!(find(&cells, 3, 3).value.as_deref(), Some("Count of Amount"));
+
+        assert_eq!(find(&cells, 4, 1).value.as_deref(), Some("North"));
+        assert_eq!(find(&cells, 4, 2).value.as_deref(), Some("50"));
+        assert_eq!(find(&cells, 4, 3).value.as_deref(), Some("1"));
+        assert_eq!(find(&cells, 4, 4).value.as_deref(), Some("130"));
+        assert_eq!(find(&cells, 4, 5).value.as_deref(), Some("2"));
+        assert_eq!(find(&cells, 4, 6).value.as_deref(), Some("180"));
+        assert_eq!(find(&cells, 4, 7).value.as_deref(), Some("3"));
+
+        assert_eq!(find(&cells, 5, 1).value.as_deref(), Some("South"));
+        assert_eq!(find(&cells, 5, 6).value.as_deref(), Some("160"));
+        assert_eq!(find(&cells, 5, 7).value.as_deref(), Some("3"));
+
+        assert_eq!(find(&cells, 6, 1).value.as_deref(), Some("Grand Total"));
+        assert_eq!(find(&cells, 6, 2).value.as_deref(), Some("135"));
+        assert_eq!(find(&cells, 6, 3).value.as_deref(), Some("3"));
+        assert_eq!(find(&cells, 6, 6).value.as_deref(), Some("340"));
+        assert_eq!(find(&cells, 6, 7).value.as_deref(), Some("6"));
+
+        assert_eq!(find(&cells, 1, 2).style_index, Some(st.header));
+        assert_eq!(find(&cells, 4, 6).style_index, Some(st.total_value));
+        assert_eq!(find(&cells, 4, 2).style_index, None);
+        assert_eq!(find(&cells, 6, 1).style_index, Some(st.total_label));
     }
 
     #[test]
