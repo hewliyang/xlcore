@@ -323,16 +323,45 @@ pub fn compute_cells(
         })
         .unwrap_or_default();
 
+    let page_filters: std::collections::HashMap<usize, u32> = pt
+        .page_fields
+        .as_ref()
+        .map(|pf| {
+            pf.page_field
+                .iter()
+                .filter_map(|f| {
+                    let fld = usize::try_from(f.field).ok()?;
+                    let item: u32 = f.item.map(Into::into)?;
+                    let shared = pt
+                        .pivot_fields
+                        .as_ref()?
+                        .pivot_field
+                        .get(fld)?
+                        .items
+                        .as_ref()?
+                        .item
+                        .get(item as usize)?
+                        .index
+                        .map(Into::into)?;
+                    Some((fld, shared))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
     let record_hidden = |rec: &x::PivotCacheRecord| -> bool {
         rec.pivot_cache_record_choice
             .iter()
             .enumerate()
             .any(|(i, choice)| {
                 if let x::PivotCacheRecordChoice::FieldItem(b) = choice {
-                    hidden_items
+                    let is_hidden = hidden_items
                         .get(i)
                         .map(|h| h.contains(&b.val))
-                        .unwrap_or(false)
+                        .unwrap_or(false);
+                    let page_excluded =
+                        page_filters.get(&i).map(|want| *want != b.val).unwrap_or(false);
+                    is_hidden || page_excluded
                 } else {
                     false
                 }
@@ -1073,6 +1102,96 @@ mod tests {
         assert!(!cells.iter().any(|c| c.value.as_deref() == Some("South")));
         assert_eq!(find(&cells, 3, 1).value.as_deref(), Some("Grand Total"));
         assert_eq!(find(&cells, 3, 2).value.as_deref(), Some("150"));
+    }
+
+    fn pivot_field_items(indices: &[u32]) -> x::PivotField {
+        x::PivotField {
+            items: Some(x::Items {
+                item: indices
+                    .iter()
+                    .map(|i| x::Item {
+                        index: Some(*i),
+                        ..Default::default()
+                    })
+                    .collect(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn page_field_single_select_filters_records() {
+        let cache_def = x::PivotCacheDefinition {
+            cache_fields: Box::new(x::CacheFields {
+                count: Some(3),
+                cache_field: vec![
+                    s_field("Region", &["North", "South"]),
+                    s_field("Product", &["Widget", "Gadget"]),
+                    n_field("Amount", &[100.0, 50.0, 75.0, 25.0]),
+                ],
+            }),
+            ..Default::default()
+        };
+        let records = x::PivotCacheRecords {
+            pivot_cache_record: vec![
+                rec(&[0, 0, 0]),
+                rec(&[0, 1, 1]),
+                rec(&[1, 0, 2]),
+                rec(&[1, 1, 3]),
+            ],
+            ..Default::default()
+        };
+        let pt = x::PivotTableDefinition {
+            location: Box::new(x::Location {
+                reference: "A1:B4".to_string(),
+                first_header_row: 1,
+                first_data_row: 1,
+                first_data_column: 1,
+                ..Default::default()
+            }),
+            pivot_fields: Some(x::PivotFields {
+                count: Some(3),
+                pivot_field: vec![
+                    pivot_field_items(&[0, 1]),
+                    pivot_field_items(&[0, 1]),
+                    x::PivotField::default(),
+                ],
+            }),
+            row_fields: Some(x::RowFields {
+                count: Some(1),
+                field: vec![x::Field { index: 0 }],
+            }),
+            page_fields: Some(x::PageFields {
+                count: Some(1),
+                page_field: vec![x::PageField {
+                    field: 1,
+                    item: Some(1u32.into()),
+                    ..Default::default()
+                }],
+            }),
+            data_fields: Some(x::DataFields {
+                count: Some(1),
+                data_field: vec![x::DataField {
+                    name: Some("Sum of Amount".to_string()),
+                    field: 2,
+                    subtotal: Some(F::Sum),
+                    ..Default::default()
+                }],
+            }),
+            ..Default::default()
+        };
+
+        let mut styles = Styles::default();
+        let mut memo = None;
+        let cells = compute_cells(&pt, &cache_def, &records, &mut styles, &mut memo);
+
+        assert_eq!(find(&cells, 2, 1).value.as_deref(), Some("North"));
+        assert_eq!(find(&cells, 2, 2).value.as_deref(), Some("50"));
+        assert_eq!(find(&cells, 3, 1).value.as_deref(), Some("South"));
+        assert_eq!(find(&cells, 3, 2).value.as_deref(), Some("25"));
+        assert_eq!(find(&cells, 4, 1).value.as_deref(), Some("Grand Total"));
+        assert_eq!(find(&cells, 4, 2).value.as_deref(), Some("75"));
     }
 
     #[test]

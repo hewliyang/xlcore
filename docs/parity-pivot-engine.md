@@ -123,9 +123,12 @@ materializes actual cell values for our renderer).
       shared-item sets from `pivotFields/items[@h="1" @x=i]` and drops any
       record whose `FieldItem` value is hidden, before decode — so hidden items
       vanish from row/col keys *and* every total. Covers row/col filters and
-      page fields expressed via hidden items (the common case; `pageField/@item`
-      single-select still TODO). Unit:
+      page fields expressed via hidden items (the common case). Unit:
       `hidden_items_excluded_from_keys_and_totals`.
+- [x] `pageField/@item` single-select: resolves the selected `pivotField`
+      item index → shared-item index and drops non-matching records before
+      decode (combined with hidden-item filtering). Unit:
+      `page_field_single_select_filters_records`.
 - [ ] Honor stored `rowItems`/`colItems` order for imported pivots instead of
       recomputing from records (matters when the author set a manual sort or
       when not all field-item combinations appear in the data; Excel shows all
