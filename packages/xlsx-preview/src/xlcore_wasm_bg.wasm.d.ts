@@ -42,6 +42,7 @@ export const workbookhandle_moveSheet: (a: number, b: number, c: number, d: numb
 export const workbookhandle_new: (a: number) => void;
 export const workbookhandle_open: (a: number, b: number, c: number) => void;
 export const workbookhandle_pageSetup: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_pivotPreview: (a: number, b: number, c: number) => void;
 export const workbookhandle_pivots: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_precedents: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_properties: (a: number, b: number) => void;

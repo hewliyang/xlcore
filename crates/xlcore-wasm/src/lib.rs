@@ -683,6 +683,17 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = pivotPreview)]
+    pub fn pivot_preview(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::PivotPatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let grid = self
+            .workbook_mut()?
+            .pivot_preview(patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&grid).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = removePivot)]
     pub fn remove_pivot(&mut self, sheet: &str, id: &str) -> Result<JsValue, JsValue> {
         let removed = self

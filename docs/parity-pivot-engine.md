@@ -90,14 +90,20 @@ materializes actual cell values for our renderer).
 
 ### P1: Interactive live re-pivot (the big frontend win)
 
-- [ ] Expose `compute_cells` (or a thin grid form) via WASM:
-      `workbook.pivotPreview(patch) → PivotGrid` that aggregates **without**
-      writing parts.
+- [x] Expose `compute_cells` via WASM: `worksheet.pivots.preview(patch) →
+      PivotGrid` (`pivotPreview` on the WASM handle / `pivot_preview` on
+      `Workbook`) that aggregates **without** writing parts. Reuses
+      `prepare_pivot` (validation + column build) + the existing
+      `build_cache_definition`/`build_cache_records`/`build_pivot_definition`
+      then runs `compute_cells` against a throwaway `Styles`. Number formats
+      are skipped on this path. Units: `pivot_preview_aggregates_without_writing_parts`
+      (rust), `smoke:api` (TS).
+- [x] Grid DTO: `PivotGrid { rows, cols, cells: PivotGridCell[] }` with
+      0-based `{ row, col, role, kind, value }`; `role` derived from the engine
+      `style_index` (header / label / value / totalLabel / totalValue).
 - [ ] Frontend: drag fields between row/column/filter/values, change
       aggregation, toggle filter items, recompute in-browser with no
       save/reopen round-trip.
-- [ ] Decide grid DTO shape (header cells + row labels + value matrix) vs.
-      reusing `Cell[]`.
 
 ### P1: Wider layout coverage
 

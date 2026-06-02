@@ -22,6 +22,7 @@ import type {
   ImageInfo,
   ImagePatch,
   MergeInfo,
+  PivotGrid,
   PivotInfo,
   PivotPatch,
   SparklineGroupInfo,
@@ -330,6 +331,9 @@ export class PivotCollection extends SheetScopedCollection {
   }
   set(patch: Omit<PivotPatch, "sheet">): PivotInfo {
     return this.handle.setPivot({ ...patch, sheet: this.sheet }) as PivotInfo;
+  }
+  preview(patch: Omit<PivotPatch, "sheet">): PivotGrid {
+    return this.handle.pivotPreview({ ...patch, sheet: this.sheet }) as PivotGrid;
   }
   remove(id: string): PivotInfo | null {
     return (this.handle.removePivot(this.sheet, id) as PivotInfo | null) ?? null;

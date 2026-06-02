@@ -40,6 +40,7 @@ export class WorkbookHandle {
     constructor();
     static open(bytes: Uint8Array): WorkbookHandle;
     pageSetup(sheet: string): any;
+    pivotPreview(patch: any): any;
     pivots(sheet?: string | null): any;
     precedents(reference: string): any;
     properties(): any;
@@ -156,6 +157,7 @@ export interface InitOutput {
     readonly workbookhandle_new: (a: number) => void;
     readonly workbookhandle_open: (a: number, b: number, c: number) => void;
     readonly workbookhandle_pageSetup: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_pivotPreview: (a: number, b: number, c: number) => void;
     readonly workbookhandle_pivots: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_precedents: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_properties: (a: number, b: number) => void;

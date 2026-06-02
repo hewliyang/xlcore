@@ -11,12 +11,12 @@ use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::simple_type::BooleanValue;
 
 use xlcore_types::{
-    ApiCellValue as CellValue, ApiError, ApiErrorCode, PivotAggregation, PivotDataField, PivotInfo,
-    PivotPatch,
+    ApiCellValue as CellValue, ApiError, ApiErrorCode, PivotAggregation, PivotCellRole,
+    PivotDataField, PivotGrid, PivotGridCell, PivotInfo, PivotPatch,
 };
 
 use crate::errors::sdk_err_to_api;
-use crate::refs::quote_sheet_name;
+use crate::refs::{quote_sheet_name, ResolvedCellRef};
 use crate::{Result, Workbook};
 
 const SPREADSHEETML: &str = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
@@ -37,6 +37,60 @@ struct SourceColumn {
     numeric: bool,
     distinct: Vec<CellValue>,
     distinct_index: HashMap<String, usize>,
+}
+
+struct PivotPrep {
+    columns: Vec<SourceColumn>,
+    headers: Vec<String>,
+    anchor: ResolvedCellRef,
+    source_sheet: String,
+    source_a1: String,
+    data_rows: Vec<Vec<CellValue>>,
+}
+
+fn grid_from_cells(
+    cells: &[xlcore_export::Cell],
+    memo: Option<xlcore_export::PivotStyleIndices>,
+) -> PivotGrid {
+    let Some(st) = memo else {
+        return PivotGrid {
+            rows: 0,
+            cols: 0,
+            cells: Vec::new(),
+        };
+    };
+    let min_r = cells.iter().map(|c| c.r).min().unwrap_or(1);
+    let min_c = cells.iter().map(|c| c.c).min().unwrap_or(1);
+    let mut rows = 0;
+    let mut cols = 0;
+    let grid_cells = cells
+        .iter()
+        .map(|c| {
+            let row = c.r - min_r;
+            let col = c.c - min_c;
+            rows = rows.max(row + 1);
+            cols = cols.max(col + 1);
+            let role = match c.style_index {
+                Some(i) if i == st.header() => PivotCellRole::Header,
+                Some(i) if i == st.total_label() => PivotCellRole::TotalLabel,
+                Some(i) if i == st.total_value() => PivotCellRole::TotalValue,
+                _ if c.kind == "n" => PivotCellRole::Value,
+                _ => PivotCellRole::Label,
+            };
+            PivotGridCell {
+                row,
+                col,
+                role,
+                kind: c.kind.clone(),
+                value: c.value.clone(),
+            }
+        })
+        .collect();
+    PivotGrid {
+        rows,
+        cols,
+        cells: grid_cells,
+    }
 }
 
 impl Workbook {
@@ -170,7 +224,7 @@ impl Workbook {
         Ok(out)
     }
 
-    pub fn set_pivot(&mut self, patch: PivotPatch) -> Result<PivotInfo> {
+    fn prepare_pivot(&mut self, patch: &PivotPatch) -> Result<PivotPrep> {
         if patch.data_fields.is_empty() {
             return Err(ApiError::new(
                 ApiErrorCode::InvalidPivot,
@@ -258,14 +312,14 @@ impl Workbook {
             }
         }
 
-        let data_rows = &source.values[1..];
+        let data_rows: Vec<Vec<CellValue>> = source.values[1..].to_vec();
         let mut columns: Vec<SourceColumn> = Vec::with_capacity(headers.len());
         for (col, name) in headers.iter().enumerate() {
             let role = role_of(name).unwrap();
             let mut numeric = true;
             let mut distinct: Vec<CellValue> = Vec::new();
             let mut distinct_index: HashMap<String, usize> = HashMap::new();
-            for row in data_rows {
+            for row in &data_rows {
                 let v = row.get(col).unwrap_or(&CellValue::Blank);
                 if !matches!(v, CellValue::Number(_) | CellValue::Blank) {
                     numeric = false;
@@ -288,8 +342,58 @@ impl Workbook {
             });
         }
 
-        let cache_definition = build_cache_definition(&source_sheet, &source_a1, &columns);
-        let cache_records = build_cache_records(&columns, data_rows);
+        Ok(PivotPrep {
+            columns,
+            headers,
+            anchor,
+            source_sheet,
+            source_a1,
+            data_rows,
+        })
+    }
+
+    pub fn pivot_preview(&mut self, patch: PivotPatch) -> Result<PivotGrid> {
+        let prep = self.prepare_pivot(&patch)?;
+        let cache_definition =
+            build_cache_definition(&prep.source_sheet, &prep.source_a1, &prep.columns);
+        let cache_records = build_cache_records(&prep.columns, &prep.data_rows);
+        let name = patch
+            .name
+            .clone()
+            .unwrap_or_else(|| "PivotPreview".to_string());
+        let num_fmts = vec![None; patch.data_fields.len()];
+        let definition = build_pivot_definition(
+            &patch,
+            &name,
+            1,
+            &prep.columns,
+            &prep.headers,
+            &prep.anchor,
+            &num_fmts,
+        );
+
+        let mut styles = xlcore_export::Styles::default();
+        let mut memo = None;
+        let cells = xlcore_export::compute_cells(
+            &definition,
+            &cache_definition,
+            &cache_records,
+            &mut styles,
+            &mut memo,
+        );
+        Ok(grid_from_cells(&cells, memo))
+    }
+
+    pub fn set_pivot(&mut self, patch: PivotPatch) -> Result<PivotInfo> {
+        let prep = self.prepare_pivot(&patch)?;
+        let columns = prep.columns;
+        let headers = prep.headers;
+        let anchor = prep.anchor;
+        let data_rows = prep.data_rows;
+
+        let cache_definition =
+            build_cache_definition(&prep.source_sheet, &prep.source_a1, &columns);
+        let cache_records = build_cache_records(&columns, &data_rows);
         let cache_id = self.next_pivot_cache_id()?;
         let name = patch
             .name

@@ -276,6 +276,26 @@ if (wb.allPivots.list().length !== 1) {
   throw new Error("expected one workbook pivot");
 }
 
+const preview = pivotSheet.pivots.preview({
+  anchorCell: "PivotOut!H1",
+  sourceRef: "PivotSrc!A1:C7",
+  rowFields: ["Region"],
+  dataFields: [{ field: "Amount", aggregation: "sum", name: "Sum of Amount" }],
+});
+const previewAt = (row, col) => preview.cells.find((c) => c.row === row && c.col === col);
+if (preview.rows !== 4 || preview.cols !== 2) {
+  throw new Error("unexpected preview dims: " + JSON.stringify(preview));
+}
+if (previewAt(1, 1)?.value !== "180" || previewAt(3, 1)?.value !== "340") {
+  throw new Error("unexpected preview values: " + JSON.stringify(preview.cells));
+}
+if (previewAt(0, 0)?.role !== "header" || previewAt(3, 0)?.role !== "total_label") {
+  throw new Error("unexpected preview roles: " + JSON.stringify(preview.cells));
+}
+if (pivotSheet.pivots.list().length !== 1) {
+  throw new Error("preview should not author a pivot");
+}
+
 const noteAdded = s1.threadedNotes.add("A1", { text: "hello", author: "smoke" });
 if (!noteAdded.id) throw new Error("threadedNotes.add returned no id");
 s1.cell("A2").setValue("post-note");

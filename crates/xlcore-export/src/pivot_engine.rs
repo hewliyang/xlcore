@@ -10,6 +10,18 @@ pub struct PivotStyleIndices {
     total_value: u32,
 }
 
+impl PivotStyleIndices {
+    pub fn header(&self) -> u32 {
+        self.header
+    }
+    pub fn total_label(&self) -> u32 {
+        self.total_label
+    }
+    pub fn total_value(&self) -> u32 {
+        self.total_value
+    }
+}
+
 fn register_styles(styles: &mut Styles) -> PivotStyleIndices {
     if styles.fonts.is_empty() {
         styles.fonts.push(Font {

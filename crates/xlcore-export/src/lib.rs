@@ -24,6 +24,7 @@ mod tables;
 mod theme;
 
 pub use columnar::compactify;
+pub use pivot_engine::{compute_cells, PivotStyleIndices};
 pub use schema::*;
 pub(crate) use shared_strings::{
     font_scheme_variant, text_run_from, underline_variant, vert_align_variant,

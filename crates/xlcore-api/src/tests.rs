@@ -4440,8 +4440,72 @@ fn pivot_requires_data_field_and_axis() {
             field: "Amount".to_string(),
             aggregation: PivotAggregation::Sum,
             name: None,
-                number_format: None,
+            number_format: None,
         }],
     });
     assert_eq!(no_axis.unwrap_err().code, ApiErrorCode::InvalidPivot);
+}
+
+#[test]
+fn pivot_preview_aggregates_without_writing_parts() {
+    let mut wb = Workbook::new().unwrap();
+    let rows = [
+        ("North", "Widget", 100.0),
+        ("North", "Gadget", 50.0),
+        ("South", "Widget", 75.0),
+        ("South", "Gadget", 25.0),
+        ("North", "Widget", 30.0),
+        ("South", "Gadget", 60.0),
+    ];
+    wb.set_value("Sheet1!A1", "Region").unwrap();
+    wb.set_value("Sheet1!B1", "Product").unwrap();
+    wb.set_value("Sheet1!C1", "Amount").unwrap();
+    for (i, (region, product, amount)) in rows.iter().enumerate() {
+        let r = i as u32 + 2;
+        wb.set_value(format!("Sheet1!A{r}"), *region).unwrap();
+        wb.set_value(format!("Sheet1!B{r}"), *product).unwrap();
+        wb.set_value(format!("Sheet1!C{r}"), *amount).unwrap();
+    }
+
+    let grid = wb
+        .pivot_preview(PivotPatch {
+            sheet: "Sheet1".to_string(),
+            anchor_cell: "Sheet1!E1".to_string(),
+            source_ref: "Sheet1!A1:C7".to_string(),
+            name: None,
+            row_fields: vec!["Region".to_string()],
+            column_fields: vec![],
+            filter_fields: vec![],
+            data_fields: vec![PivotDataField {
+                field: "Amount".to_string(),
+                aggregation: PivotAggregation::Sum,
+                name: Some("Sum of Amount".to_string()),
+                number_format: None,
+            }],
+        })
+        .unwrap();
+
+    let at = |row: u32, col: u32| -> &PivotGridCell {
+        grid.cells
+            .iter()
+            .find(|c| c.row == row && c.col == col)
+            .unwrap_or_else(|| panic!("no cell at ({row},{col})"))
+    };
+
+    assert_eq!(grid.rows, 4);
+    assert_eq!(grid.cols, 2);
+    assert_eq!(at(0, 0).value.as_deref(), Some("Region"));
+    assert_eq!(at(0, 0).role, PivotCellRole::Header);
+    assert_eq!(at(0, 1).value.as_deref(), Some("Sum of Amount"));
+    assert_eq!(at(1, 0).value.as_deref(), Some("North"));
+    assert_eq!(at(1, 0).role, PivotCellRole::Label);
+    assert_eq!(at(1, 1).value.as_deref(), Some("180"));
+    assert_eq!(at(1, 1).role, PivotCellRole::Value);
+    assert_eq!(at(2, 1).value.as_deref(), Some("160"));
+    assert_eq!(at(3, 0).value.as_deref(), Some("Grand Total"));
+    assert_eq!(at(3, 0).role, PivotCellRole::TotalLabel);
+    assert_eq!(at(3, 1).value.as_deref(), Some("340"));
+    assert_eq!(at(3, 1).role, PivotCellRole::TotalValue);
+
+    assert!(wb.pivots(None).unwrap().is_empty());
 }
