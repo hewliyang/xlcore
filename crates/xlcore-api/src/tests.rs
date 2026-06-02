@@ -54,6 +54,52 @@ fn creates_sets_recalculates_saves_and_reopens() {
 }
 
 #[test]
+fn save_without_explicit_recalculate_writes_cached_values() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value("Sheet1!B1", 7.0).unwrap();
+    workbook.set_formula("Sheet1!C1", "=B1*6").unwrap();
+
+    let bytes = workbook.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    assert_eq!(
+        reopened.get_cell("Sheet1!C1").unwrap().value,
+        CellValue::Number(42.0)
+    );
+}
+
+#[test]
+fn engine_produced_errors_populate_fallback() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value("Sheet1!A1", 1.0).unwrap();
+    workbook.set_formula("Sheet1!B1", "=OFFSET(A1,-5,0)").unwrap();
+    workbook.set_formula("Sheet1!C1", "=1/0").unwrap();
+    workbook.set_formula("Sheet1!D1", "=A1+\"x\"").unwrap();
+
+    let recalc = workbook.recalculate().unwrap();
+    let b1 = recalc.cell("Sheet1", "B1").unwrap();
+    assert_eq!(
+        b1.fallback.as_ref().map(|f| f.kind.as_str()),
+        Some("#REF!"),
+        "B1 fallback: {:?}",
+        b1
+    );
+    let c1 = recalc.cell("Sheet1", "C1").unwrap();
+    assert_eq!(
+        c1.fallback.as_ref().map(|f| f.kind.as_str()),
+        Some("#DIV/0!"),
+        "C1 fallback: {:?}",
+        c1
+    );
+    let d1 = recalc.cell("Sheet1", "D1").unwrap();
+    assert_eq!(
+        d1.fallback.as_ref().map(|f| f.kind.as_str()),
+        Some("#VALUE!"),
+        "D1 fallback: {:?}",
+        d1
+    );
+}
+
+#[test]
 fn creates_and_renames_sheets() {
     let mut workbook = Workbook::new().unwrap();
     workbook.create_sheet("Scenario").unwrap();

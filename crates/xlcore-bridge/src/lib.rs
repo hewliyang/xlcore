@@ -218,11 +218,7 @@ fn evaluated_formula_value(
 }
 
 fn fallback_for_formula_error(error: FormulaError) -> Option<FormulaFallback> {
-    matches!(
-        error.kind.as_str(),
-        "#NAME?" | "#N/IMPL" | "#N/IMPL!" | "#ERROR!"
-    )
-    .then_some(FormulaFallback {
+    Some(FormulaFallback {
         kind: error.kind,
         message: error.message,
     })

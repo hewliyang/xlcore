@@ -1,0 +1,38 @@
+# xlsx-preview API — action items
+
+From three dogfood passes (`agent-ergonomics-dogfood.md`). Ordered by severity. Goal: harden primitives. Agent SDK is KIV.
+
+## P0 — silent corruption / data loss
+
+1. ~~**Tables don't roundtrip.** Writer omits `<tableParts>` in worksheet XML; `<tableColumn name=...>` reads cell values from the wrong row/column offset (row 4 starting at col C instead of row 3 at col A). Result: every `tables.set` is lost on the next open.~~ ✅ Done — root cause was `worksheet.tables.set({ reference: "A1:B3" })` (no sheet prefix) falling through `resolve_range_ref` → `default_sheet_name` → first sheet (often a hidden lookup sheet), so the table was attached to the wrong worksheet and `read_header_names` pulled values from the wrong row/column. `TableCollection.set` now qualifies `patch.reference` with the scoped sheet via `qref`, matching every other sheet-scoped collection. Smoke (`scripts/smoke-api.mjs`) extended to assert that an unqualified reference resolves to the scoped sheet.
+2. ~~**Panic poisons the Workbook handle.** Any wasm panic (e.g. `threadedNotes.add` → `unreachable`) leaves the rust `&mut` borrow stuck; all subsequent calls die with `recursive use of an object detected`.~~ ✅ Done — root cause of the reported case was `std::time::SystemTime::now()` in `threaded_notes::{new_guid, now_iso8601}` panicking with `time not implemented on this platform` on `wasm32-unknown-unknown`. Replaced with `js_sys::Date::now()` on wasm via a `cfg(target_arch = "wasm32")` target dep, leaving native builds unchanged. `console_error_panic_hook::set_once()` is now installed by `WorkbookHandle::new`, so any future panics print a real stack trace instead of bare `unreachable`. Smoke (`scripts/smoke-api.mjs`) now adds a threaded note mid-workbook and continues mutating. NB: a panic from any *other* source would still poison the handle (wasm-bindgen `WasmRefCell` is non-unwinding under `panic=abort`); audit-and-eliminate is the chosen strategy until panic=unwind is viable on stable.
+3. ~~**`save()` writes no cached `<v>` values unless `recalculate()` was called first.** xlsx-preview's own renderer then shows every formula cell as blank. Fix: auto-recalc inside `save()`, or emit an `ApiWarning` when uncached formulas exist.~~ ✅ Done — `Workbook::save_bytes` / `save_path` (and the wasm `save()` that wraps them) now run `recalculate_doc_with_writeback` before serialising the package, so cached `<v>` values are always present on disk. Signatures moved to `&mut self`; the wasm binding was already `&mut self` so JS callers are unaffected. New regression `save_without_explicit_recalculate_writes_cached_values` covers the round-trip.
+4. ~~**`recalculate()` returns `#REF!` as `{type:"string",value:"#REF!"}` with no `fallback`.** Health-check loops silently pass broken workbooks. Populate `fallback` for engine-produced error values.~~ ✅ Done — `fallback_for_formula_error` in `xlcore-bridge` previously whitelisted only `#NAME?` / `#N/IMPL` / `#ERROR!` (load-time engine misses); every other engine-evaluated error (`#REF!`, `#DIV/0!`, `#VALUE!`, `#NUM!`, `#N/A`, …) fell through to `CellValue::String(kind)` with `fallback = None`, so health-check loops scanning `fallback` passed broken cells. It now returns `Some(FormulaFallback { kind, message })` for any `FormulaError`, so every engine-produced error surfaces on `RecalcCell.fallback`. Writeback skip-on-fallback is unchanged (preserves prior cached `<v>` for both load-time and eval-time errors). Regression `tests::engine_produced_errors_populate_fallback` covers `#REF!` / `#DIV/0!` / `#VALUE!`.
+5. **`Worksheet.rename()` does not rewrite cross-sheet formula references.** Refs become `#REF!` (see #4). Either rewrite refs (the row/column ops already do this) or emit a warning listing every dangling reference.
+6. **Defined names persist to XLSX but the calc engine ignores them.** Formulas using them return `#NAME?`. Either wire them into the engine or emit a warning on `setDefinedName`.
+7. ~~**`threadedNotes.add` panics with `unreachable`.**~~ ✅ Done — same root cause as #2 (`SystemTime::now()` on wasm). Already covered by `tests::threaded_notes_add_reply_list_remove_and_round_trip` natively; smoke now exercises it on wasm.
+
+## P1 — agent-hostile API shapes
+
+8. **`DefinedNamePatch.formula` actually stores a reference.** Rename to `reference` (matches `DefinedNameInfo`), or accept both.
+9. **Sparkline color fields reject `#RRGGBB`** while every other color field requires it. Normalise — accept both, store one canonical form.
+10. ~~**`DataBarPatch.min` / `max` are required.** Default both to `{ kind: "min" }` / `{ kind: "max" }` in the JS wrapper.~~ ✅ Done — `ConditionalFormatCollection.set` fills in `{ kind: "min" }` / `{ kind: "max" }` when omitted from a `dataBar` patch (TS signature relaxed accordingly); rust side also accepts missing fields via `serde(default)`.
+11. **`AutoFilterColumnPatch.criteria` is a discriminated union.** Wasm error `missing field 'kind'` is opaque. Add a clearer error, or split into `setColumnValues` / `setColumnTop10` / `setColumnCustom` helpers.
+12. ~~**`ClearMode` rejects `"formats"`.** Excel UI says "Clear Formats" — accept it as an alias for `"styles"`.~~ ✅ Done — `ClearMode` now deserializes `"formats"` as `Styles` via `#[serde(alias)]`.
+13. **`setHyperlink({ display })` does not populate the cell value.** Renderer shows hyperlinks as blank cells. Either auto-`setValue(display)`, or have the renderer fall back to `display` for hyperlinked blank cells.
+14. **`Workbook.create()` from `/api` fails by default in Node** — default `wasmBinaryUrl` is a `file://` URL that Node `fetch` rejects. Detect Node and `readFileSync` the bundled wasm, mirroring `/node`.
+
+## P2 — ergonomics
+
+15. **No `charts.update(id, partial)`.** Mutating one chart property requires reading `ChartInfo`, manually narrowing to `ChartPatch`, spreading, resending all series. Add a merge-style update.
+16. **No `setStyles(map)` for bulk styling.** Every distinct style requires its own call.
+17. ~~**No matrix-shape validation on `setValues`** — silent drift between row/col counts.~~ ✅ Done — `Range.setValues` / `Range.setFormulas` throw on jagged matrices, empty matrices, and row/col mismatches against the parsed range (bounded refs only; whole-row/col ranges still check the bounded axis).
+18. **Number-format strings are raw Excel DSL** (`'"$"#,##0'`, `"0.0%"`). Expose ECMA-376 §18.8.30's built-in `numFmtId`s as a `NumberFormat` enum so agents don't have to handwrite format codes. Prerequisite: source-of-truth check — ooxmlsdk doesn't ship the table, our local ECMA-376 parse truncated it (`docs/site/sections/p1-18-8-30-numfmt-number-format.html` cuts off before the listing), and `ironcalc-base::number_format::DEFAULT_NUM_FMTS` is OCR-mangled (e.g. `"0.00E + 00"` instead of `0.00E+00`, `"#,##0;()#,##0)"` instead of `#,##0_);(#,##0)`). Pull the canonical strings from a clean ECMA-376 PDF or Microsoft's [MS-OE376] before encoding. Likely shape: `General`, `Integer`, `Number2`, `NumberThousands`, `NumberThousands2`, `Percent`, `Percent2`, `Scientific`, `Fraction`, `Fraction2`, date/time variants, `Accounting{Red}{2}`, `Text`. As a side benefit, also fix the corrupted `DEFAULT_NUM_FMTS` in ironcalc.
+
+## P3 — docs
+
+19. **`Workbook.search` includes hidden sheets by default** — undocumented.
+20. **`ChartAnchor` indexing convention** (1-based vs 0-based) not stated.
+21. **`legendPosition: "none"`** works but isn't in the `ChartLegendPosition` doc comment.
+22. **`setStyle` on a merged range** must target the top-left cell — surprising; document.
+23. **Node usage with `/api`** needs the manual wasm `readFileSync` snippet in the README until #14 lands.

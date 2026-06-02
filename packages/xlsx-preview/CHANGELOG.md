@@ -7,6 +7,13 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `Workbook.save()` now auto-recalculates so cached formula values are always written; previously a `save()` without a prior `recalculate()` produced an xlsx whose formula cells rendered blank.
+- `threadedNotes.add` no longer panics with `unreachable` on wasm — root cause was `std::time::SystemTime::now()` panicking on `wasm32-unknown-unknown` (`time not implemented on this platform`); replaced with `js_sys::Date::now()` on wasm. Panics elsewhere previously poisoned the `WorkbookHandle` (`recursive use of an object detected`); `console_error_panic_hook` is now installed so any future panic surfaces a real stack trace.
+- `TableCollection.set` now qualifies unqualified `patch.reference` with the scoped worksheet name, instead of silently falling back to the workbook's first sheet (which was usually a hidden lookup sheet and produced wrong column names).
+- `ClearMode` accepts `"formats"` as an alias for `"styles"` (matches Excel's "Clear Formats" wording).
+- `ConditionalFormatCollection.set` defaults `dataBar.min` / `dataBar.max` to `{ kind: "min" }` / `{ kind: "max" }` when omitted (rust deserializer applies the same defaults).
+- `Range.setValues` / `Range.setFormulas` now validate matrix shape (rectangular, non-empty, matches range dims when bounded) and throw `RangeError`/`TypeError` early instead of silently drifting.
+- `recalculate()` now populates `RecalcCell.fallback` for every engine-produced error (`#REF!`, `#DIV/0!`, `#VALUE!`, `#NUM!`, `#N/A`, …), not just load-time misses; previously these errors arrived as plain `{type:"string",value:"#REF!"}` and health-check loops silently passed broken workbooks.
 - Blank workbooks (no `xl/styles.xml`) now expose `defaultFont="Calibri"` / `defaultFontSize=11` in layout instead of empty/0 — previewer renders cell text on freshly-created workbooks without requiring a `setStyle` call.
 - Playground `render()` honors `layout.activeSheetIndex` when a script calls `worksheet.activate()` (no longer pinned to the previously-active tab).
 
