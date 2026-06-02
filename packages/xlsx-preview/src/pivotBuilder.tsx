@@ -1,6 +1,11 @@
 import { type CSSProperties, type DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { Workbook } from "./api.js";
-import type { PivotAggregation, PivotDataField, PivotGrid } from "./api-schema/index.js";
+import type {
+  PivotAggregation,
+  PivotDataField,
+  PivotFieldFilter,
+  PivotGrid,
+} from "./api-schema/index.js";
 
 type Bucket = "available" | "rows" | "columns" | "filters" | "values";
 
@@ -37,6 +42,7 @@ export interface PivotBuilderConfig {
   columnFields: string[];
   filterFields: string[];
   dataFields: PivotDataField[];
+  hiddenItems: PivotFieldFilter[];
 }
 
 export interface PivotBuilderProps {
@@ -135,6 +141,63 @@ export function PivotBuilder({
   ]);
   const available = headers.filter((h) => !used.has(h));
 
+  const [hidden, setHidden] = useState<Record<string, string[]>>(() => {
+    const out: Record<string, string[]> = {};
+    for (const f of initial?.hiddenItems ?? []) out[f.field] = f.hide;
+    return out;
+  });
+  const hiddenItems = useMemo<PivotFieldFilter[]>(
+    () =>
+      Object.entries(hidden)
+        .filter(([, hide]) => hide.length > 0)
+        .map(([field, hide]) => ({ field, hide })),
+    [hidden],
+  );
+
+  const distinctFor = (field: string): string[] => {
+    const idx = headers.indexOf(field);
+    if (idx < 0) return [];
+    try {
+      const ws = srcSheet ? workbook.sheet(srcSheet) : workbook.activeSheet();
+      const rows = ws.range(a1).values();
+      const seen = new Set<string>();
+      const out: string[] = [];
+      for (let r = 1; r < rows.length; r++) {
+        const c = rows[r]?.[idx];
+        if (!c || c.type === "blank") continue;
+        const label = c.type === "boolean" ? (c.value ? "TRUE" : "FALSE") : String(c.value);
+        if (!seen.has(label)) {
+          seen.add(label);
+          out.push(label);
+        }
+      }
+      return out;
+    } catch {
+      return [];
+    }
+  };
+
+  const [filterMenu, setFilterMenu] = useState<{
+    field: string;
+    items: string[];
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const openFilter = (field: string) => (e: { currentTarget: HTMLElement }) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setFilterMenu({ field, items: distinctFor(field), x: rect.left, y: rect.bottom + 4 });
+  };
+
+  const toggleHidden = (field: string, value: string) => {
+    setHidden((prev) => {
+      const cur = new Set(prev[field] ?? []);
+      if (cur.has(value)) cur.delete(value);
+      else cur.add(value);
+      return { ...prev, [field]: [...cur] };
+    });
+  };
+
   const dragRef = useRef<{ field: string; from: Bucket } | null>(null);
 
   const onDragStart = (field: string, from: Bucket) => (e: DragEvent) => {
@@ -168,8 +231,9 @@ export function PivotBuilder({
       columnFields: state.columns,
       filterFields: state.filters,
       dataFields: state.values,
+      hiddenItems,
     });
-  }, [state]);
+  }, [state, hiddenItems]);
 
   const [grid, setGrid] = useState<PivotGrid | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -190,6 +254,7 @@ export function PivotBuilder({
         columnFields: state.columns,
         filterFields: state.filters,
         dataFields: state.values,
+        hiddenItems,
       });
       setGrid(result);
       setError(null);
@@ -197,7 +262,7 @@ export function PivotBuilder({
       setGrid(null);
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, [workbook, sourceRef, srcSheet, outputSheet, anchorCell, state, showPreview]);
+  }, [workbook, sourceRef, srcSheet, outputSheet, anchorCell, state, hiddenItems, showPreview]);
 
   return (
     <div className={className} style={{ ...CONTAINER_STYLE, ...style }}>
@@ -216,6 +281,8 @@ export function PivotBuilder({
             fields={state.filters}
             onDragStart={onDragStart}
             onDrop={onDrop}
+            onFilter={openFilter}
+            hidden={hidden}
           />
           <Zone
             label="Columns"
@@ -223,6 +290,8 @@ export function PivotBuilder({
             fields={state.columns}
             onDragStart={onDragStart}
             onDrop={onDrop}
+            onFilter={openFilter}
+            hidden={hidden}
           />
           <Zone
             label="Rows"
@@ -230,6 +299,8 @@ export function PivotBuilder({
             fields={state.rows}
             onDragStart={onDragStart}
             onDrop={onDrop}
+            onFilter={openFilter}
+            hidden={hidden}
           />
           <ValuesZone
             values={state.values}
@@ -250,6 +321,17 @@ export function PivotBuilder({
           )}
         </div>
       )}
+      {filterMenu && (
+        <FilterMenu
+          field={filterMenu.field}
+          items={filterMenu.items}
+          x={filterMenu.x}
+          y={filterMenu.y}
+          hidden={new Set(hidden[filterMenu.field] ?? [])}
+          onToggle={(v) => toggleHidden(filterMenu.field, v)}
+          onClose={() => setFilterMenu(null)}
+        />
+      )}
     </div>
   );
 }
@@ -260,18 +342,58 @@ interface ZoneProps {
   fields: string[];
   onDragStart: (field: string, from: Bucket) => (e: DragEvent) => void;
   onDrop: (to: Bucket) => (e: DragEvent) => void;
+  onFilter?: (field: string) => (e: { currentTarget: HTMLElement }) => void;
+  hidden?: Record<string, string[]>;
 }
 
-function Zone({ label, bucket, fields, onDragStart, onDrop }: ZoneProps) {
+function Zone({ label, bucket, fields, onDragStart, onDrop, onFilter, hidden }: ZoneProps) {
   return (
     <div style={ZONE_STYLE} onDragOver={(e) => e.preventDefault()} onDrop={onDrop(bucket)}>
       <div style={ZONE_LABEL_STYLE}>{label}</div>
       {fields.map((f) => (
-        <div key={f} draggable onDragStart={onDragStart(f, bucket)} style={CHIP_STYLE}>
-          {f}
+        <div key={f} draggable onDragStart={onDragStart(f, bucket)} style={FIELD_CHIP_STYLE}>
+          <span style={{ flex: 1 }}>{f}</span>
+          {onFilter && (
+            <button
+              type="button"
+              onClick={onFilter(f)}
+              style={FILTER_BTN_STYLE}
+              title="Filter items"
+            >
+              {(hidden?.[f]?.length ?? 0) > 0 ? "▼*" : "▾"}
+            </button>
+          )}
         </div>
       ))}
     </div>
+  );
+}
+
+interface FilterMenuProps {
+  field: string;
+  items: string[];
+  x: number;
+  y: number;
+  hidden: Set<string>;
+  onToggle: (value: string) => void;
+  onClose: () => void;
+}
+
+function FilterMenu({ field, items, x, y, hidden, onToggle, onClose }: FilterMenuProps) {
+  return (
+    <>
+      <div style={SCRIM_STYLE} onClick={onClose} onKeyDown={onClose} role="presentation" />
+      <div style={{ ...MENU_STYLE, left: x, top: y }}>
+        <div style={MENU_HEADER_STYLE}>{field}</div>
+        {items.length === 0 && <div style={MENU_EMPTY_STYLE}>No items</div>}
+        {items.map((it) => (
+          <label key={it} style={MENU_ITEM_STYLE}>
+            <input type="checkbox" checked={!hidden.has(it)} onChange={() => onToggle(it)} />
+            <span>{it}</span>
+          </label>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -396,6 +518,54 @@ const VALUE_CHIP_STYLE: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 6,
+};
+const FIELD_CHIP_STYLE: CSSProperties = {
+  ...CHIP_STYLE,
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+};
+const FILTER_BTN_STYLE: CSSProperties = {
+  appearance: "none",
+  border: "1px solid #d4d4d8",
+  borderRadius: 3,
+  background: "#fff",
+  cursor: "pointer",
+  fontSize: 11,
+  lineHeight: 1,
+  padding: "2px 4px",
+};
+const SCRIM_STYLE: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 1000,
+};
+const MENU_STYLE: CSSProperties = {
+  position: "fixed",
+  zIndex: 1001,
+  background: "#fff",
+  border: "1px solid #d4d4d8",
+  borderRadius: 6,
+  boxShadow: "0 8px 24px rgba(15,23,42,0.18)",
+  padding: 6,
+  minWidth: 160,
+  maxHeight: 280,
+  overflow: "auto",
+  fontSize: 13,
+};
+const MENU_HEADER_STYLE: CSSProperties = {
+  fontWeight: 600,
+  padding: "2px 6px 6px",
+  borderBottom: "1px solid #eee",
+  marginBottom: 4,
+};
+const MENU_EMPTY_STYLE: CSSProperties = { color: "#9ca3af", padding: "4px 6px" };
+const MENU_ITEM_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "3px 6px",
+  cursor: "pointer",
 };
 const SELECT_STYLE: CSSProperties = { fontSize: 12, border: "1px solid #d4d4d8", borderRadius: 4 };
 const PREVIEW_STYLE: CSSProperties = { flex: 1, overflow: "auto" };

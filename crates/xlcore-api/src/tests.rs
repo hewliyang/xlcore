@@ -4378,6 +4378,7 @@ fn pivots_create_list_remove_roundtrip() {
                 name: None,
                 number_format: Some("0.00%".to_string()),
             }],
+            hidden_items: None,
         })
         .unwrap();
     assert_eq!(info.name, "SalesPivot");
@@ -4426,6 +4427,7 @@ fn pivot_requires_data_field_and_axis() {
         column_fields: vec![],
         filter_fields: vec![],
         data_fields: vec![],
+        hidden_items: None,
     });
     assert_eq!(no_data.unwrap_err().code, ApiErrorCode::InvalidPivot);
 
@@ -4443,6 +4445,7 @@ fn pivot_requires_data_field_and_axis() {
             name: None,
             number_format: None,
         }],
+        hidden_items: None,
     });
     assert_eq!(no_axis.unwrap_err().code, ApiErrorCode::InvalidPivot);
 }
@@ -4483,6 +4486,7 @@ fn pivot_preview_aggregates_without_writing_parts() {
                 name: Some("Sum of Amount".to_string()),
                 number_format: None,
             }],
+            hidden_items: None,
         })
         .unwrap();
 
@@ -4509,4 +4513,75 @@ fn pivot_preview_aggregates_without_writing_parts() {
     assert_eq!(at(3, 1).role, PivotCellRole::TotalValue);
 
     assert!(wb.pivots(None).unwrap().is_empty());
+}
+
+#[test]
+fn pivot_hidden_items_filter_and_roundtrip() {
+    let mut wb = Workbook::new().unwrap();
+    let rows = [
+        ("North", "Widget", 100.0),
+        ("North", "Gadget", 50.0),
+        ("South", "Widget", 75.0),
+        ("South", "Gadget", 25.0),
+    ];
+    wb.set_value("Sheet1!A1", "Region").unwrap();
+    wb.set_value("Sheet1!B1", "Product").unwrap();
+    wb.set_value("Sheet1!C1", "Amount").unwrap();
+    for (i, (region, product, amount)) in rows.iter().enumerate() {
+        let r = i as u32 + 2;
+        wb.set_value(format!("Sheet1!A{r}"), *region).unwrap();
+        wb.set_value(format!("Sheet1!B{r}"), *product).unwrap();
+        wb.set_value(format!("Sheet1!C{r}"), *amount).unwrap();
+    }
+
+    let patch = PivotPatch {
+        sheet: "Sheet1".to_string(),
+        anchor_cell: "Sheet1!E1".to_string(),
+        source_ref: "Sheet1!A1:C5".to_string(),
+        name: Some("P".to_string()),
+        row_fields: vec!["Region".to_string()],
+        column_fields: vec![],
+        filter_fields: vec![],
+        data_fields: vec![PivotDataField {
+            field: "Amount".to_string(),
+            aggregation: PivotAggregation::Sum,
+            name: Some("Sum of Amount".to_string()),
+            number_format: None,
+        }],
+        hidden_items: Some(vec![PivotFieldFilter {
+            field: "Region".to_string(),
+            hide: vec!["South".to_string()],
+        }]),
+    };
+
+    let grid = wb.pivot_preview(patch.clone()).unwrap();
+    assert!(!grid.cells.iter().any(|c| c.value.as_deref() == Some("South")));
+    let north = grid
+        .cells
+        .iter()
+        .find(|c| c.value.as_deref() == Some("North"))
+        .unwrap();
+    let total = grid
+        .cells
+        .iter()
+        .find(|c| c.row == north.row && c.col == 1)
+        .unwrap();
+    assert_eq!(total.value.as_deref(), Some("150"));
+
+    wb.create_sheet("Pivot").unwrap();
+    let mut p2 = patch;
+    p2.sheet = "Pivot".to_string();
+    p2.anchor_cell = "Pivot!A1".to_string();
+    wb.set_pivot(p2).unwrap();
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let pivots = reopened.pivots(None).unwrap();
+    assert_eq!(pivots.len(), 1);
+    assert_eq!(
+        pivots[0].hidden_items,
+        Some(vec![PivotFieldFilter {
+            field: "Region".to_string(),
+            hide: vec!["South".to_string()],
+        }])
+    );
 }

@@ -3009,6 +3009,19 @@ pub struct PivotDataField {
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "camelCase")]
+pub struct PivotFieldFilter {
+    pub field: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub hide: Vec<String>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
 pub struct PivotPatch {
     pub sheet: String,
     pub anchor_cell: String,
@@ -3023,6 +3036,9 @@ pub struct PivotPatch {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub filter_fields: Vec<String>,
     pub data_fields: Vec<PivotDataField>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hidden_items: Option<Vec<PivotFieldFilter>>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -3043,6 +3059,9 @@ pub struct PivotInfo {
     pub column_fields: Vec<String>,
     pub filter_fields: Vec<String>,
     pub data_fields: Vec<PivotDataField>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hidden_items: Option<Vec<PivotFieldFilter>>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

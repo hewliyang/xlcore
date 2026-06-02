@@ -110,10 +110,20 @@ materializes actual cell values for our renderer).
       dedicated worksheet and render it **in-sheet** via `ExcelPreviewer`
       (author → `save()` → reload the Blob), so the result shows up in the
       spreadsheet grid like Excel — recomputing on every change. Verified in a
-      real browser (in-sheet pivot, aggregation-change recompute) and
-      unit-tested pure helpers (`pivotBuilder.test.ts`:
+      real browser (in-sheet pivot, aggregation-change recompute, item filter
+      popover) and unit-tested pure helpers (`pivotBuilder.test.ts`:
       `applyMove`/`parseRef`/`headerRange`).
-      Still TODO: per-item filter toggling (needs `PivotPatch` item selection).
+- [x] Per-item filter toggling: `PivotPatch`/`PivotInfo` carry optional
+      `hiddenItems: PivotFieldFilter[]` (`{ field, hide }`). Authoring sets
+      `pivotField/items[@h="1"]` for hidden values; `set` (authored render) and
+      `preview` both honor it; getter reverse-maps so `update()` round-trips
+      (rust: `pivot_hidden_items_filter_and_roundtrip`). The `PivotBuilder`
+      Row/Column/Filter chips expose a `▾` checkbox popover that toggles items
+      and recomputes the in-sheet pivot live (verified in a real browser).
+      Remaining: wire the canvas-painted filter arrows *on the table itself* to
+      open the popover (needs renderer hit-testing in `interact.ts` +
+      arrow→field identity in the layout); today the menus anchor to the
+      builder's field chips.
 
 ### P1: Wider layout coverage
 

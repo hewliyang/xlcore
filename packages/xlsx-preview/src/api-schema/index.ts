@@ -78,6 +78,7 @@ export type { PageSetupSettings as PageSetupSettingsPatch } from "./PageSetupSet
 export type { PivotAggregation } from "./PivotAggregation.js";
 export type { PivotCellRole } from "./PivotCellRole.js";
 export type { PivotDataField } from "./PivotDataField.js";
+export type { PivotFieldFilter } from "./PivotFieldFilter.js";
 export type { PivotGrid } from "./PivotGrid.js";
 export type { PivotGridCell } from "./PivotGridCell.js";
 export type { PivotInfo } from "./PivotInfo.js";

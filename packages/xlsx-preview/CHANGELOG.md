@@ -14,7 +14,9 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Pivot builder UI: new `PivotBuilder` React component (`@hewliyang/xlsx-preview/react`) with drag-and-drop field buckets (Fields/Filters/Columns/Rows/Values) and per-value aggregation selection. Emits the current config via `onChange`; `showPreview` (default `true`) renders an inline `pivots.preview` grid. The `examples/react-vite` demo authors the config into a real worksheet and renders it **inside the sheet** via `ExcelPreviewer`, recomputing live on every change.
+- Pivot per-item filtering: `PivotPatch`/`PivotInfo` gain optional `hiddenItems` (`PivotFieldFilter[]` — `{ field, hide }`). Authoring marks the matching `pivotField` items `h="1"`; both `pivots.set` (in-sheet render) and `pivots.preview` honor it, and the getter reverse-maps hidden items so `update()` round-trips.
+
+- Pivot builder UI: new `PivotBuilder` React component (`@hewliyang/xlsx-preview/react`) with drag-and-drop field buckets (Fields/Filters/Columns/Rows/Values) and per-value aggregation selection. Each Row/Column/Filter field has a `▾` button opening a checkbox popover to hide/show items (recomputes live). Emits the config (incl. `hiddenItems`) via `onChange`; `showPreview` (default `true`) renders an inline `pivots.preview` grid. The `examples/react-vite` demo authors the config into a real worksheet and renders it **inside the sheet** via `ExcelPreviewer`.
 
 - Pivot table rendering: axis members now follow the stored `pivotField` item order (honors manual sorts), falling back to value sort for items absent from that list.
 

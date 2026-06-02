@@ -369,6 +369,7 @@ function pivotInfoToPatch(info: PivotInfo): PivotPatch {
     columnFields: info.columnFields,
     filterFields: info.filterFields,
     dataFields: info.dataFields,
+    hiddenItems: info.hiddenItems,
   };
 }
 

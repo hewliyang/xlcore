@@ -12,7 +12,7 @@ use ooxmlsdk::simple_type::BooleanValue;
 
 use xlcore_types::{
     ApiCellValue as CellValue, ApiError, ApiErrorCode, PivotAggregation, PivotCellRole,
-    PivotDataField, PivotGrid, PivotGridCell, PivotInfo, PivotPatch,
+    PivotDataField, PivotFieldFilter, PivotGrid, PivotGridCell, PivotInfo, PivotPatch,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -208,6 +208,47 @@ impl Workbook {
                     })
                     .unwrap_or_default();
 
+                let hidden_items: Option<Vec<PivotFieldFilter>> = def
+                    .pivot_fields
+                    .as_ref()
+                    .map(|pf| {
+                        pf.pivot_field
+                            .iter()
+                            .enumerate()
+                            .filter_map(|(fi, f)| {
+                                let items = f.items.as_ref()?;
+                                let shared = cache
+                                    .as_ref()?
+                                    .cache_fields
+                                    .cache_field
+                                    .get(fi)?
+                                    .shared_items
+                                    .as_ref()?;
+                                let hide: Vec<String> = items
+                                    .item
+                                    .iter()
+                                    .filter(|it| it.hidden.map(Into::into).unwrap_or(false))
+                                    .filter_map(|it| it.index.map(Into::into))
+                                    .filter_map(|ix: u32| {
+                                        shared
+                                            .shared_items_choice
+                                            .get(ix as usize)
+                                            .and_then(shared_item_str)
+                                    })
+                                    .collect();
+                                if hide.is_empty() {
+                                    None
+                                } else {
+                                    Some(PivotFieldFilter {
+                                        field: name_of(fi as i32),
+                                        hide,
+                                    })
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .filter(|v: &Vec<PivotFieldFilter>| !v.is_empty());
+
                 let location_ref = def.location.reference.as_str().to_string();
                 let n_page = def
                     .page_fields
@@ -227,6 +268,7 @@ impl Workbook {
                     column_fields,
                     filter_fields,
                     data_fields,
+                    hidden_items,
                 });
             }
         }
@@ -559,6 +601,17 @@ fn cell_to_string(v: &CellValue) -> String {
     }
 }
 
+fn shared_item_str(c: &x::SharedItemsChoice) -> Option<String> {
+    match c {
+        x::SharedItemsChoice::NumberItem(b) => Some(format_number(b.val)),
+        x::SharedItemsChoice::StringItem(b) => Some(b.val.clone()),
+        x::SharedItemsChoice::BooleanItem(b) => {
+            Some(if b.val.into() { "TRUE" } else { "FALSE" }.to_string())
+        }
+        _ => None,
+    }
+}
+
 fn format_number(n: f64) -> String {
     if n.fract() == 0.0 && n.abs() < 1e15 {
         format!("{}", n as i64)
@@ -782,9 +835,19 @@ fn build_pivot_definition(
                 FieldRole::Row | FieldRole::Column | FieldRole::Filter
             ) {
                 pf.subtotal_top = Some(BooleanValue::from_bool(false));
+                let hide: std::collections::HashSet<usize> = patch
+                    .hidden_items
+                    .as_deref()
+                    .unwrap_or(&[])
+                    .iter()
+                    .filter(|f| f.field == col.name)
+                    .flat_map(|f| f.hide.iter())
+                    .filter_map(|v| col.distinct_index.get(v).copied())
+                    .collect();
                 let mut items: Vec<x::Item> = (0..col.distinct.len())
                     .map(|i| x::Item {
                         index: Some(i as u32),
+                        hidden: hide.contains(&i).then(|| BooleanValue::from_bool(true)),
                         ..Default::default()
                     })
                     .collect();
