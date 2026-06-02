@@ -3440,6 +3440,80 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
 }
 
 #[test]
+fn chart_series_color_accepts_argb_and_strips_alpha() {
+    let mut wb = Workbook::new().unwrap();
+    for r in 2..=4 {
+        wb.set_value(format!("Sheet1!A{r}").as_str(), format!("c{r}").as_str())
+            .unwrap();
+        wb.set_value(format!("Sheet1!B{r}").as_str(), (r as f64) * 2.0)
+            .unwrap();
+    }
+    wb.set_chart(ChartPatch {
+        sheet: "Sheet1".to_string(),
+        name: Some("C".to_string()),
+        kind: ChartKind::Column,
+        title: None,
+        legend_position: None,
+        categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+        series: vec![ChartSeriesPatch {
+            values_ref: "Sheet1!$B$2:$B$4".to_string(),
+            color: Some("FF1D4ED8".to_string()),
+            ..Default::default()
+        }],
+        anchor: ChartAnchor {
+            from_column: 4,
+            from_row: 1,
+            to_column: 12,
+            to_row: 16,
+            ..Default::default()
+        },
+        category_axis_title: None,
+        value_axis_title: None,
+        stacking: None,
+        data_labels: None,
+    })
+    .unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    assert_eq!(charts[0].series[0].color.as_deref(), Some("1D4ED8"));
+}
+
+#[test]
+fn chart_series_color_rejects_malformed_hex() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 1.0).unwrap();
+    let err = wb
+        .set_chart(ChartPatch {
+            sheet: "Sheet1".to_string(),
+            name: None,
+            kind: ChartKind::Column,
+            title: None,
+            legend_position: None,
+            categories_ref: None,
+            series: vec![ChartSeriesPatch {
+                values_ref: "Sheet1!$B$2:$B$2".to_string(),
+                color: Some("nothex".to_string()),
+                ..Default::default()
+            }],
+            anchor: ChartAnchor {
+                from_column: 4,
+                from_row: 1,
+                to_column: 12,
+                to_row: 16,
+                ..Default::default()
+            },
+            category_axis_title: None,
+            value_axis_title: None,
+            stacking: None,
+            data_labels: None,
+        })
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidChart);
+}
+
+#[test]
 fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
     use std::io::Read;
     let mut wb = Workbook::new().unwrap();

@@ -249,7 +249,7 @@ fn validate_patch(patch: &SparklineGroupPatch) -> Result<()> {
         if normalize_hex(color).is_none() {
             return Err(ApiError::new(
                 ApiErrorCode::InvalidSparklineGroup,
-                format!("sparkline color must be 6-digit hex RRGGBB (with or without leading '#'), got: {color}"),
+                format!("sparkline color must be hex RRGGBB or AARRGGBB (with or without leading '#'), got: {color}"),
             )
             .with_sheet(&patch.sheet));
         }

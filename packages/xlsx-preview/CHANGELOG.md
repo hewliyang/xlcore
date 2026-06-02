@@ -7,6 +7,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Bar/column and line chart series `color` was silently dropped on write (only pie/scatter/bubble/doughnut/area persisted it); now authored and read back for all chart kinds.
+- Chart series `color` now accepts 8-hex `AARRGGBB` (alpha stripped) in addition to 6-hex `RRGGBB`, matching every other color field.
 - `Workbook.create()` / `Workbook.open()` from `@hewliyang/xlsx-preview/api` now load the bundled wasm via `readFileSync` on Node (auto-detected) instead of a `file://` URL that Node `fetch` rejects; no more manual `wasmBinaryUrl` plumbing required.
 - `setHyperlink({ display })` now auto-populates the top-left cell's value with `display` when that cell is blank (no value/formula), matching Excel's Insert-Hyperlink behavior; renderers no longer show hyperlinked blank cells.
 

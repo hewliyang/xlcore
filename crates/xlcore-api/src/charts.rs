@@ -139,7 +139,7 @@ impl Workbook {
                 if !is_valid_hex_color(color) {
                     return Err(ApiError::new(
                         ApiErrorCode::InvalidChart,
-                        format!("chart series color must be 6-hex RRGGBB, got: {color}"),
+                        format!("chart series color must be 6-hex RRGGBB or 8-hex AARRGGBB, got: {color}"),
                     )
                     .with_sheet(&patch.sheet));
                 }
@@ -391,13 +391,15 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         c::BarGroupingValues::Standard => ChartStacking::Clustered,
                     });
                 for s in &bc.bar_chart_series {
-                    series.push(read_series(
+                    let mut info = read_series(
                         s.series_text.as_deref(),
                         s.category_axis_data.as_deref(),
                         s.values.as_deref(),
                         &mut categories_ref,
                         s.data_labels.as_deref(),
-                    ));
+                    );
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    series.push(info);
                 }
                 if data_labels.is_none() {
                     data_labels = read_data_labels(bc.data_labels.as_deref());
@@ -407,13 +409,15 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                 kind = ChartKind::Line;
                 stacking = lc.grouping.val.as_ref().map(grouping_to_stacking);
                 for s in &lc.line_chart_series {
-                    series.push(read_series(
+                    let mut info = read_series(
                         s.series_text.as_deref(),
                         s.category_axis_data.as_deref(),
                         s.values.as_deref(),
                         &mut categories_ref,
                         s.data_labels.as_deref(),
-                    ));
+                    );
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    series.push(info);
                 }
                 if data_labels.is_none() {
                     data_labels = read_data_labels(lc.data_labels.as_deref());
@@ -1094,6 +1098,7 @@ fn build_bar_series(idx: usize, s: &ChartSeriesPatch, cat_ref: Option<&str>) -> 
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
+        chart_shape_properties: build_series_shape(s.color.as_deref()),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
@@ -1110,6 +1115,7 @@ fn build_line_series(
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
+        chart_shape_properties: build_series_shape(s.color.as_deref()),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
@@ -1211,10 +1217,11 @@ fn build_bubble_size(r: &str) -> Box<c::BubbleSize> {
 
 fn build_series_shape(color: Option<&str>) -> Option<Box<c::ChartShapeProperties>> {
     let hex = color?;
+    let val = normalize_chart_hex(hex)?;
     let solid = a::SolidFill {
         solid_fill_choice: Some(a::SolidFillChoice::RgbColorModelHex(Box::new(
             a::RgbColorModelHex {
-                val: hex.trim_start_matches('#').to_uppercase(),
+                val,
                 ..Default::default()
             },
         ))),
@@ -1228,9 +1235,22 @@ fn build_series_shape(color: Option<&str>) -> Option<Box<c::ChartShapeProperties
     }))
 }
 
+fn normalize_chart_hex(s: &str) -> Option<String> {
+    let trimmed = s.trim().trim_start_matches('#');
+    let hex = if trimmed.len() == 8 {
+        &trimmed[2..]
+    } else {
+        trimmed
+    };
+    if hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        Some(hex.to_ascii_uppercase())
+    } else {
+        None
+    }
+}
+
 fn is_valid_hex_color(s: &str) -> bool {
-    let s = s.trim_start_matches('#');
-    s.len() == 6 && s.chars().all(|c| c.is_ascii_hexdigit())
+    normalize_chart_hex(s).is_some()
 }
 
 fn build_title(text: &str) -> c::Title {
