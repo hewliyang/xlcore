@@ -7,6 +7,7 @@ mod charts_legacy;
 mod columnar;
 mod fmt_scheme;
 mod font_flat;
+mod pivot_engine;
 mod pivots;
 mod refs;
 mod schema;
@@ -123,7 +124,7 @@ pub fn extract_doc_with_options(
 
         let drawings = charts::extract(doc, &ws_part, theme.as_ref());
         let tables = tables::extract(doc, &ws_part);
-        let pivots = pivots::extract(doc, &ws_part);
+        let (pivots, pivot_cells) = pivots::extract(doc, &ws_part);
         let comments = annotations::extract_comments(doc, &ws_part);
         let ws_for_sparks = ws_part.root_element(doc)?.clone();
         let sparkline_groups = sparklines::extract(&ws_for_sparks);
@@ -147,6 +148,7 @@ pub fn extract_doc_with_options(
         sheet.drawings = drawings;
         sheet.tables = tables;
         sheet.pivots = pivots;
+        merge_pivot_cells(&mut sheet, pivot_cells);
         sheet.hyperlinks = hyperlinks;
         sheet.comments = comments;
         sheet.sparkline_groups = sparkline_groups;
@@ -207,6 +209,34 @@ pub fn extract_doc_with_options(
 
     columnar::compactify(&mut layout);
     Ok(layout)
+}
+
+fn merge_pivot_cells(sheet: &mut Sheet, cells: Vec<Cell>) {
+    if cells.is_empty() {
+        return;
+    }
+    let mut by_row: HashMap<u32, usize> = HashMap::new();
+    for (i, row) in sheet.rows.iter().enumerate() {
+        by_row.insert(row.index, i);
+    }
+    for cell in cells {
+        sheet.max_row = sheet.max_row.max(cell.r);
+        sheet.max_col = sheet.max_col.max(cell.c);
+        match by_row.get(&cell.r) {
+            Some(&i) => sheet.rows[i].cells.push(cell),
+            None => {
+                by_row.insert(cell.r, sheet.rows.len());
+                sheet.rows.push(Row {
+                    index: cell.r,
+                    height_px: None,
+                    cells: vec![cell],
+                    style_index: None,
+                    hidden: false,
+                    outline_level: 0,
+                });
+            }
+        }
+    }
 }
 
 fn defined_name_lookup(

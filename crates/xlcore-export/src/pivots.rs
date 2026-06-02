@@ -1,15 +1,32 @@
-use crate::schema::{CellRef, Merge, Pivot};
+use crate::schema::{Cell, CellRef, Merge, Pivot};
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
 use xlcore_io::{parse_range, SpreadsheetDocument};
 
-pub fn extract(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) -> Vec<Pivot> {
+pub fn extract(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) -> (Vec<Pivot>, Vec<Cell>) {
     let mut out = Vec::new();
+    let mut cells = Vec::new();
     let pivot_parts: Vec<_> = ws_part.pivot_table_parts(doc).collect();
 
     for pp in &pivot_parts {
-        let Ok(pt) = pp.root_element(doc) else {
-            continue;
+        let pt = match pp.root_element(doc) {
+            Ok(pt) => pt.clone(),
+            Err(_) => continue,
         };
+
+        let cache = pp
+            .pivot_table_cache_definition_part(doc)
+            .and_then(|def_part| {
+                let rec_part = def_part.pivot_table_cache_records_part(doc)?;
+                let cache_def = def_part.root_element(doc).ok()?.clone();
+                let records = rec_part.root_element(doc).ok()?.clone();
+                Some((cache_def, records))
+            });
+        if let Some((cache_def, records)) = cache {
+            cells.extend(crate::pivot_engine::compute_cells(
+                &pt, &cache_def, &records,
+            ));
+        }
+
         let Some(((r1, c1), (r2, c2))) = parse_range(pt.location.reference.as_str()) else {
             continue;
         };
@@ -52,5 +69,5 @@ pub fn extract(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) -> Vec<Pi
             filter_arrow_cells,
         });
     }
-    out
+    (out, cells)
 }

@@ -71,8 +71,15 @@ Known gaps:
   `pivotCacheDefinition`/`pivotCacheRecords` parts land at `/pivotCache`
   (SDK `PATH_PREFIX` relative to `xl/workbook.xml`) and are wired with absolute
   relationship targets; the `pivotTable` part gets its own cacheDefinition
-  relationship via `create_relationship_to_part`. Slicers/timelines,
-  calculated fields, grouping, and multi-level subtotals remain out of scope.
+  relationship via `create_relationship_to_part`. On extract, a self-contained
+  aggregation engine (`xlcore-export/src/pivot_engine.rs`) groups
+  `pivotCacheRecords` and folds each bucket (sum/count/avg/max/min/product/
+  countNums/stdDev/var) with row/column/grand totals, then materializes the
+  computed value grid into the sheet cells so the preview renderer shows pivot
+  values without Excel/SpreadJS. This is independent of the formula recalc
+  engine; it covers one+ row fields, 0-1 column fields, and one data field.
+  Slicers/timelines, calculated fields, grouping, multi-level subtotals, and
+  multi data field / multi column field layouts remain out of scope.
   Sparkline
   groups now author/list/remove (line/column/win-loss stacked, per-cell
   location + dataRef, markers/high/low/first/last/negative/displayXAxis
@@ -178,7 +185,7 @@ Status key:
 | Images | `Shapes.Picture`, shape collection | Insert image, position, size, crop/rotation later | Done (insert/list/remove PNG/JPEG/GIF/BMP/TIFF/WEBP/SVG with two-cell anchor; sniff or explicit `format`; crop/rotation still preserve-only) | Rust API + save/reopen |
 | Shapes | `Shapes.ShapeCollection` | Preserve first; author basic shape/text later | P2 | Preview + OOXML |
 | Sparklines | `Sparklines` APIs | Preserve; author simple line/column/win-loss | Done (author/list/remove line/column/stacked groups with per-entry location + dataRef, markers/high/low/first/last/negative/displayXAxis flags, axis min/max kinds + manual values, line weight, full color palette) | Rust API + save/reopen |
-| Pivot tables | `PivotTableManager`, slicers/timelines | Preserve; refresh/create only after aggregation model exists | Partial (author single worksheet-source pivot: row/column/filter fields + sum/count/avg/max/min/product/countNums/stdDev/var data fields; enumerated cache + materialized rowItems/colItems so Excel/SpreadJS compute values; subtotals disabled, single-level fine, no slicers/timelines/calculated fields/grouping; cache part emits at `/pivotCache` via absolute rels) | Rust API + SpreadJS load/compute + save/reopen |
+| Pivot tables | `PivotTableManager`, slicers/timelines | Preserve; refresh/create only after aggregation model exists | Partial (author single worksheet-source pivot: row/column/filter fields + sum/count/avg/max/min/product/countNums/stdDev/var data fields; enumerated cache + materialized rowItems/colItems so Excel/SpreadJS compute values; subtotals disabled, single-level fine, no slicers/timelines/calculated fields/grouping; cache part emits at `/pivotCache` via absolute rels; layout extractor aggregates `pivotCacheRecords` and materializes the value grid so the preview renderer shows values without SpreadJS/Excel) | Rust API + SpreadJS load/compute + save/reopen + preview-render value parity |
 | Slicers/timelines | `Slicers`, pivot slicers | Preserve; authoring deferred | Later | OOXML diff |
 | Protection | Sheet/workbook protection APIs | Sheet/workbook protection metadata | Done | Rust API + save/reopen |
 | Print/page setup | Print, page setup, headers/footers | Page setup, print areas, headers/footers | Done (orientation/scale/fit/margins/print options/header+footer; print areas via defined names) | Rust API + save/reopen |
