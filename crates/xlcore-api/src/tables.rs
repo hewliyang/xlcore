@@ -1,6 +1,6 @@
-use ooxmlsdk::simple_type::BooleanValue;
 use ooxmlsdk::parts::table_definition_part::TableDefinitionPart;
 use ooxmlsdk::sdk::SdkPart;
+use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
     ApiError, ApiErrorCode, TableColumnInfo, TableColumnPatch, TableInfo, TablePatch,
@@ -70,8 +70,7 @@ impl Workbook {
             .table_definition_parts(&self.doc)
             .find(|p| p.relationship_id() == Some(rid.as_str()))
             .ok_or_else(|| {
-                ApiError::new(ApiErrorCode::Other, "table part disappeared")
-                    .with_sheet(&sheet)
+                ApiError::new(ApiErrorCode::Other, "table part disappeared").with_sheet(&sheet)
             })?
             .clone();
         let table = tp.root_element(&mut self.doc).map_err(sdk_err_to_api)?;
@@ -173,10 +172,7 @@ impl Workbook {
             Vec::new()
         };
 
-        let column_patches: Vec<TableColumnPatch> = patch
-            .columns
-            .clone()
-            .unwrap_or_default();
+        let column_patches: Vec<TableColumnPatch> = patch.columns.clone().unwrap_or_default();
         if !column_patches.is_empty() && column_patches.len() as u32 != column_count {
             return Err(ApiError::new(
                 ApiErrorCode::InvalidTable,
@@ -190,11 +186,8 @@ impl Workbook {
             .with_ref(reference));
         }
 
-        let resolved_names = resolve_unique_column_names(
-            column_count,
-            &header_names,
-            &column_patches,
-        )?;
+        let resolved_names =
+            resolve_unique_column_names(column_count, &header_names, &column_patches)?;
 
         if header_rows > 0 {
             write_header_row(self, &range_ref, &resolved_names)?;
@@ -212,7 +205,13 @@ impl Workbook {
         };
 
         let columns: Vec<x::TableColumn> = (0..column_count)
-            .map(|i| build_table_column(i, &resolved_names[i as usize], column_patches.get(i as usize)))
+            .map(|i| {
+                build_table_column(
+                    i,
+                    &resolved_names[i as usize],
+                    column_patches.get(i as usize),
+                )
+            })
             .collect();
         let mut table = x::Table {
             xmlns: crate::ooxml_header::spreadsheetml_default_only(),
@@ -256,9 +255,7 @@ impl Workbook {
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        let tp = ws
-            .table_parts
-            .get_or_insert_with(x::TableParts::default);
+        let tp = ws.table_parts.get_or_insert_with(x::TableParts::default);
         tp.table_part.push(x::TablePart {
             id: rid.clone().into(),
             ..Default::default()
@@ -273,36 +270,32 @@ impl Workbook {
             .find(|p| p.relationship_id() == Some(rid.as_str()))
             .ok_or_else(|| ApiError::new(ApiErrorCode::Other, "added table part not found"))?;
         let table = tp.root_element(&mut self.doc).map_err(sdk_err_to_api)?;
-        Ok(info_from_table(&range_ref.sheet, table).unwrap_or_else(|| TableInfo {
-            name: patch.name.clone(),
-            display_name,
-            sheet: range_ref.sheet.clone(),
-            reference: new_ref,
-            start_row: range_ref.start_row,
-            start_column: range_ref.start_column,
-            end_row: range_ref.end_row,
-            end_column: range_ref.end_column,
-            header_row_count: header_rows,
-            totals_row_count: totals_rows,
-            has_auto_filter: has_filter,
-            columns: Vec::new(),
-            style: None,
-        }))
+        Ok(
+            info_from_table(&range_ref.sheet, table).unwrap_or_else(|| TableInfo {
+                name: patch.name.clone(),
+                display_name,
+                sheet: range_ref.sheet.clone(),
+                reference: new_ref,
+                start_row: range_ref.start_row,
+                start_column: range_ref.start_column,
+                end_row: range_ref.end_row,
+                end_column: range_ref.end_column,
+                header_row_count: header_rows,
+                totals_row_count: totals_rows,
+                has_auto_filter: has_filter,
+                columns: Vec::new(),
+                style: None,
+            }),
+        )
     }
 
-    fn update_table(
-        &mut self,
-        sheet: &str,
-        rid: &str,
-        patch: &TablePatch,
-    ) -> Result<TableInfo> {
+    fn update_table(&mut self, sheet: &str, rid: &str, patch: &TablePatch) -> Result<TableInfo> {
         let ws_part = self.worksheet_part_for_sheet(sheet)?;
         let tp = ws_part
             .table_definition_parts(&self.doc)
             .find(|p| p.relationship_id() == Some(rid))
             .ok_or_else(|| {
-                ApiError::new(ApiErrorCode::Other, "table part disappeared")
-                    .with_sheet(sheet)
+                ApiError::new(ApiErrorCode::Other, "table part disappeared").with_sheet(sheet)
             })?
             .clone();
 
@@ -311,7 +304,10 @@ impl Workbook {
             if r.sheet != sheet {
                 return Err(ApiError::new(
                     ApiErrorCode::InvalidTable,
-                    format!("cannot move table across sheets (from {sheet} to {})", r.sheet),
+                    format!(
+                        "cannot move table across sheets (from {sheet} to {})",
+                        r.sheet
+                    ),
                 )
                 .with_sheet(sheet)
                 .with_ref(reference));
@@ -453,7 +449,10 @@ impl Workbook {
                     });
                 }
             } else if column_count < existing_len {
-                table.table_columns.table_column.truncate(column_count as usize);
+                table
+                    .table_columns
+                    .table_column
+                    .truncate(column_count as usize);
             }
             table.table_columns.count = Some(column_count.into());
         }
@@ -578,10 +577,16 @@ fn info_from_table(sheet: &str, table: &x::Table) -> Option<TableInfo> {
         .collect();
     let style = table.table_style_info.as_ref().map(|s| TableStyleSettings {
         name: s.name.as_ref().map(|n| n.as_str().to_string()),
-        show_first_column: bool::from(s.show_first_column.unwrap_or(BooleanValue::from_bool(false))),
+        show_first_column: bool::from(
+            s.show_first_column
+                .unwrap_or(BooleanValue::from_bool(false)),
+        ),
         show_last_column: bool::from(s.show_last_column.unwrap_or(BooleanValue::from_bool(false))),
         show_row_stripes: bool::from(s.show_row_stripes.unwrap_or(BooleanValue::from_bool(false))),
-        show_column_stripes: bool::from(s.show_column_stripes.unwrap_or(BooleanValue::from_bool(false))),
+        show_column_stripes: bool::from(
+            s.show_column_stripes
+                .unwrap_or(BooleanValue::from_bool(false)),
+        ),
     });
     let header_row_count = table.header_row_count.map(u32::from).unwrap_or(1);
     let totals_row_count = table.totals_row_count.map(u32::from).unwrap_or(0);
@@ -638,11 +643,7 @@ fn totals_from_ooxml(value: &x::TotalsRowFunctionValues) -> TableTotalsFunction 
     }
 }
 
-fn build_table_column(
-    index: u32,
-    name: &str,
-    patch: Option<&TableColumnPatch>,
-) -> x::TableColumn {
+fn build_table_column(index: u32, name: &str, patch: Option<&TableColumnPatch>) -> x::TableColumn {
     let mut col = x::TableColumn {
         id: ((index + 1) as u32).into(),
         name: name.to_string().into(),
@@ -662,10 +663,16 @@ fn apply_column_patch(col: &mut x::TableColumn, patch: &TableColumnPatch) {
         col.totals_row_label = Some(label.clone().into());
     }
     if let Some(formula) = patch.totals_formula.as_ref() {
-        col.totals_row_formula = Some(x::TotalsRowFormula(x::TableFormulaType { xml_content: Some(formula.clone().into()), ..Default::default() }));
+        col.totals_row_formula = Some(x::TotalsRowFormula(x::TableFormulaType {
+            xml_content: Some(formula.clone().into()),
+            ..Default::default()
+        }));
     }
     if let Some(formula) = patch.calculated_column_formula.as_ref() {
-        col.calculated_column_formula = Some(x::CalculatedColumnFormula(x::TableFormulaType { xml_content: Some(formula.clone().into()), ..Default::default() }));
+        col.calculated_column_formula = Some(x::CalculatedColumnFormula(x::TableFormulaType {
+            xml_content: Some(formula.clone().into()),
+            ..Default::default()
+        }));
     }
 }
 
@@ -723,18 +730,16 @@ fn validate_table_geometry(
     range_ref: &crate::refs::ResolvedRangeRef,
 ) -> Result<()> {
     if header_rows > 1 {
-        return Err(ApiError::new(
-            ApiErrorCode::InvalidTable,
-            "headerRowCount must be 0 or 1",
-        )
-        .with_sheet(&range_ref.sheet));
+        return Err(
+            ApiError::new(ApiErrorCode::InvalidTable, "headerRowCount must be 0 or 1")
+                .with_sheet(&range_ref.sheet),
+        );
     }
     if totals_rows > 1 {
-        return Err(ApiError::new(
-            ApiErrorCode::InvalidTable,
-            "totalsRowCount must be 0 or 1",
-        )
-        .with_sheet(&range_ref.sheet));
+        return Err(
+            ApiError::new(ApiErrorCode::InvalidTable, "totalsRowCount must be 0 or 1")
+                .with_sheet(&range_ref.sheet),
+        );
     }
     Ok(())
 }
@@ -774,9 +779,7 @@ fn read_header_names(
     workbook: &mut Workbook,
     range_ref: &crate::refs::ResolvedRangeRef,
 ) -> Result<Vec<String>> {
-    let mut out = Vec::with_capacity(
-        (range_ref.end_column - range_ref.start_column + 1) as usize,
-    );
+    let mut out = Vec::with_capacity((range_ref.end_column - range_ref.start_column + 1) as usize);
     let shared_strings = crate::xml::load_shared_strings(&mut workbook.doc);
     let ws_part = workbook.worksheet_part_for_sheet(&range_ref.sheet)?;
     let ws = ws_part
@@ -835,7 +838,10 @@ fn write_header_row(
         cell.cell_value = None;
         cell.data_type = Some(x::CellValues::InlineString);
         cell.inline_string = Some(Box::new(x::InlineString {
-            text: Some(x::Text(x::XstringType { xml_content: Some(names[i].clone()), ..Default::default() })),
+            text: Some(x::Text(x::XstringType {
+                xml_content: Some(names[i].clone()),
+                ..Default::default()
+            })),
             ..Default::default()
         }));
     }

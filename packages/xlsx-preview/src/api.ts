@@ -44,6 +44,8 @@ export {
   WorkbookTables,
 } from "./api-collections.js";
 export { SheetFreeze, SheetPageSetupApi, SheetProtection } from "./api-worksheet.js";
+export { NumberFormat } from "./number-formats.js";
+export type { NumberFormatCode, NumberFormatKey } from "./number-formats.js";
 export type { CellAddress, RangeAddress } from "./api-refs.js";
 
 export type {
@@ -157,6 +159,24 @@ const DEFAULT_WASM_BINARY_URL = new URL("./xlcore_wasm_bg.wasm", import.meta.url
 
 let wasmReady: Promise<void> | null = null;
 
+function isNode(): boolean {
+  return (
+    typeof process !== "undefined" &&
+    process.versions != null &&
+    typeof process.versions.node === "string"
+  );
+}
+
+async function resolveDefaultWasmInput(): Promise<
+  string | URL | RequestInfo | BufferSource | WebAssembly.Module
+> {
+  if (isNode()) {
+    const { readFileSync } = await import("node:fs");
+    return readFileSync(new URL("./xlcore_wasm_bg.wasm", import.meta.url));
+  }
+  return DEFAULT_WASM_BINARY_URL;
+}
+
 export interface WorkbookApiOptions {
   wasmBinaryUrl?: string | URL | RequestInfo | BufferSource | WebAssembly.Module;
 }
@@ -206,9 +226,7 @@ export class Workbook {
   }
 
   worksheets(): Worksheet[] {
-    return (this.handle.sheets() as SheetInfo[]).map(
-      (s) => new Worksheet(this.handle, s.name),
-    );
+    return (this.handle.sheets() as SheetInfo[]).map((s) => new Worksheet(this.handle, s.name));
   }
 
   activeSheet(): Worksheet {
@@ -237,6 +255,15 @@ export class Workbook {
     return this.handle.takeWarnings() as ApiWarning[];
   }
 
+  /**
+   * Search cells across the workbook.
+   *
+   * Defaults: `target: "values"`, `mode: "substring"`, `caseSensitive: false`,
+   * `includeHidden: true` (hidden and very-hidden sheets are searched by
+   * default; set `includeHidden: false` to skip them, unless an explicit
+   * `sheet` is named — a named sheet is always searched regardless of
+   * visibility).
+   */
   search(query: string, options: Partial<SearchOptions> = {}): SearchMatch[] {
     const full: SearchOptions = {
       sheet: options.sheet,
@@ -245,6 +272,7 @@ export class Workbook {
       mode: options.mode ?? "substring",
       caseSensitive: options.caseSensitive ?? false,
       maxResults: options.maxResults,
+      includeHidden: options.includeHidden,
     };
     return this.handle.search(query, full) as SearchMatch[];
   }
@@ -267,9 +295,10 @@ export class Workbook {
 }
 
 async function ensureWasm(options: WorkbookApiOptions): Promise<void> {
-  wasmReady ??= init({
-    module_or_path: options.wasmBinaryUrl ?? DEFAULT_WASM_BINARY_URL,
-  }).then(() => undefined);
+  wasmReady ??= (async () => {
+    const module_or_path = options.wasmBinaryUrl ?? (await resolveDefaultWasmInput());
+    await init({ module_or_path });
+  })();
   await wasmReady;
 }
 
@@ -279,4 +308,3 @@ function toUint8Array(bytes: ArrayBuffer | Uint8Array): Uint8Array {
   }
   return new Uint8Array(bytes);
 }
-

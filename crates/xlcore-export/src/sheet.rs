@@ -499,11 +499,17 @@ fn normalize_icon_set_name(dbg: &str) -> String {
 }
 
 fn extract_color_scale(cs: &x::ColorScale) -> Option<CfColorScale> {
-    if cs.conditional_format_value_object.len() != cs.color.len() || cs.conditional_format_value_object.is_empty() {
+    if cs.conditional_format_value_object.len() != cs.color.len()
+        || cs.conditional_format_value_object.is_empty()
+    {
         return None;
     }
     let mut stops = Vec::with_capacity(cs.conditional_format_value_object.len());
-    for (cfvo, color) in cs.conditional_format_value_object.iter().zip(cs.color.iter()) {
+    for (cfvo, color) in cs
+        .conditional_format_value_object
+        .iter()
+        .zip(cs.color.iter())
+    {
         let cfvo_type = format!("{:?}", cfvo.r#type).to_ascii_lowercase();
         let cfvo_type = if cfvo_type.contains("min") {
             "min"

@@ -97,7 +97,9 @@ impl Workbook {
                     .root_element(&mut self.doc)
                     .map_err(sdk_err_to_api)?;
                 for row in &ws.sheet_data.row {
-                    let Some(row_idx) = row.row_index else { continue };
+                    let Some(row_idx) = row.row_index else {
+                        continue;
+                    };
                     if row_idx < range_ref.start_row || row_idx > range_ref.end_row {
                         continue;
                     }
@@ -150,7 +152,10 @@ impl Workbook {
         mode: ClearMode,
     ) -> Result<RangeInfo> {
         let range_ref = self.resolve_range_ref(reference.as_ref())?;
-        let touches_formulas = matches!(mode, ClearMode::All | ClearMode::Formulas | ClearMode::Values);
+        let touches_formulas = matches!(
+            mode,
+            ClearMode::All | ClearMode::Formulas | ClearMode::Values
+        );
         let ws_part = self.worksheet_part_for_sheet(&range_ref.sheet)?;
         let ws = ws_part
             .root_element_mut(&mut self.doc)
@@ -178,7 +183,9 @@ impl Workbook {
         let mut values = vec![vec![CellValue::Blank; cols]; rows];
         let mut formulas: Vec<Vec<Option<String>>> = vec![vec![None; cols]; rows];
         for row in &ws.sheet_data.row {
-            let Some(row_idx) = row.row_index else { continue };
+            let Some(row_idx) = row.row_index else {
+                continue;
+            };
             if row_idx < range_ref.start_row || row_idx > range_ref.end_row {
                 continue;
             }
@@ -191,10 +198,7 @@ impl Workbook {
                 else {
                     continue;
                 };
-                if cr != row_idx
-                    || cc < range_ref.start_column
-                    || cc > range_ref.end_column
-                {
+                if cr != row_idx || cc < range_ref.start_column || cc > range_ref.end_column {
                     continue;
                 }
                 let c_off = (cc - range_ref.start_column) as usize;

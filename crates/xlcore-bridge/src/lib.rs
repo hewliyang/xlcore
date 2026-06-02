@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use anyhow::Result;
-use ooxmlsdk::simple_type::BooleanValue;
 use ooxmlsdk::sdk::SdkPart;
+use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_engine::{CellValue, FormulaError, WorkbookEngine};
 use xlcore_io::spreadsheetml as x;
 
@@ -33,9 +33,29 @@ pub fn recalculate_layout<P: AsRef<Path>>(
 
 pub fn recalculate_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<RecalcWorkbook> {
     let shared_strings = load_shared_strings(doc);
-    let workbook_sheets = {
+    let (workbook_sheets, harvested_defined_names) = {
         let wb_part = doc.workbook_part()?;
-        wb_part.root_element(doc)?.sheets.sheet.clone()
+        let wb = wb_part.root_element(doc)?;
+        let sheets = wb.sheets.sheet.clone();
+        let defined_names = wb
+            .defined_names
+            .as_ref()
+            .map(|dns| {
+                dns.defined_name
+                    .iter()
+                    .map(|dn| HarvestedDefinedName {
+                        name: dn.name.as_str().to_string(),
+                        scope: dn.local_sheet_id,
+                        formula: dn
+                            .xml_content
+                            .as_ref()
+                            .map(|s| s.as_str().to_string())
+                            .unwrap_or_default(),
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        (sheets, defined_names)
     };
 
     let ws_parts_by_rel_id = {
@@ -63,7 +83,7 @@ pub fn recalculate_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<Recal
     }
 
     let mut engine = WorkbookEngine::new("xlcore-bridge")?;
-    let mut fallbacks = load_engine(&mut engine, &harvested)?;
+    let mut fallbacks = load_engine(&mut engine, &harvested, &harvested_defined_names)?;
     engine.evaluate();
 
     let mut sheets = Vec::with_capacity(harvested.len());
@@ -127,6 +147,13 @@ struct HarvestedSheet {
 }
 
 #[derive(Clone, Debug)]
+struct HarvestedDefinedName {
+    name: String,
+    scope: Option<u32>,
+    formula: String,
+}
+
+#[derive(Clone, Debug)]
 struct HarvestedCell {
     r: u32,
     c: u32,
@@ -145,12 +172,17 @@ struct CellKey {
 fn load_engine(
     engine: &mut WorkbookEngine<'_>,
     sheets: &[HarvestedSheet],
+    defined_names: &[HarvestedDefinedName],
 ) -> Result<HashMap<CellKey, FormulaFallback>> {
     if let Some(first) = sheets.first() {
         engine.rename_sheet("Sheet1", &first.name)?;
     }
     for sheet in sheets.iter().skip(1) {
         engine.add_sheet(&sheet.name)?;
+    }
+
+    for dn in defined_names {
+        let _ = engine.add_defined_name(&dn.name, dn.scope, &dn.formula);
     }
 
     let mut fallbacks = HashMap::new();
@@ -325,15 +357,24 @@ fn set_cached_formula_value(cell: &mut x::Cell, value: &CellValue) {
         }
         CellValue::Number(value) => {
             cell.data_type = None;
-            cell.cell_value = Some(x::CellValue(x::XstringType { xml_content: Some(format_number(*value)), ..Default::default() }));
+            cell.cell_value = Some(x::CellValue(x::XstringType {
+                xml_content: Some(format_number(*value)),
+                ..Default::default()
+            }));
         }
         CellValue::Boolean(value) => {
             cell.data_type = Some(x::CellValues::Boolean);
-            cell.cell_value = Some(x::CellValue(x::XstringType { xml_content: Some(if *value { "1" } else { "0" }.to_string()), ..Default::default() }));
+            cell.cell_value = Some(x::CellValue(x::XstringType {
+                xml_content: Some(if *value { "1" } else { "0" }.to_string()),
+                ..Default::default()
+            }));
         }
         CellValue::String(value) => {
             cell.data_type = Some(x::CellValues::String);
-            cell.cell_value = Some(x::CellValue(x::XstringType { xml_content: Some(value.clone()), ..Default::default() }));
+            cell.cell_value = Some(x::CellValue(x::XstringType {
+                xml_content: Some(value.clone()),
+                ..Default::default()
+            }));
         }
     }
 }

@@ -172,14 +172,14 @@ impl Workbook {
             cursor += len;
         }
 
-        ext_lst.worksheet_extension.retain(|ext| {
-            match ext.worksheet_extension_choice.as_ref() {
+        ext_lst
+            .worksheet_extension
+            .retain(|ext| match ext.worksheet_extension_choice.as_ref() {
                 Some(xspread::WorksheetExtensionChoice::SparklineGroups(g)) => {
                     !g.sparkline_group.is_empty()
                 }
                 _ => true,
-            }
-        });
+            });
         if ext_lst.worksheet_extension.is_empty() {
             ws.worksheet_extension_list = None;
         }
@@ -246,10 +246,10 @@ fn validate_patch(patch: &SparklineGroupPatch) -> Result<()> {
     .into_iter()
     .flatten()
     {
-        if !is_rrggbb(color) {
+        if normalize_hex(color).is_none() {
             return Err(ApiError::new(
                 ApiErrorCode::InvalidSparklineGroup,
-                format!("sparkline color must be 6-digit hex RRGGBB, got: {color}"),
+                format!("sparkline color must be 6-digit hex RRGGBB (with or without leading '#'), got: {color}"),
             )
             .with_sheet(&patch.sheet));
         }
@@ -257,12 +257,25 @@ fn validate_patch(patch: &SparklineGroupPatch) -> Result<()> {
     Ok(())
 }
 
-fn is_rrggbb(s: &str) -> bool {
-    s.len() == 6 && s.chars().all(|c| c.is_ascii_hexdigit())
+fn normalize_hex(s: &str) -> Option<String> {
+    let trimmed = s.trim().trim_start_matches('#');
+    let hex = if trimmed.len() == 8 {
+        &trimmed[2..]
+    } else {
+        trimmed
+    };
+    if hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        Some(hex.to_ascii_uppercase())
+    } else {
+        None
+    }
 }
 
 fn rgb_attr(hex: &str) -> Option<String> {
-    Some(format!("FF{}", hex.to_ascii_uppercase()))
+    Some(format!(
+        "FF{}",
+        normalize_hex(hex).unwrap_or_else(|| hex.to_ascii_uppercase())
+    ))
 }
 
 fn series_color(hex: Option<&String>) -> Option<x14::SeriesColor> {
@@ -445,14 +458,38 @@ fn group_to_info(sheet: &str, index: usize, g: &x14::SparklineGroup) -> Sparklin
         manual_min: g.manual_min,
         manual_max: g.manual_max,
         line_weight: g.line_weight,
-        series_color: g.series_color.as_ref().and_then(|c| color_hex(c.rgb.as_deref())),
-        negative_color: g.negative_color.as_ref().and_then(|c| color_hex(c.rgb.as_deref())),
-        axis_color: g.axis_color.as_ref().and_then(|c| color_hex(c.rgb.as_deref())),
-        markers_color: g.markers_color.as_ref().and_then(|c| color_hex(c.rgb.as_deref())),
-        first_color: g.first_marker_color.as_ref().and_then(|c| color_hex(c.rgb.as_deref())),
-        last_color: g.last_marker_color.as_ref().and_then(|c| color_hex(c.rgb.as_deref())),
-        high_color: g.high_marker_color.as_ref().and_then(|c| color_hex(c.rgb.as_deref())),
-        low_color: g.low_marker_color.as_ref().and_then(|c| color_hex(c.rgb.as_deref())),
+        series_color: g
+            .series_color
+            .as_ref()
+            .and_then(|c| color_hex(c.rgb.as_deref())),
+        negative_color: g
+            .negative_color
+            .as_ref()
+            .and_then(|c| color_hex(c.rgb.as_deref())),
+        axis_color: g
+            .axis_color
+            .as_ref()
+            .and_then(|c| color_hex(c.rgb.as_deref())),
+        markers_color: g
+            .markers_color
+            .as_ref()
+            .and_then(|c| color_hex(c.rgb.as_deref())),
+        first_color: g
+            .first_marker_color
+            .as_ref()
+            .and_then(|c| color_hex(c.rgb.as_deref())),
+        last_color: g
+            .last_marker_color
+            .as_ref()
+            .and_then(|c| color_hex(c.rgb.as_deref())),
+        high_color: g
+            .high_marker_color
+            .as_ref()
+            .and_then(|c| color_hex(c.rgb.as_deref())),
+        low_color: g
+            .low_marker_color
+            .as_ref()
+            .and_then(|c| color_hex(c.rgb.as_deref())),
     }
 }
 
@@ -476,21 +513,25 @@ fn patch_to_info(patch: &SparklineGroupPatch, id: &str) -> SparklineGroupInfo {
         manual_min: patch.manual_min,
         manual_max: patch.manual_max,
         line_weight: patch.line_weight,
-        series_color: patch.series_color.clone().map(|s| s.to_ascii_uppercase()),
-        negative_color: patch.negative_color.clone().map(|s| s.to_ascii_uppercase()),
-        axis_color: patch.axis_color.clone().map(|s| s.to_ascii_uppercase()),
-        markers_color: patch.markers_color.clone().map(|s| s.to_ascii_uppercase()),
-        first_color: patch.first_color.clone().map(|s| s.to_ascii_uppercase()),
-        last_color: patch.last_color.clone().map(|s| s.to_ascii_uppercase()),
-        high_color: patch.high_color.clone().map(|s| s.to_ascii_uppercase()),
-        low_color: patch.low_color.clone().map(|s| s.to_ascii_uppercase()),
+        series_color: patch.series_color.as_deref().and_then(normalize_hex),
+        negative_color: patch.negative_color.as_deref().and_then(normalize_hex),
+        axis_color: patch.axis_color.as_deref().and_then(normalize_hex),
+        markers_color: patch.markers_color.as_deref().and_then(normalize_hex),
+        first_color: patch.first_color.as_deref().and_then(normalize_hex),
+        last_color: patch.last_color.as_deref().and_then(normalize_hex),
+        high_color: patch.high_color.as_deref().and_then(normalize_hex),
+        low_color: patch.low_color.as_deref().and_then(normalize_hex),
     }
 }
 
 fn color_hex(rgb: Option<&str>) -> Option<String> {
     let s = rgb?;
     let trimmed = s.trim_start_matches('#');
-    let hex = if trimmed.len() == 8 { &trimmed[2..] } else { trimmed };
+    let hex = if trimmed.len() == 8 {
+        &trimmed[2..]
+    } else {
+        trimmed
+    };
     if hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit()) {
         Some(hex.to_ascii_uppercase())
     } else {

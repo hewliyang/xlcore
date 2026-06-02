@@ -147,7 +147,9 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let mut out: HashMap<(u32, u32), CellSnapshot> = HashMap::new();
         for row in &ws.sheet_data.row {
-            let Some(row_idx) = row.row_index else { continue };
+            let Some(row_idx) = row.row_index else {
+                continue;
+            };
             if row_idx < range_ref.start_row || row_idx > range_ref.end_row {
                 continue;
             }
@@ -159,10 +161,7 @@ impl Workbook {
                 else {
                     continue;
                 };
-                if cr != row_idx
-                    || cc < range_ref.start_column
-                    || cc > range_ref.end_column
-                {
+                if cr != row_idx || cc < range_ref.start_column || cc > range_ref.end_column {
                     continue;
                 }
                 let r_off = cr - range_ref.start_row;
@@ -237,11 +236,10 @@ impl Workbook {
 
 fn check_bounds(end_row: u32, end_col: u32, reference: &str) -> Result<()> {
     if end_row > MAX_ROW || end_col > MAX_COLUMN {
-        return Err(ApiError::new(
-            ApiErrorCode::InvalidRef,
-            "destination exceeds sheet bounds",
-        )
-        .with_ref(reference));
+        return Err(
+            ApiError::new(ApiErrorCode::InvalidRef, "destination exceeds sheet bounds")
+                .with_ref(reference),
+        );
     }
     Ok(())
 }

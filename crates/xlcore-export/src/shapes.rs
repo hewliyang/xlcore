@@ -662,9 +662,7 @@ fn blip_fill(
     let mut data_uri: Option<String> = None;
     if let Some(ext_lst) = blip.blip_extension_list.as_ref() {
         for ext in &ext_lst.blip_extension {
-            if let Some(a::BlipExtensionChoice::SvgBlip(sv)) =
-                ext.blip_extension_choice.as_ref()
-            {
+            if let Some(a::BlipExtensionChoice::SvgBlip(sv)) = ext.blip_extension_choice.as_ref() {
                 if let Some(embed) = sv.embed.as_deref() {
                     if let Some(uri) = images(embed) {
                         data_uri = Some(uri);

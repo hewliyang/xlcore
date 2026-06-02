@@ -75,10 +75,7 @@ impl Workbook {
                 kept.push(dv);
             } else {
                 let mut updated = dv;
-                updated.sequence_of_references = surviving
-                    .drain(..)
-                    .map(|s| s.into())
-                    .collect();
+                updated.sequence_of_references = surviving.drain(..).map(|s| s.into()).collect();
                 kept.push(updated);
             }
         }
@@ -86,11 +83,7 @@ impl Workbook {
         block.data_validation = kept;
         block.count = Some((block.data_validation.len() as u32).into());
 
-        Ok(info_from_patch(
-            &range_ref.sheet,
-            &new_range_str,
-            &patch,
-        ))
+        Ok(info_from_patch(&range_ref.sheet, &new_range_str, &patch))
     }
 
     pub fn remove_data_validation(
@@ -161,10 +154,7 @@ impl Workbook {
 
 fn validate_patch(patch: &DataValidationPatch, reference: &str) -> Result<()> {
     use DataValidationType::*;
-    let needs_op = matches!(
-        patch.rule_type,
-        Whole | Decimal | Date | Time | TextLength
-    );
+    let needs_op = matches!(patch.rule_type, Whole | Decimal | Date | Time | TextLength);
     if needs_op && patch.operator.is_none() {
         return Err(ApiError::new(
             ApiErrorCode::InvalidDataValidation,
@@ -172,12 +162,17 @@ fn validate_patch(patch: &DataValidationPatch, reference: &str) -> Result<()> {
         )
         .with_ref(reference));
     }
-    if patch.formula1.as_deref().map(str::trim).unwrap_or("").is_empty() {
-        return Err(ApiError::new(
-            ApiErrorCode::InvalidDataValidation,
-            "formula1 is required",
-        )
-        .with_ref(reference));
+    if patch
+        .formula1
+        .as_deref()
+        .map(str::trim)
+        .unwrap_or("")
+        .is_empty()
+    {
+        return Err(
+            ApiError::new(ApiErrorCode::InvalidDataValidation, "formula1 is required")
+                .with_ref(reference),
+        );
     }
     let needs_f2 = matches!(
         patch.operator,
@@ -197,8 +192,10 @@ fn validate_patch(patch: &DataValidationPatch, reference: &str) -> Result<()> {
         )
         .with_ref(reference));
     }
-    if matches!(patch.rule_type, DataValidationType::List | DataValidationType::Custom)
-        && patch.operator.is_some()
+    if matches!(
+        patch.rule_type,
+        DataValidationType::List | DataValidationType::Custom
+    ) && patch.operator.is_some()
     {
         return Err(ApiError::new(
             ApiErrorCode::InvalidDataValidation,
@@ -226,10 +223,16 @@ fn build_dv(range_str: &str, patch: &DataValidationPatch) -> x::DataValidation {
     };
     dv.sequence_of_references = vec![range_str.to_string().into()];
     if let Some(f1) = patch.formula1.as_deref() {
-        dv.formula1 = Some(x::Formula1(x::XstringType { xml_content: Some(f1.to_string().into()), ..Default::default() }));
+        dv.formula1 = Some(x::Formula1(x::XstringType {
+            xml_content: Some(f1.to_string().into()),
+            ..Default::default()
+        }));
     }
     if let Some(f2) = patch.formula2.as_deref() {
-        dv.formula2 = Some(x::Formula2(x::XstringType { xml_content: Some(f2.to_string().into()), ..Default::default() }));
+        dv.formula2 = Some(x::Formula2(x::XstringType {
+            xml_content: Some(f2.to_string().into()),
+            ..Default::default()
+        }));
     }
     dv
 }
@@ -253,8 +256,14 @@ fn read_dv(sheet: &str, dv: &x::DataValidation) -> Option<DataValidationInfo> {
         operator: dv.operator.and_then(operator_from_sdk),
         allow_blank: bool::from(dv.allow_blank.unwrap_or(BooleanValue::from_bool(false))),
         show_drop_down: bool::from(dv.show_drop_down.unwrap_or(BooleanValue::from_bool(false))),
-        show_input_message: bool::from(dv.show_input_message.unwrap_or(BooleanValue::from_bool(false))),
-        show_error_message: bool::from(dv.show_error_message.unwrap_or(BooleanValue::from_bool(false))),
+        show_input_message: bool::from(
+            dv.show_input_message
+                .unwrap_or(BooleanValue::from_bool(false)),
+        ),
+        show_error_message: bool::from(
+            dv.show_error_message
+                .unwrap_or(BooleanValue::from_bool(false)),
+        ),
         error_style: dv.error_style.and_then(error_style_from_sdk),
         error_title: dv.error_title.as_ref().map(|s| s.as_str().to_string()),
         error: dv.error.as_ref().map(|s| s.as_str().to_string()),
@@ -271,7 +280,11 @@ fn read_dv(sheet: &str, dv: &x::DataValidation) -> Option<DataValidationInfo> {
     })
 }
 
-fn info_from_patch(sheet: &str, range_str: &str, patch: &DataValidationPatch) -> DataValidationInfo {
+fn info_from_patch(
+    sheet: &str,
+    range_str: &str,
+    patch: &DataValidationPatch,
+) -> DataValidationInfo {
     DataValidationInfo {
         sheet: sheet.to_string(),
         reference: range_str.to_string(),

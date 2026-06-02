@@ -19,6 +19,7 @@ import {
   qualify,
   resolveCell,
   resolveRange,
+  validateMatrixShape,
 } from "./api-refs.js";
 
 export type CellInput = string | number | boolean | null | ApiCellValue;
@@ -51,15 +52,27 @@ export class Range {
   }
 
   setValues(values: CellInput[][]): this {
+    validateMatrixShape("setValues", this.reference, values);
     this.handle.setRangeValues(this.qualifiedReference, values);
     return this;
   }
 
   setFormulas(formulas: Array<Array<string | null>>): this {
+    validateMatrixShape("setFormulas", this.reference, formulas);
     this.handle.setRangeFormulas(this.qualifiedReference, formulas);
     return this;
   }
 
+  /**
+   * Apply a {@link StylePatch} to every cell in the range.
+   *
+   * Merged-cell caveat: in OOXML only the **top-left anchor** of a merged region
+   * carries a style; the other cells in the merge are written as empty. To restyle
+   * a merged range, target its top-left anchor (e.g. `sheet.range("A1")` for a
+   * merge anchored at `A1:C3`) rather than the full `A1:C3` reference. Calling
+   * `setStyle` on the wider range will still touch the anchor but is otherwise
+   * a no-op on the merged remainder.
+   */
   setStyle(patch: StylePatch): this {
     this.handle.setStyle(this.qualifiedReference, patch);
     return this;
@@ -138,6 +151,14 @@ export class Cell {
     return this;
   }
 
+  /**
+   * Apply a {@link StylePatch} to this cell.
+   *
+   * If this cell is part of a merged region, the style is only persisted when the
+   * reference points at the merge's **top-left anchor** — OOXML stores style on
+   * the anchor only and writes the merged remainder as empty. Targeting any other
+   * cell of the merge is silently a no-op at render time.
+   */
   setStyle(patch: StylePatch): this {
     this.handle.setStyle(this.qualifiedReference, patch);
     return this;
@@ -189,11 +210,7 @@ export function makeRange(
   return new Range(handle, sheetRef, resolveRange(addr));
 }
 
-export function makeCell(
-  handle: WasmWorkbookHandle,
-  sheetRef: SheetRef,
-  addr: CellAddress,
-): Cell {
+export function makeCell(handle: WasmWorkbookHandle, sheetRef: SheetRef, addr: CellAddress): Cell {
   return new Cell(handle, sheetRef, resolveCell(addr));
 }
 

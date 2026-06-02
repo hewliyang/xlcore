@@ -3,8 +3,11 @@ use ooxmlsdk::schemas::opc_relationships::TargetMode;
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{ApiError, ApiErrorCode, HyperlinkInfo, HyperlinkPatch};
 
+use xlcore_types::ApiCellValue as CellValue;
+
 use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_range_a1, ranges_overlap, ResolvedRangeRef};
+use crate::xml::{ensure_cell, mark_formulas_stale, set_cell_value};
 use crate::{Result, Workbook};
 
 impl Workbook {
@@ -24,14 +27,11 @@ impl Workbook {
                 let Some((r1, c1, r2, c2)) = parse_range_a1(h.reference.as_str()) else {
                     continue;
                 };
-                let target = h
-                    .id
-                    .as_ref()
-                    .and_then(|rid| {
-                        rels.iter()
-                            .find(|(id, _)| id == rid.as_str())
-                            .map(|(_, t)| t.clone())
-                    });
+                let target = h.id.as_ref().and_then(|rid| {
+                    rels.iter()
+                        .find(|(id, _)| id == rid.as_str())
+                        .map(|(_, t)| t.clone())
+                });
                 out.push(HyperlinkInfo {
                     sheet: sheet.clone(),
                     reference: format!(
@@ -76,9 +76,7 @@ impl Workbook {
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        let block = ws
-            .hyperlinks
-            .get_or_insert_with(x::Hyperlinks::default);
+        let block = ws.hyperlinks.get_or_insert_with(x::Hyperlinks::default);
         let mut orphaned_rids: Vec<String> = Vec::new();
         block.hyperlink.retain(|h| {
             let Some((r1, c1, r2, c2)) = parse_range_a1(h.reference.as_str()) else {
@@ -114,18 +112,29 @@ impl Workbook {
             .iter()
             .filter_map(|h| h.id.as_ref().map(|s| s.as_str().to_string()))
             .collect();
+        let mut populated_display = false;
+        if let Some(display) = patch.display.as_deref() {
+            let cell = ensure_cell(ws, range_ref.start_row, range_ref.start_column);
+            if cell.cell_value.is_none()
+                && cell.inline_string.is_none()
+                && cell.cell_formula.is_none()
+            {
+                set_cell_value(cell, &CellValue::String(display.to_string()));
+                populated_display = true;
+            }
+        }
         for orphan in orphaned_rids {
             if !still_used.contains(&orphan) {
                 let _ = ws_part.delete_reference_relationship(&mut self.doc, &orphan);
             }
         }
+        if populated_display {
+            mark_formulas_stale(&mut self.doc)?;
+        }
         Ok(hyperlink_info(&range_ref, &patch))
     }
 
-    pub fn remove_hyperlink(
-        &mut self,
-        reference: impl AsRef<str>,
-    ) -> Result<Vec<HyperlinkInfo>> {
+    pub fn remove_hyperlink(&mut self, reference: impl AsRef<str>) -> Result<Vec<HyperlinkInfo>> {
         let reference = reference.as_ref();
         let range_ref = self.resolve_range_ref(reference)?;
         let sheet = range_ref.sheet.clone();
@@ -158,14 +167,11 @@ impl Workbook {
             };
             if hit {
                 let (r1, c1, r2, c2) = parse_range_a1(h.reference.as_str()).unwrap();
-                let target = h
-                    .id
-                    .as_ref()
-                    .and_then(|rid| {
-                        rels.iter()
-                            .find(|(id, _)| id == rid.as_str())
-                            .map(|(_, t)| t.clone())
-                    });
+                let target = h.id.as_ref().and_then(|rid| {
+                    rels.iter()
+                        .find(|(id, _)| id == rid.as_str())
+                        .map(|(_, t)| t.clone())
+                });
                 removed.push(HyperlinkInfo {
                     sheet: sheet.clone(),
                     reference: h.reference.as_str().to_string(),
@@ -220,11 +226,10 @@ fn validate_patch(patch: &HyperlinkPatch, reference: &str) -> Result<()> {
     }
     if let Some(t) = patch.target.as_deref() {
         if t.trim().is_empty() {
-            return Err(ApiError::new(
-                ApiErrorCode::InvalidHyperlink,
-                "hyperlink target is empty",
-            )
-            .with_ref(reference));
+            return Err(
+                ApiError::new(ApiErrorCode::InvalidHyperlink, "hyperlink target is empty")
+                    .with_ref(reference),
+            );
         }
     }
     Ok(())

@@ -83,13 +83,12 @@ impl Workbook {
         self.clear_with(reference, ClearMode::All)
     }
 
-    pub fn clear_with(
-        &mut self,
-        reference: impl AsRef<str>,
-        mode: ClearMode,
-    ) -> Result<CellInfo> {
+    pub fn clear_with(&mut self, reference: impl AsRef<str>, mode: ClearMode) -> Result<CellInfo> {
         let cell_ref = self.resolve_cell_ref(reference.as_ref())?;
-        let touches_formulas = matches!(mode, ClearMode::All | ClearMode::Formulas | ClearMode::Values);
+        let touches_formulas = matches!(
+            mode,
+            ClearMode::All | ClearMode::Formulas | ClearMode::Values
+        );
         let ws_part = self.worksheet_part_for_sheet(&cell_ref.sheet)?;
         let ws = ws_part
             .root_element_mut(&mut self.doc)

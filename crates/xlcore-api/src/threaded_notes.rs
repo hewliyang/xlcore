@@ -19,7 +19,9 @@ impl Workbook {
         let ws_part = self.worksheet_part_for_sheet(&sheet)?;
         let person_map = load_person_map(&mut self.doc)?;
         let mut out = Vec::new();
-        let parts: Vec<_> = ws_part.worksheet_threaded_comments_parts(&self.doc).collect();
+        let parts: Vec<_> = ws_part
+            .worksheet_threaded_comments_parts(&self.doc)
+            .collect();
         for tc_part in parts {
             let root = tc_part
                 .root_element(&mut self.doc)
@@ -45,11 +47,7 @@ impl Workbook {
             .with_ref(reference));
         }
         let cell_ref = self.resolve_cell_ref(reference)?;
-        let cell_ref_str = format!(
-            "{}{}",
-            xlcore_io::col_label(cell_ref.column),
-            cell_ref.row
-        );
+        let cell_ref_str = format!("{}{}", xlcore_io::col_label(cell_ref.column), cell_ref.row);
         let author = patch.author.clone().unwrap_or_else(|| "xlcore".to_string());
         let person_id = upsert_person(&mut self.doc, &author)?;
         let id = new_guid();
@@ -71,7 +69,13 @@ impl Workbook {
             ..Default::default()
         });
         let shadow_ws_part = self.worksheet_part_for_sheet(&cell_ref.sheet)?;
-        write_classic_shadow(&mut self.doc, &shadow_ws_part, &cell_ref_str, &id, &patch.text)?;
+        write_classic_shadow(
+            &mut self.doc,
+            &shadow_ws_part,
+            &cell_ref_str,
+            &id,
+            &patch.text,
+        )?;
         sync_vml_comment_indicators(&mut self.doc, &shadow_ws_part)?;
 
         Ok(ThreadedNoteInfo {
@@ -206,7 +210,9 @@ impl Workbook {
         let sheets: Vec<String> = self.sheets()?.iter().map(|s| s.name.clone()).collect();
         for sheet in sheets {
             let ws_part = self.worksheet_part_for_sheet(&sheet)?;
-            let parts: Vec<_> = ws_part.worksheet_threaded_comments_parts(&self.doc).collect();
+            let parts: Vec<_> = ws_part
+                .worksheet_threaded_comments_parts(&self.doc)
+                .collect();
             for tc_part in parts {
                 let root = tc_part
                     .root_element(&mut self.doc)
@@ -217,8 +223,7 @@ impl Workbook {
                         .as_ref()
                         .map(|s| s.as_str().to_string())
                         .unwrap_or_default();
-                    let (row, column) =
-                        xlcore_io::parse_a1(&cell_ref).unwrap_or((0, 0));
+                    let (row, column) = xlcore_io::parse_a1(&cell_ref).unwrap_or((0, 0));
                     return Ok((sheet.clone(), cell_ref, row, column));
                 }
             }
@@ -305,9 +310,7 @@ fn upsert_person(doc: &mut xlcore_io::SpreadsheetDocument, display_name: &str) -
         None => create_person_part(doc, &wb_part)?,
     };
     let id = new_guid();
-    let root = person_part
-        .root_element_mut(doc)
-        .map_err(sdk_err_to_api)?;
+    let root = person_part.root_element_mut(doc).map_err(sdk_err_to_api)?;
     root.person.push(tc::Person {
         display_name: display_name.to_string().into(),
         id: id.clone().into(),
@@ -322,9 +325,7 @@ fn create_person_part(
     doc: &mut xlcore_io::SpreadsheetDocument,
     wb_part: &WorkbookPart,
 ) -> Result<WorkbookPersonPart> {
-    let part: WorkbookPersonPart = wb_part
-        .add_new_part_auto_id(doc)
-        .map_err(sdk_err_to_api)?;
+    let part: WorkbookPersonPart = wb_part.add_new_part_auto_id(doc).map_err(sdk_err_to_api)?;
     part.set_root_element(doc, default_person_list())
         .map_err(sdk_err_to_api)?;
     Ok(part)
@@ -353,23 +354,42 @@ fn ensure_threaded_comments_part(
     if let Some(existing) = ws_part.worksheet_threaded_comments_parts(doc).next() {
         return Ok(existing.clone());
     }
-    let part: WorksheetThreadedCommentsPart = ws_part
-        .add_new_part_auto_id(doc)
-        .map_err(sdk_err_to_api)?;
+    let part: WorksheetThreadedCommentsPart =
+        ws_part.add_new_part_auto_id(doc).map_err(sdk_err_to_api)?;
     part.set_root_element(doc, default_threaded_comments_root())
         .map_err(sdk_err_to_api)?;
     Ok(part)
 }
 
+#[cfg(target_arch = "wasm32")]
+fn now_unix_millis() -> u64 {
+    js_sys::Date::now() as u64
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn now_unix_millis() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn process_id() -> u64 {
+    0
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn process_id() -> u64 {
+    std::process::id() as u64
+}
+
 fn new_guid() -> String {
     use std::sync::atomic::{AtomicU64, Ordering};
     static COUNTER: AtomicU64 = AtomicU64::new(0);
-    let nanos = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos() as u64)
-        .unwrap_or(0);
+    let nanos = now_unix_millis().saturating_mul(1_000_000);
     let counter = COUNTER.fetch_add(1, Ordering::Relaxed);
-    let pid = std::process::id() as u64;
+    let pid = process_id();
     let a = nanos as u32;
     let b = ((nanos >> 32) & 0xFFFF) as u16;
     let c = (((counter & 0x0FFF) | 0x4000) & 0xFFFF) as u16;
@@ -395,11 +415,7 @@ fn mix(mut x: u64) -> u64 {
 }
 
 fn now_iso8601() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
+    let secs = (now_unix_millis() / 1000) as i64;
     let (y, mo, d, h, mi, s) = epoch_to_ymdhms(secs);
     format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.00", y, mo, d, h, mi, s)
 }
@@ -455,7 +471,9 @@ fn drop_classic_shadows(
         return Ok(());
     };
     let comments_part = comments_part.clone();
-    let root = comments_part.root_element_mut(doc).map_err(sdk_err_to_api)?;
+    let root = comments_part
+        .root_element_mut(doc)
+        .map_err(sdk_err_to_api)?;
     let shadow_ids: Vec<u32> = root
         .authors
         .author

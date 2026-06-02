@@ -2,6 +2,7 @@ import type { WorkbookHandle as WasmWorkbookHandle } from "./xlcore_wasm.js";
 import type {
   AutoFilterColumnInfo,
   AutoFilterColumnPatch,
+  AutoFilterCustomCriterion,
   AutoFilterInfo,
   CalcProperties,
   CalcPropertiesPatch,
@@ -11,6 +12,7 @@ import type {
   CommentPatch,
   ConditionalFormatRuleInfo,
   ConditionalFormatRulePatch,
+  DataBarPatch,
   DataValidationInfo,
   DataValidationPatch,
   DefinedNameInfo,
@@ -113,8 +115,30 @@ export class ConditionalFormatCollection extends SheetScopedCollection {
   list(): ConditionalFormatRuleInfo[] {
     return this.handle.conditionalFormats(this.sheet) as ConditionalFormatRuleInfo[];
   }
-  set(ref: string, patch: ConditionalFormatRulePatch): ConditionalFormatRuleInfo {
-    return this.handle.setConditionalFormat(this.qref(ref), patch) as ConditionalFormatRuleInfo;
+  set(
+    ref: string,
+    patch: Omit<ConditionalFormatRulePatch, "dataBar"> & {
+      dataBar?: Omit<DataBarPatch, "min" | "max"> & {
+        min?: DataBarPatch["min"];
+        max?: DataBarPatch["max"];
+      };
+    },
+  ): ConditionalFormatRuleInfo {
+    const normalized: ConditionalFormatRulePatch =
+      patch.kind === "dataBar" && patch.dataBar
+        ? {
+            ...patch,
+            dataBar: {
+              ...patch.dataBar,
+              min: patch.dataBar.min ?? { kind: "min" },
+              max: patch.dataBar.max ?? { kind: "max" },
+            },
+          }
+        : (patch as ConditionalFormatRulePatch);
+    return this.handle.setConditionalFormat(
+      this.qref(ref),
+      normalized,
+    ) as ConditionalFormatRuleInfo;
   }
   clear(ref: string): ConditionalFormatRuleInfo[] {
     return this.handle.clearConditionalFormats(this.qref(ref)) as ConditionalFormatRuleInfo[];
@@ -132,12 +156,56 @@ export class AutoFilterApi extends SheetScopedCollection {
     return (this.handle.removeAutoFilter(this.sheet) as AutoFilterInfo | null) ?? null;
   }
   setColumn(patch: AutoFilterColumnPatch): AutoFilterColumnInfo {
+    const kind = (patch as { criteria?: { kind?: unknown } } | undefined)?.criteria?.kind;
+    if (kind !== "values" && kind !== "top10" && kind !== "custom") {
+      throw new Error(
+        `autoFilter.setColumn: patch.criteria.kind must be one of "values" | "top10" | "custom" (got ${JSON.stringify(kind)}). Prefer the typed helpers autoFilter.setColumnValues / setColumnTop10 / setColumnCustom.`,
+      );
+    }
     return this.handle.setAutoFilterColumn(this.sheet, patch) as AutoFilterColumnInfo;
+  }
+  setColumnValues(
+    columnOffset: number,
+    values: string[],
+    opts: { blank?: boolean; hiddenButton?: boolean; showButton?: boolean } = {},
+  ): AutoFilterColumnInfo {
+    return this.setColumn({
+      columnOffset,
+      hiddenButton: opts.hiddenButton,
+      showButton: opts.showButton,
+      criteria: { kind: "values", values, blank: opts.blank ?? false },
+    });
+  }
+  setColumnTop10(
+    columnOffset: number,
+    val: number,
+    opts: { top?: boolean; percent?: boolean; hiddenButton?: boolean; showButton?: boolean } = {},
+  ): AutoFilterColumnInfo {
+    return this.setColumn({
+      columnOffset,
+      hiddenButton: opts.hiddenButton,
+      showButton: opts.showButton,
+      criteria: { kind: "top10", top: opts.top ?? true, percent: opts.percent ?? false, val },
+    });
+  }
+  setColumnCustom(
+    columnOffset: number,
+    criteria: AutoFilterCustomCriterion[],
+    opts: { logicalAnd?: boolean; hiddenButton?: boolean; showButton?: boolean } = {},
+  ): AutoFilterColumnInfo {
+    return this.setColumn({
+      columnOffset,
+      hiddenButton: opts.hiddenButton,
+      showButton: opts.showButton,
+      criteria: { kind: "custom", logical_and: opts.logicalAnd ?? false, criteria },
+    });
   }
   removeColumn(columnOffset: number): AutoFilterColumnInfo | null {
     return (
-      (this.handle.removeAutoFilterColumn(this.sheet, columnOffset) as AutoFilterColumnInfo | null) ??
-      null
+      (this.handle.removeAutoFilterColumn(
+        this.sheet,
+        columnOffset,
+      ) as AutoFilterColumnInfo | null) ?? null
     );
   }
 }
@@ -147,7 +215,10 @@ export class TableCollection extends SheetScopedCollection {
     return this.handle.tables(this.sheet) as TableInfo[];
   }
   set(patch: TablePatch): TableInfo {
-    return this.handle.setTable(patch) as TableInfo;
+    const qualified: TablePatch = patch.reference
+      ? { ...patch, reference: this.qref(patch.reference) }
+      : patch;
+    return this.handle.setTable(qualified) as TableInfo;
   }
   remove(name: string): TableInfo | null {
     return (this.handle.removeTable(name) as TableInfo | null) ?? null;
@@ -161,9 +232,53 @@ export class ChartCollection extends SheetScopedCollection {
   set(patch: ChartPatch): ChartInfo {
     return this.handle.setChart(patch) as ChartInfo;
   }
+  update(id: string, partial: Partial<Omit<ChartPatch, "sheet">>): ChartInfo {
+    const existing = (this.handle.charts(this.sheet) as ChartInfo[]).find((c) => c.id === id);
+    if (!existing) {
+      throw new Error(`chart not found on sheet '${this.sheet}': ${id}`);
+    }
+    const base: ChartPatch = chartInfoToPatch(existing);
+    const merged: ChartPatch = { ...base, ...partial, sheet: this.sheet };
+    const removed = this.handle.removeChart(this.sheet, id) as ChartInfo | null;
+    try {
+      return this.handle.setChart(merged) as ChartInfo;
+    } catch (err) {
+      if (removed) {
+        try {
+          this.handle.setChart(base);
+        } catch {}
+      }
+      throw err;
+    }
+  }
   remove(id: string): ChartInfo | null {
     return (this.handle.removeChart(this.sheet, id) as ChartInfo | null) ?? null;
   }
+}
+
+function chartInfoToPatch(info: ChartInfo): ChartPatch {
+  return {
+    sheet: info.sheet,
+    name: info.name,
+    kind: info.kind,
+    title: info.title,
+    legendPosition: info.legendPosition,
+    categoriesRef: info.categoriesRef,
+    series: info.series.map((s) => ({
+      name: s.name,
+      nameRef: s.nameRef,
+      valuesRef: s.valuesRef,
+      xValuesRef: s.xValuesRef,
+      bubbleSizesRef: s.bubbleSizesRef,
+      color: s.color,
+      dataLabels: s.dataLabels,
+    })),
+    anchor: info.anchor,
+    categoryAxisTitle: info.categoryAxisTitle,
+    valueAxisTitle: info.valueAxisTitle,
+    stacking: info.stacking,
+    dataLabels: info.dataLabels,
+  };
 }
 
 export class ImageCollection extends SheetScopedCollection {

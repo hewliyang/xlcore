@@ -42,10 +42,7 @@ impl Workbook {
         })
     }
 
-    pub fn remove_auto_filter(
-        &mut self,
-        sheet: impl AsRef<str>,
-    ) -> Result<Option<AutoFilterInfo>> {
+    pub fn remove_auto_filter(&mut self, sheet: impl AsRef<str>) -> Result<Option<AutoFilterInfo>> {
         let sheet = sheet.as_ref().to_string();
         let ws_part = self.worksheet_part_for_sheet(&sheet)?;
         let ws = ws_part
@@ -98,8 +95,7 @@ impl Workbook {
         };
         fc.filter_column_choice = Some(build_choice(&patch.criteria));
         af.filter_column.push(fc);
-        af.filter_column
-            .sort_by_key(|fc| u32::from(fc.column_id));
+        af.filter_column.sort_by_key(|fc| u32::from(fc.column_id));
         Ok(AutoFilterColumnInfo {
             column_offset: patch.column_offset,
             hidden_button: patch.hidden_button,
@@ -164,9 +160,8 @@ impl Workbook {
 }
 
 fn validate_criteria(criteria: &AutoFilterCriteria, sheet: &str) -> Result<()> {
-    let err = |msg: &str| {
-        Err(ApiError::new(ApiErrorCode::InvalidAutoFilter, msg).with_sheet(sheet))
-    };
+    let err =
+        |msg: &str| Err(ApiError::new(ApiErrorCode::InvalidAutoFilter, msg).with_sheet(sheet));
     match criteria {
         AutoFilterCriteria::Values { values, blank } => {
             if values.is_empty() && !*blank {
@@ -186,9 +181,7 @@ fn validate_criteria(criteria: &AutoFilterCriteria, sheet: &str) -> Result<()> {
                 return err("top10 percent val must be <= 100");
             }
         }
-        AutoFilterCriteria::Custom {
-            criteria: list, ..
-        } => {
+        AutoFilterCriteria::Custom { criteria: list, .. } => {
             if list.is_empty() || list.len() > 2 {
                 return err("custom criteria requires 1 or 2 entries");
             }
@@ -213,9 +206,11 @@ fn build_choice(criteria: &AutoFilterCriteria) -> x::FilterColumnChoice {
                 ..Default::default()
             };
             for v in values {
-                filters.filters_choice.push(x::FiltersChoice::XFilter(Box::new(x::Filter {
-                    val: v.clone().into(),
-                })));
+                filters
+                    .filters_choice
+                    .push(x::FiltersChoice::XFilter(Box::new(x::Filter {
+                        val: v.clone().into(),
+                    })));
             }
             x::FilterColumnChoice::Filters(Box::new(filters))
         }

@@ -95,7 +95,7 @@ impl Workbook {
                     .as_ref()
                     .and_then(|sheet| sheet_names.iter().position(|s| s == sheet))
                     .map(|index| index as u32);
-                (name.name, scope, name.formula)
+                (name.name, scope, name.reference)
             })
             .collect();
         Ok(DependencyContext {

@@ -46,15 +46,12 @@ impl AttrType {
 }
 
 fn lookup(tag: &[u8], attr: &[u8]) -> Option<AttrType> {
-
     const TABLE: &[(&[u8], &[u8], AttrType)] = &[
-
         (b"alignment", b"textRotation", AttrType::UnsignedByte),
         (b"alignment", b"indent", AttrType::UnsignedInt),
         (b"alignment", b"wrapText", AttrType::Boolean),
         (b"alignment", b"shrinkToFit", AttrType::Boolean),
         (b"alignment", b"justifyLastLine", AttrType::Boolean),
-
     ];
     TABLE
         .iter()
@@ -81,7 +78,6 @@ impl Fixer for AttributeTypeSanitizer {
         part: &str,
         report: &mut LoadReport,
     ) -> Result<Option<Vec<u8>>, FixerError> {
-
         let mut bucket: HashMap<(Vec<u8>, Vec<u8>, String), usize> = HashMap::new();
 
         let out = sax_rewrite(xml, part, report, |_ctx, ev| match ev {
@@ -204,7 +200,6 @@ mod tests {
 
     #[test]
     fn preserves_valid_sibling_with_same_attribute_name() {
-
         let (out, _) = run(r#"<alignment textRotation="0" wrapText="1"/>"#);
         assert!(out.is_none());
     }
@@ -235,14 +230,12 @@ mod tests {
 
     #[test]
     fn untyped_attribute_passes_through_regardless_of_value() {
-
         let (out, _) = run(r#"<alignment bogus="!!!"/>"#);
         assert!(out.is_none());
     }
 
     #[test]
     fn untyped_element_passes_through() {
-
         let (out, _) = run(r#"<someThing textRotation="NaN"/>"#);
         assert!(out.is_none());
     }

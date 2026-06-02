@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
-import { Workbook } from "../dist/api.js";
+import { NumberFormat, Workbook } from "../dist/api.js";
 
 const wasm = readFileSync(new URL("../dist/xlcore_wasm_bg.wasm", import.meta.url));
 const wb = await Workbook.create({ wasmBinaryUrl: wasm });
@@ -47,6 +47,50 @@ if (
 
 s1.range("A1:C1").setStyle({ font: { bold: true } });
 
+const baselineStyleIndex = s1.cell("Z99").info().styleIndex;
+s1.setStyles({
+  A2: { font: { italic: true } },
+  "B2:C2": { font: { color: "#FF0000" } },
+});
+const styledA2 = s1.cell("A2").info();
+const styledB2 = s1.cell("B2").info();
+const styledC2 = s1.cell("C2").info();
+if (styledA2.styleIndex === undefined || styledA2.styleIndex === baselineStyleIndex) {
+  throw new Error("setStyles did not apply style to A2: " + JSON.stringify(styledA2));
+}
+if (
+  styledB2.styleIndex === undefined ||
+  styledB2.styleIndex === baselineStyleIndex ||
+  styledB2.styleIndex !== styledC2.styleIndex
+) {
+  throw new Error("setStyles did not apply style to B2:C2: " + JSON.stringify({ styledB2, styledC2 }));
+}
+if (styledA2.styleIndex === styledB2.styleIndex) {
+  throw new Error("setStyles unexpectedly merged distinct patches: " + JSON.stringify({ styledA2, styledB2 }));
+}
+let setStylesErr;
+try {
+  s1.setStyles({ "": { font: { bold: true } } });
+} catch (err) {
+  setStylesErr = err?.message ?? String(err);
+}
+if (!setStylesErr?.includes("non-empty string")) {
+  throw new Error("setStyles did not reject empty ref: " + setStylesErr);
+}
+
+if (NumberFormat.Percent2 !== "0.00%" || NumberFormat.Scientific2 !== "0.00E+00") {
+  throw new Error("NumberFormat enum drift: " + JSON.stringify(NumberFormat));
+}
+const nfBaseline = s1.cell("D2").info().styleIndex;
+s1.cell("D2").setValue(0.125);
+s1.cell("D2").setStyle({ numberFormat: NumberFormat.Percent2 });
+const nfStyled = s1.cell("D2").info().styleIndex;
+if (nfStyled === undefined || nfStyled === nfBaseline) {
+  throw new Error("NumberFormat.Percent2 did not apply: " + JSON.stringify({ nfBaseline, nfStyled }));
+}
+s1.cell("D3").setValue(1234567);
+s1.cell("D3").setStyle({ numberFormat: NumberFormat.Scientific2 });
+
 s1.range("E1").setValues([[5]]);
 s1.cell("E2").setFormula("=E1*5");
 wb.recalculate();
@@ -78,11 +122,15 @@ if (freeze.frozenRows !== 1 || freeze.frozenColumns !== 2) {
   throw new Error("unexpected freeze: " + JSON.stringify(freeze));
 }
 
-wb.definedNames.set({ name: "TaxRate", formula: "Sheet1!$B$1" });
+wb.definedNames.set({ name: "TaxRate", reference: "Sheet1!$B$1" });
 
 const inputs = wb.addSheet("Inputs");
 const outputs = wb.addSheet("Outputs");
 wb.definedNames.set({ name: "LocalRange", formula: "$A$1:$B$5", scope: "Inputs" });
+const _aliasCheck = wb.definedNames.list().find((d) => d.name === "LocalRange");
+if (!_aliasCheck || _aliasCheck.reference !== "$A$1:$B$5") {
+  throw new Error("definedNames.set should accept legacy `formula` alias for `reference`");
+}
 
 outputs
   .range("A1:B3")
@@ -94,9 +142,12 @@ outputs
 
 const table = outputs.tables.set({
   name: "Sales",
-  reference: "Outputs!A1:B3",
+  reference: "A1:B3",
   style: { name: "TableStyleMedium2", showRowStripes: true },
 });
+if (table.sheet !== "Outputs") {
+  throw new Error("unqualified ref did not resolve to scoped sheet: " + JSON.stringify(table));
+}
 if (table.columns.length !== 2 || table.columns[0].name !== "Region") {
   throw new Error("unexpected table: " + JSON.stringify(table));
 }
@@ -130,6 +181,76 @@ if (wb.worksheets().some((w) => w.name === "Junk")) {
   throw new Error("Worksheet.remove did not delete the sheet");
 }
 
+outputs.autoFilter.set("A1:B3");
+const afValues = outputs.autoFilter.setColumnValues(0, ["North"], { blank: false });
+if (afValues.criteria.kind !== "values" || afValues.criteria.values[0] !== "North") {
+  throw new Error("setColumnValues round-trip: " + JSON.stringify(afValues));
+}
+const afTop = outputs.autoFilter.setColumnTop10(1, 5, { percent: true });
+if (afTop.criteria.kind !== "top10" || afTop.criteria.val !== 5 || afTop.criteria.percent !== true) {
+  throw new Error("setColumnTop10 round-trip: " + JSON.stringify(afTop));
+}
+const afCustom = outputs.autoFilter.setColumnCustom(
+  1,
+  [{ operator: "greaterThan", value: "5" }],
+  { logicalAnd: true },
+);
+if (afCustom.criteria.kind !== "custom" || afCustom.criteria.criteria[0].value !== "5") {
+  throw new Error("setColumnCustom round-trip: " + JSON.stringify(afCustom));
+}
+let badKindErr = null;
+try {
+  outputs.autoFilter.setColumn({ columnOffset: 0, criteria: { values: ["x"] } });
+} catch (e) {
+  badKindErr = e;
+}
+if (!badKindErr || !String(badKindErr.message).includes("patch.criteria.kind")) {
+  throw new Error("missing-kind error not clearer: " + badKindErr);
+}
+outputs.autoFilter.remove();
+
+const chart = outputs.charts.set({
+  sheet: "Outputs",
+  name: "Sales Chart",
+  kind: "column",
+  title: "Sales",
+  categoriesRef: "Outputs!$A$2:$A$3",
+  series: [
+    { name: "Units", valuesRef: "Outputs!$B$2:$B$3", color: "4472C4" },
+  ],
+  anchor: { fromColumn: 3, fromRow: 0, toColumn: 8, toRow: 12 },
+});
+if (chart.title !== "Sales") throw new Error("unexpected chart: " + JSON.stringify(chart));
+const updated = outputs.charts.update(chart.id, {
+  title: "Sales (Updated)",
+  legendPosition: "bottom",
+});
+if (updated.title !== "Sales (Updated)" || updated.legendPosition !== "bottom") {
+  throw new Error("charts.update did not merge: " + JSON.stringify(updated));
+}
+if (updated.series.length !== 1 || updated.series[0].valuesRef !== "Outputs!$B$2:$B$3") {
+  throw new Error("charts.update lost series: " + JSON.stringify(updated));
+}
+if (updated.kind !== "column" || updated.name !== "Sales Chart") {
+  throw new Error("charts.update lost kind/name: " + JSON.stringify(updated));
+}
+let missingChartErr = null;
+try {
+  outputs.charts.update("nope-rid", { title: "x" });
+} catch (e) {
+  missingChartErr = e;
+}
+if (!missingChartErr || !String(missingChartErr.message).includes("chart not found")) {
+  throw new Error("charts.update did not error on missing id: " + missingChartErr);
+}
+if (outputs.charts.list().length !== 1) {
+  throw new Error("charts.update should not duplicate: " + outputs.charts.list().length);
+}
+
+const noteAdded = s1.threadedNotes.add("A1", { text: "hello", author: "smoke" });
+if (!noteAdded.id) throw new Error("threadedNotes.add returned no id");
+s1.cell("A2").setValue("post-note");
+
 wb.properties.set({ title: "Smoke Plan", creator: "smoke-api" });
 wb.calcProperties.set({ calcMode: "manual", iterate: true, iterateCount: 12 });
 
@@ -154,6 +275,19 @@ if (reopened.properties.get().title !== "Smoke Plan") {
 }
 if (reopened.calcProperties.get().calcMode !== "manual") {
   throw new Error("reopened calcProperties.calcMode not manual");
+}
+
+{
+  const defaultWb = await Workbook.create();
+  const ds = defaultWb.sheet("Sheet1");
+  ds.cell("A1").setValue(7);
+  ds.cell("B1").setFormula("=A1*6");
+  defaultWb.recalculate();
+  const dv = ds.cell("B1").info().value;
+  if (dv.type !== "number" || dv.value !== 42) {
+    throw new Error("default-wasm Node bootstrap failed: " + JSON.stringify(dv));
+  }
+  defaultWb.dispose();
 }
 
 console.log(

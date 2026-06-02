@@ -4,12 +4,20 @@ use xlcore_types::{
     SearchOptions, SearchTarget,
 };
 
+use xlcore_io::spreadsheetml as x;
+
 use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_range_reference, quote_sheet_name};
 use crate::xml::{cell_info_from_cell, load_shared_strings};
 use crate::{Result, Workbook};
 
 impl Workbook {
+    /// Search cells across the workbook.
+    ///
+    /// When `options.sheet` is `None`, all sheets are searched. Hidden and
+    /// very-hidden sheets are included by default (`include_hidden = true`);
+    /// pass `Some(false)` to restrict to visible sheets. An explicit
+    /// `options.sheet` is always honoured regardless of visibility.
     pub fn search(
         &mut self,
         query: impl AsRef<str>,
@@ -24,6 +32,7 @@ impl Workbook {
         }
         let matcher = build_matcher(query, &options)?;
 
+        let include_hidden = options.include_hidden.unwrap_or(true);
         let sheets: Vec<String> = if let Some(name) = &options.sheet {
             if !self.sheet_exists(name)? {
                 return Err(ApiError::new(
@@ -36,6 +45,9 @@ impl Workbook {
         } else {
             self.workbook_sheets()?
                 .into_iter()
+                .filter(|s| {
+                    include_hidden || matches!(s.state, None | Some(x::SheetStateValues::Visible))
+                })
                 .map(|s| s.name)
                 .collect()
         };
@@ -71,7 +83,9 @@ impl Workbook {
                 .root_element(&mut self.doc)
                 .map_err(sdk_err_to_api)?;
             for row in &ws.sheet_data.row {
-                let Some(row_idx) = row.row_index else { continue };
+                let Some(row_idx) = row.row_index else {
+                    continue;
+                };
                 if let Some(rr) = &range_filter {
                     if row_idx < rr.start_row || row_idx > rr.end_row {
                         continue;
@@ -93,8 +107,7 @@ impl Workbook {
                             continue;
                         }
                     }
-                    let info =
-                        cell_info_from_cell(&sheet_name, r, c, Some(cell), &shared_strings);
+                    let info = cell_info_from_cell(&sheet_name, r, c, Some(cell), &shared_strings);
                     if matches!(options.target, SearchTarget::Values | SearchTarget::Both) {
                         let text = value_text(&info.value);
                         if let Some(matched) = matcher.find(&text) {
@@ -158,17 +171,28 @@ fn value_text(value: &CellValue) -> String {
 }
 
 enum Matcher {
-    Substring { needle: String, case_sensitive: bool },
-    Exact { needle: String, case_sensitive: bool },
+    Substring {
+        needle: String,
+        case_sensitive: bool,
+    },
+    Exact {
+        needle: String,
+        case_sensitive: bool,
+    },
     Regex(Regex),
 }
 
 impl Matcher {
     fn find(&self, haystack: &str) -> Option<String> {
         match self {
-            Matcher::Substring { needle, case_sensitive } => {
+            Matcher::Substring {
+                needle,
+                case_sensitive,
+            } => {
                 if *case_sensitive {
-                    haystack.contains(needle.as_str()).then(|| haystack.to_string())
+                    haystack
+                        .contains(needle.as_str())
+                        .then(|| haystack.to_string())
                 } else {
                     haystack
                         .to_lowercase()
@@ -176,7 +200,10 @@ impl Matcher {
                         .then(|| haystack.to_string())
                 }
             }
-            Matcher::Exact { needle, case_sensitive } => {
+            Matcher::Exact {
+                needle,
+                case_sensitive,
+            } => {
                 let eq = if *case_sensitive {
                     haystack == needle.as_str()
                 } else {

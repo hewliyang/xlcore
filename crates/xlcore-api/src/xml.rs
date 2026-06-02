@@ -97,13 +97,19 @@ pub(crate) fn set_cell_value(cell: &mut x::Cell, value: &CellValue) {
             cell.data_type = Some(x::CellValues::InlineString);
             cell.cell_value = None;
             cell.inline_string = Some(Box::new(x::InlineString {
-                text: Some(x::Text(x::XstringType { xml_content: Some(value.clone()), ..Default::default() })),
+                text: Some(x::Text(x::XstringType {
+                    xml_content: Some(value.clone()),
+                    ..Default::default()
+                })),
                 ..Default::default()
             }));
         }
         CellValue::Number(value) => {
             cell.data_type = None;
-            cell.cell_value = Some(x::CellValue(x::XstringType { xml_content: Some(format_number(*value)), ..Default::default() }));
+            cell.cell_value = Some(x::CellValue(x::XstringType {
+                xml_content: Some(format_number(*value)),
+                ..Default::default()
+            }));
         }
         CellValue::Boolean(value) => {
             cell.data_type = Some(x::CellValues::Boolean);
@@ -114,7 +120,10 @@ pub(crate) fn set_cell_value(cell: &mut x::Cell, value: &CellValue) {
         }
         CellValue::Error(value) => {
             cell.data_type = Some(x::CellValues::Error);
-            cell.cell_value = Some(x::CellValue(x::XstringType { xml_content: Some(value.clone()), ..Default::default() }));
+            cell.cell_value = Some(x::CellValue(x::XstringType {
+                xml_content: Some(value.clone()),
+                ..Default::default()
+            }));
         }
     }
 }

@@ -111,14 +111,12 @@ mod tests {
 
     #[test]
     fn does_not_match_color_scale_substring() {
-
         let (out, _) = run(r#"<x14:dataBar><x14:colorScale/></x14:dataBar>"#);
         assert!(out.is_none(), "colorScale must survive");
     }
 
     #[test]
     fn nested_databar_color_is_still_renamed() {
-
         let (out, _) =
             run(r#"<x14:dataBar><wrap><x14:color rgb="FF0000FF"/></wrap></x14:dataBar>"#);
         let s = out.expect("rewritten");

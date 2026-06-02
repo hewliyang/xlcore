@@ -2,7 +2,7 @@
 
 export type DefinedNamePatch = {
   name: string;
-  formula: string;
+  reference: string;
   scope?: string;
   comment?: string;
   hidden?: boolean;

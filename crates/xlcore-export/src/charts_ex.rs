@@ -61,12 +61,7 @@ fn parse_series_data(space: &cx::ChartSpace, series: &cx::Series) -> Option<Pars
         .chart_data
         .as_deref()
         .and_then(|cd| cd.data.iter().find(|d| d.id == data_id))
-        .or_else(|| {
-            space
-                .chart_data
-                .as_deref()
-                .and_then(|cd| cd.data.first())
-        })?;
+        .or_else(|| space.chart_data.as_deref().and_then(|cd| cd.data.first()))?;
 
     let mut categories: Vec<String> = Vec::new();
     let mut categories_ref: Option<String> = None;

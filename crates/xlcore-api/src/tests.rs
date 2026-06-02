@@ -1,4 +1,3 @@
-
 use crate::refs::{parse_cell_reference, parse_range_reference, ParsedCellRef, ParsedRangeRef};
 use crate::*;
 
@@ -71,7 +70,9 @@ fn save_without_explicit_recalculate_writes_cached_values() {
 fn engine_produced_errors_populate_fallback() {
     let mut workbook = Workbook::new().unwrap();
     workbook.set_value("Sheet1!A1", 1.0).unwrap();
-    workbook.set_formula("Sheet1!B1", "=OFFSET(A1,-5,0)").unwrap();
+    workbook
+        .set_formula("Sheet1!B1", "=OFFSET(A1,-5,0)")
+        .unwrap();
     workbook.set_formula("Sheet1!C1", "=1/0").unwrap();
     workbook.set_formula("Sheet1!D1", "=A1+\"x\"").unwrap();
 
@@ -118,6 +119,58 @@ fn creates_and_renames_sheets() {
         workbook.get_cell("Inputs!A1").unwrap().value,
         CellValue::String("ok".to_string())
     );
+}
+
+#[test]
+fn rename_sheet_rewrites_cross_sheet_formula_refs() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.create_sheet("Data").unwrap();
+    workbook.create_sheet("Other Sheet").unwrap();
+    workbook.set_value("Data!A1", 10.0).unwrap();
+    workbook.set_value("Data!A2", 15.0).unwrap();
+    workbook.set_value("Other Sheet!B1", 7.0).unwrap();
+    workbook
+        .set_formula("Sheet1!A1", "=Data!A1+Data!A2")
+        .unwrap();
+    workbook
+        .set_formula("Sheet1!A2", "=SUM(Data!A1:A2)")
+        .unwrap();
+    workbook
+        .set_formula("Sheet1!A3", "='Other Sheet'!B1*2")
+        .unwrap();
+    workbook
+        .set_defined_name(crate::DefinedNamePatch {
+            name: "Total".to_string(),
+            reference: "Data!$A$1:$A$2".to_string(),
+            scope: None,
+            comment: None,
+            hidden: None,
+        })
+        .unwrap();
+
+    workbook.rename_sheet("Data", "Inputs").unwrap();
+    workbook.rename_sheet("Other Sheet", "Refs").unwrap();
+
+    let recalc = workbook.recalculate().unwrap();
+    assert_eq!(
+        recalc.cell("Sheet1", "A1").unwrap().value,
+        xlcore_engine::CellValue::Number(25.0)
+    );
+    assert_eq!(
+        recalc.cell("Sheet1", "A2").unwrap().value,
+        xlcore_engine::CellValue::Number(25.0)
+    );
+    assert_eq!(
+        recalc.cell("Sheet1", "A3").unwrap().value,
+        xlcore_engine::CellValue::Number(14.0)
+    );
+    let dn = workbook
+        .defined_names()
+        .unwrap()
+        .into_iter()
+        .find(|d| d.name == "Total")
+        .unwrap();
+    assert_eq!(dn.reference, "Inputs!$A$1:$A$2");
 }
 
 #[test]
@@ -845,9 +898,15 @@ fn structural_shifts_conditional_formatting() {
         .map_err(sdk_err_to_api)
         .unwrap();
     let cf = &ws.conditional_formatting[0];
-    assert_eq!(cf.sequence_of_references.as_deref(), Some(&vec!["A3:B7".to_string(), "D12".to_string()][..]));
     assert_eq!(
-        cf.conditional_formatting_rule[0].formula[0].0.xml_content.as_deref(),
+        cf.sequence_of_references.as_deref(),
+        Some(&vec!["A3:B7".to_string(), "D12".to_string()][..])
+    );
+    assert_eq!(
+        cf.conditional_formatting_rule[0].formula[0]
+            .0
+            .xml_content
+            .as_deref(),
         Some("A3>0"),
     );
 }
@@ -1239,6 +1298,43 @@ fn search_respects_sheet_and_range_scope_and_limit() {
 }
 
 #[test]
+fn search_include_hidden_controls_hidden_sheet_visibility() {
+    let mut wb = search_fixture();
+    wb.set_sheet_visibility("Inputs", SheetVisibility::Hidden)
+        .unwrap();
+
+    let default_hits = wb.search("north", SearchOptions::default()).unwrap();
+    let default_sheets: Vec<_> = default_hits.iter().map(|m| m.sheet.as_str()).collect();
+    assert!(default_sheets.contains(&"Inputs"));
+
+    let visible_only = wb
+        .search(
+            "north",
+            SearchOptions {
+                include_hidden: Some(false),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let visible_sheets: Vec<_> = visible_only.iter().map(|m| m.sheet.as_str()).collect();
+    assert!(!visible_sheets.contains(&"Inputs"));
+    assert!(visible_sheets.contains(&"Sheet1"));
+
+    let explicit_sheet = wb
+        .search(
+            "north",
+            SearchOptions {
+                sheet: Some("Inputs".to_string()),
+                include_hidden: Some(false),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(explicit_sheet.len(), 1);
+    assert_eq!(explicit_sheet[0].sheet, "Inputs");
+}
+
+#[test]
 fn search_diagnostics_empty_query_and_missing_sheet() {
     let mut wb = search_fixture();
     let err = wb.search("", SearchOptions::default()).unwrap_err();
@@ -1343,6 +1439,54 @@ fn hyperlinks_add_list_remove_and_round_trip() {
     );
 }
 
+#[test]
+fn set_hyperlink_populates_display_into_blank_top_left_cell() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_hyperlink(
+        "Sheet1!A1",
+        HyperlinkPatch {
+            target: Some("https://anthropic.com".to_string()),
+            display: Some("Anthropic".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let cell = wb.get_cell("Sheet1!A1").unwrap();
+    assert_eq!(cell.value, ApiCellValue::String("Anthropic".to_string()));
+
+    wb.set_value("Sheet1!B2", "existing").unwrap();
+    wb.set_hyperlink(
+        "Sheet1!B2",
+        HyperlinkPatch {
+            target: Some("https://example.com".to_string()),
+            display: Some("do not overwrite".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let cell = wb.get_cell("Sheet1!B2").unwrap();
+    assert_eq!(cell.value, ApiCellValue::String("existing".to_string()));
+
+    wb.set_hyperlink(
+        "Sheet1!C3:D4",
+        HyperlinkPatch {
+            location: Some("Sheet1!Z9".to_string()),
+            display: Some("jump".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let top_left = wb.get_cell("Sheet1!C3").unwrap();
+    assert_eq!(top_left.value, ApiCellValue::String("jump".to_string()));
+    let other = wb.get_cell("Sheet1!D4").unwrap();
+    assert_eq!(other.value, ApiCellValue::Blank);
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let a1 = reopened.get_cell("Sheet1!A1").unwrap();
+    assert_eq!(a1.value, ApiCellValue::String("Anthropic".to_string()));
+}
+
 fn sheet_rels_xml(bytes: &[u8]) -> Option<String> {
     use std::io::{Cursor, Read};
     let mut zip = zip::ZipArchive::new(Cursor::new(bytes.to_vec())).unwrap();
@@ -1360,7 +1504,7 @@ fn defined_names_create_update_remove_and_round_trip() {
     let info = wb
         .set_defined_name(DefinedNamePatch {
             name: "TaxRate".to_string(),
-            formula: "Sheet1!$B$1".to_string(),
+            reference: "Sheet1!$B$1".to_string(),
             comment: Some("effective rate".to_string()),
             ..Default::default()
         })
@@ -1370,7 +1514,7 @@ fn defined_names_create_update_remove_and_round_trip() {
 
     wb.set_defined_name(DefinedNamePatch {
         name: "LocalRange".to_string(),
-        formula: "$A$1:$B$10".to_string(),
+        reference: "$A$1:$B$10".to_string(),
         scope: Some("Inputs".to_string()),
         hidden: Some(true),
         ..Default::default()
@@ -1385,7 +1529,7 @@ fn defined_names_create_update_remove_and_round_trip() {
 
     wb.set_defined_name(DefinedNamePatch {
         name: "TaxRate".to_string(),
-        formula: "Sheet1!$C$1".to_string(),
+        reference: "Sheet1!$C$1".to_string(),
         ..Default::default()
     })
     .unwrap();
@@ -1395,7 +1539,7 @@ fn defined_names_create_update_remove_and_round_trip() {
         .into_iter()
         .find(|d| d.name == "TaxRate")
         .unwrap();
-    assert_eq!(updated.formula, "Sheet1!$C$1");
+    assert_eq!(updated.reference, "Sheet1!$C$1");
     assert_eq!(updated.comment.as_deref(), None);
 
     let bytes = wb.save_bytes().unwrap();
@@ -1422,12 +1566,23 @@ fn defined_names_create_update_remove_and_round_trip() {
 }
 
 #[test]
+fn defined_name_patch_accepts_legacy_formula_alias() {
+    let patch: DefinedNamePatch =
+        serde_json::from_str(r#"{"name":"Legacy","formula":"Sheet1!$A$1"}"#).unwrap();
+    assert_eq!(patch.reference, "Sheet1!$A$1");
+
+    let canonical: DefinedNamePatch =
+        serde_json::from_str(r#"{"name":"Modern","reference":"Sheet1!$B$2"}"#).unwrap();
+    assert_eq!(canonical.reference, "Sheet1!$B$2");
+}
+
+#[test]
 fn defined_names_validation_errors() {
     let mut wb = Workbook::new().unwrap();
     let err = wb
         .set_defined_name(DefinedNamePatch {
             name: "".to_string(),
-            formula: "Sheet1!$A$1".to_string(),
+            reference: "Sheet1!$A$1".to_string(),
             ..Default::default()
         })
         .unwrap_err();
@@ -1436,7 +1591,7 @@ fn defined_names_validation_errors() {
     let err = wb
         .set_defined_name(DefinedNamePatch {
             name: "A1".to_string(),
-            formula: "Sheet1!$A$1".to_string(),
+            reference: "Sheet1!$A$1".to_string(),
             ..Default::default()
         })
         .unwrap_err();
@@ -1445,7 +1600,7 @@ fn defined_names_validation_errors() {
     let err = wb
         .set_defined_name(DefinedNamePatch {
             name: "has space".to_string(),
-            formula: "Sheet1!$A$1".to_string(),
+            reference: "Sheet1!$A$1".to_string(),
             ..Default::default()
         })
         .unwrap_err();
@@ -1454,7 +1609,7 @@ fn defined_names_validation_errors() {
     let err = wb
         .set_defined_name(DefinedNamePatch {
             name: "OK".to_string(),
-            formula: "   ".to_string(),
+            reference: "   ".to_string(),
             ..Default::default()
         })
         .unwrap_err();
@@ -1463,7 +1618,7 @@ fn defined_names_validation_errors() {
     let err = wb
         .set_defined_name(DefinedNamePatch {
             name: "Scoped".to_string(),
-            formula: "$A$1".to_string(),
+            reference: "$A$1".to_string(),
             scope: Some("Ghost".to_string()),
             ..Default::default()
         })
@@ -1513,7 +1668,7 @@ fn traces_defined_name_dependencies() {
     wb.set_value("Inputs!B1", 0.08).unwrap();
     wb.set_defined_name(DefinedNamePatch {
         name: "TaxRate".to_string(),
-        formula: "Inputs!$B$1".to_string(),
+        reference: "Inputs!$B$1".to_string(),
         ..Default::default()
     })
     .unwrap();
@@ -1677,7 +1832,9 @@ fn comments_add_list_update_remove_and_round_trip() {
     let mut reopened = Workbook::open_bytes(bytes).unwrap();
     let after = reopened.comments("Sheet1").unwrap();
     assert_eq!(after.len(), 2);
-    assert!(after.iter().any(|c| c.reference == "A1" && c.text == "updated"));
+    assert!(after
+        .iter()
+        .any(|c| c.reference == "A1" && c.text == "updated"));
 
     let removed = reopened.remove_comment("Sheet1!A1:B2").unwrap();
     assert_eq!(removed.len(), 2);
@@ -1727,28 +1884,50 @@ fn threaded_notes_add_reply_list_remove_and_round_trip() {
 
     let list = wb.threaded_notes("Sheet1").unwrap();
     assert_eq!(list.len(), 2);
-    assert!(list.iter().any(|n| n.text == "check this" && n.author == "Mario"));
-    assert!(list.iter().any(|n| n.text == "on it" && n.author == "Luigi"));
+    assert!(list
+        .iter()
+        .any(|n| n.text == "check this" && n.author == "Mario"));
+    assert!(list
+        .iter()
+        .any(|n| n.text == "on it" && n.author == "Luigi"));
     assert!(wb.comments("Sheet1").unwrap().is_empty());
 
     let bytes = wb.save_bytes().unwrap();
     {
         let cursor = std::io::Cursor::new(&bytes);
         let mut zip = zip::ZipArchive::new(cursor).unwrap();
-        let names: Vec<String> = (0..zip.len()).map(|i| zip.by_index(i).unwrap().name().to_string()).collect();
-        assert!(names.iter().any(|n| n.starts_with("xl/comments") && n.ends_with(".xml")), "classic shadow comments part missing: {names:?}");
+        let names: Vec<String> = (0..zip.len())
+            .map(|i| zip.by_index(i).unwrap().name().to_string())
+            .collect();
+        assert!(
+            names
+                .iter()
+                .any(|n| n.starts_with("xl/comments") && n.ends_with(".xml")),
+            "classic shadow comments part missing: {names:?}"
+        );
         let mut buf = String::new();
         use std::io::Read;
-        zip.by_name(names.iter().find(|n| n.starts_with("xl/comments")).unwrap()).unwrap().read_to_string(&mut buf).unwrap();
-        assert!(buf.contains("tc="), "classic shadow author tc= missing in {buf}");
+        zip.by_name(names.iter().find(|n| n.starts_with("xl/comments")).unwrap())
+            .unwrap()
+            .read_to_string(&mut buf)
+            .unwrap();
+        assert!(
+            buf.contains("tc="),
+            "classic shadow author tc= missing in {buf}"
+        );
         assert!(buf.contains("check this"));
-        assert!(!buf.contains("on it"), "replies must not produce a second legacy comment per cell");
+        assert!(
+            !buf.contains("on it"),
+            "replies must not produce a second legacy comment per cell"
+        );
     }
 
     let mut reopened = Workbook::open_bytes(bytes).unwrap();
     let after = reopened.threaded_notes("Sheet1").unwrap();
     assert_eq!(after.len(), 2);
-    assert!(after.iter().any(|n| n.author == "Luigi" && n.parent_id.is_some()));
+    assert!(after
+        .iter()
+        .any(|n| n.author == "Luigi" && n.parent_id.is_some()));
     assert!(reopened.comments("Sheet1").unwrap().is_empty());
 
     let removed = reopened.remove_threaded_thread("Sheet1!A1").unwrap();
@@ -1759,8 +1938,15 @@ fn threaded_notes_add_reply_list_remove_and_round_trip() {
     {
         let cursor = std::io::Cursor::new(&bytes);
         let mut zip = zip::ZipArchive::new(cursor).unwrap();
-        let names: Vec<String> = (0..zip.len()).map(|i| zip.by_index(i).unwrap().name().to_string()).collect();
-        assert!(!names.iter().any(|n| n.starts_with("xl/comments") && n.ends_with(".xml")), "classic shadow comments part should be gone: {names:?}");
+        let names: Vec<String> = (0..zip.len())
+            .map(|i| zip.by_index(i).unwrap().name().to_string())
+            .collect();
+        assert!(
+            !names
+                .iter()
+                .any(|n| n.starts_with("xl/comments") && n.ends_with(".xml")),
+            "classic shadow comments part should be gone: {names:?}"
+        );
     }
     let mut reopened2 = Workbook::open_bytes(bytes).unwrap();
     assert!(reopened2.threaded_notes("Sheet1").unwrap().is_empty());
@@ -1773,12 +1959,19 @@ fn threaded_note_shadow_coexists_with_classic_comment() {
     let mut wb = Workbook::new().unwrap();
     wb.set_comment(
         "Sheet1!B2",
-        CommentPatch { text: "old school".into(), author: Some("Peach".into()) },
+        CommentPatch {
+            text: "old school".into(),
+            author: Some("Peach".into()),
+        },
     )
     .unwrap();
     wb.add_threaded_note(
         "Sheet1!A1",
-        ThreadedNotePatch { text: "modern".into(), author: Some("Mario".into()), date: None },
+        ThreadedNotePatch {
+            text: "modern".into(),
+            author: Some("Mario".into()),
+            date: None,
+        },
     )
     .unwrap();
 
@@ -1793,11 +1986,15 @@ fn threaded_note_shadow_coexists_with_classic_comment() {
     assert_eq!(classics.len(), 1);
     assert_eq!(reopened.threaded_notes("Sheet1").unwrap().len(), 1);
 
-    reopened.set_comment(
-        "Sheet1!B2",
-        CommentPatch { text: "old school v2".into(), author: Some("Peach".into()) },
-    )
-    .unwrap();
+    reopened
+        .set_comment(
+            "Sheet1!B2",
+            CommentPatch {
+                text: "old school v2".into(),
+                author: Some("Peach".into()),
+            },
+        )
+        .unwrap();
     assert_eq!(reopened.threaded_notes("Sheet1").unwrap().len(), 1);
     let classics = reopened.comments("Sheet1").unwrap();
     assert_eq!(classics.len(), 1);
@@ -1813,7 +2010,10 @@ fn comment_emits_vml_legacy_drawing_indicator() {
     let mut wb = Workbook::new().unwrap();
     wb.set_comment(
         "Sheet1!B3",
-        CommentPatch { text: "note".into(), author: Some("Mario".into()) },
+        CommentPatch {
+            text: "note".into(),
+            author: Some("Mario".into()),
+        },
     )
     .unwrap();
     let bytes = wb.save_bytes().unwrap();
@@ -1830,10 +2030,19 @@ fn comment_emits_vml_legacy_drawing_indicator() {
         .clone();
     let mut buf = String::new();
     use std::io::Read;
-    zip.by_name(&vml_name).unwrap().read_to_string(&mut buf).unwrap();
-    assert!(buf.contains("x:ClientData ObjectType=\"Note\""), "vml missing client data: {buf}");
+    zip.by_name(&vml_name)
+        .unwrap()
+        .read_to_string(&mut buf)
+        .unwrap();
+    assert!(
+        buf.contains("x:ClientData ObjectType=\"Note\""),
+        "vml missing client data: {buf}"
+    );
     assert!(buf.contains("<x:Row>2</x:Row>"), "vml missing row: {buf}");
-    assert!(buf.contains("<x:Column>1</x:Column>"), "vml missing column: {buf}");
+    assert!(
+        buf.contains("<x:Column>1</x:Column>"),
+        "vml missing column: {buf}"
+    );
 
     let sheet_name = names
         .iter()
@@ -1841,8 +2050,14 @@ fn comment_emits_vml_legacy_drawing_indicator() {
         .unwrap()
         .clone();
     let mut sheet_buf = String::new();
-    zip.by_name(&sheet_name).unwrap().read_to_string(&mut sheet_buf).unwrap();
-    assert!(sheet_buf.contains("legacyDrawing"), "sheet missing legacyDrawing: {sheet_buf}");
+    zip.by_name(&sheet_name)
+        .unwrap()
+        .read_to_string(&mut sheet_buf)
+        .unwrap();
+    assert!(
+        sheet_buf.contains("legacyDrawing"),
+        "sheet missing legacyDrawing: {sheet_buf}"
+    );
 
     let mut reopened = Workbook::open_bytes(bytes).unwrap();
     assert_eq!(reopened.comments("Sheet1").unwrap().len(), 1);
@@ -1988,11 +2203,7 @@ fn auto_filter_column_criteria_round_trip() {
         other => panic!("expected Values, got {other:?}"),
     }
     match &after.columns[1].criteria {
-        AutoFilterCriteria::Top10 {
-            top,
-            percent,
-            val,
-        } => {
+        AutoFilterCriteria::Top10 { top, percent, val } => {
             assert!(*top);
             assert!(!*percent);
             assert_eq!(*val, 5.0);
@@ -2450,7 +2661,10 @@ fn sheet_protection_set_read_remove_and_round_trip() {
     let removed = reopened.remove_sheet_protection("Sheet1").unwrap().unwrap();
     assert!(removed.enabled);
     assert!(reopened.sheet_protection("Sheet1").unwrap().is_none());
-    assert!(reopened.remove_sheet_protection("Sheet1").unwrap().is_none());
+    assert!(reopened
+        .remove_sheet_protection("Sheet1")
+        .unwrap()
+        .is_none());
 
     let err = reopened
         .set_sheet_protection(
@@ -2463,7 +2677,9 @@ fn sheet_protection_set_read_remove_and_round_trip() {
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidProtection);
 
-    let err = reopened.set_sheet_protection("Ghost", SheetProtectionPatch::default()).unwrap_err();
+    let err = reopened
+        .set_sheet_protection("Ghost", SheetProtectionPatch::default())
+        .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::MissingSheet);
 }
 
@@ -2722,9 +2938,18 @@ fn conditional_format_color_scale_round_trip() {
                 kind: CfRuleKind::ColorScale,
                 color_scale: Some(ColorScalePatch {
                     values: vec![
-                        CfValueObject { kind: CfValueObjectKind::Min, value: None },
-                        CfValueObject { kind: CfValueObjectKind::Percentile, value: Some("50".into()) },
-                        CfValueObject { kind: CfValueObjectKind::Max, value: None },
+                        CfValueObject {
+                            kind: CfValueObjectKind::Min,
+                            value: None,
+                        },
+                        CfValueObject {
+                            kind: CfValueObjectKind::Percentile,
+                            value: Some("50".into()),
+                        },
+                        CfValueObject {
+                            kind: CfValueObjectKind::Max,
+                            value: None,
+                        },
                     ],
                     colors: vec!["#F8696B".into(), "#FFEB84".into(), "#63BE7B".into()],
                 }),
@@ -2755,8 +2980,14 @@ fn conditional_format_data_bar_round_trip() {
             ConditionalFormatRulePatch {
                 kind: CfRuleKind::DataBar,
                 data_bar: Some(DataBarPatch {
-                    min: CfValueObject { kind: CfValueObjectKind::Min, value: None },
-                    max: CfValueObject { kind: CfValueObjectKind::Max, value: None },
+                    min: CfValueObject {
+                        kind: CfValueObjectKind::Min,
+                        value: None,
+                    },
+                    max: CfValueObject {
+                        kind: CfValueObjectKind::Max,
+                        value: None,
+                    },
                     color: "#638EC6".into(),
                     min_length: Some(10),
                     max_length: Some(90),
@@ -2790,10 +3021,22 @@ fn conditional_format_icon_set_round_trip() {
                 icon_set: Some(IconSetPatch {
                     icon_set: CfIconSetKind::FourTrafficLights,
                     values: vec![
-                        CfValueObject { kind: CfValueObjectKind::Percent, value: Some("0".into()) },
-                        CfValueObject { kind: CfValueObjectKind::Percent, value: Some("25".into()) },
-                        CfValueObject { kind: CfValueObjectKind::Percent, value: Some("50".into()) },
-                        CfValueObject { kind: CfValueObjectKind::Percent, value: Some("75".into()) },
+                        CfValueObject {
+                            kind: CfValueObjectKind::Percent,
+                            value: Some("0".into()),
+                        },
+                        CfValueObject {
+                            kind: CfValueObjectKind::Percent,
+                            value: Some("25".into()),
+                        },
+                        CfValueObject {
+                            kind: CfValueObjectKind::Percent,
+                            value: Some("50".into()),
+                        },
+                        CfValueObject {
+                            kind: CfValueObjectKind::Percent,
+                            value: Some("75".into()),
+                        },
                     ],
                     show_value: Some(false),
                     percent: Some(true),
@@ -2825,8 +3068,14 @@ fn conditional_format_color_scale_rejects_mismatched_lengths() {
                 kind: CfRuleKind::ColorScale,
                 color_scale: Some(ColorScalePatch {
                     values: vec![
-                        CfValueObject { kind: CfValueObjectKind::Min, value: None },
-                        CfValueObject { kind: CfValueObjectKind::Max, value: None },
+                        CfValueObject {
+                            kind: CfValueObjectKind::Min,
+                            value: None,
+                        },
+                        CfValueObject {
+                            kind: CfValueObjectKind::Max,
+                            value: None,
+                        },
                     ],
                     colors: vec!["#FF0000".into()],
                 }),
@@ -2848,8 +3097,14 @@ fn conditional_format_icon_set_rejects_wrong_arity() {
                 icon_set: Some(IconSetPatch {
                     icon_set: CfIconSetKind::ThreeTrafficLights1,
                     values: vec![
-                        CfValueObject { kind: CfValueObjectKind::Percent, value: Some("0".into()) },
-                        CfValueObject { kind: CfValueObjectKind::Percent, value: Some("50".into()) },
+                        CfValueObject {
+                            kind: CfValueObjectKind::Percent,
+                            value: Some("0".into()),
+                        },
+                        CfValueObject {
+                            kind: CfValueObjectKind::Percent,
+                            value: Some("50".into()),
+                        },
                     ],
                     show_value: None,
                     percent: None,
@@ -2982,10 +3237,7 @@ fn charts_create_list_remove_roundtrip() {
     assert_eq!(chart.anchor.from_column, 3);
     assert_eq!(chart.anchor.to_row, 16);
 
-    let removed = reopened
-        .remove_chart("Sheet1", &chart.id)
-        .unwrap()
-        .unwrap();
+    let removed = reopened.remove_chart("Sheet1", &chart.id).unwrap().unwrap();
     assert_eq!(removed.id, chart.id);
     assert!(reopened.charts(None).unwrap().is_empty());
 
@@ -3059,9 +3311,12 @@ fn charts_supports_multiple_kinds() {
 fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
     let mut wb = Workbook::new().unwrap();
     for r in 2..=4 {
-        wb.set_value(format!("Sheet1!A{r}").as_str(), (r as f64) * 1.5).unwrap();
-        wb.set_value(format!("Sheet1!B{r}").as_str(), (r as f64) * 2.0).unwrap();
-        wb.set_value(format!("Sheet1!C{r}").as_str(), (r as f64) * 5.0).unwrap();
+        wb.set_value(format!("Sheet1!A{r}").as_str(), (r as f64) * 1.5)
+            .unwrap();
+        wb.set_value(format!("Sheet1!B{r}").as_str(), (r as f64) * 2.0)
+            .unwrap();
+        wb.set_value(format!("Sheet1!C{r}").as_str(), (r as f64) * 5.0)
+            .unwrap();
     }
 
     wb.set_chart(ChartPatch {
@@ -3081,7 +3336,10 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             data_labels: None,
         }],
         anchor: ChartAnchor {
-            from_column: 4, from_row: 1, to_column: 12, to_row: 16,
+            from_column: 4,
+            from_row: 1,
+            to_column: 12,
+            to_row: 16,
             ..Default::default()
         },
         category_axis_title: Some("X-Axis".to_string()),
@@ -3105,7 +3363,13 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             bubble_sizes_ref: Some("Sheet1!$C$2:$C$4".to_string()),
             ..Default::default()
         }],
-        anchor: ChartAnchor { from_column: 1, from_row: 18, to_column: 8, to_row: 30, ..Default::default() },
+        anchor: ChartAnchor {
+            from_column: 1,
+            from_row: 18,
+            to_column: 8,
+            to_row: 30,
+            ..Default::default()
+        },
         category_axis_title: None,
         value_axis_title: None,
         stacking: None,
@@ -3125,7 +3389,13 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             color: Some("#00aacc".to_string()),
             ..Default::default()
         }],
-        anchor: ChartAnchor { from_column: 9, from_row: 18, to_column: 16, to_row: 30, ..Default::default() },
+        anchor: ChartAnchor {
+            from_column: 9,
+            from_row: 18,
+            to_column: 16,
+            to_row: 30,
+            ..Default::default()
+        },
         category_axis_title: None,
         value_axis_title: None,
         stacking: None,
@@ -3138,18 +3408,33 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
     let charts = reopened.charts(None).unwrap();
     assert_eq!(charts.len(), 3);
 
-    let sc = charts.iter().find(|c| c.kind == ChartKind::Scatter).unwrap();
-    assert_eq!(sc.series[0].x_values_ref.as_deref(), Some("Sheet1!$A$2:$A$4"));
+    let sc = charts
+        .iter()
+        .find(|c| c.kind == ChartKind::Scatter)
+        .unwrap();
+    assert_eq!(
+        sc.series[0].x_values_ref.as_deref(),
+        Some("Sheet1!$A$2:$A$4")
+    );
     assert_eq!(sc.series[0].values_ref, "Sheet1!$B$2:$B$4");
     assert_eq!(sc.series[0].color.as_deref(), Some("FF8800"));
     assert_eq!(sc.category_axis_title.as_deref(), Some("X-Axis"));
     assert_eq!(sc.value_axis_title.as_deref(), Some("Y-Axis"));
 
     let bu = charts.iter().find(|c| c.kind == ChartKind::Bubble).unwrap();
-    assert_eq!(bu.series[0].x_values_ref.as_deref(), Some("Sheet1!$A$2:$A$4"));
-    assert_eq!(bu.series[0].bubble_sizes_ref.as_deref(), Some("Sheet1!$C$2:$C$4"));
+    assert_eq!(
+        bu.series[0].x_values_ref.as_deref(),
+        Some("Sheet1!$A$2:$A$4")
+    );
+    assert_eq!(
+        bu.series[0].bubble_sizes_ref.as_deref(),
+        Some("Sheet1!$C$2:$C$4")
+    );
 
-    let dn = charts.iter().find(|c| c.kind == ChartKind::Doughnut).unwrap();
+    let dn = charts
+        .iter()
+        .find(|c| c.kind == ChartKind::Doughnut)
+        .unwrap();
     assert_eq!(dn.categories_ref.as_deref(), Some("Sheet1!$A$2:$A$4"));
     assert_eq!(dn.series[0].color.as_deref(), Some("00AACC"));
 }
@@ -3303,7 +3588,11 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
     assert_eq!(col_stacked.stacking, Some(ChartStacking::Stacked));
 
     let bar_pct = wb
-        .set_chart(base(ChartKind::Bar, Some(ChartStacking::PercentStacked), 14))
+        .set_chart(base(
+            ChartKind::Bar,
+            Some(ChartStacking::PercentStacked),
+            14,
+        ))
         .unwrap();
     assert_eq!(bar_pct.stacking, Some(ChartStacking::PercentStacked));
 
@@ -3313,7 +3602,11 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
     assert_eq!(line_stacked.stacking, Some(ChartStacking::Stacked));
 
     let area_pct = wb
-        .set_chart(base(ChartKind::Area, Some(ChartStacking::PercentStacked), 42))
+        .set_chart(base(
+            ChartKind::Area,
+            Some(ChartStacking::PercentStacked),
+            42,
+        ))
         .unwrap();
     assert_eq!(area_pct.stacking, Some(ChartStacking::PercentStacked));
 
@@ -3332,11 +3625,26 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
             .cloned()
             .unwrap_or_else(|| panic!("missing {:?} chart at row {row}", k))
     };
-    assert_eq!(by_kind(ChartKind::Column, 1).stacking, Some(ChartStacking::Stacked));
-    assert_eq!(by_kind(ChartKind::Bar, 14).stacking, Some(ChartStacking::PercentStacked));
-    assert_eq!(by_kind(ChartKind::Line, 28).stacking, Some(ChartStacking::Stacked));
-    assert_eq!(by_kind(ChartKind::Area, 42).stacking, Some(ChartStacking::PercentStacked));
-    assert_eq!(by_kind(ChartKind::Column, 56).stacking, Some(ChartStacking::Clustered));
+    assert_eq!(
+        by_kind(ChartKind::Column, 1).stacking,
+        Some(ChartStacking::Stacked)
+    );
+    assert_eq!(
+        by_kind(ChartKind::Bar, 14).stacking,
+        Some(ChartStacking::PercentStacked)
+    );
+    assert_eq!(
+        by_kind(ChartKind::Line, 28).stacking,
+        Some(ChartStacking::Stacked)
+    );
+    assert_eq!(
+        by_kind(ChartKind::Area, 42).stacking,
+        Some(ChartStacking::PercentStacked)
+    );
+    assert_eq!(
+        by_kind(ChartKind::Column, 56).stacking,
+        Some(ChartStacking::Clustered)
+    );
 }
 
 #[test]
@@ -3463,7 +3771,10 @@ fn charts_data_labels_roundtrip() {
     let mut wb2 = Workbook::open_bytes(bytes).unwrap();
     let charts = wb2.charts(Some("Sheet1")).unwrap();
     assert_eq!(charts.len(), 1);
-    let dl = charts[0].data_labels.as_ref().expect("data_labels survives reopen");
+    let dl = charts[0]
+        .data_labels
+        .as_ref()
+        .expect("data_labels survives reopen");
     assert_eq!(dl.show_value, Some(true));
     assert_eq!(dl.show_category_name, Some(false));
     assert_eq!(dl.position, Some(ChartDataLabelPosition::OutsideEnd));
@@ -3565,7 +3876,10 @@ fn charts_per_series_data_labels_override_chart_level() {
     let info = &charts[0];
     assert_eq!(info.series.len(), 2);
 
-    let s0 = info.series[0].data_labels.as_ref().expect("series 0 has dl");
+    let s0 = info.series[0]
+        .data_labels
+        .as_ref()
+        .expect("series 0 has dl");
     assert_eq!(s0.show_value, Some(true));
     assert_eq!(s0.position, Some(ChartDataLabelPosition::OutsideEnd));
 
@@ -3580,12 +3894,11 @@ fn charts_per_series_data_labels_override_chart_level() {
 }
 
 const PNG_1X1: &[u8] = &[
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
-    0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
-    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
-    0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+    0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
+    0x42, 0x60, 0x82,
 ];
 
 #[test]
@@ -3753,7 +4066,13 @@ fn sparkline_groups_create_list_remove_roundtrip() {
         vec![
             vec![1.0.into(), 2.0.into(), 3.0.into(), 4.0.into(), 5.0.into()],
             vec![5.0.into(), 3.0.into(), 4.0.into(), 1.0.into(), 2.0.into()],
-            vec![1.0.into(), (-2.0).into(), 3.0.into(), (-4.0).into(), 5.0.into()],
+            vec![
+                1.0.into(),
+                (-2.0).into(),
+                3.0.into(),
+                (-4.0).into(),
+                5.0.into(),
+            ],
         ],
     )
     .unwrap();
@@ -3763,8 +4082,14 @@ fn sparkline_groups_create_list_remove_roundtrip() {
             sheet: "Sheet1".to_string(),
             kind: SparklineKind::Line,
             sparklines: vec![
-                SparklineEntry { location: "F1".into(), data_ref: "Sheet1!A1:E1".into() },
-                SparklineEntry { location: "F2".into(), data_ref: "Sheet1!A2:E2".into() },
+                SparklineEntry {
+                    location: "F1".into(),
+                    data_ref: "Sheet1!A1:E1".into(),
+                },
+                SparklineEntry {
+                    location: "F2".into(),
+                    data_ref: "Sheet1!A2:E2".into(),
+                },
             ],
             markers: Some(true),
             high: Some(true),
@@ -3781,7 +4106,10 @@ fn sparkline_groups_create_list_remove_roundtrip() {
         .set_sparkline_group(SparklineGroupPatch {
             sheet: "Sheet1".to_string(),
             kind: SparklineKind::Column,
-            sparklines: vec![SparklineEntry { location: "F3".into(), data_ref: "Sheet1!A3:E3".into() }],
+            sparklines: vec![SparklineEntry {
+                location: "F3".into(),
+                data_ref: "Sheet1!A3:E3".into(),
+            }],
             negative: Some(true),
             ..Default::default()
         })
@@ -3803,7 +4131,10 @@ fn sparkline_groups_create_list_remove_roundtrip() {
     assert_eq!(groups[1].sparklines[0].location, "F3");
 
     let first_id = groups[0].id.clone();
-    let removed = reopened.remove_sparkline_group("Sheet1", &first_id).unwrap().unwrap();
+    let removed = reopened
+        .remove_sparkline_group("Sheet1", &first_id)
+        .unwrap()
+        .unwrap();
     assert_eq!(removed.id, first_id);
 
     let bytes2 = reopened.save_bytes().unwrap();
@@ -3836,20 +4167,102 @@ fn sparkline_groups_validate_inputs() {
         .set_sparkline_group(SparklineGroupPatch {
             sheet: "Sheet1".into(),
             kind: SparklineKind::Line,
-            sparklines: vec![SparklineEntry { location: "nope".into(), data_ref: "A1:E1".into() }],
+            sparklines: vec![SparklineEntry {
+                location: "nope".into(),
+                data_ref: "A1:E1".into(),
+            }],
             ..Default::default()
         })
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidSparklineGroup);
 
+    let info = wb
+        .set_sparkline_group(SparklineGroupPatch {
+            sheet: "Sheet1".into(),
+            kind: SparklineKind::Line,
+            sparklines: vec![SparklineEntry {
+                location: "F1".into(),
+                data_ref: "A1:E1".into(),
+            }],
+            series_color: Some("#4472c4".into()),
+            negative_color: Some("FF0000".into()),
+            ..Default::default()
+        })
+        .unwrap();
+    assert_eq!(info.series_color.as_deref(), Some("4472C4"));
+    assert_eq!(info.negative_color.as_deref(), Some("FF0000"));
+
     let err = wb
         .set_sparkline_group(SparklineGroupPatch {
             sheet: "Sheet1".into(),
             kind: SparklineKind::Line,
-            sparklines: vec![SparklineEntry { location: "F1".into(), data_ref: "A1:E1".into() }],
-            series_color: Some("#4472C4".into()),
+            sparklines: vec![SparklineEntry {
+                location: "F2".into(),
+                data_ref: "A2:E2".into(),
+            }],
+            series_color: Some("not-a-color".into()),
             ..Default::default()
         })
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidSparklineGroup);
+}
+
+#[test]
+fn defined_names_resolve_in_recalculate() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A1", 10.0).unwrap();
+    wb.set_value("Sheet1!A2", 20.0).unwrap();
+    wb.set_value("Sheet1!A3", 30.0).unwrap();
+    wb.set_value("Sheet1!D1", 5.0).unwrap();
+
+    wb.set_defined_name(DefinedNamePatch {
+        name: "MyRange".to_string(),
+        reference: "Sheet1!$A$1:$A$3".to_string(),
+        ..Default::default()
+    })
+    .unwrap();
+    wb.set_defined_name(DefinedNamePatch {
+        name: "Pivot".to_string(),
+        reference: "Sheet1!$D$1".to_string(),
+        ..Default::default()
+    })
+    .unwrap();
+
+    wb.set_formula("Sheet1!B1", "=SUM(MyRange)").unwrap();
+    wb.set_formula("Sheet1!B2", "=SUM(MyRange)+Pivot").unwrap();
+
+    let recalc = wb.recalculate().unwrap();
+    let b1 = recalc.cell("Sheet1", "B1").unwrap();
+    assert!(b1.fallback.is_none(), "B1 fallback: {:?}", b1.fallback);
+    assert_eq!(b1.value, xlcore_engine::CellValue::Number(60.0));
+    let b2 = recalc.cell("Sheet1", "B2").unwrap();
+    assert!(b2.fallback.is_none(), "B2 fallback: {:?}", b2.fallback);
+    assert_eq!(b2.value, xlcore_engine::CellValue::Number(65.0));
+}
+
+#[test]
+fn defined_names_non_reference_formula_emits_warning() {
+    let mut wb = Workbook::new().unwrap();
+    wb.take_warnings();
+    wb.set_defined_name(DefinedNamePatch {
+        name: "TaxRate".to_string(),
+        reference: "0.1".to_string(),
+        ..Default::default()
+    })
+    .unwrap();
+    let warnings = wb.take_warnings();
+    assert_eq!(warnings.len(), 1, "warnings: {:?}", warnings);
+    assert!(
+        warnings[0].message.contains("TaxRate"),
+        "msg: {}",
+        warnings[0].message
+    );
+
+    wb.set_defined_name(DefinedNamePatch {
+        name: "Pivot".to_string(),
+        reference: "Sheet1!$A$1".to_string(),
+        ..Default::default()
+    })
+    .unwrap();
+    assert!(wb.take_warnings().is_empty());
 }

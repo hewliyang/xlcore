@@ -20,11 +20,9 @@ impl Fixer for AlternateContentUnfolder {
         part: &str,
         report: &mut LoadReport,
     ) -> Result<Option<Vec<u8>>, FixerError> {
-
         let mut state: State = State::Pass;
 
         sax_rewrite(xml, part, report, |ctx, ev| match (&mut state, ev) {
-
             (State::Pass, Event::Start(e)) if e.name().as_ref() == AC => {
                 state = State::Buffering {
                     depth: 1,
@@ -33,7 +31,6 @@ impl Fixer for AlternateContentUnfolder {
                 Emit::Drop
             }
             (State::Pass, Event::Empty(e)) if e.name().as_ref() == AC => {
-
                 ctx.report.fixes.push(FixedAttribute {
                     part: ctx.part.to_string(),
                     ty: Some(qname_string(&e)),
@@ -47,7 +44,6 @@ impl Fixer for AlternateContentUnfolder {
             (State::Pass, other) => Emit::Keep(other),
 
             (State::Buffering { depth, buf }, ev) => {
-
                 let is_ac_start = matches!(&ev, Event::Start(e) if e.name().as_ref() == AC);
                 let is_ac_end = matches!(&ev, Event::End(e) if e.name().as_ref() == AC);
 
@@ -102,7 +98,6 @@ fn pick_branch(buf: Vec<Event<'static>>) -> Vec<Event<'static>> {
 }
 
 fn extract_branch(buf: &[Event<'static>], tag: &[u8]) -> Option<Vec<Event<'static>>> {
-
     let mut iter = buf.iter().enumerate();
     let (open_idx, _) = iter.find(|(_, ev)| match ev {
         Event::Start(e) => e.name().as_ref() == tag,
@@ -135,7 +130,6 @@ fn into_owned(ev: Event<'_>) -> Event<'static> {
     match ev {
         Event::Start(e) => Event::Start(e.into_owned()),
         Event::End(e) => {
-
             let name = std::str::from_utf8(e.name().as_ref())
                 .unwrap_or("")
                 .to_string();

@@ -17,5 +17,9 @@ xlcore-types = { path = "../xlcore-types" }
 regex = { workspace = true }
 zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3"
+
 [dev-dependencies]
 xlcore-engine = { path = "../xlcore-engine" }
+serde_json = { workspace = true }

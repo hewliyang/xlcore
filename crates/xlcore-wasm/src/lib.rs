@@ -173,6 +173,7 @@ pub struct WorkbookHandle {
 impl WorkbookHandle {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Result<WorkbookHandle, JsValue> {
+        console_error_panic_hook::set_once();
         Ok(Self {
             workbook: Some(xlcore_api::Workbook::new().map_err(api_err_to_js)?),
         })
@@ -324,10 +325,7 @@ impl WorkbookHandle {
     }
 
     pub fn merges(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let merges = self
-            .workbook_mut()?
-            .merges(sheet)
-            .map_err(api_err_to_js)?;
+        let merges = self.workbook_mut()?.merges(sheet).map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&merges).map_err(other_err_to_js)
     }
 
@@ -861,11 +859,7 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = clearRangeWith)]
-    pub fn clear_range_with(
-        &mut self,
-        reference: &str,
-        mode: JsValue,
-    ) -> Result<JsValue, JsValue> {
+    pub fn clear_range_with(&mut self, reference: &str, mode: JsValue) -> Result<JsValue, JsValue> {
         let mode: xlcore_api::ClearMode =
             serde_wasm_bindgen::from_value(mode).map_err(other_err_to_js)?;
         let range = self
@@ -957,24 +951,14 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = setRowHeight)]
-    pub fn set_row_height(
-        &mut self,
-        sheet: &str,
-        row: u32,
-        height: f64,
-    ) -> Result<(), JsValue> {
+    pub fn set_row_height(&mut self, sheet: &str, row: u32, height: f64) -> Result<(), JsValue> {
         self.workbook_mut()?
             .set_row_height(sheet, row, height)
             .map_err(api_err_to_js)
     }
 
     #[wasm_bindgen(js_name = setRowVisible)]
-    pub fn set_row_visible(
-        &mut self,
-        sheet: &str,
-        row: u32,
-        visible: bool,
-    ) -> Result<(), JsValue> {
+    pub fn set_row_visible(&mut self, sheet: &str, row: u32, visible: bool) -> Result<(), JsValue> {
         self.workbook_mut()?
             .set_row_visible(sheet, row, visible)
             .map_err(api_err_to_js)
@@ -1005,48 +989,28 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = insertRows)]
-    pub fn insert_rows(
-        &mut self,
-        sheet: &str,
-        before: u32,
-        count: u32,
-    ) -> Result<(), JsValue> {
+    pub fn insert_rows(&mut self, sheet: &str, before: u32, count: u32) -> Result<(), JsValue> {
         self.workbook_mut()?
             .insert_rows(sheet, before, count)
             .map_err(api_err_to_js)
     }
 
     #[wasm_bindgen(js_name = deleteRows)]
-    pub fn delete_rows(
-        &mut self,
-        sheet: &str,
-        start: u32,
-        count: u32,
-    ) -> Result<(), JsValue> {
+    pub fn delete_rows(&mut self, sheet: &str, start: u32, count: u32) -> Result<(), JsValue> {
         self.workbook_mut()?
             .delete_rows(sheet, start, count)
             .map_err(api_err_to_js)
     }
 
     #[wasm_bindgen(js_name = insertColumns)]
-    pub fn insert_columns(
-        &mut self,
-        sheet: &str,
-        before: u32,
-        count: u32,
-    ) -> Result<(), JsValue> {
+    pub fn insert_columns(&mut self, sheet: &str, before: u32, count: u32) -> Result<(), JsValue> {
         self.workbook_mut()?
             .insert_columns(sheet, before, count)
             .map_err(api_err_to_js)
     }
 
     #[wasm_bindgen(js_name = deleteColumns)]
-    pub fn delete_columns(
-        &mut self,
-        sheet: &str,
-        start: u32,
-        count: u32,
-    ) -> Result<(), JsValue> {
+    pub fn delete_columns(&mut self, sheet: &str, start: u32, count: u32) -> Result<(), JsValue> {
         self.workbook_mut()?
             .delete_columns(sheet, start, count)
             .map_err(api_err_to_js)
@@ -1185,9 +1149,9 @@ fn range_formulas_from_js(value: JsValue) -> Result<Vec<Vec<Option<String>>>, Js
         .map_err(|_| other_err_to_js("range formulas must be a 2D array of strings or null"))?;
     let mut out: Vec<Vec<Option<String>>> = Vec::with_capacity(rows.length() as usize);
     for row in rows.iter() {
-        let row_arr: js_sys::Array = row.dyn_into().map_err(|_| {
-            other_err_to_js("range formulas must be a 2D array of strings or null")
-        })?;
+        let row_arr: js_sys::Array = row
+            .dyn_into()
+            .map_err(|_| other_err_to_js("range formulas must be a 2D array of strings or null"))?;
         let mut row_out = Vec::with_capacity(row_arr.length() as usize);
         for cell in row_arr.iter() {
             if cell.is_null() || cell.is_undefined() {

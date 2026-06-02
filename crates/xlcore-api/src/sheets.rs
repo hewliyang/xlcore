@@ -7,7 +7,8 @@ use xlcore_types::{ApiError, ApiErrorCode, SheetInfo, SheetVisibility};
 
 use crate::errors::sdk_err_to_api;
 use crate::refs::validate_sheet_name;
-use crate::xml::{empty_worksheet, sheet_dimensions, sheet_state_name};
+use crate::structural::rename_sheet_in_formula_refs;
+use crate::xml::{empty_worksheet, mark_formulas_stale, sheet_dimensions, sheet_state_name};
 use crate::{Result, Workbook};
 
 impl Workbook {
@@ -126,6 +127,48 @@ impl Workbook {
             .with_sheet(old_name));
         };
         sheet.name = new_name.to_string();
+
+        let sheet_names: Vec<String> = self
+            .workbook_sheets()?
+            .iter()
+            .map(|s| s.name.as_str().to_string())
+            .collect();
+        for name in &sheet_names {
+            let p = self.worksheet_part_for_sheet(name)?;
+            let ws = p.root_element_mut(&mut self.doc).map_err(sdk_err_to_api)?;
+            for row in &mut ws.sheet_data.row {
+                for cell in &mut row.cell {
+                    if let Some(formula) = cell.cell_formula.as_mut() {
+                        if let Some(text) = formula.xml_content.as_mut() {
+                            *text = rename_sheet_in_formula_refs(text, old_name, new_name);
+                        }
+                    }
+                }
+            }
+            for cf in &mut ws.conditional_formatting {
+                for rule in &mut cf.conditional_formatting_rule {
+                    for f in &mut rule.formula {
+                        if let Some(text) = f.xml_content.as_mut() {
+                            *text = rename_sheet_in_formula_refs(text, old_name, new_name);
+                        }
+                    }
+                }
+            }
+        }
+
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let workbook = wb_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        if let Some(dns) = workbook.defined_names.as_mut() {
+            for dn in &mut dns.defined_name {
+                if let Some(text) = dn.xml_content.as_mut() {
+                    *text = rename_sheet_in_formula_refs(text, old_name, new_name);
+                }
+            }
+        }
+
+        mark_formulas_stale(&mut self.doc)?;
         Ok(())
     }
 
@@ -394,10 +437,7 @@ impl Workbook {
             .collect())
     }
 
-    pub(crate) fn worksheet_part_for_sheet(
-        &mut self,
-        sheet_name: &str,
-    ) -> Result<WorksheetPart> {
+    pub(crate) fn worksheet_part_for_sheet(&mut self, sheet_name: &str) -> Result<WorksheetPart> {
         let workbook_sheets = self.workbook_sheets()?;
         let Some(sheet) = workbook_sheets
             .iter()
@@ -431,8 +471,6 @@ impl Workbook {
         self.workbook_sheets()?
             .first()
             .map(|sheet| sheet.name.as_str().to_string())
-            .ok_or_else(|| {
-                ApiError::new(ApiErrorCode::MissingSheet, "workbook has no worksheets")
-            })
+            .ok_or_else(|| ApiError::new(ApiErrorCode::MissingSheet, "workbook has no worksheets"))
     }
 }

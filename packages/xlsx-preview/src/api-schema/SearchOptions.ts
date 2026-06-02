@@ -9,4 +9,5 @@ export type SearchOptions = {
   mode: SearchMode;
   caseSensitive: boolean;
   maxResults?: number;
+  includeHidden?: boolean;
 };

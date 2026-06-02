@@ -199,13 +199,22 @@ pub(crate) fn extract_point_data_label(dl: &c::DataLabel) -> Option<PointDataLab
                 .numbering_format
                 .as_ref()
                 .map(|nf| nf.format_code.as_str().to_string());
-            let show_value = seq.show_value.as_ref().map(|b| b.val.unwrap_or(true.into()));
+            let show_value = seq
+                .show_value
+                .as_ref()
+                .map(|b| b.val.unwrap_or(true.into()));
             let show_category = seq
                 .show_category_name
                 .as_ref()
                 .map(|b| b.val.unwrap_or(true.into()));
-            let show_series_name = seq.show_series_name.as_ref().map(|b| b.val.unwrap_or(true.into()));
-            let show_percent = seq.show_percent.as_ref().map(|b| b.val.unwrap_or(true.into()));
+            let show_series_name = seq
+                .show_series_name
+                .as_ref()
+                .map(|b| b.val.unwrap_or(true.into()));
+            let show_percent = seq
+                .show_percent
+                .as_ref()
+                .map(|b| b.val.unwrap_or(true.into()));
 
             let text = seq.chart_text.as_deref().and_then(|txt| {
                 match txt.chart_text_choice.as_ref()? {
@@ -429,7 +438,9 @@ pub(crate) fn values_format(v: Option<&c::Values>) -> Option<String> {
             .numbering_cache
             .as_ref()
             .and_then(|nc| nc.format_code.as_ref().map(|s| s.as_str().to_string())),
-        c::ValuesChoice::NumberLiteral(lit) => lit.format_code.as_ref().map(|s| s.as_str().to_string()),
+        c::ValuesChoice::NumberLiteral(lit) => {
+            lit.format_code.as_ref().map(|s| s.as_str().to_string())
+        }
     }
 }
 
@@ -536,7 +547,9 @@ pub(crate) fn y_values_format(v: Option<&c::YValues>) -> Option<String> {
             .numbering_cache
             .as_ref()
             .and_then(|nc| nc.format_code.as_ref().map(|s| s.as_str().to_string())),
-        c::YValuesChoice::NumberLiteral(lit) => lit.format_code.as_ref().map(|s| s.as_str().to_string()),
+        c::YValuesChoice::NumberLiteral(lit) => {
+            lit.format_code.as_ref().map(|s| s.as_str().to_string())
+        }
     }
 }
 

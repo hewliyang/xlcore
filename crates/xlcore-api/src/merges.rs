@@ -33,9 +33,7 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let new_ref = range_ref.range_reference();
-        let merges = ws
-            .merge_cells
-            .get_or_insert_with(x::MergeCells::default);
+        let merges = ws.merge_cells.get_or_insert_with(x::MergeCells::default);
         for existing in &merges.merge_cell {
             let Some((r1, c1, r2, c2)) = parse_range_a1(existing.reference.as_str()) else {
                 continue;
@@ -68,10 +66,7 @@ impl Workbook {
         Ok(merge_info(&range_ref.sheet, &range_ref))
     }
 
-    pub fn remove_merge(
-        &mut self,
-        reference: impl AsRef<str>,
-    ) -> Result<Option<MergeInfo>> {
+    pub fn remove_merge(&mut self, reference: impl AsRef<str>) -> Result<Option<MergeInfo>> {
         let reference = reference.as_ref();
         let (sheet, body) = match split_sheet_reference(reference)? {
             (Some(s), body) => (s, body.to_string()),
@@ -117,10 +112,7 @@ impl Workbook {
                     && tr.end_row == r2
                     && tr.end_column == c2
             } else {
-                target_row >= r1
-                    && target_row <= r2
-                    && target_col >= c1
-                    && target_col <= c2
+                target_row >= r1 && target_row <= r2 && target_col >= c1 && target_col <= c2
             };
             if hit {
                 found = Some(idx);

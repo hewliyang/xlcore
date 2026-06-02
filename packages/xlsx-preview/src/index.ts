@@ -10,6 +10,7 @@ export {
   HyperlinkCollection,
   ImageCollection,
   MergeCollection,
+  NumberFormat,
   Range,
   SheetFreeze,
   SheetPageSetupApi,
@@ -24,7 +25,7 @@ export {
   WorkbookTables,
   Worksheet,
 } from "./api.js";
-export type { CellAddress, RangeAddress } from "./api.js";
+export type { CellAddress, RangeAddress, NumberFormatCode, NumberFormatKey } from "./api.js";
 export { attachInteractivity } from "./interact.js";
 export { createWorkbookPreviewer } from "./previewer.js";
 export {

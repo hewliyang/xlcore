@@ -68,6 +68,18 @@ impl<'a> WorkbookEngine<'a> {
         Ok(())
     }
 
+    pub fn add_defined_name(
+        &mut self,
+        name: &str,
+        scope: Option<u32>,
+        formula: &str,
+    ) -> Result<()> {
+        let trimmed = formula.trim();
+        let trimmed = trimmed.strip_prefix('=').unwrap_or(trimmed);
+        self.model.new_defined_name(name, scope, trimmed)?;
+        Ok(())
+    }
+
     pub fn set_input(
         &mut self,
         sheet: u32,

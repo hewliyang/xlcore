@@ -191,17 +191,28 @@ fn extract_font(f: &XFont) -> Font {
     Font {
         name: ff.font_name.map(|n| n.val.as_str().to_string()),
         size: ff.font_size.map(|s| s.val as f32),
-        bold: ff.bold.map(|b| b.val.map(bool::from).unwrap_or(true)).unwrap_or(false),
-        italic: ff.italic.map(|i| i.val.map(bool::from).unwrap_or(true)).unwrap_or(false),
+        bold: ff
+            .bold
+            .map(|b| b.val.map(bool::from).unwrap_or(true))
+            .unwrap_or(false),
+        italic: ff
+            .italic
+            .map(|i| i.val.map(bool::from).unwrap_or(true))
+            .unwrap_or(false),
         underline: match ff.underline {
             Some(u) => !matches!(crate::underline_variant(u.val), Some("none")),
             None => false,
         },
-        underline_style: ff.underline.and_then(|u| match crate::underline_variant(u.val) {
-            Some(v) if v != "single" && v != "none" => Some(v.to_string()),
-            _ => None,
-        }),
-        strike: ff.strike.map(|s| s.val.map(bool::from).unwrap_or(true)).unwrap_or(false),
+        underline_style: ff
+            .underline
+            .and_then(|u| match crate::underline_variant(u.val) {
+                Some(v) if v != "single" && v != "none" => Some(v.to_string()),
+                _ => None,
+            }),
+        strike: ff
+            .strike
+            .map(|s| s.val.map(bool::from).unwrap_or(true))
+            .unwrap_or(false),
         color: ff.color.and_then(extract_color_x),
         vert_align: ff
             .vertical_text_alignment
@@ -214,7 +225,9 @@ fn extract_font(f: &XFont) -> Font {
                 None
             }
         }),
-        scheme: ff.font_scheme.and_then(|s| crate::font_scheme_variant(s.val)),
+        scheme: ff
+            .font_scheme
+            .and_then(|s| crate::font_scheme_variant(s.val)),
     }
 }
 

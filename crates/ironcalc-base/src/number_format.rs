@@ -4,92 +4,77 @@ use crate::{
     types::NumFmt,
 };
 
-const DEFAULT_NUM_FMTS: &[&str] = &[
-    "general",
-    "0",
-    "0.00",
-    "#,##0",
-    "#,##0.00",
-    "$#,##0; \\ - $#,##0",
-    "$#,##0; [Red] \\ - $#,##0",
-    "$#,##0.00; \\ - $#,##0.00",
-    "$#,##0.00; [Red] \\ - $#,##0.00",
-    "0%",
-    "0.00%",
-    "0.00E + 00",
-    "#?/?",
-    "#?? / ??",
-    "mm-dd-yy",
-    "d-mmm-yy",
-    "d-mmm",
-    "mmm-yy",
-    "h:mm AM / PM",
-    "h:mm:ss AM / PM",
-    "h:mm",
-    "h:mm:ss",
-    "m / d / yy h:mm",
-    "#,##0;()#,##0)",
-    "#,##0; [Red]()#,##0)",
-    "#,##0.00;()#,##0.00)",
-    "#,##0.00; [Red]()#,##0.00)",
-    "_()$”*#,##0.00 _); _()$”* \\()#,##0.00\\); _()$”* - ?? _); _()@_)",
-    "mm:ss",
-    "[h]:mm:ss",
-    "mmss .0",
-    "##0.0E + 0",
-    "@",
-    "[$ -404] e / m / d ",
-    "m / d / yy",
-    "[$ -404] e / m / d",
-    "[$ -404] e / / d",
-    "[$ -404] e / m / d",
-    "t0",
-    "t0.00",
-    "t#,##0",
-    "t#,##0.00",
-    "t0%",
-    "t0.00 %",
-    "t#?/?",
+// ECMA-376 Part 1 §18.8.30 "All Languages" built-in number formats.
+// IDs 5–8, 23–36, 41–44, 50–58 are implementation-defined per the spec
+// and intentionally omitted here; they must be carried as explicit
+// `<numFmt>` entries on the styles part.
+const BUILT_IN_FORMATS: &[(i32, &str)] = &[
+    (0, "general"),
+    (1, "0"),
+    (2, "0.00"),
+    (3, "#,##0"),
+    (4, "#,##0.00"),
+    (9, "0%"),
+    (10, "0.00%"),
+    (11, "0.00E+00"),
+    (12, "# ?/?"),
+    (13, "# ??/??"),
+    (14, "mm-dd-yy"),
+    (15, "d-mmm-yy"),
+    (16, "d-mmm"),
+    (17, "mmm-yy"),
+    (18, "h:mm AM/PM"),
+    (19, "h:mm:ss AM/PM"),
+    (20, "h:mm"),
+    (21, "h:mm:ss"),
+    (22, "m/d/yy h:mm"),
+    (37, "#,##0 ;(#,##0)"),
+    (38, "#,##0 ;[Red](#,##0)"),
+    (39, "#,##0.00;(#,##0.00)"),
+    (40, "#,##0.00;[Red](#,##0.00)"),
+    (45, "mm:ss"),
+    (46, "[h]:mm:ss"),
+    (47, "mmss.0"),
+    (48, "##0.0E+0"),
+    (49, "@"),
 ];
 
+const CUSTOM_NUM_FMT_START: i32 = 164;
+
 pub fn get_default_num_fmt_id(num_fmt: &str) -> Option<i32> {
-    for (index, default_num_fmt) in DEFAULT_NUM_FMTS.iter().enumerate() {
-        if default_num_fmt == &num_fmt {
-            return Some(index as i32);
-        };
+    for (id, code) in BUILT_IN_FORMATS {
+        if *code == num_fmt {
+            return Some(*id);
+        }
+    }
+    if num_fmt.eq_ignore_ascii_case("general") {
+        return Some(0);
     }
     None
 }
 
 pub fn get_num_fmt(num_fmt_id: i32, num_fmts: &[NumFmt]) -> String {
-    // Check if it defined
     for num_fmt in num_fmts {
         if num_fmt.num_fmt_id == num_fmt_id {
             return num_fmt.format_code.clone();
         }
     }
-    // Return one of the default ones
-    if num_fmt_id < DEFAULT_NUM_FMTS.len() as i32 {
-        return DEFAULT_NUM_FMTS[num_fmt_id as usize].to_string();
+    for (id, code) in BUILT_IN_FORMATS {
+        if *id == num_fmt_id {
+            return (*code).to_string();
+        }
     }
-    // Return general
-    DEFAULT_NUM_FMTS[0].to_string()
+    "general".to_string()
 }
 
 pub fn get_new_num_fmt_index(num_fmts: &[NumFmt]) -> i32 {
-    let mut index = DEFAULT_NUM_FMTS.len() as i32;
-    let mut found = true;
-    while found {
-        found = false;
-        for num_fmt in num_fmts {
-            if num_fmt.num_fmt_id == index {
-                found = true;
-                index += 1;
-                break;
-            }
+    let mut index = CUSTOM_NUM_FMT_START;
+    loop {
+        if num_fmts.iter().all(|nf| nf.num_fmt_id != index) {
+            return index;
         }
+        index += 1;
     }
-    index
 }
 
 pub fn to_precision(value: f64, precision: usize) -> f64 {

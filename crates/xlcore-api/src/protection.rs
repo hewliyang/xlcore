@@ -64,7 +64,10 @@ impl Workbook {
         let wb = wb_part
             .root_element(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        Ok(wb.workbook_protection.as_ref().map(read_workbook_protection))
+        Ok(wb
+            .workbook_protection
+            .as_ref()
+            .map(read_workbook_protection))
     }
 
     pub fn set_workbook_protection(
@@ -88,7 +91,10 @@ impl Workbook {
         let wb = wb_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        let removed = wb.workbook_protection.as_ref().map(read_workbook_protection);
+        let removed = wb
+            .workbook_protection
+            .as_ref()
+            .map(read_workbook_protection);
         wb.workbook_protection = None;
         Ok(removed)
     }
@@ -271,10 +277,16 @@ fn validate_workbook_patch(patch: &WorkbookProtectionPatch) -> Result<()> {
         validate_hex(p, "revisionsPassword")?;
     }
     for (value, name) in [
-        (patch.workbook_algorithm_name.as_deref(), "workbookAlgorithmName"),
+        (
+            patch.workbook_algorithm_name.as_deref(),
+            "workbookAlgorithmName",
+        ),
         (patch.workbook_hash_value.as_deref(), "workbookHashValue"),
         (patch.workbook_salt_value.as_deref(), "workbookSaltValue"),
-        (patch.revisions_algorithm_name.as_deref(), "revisionsAlgorithmName"),
+        (
+            patch.revisions_algorithm_name.as_deref(),
+            "revisionsAlgorithmName",
+        ),
         (patch.revisions_hash_value.as_deref(), "revisionsHashValue"),
         (patch.revisions_salt_value.as_deref(), "revisionsSaltValue"),
     ] {

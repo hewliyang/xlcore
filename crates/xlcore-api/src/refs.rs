@@ -226,8 +226,14 @@ pub(crate) fn parse_range_a1(reference: &str) -> Option<(u32, u32, u32, u32)> {
 }
 
 pub(crate) fn ranges_overlap(
-    ar1: u32, ac1: u32, ar2: u32, ac2: u32,
-    br1: u32, bc1: u32, br2: u32, bc2: u32,
+    ar1: u32,
+    ac1: u32,
+    ar2: u32,
+    ac2: u32,
+    br1: u32,
+    bc1: u32,
+    br2: u32,
+    bc2: u32,
 ) -> bool {
     ar1 <= br2 && br1 <= ar2 && ac1 <= bc2 && bc1 <= ac2
 }

@@ -16,7 +16,6 @@ pub(crate) fn precompile_xlsx(
 }
 
 pub(crate) fn default_pipeline() -> Vec<Box<dyn Fixer>> {
-
     vec![
         Box::new(fixers::mc_alternate_content::AlternateContentUnfolder),
         Box::new(fixers::prefix_canonicalize::PrefixCanonicalizer),
@@ -31,7 +30,6 @@ fn run_pipeline(
     pipeline: &[Box<dyn Fixer>],
     report: &mut LoadReport,
 ) -> Result<Vec<u8>, XlsxLoadError> {
-
     let mut entries = read_zip(&bytes)?;
 
     let mut any_changed = false;

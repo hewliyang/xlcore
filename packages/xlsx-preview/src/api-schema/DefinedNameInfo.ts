@@ -2,7 +2,7 @@
 
 export type DefinedNameInfo = {
   name: string;
-  formula: string;
+  reference: string;
   scope?: string;
   comment?: string;
   hidden: boolean;

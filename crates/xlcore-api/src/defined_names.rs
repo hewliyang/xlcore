@@ -1,6 +1,6 @@
 use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
-use xlcore_types::{ApiError, ApiErrorCode, DefinedNameInfo, DefinedNamePatch};
+use xlcore_types::{ApiError, ApiErrorCode, ApiWarning, DefinedNameInfo, DefinedNamePatch};
 
 use crate::errors::sdk_err_to_api;
 use crate::{Result, Workbook};
@@ -34,11 +34,15 @@ impl Workbook {
         let wb = wb_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        let dns = wb.defined_names.get_or_insert_with(x::DefinedNames::default);
-        let trimmed_formula = patch.formula.trim().to_string();
-        let pos = dns.defined_name.iter().position(|dn| {
-            dn.name.as_str() == patch.name && dn.local_sheet_id == local_sheet_id
-        });
+        let dns = wb
+            .defined_names
+            .get_or_insert_with(x::DefinedNames::default);
+        let trimmed_formula = patch.reference.trim().to_string();
+        let engine_supported = looks_like_reference_formula(&trimmed_formula);
+        let pos = dns
+            .defined_name
+            .iter()
+            .position(|dn| dn.name.as_str() == patch.name && dn.local_sheet_id == local_sheet_id);
         let comment = patch.comment.clone().map(Into::into);
         let hidden = patch.hidden.map(|h| h.into());
         if let Some(idx) = pos {
@@ -56,13 +60,27 @@ impl Workbook {
                 ..Default::default()
             });
         }
-        Ok(DefinedNameInfo {
-            name: patch.name,
-            formula: trimmed_formula,
-            scope: patch.scope,
+        let info = DefinedNameInfo {
+            name: patch.name.clone(),
+            reference: trimmed_formula.clone(),
+            scope: patch.scope.clone(),
             comment: patch.comment,
             hidden: patch.hidden.unwrap_or(false),
-        })
+        };
+        if !engine_supported {
+            let mut warning = ApiWarning::new(
+                ApiErrorCode::LossyOperation,
+                format!(
+                    "defined name '{}' uses a non-reference expression ('{}'); calc engine will resolve it as #NAME?",
+                    patch.name, trimmed_formula
+                ),
+            );
+            if let Some(scope) = patch.scope.as_deref() {
+                warning = warning.with_sheet(scope);
+            }
+            self.push_warning(warning);
+        }
+        Ok(info)
     }
 
     pub fn remove_defined_name(
@@ -113,7 +131,7 @@ fn defined_name_info(dn: &x::DefinedName, sheet_names: &[String]) -> DefinedName
         .and_then(|i| sheet_names.get(i as usize).cloned());
     DefinedNameInfo {
         name: dn.name.as_str().to_string(),
-        formula: dn
+        reference: dn
             .xml_content
             .as_ref()
             .map(|s| s.as_str().to_string())
@@ -187,13 +205,88 @@ fn validate_defined_name(patch: &DefinedNamePatch) -> Result<()> {
             "defined name cannot be a reserved single letter (R/C)",
         ));
     }
-    if patch.formula.trim().is_empty() {
+    if patch.reference.trim().is_empty() {
         return Err(ApiError::new(
             ApiErrorCode::InvalidDefinedName,
-            "defined name formula is empty",
+            "defined name reference is empty",
         ));
     }
     Ok(())
+}
+
+fn looks_like_reference_formula(formula: &str) -> bool {
+    let body = formula.strip_prefix('=').unwrap_or(formula).trim();
+    if body.is_empty() {
+        return false;
+    }
+    let (_sheet, rest) = split_sheet_prefix(body);
+    let mut parts = rest.splitn(2, ':');
+    let Some(first) = parts.next() else {
+        return false;
+    };
+    if !is_cell_token(first) {
+        return false;
+    }
+    if let Some(second) = parts.next() {
+        if !is_cell_token(second) {
+            return false;
+        }
+    }
+    true
+}
+
+fn split_sheet_prefix(s: &str) -> (Option<&str>, &str) {
+    if let Some(rest) = s.strip_prefix('\'') {
+        if let Some(end) = rest.find('\'') {
+            let after = &rest[end + 1..];
+            if let Some(rest2) = after.strip_prefix('!') {
+                return (Some(&rest[..end]), rest2);
+            }
+        }
+        return (None, s);
+    }
+    if let Some(idx) = s.find('!') {
+        let prefix = &s[..idx];
+        if prefix
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '.')
+            && !prefix.is_empty()
+        {
+            return (Some(prefix), &s[idx + 1..]);
+        }
+    }
+    (None, s)
+}
+
+fn is_cell_token(token: &str) -> bool {
+    let token = token.trim();
+    let token = token.strip_prefix('$').unwrap_or(token);
+    let mut chars = token.chars().peekable();
+    let mut letters = 0;
+    while let Some(&c) = chars.peek() {
+        if c.is_ascii_alphabetic() {
+            letters += 1;
+            chars.next();
+        } else {
+            break;
+        }
+    }
+    if letters == 0 || letters > 3 {
+        return false;
+    }
+    if let Some(&'$') = chars.peek() {
+        chars.next();
+    }
+    let mut digits = 0;
+    while let Some(&c) = chars.peek() {
+        if c.is_ascii_digit() {
+            digits += 1;
+            chars.next();
+        } else {
+            break;
+        }
+    }
+    digits > 0 && chars.next().is_none()
 }
 
 fn looks_like_cell_ref(name: &str) -> bool {

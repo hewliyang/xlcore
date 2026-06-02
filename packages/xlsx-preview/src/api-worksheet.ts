@@ -7,6 +7,7 @@ import type {
   SheetProtectionInfo,
   SheetProtectionPatch,
   SheetVisibility,
+  StylePatch,
 } from "./api-schema/index.js";
 import {
   AutoFilterApi,
@@ -21,7 +22,7 @@ import {
   TableCollection,
   ThreadedNotesCollection,
 } from "./api-collections.js";
-import { type CellAddress, type RangeAddress, type SheetRef } from "./api-refs.js";
+import { type CellAddress, type RangeAddress, type SheetRef, qualify } from "./api-refs.js";
 import { Cell, Range, makeCell, makeRange } from "./api-range.js";
 
 abstract class SheetScopedApi {
@@ -139,6 +140,30 @@ export class Worksheet {
 
   cell(addr: CellAddress): Cell {
     return makeCell(this.handle, this.sheetRef, addr);
+  }
+
+  /**
+   * Bulk-apply a map (or `[ref, patch]` iterable) of styles to this sheet.
+   *
+   * Each entry is forwarded to the underlying `setStyle`, so the same merged-cell
+   * caveat applies: target the merge's **top-left anchor** rather than the full
+   * merged range — OOXML only stores style on the anchor.
+   */
+  setStyles(patches: Record<string, StylePatch> | Iterable<[string, StylePatch]>): this {
+    const entries: Array<[string, StylePatch]> =
+      typeof (patches as Iterable<[string, StylePatch]>)[Symbol.iterator] === "function"
+        ? Array.from(patches as Iterable<[string, StylePatch]>)
+        : Object.entries(patches as Record<string, StylePatch>);
+    for (const [ref, patch] of entries) {
+      if (typeof ref !== "string" || ref.length === 0) {
+        throw new TypeError(`setStyles: reference must be a non-empty string, got ${String(ref)}`);
+      }
+      if (patch === null || typeof patch !== "object") {
+        throw new TypeError(`setStyles: patch for '${ref}' must be a StylePatch object`);
+      }
+      this.handle.setStyle(qualify(this.name, ref), patch);
+    }
+    return this;
   }
 
   setRowHeight(row: number, height: number): this {

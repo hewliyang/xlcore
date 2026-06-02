@@ -7,6 +7,33 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `Workbook.create()` / `Workbook.open()` from `@hewliyang/xlsx-preview/api` now load the bundled wasm via `readFileSync` on Node (auto-detected) instead of a `file://` URL that Node `fetch` rejects; no more manual `wasmBinaryUrl` plumbing required.
+- `setHyperlink({ display })` now auto-populates the top-left cell's value with `display` when that cell is blank (no value/formula), matching Excel's Insert-Hyperlink behavior; renderers no longer show hyperlinked blank cells.
+
+### Added
+
+- `ChartAnchor` rustdoc + generated TS JSDoc now state the 0-based row/column convention.
+- `ChartLegendPosition` rustdoc + generated TS JSDoc now document `"none"` and the `TopRight` ("Overlay Legend at Right") variant.
+- `Range.setStyle` / `Cell.setStyle` / `Worksheet.setStyles` JSDoc now call out that merged ranges only persist style on the top-left anchor.
+- `Workbook.search` accepts `includeHidden` (defaults to `true` for backward compatibility) to opt out of searching hidden / very-hidden sheets; documented in JSDoc + rustdoc.
+- `Worksheet.setStyles(map)` applies a `{ reference: StylePatch }` map in one call for bulk styling.
+- `NumberFormat` const exposes ECMA-376 §18.8.30 built-in format codes (`General`, `Percent2`, `Scientific2`, `DateTime`, `Accounting`, …) so agents can write `setStyle({ numberFormat: NumberFormat.Percent2 })` instead of handwriting `"0.00%"`.
+
+### Fixed
+
+- ironcalc `DEFAULT_NUM_FMTS` rewritten against canonical ECMA-376 §18.8.30 (cleared OCR corruption like `"0.00E + 00"`, `"h:mm AM / PM"`, `"#,##0;()#,##0)"`) and switched from positional indexing to ID-keyed lookup so the spec's `numFmtId` gaps (5–8, 23–36, 41–44) are honored; new custom numFmtIds now start at 164 per Excel convention.
+- `ChartCollection.update(id, partial)` merges a partial patch onto an existing chart so callers don't have to round-trip `ChartInfo` → `ChartPatch` and re-send every series to tweak one field.
+- `AutoFilterApi.setColumnValues` / `setColumnTop10` / `setColumnCustom` typed helpers so agents don't have to hand-author the `criteria` discriminated union. `setColumn` now pre-validates `criteria.kind` and throws a clear error pointing at the helpers instead of the opaque wasm `missing field 'kind'`.
+
+### Changed
+
+- Sparkline color fields now accept `#RRGGBB` (or 8-hex `AARRGGBB`) in addition to `RRGGBB`; canonical stored form remains 6-hex uppercase.
+- `DefinedNamePatch` / `DefinedNameInfo` rename `formula` → `reference` (defined names only support cell/range refs, so the old name was misleading). Legacy payloads using `formula` are still accepted at runtime via a serde alias on `DefinedNamePatch`; `DefinedNameInfo` now emits `reference`.
+
+### Fixed
+
+- Defined names are now wired into the recalc engine — formulas referencing ranges/cells via defined names resolve correctly instead of returning `#NAME?`. Non-reference defined-name formulas (scalars, expressions) emit a `LossyOperation` warning at `setDefinedName` since the engine only supports reference shapes.
+- `Workbook.renameSheet()` now rewrites cross-sheet formula references in cells, conditional-formatting formulas, and defined names so renames no longer produce `#REF!`.
 - `Workbook.save()` now auto-recalculates so cached formula values are always written; previously a `save()` without a prior `recalculate()` produced an xlsx whose formula cells rendered blank.
 - `threadedNotes.add` no longer panics with `unreachable` on wasm — root cause was `std::time::SystemTime::now()` panicking on `wasm32-unknown-unknown` (`time not implemented on this platform`); replaced with `js_sys::Date::now()` on wasm. Panics elsewhere previously poisoned the `WorkbookHandle` (`recursive use of an object detected`); `console_error_panic_hook` is now installed so any future panic surfaces a real stack trace.
 - `TableCollection.set` now qualifies unqualified `patch.reference` with the scoped worksheet name, instead of silently falling back to the workbook's first sheet (which was usually a hidden lookup sheet and produced wrong column names).

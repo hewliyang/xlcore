@@ -35,9 +35,7 @@ impl Workbook {
             apply_page_patch(target, p);
         }
         if let Some(p) = patch.margins.as_ref() {
-            let target = ws
-                .page_margins
-                .get_or_insert_with(x::PageMargins::default);
+            let target = ws.page_margins.get_or_insert_with(x::PageMargins::default);
             apply_margins_patch(target, p);
         }
         if let Some(p) = patch.print_options.as_ref() {
@@ -76,10 +74,7 @@ fn read_page_setup(sheet: &str, ws: &x::Worksheet) -> SheetPageSetup {
         page: ws.page_setup.as_ref().map(read_page),
         margins: ws.page_margins.as_ref().map(read_margins),
         print_options: ws.print_options.as_ref().map(read_print_options),
-        header_footer: ws
-            .header_footer
-            .as_deref()
-            .map(read_header_footer),
+        header_footer: ws.header_footer.as_deref().map(read_header_footer),
     }
 }
 
@@ -244,22 +239,40 @@ fn apply_header_footer_patch(target: &mut x::HeaderFooter, patch: &HeaderFooterP
         target.align_with_margins = Some(BooleanValue::from_bool(v));
     }
     if let Some(v) = patch.odd_header.clone() {
-        target.odd_header = Some(x::OddHeader(x::XstringType { xml_content: Some(v), ..Default::default() }));
+        target.odd_header = Some(x::OddHeader(x::XstringType {
+            xml_content: Some(v),
+            ..Default::default()
+        }));
     }
     if let Some(v) = patch.odd_footer.clone() {
-        target.odd_footer = Some(x::OddFooter(x::XstringType { xml_content: Some(v), ..Default::default() }));
+        target.odd_footer = Some(x::OddFooter(x::XstringType {
+            xml_content: Some(v),
+            ..Default::default()
+        }));
     }
     if let Some(v) = patch.even_header.clone() {
-        target.even_header = Some(x::EvenHeader(x::XstringType { xml_content: Some(v), ..Default::default() }));
+        target.even_header = Some(x::EvenHeader(x::XstringType {
+            xml_content: Some(v),
+            ..Default::default()
+        }));
     }
     if let Some(v) = patch.even_footer.clone() {
-        target.even_footer = Some(x::EvenFooter(x::XstringType { xml_content: Some(v), ..Default::default() }));
+        target.even_footer = Some(x::EvenFooter(x::XstringType {
+            xml_content: Some(v),
+            ..Default::default()
+        }));
     }
     if let Some(v) = patch.first_header.clone() {
-        target.first_header = Some(x::FirstHeader(x::XstringType { xml_content: Some(v), ..Default::default() }));
+        target.first_header = Some(x::FirstHeader(x::XstringType {
+            xml_content: Some(v),
+            ..Default::default()
+        }));
     }
     if let Some(v) = patch.first_footer.clone() {
-        target.first_footer = Some(x::FirstFooter(x::XstringType { xml_content: Some(v), ..Default::default() }));
+        target.first_footer = Some(x::FirstFooter(x::XstringType {
+            xml_content: Some(v),
+            ..Default::default()
+        }));
     }
 }
 

@@ -9,12 +9,7 @@ const MAX_ROW: u32 = 1_048_576;
 const MAX_COLUMN: u32 = 16_384;
 
 impl Workbook {
-    pub fn set_row_height(
-        &mut self,
-        sheet: impl AsRef<str>,
-        row: u32,
-        height: f64,
-    ) -> Result<()> {
+    pub fn set_row_height(&mut self, sheet: impl AsRef<str>, row: u32, height: f64) -> Result<()> {
         let sheet = sheet.as_ref().to_string();
         validate_row(row, &sheet)?;
         validate_size(height, "row height")?;
@@ -41,7 +36,11 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let row_entry = ensure_row(ws, row);
-        row_entry.hidden = if visible { None } else { Some(BooleanValue::from_bool(true)) };
+        row_entry.hidden = if visible {
+            None
+        } else {
+            Some(BooleanValue::from_bool(true))
+        };
         Ok(())
     }
 
@@ -77,7 +76,11 @@ impl Workbook {
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let col = ensure_single_column(ws, column);
-        col.hidden = if visible { None } else { Some(BooleanValue::from_bool(true)) };
+        col.hidden = if visible {
+            None
+        } else {
+            Some(BooleanValue::from_bool(true))
+        };
         Ok(())
     }
 

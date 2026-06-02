@@ -11,6 +11,7 @@ mod errors;
 mod hyperlinks;
 mod images;
 mod merges;
+mod ooxml_header;
 mod page_setup;
 mod properties;
 mod protection;
@@ -25,7 +26,6 @@ mod styles;
 mod tables;
 mod threaded_notes;
 mod vml_comments;
-mod ooxml_header;
 mod xml;
 
 use std::path::Path;
@@ -33,27 +33,23 @@ use std::path::Path;
 pub use xlcore_types::{
     AlignmentPatch, ApiCellValue, ApiCellValue as CellValue, ApiError, ApiErrorCode, ApiWarning,
     AutoFilterColumnInfo, AutoFilterColumnPatch, AutoFilterCriteria, AutoFilterCustomCriterion,
-    AutoFilterInfo, AutoFilterOperator, BorderLinePatch, BorderLineStyle, BorderPatch, CalcMode, CalcProperties,
-    CalcPropertiesPatch, CellInfo, CfIconSetKind, CfOperator, CfRuleKind, CfValueObject,
-    CfValueObjectKind, ChartAnchor, ChartInfo, ChartKind, ChartLegendPosition, ChartPatch,
-    ChartSeriesInfo, ChartSeriesPatch, ChartStacking, ClearMode, ColorScalePatch, CommentInfo, CommentPatch,
-    ConditionalFormatRuleInfo, ConditionalFormatRulePatch, DataBarPatch, DataValidationErrorStyle,
-    DataValidationInfo, DataValidationOperator, DataValidationPatch, DataValidationType,
-    DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference, FillPatch, FontPatch,
-    FreezeInfo,
-    HeaderFooterInfo, HeaderFooterPatch,
-    HorizontalAlign, HyperlinkInfo, HyperlinkPatch, IconSetPatch, ImageFormat, ImageInfo,
-    ImagePatch, LayoutOptions, MergeInfo,
-    PageMarginsInfo, PageMarginsPatch, PageOrder, PageOrientation, PageSetupSettings,
+    AutoFilterInfo, AutoFilterOperator, BorderLinePatch, BorderLineStyle, BorderPatch, CalcMode,
+    CalcProperties, CalcPropertiesPatch, CellInfo, CfIconSetKind, CfOperator, CfRuleKind,
+    CfValueObject, CfValueObjectKind, ChartAnchor, ChartInfo, ChartKind, ChartLegendPosition,
+    ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking, ClearMode, ColorScalePatch,
+    CommentInfo, CommentPatch, ConditionalFormatRuleInfo, ConditionalFormatRulePatch, DataBarPatch,
+    DataValidationErrorStyle, DataValidationInfo, DataValidationOperator, DataValidationPatch,
+    DataValidationType, DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference,
+    FillPatch, FontPatch, FreezeInfo, HeaderFooterInfo, HeaderFooterPatch, HorizontalAlign,
+    HyperlinkInfo, HyperlinkPatch, IconSetPatch, ImageFormat, ImageInfo, ImagePatch, LayoutOptions,
+    MergeInfo, PageMarginsInfo, PageMarginsPatch, PageOrder, PageOrientation, PageSetupSettings,
     PageSetupSettingsPatch, PrintCellComments, PrintErrors, PrintOptionsInfo, PrintOptionsPatch,
-    RangeInfo, SearchHit,
-    SearchMatch, SearchMode, SearchOptions, SearchTarget, SheetInfo, SheetPageSetup,
-    SheetPageSetupPatch, SheetProtectionInfo,
-    SheetProtectionPatch, SheetVisibility, SparklineAxisType, SparklineDisplayBlanks, SparklineEntry,
-    SparklineGroupInfo, SparklineGroupPatch, SparklineKind, StylePatch, TableColumnInfo, TableColumnPatch,
-    TableInfo, TablePatch, TableStylePatch, TableStyleSettings, TableTotalsFunction,
-    ThreadedNoteInfo, ThreadedNotePatch,
-    UnderlinePatch, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,
+    RangeInfo, SearchHit, SearchMatch, SearchMode, SearchOptions, SearchTarget, SheetInfo,
+    SheetPageSetup, SheetPageSetupPatch, SheetProtectionInfo, SheetProtectionPatch,
+    SheetVisibility, SparklineAxisType, SparklineDisplayBlanks, SparklineEntry, SparklineGroupInfo,
+    SparklineGroupPatch, SparklineKind, StylePatch, TableColumnInfo, TableColumnPatch, TableInfo,
+    TablePatch, TableStylePatch, TableStyleSettings, TableTotalsFunction, ThreadedNoteInfo,
+    ThreadedNotePatch, UnderlinePatch, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,
     WorkbookProtectionInfo, WorkbookProtectionPatch,
 };
 
@@ -123,13 +119,14 @@ impl Workbook {
         &self.report
     }
 
-    pub fn save_bytes(&self) -> Result<Vec<u8>> {
+    pub fn save_bytes(&mut self) -> Result<Vec<u8>> {
+        let _ = self.recalculate()?;
         self.doc
             .to_package_bytes()
             .map_err(|err| ApiError::new(ApiErrorCode::OoxmlWriteError, err.to_string()))
     }
 
-    pub fn save_path(&self, path: impl AsRef<Path>) -> Result<()> {
+    pub fn save_path(&mut self, path: impl AsRef<Path>) -> Result<()> {
         std::fs::write(path, self.save_bytes()?)
             .map_err(|err| ApiError::new(ApiErrorCode::OoxmlWriteError, err.to_string()))
     }

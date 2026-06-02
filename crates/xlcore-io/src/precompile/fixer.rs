@@ -6,7 +6,6 @@ use quick_xml::{Reader, Writer};
 use crate::error::LoadReport;
 
 pub(crate) trait Fixer: Send + Sync {
-
     fn name(&self) -> &'static str;
 
     fn applies_to(&self, part: &str) -> bool {
@@ -49,14 +48,12 @@ pub(crate) struct Ctx<'a> {
 }
 
 impl Ctx<'_> {
-
     pub fn in_element(&self, qname: &[u8]) -> bool {
         self.stack.iter().any(|n| n == qname)
     }
 }
 
 pub(crate) enum Emit<'a> {
-
     Keep(Event<'a>),
 
     Replace { event: Event<'a>, changed: bool },
@@ -73,7 +70,6 @@ pub(crate) fn sax_rewrite<F>(
     mut mapper: F,
 ) -> Result<Option<Vec<u8>>, FixerError>
 where
-
     F: for<'e> FnMut(&mut Ctx<'_>, Event<'e>) -> Emit<'e>,
 {
     let mut reader = Reader::from_reader(xml);

@@ -218,10 +218,16 @@ pub(crate) fn visit_connector(
         .and_then(|ln| ln.tail_end.as_ref())
         .and_then(|e| line_end_to_schema(e.r#type.as_ref(), e.width.as_ref(), e.length.as_ref()));
     let xfrm = sp.transform2_d.as_ref();
-    let flip_h =
-        override_flip_h.unwrap_or_else(|| xfrm.and_then(|x| x.horizontal_flip).unwrap_or(false.into()).into());
-    let flip_v =
-        override_flip_v.unwrap_or_else(|| xfrm.and_then(|x| x.vertical_flip).unwrap_or(false.into()).into());
+    let flip_h = override_flip_h.unwrap_or_else(|| {
+        xfrm.and_then(|x| x.horizontal_flip)
+            .unwrap_or(false.into())
+            .into()
+    });
+    let flip_v = override_flip_v.unwrap_or_else(|| {
+        xfrm.and_then(|x| x.vertical_flip)
+            .unwrap_or(false.into())
+            .into()
+    });
     let rotation = match override_rotation {
         Some(r) => merge_rotation(parent_rot_rad, Some(r)),
         None => merge_rotation(parent_rot_rad, xfrm.and_then(|x| x.rotation)),

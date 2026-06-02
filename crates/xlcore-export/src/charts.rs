@@ -305,7 +305,11 @@ fn anchor_target_from_two_cell(
             Some((AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())), Some(cnv)))
         }
         xdr::TwoCellAnchorChoice::GroupShape(g) => {
-            let cnv = Some(g.non_visual_group_shape_properties.non_visual_drawing_properties.clone());
+            let cnv = Some(
+                g.non_visual_group_shape_properties
+                    .non_visual_drawing_properties
+                    .clone(),
+            );
             Some((AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone())), cnv))
         }
         xdr::TwoCellAnchorChoice::ConnectionShape(c) => {
@@ -351,7 +355,11 @@ fn anchor_target_from_one_cell(
             Some((AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())), Some(cnv)))
         }
         xdr::OneCellAnchorChoice::GroupShape(g) => {
-            let cnv = Some(g.non_visual_group_shape_properties.non_visual_drawing_properties.clone());
+            let cnv = Some(
+                g.non_visual_group_shape_properties
+                    .non_visual_drawing_properties
+                    .clone(),
+            );
             Some((AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone())), cnv))
         }
         xdr::OneCellAnchorChoice::ConnectionShape(c) => {
@@ -397,7 +405,11 @@ fn anchor_target_from_absolute(
             Some((AnchorTarget::Shape(ShapeRoot::Sp(sp.clone())), Some(cnv)))
         }
         xdr::AbsoluteAnchorChoice::GroupShape(g) => {
-            let cnv = Some(g.non_visual_group_shape_properties.non_visual_drawing_properties.clone());
+            let cnv = Some(
+                g.non_visual_group_shape_properties
+                    .non_visual_drawing_properties
+                    .clone(),
+            );
             Some((AnchorTarget::Shape(ShapeRoot::GrpSp(g.clone())), cnv))
         }
         xdr::AbsoluteAnchorChoice::ConnectionShape(c) => {

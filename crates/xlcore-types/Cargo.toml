@@ -10,6 +10,9 @@ description = "Shared serializable API DTOs for xlcore"
 serde = { workspace = true }
 ts-rs = { workspace = true, optional = true }
 
+[dev-dependencies]
+serde_json = { workspace = true }
+
 [features]
 default = []
 typescript = ["dep:ts-rs"]

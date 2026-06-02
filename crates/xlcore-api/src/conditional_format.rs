@@ -113,7 +113,12 @@ impl Workbook {
         for cf in ws.conditional_formatting.drain(..) {
             let mut hit_ranges: Vec<String> = Vec::new();
             let mut surviving: Vec<String> = Vec::new();
-            for s in cf.sequence_of_references.as_ref().map(|v| v.as_slice()).unwrap_or(&[]) {
+            for s in cf
+                .sequence_of_references
+                .as_ref()
+                .map(|v| v.as_slice())
+                .unwrap_or(&[])
+            {
                 let raw = s.as_str();
                 match parse_range_a1(raw) {
                     Some((r1, c1, r2, c2))
@@ -207,9 +212,7 @@ fn validate_patch(patch: &ConditionalFormatRulePatch, reference: &str) -> Result
             if is.values.len() != arity {
                 return Err(ApiError::new(
                     ApiErrorCode::InvalidConditionalFormat,
-                    format!(
-                        "icon_set.values must have {arity} entries for this iconSet kind"
-                    ),
+                    format!("icon_set.values must have {arity} entries for this iconSet kind"),
                 )
                 .with_ref(reference));
             }
@@ -350,11 +353,7 @@ fn build_rule(
             })?);
         }
         rule.color_scale = Some(x::ColorScale {
-            conditional_format_value_object: cs
-                .values
-                .iter()
-                .map(cfvo_to_sdk)
-                .collect(),
+            conditional_format_value_object: cs.values.iter().map(cfvo_to_sdk).collect(),
             color: colors,
         });
     }
@@ -370,10 +369,7 @@ fn build_rule(
             min_length: db.min_length.map(Into::into),
             max_length: db.max_length.map(Into::into),
             show_value: db.show_value.map(BooleanValue::from_bool),
-            conditional_format_value_object: vec![
-                cfvo_to_sdk(&db.min),
-                cfvo_to_sdk(&db.max),
-            ],
+            conditional_format_value_object: vec![cfvo_to_sdk(&db.min), cfvo_to_sdk(&db.max)],
             color: Box::new(color),
         }));
     }
@@ -396,7 +392,11 @@ fn read_rule(
 ) -> Option<ConditionalFormatRuleInfo> {
     let kind = kind_from_sdk(rule.r#type)?;
     let color_scale = rule.color_scale.as_ref().map(|cs| ColorScalePatch {
-        values: cs.conditional_format_value_object.iter().map(cfvo_from_sdk).collect(),
+        values: cs
+            .conditional_format_value_object
+            .iter()
+            .map(cfvo_from_sdk)
+            .collect(),
         colors: cs.color.iter().map(color_to_hex).collect(),
     });
     let data_bar = rule.data_bar.as_ref().map(|db| {
@@ -417,7 +417,11 @@ fn read_rule(
             .icon_set_value
             .and_then(icon_set_from_sdk)
             .unwrap_or_default(),
-        values: is.conditional_format_value_object.iter().map(cfvo_from_sdk).collect(),
+        values: is
+            .conditional_format_value_object
+            .iter()
+            .map(cfvo_from_sdk)
+            .collect(),
         show_value: is.show_value.map(bool::from),
         percent: is.percent.map(bool::from),
         reverse: is.reverse.map(bool::from),
@@ -440,24 +444,12 @@ fn read_rule(
         formula2,
         text: rule.text.as_ref().map(|s| s.as_str().to_string()),
         rank: rule.rank.map(Into::into),
-        percent: rule
-            .percent
-            .map(bool::from)
-            .unwrap_or(false),
-        bottom: rule
-            .bottom
-            .map(bool::from)
-            .unwrap_or(false),
+        percent: rule.percent.map(bool::from).unwrap_or(false),
+        bottom: rule.bottom.map(bool::from).unwrap_or(false),
         above_average: rule.above_average.map(bool::from),
-        equal_average: rule
-            .equal_average
-            .map(bool::from)
-            .unwrap_or(false),
+        equal_average: rule.equal_average.map(bool::from).unwrap_or(false),
         std_dev: rule.std_dev.map(Into::into),
-        stop_if_true: rule
-            .stop_if_true
-            .map(bool::from)
-            .unwrap_or(false),
+        stop_if_true: rule.stop_if_true.map(bool::from).unwrap_or(false),
         dxf_id: rule.format_id.map(Into::into),
         color_scale,
         data_bar,
@@ -468,13 +460,7 @@ fn read_rule(
 fn validate_cfvo(v: &CfValueObject, reference: &str) -> Result<()> {
     use CfValueObjectKind::*;
     let needs_value = matches!(v.kind, Number | Percent | Formula | Percentile);
-    if needs_value
-        && v.value
-            .as_deref()
-            .map(str::trim)
-            .unwrap_or("")
-            .is_empty()
-    {
+    if needs_value && v.value.as_deref().map(str::trim).unwrap_or("").is_empty() {
         return Err(ApiError::new(
             ApiErrorCode::InvalidConditionalFormat,
             "value is required for num/percent/formula/percentile cfvo",
@@ -487,8 +473,8 @@ fn validate_cfvo(v: &CfValueObject, reference: &str) -> Result<()> {
 fn icon_set_arity(kind: CfIconSetKind) -> usize {
     use CfIconSetKind::*;
     match kind {
-        ThreeArrows | ThreeArrowsGray | ThreeFlags | ThreeTrafficLights1
-        | ThreeTrafficLights2 | ThreeSigns | ThreeSymbols | ThreeSymbols2 => 3,
+        ThreeArrows | ThreeArrowsGray | ThreeFlags | ThreeTrafficLights1 | ThreeTrafficLights2
+        | ThreeSigns | ThreeSymbols | ThreeSymbols2 => 3,
         FourArrows | FourArrowsGray | FourRedToBlack | FourRating | FourTrafficLights => 4,
         FiveArrows | FiveArrowsGray | FiveRating | FiveQuarters => 5,
     }

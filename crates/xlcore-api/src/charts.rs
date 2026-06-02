@@ -1,9 +1,9 @@
 use ooxmlsdk::parts::chart_part::ChartPart;
 use ooxmlsdk::parts::drawings_part::DrawingsPart;
-use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_chart as c;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_drawing as xdr;
+use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
@@ -47,8 +47,7 @@ impl Workbook {
                 continue;
             };
             let drawings_part = drawings_part.clone();
-            let chart_parts: Vec<ChartPart> =
-                drawings_part.chart_parts(&self.doc).collect();
+            let chart_parts: Vec<ChartPart> = drawings_part.chart_parts(&self.doc).collect();
             let chart_by_rid: std::collections::HashMap<String, ChartPart> = chart_parts
                 .into_iter()
                 .filter_map(|p| p.relationship_id().map(|r| (r.to_string(), p.clone())))
@@ -113,7 +112,10 @@ impl Workbook {
                 .with_sheet(&patch.sheet));
             }
             if matches!(patch.kind, ChartKind::Scatter | ChartKind::Bubble)
-                && s.x_values_ref.as_deref().map(|v| v.trim().is_empty()).unwrap_or(true)
+                && s.x_values_ref
+                    .as_deref()
+                    .map(|v| v.trim().is_empty())
+                    .unwrap_or(true)
             {
                 return Err(ApiError::new(
                     ApiErrorCode::InvalidChart,
@@ -122,7 +124,10 @@ impl Workbook {
                 .with_sheet(&patch.sheet));
             }
             if matches!(patch.kind, ChartKind::Bubble)
-                && s.bubble_sizes_ref.as_deref().map(|v| v.trim().is_empty()).unwrap_or(true)
+                && s.bubble_sizes_ref
+                    .as_deref()
+                    .map(|v| v.trim().is_empty())
+                    .unwrap_or(true)
             {
                 return Err(ApiError::new(
                     ApiErrorCode::InvalidChart,
@@ -189,9 +194,7 @@ impl Workbook {
         if fresh_drawings {
             let rid = drawings_part
                 .relationship_id()
-                .ok_or_else(|| {
-                    ApiError::new(ApiErrorCode::Other, "new drawings part missing rid")
-                })?
+                .ok_or_else(|| ApiError::new(ApiErrorCode::Other, "new drawings part missing rid"))?
                 .to_string();
             let ws = ws_part
                 .root_element_mut(&mut self.doc)
@@ -320,11 +323,12 @@ fn anchor_chart_rid(anchor: &xdr::TwoCellAnchor) -> Option<String> {
 }
 
 fn anchor_chart_name(anchor: &xdr::TwoCellAnchor) -> Option<String> {
-    let xdr::TwoCellAnchorChoice::GraphicFrame(gf) = anchor.two_cell_anchor_choice.as_ref()?
-    else {
+    let xdr::TwoCellAnchorChoice::GraphicFrame(gf) = anchor.two_cell_anchor_choice.as_ref()? else {
         return None;
     };
-    let cnv = &gf.non_visual_graphic_frame_properties.non_visual_drawing_properties;
+    let cnv = &gf
+        .non_visual_graphic_frame_properties
+        .non_visual_drawing_properties;
     let n = cnv.name.as_str();
     if n.is_empty() {
         None
@@ -474,8 +478,12 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                 for s in &sc.scatter_chart_series {
                     let mut info = read_xy_series(
                         s.series_text.as_deref(),
-                        s.x_values.as_deref().and_then(|x| x.x_values_choice.as_ref()),
-                        s.y_values.as_deref().and_then(|y| y.y_values_choice.as_ref()),
+                        s.x_values
+                            .as_deref()
+                            .and_then(|x| x.x_values_choice.as_ref()),
+                        s.y_values
+                            .as_deref()
+                            .and_then(|y| y.y_values_choice.as_ref()),
                         s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
@@ -490,15 +498,20 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                 for s in &bc.bubble_chart_series {
                     let mut info = read_xy_series(
                         s.series_text.as_deref(),
-                        s.x_values.as_deref().and_then(|x| x.x_values_choice.as_ref()),
-                        s.y_values.as_deref().and_then(|y| y.y_values_choice.as_ref()),
+                        s.x_values
+                            .as_deref()
+                            .and_then(|x| x.x_values_choice.as_ref()),
+                        s.y_values
+                            .as_deref()
+                            .and_then(|y| y.y_values_choice.as_ref()),
                         s.data_labels.as_deref(),
                     );
-                    info.bubble_sizes_ref =
-                        s.bubble_size.as_deref().and_then(|b| match b.bubble_size_choice.as_ref()? {
+                    info.bubble_sizes_ref = s.bubble_size.as_deref().and_then(|b| {
+                        match b.bubble_size_choice.as_ref()? {
                             c::BubbleSizeChoice::NumberReference(nr) => Some(nr.formula.clone()),
                             _ => None,
-                        });
+                        }
+                    });
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     series.push(info);
                 }
@@ -534,7 +547,11 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         }
     }
 
-    let title = space.chart.title.as_ref().and_then(|t| extract_title_text(t));
+    let title = space
+        .chart
+        .title
+        .as_ref()
+        .and_then(|t| extract_title_text(t));
 
     let legend = space.chart.legend.as_ref().and_then(|l| {
         l.legend_position
@@ -623,9 +640,13 @@ fn read_xy_series(
 fn read_series_color(sp: Option<&c::ChartShapeProperties>) -> Option<String> {
     let sp = sp?;
     let choice = sp.chart_shape_properties_choice2.as_ref()?;
-    let c::ChartShapePropertiesChoice2::SolidFill(sf) = choice else { return None };
+    let c::ChartShapePropertiesChoice2::SolidFill(sf) = choice else {
+        return None;
+    };
     let inner = sf.solid_fill_choice.as_ref()?;
-    let a::SolidFillChoice::RgbColorModelHex(rgb) = inner else { return None };
+    let a::SolidFillChoice::RgbColorModelHex(rgb) = inner else {
+        return None;
+    };
     Some(rgb.val.to_string().to_uppercase())
 }
 
@@ -682,10 +703,9 @@ fn extract_title_text(title: &c::Title) -> Option<String> {
             })
         }),
         c::ChartTextChoice::StringReference(sr) => Some(sr.formula.clone()),
-        c::ChartTextChoice::StringLiteral(sl) => sl
-            .string_point
-            .first()
-            .map(|p| p.numeric_value.clone()),
+        c::ChartTextChoice::StringLiteral(sl) => {
+            sl.string_point.first().map(|p| p.numeric_value.clone())
+        }
     }
 }
 
@@ -897,37 +917,35 @@ fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
             axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
             ..Default::default()
         })),
-        ChartKind::Column | ChartKind::Bar => {
-            c::PlotAreaChoice::BarChart(Box::new(c::BarChart {
-                bar_direction: Box::new(c::BarDirection {
-                    val: if matches!(patch.kind, ChartKind::Bar) {
-                        c::BarDirectionValues::Bar
-                    } else {
-                        c::BarDirectionValues::Column
-                    },
-                }),
-                bar_grouping: Some(c::BarGrouping {
-                    val: Some(bar_grouping(patch.stacking)),
-                }),
-                vary_colors: Some(c::VaryColors {
-                    val: Some(BooleanValue::from_bool(false)),
-                }),
-                bar_chart_series: patch
-                    .series
-                    .iter()
-                    .enumerate()
-                    .map(|(i, s)| build_bar_series(i, s, patch.categories_ref.as_deref()))
-                    .collect(),
-                data_labels: dl,
-                overlap: matches!(
-                    patch.stacking,
-                    Some(ChartStacking::Stacked | ChartStacking::PercentStacked)
-                )
-                .then(|| c::Overlap { val: Some(100) }),
-                axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
-                ..Default::default()
-            }))
-        }
+        ChartKind::Column | ChartKind::Bar => c::PlotAreaChoice::BarChart(Box::new(c::BarChart {
+            bar_direction: Box::new(c::BarDirection {
+                val: if matches!(patch.kind, ChartKind::Bar) {
+                    c::BarDirectionValues::Bar
+                } else {
+                    c::BarDirectionValues::Column
+                },
+            }),
+            bar_grouping: Some(c::BarGrouping {
+                val: Some(bar_grouping(patch.stacking)),
+            }),
+            vary_colors: Some(c::VaryColors {
+                val: Some(BooleanValue::from_bool(false)),
+            }),
+            bar_chart_series: patch
+                .series
+                .iter()
+                .enumerate()
+                .map(|(i, s)| build_bar_series(i, s, patch.categories_ref.as_deref()))
+                .collect(),
+            data_labels: dl,
+            overlap: matches!(
+                patch.stacking,
+                Some(ChartStacking::Stacked | ChartStacking::PercentStacked)
+            )
+            .then(|| c::Overlap { val: Some(100) }),
+            axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
+            ..Default::default()
+        })),
     }
 }
 
@@ -1005,13 +1023,14 @@ fn read_data_labels(dl: Option<&c::DataLabels>) -> Option<ChartDataLabels> {
     let bv = |b: Option<&BooleanValue>| b.map(|v| bool::from(*v));
     let out = ChartDataLabels {
         show_value: bv(seq.show_value.as_ref().and_then(|s| s.val.as_ref())),
-        show_category_name: bv(
-            seq.show_category_name.as_ref().and_then(|s| s.val.as_ref()),
-        ),
+        show_category_name: bv(seq.show_category_name.as_ref().and_then(|s| s.val.as_ref())),
         show_series_name: bv(seq.show_series_name.as_ref().and_then(|s| s.val.as_ref())),
         show_percent: bv(seq.show_percent.as_ref().and_then(|s| s.val.as_ref())),
         show_legend_key: bv(seq.show_legend_key.as_ref().and_then(|s| s.val.as_ref())),
-        position: seq.data_label_position.as_ref().map(|p| data_label_pos_from(&p.val)),
+        position: seq
+            .data_label_position
+            .as_ref()
+            .map(|p| data_label_pos_from(&p.val)),
         separator: seq.separator.clone(),
     };
     if out == ChartDataLabels::default() {
@@ -1070,11 +1089,7 @@ fn build_values(values_ref: &str) -> Box<c::Values> {
     })
 }
 
-fn build_bar_series(
-    idx: usize,
-    s: &ChartSeriesPatch,
-    cat_ref: Option<&str>,
-) -> c::BarChartSeries {
+fn build_bar_series(idx: usize, s: &ChartSeriesPatch, cat_ref: Option<&str>) -> c::BarChartSeries {
     c::BarChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
@@ -1118,11 +1133,7 @@ fn build_area_series(
     }
 }
 
-fn build_pie_series(
-    idx: usize,
-    s: &ChartSeriesPatch,
-    cat_ref: Option<&str>,
-) -> c::PieChartSeries {
+fn build_pie_series(idx: usize, s: &ChartSeriesPatch, cat_ref: Option<&str>) -> c::PieChartSeries {
     c::PieChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
@@ -1135,10 +1146,7 @@ fn build_pie_series(
     }
 }
 
-fn build_scatter_series(
-    idx: usize,
-    s: &ChartSeriesPatch,
-) -> c::ScatterChartSeries {
+fn build_scatter_series(idx: usize, s: &ChartSeriesPatch) -> c::ScatterChartSeries {
     c::ScatterChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
@@ -1154,10 +1162,7 @@ fn build_scatter_series(
     }
 }
 
-fn build_bubble_series(
-    idx: usize,
-    s: &ChartSeriesPatch,
-) -> c::BubbleChartSeries {
+fn build_bubble_series(idx: usize, s: &ChartSeriesPatch) -> c::BubbleChartSeries {
     c::BubbleChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
@@ -1216,9 +1221,9 @@ fn build_series_shape(color: Option<&str>) -> Option<Box<c::ChartShapeProperties
         ..Default::default()
     };
     Some(Box::new(c::ChartShapeProperties {
-        chart_shape_properties_choice2: Some(c::ChartShapePropertiesChoice2::SolidFill(
-            Box::new(solid),
-        )),
+        chart_shape_properties_choice2: Some(c::ChartShapePropertiesChoice2::SolidFill(Box::new(
+            solid,
+        ))),
         ..Default::default()
     }))
 }
@@ -1300,12 +1305,7 @@ fn build_cat_axis(title: Option<&str>) -> c::CategoryAxis {
 }
 
 fn build_val_axis(title: Option<&str>) -> c::ValueAxis {
-    build_val_axis_xy(
-        VAL_AX_ID,
-        CAT_AX_ID,
-        c::AxisPositionValues::Left,
-        title,
-    )
+    build_val_axis_xy(VAL_AX_ID, CAT_AX_ID, c::AxisPositionValues::Left, title)
 }
 
 fn build_val_axis_xy(

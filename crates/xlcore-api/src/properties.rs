@@ -1,6 +1,6 @@
-use ooxmlsdk::simple_type::BooleanValue;
 use ooxmlsdk::common::XmlNamespaceDecl;
 use ooxmlsdk::schemas::opc_core_properties as cp;
+use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
     ApiError, ApiErrorCode, CalcMode, CalcProperties, CalcPropertiesPatch, WorkbookProperties,
@@ -48,10 +48,7 @@ impl Workbook {
         Ok(read_calc(wb.calculation_properties.as_ref()))
     }
 
-    pub fn set_calc_properties(
-        &mut self,
-        patch: CalcPropertiesPatch,
-    ) -> Result<CalcProperties> {
+    pub fn set_calc_properties(&mut self, patch: CalcPropertiesPatch) -> Result<CalcProperties> {
         let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
         let wb = wb_part
             .root_element_mut(&mut self.doc)

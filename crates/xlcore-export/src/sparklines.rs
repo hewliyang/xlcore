@@ -50,7 +50,14 @@ fn extract_group(g: &x14::SparklineGroup) -> SparklineGroup {
 
     let mut sparklines = Vec::new();
     for sp in &g.sparklines.sparkline {
-        let sqref = sp.reference_sequence.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(" ").trim().to_string();
+        let sqref = sp
+            .reference_sequence
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .join(" ")
+            .trim()
+            .to_string();
         if sqref.is_empty() {
             continue;
         }

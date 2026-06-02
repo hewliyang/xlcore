@@ -46,9 +46,7 @@ fn collect_comment_cells(
         return Ok(Vec::new());
     };
     let comments_part = comments_part.clone();
-    let root = comments_part
-        .root_element(doc)
-        .map_err(sdk_err_to_api)?;
+    let root = comments_part.root_element(doc).map_err(sdk_err_to_api)?;
     let mut out = Vec::with_capacity(root.comment_list.comment.len());
     for cmt in &root.comment_list.comment {
         if let Some((row, column)) = xlcore_io::parse_a1(cmt.reference.as_str()) {

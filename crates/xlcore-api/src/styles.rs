@@ -1,5 +1,5 @@
-use ooxmlsdk::simple_type::BooleanValue;
 use ooxmlsdk::parts::workbook_styles_part::WorkbookStylesPart;
+use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 pub use xlcore_types::{
     AlignmentPatch, BorderLinePatch, BorderLineStyle, BorderPatch, FillPatch, FontPatch,
@@ -17,9 +17,7 @@ pub(crate) fn ensure_styles_part(
     if let Some(part) = wb_part.workbook_styles_part(doc) {
         return Ok(part.clone());
     }
-    let part: WorkbookStylesPart = wb_part
-        .add_new_part_auto_id(doc)
-        .map_err(sdk_err_to_api)?;
+    let part: WorkbookStylesPart = wb_part.add_new_part_auto_id(doc).map_err(sdk_err_to_api)?;
     part.set_root_element(doc, default_stylesheet())
         .map_err(sdk_err_to_api)?;
     Ok(part)
@@ -79,11 +77,26 @@ fn default_stylesheet() -> x::Stylesheet {
 fn default_font() -> x::Font {
     x::Font {
         font_choice: vec![
-            x::FontChoice::FontSize(Box::new(x::FontSize { val: 11.0, ..Default::default() })),
-            x::FontChoice::Color(Box::new(x::Color { theme: Some(1), ..Default::default() })),
-            x::FontChoice::FontName(Box::new(x::FontName { val: "Calibri".to_string(), ..Default::default() })),
-            x::FontChoice::FontFamilyNumbering(Box::new(x::FontFamilyNumbering { val: 2, ..Default::default() })),
-            x::FontChoice::FontScheme(Box::new(x::FontScheme { val: x::FontSchemeValues::Minor, ..Default::default() })),
+            x::FontChoice::FontSize(Box::new(x::FontSize {
+                val: 11.0,
+                ..Default::default()
+            })),
+            x::FontChoice::Color(Box::new(x::Color {
+                theme: Some(1),
+                ..Default::default()
+            })),
+            x::FontChoice::FontName(Box::new(x::FontName {
+                val: "Calibri".to_string(),
+                ..Default::default()
+            })),
+            x::FontChoice::FontFamilyNumbering(Box::new(x::FontFamilyNumbering {
+                val: 2,
+                ..Default::default()
+            })),
+            x::FontChoice::FontScheme(Box::new(x::FontScheme {
+                val: x::FontSchemeValues::Minor,
+                ..Default::default()
+            })),
         ],
         ..Default::default()
     }
@@ -119,7 +132,13 @@ pub(crate) fn resolve_style_index(
     ensure_default_collections(sheet);
     let base = existing_index
         .map(|i| i as usize)
-        .filter(|i| *i < sheet.cell_formats.as_ref().map(|cf| cf.cell_format.len()).unwrap_or(0))
+        .filter(|i| {
+            *i < sheet
+                .cell_formats
+                .as_ref()
+                .map(|cf| cf.cell_format.len())
+                .unwrap_or(0)
+        })
         .unwrap_or(0);
     let base_xf = sheet
         .cell_formats
@@ -250,45 +269,81 @@ fn build_font(sheet: &x::Stylesheet, current: usize, patch: &FontPatch) -> Resul
         .unwrap_or_else(default_font);
     let mut font = base;
     if let Some(name) = patch.name.as_deref() {
-        font.font_choice.retain(|c| !matches!(c, x::FontChoice::FontName(_)));
-        font.font_choice.push(x::FontChoice::FontName(Box::new(x::FontName {
-            val: name.to_string(),
-            ..Default::default()
-        })));
+        font.font_choice
+            .retain(|c| !matches!(c, x::FontChoice::FontName(_)));
+        font.font_choice
+            .push(x::FontChoice::FontName(Box::new(x::FontName {
+                val: name.to_string(),
+                ..Default::default()
+            })));
     }
     if let Some(size) = patch.size {
-        font.font_choice.retain(|c| !matches!(c, x::FontChoice::FontSize(_)));
-        font.font_choice.push(x::FontChoice::FontSize(Box::new(x::FontSize { val: size, ..Default::default() })));
+        font.font_choice
+            .retain(|c| !matches!(c, x::FontChoice::FontSize(_)));
+        font.font_choice
+            .push(x::FontChoice::FontSize(Box::new(x::FontSize {
+                val: size,
+                ..Default::default()
+            })));
     }
     if let Some(bold) = patch.bold {
-        font.font_choice.retain(|c| !matches!(c, x::FontChoice::Bold(_)));
+        font.font_choice
+            .retain(|c| !matches!(c, x::FontChoice::Bold(_)));
         if bold {
-            font.font_choice.push(x::FontChoice::Bold(Box::new(x::Bold { val: None, ..Default::default() })));
+            font.font_choice.push(x::FontChoice::Bold(Box::new(x::Bold {
+                val: None,
+                ..Default::default()
+            })));
         }
     }
     if let Some(italic) = patch.italic {
-        font.font_choice.retain(|c| !matches!(c, x::FontChoice::Italic(_)));
+        font.font_choice
+            .retain(|c| !matches!(c, x::FontChoice::Italic(_)));
         if italic {
-            font.font_choice.push(x::FontChoice::Italic(Box::new(x::Italic { val: None, ..Default::default() })));
+            font.font_choice
+                .push(x::FontChoice::Italic(Box::new(x::Italic {
+                    val: None,
+                    ..Default::default()
+                })));
         }
     }
     if let Some(strike) = patch.strike {
-        font.font_choice.retain(|c| !matches!(c, x::FontChoice::Strike(_)));
+        font.font_choice
+            .retain(|c| !matches!(c, x::FontChoice::Strike(_)));
         if strike {
-            font.font_choice.push(x::FontChoice::Strike(Box::new(x::Strike { val: None, ..Default::default() })));
+            font.font_choice
+                .push(x::FontChoice::Strike(Box::new(x::Strike {
+                    val: None,
+                    ..Default::default()
+                })));
         }
     }
     if let Some(underline) = patch.underline {
-        font.font_choice.retain(|c| !matches!(c, x::FontChoice::Underline(_)));
+        font.font_choice
+            .retain(|c| !matches!(c, x::FontChoice::Underline(_)));
         match underline {
             UnderlinePatch::None => {}
-            UnderlinePatch::Single => font.font_choice.push(x::FontChoice::Underline(Box::new(x::Underline { val: None, ..Default::default() }))),
-            UnderlinePatch::Double => font.font_choice.push(x::FontChoice::Underline(Box::new(x::Underline { val: Some(x::UnderlineValues::Double), ..Default::default() }))),
+            UnderlinePatch::Single => {
+                font.font_choice
+                    .push(x::FontChoice::Underline(Box::new(x::Underline {
+                        val: None,
+                        ..Default::default()
+                    })))
+            }
+            UnderlinePatch::Double => {
+                font.font_choice
+                    .push(x::FontChoice::Underline(Box::new(x::Underline {
+                        val: Some(x::UnderlineValues::Double),
+                        ..Default::default()
+                    })))
+            }
         }
     }
     if let Some(color) = patch.color.as_deref() {
-        font.font_choice.retain(|c| !matches!(c, x::FontChoice::Color(_)));
-        font.font_choice.push(x::FontChoice::Color(Box::new(parse_color(color)?)));
+        font.font_choice
+            .retain(|c| !matches!(c, x::FontChoice::Color(_)));
+        font.font_choice
+            .push(x::FontChoice::Color(Box::new(parse_color(color)?)));
     }
     Ok(font)
 }
@@ -418,7 +473,11 @@ fn apply_alignment(xf: &mut x::CellFormat, patch: &AlignmentPatch) {
         align.indent = Some(indent);
     }
     if let Some(rot) = patch.text_rotation {
-        let normalized = if rot < 0 { (90 - rot) as u32 } else { rot as u32 };
+        let normalized = if rot < 0 {
+            (90 - rot) as u32
+        } else {
+            rot as u32
+        };
         align.text_rotation = Some(normalized);
     }
 }
@@ -447,7 +506,11 @@ fn intern_fill(sheet: &mut x::Stylesheet, fill: x::Fill) -> u32 {
 
 fn intern_border(sheet: &mut x::Stylesheet, border: x::Border) -> u32 {
     let borders = sheet.borders.as_mut().expect("borders ensured");
-    if let Some(idx) = borders.border.iter().position(|b| borders_equal(b, &border)) {
+    if let Some(idx) = borders
+        .border
+        .iter()
+        .position(|b| borders_equal(b, &border))
+    {
         return idx as u32;
     }
     borders.border.push(border);
@@ -471,9 +534,7 @@ fn intern_num_fmt(sheet: &mut x::Stylesheet, code: &str) -> u32 {
     if let Some(id) = builtin_num_fmt_id(code) {
         return id;
     }
-    let formats = sheet
-        .numbering_formats
-        .get_or_insert_with(Default::default);
+    let formats = sheet.numbering_formats.get_or_insert_with(Default::default);
     if let Some(existing) = formats
         .numbering_format
         .iter()
@@ -582,7 +643,10 @@ fn font_signature(f: &x::Font) -> String {
             _ => {}
         }
     }
-    format!("{}|{}|{}|{}|{}|{}|{}|{}", name, size, bold, italic, strike, underline, color, scheme)
+    format!(
+        "{}|{}|{}|{}|{}|{}|{}|{}",
+        name, size, bold, italic, strike, underline, color, scheme
+    )
 }
 
 fn fills_equal(a: &x::Fill, b: &x::Fill) -> bool {
@@ -641,7 +705,11 @@ fn border_signature(b: &x::Border) -> String {
         T: BorderSideRead,
     {
         match s {
-            Some(side) => format!("{:?}|{}", side.style(), side.color().map(color_sig).unwrap_or_default()),
+            Some(side) => format!(
+                "{:?}|{}",
+                side.style(),
+                side.color().map(color_sig).unwrap_or_default()
+            ),
             None => "none".to_string(),
         }
     }
@@ -661,8 +729,12 @@ trait BorderSideRead {
 macro_rules! impl_border_side_read {
     ($ty:ty) => {
         impl BorderSideRead for $ty {
-            fn style(&self) -> Option<x::BorderStyleValues> { self.style }
-            fn color(&self) -> Option<&x::Color> { self.color.as_ref() }
+            fn style(&self) -> Option<x::BorderStyleValues> {
+                self.style
+            }
+            fn color(&self) -> Option<&x::Color> {
+                self.color.as_ref()
+            }
         }
     };
 }

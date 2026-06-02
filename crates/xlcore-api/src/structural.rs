@@ -27,24 +27,14 @@ impl ShiftOp {
 }
 
 impl Workbook {
-    pub fn insert_rows(
-        &mut self,
-        sheet: impl AsRef<str>,
-        before: u32,
-        count: u32,
-    ) -> Result<()> {
+    pub fn insert_rows(&mut self, sheet: impl AsRef<str>, before: u32, count: u32) -> Result<()> {
         let sheet = sheet.as_ref().to_string();
         validate_row_index(before, &sheet)?;
         validate_count(count)?;
         self.apply_structural(&sheet, ShiftOp::InsertRow { before, count })
     }
 
-    pub fn delete_rows(
-        &mut self,
-        sheet: impl AsRef<str>,
-        start: u32,
-        count: u32,
-    ) -> Result<()> {
+    pub fn delete_rows(&mut self, sheet: impl AsRef<str>, start: u32, count: u32) -> Result<()> {
         let sheet = sheet.as_ref().to_string();
         validate_row_index(start, &sheet)?;
         validate_count(count)?;
@@ -70,12 +60,7 @@ impl Workbook {
         self.apply_structural(&sheet, ShiftOp::InsertCol { before, count })
     }
 
-    pub fn delete_columns(
-        &mut self,
-        sheet: impl AsRef<str>,
-        start: u32,
-        count: u32,
-    ) -> Result<()> {
+    pub fn delete_columns(&mut self, sheet: impl AsRef<str>, start: u32, count: u32) -> Result<()> {
         let sheet = sheet.as_ref().to_string();
         validate_column_index(start, &sheet)?;
         validate_count(count)?;
@@ -109,21 +94,15 @@ impl Workbook {
             .collect();
         for name in &sheet_names {
             let p = self.worksheet_part_for_sheet(name)?;
-            let ws = p
-                .root_element_mut(&mut self.doc)
-                .map_err(sdk_err_to_api)?;
+            let ws = p.root_element_mut(&mut self.doc).map_err(sdk_err_to_api)?;
             rewrite_formulas(ws, name, target, op);
             shift_conditional_formatting_formulas(ws, name, target, op);
         }
 
         let ws_part_target = self.worksheet_part_for_sheet(target)?;
-        let table_parts: Vec<_> = ws_part_target
-            .table_definition_parts(&self.doc)
-            .collect();
+        let table_parts: Vec<_> = ws_part_target.table_definition_parts(&self.doc).collect();
         for tp in table_parts {
-            let table = tp
-                .root_element_mut(&mut self.doc)
-                .map_err(sdk_err_to_api)?;
+            let table = tp.root_element_mut(&mut self.doc).map_err(sdk_err_to_api)?;
             shift_table(table, op);
         }
 
@@ -197,7 +176,9 @@ fn shift_sheet_data(ws: &mut x::Worksheet, op: ShiftOp) {
         ShiftOp::DeleteRow { start, count } => {
             let end = start + count - 1;
             rows.retain_mut(|row| {
-                let Some(idx) = row.row_index else { return true };
+                let Some(idx) = row.row_index else {
+                    return true;
+                };
                 if idx >= start && idx <= end {
                     return false;
                 }
@@ -246,8 +227,7 @@ fn shift_sheet_data(ws: &mut x::Worksheet, op: ShiftOp) {
                     }
                     if c > end {
                         let new_c = c - count;
-                        cell.cell_reference =
-                            Some(format!("{}{}", xlcore_io::col_label(new_c), r));
+                        cell.cell_reference = Some(format!("{}{}", xlcore_io::col_label(new_c), r));
                     }
                     true
                 });
@@ -567,22 +547,31 @@ pub(crate) enum EndpointKind {
 }
 
 fn shift_formula_refs(src: &str, owning: &str, target: &str, op: ShiftOp) -> String {
-    let mut rewrite = |start: Endpoint,
-                       end: Option<Endpoint>,
-                       sheet: Option<&str>,
-                       prefix_literal: &str| {
-        rewrite_ref_token(start, end, sheet, owning, target, op, prefix_literal)
-    };
+    let mut rewrite =
+        |start: Endpoint, end: Option<Endpoint>, sheet: Option<&str>, prefix_literal: &str| {
+            rewrite_ref_token(start, end, sheet, owning, target, op, prefix_literal)
+        };
+    walk_formula_refs(src, &mut rewrite)
+}
+
+pub(crate) fn rename_sheet_in_formula_refs(src: &str, old_name: &str, new_name: &str) -> String {
+    let new_prefix = format!("{}!", quote_sheet_name(new_name));
+    let mut rewrite =
+        |start: Endpoint, end: Option<Endpoint>, sheet: Option<&str>, prefix_literal: &str| {
+            let prefix = match sheet {
+                Some(s) if s.eq_ignore_ascii_case(old_name) => new_prefix.as_str(),
+                _ => prefix_literal,
+            };
+            format!("{}{}", prefix, render_ref_body(start, end))
+        };
     walk_formula_refs(src, &mut rewrite)
 }
 
 pub(crate) fn translate_formula_refs(src: &str, dr: i64, dc: i64) -> String {
-    let mut rewrite = |start: Endpoint,
-                       end: Option<Endpoint>,
-                       _sheet: Option<&str>,
-                       prefix_literal: &str| {
-        translate_ref_token(start, end, dr, dc, prefix_literal)
-    };
+    let mut rewrite =
+        |start: Endpoint, end: Option<Endpoint>, _sheet: Option<&str>, prefix_literal: &str| {
+            translate_ref_token(start, end, dr, dc, prefix_literal)
+        };
     walk_formula_refs(src, &mut rewrite)
 }
 
@@ -618,11 +607,7 @@ fn translate_ref_token(
         },
         None => None,
     };
-    format!(
-        "{}{}",
-        prefix_literal,
-        render_ref_body(new_start, new_end)
-    )
+    format!("{}{}", prefix_literal, render_ref_body(new_start, new_end))
 }
 
 fn translate_endpoint(ep: Endpoint, dr: i64, dc: i64) -> Option<Endpoint> {
@@ -738,9 +723,7 @@ fn walk_formula_refs(src: &str, rewrite: RefRewriter<'_>) -> String {
                 }
             }
             b'$' | b'0'..=b'9' => {
-                let (rendered, consumed) = try_consume_and_rewrite_ref(
-                    bytes, i, None, rewrite, "",
-                );
+                let (rendered, consumed) = try_consume_and_rewrite_ref(bytes, i, None, rewrite, "");
                 if consumed > 0 {
                     out.push_str(&rendered);
                     i += consumed;
@@ -889,8 +872,7 @@ fn apply_op_to_ref(
     match op {
         ShiftOp::InsertRow { before, count } => {
             if let Some(e) = end {
-                let (ns, ne) =
-                    shift_range_insert(start.row?, e.row?, before, count, MAX_ROW);
+                let (ns, ne) = shift_range_insert(start.row?, e.row?, before, count, MAX_ROW);
                 new_start.row = Some(ns);
                 if let Some(ref mut ee) = new_end {
                     ee.row = Some(ne);
@@ -914,8 +896,7 @@ fn apply_op_to_ref(
         }
         ShiftOp::InsertCol { before, count } => {
             if let Some(e) = end {
-                let (ns, ne) =
-                    shift_range_insert(start.col?, e.col?, before, count, MAX_COLUMN);
+                let (ns, ne) = shift_range_insert(start.col?, e.col?, before, count, MAX_COLUMN);
                 new_start.col = Some(ns);
                 if let Some(ref mut ee) = new_end {
                     ee.col = Some(ne);
@@ -1050,9 +1031,9 @@ fn letters_to_col(bytes: &[u8]) -> Option<u32> {
         if !b.is_ascii_alphabetic() {
             return None;
         }
-        col = col.checked_mul(26)?.checked_add(
-            b.to_ascii_uppercase() as u32 - b'A' as u32 + 1,
-        )?;
+        col = col
+            .checked_mul(26)?
+            .checked_add(b.to_ascii_uppercase() as u32 - b'A' as u32 + 1)?;
     }
     Some(col)
 }
@@ -1162,7 +1143,10 @@ mod tests {
             "A1+B2",
             "Sheet1",
             "Sheet1",
-            ShiftOp::InsertRow { before: 2, count: 1 },
+            ShiftOp::InsertRow {
+                before: 2,
+                count: 1,
+            },
         );
         assert_eq!(f, "A1+B3");
 
@@ -1170,7 +1154,10 @@ mod tests {
             "SUM(A1:A10)",
             "Sheet1",
             "Sheet1",
-            ShiftOp::InsertRow { before: 5, count: 2 },
+            ShiftOp::InsertRow {
+                before: 5,
+                count: 2,
+            },
         );
         assert_eq!(f, "SUM(A1:A12)");
 
@@ -1178,7 +1165,10 @@ mod tests {
             "SUM(A1:A10)",
             "Sheet1",
             "Sheet1",
-            ShiftOp::DeleteRow { start: 1, count: 10 },
+            ShiftOp::DeleteRow {
+                start: 1,
+                count: 10,
+            },
         );
         assert_eq!(f, "SUM(#REF!)");
 
@@ -1186,7 +1176,10 @@ mod tests {
             "$A$5",
             "Sheet1",
             "Sheet1",
-            ShiftOp::InsertRow { before: 2, count: 1 },
+            ShiftOp::InsertRow {
+                before: 2,
+                count: 1,
+            },
         );
         assert_eq!(f, "$A$6");
     }
@@ -1197,7 +1190,10 @@ mod tests {
             "Sheet2!A1 + Sheet1!B2",
             "Other",
             "Sheet1",
-            ShiftOp::InsertRow { before: 1, count: 1 },
+            ShiftOp::InsertRow {
+                before: 1,
+                count: 1,
+            },
         );
         assert_eq!(f, "Sheet2!A1 + Sheet1!B3");
 
@@ -1205,7 +1201,10 @@ mod tests {
             "'My Sheet'!A1",
             "Other",
             "My Sheet",
-            ShiftOp::InsertCol { before: 1, count: 1 },
+            ShiftOp::InsertCol {
+                before: 1,
+                count: 1,
+            },
         );
         assert_eq!(f, "'My Sheet'!B1");
     }
@@ -1216,7 +1215,10 @@ mod tests {
             r#"IF(A1>0,"A1 is big","A1")"#,
             "Sheet1",
             "Sheet1",
-            ShiftOp::InsertRow { before: 1, count: 1 },
+            ShiftOp::InsertRow {
+                before: 1,
+                count: 1,
+            },
         );
         assert_eq!(f, r#"IF(A2>0,"A1 is big","A1")"#);
     }
@@ -1227,7 +1229,10 @@ mod tests {
             "SUM(A:A)",
             "Sheet1",
             "Sheet1",
-            ShiftOp::InsertCol { before: 1, count: 1 },
+            ShiftOp::InsertCol {
+                before: 1,
+                count: 1,
+            },
         );
         assert_eq!(f, "SUM(B:B)");
 
@@ -1235,7 +1240,10 @@ mod tests {
             "SUM(A:A)",
             "Sheet1",
             "Sheet1",
-            ShiftOp::InsertRow { before: 1, count: 1 },
+            ShiftOp::InsertRow {
+                before: 1,
+                count: 1,
+            },
         );
         assert_eq!(f, "SUM(A:A)");
     }

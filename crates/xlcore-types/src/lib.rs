@@ -255,6 +255,7 @@ pub enum ClearMode {
     All,
     Values,
     Formulas,
+    #[serde(alias = "formats")]
     Styles,
 }
 
@@ -710,6 +711,20 @@ pub struct CfValueObject {
     pub value: Option<String>,
 }
 
+fn cfvo_default_min() -> CfValueObject {
+    CfValueObject {
+        kind: CfValueObjectKind::Min,
+        value: None,
+    }
+}
+
+fn cfvo_default_max() -> CfValueObject {
+    CfValueObject {
+        kind: CfValueObjectKind::Max,
+        value: None,
+    }
+}
+
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
@@ -730,7 +745,9 @@ pub struct ColorScalePatch {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct DataBarPatch {
+    #[serde(default = "cfvo_default_min")]
     pub min: CfValueObject,
+    #[serde(default = "cfvo_default_max")]
     pub max: CfValueObject,
     pub color: String,
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -938,7 +955,7 @@ pub struct ConditionalFormatRuleInfo {
 #[serde(rename_all = "camelCase")]
 pub struct DefinedNameInfo {
     pub name: String,
-    pub formula: String,
+    pub reference: String,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scope: Option<String>,
@@ -958,7 +975,8 @@ pub struct DefinedNameInfo {
 #[serde(rename_all = "camelCase")]
 pub struct DefinedNamePatch {
     pub name: String,
-    pub formula: String,
+    #[serde(alias = "formula")]
+    pub reference: String,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scope: Option<String>,
@@ -1669,6 +1687,9 @@ pub struct SearchOptions {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_results: Option<usize>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub include_hidden: Option<bool>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -2351,12 +2372,17 @@ pub enum ChartStacking {
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "snake_case")]
+/// Where the chart's legend sits relative to the plot area.
+///
+/// Use `None` to suppress the legend entirely (Excel UI: "No Legend"). `TopRight`
+/// corresponds to Excel's "Overlay Legend at Right" position.
 pub enum ChartLegendPosition {
     Right,
     Left,
     Top,
     Bottom,
     TopRight,
+    /// Hide the legend. Equivalent to Excel's "No Legend" / unchecking Chart Elements → Legend.
     None,
 }
 
@@ -2417,10 +2443,20 @@ pub struct ChartDataLabels {
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "camelCase")]
+/// Two-cell anchor for a chart or image, in OOXML `xdr:twoCellAnchor` coordinates.
+///
+/// All row/column indices are **0-based** (column A = 0, row 1 = 0), matching the
+/// underlying `<xdr:col>` / `<xdr:row>` elements. The anchor's bottom-right corner
+/// is the top-left of the cell at `(to_column, to_row)` plus any EMU offsets, so
+/// to span columns A..=E inclusive use `from_column: 0, to_column: 5`.
 pub struct ChartAnchor {
+    /// 0-based column index of the top-left anchor cell (A = 0).
     pub from_column: u32,
+    /// 0-based row index of the top-left anchor cell (row 1 = 0).
     pub from_row: u32,
+    /// 0-based column index of the bottom-right anchor cell (exclusive of any offset).
     pub to_column: u32,
+    /// 0-based row index of the bottom-right anchor cell (exclusive of any offset).
     pub to_row: u32,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2624,10 +2660,7 @@ impl ImageFormat {
             || bytes.starts_with(&[0x4D, 0x4D, 0x00, 0x2A])
         {
             Some(ImageFormat::Tiff)
-        } else if bytes.len() >= 12
-            && &bytes[0..4] == b"RIFF"
-            && &bytes[8..12] == b"WEBP"
-        {
+        } else if bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
             Some(ImageFormat::Webp)
         } else if bytes.starts_with(b"<?xml") || bytes.starts_with(b"<svg") {
             Some(ImageFormat::Svg)
@@ -2955,5 +2988,13 @@ mod tests {
             Some(&EngineCellValue::Number(7.0))
         );
         assert!(workbook.cell("Sheet1", "2C").is_none());
+    }
+
+    #[test]
+    fn clear_mode_accepts_formats_alias_for_styles() {
+        let styles: ClearMode = serde_json::from_str("\"styles\"").unwrap();
+        let formats: ClearMode = serde_json::from_str("\"formats\"").unwrap();
+        assert_eq!(styles, ClearMode::Styles);
+        assert_eq!(formats, ClearMode::Styles);
     }
 }

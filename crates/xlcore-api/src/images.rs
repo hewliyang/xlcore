@@ -1,14 +1,12 @@
 use ooxmlsdk::parts::drawings_part::DrawingsPart;
 use ooxmlsdk::parts::image_part::ImagePart;
-use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_drawing as xdr;
+use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use ooxmlsdk::units::DrawingmlPercentageValue;
 use xlcore_io::spreadsheetml as x;
-use xlcore_types::{
-    ApiError, ApiErrorCode, ChartAnchor, ImageFormat, ImageInfo, ImagePatch,
-};
+use xlcore_types::{ApiError, ApiErrorCode, ChartAnchor, ImageFormat, ImageInfo, ImagePatch};
 
 use crate::errors::sdk_err_to_api;
 use crate::{Result, Workbook};
@@ -53,17 +51,29 @@ impl Workbook {
             for (idx, choice) in drawing_root.worksheet_drawing_choice.iter().enumerate() {
                 let (pic, anchor) = match choice {
                     xdr::WorksheetDrawingChoice::TwoCellAnchor(a) => {
-                        let Some(xdr::TwoCellAnchorChoice::Picture(p)) = a.two_cell_anchor_choice.as_ref() else { continue };
+                        let Some(xdr::TwoCellAnchorChoice::Picture(p)) =
+                            a.two_cell_anchor_choice.as_ref()
+                        else {
+                            continue;
+                        };
                         (p.as_ref(), two_cell_anchor_to_chart_anchor(a))
                     }
                     xdr::WorksheetDrawingChoice::OneCellAnchor(a) => {
-                        let Some(xdr::OneCellAnchorChoice::Picture(p)) = a.one_cell_anchor_choice.as_ref() else { continue };
+                        let Some(xdr::OneCellAnchorChoice::Picture(p)) =
+                            a.one_cell_anchor_choice.as_ref()
+                        else {
+                            continue;
+                        };
                         (p.as_ref(), one_cell_anchor_to_chart_anchor(a))
                     }
                     _ => continue,
                 };
-                let Some(rid) = picture_embed_rid(pic) else { continue };
-                let Some((_, ipart)) = image_by_rid.iter().find(|(r, _)| r == &rid) else { continue };
+                let Some(rid) = picture_embed_rid(pic) else {
+                    continue;
+                };
+                let Some((_, ipart)) = image_by_rid.iter().find(|(r, _)| r == &rid) else {
+                    continue;
+                };
                 let bytes = ipart.data(&self.doc).map(|b| b.len() as u64).unwrap_or(0);
                 let format = ipart
                     .data(&self.doc)
@@ -79,8 +89,7 @@ impl Workbook {
                 } else {
                     name_raw.to_string()
                 };
-                let (rotation_degrees, flip_horizontal, flip_vertical) =
-                    picture_rotation_flip(pic);
+                let (rotation_degrees, flip_horizontal, flip_vertical) = picture_rotation_flip(pic);
                 let (crop_left_pct, crop_top_pct, crop_right_pct, crop_bottom_pct) =
                     picture_crop_pct(pic);
                 out.push(ImageInfo {
@@ -105,11 +114,10 @@ impl Workbook {
 
     pub fn set_image(&mut self, patch: ImagePatch) -> Result<ImageInfo> {
         if patch.bytes.is_empty() {
-            return Err(ApiError::new(
-                ApiErrorCode::InvalidImage,
-                "image bytes must not be empty",
-            )
-            .with_sheet(&patch.sheet));
+            return Err(
+                ApiError::new(ApiErrorCode::InvalidImage, "image bytes must not be empty")
+                    .with_sheet(&patch.sheet),
+            );
         }
         if !self.sheet_exists(&patch.sheet)? {
             return Err(ApiError::new(
@@ -181,7 +189,10 @@ impl Workbook {
             .root_element(&mut self.doc)
             .map_err(sdk_err_to_api)?;
         let pic_index = drawing.worksheet_drawing_choice.len() + 1;
-        let pic_name = patch.name.clone().unwrap_or_else(|| format!("Image {pic_index}"));
+        let pic_name = patch
+            .name
+            .clone()
+            .unwrap_or_else(|| format!("Image {pic_index}"));
 
         let anchor = build_picture_two_cell_anchor(
             &patch.anchor,
@@ -240,14 +251,18 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         drawing_mut.worksheet_drawing_choice.retain(|choice| {
             let pic = match choice {
-                xdr::WorksheetDrawingChoice::TwoCellAnchor(a) => match a.two_cell_anchor_choice.as_ref() {
-                    Some(xdr::TwoCellAnchorChoice::Picture(p)) => Some(p.as_ref()),
-                    _ => None,
-                },
-                xdr::WorksheetDrawingChoice::OneCellAnchor(a) => match a.one_cell_anchor_choice.as_ref() {
-                    Some(xdr::OneCellAnchorChoice::Picture(p)) => Some(p.as_ref()),
-                    _ => None,
-                },
+                xdr::WorksheetDrawingChoice::TwoCellAnchor(a) => {
+                    match a.two_cell_anchor_choice.as_ref() {
+                        Some(xdr::TwoCellAnchorChoice::Picture(p)) => Some(p.as_ref()),
+                        _ => None,
+                    }
+                }
+                xdr::WorksheetDrawingChoice::OneCellAnchor(a) => {
+                    match a.one_cell_anchor_choice.as_ref() {
+                        Some(xdr::OneCellAnchorChoice::Picture(p)) => Some(p.as_ref()),
+                        _ => None,
+                    }
+                }
                 _ => None,
             };
             match pic.and_then(picture_embed_rid) {
@@ -314,7 +329,7 @@ fn pct_to_drawingml(value: f64, field: &str, sheet: &str) -> Result<DrawingmlPer
         .with_sheet(sheet));
     }
     Ok(DrawingmlPercentageValue::Decimal(
-        (value * 1000.0).round() as i32,
+        (value * 1000.0).round() as i32
     ))
 }
 
