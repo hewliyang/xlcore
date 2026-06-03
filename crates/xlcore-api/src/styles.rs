@@ -278,8 +278,12 @@ fn build_font(sheet: &x::Stylesheet, current: usize, patch: &FontPatch) -> Resul
         .unwrap_or_else(default_font);
     let mut font = base;
     if let Some(name) = patch.name.as_deref() {
-        font.font_choice
-            .retain(|c| !matches!(c, x::FontChoice::FontName(_)));
+        font.font_choice.retain(|c| {
+            !matches!(
+                c,
+                x::FontChoice::FontName(_) | x::FontChoice::FontScheme(_)
+            )
+        });
         font.font_choice
             .push(x::FontChoice::FontName(Box::new(x::FontName {
                 val: name.to_string(),

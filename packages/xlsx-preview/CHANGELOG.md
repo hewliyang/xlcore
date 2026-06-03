@@ -11,6 +11,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Setting `font.name` now also drops any inherited theme `scheme` (minor/major), so an explicit font is no longer overridden by the theme body/heading font in Excel (e.g. "Aptos" no longer renders as "Aptos Narrow (Body)").
+- `Workbook.create()` now ships a default `xl/theme/theme1.xml` (modern Office "Aptos" theme), so `scheme`/`theme`-indexed fonts and colors resolve correctly instead of falling back to Excel's app defaults.
 - Pivot extract no longer paints the computed grid on top of the file's static cell values: cells inside a pivot's range are cleared before merging the engine-computed cells, so a filtered pivot that shrinks no longer leaves stale rows/overlapping text (regression test: `pivot_cells_do_not_duplicate_static_worksheet_cells`).
 - Bar/column and line chart series `color` was silently dropped on write (only pie/scatter/bubble/doughnut/area persisted it); now authored and read back for all chart kinds.
 - Chart series `color` now accepts 8-hex `AARRGGBB` (alpha stripped) in addition to 6-hex `RRGGBB`, matching every other color field.
