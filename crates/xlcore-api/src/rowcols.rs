@@ -84,11 +84,7 @@ impl Workbook {
         Ok(())
     }
 
-    pub fn set_show_grid_lines(
-        &mut self,
-        sheet: impl AsRef<str>,
-        visible: bool,
-    ) -> Result<bool> {
+    pub fn set_show_grid_lines(&mut self, sheet: impl AsRef<str>, visible: bool) -> Result<bool> {
         let sheet = sheet.as_ref().to_string();
         let ws_part = self.worksheet_part_for_sheet(&sheet)?;
         let ws = ws_part
