@@ -1055,6 +1055,20 @@ impl WorkbookHandle {
             .map_err(api_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = setShowGridLines)]
+    pub fn set_show_grid_lines(&mut self, sheet: &str, visible: bool) -> Result<bool, JsValue> {
+        self.workbook_mut()?
+            .set_show_grid_lines(sheet, visible)
+            .map_err(api_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = getShowGridLines)]
+    pub fn get_show_grid_lines(&mut self, sheet: &str) -> Result<bool, JsValue> {
+        self.workbook_mut()?
+            .get_show_grid_lines(sheet)
+            .map_err(api_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = setFreeze)]
     pub fn set_freeze(
         &mut self,

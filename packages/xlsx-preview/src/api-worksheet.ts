@@ -169,6 +169,13 @@ export class Worksheet {
     return this;
   }
 
+  setShowGridLines(visible: boolean): this {
+    this.handle.setShowGridLines(this.name, visible);
+    return this;
+  }
+  getShowGridLines(): boolean {
+    return this.handle.getShowGridLines(this.name) as boolean;
+  }
   /** @param row 1-based row index (row 1 = A1's row). */
   setRowHeight(row: number, height: number): this {
     this.handle.setRowHeight(this.name, row, height);

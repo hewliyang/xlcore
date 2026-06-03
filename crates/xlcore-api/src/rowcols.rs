@@ -84,6 +84,48 @@ impl Workbook {
         Ok(())
     }
 
+    pub fn set_show_grid_lines(
+        &mut self,
+        sheet: impl AsRef<str>,
+        visible: bool,
+    ) -> Result<bool> {
+        let sheet = sheet.as_ref().to_string();
+        let ws_part = self.worksheet_part_for_sheet(&sheet)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let views = ws
+            .sheet_views
+            .get_or_insert_with(|| Box::new(x::SheetViews::default()));
+        if views.sheet_view.is_empty() {
+            views.sheet_view.push(x::SheetView::default());
+        }
+        for view in &mut views.sheet_view {
+            view.show_grid_lines = if visible {
+                None
+            } else {
+                Some(BooleanValue::from_bool(false))
+            };
+        }
+        Ok(visible)
+    }
+
+    pub fn get_show_grid_lines(&mut self, sheet: impl AsRef<str>) -> Result<bool> {
+        let sheet = sheet.as_ref().to_string();
+        let ws_part = self.worksheet_part_for_sheet(&sheet)?;
+        let ws = ws_part
+            .root_element(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let visible = ws
+            .sheet_views
+            .as_ref()
+            .and_then(|views| views.sheet_view.first())
+            .and_then(|view| view.show_grid_lines)
+            .map(bool::from)
+            .unwrap_or(true);
+        Ok(visible)
+    }
+
     pub fn set_freeze(
         &mut self,
         sheet: impl AsRef<str>,
