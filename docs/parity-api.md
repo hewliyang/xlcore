@@ -61,8 +61,16 @@ Known gaps:
   dl no longer duplicates onto every series). Richer chart features (combo,
   dual axis, chartEx, marker/line styling, per-point data labels, modern
   chartStyle/colorStyle companion parts) remain preserve-only. Image authoring now covers
-  position, rotation, flips, and crop; shapes are still
-  preserve-only — no authoring API yet. Pivot tables now author a single
+  position, rotation, flips, and crop. Shape authoring (`shapes` / `set_shape`
+  / `remove_shape`) creates DrawingML preset shapes via a two-cell anchor: any
+  of the 187 `prstGeom` presets (validated through `ShapeTypeValues::from_str`),
+  solid fill, solid outline (color + width), multiline text (color/size/bold/
+  italic/underline + horizontal `align` and vertical `verticalAlign`), line
+  arrowheads (`headEnd`/`tailEnd` `{type,w,len}`), rotation, and flips. Rotated/
+  flipped shapes now emit `a:off`/`a:ext` derived from the anchor grid geometry,
+  so `rot` is honored by both Excel and the preview. v0 carve-outs: gradient/
+  pattern/blip fills, effects/shadows, per-run rich text, groups, connectors with
+  connection sites, and custom geometry stay preserve-only. Pivot tables now author a single
   worksheet-source pivot (`set_pivot` / `pivots` / `remove_pivot`): row/column/
   filter fields plus sum/count/avg/max/min/product/countNums/stdDev/var data
   fields. The cache enumerates shared items for every field and records use
@@ -183,7 +191,7 @@ Status key:
 | Conditional formatting | `ConditionalFormatting` APIs | Preserve existing; author basic rules once style writes exist | Done (cellIs/expression/text/blanks/errors/top10/aboveAverage/duplicate/unique rules + dxf font/fill/border/numFmt/alignment authoring; 2/3-stop color scales, min/max data bars, 3/4/5-icon icon sets with cfvo round-trip; extLst x14 extensions still preserve-only) | Rust API + save/reopen |
 | Charts | `Charts`, `Shapes` | Preserve; create/edit chart types already rendered | Done (authoring column/bar/line/pie/area/scatter/bubble/doughnut with title/legend/categories ref/series literal-or-ref names + values_ref; scatter/bubble take xValuesRef + yVal; bubble takes bubbleSizesRef; per-series solid `color` (`RRGGBB` or `AARRGGBB`, alpha stripped) authored + read for all kinds incl. bar/column/line; `categoryAxisTitle`/`valueAxisTitle`; chart-level `dataLabels` with show flags, position, separator; per-series `dataLabels` override; preserves richer existing chart XML) | Rust API + save/reopen |
 | Images | `Shapes.Picture`, shape collection | Insert image, position, size, crop/rotation later | Done (insert/list/remove PNG/JPEG/GIF/BMP/TIFF/WEBP/SVG with two-cell anchor; sniff or explicit `format`; crop/rotation still preserve-only) | Rust API + save/reopen |
-| Shapes | `Shapes.ShapeCollection` | Preserve first; author basic shape/text later | P2 | Preview + OOXML |
+| Shapes | `Shapes.ShapeCollection` | Preserve first; author basic shape/text later | Done (insert/list/remove preset shapes via two-cell anchor: any of 187 `prstGeom` presets, solid fill, solid outline color+width, multiline text with color/size/bold/italic/underline + horizontal/vertical alignment, line arrowheads, rotation, flips; rotation/flip emit anchor-derived `a:off`/`a:ext` so `rot` renders in Excel + preview; gradient/pattern/blip fills, effects, rich-text runs, groups, connectors, custom geometry preserve-only) | Rust API + save/reopen + preview-render |
 | Sparklines | `Sparklines` APIs | Preserve; author simple line/column/win-loss | Done (author/list/remove line/column/stacked groups with per-entry location + dataRef, markers/high/low/first/last/negative/displayXAxis flags, axis min/max kinds + manual values, line weight, full color palette) | Rust API + save/reopen |
 | Pivot tables | `PivotTableManager`, slicers/timelines | Preserve; refresh/create only after aggregation model exists | Partial (author single worksheet-source pivot: row/column/filter fields + sum/count/avg/max/min/product/countNums/stdDev/var data fields; enumerated cache + materialized rowItems/colItems so Excel/SpreadJS compute values; subtotals disabled, single-level fine, no slicers/timelines/calculated fields/grouping; cache part emits at `/pivotCache` via absolute rels; layout extractor aggregates `pivotCacheRecords` and materializes the value grid so the preview renderer shows values without SpreadJS/Excel) | Rust API + SpreadJS load/compute + save/reopen + preview-render value parity |
 | Slicers/timelines | `Slicers`, pivot slicers | Preserve; authoring deferred | Later | OOXML diff |
@@ -304,6 +312,7 @@ Keep codes stable and add only when behavior needs caller recovery.
 | `invalid_conditional_format` | Conditional format rule patch is missing required formula/operator/text for the rule kind, or has a non-positive priority |
 | `invalid_chart` | Chart patch has no series, or a series `values_ref` is empty |
 | `invalid_image` | Image patch has empty bytes, an unrecognized format that wasn't explicitly specified, or a non-finite rotation/crop value |
+| `invalid_shape` | Shape patch has an unknown `prstGeom` preset or a non-finite rotation value |
 | `invalid_sparkline_group` | Sparkline group patch has no entries, an invalid location/dataRef, or a non-RRGGBB color |
 | `invalid_pivot` | Pivot patch has no data field, no row/column field, a source with no data rows, or references a field missing from the source header |
 | `unsupported_formula` | Formula could not be evaluated; source/cache preserved where possible |

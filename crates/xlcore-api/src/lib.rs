@@ -20,6 +20,7 @@ mod ranges;
 mod refs;
 mod rowcols;
 mod search;
+mod shapes;
 mod sheets;
 mod sparklines;
 mod structural;
@@ -47,13 +48,13 @@ pub use xlcore_types::{
     PageSetupSettingsPatch, PivotAggregation, PivotCellRole, PivotDataField, PivotFieldFilter,
     PivotGrid, PivotGridCell, PivotInfo, PivotPatch, PrintCellComments, PrintErrors,
     PrintOptionsInfo, PrintOptionsPatch, RangeInfo, SearchHit, SearchMatch, SearchMode,
-    SearchOptions, SearchTarget, SheetInfo, SheetPageSetup, SheetPageSetupPatch,
-    SheetProtectionInfo, SheetProtectionPatch, SheetVisibility, SparklineAxisType,
-    SparklineDisplayBlanks, SparklineEntry, SparklineGroupInfo, SparklineGroupPatch, SparklineKind,
-    StylePatch, TableColumnInfo, TableColumnPatch, TableInfo, TablePatch, TableStylePatch,
-    TableStyleSettings, TableTotalsFunction, ThreadedNoteInfo, ThreadedNotePatch, UnderlinePatch,
-    VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch, WorkbookProtectionInfo,
-    WorkbookProtectionPatch,
+    SearchOptions, SearchTarget, ShapeInfo, ShapeLineEnd, ShapePatch, SheetInfo, SheetPageSetup,
+    SheetPageSetupPatch, SheetProtectionInfo, SheetProtectionPatch, SheetVisibility,
+    SparklineAxisType, SparklineDisplayBlanks, SparklineEntry, SparklineGroupInfo,
+    SparklineGroupPatch, SparklineKind, StylePatch, TableColumnInfo, TableColumnPatch, TableInfo,
+    TablePatch, TableStylePatch, TableStyleSettings, TableTotalsFunction, ThreadedNoteInfo,
+    ThreadedNotePatch, UnderlinePatch, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,
+    WorkbookProtectionInfo, WorkbookProtectionPatch,
 };
 
 use crate::errors::{anyhow_err_to_api, load_err_to_api};

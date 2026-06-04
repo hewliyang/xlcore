@@ -3,8 +3,8 @@ use crate::shapes_connector::{
     connector_world, preset_adj1, preset_adj2, preset_adj3, visit_connector,
 };
 use crate::shapes_fill::{
-    gradient_fill, line_cap_token, line_dash_token, line_join_token, outer_shadow, outline_info,
-    solid_fill_color,
+    gradient_fill, line_cap_token, line_dash_token, line_end_to_schema, line_join_token,
+    outer_shadow, outline_info, solid_fill_color,
 };
 use crate::shapes_style::{apply_font_ref_to_runs, resolve_style_refs};
 use crate::shapes_text::text_body_to_paragraphs;
@@ -540,6 +540,16 @@ fn visit_shape(
     let mut line_dash: Option<String> = line_dash_token(sp.outline.as_deref());
     let mut line_cap: Option<String> = line_cap_token(sp.outline.as_deref());
     let mut line_join: Option<String> = line_join_token(sp.outline.as_deref());
+    let head_end = sp
+        .outline
+        .as_deref()
+        .and_then(|ln| ln.head_end.as_ref())
+        .and_then(|e| line_end_to_schema(e.r#type.as_ref(), e.width.as_ref(), e.length.as_ref()));
+    let tail_end = sp
+        .outline
+        .as_deref()
+        .and_then(|ln| ln.tail_end.as_ref())
+        .and_then(|e| line_end_to_schema(e.r#type.as_ref(), e.width.as_ref(), e.length.as_ref()));
     let tb_out = text_body_to_paragraphs(s.text_body.as_deref(), theme);
     let text_anchor = tb_out.anchor;
     let text_wrap = tb_out.wrap;
@@ -629,8 +639,8 @@ fn visit_shape(
         line_cap,
         line_join,
         is_connector: None,
-        head_end: None,
-        tail_end: None,
+        head_end,
+        tail_end,
         adj1: preset_adj1(sp),
         adj2: preset_adj2(sp),
         adj3: preset_adj3(sp),

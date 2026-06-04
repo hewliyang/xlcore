@@ -22,6 +22,8 @@ import type {
   ImageInfo,
   ImagePatch,
   MergeInfo,
+  ShapeInfo,
+  ShapePatch,
   PivotGrid,
   PivotInfo,
   PivotPatch,
@@ -310,6 +312,23 @@ export class ImageCollection extends SheetScopedCollection {
   }
   remove(id: string): ImageInfo | null {
     return (this.handle.removeImage(this.sheet, id) as ImageInfo | null) ?? null;
+  }
+}
+
+export class ShapeCollection extends SheetScopedCollection {
+  list(): ShapeInfo[] {
+    return this.handle.shapes(this.sheet) as ShapeInfo[];
+  }
+  set(patch: Omit<ShapePatch, "sheet" | "anchor"> & { anchor: AnchorInput }): ShapeInfo {
+    const normalized: ShapePatch = {
+      ...patch,
+      sheet: this.sheet,
+      anchor: normalizeAnchor(patch.anchor),
+    };
+    return this.handle.setShape(normalized) as ShapeInfo;
+  }
+  remove(id: string): ShapeInfo | null {
+    return (this.handle.removeShape(this.sheet, id) as ShapeInfo | null) ?? null;
   }
 }
 

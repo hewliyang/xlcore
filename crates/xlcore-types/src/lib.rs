@@ -31,6 +31,7 @@ pub enum ApiErrorCode {
     InvalidConditionalFormat,
     InvalidChart,
     InvalidImage,
+    InvalidShape,
     InvalidSparklineGroup,
     InvalidPivot,
     UnsupportedFormula,
@@ -2731,6 +2732,116 @@ pub struct ImageInfo {
     pub crop_top_pct: f64,
     pub crop_right_pct: f64,
     pub crop_bottom_pct: f64,
+    pub flip_horizontal: bool,
+    pub flip_vertical: bool,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ShapeLineEnd {
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub w: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub len: Option<String>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ShapePatch {
+    pub sheet: String,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub anchor: ChartAnchor,
+    pub preset: String,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill_color: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line_color: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line_width_emu: Option<i64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_color: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font_size_pt: Option<f64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bold: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub italic: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rotation_degrees: Option<f64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flip_horizontal: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flip_vertical: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub align: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vertical_align: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub underline: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub head_end: Option<ShapeLineEnd>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tail_end: Option<ShapeLineEnd>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ShapeInfo {
+    pub sheet: String,
+    pub id: String,
+    pub name: String,
+    pub anchor: ChartAnchor,
+    pub preset: String,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill_color: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line_color: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    pub rotation_degrees: f64,
     pub flip_horizontal: bool,
     pub flip_vertical: bool,
 }

@@ -24,6 +24,7 @@ export type ApiErrorCode =
   | "invalid_conditional_format"
   | "invalid_chart"
   | "invalid_image"
+  | "invalid_shape"
   | "invalid_sparkline_group"
   | "invalid_pivot"
   | "unsupported_formula"

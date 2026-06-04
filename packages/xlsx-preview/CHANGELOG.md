@@ -7,10 +7,13 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `Worksheet.shapes` collection (`list`/`set`/`remove`) to author DrawingML preset shapes (any of the 187 `prstGeom` presets) with solid fill, outline color/width, multiline text (color/size/bold/italic), rotation, and flip.
+- `ShapePatch` gains `align`/`verticalAlign` (text alignment + body anchor), `underline`, and `headEnd`/`tailEnd` (`{type,w,len}`) for line arrowheads; shape arrowheads now render in the previewer.
 - `Worksheet.setShowGridLines(visible)` / `getShowGridLines()` to toggle the per-sheet on-screen gridlines view flag.
 
 ### Fixed
 
+- Rotated/flipped shapes now emit `<a:off>`/`<a:ext>` on the shape `<a:xfrm>` (derived from the anchor), so Excel honors `rotationDegrees` instead of ignoring it.
 - Setting `font.name` now also drops any inherited theme `scheme` (minor/major), so an explicit font is no longer overridden by the theme body/heading font in Excel (e.g. "Aptos" no longer renders as "Aptos Narrow (Body)").
 - `Workbook.create()` now ships a default `xl/theme/theme1.xml` (modern Office "Aptos" theme), so `scheme`/`theme`-indexed fonts and colors resolve correctly instead of falling back to Excel's app defaults.
 - Pivot extract no longer paints the computed grid on top of the file's static cell values: cells inside a pivot's range are cleared before merging the engine-computed cells, so a filtered pivot that shrinks no longer leaves stale rows/overlapping text (regression test: `pivot_cells_do_not_duplicate_static_worksheet_cells`).

@@ -57,6 +57,7 @@ export class WorkbookHandle {
   removeMerge(reference: string): any;
   removePageSetup(sheet: string): any;
   removePivot(sheet: string, id: string): any;
+  removeShape(sheet: string, id: string): any;
   removeSheetProtection(sheet: string): any;
   removeSparklineGroup(sheet: string, id: string): any;
   removeTable(name: string): any;
@@ -89,6 +90,7 @@ export class WorkbookHandle {
   setRowHeight(sheet: string, row: number, height: number): void;
   setRowVisible(sheet: string, row: number, visible: boolean): void;
   setSheetProtection(sheet: string, patch: any): any;
+  setShape(patch: any): any;
   setSheetVisibility(name: string, visibility: string): any;
   setShowGridLines(sheet: string, visible: boolean): boolean;
   setSparklineGroup(patch: any): any;
@@ -96,6 +98,7 @@ export class WorkbookHandle {
   setTable(patch: any): any;
   setValue(reference: string, value: any): any;
   setWorkbookProtection(patch: any): any;
+  shapes(sheet?: string | null): any;
   sheetProtection(sheet: string): any;
   sheets(): any;
   sparklineGroups(sheet?: string | null): any;
