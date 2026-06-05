@@ -3,6 +3,12 @@
 All notable changes to `@hewliyang/xlsx-preview` are documented here.
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.10] - 2026-06-05
+
+### Fixed
+
+- Rows whose `<row>` element omits the `r` (row index) attribute — emitted by some producers such as SpreadJS — are no longer dropped. The extractor now infers the missing index sequentially from the last seen row, so all cells survive with correct row coordinates. Covered by the `producer-quirks/spreadjs-implicit-row-index.xlsx` fixture.
+
 ## [0.0.9] - 2026-05-28
 
 ### Added
