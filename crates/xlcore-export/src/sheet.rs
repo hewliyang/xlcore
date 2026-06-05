@@ -14,7 +14,8 @@ fn px_per_char(default_font_size_pt: f32) -> f64 {
 }
 
 fn explicit_width_attr_to_px(width: f64, default_font_size_pt: f32) -> f32 {
-    (width * px_per_char(default_font_size_pt)) as f32
+    let mdw = px_per_char(default_font_size_pt);
+    (((256.0 * width + (128.0 / mdw).trunc()) / 256.0) * mdw).trunc() as f32
 }
 
 pub fn extract(
@@ -633,8 +634,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn explicit_ooxml_widths_do_not_get_padding_added_twice() {
-        assert!((explicit_width_attr_to_px(23.421875, 11.0) - 163.953_13).abs() < 0.001);
-        assert!((explicit_width_attr_to_px(8.00390625, 11.0) - 56.027344).abs() < 0.001);
+    fn explicit_ooxml_widths_use_excel_mdw_formula() {
+        assert_eq!(explicit_width_attr_to_px(23.421875, 11.0), 164.0);
+        assert_eq!(explicit_width_attr_to_px(8.00390625, 11.0), 56.0);
+        assert_eq!(explicit_width_attr_to_px(8.43, 11.0), 59.0);
     }
 }

@@ -6,7 +6,9 @@ use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_spreadsheet_dra
 use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use xlcore_io::spreadsheetml as x;
-use xlcore_types::{ApiError, ApiErrorCode, ChartAnchor, ShapeInfo, ShapeLineEnd, ShapePatch};
+use xlcore_types::{
+    ApiError, ApiErrorCode, ApiWarning, ChartAnchor, ShapeInfo, ShapeLineEnd, ShapePatch,
+};
 
 use crate::errors::sdk_err_to_api;
 use crate::{Result, Workbook};
@@ -152,6 +154,10 @@ impl Workbook {
             .clone()
             .unwrap_or_else(|| format!("Shape {shape_id}"));
 
+        for warning in self.anchor_offset_overflow_warnings(&patch.sheet, &patch.anchor)? {
+            self.push_warning(warning);
+        }
+
         let flip_h = patch.flip_horizontal.unwrap_or(false);
         let flip_v = patch.flip_vertical.unwrap_or(false);
         let xfrm_box = self.shape_box_emu(&patch.sheet, &patch.anchor)?;
@@ -237,6 +243,93 @@ impl Workbook {
         });
 
         Ok(Some(info))
+    }
+
+    fn anchor_offset_overflow_warnings(
+        &mut self,
+        sheet: &str,
+        anchor: &ChartAnchor,
+    ) -> Result<Vec<ApiWarning>> {
+        let ws_part = self.worksheet_part_for_sheet(sheet)?;
+        let ws = ws_part
+            .root_element(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let default_col_chars = ws
+            .sheet_format_properties
+            .as_ref()
+            .and_then(|f| f.default_column_width)
+            .unwrap_or(DEFAULT_COL_WIDTH_CHARS);
+        let default_row_pt = ws
+            .sheet_format_properties
+            .as_ref()
+            .map(|f| f.default_row_height)
+            .filter(|h| *h > 0.0)
+            .unwrap_or(DEFAULT_ROW_HEIGHT_PT);
+        let col_width_emu = |col0: u32| -> i64 {
+            let col1 = col0 + 1;
+            let chars = ws
+                .columns
+                .first()
+                .and_then(|cols| {
+                    cols.column
+                        .iter()
+                        .find(|c| c.min <= col1 && col1 <= c.max)
+                        .and_then(|c| c.width)
+                })
+                .unwrap_or(default_col_chars);
+            col_chars_to_emu(chars)
+        };
+        let row_height_emu = |row0: u32| -> i64 {
+            let row1 = row0 + 1;
+            let pt = ws
+                .sheet_data
+                .row
+                .iter()
+                .find(|r| r.row_index == Some(row1))
+                .and_then(|r| r.height)
+                .unwrap_or(default_row_pt);
+            (pt * EMU_PER_POINT as f64).round() as i64
+        };
+
+        let mut warnings = Vec::new();
+        let mut check = |label: &str, axis: &str, offset: i64, extent: i64| {
+            if offset > extent {
+                warnings.push(
+                    ApiWarning::new(
+                        ApiErrorCode::LossyOperation,
+                        format!(
+                            "{label} {axis} offset {offset} EMU exceeds the referenced cell ({extent} EMU); Excel clamps anchor offsets to the cell, so the rendered position will differ"
+                        ),
+                    )
+                    .with_sheet(sheet),
+                );
+            }
+        };
+        check(
+            "from",
+            "column",
+            anchor.from_column_offset_emu.unwrap_or(0),
+            col_width_emu(anchor.from_column),
+        );
+        check(
+            "from",
+            "row",
+            anchor.from_row_offset_emu.unwrap_or(0),
+            row_height_emu(anchor.from_row),
+        );
+        check(
+            "to",
+            "column",
+            anchor.to_column_offset_emu.unwrap_or(0),
+            col_width_emu(anchor.to_column),
+        );
+        check(
+            "to",
+            "row",
+            anchor.to_row_offset_emu.unwrap_or(0),
+            row_height_emu(anchor.to_row),
+        );
+        Ok(warnings)
     }
 
     fn shape_box_emu(&mut self, sheet: &str, anchor: &ChartAnchor) -> Result<(i64, i64, i64, i64)> {

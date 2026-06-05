@@ -13,7 +13,9 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Rotated/flipped shapes now emit `<a:off>`/`<a:ext>` on the shape `<a:xfrm>` (derived from the anchor), so Excel honors `rotationDegrees` instead of ignoring it.
+- `Worksheet.shapes.set` now warns (`take_warnings`) when an anchor offset exceeds its referenced cell, since Excel clamps such offsets to the cell while our renderer treats them as absolute.
+- Explicit column `width` → px now uses Excel's MDW rounding formula instead of a flat `width * pxPerChar`, so non-default column widths line up with Excel.
+- Rotated/flipped shapes now emit `<a:off>`/`<a:ext>` on the shape `<a:xfrm>` (derived from the anchor), so Excel honors `rotationDegrees` instead of ignoring it. Rotation keeps the anchor footprint and rotates geometry inside it (matching Excel; fixture: `shapes_rotation_keeps_anchor_footprint`).
 - Setting `font.name` now also drops any inherited theme `scheme` (minor/major), so an explicit font is no longer overridden by the theme body/heading font in Excel (e.g. "Aptos" no longer renders as "Aptos Narrow (Body)").
 - `Workbook.create()` now ships a default `xl/theme/theme1.xml` (modern Office "Aptos" theme), so `scheme`/`theme`-indexed fonts and colors resolve correctly instead of falling back to Excel's app defaults.
 - Pivot extract no longer paints the computed grid on top of the file's static cell values: cells inside a pivot's range are cleared before merging the engine-computed cells, so a filtered pivot that shrinks no longer leaves stale rows/overlapping text (regression test: `pivot_cells_do_not_duplicate_static_worksheet_cells`).

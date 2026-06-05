@@ -4249,6 +4249,56 @@ fn shapes_emit_alignment_underline_arrow_rotation_box() {
 }
 
 #[test]
+fn shapes_warn_on_offset_exceeding_referenced_cell() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_shape(ShapePatch {
+        sheet: "Sheet1".into(),
+        anchor: ChartAnchor {
+            from_column: 0,
+            from_row: 0,
+            to_column: 0,
+            to_row: 0,
+            to_column_offset_emu: Some(5_000_000),
+            to_row_offset_emu: Some(5_000_000),
+            ..Default::default()
+        },
+        preset: "rect".into(),
+        fill_color: Some("#4472C4".into()),
+        ..Default::default()
+    })
+    .unwrap();
+    let warnings = wb.take_warnings();
+    assert_eq!(warnings.len(), 2, "{warnings:?}");
+    assert!(warnings
+        .iter()
+        .all(|w| w.code == ApiErrorCode::LossyOperation));
+    assert!(warnings.iter().any(|w| w.message.contains("column offset")));
+    assert!(warnings.iter().any(|w| w.message.contains("row offset")));
+}
+
+#[test]
+fn shapes_no_warn_when_offsets_fit_cell() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_shape(ShapePatch {
+        sheet: "Sheet1".into(),
+        anchor: ChartAnchor {
+            from_column: 0,
+            from_row: 0,
+            to_column: 3,
+            to_row: 3,
+            to_column_offset_emu: Some(100_000),
+            to_row_offset_emu: Some(50_000),
+            ..Default::default()
+        },
+        preset: "rect".into(),
+        fill_color: Some("#4472C4".into()),
+        ..Default::default()
+    })
+    .unwrap();
+    assert!(wb.take_warnings().is_empty());
+}
+
+#[test]
 fn shapes_reject_unknown_preset() {
     let mut wb = Workbook::new().unwrap();
     let err = wb
@@ -4260,6 +4310,48 @@ fn shapes_reject_unknown_preset() {
         })
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidShape);
+}
+
+#[test]
+fn shapes_rotation_keeps_anchor_footprint() {
+    use std::io::Read;
+    let off_ext = |rotation_degrees: Option<f64>| -> String {
+        let mut wb = Workbook::new().unwrap();
+        wb.set_shape(ShapePatch {
+            sheet: "Sheet1".into(),
+            anchor: ChartAnchor {
+                from_column: 1,
+                from_row: 1,
+                to_column: 5,
+                to_row: 6,
+                ..Default::default()
+            },
+            preset: "rect".into(),
+            fill_color: Some("#4472C4".into()),
+            rotation_degrees,
+            ..Default::default()
+        })
+        .unwrap();
+        let bytes = wb.save_bytes().unwrap();
+        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+        let mut s = String::new();
+        zip.by_name("xl/drawings/drawing1.xml")
+            .unwrap()
+            .read_to_string(&mut s)
+            .unwrap();
+        let start = s.find("<a:off").unwrap();
+        let end = s[start..].find("/>").unwrap() + start;
+        let off = s[start..=end + 1].to_string();
+        let estart = s.find("<a:ext").unwrap();
+        let eend = s[estart..].find("/>").unwrap() + estart;
+        format!("{off}{}", &s[estart..=eend + 1])
+    };
+
+    assert_eq!(
+        off_ext(Some(40.0)),
+        off_ext(Some(130.0)),
+        "rotation angle must not change the anchor footprint; Excel rotates geometry inside the box"
+    );
 }
 
 #[test]
