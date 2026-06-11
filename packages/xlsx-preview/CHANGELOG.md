@@ -7,6 +7,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `scripts/schema_diff.py <SdkStruct> [DtoStruct]`: coverage diff of an ooxmlsdk `CT_*` struct's fields against an `xlcore-types` DTO; emits a markdown table for the DTO doc comment. Run when opening a domain.
+
 - `absoluteAnchor(x, y, w, h, { colWidthPx?, rowHeightPx? })` helper (exported from `./api` next to `anchorA1`) converts an absolute pixel rect into a two-cell `ChartAnchor` with in-cell EMU offsets, replacing hand-rolled px → (col, row, offset) math on the default 64×20 grid. Offsets are always strictly inside their cell, so results never trip the engine's anchor-overflow warning.
 - CLI: `--no-headers` (cell content only — headerless renders no longer require a custom `node.ts` script), `--no-gridlines` (force gridlines off regardless of the sheet view flag, via the new `RenderOptions.renderGridLines` override), and `--width`/`--height` (explicit viewport in px; with `--no-headers` they are exact output dimensions).
 - `renderToCanvas`/`renderToPng` accept `width`/`height` and an `onWarning` callback; the default viewport now auto-grows beyond the old hard 1244×822 cap to fit drawing extents (up to 4096px) and warns instead of silently clipping large charts/shapes. Headerless renders are cropped to the grid origin, removing the stray white header band.
