@@ -664,6 +664,22 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = updateChart)]
+    pub fn update_chart(
+        &mut self,
+        sheet: &str,
+        id: &str,
+        update: JsValue,
+    ) -> Result<JsValue, JsValue> {
+        let update: xlcore_api::ChartUpdate =
+            serde_wasm_bindgen::from_value(update).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .update_chart(sheet, id, update)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
     pub fn pivots(&mut self, sheet: Option<String>) -> Result<JsValue, JsValue> {
         let list = self
             .workbook_mut()?

@@ -3246,6 +3246,182 @@ fn charts_create_list_remove_roundtrip() {
     assert!(reopened2.charts(None).unwrap().is_empty());
 }
 
+fn chart_xml(bytes: &[u8]) -> String {
+    use std::io::{Cursor, Read};
+    let mut zip = zip::ZipArchive::new(Cursor::new(bytes.to_vec())).unwrap();
+    let name = (0..zip.len())
+        .map(|i| zip.by_index(i).unwrap().name().to_string())
+        .find(|n| n.contains("/charts/chart") && n.ends_with(".xml") && !n.contains("/_rels/"))
+        .expect("chart xml part");
+    let mut file = zip.by_name(&name).unwrap();
+    let mut out = String::new();
+    file.read_to_string(&mut out).unwrap();
+    out
+}
+
+fn inject_rounded_corners(bytes: &[u8]) -> Vec<u8> {
+    use std::io::{Cursor, Read, Write};
+    let mut zip = zip::ZipArchive::new(Cursor::new(bytes.to_vec())).unwrap();
+    let mut buf = Cursor::new(Vec::new());
+    {
+        let mut writer = zip::ZipWriter::new(&mut buf);
+        let opts: zip::write::FileOptions<()> =
+            zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        for i in 0..zip.len() {
+            let mut entry = zip.by_index(i).unwrap();
+            let name = entry.name().to_string();
+            let mut data = Vec::new();
+            entry.read_to_end(&mut data).unwrap();
+            if name.contains("/charts/chart")
+                && name.ends_with(".xml")
+                && !name.contains("/_rels/")
+            {
+                let s = String::from_utf8(data).unwrap();
+                let s = s.replace(
+                    "<c:chart>",
+                    "<c:roundedCorners val=\"1\"/><c:chart>",
+                );
+                data = s.into_bytes();
+            }
+            writer.start_file(name, opts).unwrap();
+            writer.write_all(&data).unwrap();
+        }
+        writer.finish().unwrap();
+    }
+    buf.into_inner()
+}
+
+#[test]
+fn update_chart_preserves_unmodeled_xml_and_stable_id() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A2", "North").unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 20.0).unwrap();
+
+    let info = wb
+        .set_chart(ChartPatch {
+            sheet: "Sheet1".to_string(),
+            name: Some("Sales".to_string()),
+            kind: ChartKind::Column,
+            title: Some("Old".to_string()),
+            legend_position: Some(ChartLegendPosition::Bottom),
+            categories_ref: Some("Sheet1!$A$2:$A$3".to_string()),
+            series: vec![ChartSeriesPatch {
+                name_ref: Some("Sheet1!$B$1".to_string()),
+                values_ref: "Sheet1!$B$2:$B$3".to_string(),
+                ..Default::default()
+            }],
+            anchor: ChartAnchor {
+                from_column: 3,
+                from_row: 1,
+                to_column: 10,
+                to_row: 16,
+                ..Default::default()
+            },
+            category_axis_title: None,
+            value_axis_title: None,
+            stacking: None,
+            data_labels: None,
+        })
+        .unwrap();
+
+    let bytes = inject_rounded_corners(&wb.save_bytes().unwrap());
+    assert!(chart_xml(&bytes).contains("roundedCorners"));
+
+    let mut wb = Workbook::open_bytes(bytes).unwrap();
+    let updated = wb
+        .update_chart(
+            "Sheet1",
+            &info.id,
+            ChartUpdate {
+                title: Some("New".to_string()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    assert_eq!(updated.id, info.id);
+    assert_eq!(updated.title.as_deref(), Some("New"));
+    assert_eq!(updated.legend_position, Some(ChartLegendPosition::Bottom));
+    assert_eq!(updated.series.len(), 1);
+    assert_eq!(updated.categories_ref.as_deref(), Some("Sheet1!$A$2:$A$3"));
+
+    let out = wb.save_bytes().unwrap();
+    let xml = chart_xml(&out);
+    assert!(xml.contains("roundedCorners"), "unmodeled XML must survive update");
+    assert!(xml.contains("New"));
+    assert!(!xml.contains(">Old<"));
+
+    let mut reopened = Workbook::open_bytes(out).unwrap();
+    let charts = reopened.charts(Some("Sheet1")).unwrap();
+    assert_eq!(charts.len(), 1);
+    assert_eq!(charts[0].id, info.id);
+}
+
+#[test]
+fn update_chart_replaces_series_and_stacking() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 20.0).unwrap();
+    wb.set_value("Sheet1!C2", 5.0).unwrap();
+    wb.set_value("Sheet1!C3", 7.0).unwrap();
+
+    let info = wb
+        .set_chart(ChartPatch {
+            sheet: "Sheet1".to_string(),
+            name: None,
+            kind: ChartKind::Column,
+            title: None,
+            legend_position: None,
+            categories_ref: None,
+            series: vec![ChartSeriesPatch {
+                values_ref: "Sheet1!$B$2:$B$3".to_string(),
+                ..Default::default()
+            }],
+            anchor: ChartAnchor {
+                from_column: 3,
+                from_row: 1,
+                to_column: 10,
+                to_row: 16,
+                ..Default::default()
+            },
+            category_axis_title: None,
+            value_axis_title: None,
+            stacking: None,
+            data_labels: None,
+        })
+        .unwrap();
+
+    let updated = wb
+        .update_chart(
+            "Sheet1",
+            &info.id,
+            ChartUpdate {
+                stacking: Some(ChartStacking::Stacked),
+                series: Some(vec![
+                    ChartSeriesPatch {
+                        values_ref: "Sheet1!$B$2:$B$3".to_string(),
+                        ..Default::default()
+                    },
+                    ChartSeriesPatch {
+                        values_ref: "Sheet1!$C$2:$C$3".to_string(),
+                        ..Default::default()
+                    },
+                ]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    assert_eq!(updated.series.len(), 2);
+    assert_eq!(updated.stacking, Some(ChartStacking::Stacked));
+
+    let err = wb
+        .update_chart("Sheet1", "rIdMissing", ChartUpdate::default())
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidChart);
+}
+
 #[test]
 fn charts_supports_multiple_kinds() {
     let mut wb = Workbook::new().unwrap();

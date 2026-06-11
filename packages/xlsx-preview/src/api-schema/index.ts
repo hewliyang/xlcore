@@ -28,6 +28,7 @@ export type { ChartLegendPosition } from "./ChartLegendPosition.js";
 export type { ChartPatch } from "./ChartPatch.js";
 export type { ChartSeriesInfo } from "./ChartSeriesInfo.js";
 export type { ChartSeriesPatch } from "./ChartSeriesPatch.js";
+export type { ChartUpdate } from "./ChartUpdate.js";
 export type { ClearMode } from "./ClearMode.js";
 export type { ColorScalePatch } from "./ColorScalePatch.js";
 export type { CommentInfo } from "./CommentInfo.js";

@@ -8,6 +8,7 @@ import type {
   CalcPropertiesPatch,
   ChartInfo,
   ChartPatch,
+  ChartUpdate,
   CommentInfo,
   CommentPatch,
   ConditionalFormatRuleInfo,
@@ -247,59 +248,17 @@ export class ChartCollection extends SheetScopedCollection {
   }
   update(
     id: string,
-    partial: Partial<Omit<ChartPatch, "sheet" | "anchor">> & { anchor?: AnchorInput },
+    update: Omit<ChartUpdate, "anchor"> & { anchor?: AnchorInput },
   ): ChartInfo {
-    const existing = (this.handle.charts(this.sheet) as ChartInfo[]).find((c) => c.id === id);
-    if (!existing) {
-      throw new Error(`chart not found on sheet '${this.sheet}': ${id}`);
-    }
-    const base: ChartPatch = chartInfoToPatch(existing);
-    const merged: ChartPatch = {
-      ...base,
-      ...partial,
-      anchor: partial.anchor === undefined ? base.anchor : normalizeAnchor(partial.anchor),
-      sheet: this.sheet,
+    const normalized: ChartUpdate = {
+      ...update,
+      anchor: update.anchor === undefined ? undefined : normalizeAnchor(update.anchor),
     };
-    const removed = this.handle.removeChart(this.sheet, id) as ChartInfo | null;
-    try {
-      return this.handle.setChart(merged) as ChartInfo;
-    } catch (err) {
-      if (removed) {
-        try {
-          this.handle.setChart(base);
-        } catch {}
-      }
-      throw err;
-    }
+    return this.handle.updateChart(this.sheet, id, normalized) as ChartInfo;
   }
   remove(id: string): ChartInfo | null {
     return (this.handle.removeChart(this.sheet, id) as ChartInfo | null) ?? null;
   }
-}
-
-function chartInfoToPatch(info: ChartInfo): ChartPatch {
-  return {
-    sheet: info.sheet,
-    name: info.name,
-    kind: info.kind,
-    title: info.title,
-    legendPosition: info.legendPosition,
-    categoriesRef: info.categoriesRef,
-    series: info.series.map((s) => ({
-      name: s.name,
-      nameRef: s.nameRef,
-      valuesRef: s.valuesRef,
-      xValuesRef: s.xValuesRef,
-      bubbleSizesRef: s.bubbleSizesRef,
-      color: s.color,
-      dataLabels: s.dataLabels,
-    })),
-    anchor: info.anchor,
-    categoryAxisTitle: info.categoryAxisTitle,
-    valueAxisTitle: info.valueAxisTitle,
-    stacking: info.stacking,
-    dataLabels: info.dataLabels,
-  };
 }
 
 export class ImageCollection extends SheetScopedCollection {

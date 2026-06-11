@@ -186,7 +186,7 @@ conventions** are less principled. Different layers, different grades.
    layer betrays it — `Omit<ShapePatch, "sheet">` then re-inject. Fix in
    `xlcore-types`: sheet-scoped patches lose their `sheet` field; wasm fns take
    sheet as first arg uniformly.
-3. **`ChartCollection.update` is remove+set in TS** (`chartInfoToPatch` →
+3. *(done)* **`ChartCollection.update` is remove+set in TS** (`chartInfoToPatch` →
    `removeChart` → `setChart` → manual rollback). Three problems: not atomic
    (rollback can fail; success regenerates the rId so stored chart ids go
    stale); **violates the preservation principle** — any chart XML not modeled
@@ -196,6 +196,10 @@ conventions** are less principled. Different layers, different grades.
    `chart<n>.xml` in place, leaving unmodeled elements untouched. **Do this
    before growing `ChartPatch`** — the hand-copied field list in
    `chartInfoToPatch` drifts on every DTO addition.
+   **Resolved**: `Workbook::update_chart` + the `ChartUpdate` DTO mutate
+   `chart<n>.xml` in place (stable rId, atomic, unmodeled XML preserved). The TS
+   `ChartCollection.update` is now pure forwarding; `chartInfoToPatch` deleted.
+   `kind` is no longer updatable via `update` (remove + set to change type).
 4. **Triple hand-written glue.** Every feature = Rust facade fn + wasm binding
    (107 fns of serde_wasm_bindgen boilerplate) + TS collection method (pure
    forwarding + `as T` cast). Mechanical and hand-maintained. A declarative

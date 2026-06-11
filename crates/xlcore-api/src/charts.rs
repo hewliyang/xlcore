@@ -9,7 +9,7 @@ use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
     ApiError, ApiErrorCode, ApiWarning, ChartAnchor, ChartDataLabelPosition, ChartDataLabels,
     ChartInfo, ChartKind, ChartLegendPosition, ChartPatch, ChartSeriesInfo, ChartSeriesPatch,
-    ChartStacking,
+    ChartStacking, ChartUpdate,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -96,55 +96,7 @@ impl Workbook {
     }
 
     pub fn set_chart(&mut self, patch: ChartPatch) -> Result<ChartInfo> {
-        if patch.series.is_empty() {
-            return Err(ApiError::new(
-                ApiErrorCode::InvalidChart,
-                "chart must have at least one series",
-            )
-            .with_sheet(&patch.sheet));
-        }
-        for s in &patch.series {
-            if s.values_ref.trim().is_empty() {
-                return Err(ApiError::new(
-                    ApiErrorCode::InvalidChart,
-                    "chart series values_ref must not be empty",
-                )
-                .with_sheet(&patch.sheet));
-            }
-            if matches!(patch.kind, ChartKind::Scatter | ChartKind::Bubble)
-                && s.x_values_ref
-                    .as_deref()
-                    .map(|v| v.trim().is_empty())
-                    .unwrap_or(true)
-            {
-                return Err(ApiError::new(
-                    ApiErrorCode::InvalidChart,
-                    "scatter/bubble chart series require x_values_ref",
-                )
-                .with_sheet(&patch.sheet));
-            }
-            if matches!(patch.kind, ChartKind::Bubble)
-                && s.bubble_sizes_ref
-                    .as_deref()
-                    .map(|v| v.trim().is_empty())
-                    .unwrap_or(true)
-            {
-                return Err(ApiError::new(
-                    ApiErrorCode::InvalidChart,
-                    "bubble chart series require bubble_sizes_ref",
-                )
-                .with_sheet(&patch.sheet));
-            }
-            if let Some(color) = s.color.as_deref() {
-                if !is_valid_hex_color(color) {
-                    return Err(ApiError::new(
-                        ApiErrorCode::InvalidChart,
-                        format!("chart series color must be 6-hex RRGGBB or 8-hex AARRGGBB, got: {color}"),
-                    )
-                    .with_sheet(&patch.sheet));
-                }
-            }
-        }
+        validate_chart_series(&patch.sheet, patch.kind, &patch.series)?;
 
         if !self.sheet_exists(&patch.sheet)? {
             return Err(ApiError::new(
@@ -304,6 +256,287 @@ impl Workbook {
 
         Ok(Some(info))
     }
+
+    pub fn update_chart(
+        &mut self,
+        sheet: impl AsRef<str>,
+        id: impl AsRef<str>,
+        update: ChartUpdate,
+    ) -> Result<ChartInfo> {
+        let sheet = sheet.as_ref().to_string();
+        let id = id.as_ref().to_string();
+
+        if !self.sheet_exists(&sheet)? {
+            return Err(ApiError::new(
+                ApiErrorCode::MissingSheet,
+                format!("sheet not found: {sheet}"),
+            )
+            .with_sheet(&sheet));
+        }
+
+        let ws_part = self.worksheet_part_for_sheet(&sheet)?;
+        let drawings_part = ws_part.drawings_part(&self.doc).map(|p| p.clone());
+        let Some(drawings_part) = drawings_part else {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                format!("chart not found on sheet '{sheet}': {id}"),
+            )
+            .with_sheet(&sheet));
+        };
+
+        let chart_part = drawings_part
+            .chart_parts(&self.doc)
+            .find(|p| p.relationship_id().map(|r| r == id).unwrap_or(false));
+        let Some(chart_part) = chart_part else {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                format!("chart not found on sheet '{sheet}': {id}"),
+            )
+            .with_sheet(&sheet));
+        };
+
+        let existing = read_chart_space(
+            chart_part
+                .root_element(&mut self.doc)
+                .map_err(sdk_err_to_api)?,
+        );
+        let kind = existing.kind;
+
+        let plot_dirty = update.series.is_some()
+            || update.stacking.is_some()
+            || update.data_labels.is_some()
+            || update.categories_ref.is_some();
+
+        let series: Vec<ChartSeriesPatch> = match &update.series {
+            Some(s) => s.clone(),
+            None => existing
+                .series
+                .iter()
+                .map(|s| ChartSeriesPatch {
+                    name: s.name.clone(),
+                    name_ref: s.name_ref.clone(),
+                    values_ref: s.values_ref.clone(),
+                    x_values_ref: s.x_values_ref.clone(),
+                    bubble_sizes_ref: s.bubble_sizes_ref.clone(),
+                    color: s.color.clone(),
+                    data_labels: s.data_labels.clone(),
+                })
+                .collect(),
+        };
+        if plot_dirty {
+            validate_chart_series(&sheet, kind, &series)?;
+        }
+
+        let categories_ref = update
+            .categories_ref
+            .clone()
+            .or_else(|| existing.categories_ref.clone());
+        let stacking = update.stacking.or(existing.stacking);
+        let data_labels = update
+            .data_labels
+            .clone()
+            .or_else(|| existing.data_labels.clone());
+
+        if update.anchor.is_some() || update.name.is_some() {
+            let drawing_mut = drawings_part
+                .root_element_mut(&mut self.doc)
+                .map_err(sdk_err_to_api)?;
+            for choice in &mut drawing_mut.worksheet_drawing_choice {
+                let xdr::WorksheetDrawingChoice::TwoCellAnchor(a) = choice else {
+                    continue;
+                };
+                if anchor_chart_rid(a.as_ref()).as_deref() != Some(id.as_str()) {
+                    continue;
+                }
+                if let Some(anchor) = &update.anchor {
+                    a.from_marker = Box::new(xdr::FromMarker {
+                        column_id: anchor.from_column as i32,
+                        column_offset: CoordinateValue::Emu(
+                            anchor.from_column_offset_emu.unwrap_or(0),
+                        ),
+                        row_id: anchor.from_row as i32,
+                        row_offset: CoordinateValue::Emu(anchor.from_row_offset_emu.unwrap_or(0)),
+                        ..Default::default()
+                    });
+                    a.to_marker = Box::new(xdr::ToMarker {
+                        column_id: anchor.to_column as i32,
+                        column_offset: CoordinateValue::Emu(
+                            anchor.to_column_offset_emu.unwrap_or(0),
+                        ),
+                        row_id: anchor.to_row as i32,
+                        row_offset: CoordinateValue::Emu(anchor.to_row_offset_emu.unwrap_or(0)),
+                        ..Default::default()
+                    });
+                }
+                if let Some(name) = &update.name {
+                    if let Some(xdr::TwoCellAnchorChoice::GraphicFrame(gf)) =
+                        a.two_cell_anchor_choice.as_mut()
+                    {
+                        gf.non_visual_graphic_frame_properties
+                            .non_visual_drawing_properties
+                            .name = name.clone();
+                    }
+                }
+                break;
+            }
+        }
+
+        let space = chart_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+
+        if plot_dirty {
+            let synth = ChartPatch {
+                sheet: sheet.clone(),
+                name: None,
+                kind,
+                title: None,
+                legend_position: None,
+                categories_ref: categories_ref.clone(),
+                series: series.clone(),
+                anchor: ChartAnchor::default(),
+                category_axis_title: None,
+                value_axis_title: None,
+                stacking,
+                data_labels: data_labels.clone(),
+            };
+            space.chart.plot_area.plot_area_choice1 = vec![build_plot_chart(&synth)];
+        }
+
+        if let Some(title) = &update.title {
+            if title.is_empty() {
+                space.chart.title = None;
+                space.chart.auto_title_deleted = Some(c::AutoTitleDeleted {
+                    val: Some(BooleanValue::from_bool(true)),
+                });
+            } else {
+                space.chart.title = Some(Box::new(build_title(title)));
+                space.chart.auto_title_deleted = Some(c::AutoTitleDeleted {
+                    val: Some(BooleanValue::from_bool(false)),
+                });
+            }
+        }
+
+        if let Some(pos) = update.legend_position {
+            space.chart.legend = match pos {
+                ChartLegendPosition::None => None,
+                pos => Some(Box::new(build_legend(legend_pos_to(pos)))),
+            };
+        }
+
+        if update.category_axis_title.is_some() || update.value_axis_title.is_some() {
+            for ax in &mut space.chart.plot_area.plot_area_choice2 {
+                match ax {
+                    c::PlotAreaChoice2::CategoryAxis(cat) => {
+                        if let Some(t) = &update.category_axis_title {
+                            set_axis_title(&mut cat.title, t);
+                        }
+                    }
+                    c::PlotAreaChoice2::ValueAxis(v) => {
+                        if v.axis_position.val == c::AxisPositionValues::Bottom {
+                            if let Some(t) = &update.category_axis_title {
+                                set_axis_title(&mut v.title, t);
+                            }
+                        } else if let Some(t) = &update.value_axis_title {
+                            set_axis_title(&mut v.title, t);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if stacking.is_some()
+            && !matches!(
+                kind,
+                ChartKind::Column | ChartKind::Bar | ChartKind::Line | ChartKind::Area
+            )
+        {
+            self.push_warning(
+                ApiWarning::new(
+                    ApiErrorCode::LossyOperation,
+                    format!("stacking is not supported on {kind:?} charts; ignored"),
+                )
+                .with_sheet(&sheet),
+            );
+        }
+
+        self.charts(Some(&sheet))?
+            .into_iter()
+            .find(|chart| chart.id == id)
+            .ok_or_else(|| {
+                ApiError::new(
+                    ApiErrorCode::InvalidChart,
+                    format!("chart not found on sheet '{sheet}': {id}"),
+                )
+                .with_sheet(&sheet)
+            })
+    }
+}
+
+fn set_axis_title(slot: &mut Option<Box<c::Title>>, text: &str) {
+    if text.is_empty() {
+        *slot = None;
+    } else {
+        *slot = Some(Box::new(build_title(text)));
+    }
+}
+
+fn validate_chart_series(
+    sheet: &str,
+    kind: ChartKind,
+    series: &[ChartSeriesPatch],
+) -> Result<()> {
+    if series.is_empty() {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidChart,
+            "chart must have at least one series",
+        )
+        .with_sheet(sheet));
+    }
+    for s in series {
+        if s.values_ref.trim().is_empty() {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                "chart series values_ref must not be empty",
+            )
+            .with_sheet(sheet));
+        }
+        if matches!(kind, ChartKind::Scatter | ChartKind::Bubble)
+            && s.x_values_ref
+                .as_deref()
+                .map(|v| v.trim().is_empty())
+                .unwrap_or(true)
+        {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                "scatter/bubble chart series require x_values_ref",
+            )
+            .with_sheet(sheet));
+        }
+        if matches!(kind, ChartKind::Bubble)
+            && s.bubble_sizes_ref
+                .as_deref()
+                .map(|v| v.trim().is_empty())
+                .unwrap_or(true)
+        {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                "bubble chart series require bubble_sizes_ref",
+            )
+            .with_sheet(sheet));
+        }
+        if let Some(color) = s.color.as_deref() {
+            if !is_valid_hex_color(color) {
+                return Err(ApiError::new(
+                    ApiErrorCode::InvalidChart,
+                    format!("chart series color must be 6-hex RRGGBB or 8-hex AARRGGBB, got: {color}"),
+                )
+                .with_sheet(sheet));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn anchor_chart_rid(anchor: &xdr::TwoCellAnchor) -> Option<String> {
