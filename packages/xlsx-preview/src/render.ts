@@ -102,7 +102,7 @@ export function render(
     ctx.clip();
     ctx.translate(pane.tx, pane.ty);
 
-    drawGridLines(ctx, sheet, grid, pane.vis);
+    drawGridLines(ctx, sheet, grid, pane.vis, opts.renderGridLines);
     drawDefaultFills(ctx, sheet, layout, grid, pane.vis);
     drawCellBackgrounds(ctx, sheet, layout, grid, pane.vis);
     drawConditionalFormats(ctx, sheet, layout, grid, pane.vis, cfDxfs, cfLocks);

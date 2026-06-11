@@ -9,6 +9,8 @@ export interface RenderOptions {
   scale?: number;
   zoom?: number;
   renderHeaders?: boolean;
+  /** Override the sheet's gridline view flag (`false` forces gridlines off). */
+  renderGridLines?: boolean;
   colOverrides?: Map<number, number>;
   rowOverrides?: Map<number, number>;
   activeCell?: { r: number; c: number } | null;

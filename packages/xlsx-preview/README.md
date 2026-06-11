@@ -51,10 +51,15 @@ generation and CLI workflows.
 
 ```bash
 xlsx-preview workbook.xlsx --output sheet.png --sheet Cover --scale 2
+xlsx-preview workbook.xlsx --output clean.png --no-headers --no-gridlines --width 1280 --height 720
 xlsx-preview data.csv --output data.png --delimiter ","
 xlsx-preview events.parquet --output events.png --max-rows 5000
 xlsx-preview workbook.xlsx --info
 ```
+
+The default viewport auto-grows to fit drawings (charts, shapes, images) up to
+4096px and warns on stderr if anything is still clipped; pass `--width`/`--height`
+or `--range` to control it explicitly.
 
 The CLI sniffs file signatures first, then falls back to extension hints, and
 accepts `--format xlsx|csv|parquet` when the hints are wrong.

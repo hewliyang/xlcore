@@ -28,6 +28,10 @@ interface CliOptions {
   format?: SourceFormat;
   delimiter?: string;
   maxRows?: number;
+  headers: boolean;
+  gridLines?: boolean;
+  width?: number;
+  height?: number;
 }
 
 function usage(): string {
@@ -49,6 +53,11 @@ function usage(): string {
     "  --format FMT       Force xlsx|csv|parquet (default: sniff bytes/name)",
     '  --delimiter S      CSV field delimiter (",", ";", "|", or "tab"; default: sniff)',
     "  --max-rows N       CSV/parquet rendered-row cap (default: 100000)",
+    "  --no-headers       Omit the row/column header chrome (cell content only)",
+    "  --no-gridlines     Force gridlines off, regardless of the sheet's view flag",
+    "  --width N          Viewport width in px (default 1244 incl. headers, 1200 without;",
+    "  --height N         \u2026and height, default 822 / 800). The default auto-grows to fit",
+    "                     drawings up to 4096px; ignored when --range is given",
     "  --verbose / -v     Print non-fatal load warnings (xlsx repairs, csv/parquet truncation)",
     "  --strict           Exit non-zero if the loader had to coerce/warn (use in CI)",
     "",
@@ -62,7 +71,14 @@ function usage(): string {
 }
 
 function parseArgs(argv: string[]): CliOptions {
-  const options: CliOptions = { scale: 1, info: false, all: false, verbose: false, strict: false };
+  const options: CliOptions = {
+    scale: 1,
+    info: false,
+    all: false,
+    verbose: false,
+    strict: false,
+    headers: true,
+  };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === "--help" || arg === "-h") {
@@ -83,6 +99,14 @@ function parseArgs(argv: string[]): CliOptions {
     }
     if (arg === "--strict") {
       options.strict = true;
+      continue;
+    }
+    if (arg === "--no-headers") {
+      options.headers = false;
+      continue;
+    }
+    if (arg === "--no-gridlines") {
+      options.gridLines = false;
       continue;
     }
     if (!arg.startsWith("-")) {
@@ -106,6 +130,8 @@ function parseArgs(argv: string[]): CliOptions {
       options.format = value;
     } else if (arg === "--delimiter") options.delimiter = value;
     else if (arg === "--max-rows") options.maxRows = Number(value);
+    else if (arg === "--width") options.width = Number(value);
+    else if (arg === "--height") options.height = Number(value);
     else throw new Error(`Unknown argument: ${arg}`);
     i++;
   }
@@ -122,6 +148,12 @@ function parseArgs(argv: string[]): CliOptions {
     throw new Error(`Invalid --sheet-index: ${options.sheetIndex}`);
   if (options.maxRows !== undefined && (!Number.isInteger(options.maxRows) || options.maxRows <= 0))
     throw new Error(`Invalid --max-rows: ${options.maxRows}`);
+  if (options.width !== undefined && (!Number.isFinite(options.width) || options.width <= 0))
+    throw new Error(`Invalid --width: ${options.width}`);
+  if (options.height !== undefined && (!Number.isFinite(options.height) || options.height <= 0))
+    throw new Error(`Invalid --height: ${options.height}`);
+  if (options.range && (options.width !== undefined || options.height !== undefined))
+    throw new Error("--width/--height cannot be combined with --range");
   return options;
 }
 
@@ -197,6 +229,7 @@ async function main(): Promise<void> {
         range: options.range,
         sheetIndex: i,
         scale: options.scale,
+        ...renderChromeOptions(options),
       });
       await mkdir(dirname(output), { recursive: true });
       await writeFile(output, png);
@@ -216,6 +249,7 @@ async function main(): Promise<void> {
     sheetName: options.sheet,
     sheetIndex: options.sheetIndex,
     scale: options.scale,
+    ...renderChromeOptions(options),
   });
 
   await mkdir(dirname(output), { recursive: true });
@@ -232,6 +266,15 @@ async function main(): Promise<void> {
       bytes: png.length,
     }),
   );
+}
+
+function renderChromeOptions(options: CliOptions) {
+  return {
+    renderHeaders: options.headers,
+    renderGridLines: options.gridLines,
+    width: options.width,
+    height: options.height,
+  };
 }
 
 function workbookInfo(

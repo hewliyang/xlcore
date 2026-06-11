@@ -10,8 +10,9 @@ import {
   xlsxLoadErrorPayloadFromUnknown,
 } from "./errors.js";
 import { render, buildGrid } from "./render.js";
+import { anchorToRect } from "./grid.js";
 import { setOffscreenCanvasFactory } from "./canvasFactory.js";
-import type { RenderOptions } from "./renderTypes.js";
+import type { RenderOptions, Viewport } from "./renderTypes.js";
 import type { Sheet as RuntimeSheet, WorkbookLayout } from "./types.js";
 
 export interface RenderPngOptions extends RenderOptions {
@@ -19,6 +20,18 @@ export interface RenderPngOptions extends RenderOptions {
   sheetName?: string;
 
   range?: string;
+
+  /**
+   * Target canvas width/height in logical px (before `scale`/`zoom`). With
+   * headers on this is the total canvas size (headers included, like the
+   * built-in default); with `renderHeaders: false` it is exactly the cell
+   * content size starting at A1. Ignored when `range` or `viewport` is given.
+   */
+  width?: number;
+  height?: number;
+
+  /** Receives non-fatal render warnings (default: `console.error`). */
+  onWarning?: (message: string) => void;
 }
 
 setOffscreenCanvasFactory(
@@ -161,17 +174,44 @@ export function renderToCanvas(layout: WorkbookLayout, opts: RenderPngOptions = 
   decodeWorkbookLayout(layout);
   const range = opts.range ? parseRangeRef(opts.range) : null;
   const sheet = pickSheet(layout, opts.sheetIndex, opts.sheetName ?? range?.sheetName);
-  const viewport =
-    opts.viewport ?? (range ? viewportForRange(sheet, range) : defaultViewport(sheet, opts));
-  const canvas = new Canvas(
-    Math.ceil(viewport.w * (opts.zoom ?? 1) * (opts.scale ?? 1)),
-    Math.ceil(viewport.h * (opts.zoom ?? 1) * (opts.scale ?? 1)),
-  );
+  const { viewport, crop } = resolveViewport(sheet, opts, range);
+  const total = (opts.zoom ?? 1) * (opts.scale ?? 1);
+  const canvas = new Canvas(Math.ceil(viewport.w * total), Math.ceil(viewport.h * total));
   render(canvas as unknown as Parameters<typeof render>[0], sheet, layout, {
     ...opts,
     viewport,
   });
-  return canvas;
+  if (!crop) return canvas;
+  const cropped = new Canvas(
+    Math.max(1, Math.ceil((viewport.w - crop.x) * total)),
+    Math.max(1, Math.ceil((viewport.h - crop.y) * total)),
+  );
+  const ctx = cropped.getContext("2d");
+  ctx.drawImage(canvas, -Math.round(crop.x * total), -Math.round(crop.y * total));
+  return cropped;
+}
+
+/**
+ * Resolve the render viewport. Headerless renders (`renderHeaders: false`)
+ * historically kept a white band where the headers would have been (the pane
+ * clip starts at the grid origin); we now render at the natural size and crop
+ * the origin band away so the output contains cell content only.
+ */
+function resolveViewport(
+  sheet: RuntimeSheet,
+  opts: RenderPngOptions,
+  range: ParsedRange | null,
+): { viewport: Viewport; crop: { x: number; y: number } | null } {
+  if (opts.viewport) return { viewport: opts.viewport, crop: null };
+  const headerless = opts.renderHeaders === false;
+  const crop = headerless ? originOf(sheet) : null;
+  if (range) return { viewport: viewportForRange(sheet, range), crop };
+  return { viewport: defaultViewport(sheet, opts), crop };
+}
+
+function originOf(sheet: RuntimeSheet): { x: number; y: number } {
+  const grid = buildGrid(sheet);
+  return { x: grid.originX, y: grid.originY };
 }
 
 export async function renderToPng(
@@ -216,14 +256,52 @@ function pickSheet(
   return sheet as unknown as RuntimeSheet;
 }
 
-function defaultViewport(sheet: RuntimeSheet, opts: RenderOptions) {
+/** Hard cap for the auto-grown default viewport, in logical px (pre-scale). */
+const MAX_AUTO_VIEWPORT_PX = 4096;
+const DRAWING_EDGE_PAD_PX = 8;
+
+function defaultViewport(sheet: RuntimeSheet, opts: RenderPngOptions): Viewport {
   const grid = buildGrid(sheet);
-  return {
-    x: 0,
-    y: 0,
-    w: Math.min(grid.totalW, opts.renderHeaders === false ? 1200 : 1244),
-    h: Math.min(grid.totalH, opts.renderHeaders === false ? 800 : 822),
-  };
+  const headerless = opts.renderHeaders === false;
+  const padX = headerless ? grid.originX : 0;
+  const padY = headerless ? grid.originY : 0;
+
+  if (opts.width !== undefined || opts.height !== undefined) {
+    const w = requirePositive("width", opts.width ?? 1244 - padX);
+    const h = requirePositive("height", opts.height ?? 822 - padY);
+    return { x: 0, y: 0, w: w + padX, h: h + padY };
+  }
+
+  // Grow the historical 1244×822 default to fit drawings (charts, shapes,
+  // images) so they are not silently clipped; cap to keep canvases sane.
+  let drawingFarX = 0;
+  let drawingFarY = 0;
+  for (const d of sheet.drawings ?? []) {
+    const rect = anchorToRect(d, grid);
+    if (!rect) continue;
+    drawingFarX = Math.max(drawingFarX, rect.x + rect.w + DRAWING_EDGE_PAD_PX);
+    drawingFarY = Math.max(drawingFarY, rect.y + rect.h + DRAWING_EDGE_PAD_PX);
+  }
+  const cap = MAX_AUTO_VIEWPORT_PX;
+  const w = Math.min(grid.totalW, Math.max(1244, Math.ceil(drawingFarX)), cap);
+  const h = Math.min(grid.totalH, Math.max(822, Math.ceil(drawingFarY)), cap);
+  if (Math.ceil(drawingFarX) > w || Math.ceil(drawingFarY) > h) {
+    const warn = opts.onWarning ?? ((m: string) => console.error(m));
+    warn(
+      `xlsx-preview: sheet "${sheet.name}" has drawings extending to ` +
+        `${Math.ceil(drawingFarX)}\u00d7${Math.ceil(drawingFarY)}px, beyond the ` +
+        `${cap}px auto-viewport cap; output is clipped. Pass width/height (CLI: ` +
+        `--width/--height) or a range to render the full extent.`,
+    );
+  }
+  return { x: 0, y: 0, w, h };
+}
+
+function requirePositive(name: string, value: number): number {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`invalid ${name}: ${value} (expected a positive number)`);
+  }
+  return value;
 }
 
 interface ParsedRange {

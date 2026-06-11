@@ -1,3 +1,5 @@
+import type { ChartAnchor } from "./api-schema/index.js";
+
 const SAFE_SHEET_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 export function quoteSheetName(name: string): string {
@@ -88,6 +90,76 @@ export function anchorA1(range: string): AnchorA1 {
     fromRow: Math.min(r1, r2),
     toColumn: Math.max(c1, c2) + 1,
     toRow: Math.max(r1, r2) + 1,
+  };
+}
+
+const EMU_PER_PIXEL = 9525;
+const DEFAULT_COL_WIDTH_PX = 64;
+const DEFAULT_ROW_HEIGHT_PX = 20;
+
+export interface AbsoluteAnchorOptions {
+  /** Uniform column width in px (default 64, Excel's default at 100% zoom). */
+  colWidthPx?: number;
+  /** Uniform row height in px (default 20). */
+  rowHeightPx?: number;
+}
+
+/**
+ * Convert an absolute pixel rect (sheet content space, A1's top-left = 0,0) into a
+ * two-cell {@link ChartAnchor} with EMU offsets — the px → (col, row, offsetEMU)
+ * derivation everyone otherwise hand-rolls against the default 64×20 px grid.
+ *
+ * Assumes a **uniform** grid: every column is `colWidthPx` wide and every row is
+ * `rowHeightPx` tall (pass overrides for sheets with non-default but uniform
+ * sizing). Offsets are always strictly inside their cell, so the result never
+ * trips the engine's "offset exceeds the referenced cell" warning. For sheets
+ * with per-column/row sizes, derive the anchor from the real layout instead.
+ */
+export function absoluteAnchor(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  options: AbsoluteAnchorOptions = {},
+): ChartAnchor {
+  if (!Number.isFinite(x) || x < 0) {
+    throw new RangeError(`absoluteAnchor: x must be a non-negative number, got ${x}`);
+  }
+  if (!Number.isFinite(y) || y < 0) {
+    throw new RangeError(`absoluteAnchor: y must be a non-negative number, got ${y}`);
+  }
+  if (!Number.isFinite(w) || w <= 0) {
+    throw new RangeError(`absoluteAnchor: w must be a positive number, got ${w}`);
+  }
+  if (!Number.isFinite(h) || h <= 0) {
+    throw new RangeError(`absoluteAnchor: h must be a positive number, got ${h}`);
+  }
+  const colW = options.colWidthPx ?? DEFAULT_COL_WIDTH_PX;
+  const rowH = options.rowHeightPx ?? DEFAULT_ROW_HEIGHT_PX;
+  if (!Number.isFinite(colW) || colW <= 0) {
+    throw new RangeError(`absoluteAnchor: colWidthPx must be a positive number, got ${colW}`);
+  }
+  if (!Number.isFinite(rowH) || rowH <= 0) {
+    throw new RangeError(`absoluteAnchor: rowHeightPx must be a positive number, got ${rowH}`);
+  }
+  const split = (px: number, size: number): { cell: number; offsetEmu: bigint } => {
+    const cell = Math.floor(px / size);
+    const offsetPx = px - cell * size;
+    return { cell, offsetEmu: BigInt(Math.round(offsetPx * EMU_PER_PIXEL)) };
+  };
+  const fromCol = split(x, colW);
+  const fromRow = split(y, rowH);
+  const toCol = split(x + w, colW);
+  const toRow = split(y + h, rowH);
+  return {
+    fromColumn: fromCol.cell,
+    fromRow: fromRow.cell,
+    toColumn: toCol.cell,
+    toRow: toRow.cell,
+    fromColumnOffsetEmu: fromCol.offsetEmu,
+    fromRowOffsetEmu: fromRow.offsetEmu,
+    toColumnOffsetEmu: toCol.offsetEmu,
+    toRowOffsetEmu: toRow.offsetEmu,
   };
 }
 
