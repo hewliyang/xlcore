@@ -93,7 +93,11 @@ pub struct ChartAxisPatch {
 ### Charts — P0 (renderer already understands most of these)
 
 - Axis object: min/max/log/reversed, units, tick marks, tick label pos, gridlines,
-  numFmt, crossBetween/crossesAt, dispUnits, hidden axis. **Nothing exposed today.**
+  numFmt, crossBetween/crossesAt, dispUnits, hidden axis. **— done** (except
+  dispUnits + label rotation, deferred to P2): `ChartAxisPatch` is on
+  `ChartPatch`/`ChartUpdate`/`ChartInfo` as `category_axis`/`value_axis`, with
+  build + read + in-place update. `min`/`max`/`major_unit`/`major_gridlines`/
+  `number_format` are renderer-visible; the rest round-trips for Excel.
 - Combo charts / secondary axis: renderer renders them; `set_chart` can't author
   them. Needs `ChartSeriesPatch.axis: primary|secondary` + per-series `kind`.
 - Series styling: marker (style/size), line width/dash, `smooth`, `gapWidth`,

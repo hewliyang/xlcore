@@ -3212,6 +3212,8 @@ fn charts_create_list_remove_roundtrip() {
             },
             category_axis_title: None,
             value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
             stacking: None,
             data_labels: None,
         })
@@ -3320,6 +3322,8 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
             },
             category_axis_title: None,
             value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
             stacking: None,
             data_labels: None,
         })
@@ -3387,6 +3391,8 @@ fn update_chart_replaces_series_and_stacking() {
             },
             category_axis_title: None,
             value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
             stacking: None,
             data_labels: None,
         })
@@ -3423,6 +3429,92 @@ fn update_chart_replaces_series_and_stacking() {
 }
 
 #[test]
+fn chart_axis_patch_authors_and_round_trips() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 80.0).unwrap();
+
+    let info = wb
+        .set_chart(ChartPatch {
+            sheet: "Sheet1".to_string(),
+            name: None,
+            kind: ChartKind::Column,
+            title: None,
+            legend_position: None,
+            categories_ref: None,
+            series: vec![ChartSeriesPatch {
+                values_ref: "Sheet1!$B$2:$B$3".to_string(),
+                ..Default::default()
+            }],
+            anchor: ChartAnchor {
+                from_column: 3,
+                from_row: 1,
+                to_column: 10,
+                to_row: 16,
+                ..Default::default()
+            },
+            category_axis_title: None,
+            value_axis_title: None,
+            category_axis: None,
+            value_axis: Some(ChartAxisPatch {
+                title: Some("Revenue".to_string()),
+                min: Some(0.0),
+                max: Some(100.0),
+                major_unit: Some(25.0),
+                major_gridlines: Some(true),
+                major_tick_mark: Some(TickMark::Outside),
+                tick_label_position: Some(TickLabelPosition::Low),
+                number_format: Some("#,##0".to_string()),
+                cross_between: Some(CrossBetween::Between),
+                reversed: Some(true),
+                ..Default::default()
+            }),
+            stacking: None,
+            data_labels: None,
+        })
+        .unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let chart = reopened
+        .charts(Some("Sheet1"))
+        .unwrap()
+        .into_iter()
+        .find(|c| c.id == info.id)
+        .unwrap();
+    let va = chart.value_axis.expect("value axis round-trips");
+    assert_eq!(va.title.as_deref(), Some("Revenue"));
+    assert_eq!(va.min, Some(0.0));
+    assert_eq!(va.max, Some(100.0));
+    assert_eq!(va.major_unit, Some(25.0));
+    assert_eq!(va.major_gridlines, Some(true));
+    assert_eq!(va.major_tick_mark, Some(TickMark::Outside));
+    assert_eq!(va.tick_label_position, Some(TickLabelPosition::Low));
+    assert_eq!(va.number_format.as_deref(), Some("#,##0"));
+    assert_eq!(va.cross_between, Some(CrossBetween::Between));
+    assert_eq!(va.reversed, Some(true));
+    assert_eq!(chart.value_axis_title.as_deref(), Some("Revenue"));
+
+    let updated = reopened
+        .update_chart(
+            "Sheet1",
+            &info.id,
+            ChartUpdate {
+                value_axis: Some(ChartAxisPatch {
+                    max: Some(120.0),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let va = updated.value_axis.expect("value axis after update");
+    assert_eq!(va.max, Some(120.0));
+    assert_eq!(va.min, Some(0.0), "unspecified axis fields preserved");
+    assert_eq!(va.major_unit, Some(25.0));
+}
+
+#[test]
 fn charts_supports_multiple_kinds() {
     let mut wb = Workbook::new().unwrap();
     let patch = |kind: ChartKind| ChartPatch {
@@ -3452,6 +3544,8 @@ fn charts_supports_multiple_kinds() {
         },
         category_axis_title: None,
         value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
         stacking: None,
         data_labels: None,
     };
@@ -3520,6 +3614,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
         },
         category_axis_title: Some("X-Axis".to_string()),
         value_axis_title: Some("Y-Axis".to_string()),
+        category_axis: None,
+        value_axis: None,
         stacking: None,
         data_labels: None,
     })
@@ -3548,6 +3644,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
         },
         category_axis_title: None,
         value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
         stacking: None,
         data_labels: None,
     })
@@ -3574,6 +3672,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
         },
         category_axis_title: None,
         value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
         stacking: None,
         data_labels: None,
     })
@@ -3645,6 +3745,8 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
         },
         category_axis_title: None,
         value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
         stacking: None,
         data_labels: None,
     })
@@ -3682,6 +3784,8 @@ fn chart_series_color_rejects_malformed_hex() {
             },
             category_axis_title: None,
             value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
             stacking: None,
             data_labels: None,
         })
@@ -3752,6 +3856,8 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
         },
         category_axis_title: None,
         value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
         stacking: None,
         data_labels: None,
     })
@@ -3828,6 +3934,8 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
         },
         category_axis_title: None,
         value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
         stacking,
         data_labels: None,
     };
@@ -3921,6 +4029,8 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
             },
             category_axis_title: None,
             value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
             stacking: Some(ChartStacking::Stacked),
             data_labels: None,
         })
@@ -3949,6 +4059,8 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
         anchor: ChartAnchor::default(),
         category_axis_title: None,
         value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
         stacking: None,
         data_labels: None,
     });
@@ -3969,6 +4081,8 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
         anchor: ChartAnchor::default(),
         category_axis_title: None,
         value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
         stacking: None,
         data_labels: None,
     });
@@ -4001,6 +4115,8 @@ fn charts_data_labels_roundtrip() {
             },
             category_axis_title: None,
             value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
             stacking: None,
             data_labels: Some(ChartDataLabels {
                 show_value: Some(true),
@@ -4055,6 +4171,8 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
         },
         category_axis_title: None,
         value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
         stacking: None,
         data_labels: Some(ChartDataLabels {
             show_percent: Some(true),
@@ -4110,6 +4228,8 @@ fn charts_per_series_data_labels_override_chart_level() {
         },
         category_axis_title: None,
         value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
         stacking: None,
         data_labels: Some(ChartDataLabels {
             show_series_name: Some(true),

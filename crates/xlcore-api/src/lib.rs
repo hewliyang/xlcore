@@ -37,9 +37,10 @@ pub use xlcore_types::{
     AutoFilterColumnInfo, AutoFilterColumnPatch, AutoFilterCriteria, AutoFilterCustomCriterion,
     AutoFilterInfo, AutoFilterOperator, BorderLinePatch, BorderLineStyle, BorderPatch, CalcMode,
     CalcProperties, CalcPropertiesPatch, CellInfo, CfIconSetKind, CfOperator, CfRuleKind,
-    CfValueObject, CfValueObjectKind, ChartAnchor, ChartInfo, ChartKind, ChartLegendPosition,
+    CfValueObject, CfValueObjectKind, ChartAnchor, ChartAxisPatch, ChartInfo, ChartKind,
+    ChartLegendPosition,
     ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking, ChartUpdate, ClearMode,
-    ColorScalePatch,
+    ColorScalePatch, CrossBetween,
     CommentInfo, CommentPatch, ConditionalFormatRuleInfo, ConditionalFormatRulePatch, DataBarPatch,
     DataValidationErrorStyle, DataValidationInfo, DataValidationOperator, DataValidationPatch,
     DataValidationType, DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference,
@@ -54,8 +55,8 @@ pub use xlcore_types::{
     SparklineAxisType, SparklineDisplayBlanks, SparklineEntry, SparklineGroupInfo,
     SparklineGroupPatch, SparklineKind, StylePatch, TableColumnInfo, TableColumnPatch, TableInfo,
     TablePatch, TableStylePatch, TableStyleSettings, TableTotalsFunction, ThreadedNoteInfo,
-    ThreadedNotePatch, UnderlinePatch, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,
-    WorkbookProtectionInfo, WorkbookProtectionPatch,
+    ThreadedNotePatch, TickLabelPosition, TickMark, UnderlinePatch, VerticalAlign,
+    WorkbookProperties, WorkbookPropertiesPatch, WorkbookProtectionInfo, WorkbookProtectionPatch,
 };
 
 use crate::errors::{anyhow_err_to_api, load_err_to_api};

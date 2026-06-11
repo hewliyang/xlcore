@@ -8,8 +8,8 @@ use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
     ApiError, ApiErrorCode, ApiWarning, ChartAnchor, ChartDataLabelPosition, ChartDataLabels,
-    ChartInfo, ChartKind, ChartLegendPosition, ChartPatch, ChartSeriesInfo, ChartSeriesPatch,
-    ChartStacking, ChartUpdate,
+    ChartAxisPatch, ChartInfo, ChartKind, ChartLegendPosition, ChartPatch, ChartSeriesInfo,
+    ChartSeriesPatch, ChartStacking, ChartUpdate, CrossBetween, TickLabelPosition, TickMark,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -87,6 +87,8 @@ impl Workbook {
                     anchor: anchor_to_chart_anchor(anchor),
                     category_axis_title: parsed.category_axis_title,
                     value_axis_title: parsed.value_axis_title,
+                    category_axis: parsed.category_axis,
+                    value_axis: parsed.value_axis,
                     stacking: parsed.stacking,
                     data_labels: parsed.data_labels,
                 });
@@ -216,6 +218,8 @@ impl Workbook {
             anchor: patch.anchor,
             category_axis_title: patch.category_axis_title.clone(),
             value_axis_title: patch.value_axis_title.clone(),
+            category_axis: patch.category_axis.clone(),
+            value_axis: patch.value_axis.clone(),
             stacking: stacking_for_kind(patch.kind, patch.stacking),
             data_labels: patch.data_labels.clone(),
         })
@@ -397,6 +401,8 @@ impl Workbook {
                 anchor: ChartAnchor::default(),
                 category_axis_title: None,
                 value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
                 stacking,
                 data_labels: data_labels.clone(),
             };
@@ -424,21 +430,23 @@ impl Workbook {
             };
         }
 
-        if update.category_axis_title.is_some() || update.value_axis_title.is_some() {
+        let cat_axis_patch = merge_axis_title(update.category_axis.as_ref(), &update.category_axis_title);
+        let val_axis_patch = merge_axis_title(update.value_axis.as_ref(), &update.value_axis_title);
+        if cat_axis_patch.is_some() || val_axis_patch.is_some() {
             for ax in &mut space.chart.plot_area.plot_area_choice2 {
                 match ax {
                     c::PlotAreaChoice2::CategoryAxis(cat) => {
-                        if let Some(t) = &update.category_axis_title {
-                            set_axis_title(&mut cat.title, t);
+                        if let Some(p) = &cat_axis_patch {
+                            apply_cat_axis_patch(cat, p);
                         }
                     }
                     c::PlotAreaChoice2::ValueAxis(v) => {
                         if v.axis_position.val == c::AxisPositionValues::Bottom {
-                            if let Some(t) = &update.category_axis_title {
-                                set_axis_title(&mut v.title, t);
+                            if let Some(p) = &cat_axis_patch {
+                                apply_val_axis_patch(v, p);
                             }
-                        } else if let Some(t) = &update.value_axis_title {
-                            set_axis_title(&mut v.title, t);
+                        } else if let Some(p) = &val_axis_patch {
+                            apply_val_axis_patch(v, p);
                         }
                     }
                     _ => {}
@@ -593,6 +601,8 @@ struct ParsedChart {
     series: Vec<ChartSeriesInfo>,
     category_axis_title: Option<String>,
     value_axis_title: Option<String>,
+    category_axis: Option<ChartAxisPatch>,
+    value_axis: Option<ChartAxisPatch>,
     stacking: Option<ChartStacking>,
     data_labels: Option<ChartDataLabels>,
 }
@@ -762,22 +772,31 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
 
     let mut category_axis_title: Option<String> = None;
     let mut value_axis_title: Option<String> = None;
+    let mut category_axis: Option<ChartAxisPatch> = None;
+    let mut value_axis: Option<ChartAxisPatch> = None;
     for ax in &plot.plot_area_choice2 {
         match ax {
             c::PlotAreaChoice2::CategoryAxis(c) => {
                 if let Some(t) = c.title.as_deref() {
                     category_axis_title = extract_title_text(t);
                 }
+                category_axis = read_cat_axis_patch(c);
             }
             c::PlotAreaChoice2::ValueAxis(v) => {
+                let is_cat = v.axis_position.val == c::AxisPositionValues::Bottom
+                    && category_axis_title.is_none()
+                    && category_axis.is_none();
                 if let Some(t) = v.title.as_deref() {
-                    if v.axis_position.val == c::AxisPositionValues::Bottom
-                        && category_axis_title.is_none()
-                    {
+                    if is_cat {
                         category_axis_title = extract_title_text(t);
                     } else if value_axis_title.is_none() {
                         value_axis_title = extract_title_text(t);
                     }
+                }
+                if is_cat {
+                    category_axis = read_val_axis_patch(v);
+                } else if value_axis.is_none() {
+                    value_axis = read_val_axis_patch(v);
                 }
             }
             _ => {}
@@ -805,6 +824,8 @@ fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         series,
         category_axis_title,
         value_axis_title,
+        category_axis,
+        value_axis,
         stacking,
         data_labels,
     }
@@ -969,6 +990,8 @@ fn legend_pos_to(p: ChartLegendPosition) -> c::LegendPositionValues {
 
 fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
     let plot_chart = build_plot_chart(patch);
+    let cat_axis = merge_axis_title(patch.category_axis.as_ref(), &patch.category_axis_title);
+    let val_axis = merge_axis_title(patch.value_axis.as_ref(), &patch.value_axis_title);
 
     let mut plot_area = c::PlotArea {
         layout: Some(Box::new(c::Layout::default())),
@@ -980,34 +1003,40 @@ fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
     match patch.kind {
         ChartKind::Pie | ChartKind::Doughnut => {}
         ChartKind::Scatter | ChartKind::Bubble => {
+            let mut bottom = build_val_axis_xy(
+                CAT_AX_ID,
+                VAL_AX_ID,
+                c::AxisPositionValues::Bottom,
+            );
+            if let Some(p) = &cat_axis {
+                apply_val_axis_patch(&mut bottom, p);
+            }
+            let mut left = build_val_axis_xy(VAL_AX_ID, CAT_AX_ID, c::AxisPositionValues::Left);
+            if let Some(p) = &val_axis {
+                apply_val_axis_patch(&mut left, p);
+            }
             plot_area
                 .plot_area_choice2
-                .push(c::PlotAreaChoice2::ValueAxis(Box::new(build_val_axis_xy(
-                    CAT_AX_ID,
-                    VAL_AX_ID,
-                    c::AxisPositionValues::Bottom,
-                    patch.category_axis_title.as_deref(),
-                ))));
+                .push(c::PlotAreaChoice2::ValueAxis(Box::new(bottom)));
             plot_area
                 .plot_area_choice2
-                .push(c::PlotAreaChoice2::ValueAxis(Box::new(build_val_axis_xy(
-                    VAL_AX_ID,
-                    CAT_AX_ID,
-                    c::AxisPositionValues::Left,
-                    patch.value_axis_title.as_deref(),
-                ))));
+                .push(c::PlotAreaChoice2::ValueAxis(Box::new(left)));
         }
         _ => {
+            let mut cat = build_cat_axis();
+            if let Some(p) = &cat_axis {
+                apply_cat_axis_patch(&mut cat, p);
+            }
             plot_area
                 .plot_area_choice2
-                .push(c::PlotAreaChoice2::CategoryAxis(Box::new(build_cat_axis(
-                    patch.category_axis_title.as_deref(),
-                ))));
+                .push(c::PlotAreaChoice2::CategoryAxis(Box::new(cat)));
+            let mut val = build_val_axis();
+            if let Some(p) = &val_axis {
+                apply_val_axis_patch(&mut val, p);
+            }
             plot_area
                 .plot_area_choice2
-                .push(c::PlotAreaChoice2::ValueAxis(Box::new(build_val_axis(
-                    patch.value_axis_title.as_deref(),
-                ))));
+                .push(c::PlotAreaChoice2::ValueAxis(Box::new(val)));
         }
     }
 
@@ -1534,7 +1563,7 @@ fn build_legend(pos: c::LegendPositionValues) -> c::Legend {
     }
 }
 
-fn build_cat_axis(title: Option<&str>) -> c::CategoryAxis {
+fn build_cat_axis() -> c::CategoryAxis {
     c::CategoryAxis {
         axis_id: Box::new(axis_id(CAT_AX_ID)),
         scaling: Box::new(c::Scaling {
@@ -1549,24 +1578,16 @@ fn build_cat_axis(title: Option<&str>) -> c::CategoryAxis {
         axis_position: Box::new(c::AxisPosition {
             val: c::AxisPositionValues::Bottom,
         }),
-        title: title
-            .filter(|t| !t.is_empty())
-            .map(|t| Box::new(build_title(t))),
         crossing_axis: Box::new(c::CrossingAxis { val: VAL_AX_ID }),
         ..Default::default()
     }
 }
 
-fn build_val_axis(title: Option<&str>) -> c::ValueAxis {
-    build_val_axis_xy(VAL_AX_ID, CAT_AX_ID, c::AxisPositionValues::Left, title)
+fn build_val_axis() -> c::ValueAxis {
+    build_val_axis_xy(VAL_AX_ID, CAT_AX_ID, c::AxisPositionValues::Left)
 }
 
-fn build_val_axis_xy(
-    id: u32,
-    cross: u32,
-    pos: c::AxisPositionValues,
-    title: Option<&str>,
-) -> c::ValueAxis {
+fn build_val_axis_xy(id: u32, cross: u32, pos: c::AxisPositionValues) -> c::ValueAxis {
     c::ValueAxis {
         axis_id: Box::new(axis_id(id)),
         scaling: Box::new(c::Scaling {
@@ -1579,11 +1600,256 @@ fn build_val_axis_xy(
             val: Some(BooleanValue::from_bool(false)),
         }),
         axis_position: Box::new(c::AxisPosition { val: pos }),
-        title: title
-            .filter(|t| !t.is_empty())
-            .map(|t| Box::new(build_title(t))),
         crossing_axis: Box::new(c::CrossingAxis { val: cross }),
         ..Default::default()
+    }
+}
+
+fn tick_mark_to(v: TickMark) -> c::TickMarkValues {
+    match v {
+        TickMark::Cross => c::TickMarkValues::Cross,
+        TickMark::Inside => c::TickMarkValues::Inside,
+        TickMark::Outside => c::TickMarkValues::Outside,
+        TickMark::None => c::TickMarkValues::None,
+    }
+}
+
+fn tick_mark_from(v: &c::TickMarkValues) -> TickMark {
+    match v {
+        c::TickMarkValues::Cross => TickMark::Cross,
+        c::TickMarkValues::Inside => TickMark::Inside,
+        c::TickMarkValues::Outside => TickMark::Outside,
+        c::TickMarkValues::None => TickMark::None,
+    }
+}
+
+fn tick_label_pos_to(v: TickLabelPosition) -> c::TickLabelPositionValues {
+    match v {
+        TickLabelPosition::High => c::TickLabelPositionValues::High,
+        TickLabelPosition::Low => c::TickLabelPositionValues::Low,
+        TickLabelPosition::NextTo => c::TickLabelPositionValues::NextTo,
+        TickLabelPosition::None => c::TickLabelPositionValues::None,
+    }
+}
+
+fn tick_label_pos_from(v: &c::TickLabelPositionValues) -> TickLabelPosition {
+    match v {
+        c::TickLabelPositionValues::High => TickLabelPosition::High,
+        c::TickLabelPositionValues::Low => TickLabelPosition::Low,
+        c::TickLabelPositionValues::NextTo => TickLabelPosition::NextTo,
+        c::TickLabelPositionValues::None => TickLabelPosition::None,
+    }
+}
+
+fn cross_between_to(v: CrossBetween) -> c::CrossBetweenValues {
+    match v {
+        CrossBetween::Between => c::CrossBetweenValues::Between,
+        CrossBetween::MidpointCategory => c::CrossBetweenValues::MidpointCategory,
+    }
+}
+
+fn cross_between_from(v: &c::CrossBetweenValues) -> CrossBetween {
+    match v {
+        c::CrossBetweenValues::Between => CrossBetween::Between,
+        c::CrossBetweenValues::MidpointCategory => CrossBetween::MidpointCategory,
+    }
+}
+
+fn merge_axis_title(
+    axis: Option<&ChartAxisPatch>,
+    legacy_title: &Option<String>,
+) -> Option<ChartAxisPatch> {
+    match (axis, legacy_title) {
+        (None, None) => None,
+        (None, Some(t)) => Some(ChartAxisPatch {
+            title: Some(t.clone()),
+            ..Default::default()
+        }),
+        (Some(p), legacy) => {
+            let mut p = p.clone();
+            if p.title.is_none() {
+                p.title = legacy.clone();
+            }
+            Some(p)
+        }
+    }
+}
+
+macro_rules! apply_axis_common {
+    ($ax:expr, $p:expr) => {{
+        if let Some(min) = $p.min {
+            $ax.scaling.min_axis_value = Some(c::MinAxisValue { val: min });
+        }
+        if let Some(max) = $p.max {
+            $ax.scaling.max_axis_value = Some(c::MaxAxisValue { val: max });
+        }
+        if let Some(rev) = $p.reversed {
+            $ax.scaling.orientation = Some(c::Orientation {
+                val: Some(if rev {
+                    c::OrientationValues::MaxMin
+                } else {
+                    c::OrientationValues::MinMax
+                }),
+            });
+        }
+        if let Some(hidden) = $p.hidden {
+            $ax.delete = Some(c::Delete {
+                val: Some(BooleanValue::from_bool(hidden)),
+            });
+        }
+        if let Some(on) = $p.major_gridlines {
+            $ax.major_gridlines = if on {
+                Some(Box::new(c::MajorGridlines::default()))
+            } else {
+                None
+            };
+        }
+        if let Some(on) = $p.minor_gridlines {
+            $ax.minor_gridlines = if on {
+                Some(Box::new(c::MinorGridlines::default()))
+            } else {
+                None
+            };
+        }
+        if let Some(t) = &$p.title {
+            set_axis_title(&mut $ax.title, t);
+        }
+        if let Some(nf) = &$p.number_format {
+            $ax.numbering_format = Some(c::NumberingFormat {
+                format_code: nf.clone(),
+                source_linked: Some(BooleanValue::from_bool(false)),
+            });
+        }
+        if let Some(tm) = $p.major_tick_mark {
+            $ax.major_tick_mark = Some(c::MajorTickMark {
+                val: Some(tick_mark_to(tm)),
+            });
+        }
+        if let Some(tm) = $p.minor_tick_mark {
+            $ax.minor_tick_mark = Some(c::MinorTickMark {
+                val: Some(tick_mark_to(tm)),
+            });
+        }
+        if let Some(tlp) = $p.tick_label_position {
+            $ax.tick_label_position = Some(c::TickLabelPosition {
+                val: Some(tick_label_pos_to(tlp)),
+            });
+        }
+    }};
+}
+
+fn apply_cat_axis_patch(ax: &mut c::CategoryAxis, p: &ChartAxisPatch) {
+    apply_axis_common!(ax, p);
+    if let Some(at) = p.crosses_at {
+        ax.category_axis_choice = Some(c::CategoryAxisChoice::CrossesAt(Box::new(c::CrossesAt {
+            val: at,
+        })));
+    }
+}
+
+fn apply_val_axis_patch(ax: &mut c::ValueAxis, p: &ChartAxisPatch) {
+    apply_axis_common!(ax, p);
+    if let Some(lb) = p.log_base {
+        ax.scaling.log_base = Some(c::LogBase { val: lb });
+    }
+    if let Some(mu) = p.major_unit {
+        ax.major_unit = Some(c::MajorUnit { val: mu });
+    }
+    if let Some(mu) = p.minor_unit {
+        ax.minor_unit = Some(c::MinorUnit { val: mu });
+    }
+    if let Some(cb) = p.cross_between {
+        ax.cross_between = Some(c::CrossBetween {
+            val: cross_between_to(cb),
+        });
+    }
+    if let Some(at) = p.crosses_at {
+        ax.value_axis_choice = Some(c::ValueAxisChoice::CrossesAt(Box::new(c::CrossesAt {
+            val: at,
+        })));
+    }
+}
+
+fn read_cat_axis_patch(ax: &c::CategoryAxis) -> Option<ChartAxisPatch> {
+    let mut p = ChartAxisPatch {
+        title: ax.title.as_deref().and_then(extract_title_text),
+        hidden: read_axis_hidden(ax.delete.as_ref()),
+        min: ax.scaling.min_axis_value.as_ref().map(|m| m.val),
+        max: ax.scaling.max_axis_value.as_ref().map(|m| m.val),
+        reversed: read_axis_reversed(ax.scaling.orientation.as_ref()),
+        major_gridlines: ax.major_gridlines.as_ref().map(|_| true),
+        minor_gridlines: ax.minor_gridlines.as_ref().map(|_| true),
+        major_tick_mark: ax.major_tick_mark.as_ref().and_then(|t| t.val.as_ref()).map(tick_mark_from),
+        minor_tick_mark: ax.minor_tick_mark.as_ref().and_then(|t| t.val.as_ref()).map(tick_mark_from),
+        tick_label_position: ax
+            .tick_label_position
+            .as_ref()
+            .and_then(|t| t.val.as_ref())
+            .map(tick_label_pos_from),
+        number_format: ax.numbering_format.as_ref().map(|n| n.format_code.clone()),
+        crosses_at: match ax.category_axis_choice.as_ref() {
+            Some(c::CategoryAxisChoice::CrossesAt(c)) => Some(c.val),
+            _ => None,
+        },
+        ..Default::default()
+    };
+    p.title = p.title.filter(|t| !t.is_empty());
+    if p == ChartAxisPatch::default() {
+        None
+    } else {
+        Some(p)
+    }
+}
+
+fn read_val_axis_patch(ax: &c::ValueAxis) -> Option<ChartAxisPatch> {
+    let mut p = ChartAxisPatch {
+        title: ax.title.as_deref().and_then(extract_title_text),
+        hidden: read_axis_hidden(ax.delete.as_ref()),
+        min: ax.scaling.min_axis_value.as_ref().map(|m| m.val),
+        max: ax.scaling.max_axis_value.as_ref().map(|m| m.val),
+        log_base: ax.scaling.log_base.as_ref().map(|l| l.val),
+        reversed: read_axis_reversed(ax.scaling.orientation.as_ref()),
+        major_unit: ax.major_unit.as_ref().map(|u| u.val),
+        minor_unit: ax.minor_unit.as_ref().map(|u| u.val),
+        major_gridlines: ax.major_gridlines.as_ref().map(|_| true),
+        minor_gridlines: ax.minor_gridlines.as_ref().map(|_| true),
+        major_tick_mark: ax.major_tick_mark.as_ref().and_then(|t| t.val.as_ref()).map(tick_mark_from),
+        minor_tick_mark: ax.minor_tick_mark.as_ref().and_then(|t| t.val.as_ref()).map(tick_mark_from),
+        tick_label_position: ax
+            .tick_label_position
+            .as_ref()
+            .and_then(|t| t.val.as_ref())
+            .map(tick_label_pos_from),
+        number_format: ax.numbering_format.as_ref().map(|n| n.format_code.clone()),
+        cross_between: ax.cross_between.as_ref().map(|c| cross_between_from(&c.val)),
+        crosses_at: match ax.value_axis_choice.as_ref() {
+            Some(c::ValueAxisChoice::CrossesAt(c)) => Some(c.val),
+            _ => None,
+        },
+    };
+    p.title = p.title.filter(|t| !t.is_empty());
+    if p == ChartAxisPatch::default() {
+        None
+    } else {
+        Some(p)
+    }
+}
+
+fn read_axis_hidden(delete: Option<&c::Delete>) -> Option<bool> {
+    let d = delete?;
+    let v = d.val.as_ref()?.as_bool();
+    if v {
+        Some(true)
+    } else {
+        None
+    }
+}
+
+fn read_axis_reversed(orientation: Option<&c::Orientation>) -> Option<bool> {
+    let o = orientation?;
+    match o.val.as_ref()? {
+        c::OrientationValues::MaxMin => Some(true),
+        c::OrientationValues::MinMax => None,
     }
 }
 

@@ -2373,6 +2373,126 @@ pub enum ChartStacking {
     feature = "typescript",
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
+#[serde(rename_all = "camelCase")]
+/// Axis tick-mark style (`c:majorTickMark`/`c:minorTickMark`, OOXML `ST_TickMark`).
+pub enum TickMark {
+    Cross,
+    Inside,
+    Outside,
+    None,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// Tick-label placement (`c:tickLblPos`, OOXML `ST_TickLblPos`).
+pub enum TickLabelPosition {
+    High,
+    Low,
+    NextTo,
+    None,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// Whether the value axis crosses between categories or at their midpoints
+/// (`c:crossBetween`, OOXML `ST_CrossBetween`).
+pub enum CrossBetween {
+    Between,
+    MidpointCategory,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// A chart category or value axis (`c:catAx`/`c:valAx`), distilled from
+/// ooxmlsdk `CategoryAxis`/`ValueAxis` per `scripts/schema_diff.py`.
+///
+/// Intentionally not modeled here (preserved on update, author via raw XML):
+/// `spPr`/`txPr` styling, `label_rotation` (txPr bodyPr rot), `display_units`,
+/// `pictureOptions`, `extLst`, multi-level category labels, and date-axis fields.
+/// `min`/`max`/`major_unit`/`major_gridlines`/`number_format` are also surfaced
+/// in the xlsx-preview renderer; the remainder round-trips for Excel.
+pub struct ChartAxisPatch {
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Hide the axis entirely (`c:delete = 1`).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hidden: Option<bool>,
+    /// `c:scaling/c:min`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min: Option<f64>,
+    /// `c:scaling/c:max`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max: Option<f64>,
+    /// `c:scaling/c:logBase` (2..=1000); value axis only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub log_base: Option<f64>,
+    /// Reverse axis direction (`c:scaling/c:orientation = maxMin`).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reversed: Option<bool>,
+    /// `c:majorUnit`; value axis only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub major_unit: Option<f64>,
+    /// `c:minorUnit`; value axis only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minor_unit: Option<f64>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub major_gridlines: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minor_gridlines: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub major_tick_mark: Option<TickMark>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minor_tick_mark: Option<TickMark>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tick_label_position: Option<TickLabelPosition>,
+    /// `c:numFmt`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number_format: Option<String>,
+    /// `c:crossBetween`; value axis only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cross_between: Option<CrossBetween>,
+    /// `c:crossesAt`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crosses_at: Option<f64>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
 #[serde(rename_all = "snake_case")]
 /// Where the chart's legend sits relative to the plot area.
 ///
@@ -2533,12 +2653,13 @@ pub struct ChartSeriesInfo {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "camelCase")]
+#[allow(clippy::derive_partial_eq_without_eq)]
 pub struct ChartPatch {
     pub sheet: String,
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -2564,6 +2685,12 @@ pub struct ChartPatch {
     pub value_axis_title: Option<String>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category_axis: Option<ChartAxisPatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value_axis: Option<ChartAxisPatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stacking: Option<ChartStacking>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2571,7 +2698,7 @@ pub struct ChartPatch {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
@@ -2601,6 +2728,12 @@ pub struct ChartInfo {
     pub value_axis_title: Option<String>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category_axis: Option<ChartAxisPatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value_axis: Option<ChartAxisPatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stacking: Option<ChartStacking>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2608,12 +2741,13 @@ pub struct ChartInfo {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "camelCase")]
+#[allow(clippy::derive_partial_eq_without_eq)]
 pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -2639,6 +2773,12 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_axis_title: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category_axis: Option<ChartAxisPatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value_axis: Option<ChartAxisPatch>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stacking: Option<ChartStacking>,
