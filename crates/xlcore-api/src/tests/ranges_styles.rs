@@ -214,6 +214,7 @@ fn set_style_applies_font_fill_border_align_and_numfmt() {
             ..Default::default()
         }),
         number_format: Some("#,##0.00".to_string()),
+        protection: None,
     };
     workbook.set_style("Sheet1!A1:B1", patch).unwrap();
     let a1 = workbook.get_cell("Sheet1!A1").unwrap();
@@ -280,6 +281,68 @@ fn set_style_dedupes_across_cells_and_invalid_color_errors() {
         )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::UnsupportedStyle);
+}
+
+#[test]
+fn set_style_applies_cell_protection() {
+    use std::io::Read;
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value("Sheet1!A1", "input").unwrap();
+    workbook.set_value("Sheet1!B1", "formula").unwrap();
+
+    workbook
+        .set_style(
+            "Sheet1!A1",
+            StylePatch {
+                protection: Some(ProtectionPatch {
+                    locked: Some(false),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    workbook
+        .set_style(
+            "Sheet1!B1",
+            StylePatch {
+                protection: Some(ProtectionPatch {
+                    locked: Some(true),
+                    hidden: Some(true),
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    let idx_a = workbook.get_cell("Sheet1!A1").unwrap().style_index.unwrap();
+    let idx_b = workbook.get_cell("Sheet1!B1").unwrap().style_index.unwrap();
+    assert_ne!(idx_a, idx_b);
+
+    let bytes = workbook.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes.clone()).unwrap();
+    assert_eq!(
+        reopened.get_cell("Sheet1!A1").unwrap().style_index,
+        Some(idx_a)
+    );
+
+    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+    let names: Vec<String> = (0..zip.len())
+        .map(|i| zip.by_index(i).unwrap().name().to_string())
+        .collect();
+    let styles_name = names
+        .iter()
+        .find(|n| n.contains("styles"))
+        .unwrap_or_else(|| panic!("no styles part in {names:?}"))
+        .clone();
+    let mut styles = String::new();
+    zip.by_name(&styles_name)
+        .unwrap()
+        .read_to_string(&mut styles)
+        .unwrap();
+    assert!(styles.contains("applyProtection=\"1\""));
+    assert!(styles.contains("locked=\"0\""));
+    assert!(styles.contains("hidden=\"1\""));
 }
 
 #[test]

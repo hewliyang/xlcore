@@ -180,7 +180,11 @@ authoring, per-point data labels.
 
 ### Styles — P1
 
-- Cell protection `locked`/`hidden` — sheet protection is half-useless without it.
+- Cell protection `locked`/`hidden` — **done**: `StylePatch.protection`
+  (`ProtectionPatch { locked, hidden }`, sdk `CT_CellProtection` 1:1) builds
+  `x:protection` + sets `@applyProtection` on the cellXf (and on dxfs), deduped
+  via the cell-format signature, and round-trips. Write-only for Excel (renderer
+  doesn't consume cell-level protection).
 - `FillPatch`: pattern type + fg/bg, gradient fills (schema: `CT_PatternFill`,
   `CT_GradientFill`).
 - `FontPatch`: `vertAlign` (sub/superscript), `family`, `scheme`.

@@ -94,6 +94,7 @@ export type { PrintCellComments } from "./PrintCellComments.js";
 export type { PrintErrors } from "./PrintErrors.js";
 export type { PrintOptionsInfo } from "./PrintOptionsInfo.js";
 export type { PrintOptionsInfo as PrintOptionsPatch } from "./PrintOptionsInfo.js";
+export type { ProtectionPatch } from "./ProtectionPatch.js";
 export type { ShapeInfo } from "./ShapeInfo.js";
 export type { ShapeLineEnd } from "./ShapeLineEnd.js";
 export type { ShapePatch } from "./ShapePatch.js";

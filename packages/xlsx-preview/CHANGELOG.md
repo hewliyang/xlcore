@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `StylePatch.protection` (`ProtectionPatch { locked, hidden }`, `x:protection` + `@applyProtection`): cell-level lock/hide for sheet protection; authored via `setStyle`, deduped, and round-tripped (write-only for Excel).
 - `ChartDataPoint.explosion` (`c:explosion/@val`, 0..=400 percent of radius): per-point pie/doughnut slice offset; authored on every series kind, round-tripped, updated in place, and rendered as offset slices by the previewer.
 - `ChartPatch.varyColors` (`c:varyColors`, chart-level) and `ChartSeriesPatch.invertIfNegative` (`c:invertIfNegative`, bar/column + bubble series), on the respective `Patch`/`Update`/`Info` types; authored, round-tripped, and updated in place (round-trip-only for Excel).
 - `ChartPatch.dispBlanksAs` (`DispBlanksAs` span|gap|zero, `c:dispBlanksAs`) on `ChartPatch`/`ChartUpdate`/`ChartInfo`; how blank source cells are plotted, default `gap`. Authored, round-tripped, and updated in place (round-trip-only for Excel).

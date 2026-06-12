@@ -3,7 +3,7 @@ use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 pub use xlcore_types::{
     AlignmentPatch, BorderLinePatch, BorderLineStyle, BorderPatch, FillPatch, FontPatch,
-    HorizontalAlign, StylePatch, UnderlinePatch, VerticalAlign,
+    HorizontalAlign, ProtectionPatch, StylePatch, UnderlinePatch, VerticalAlign,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -175,6 +175,10 @@ pub(crate) fn resolve_style_index(
         apply_alignment(&mut new_xf, align_patch);
         new_xf.apply_alignment = Some(BooleanValue::from_bool(true));
     }
+    if let Some(prot_patch) = patch.protection.as_ref() {
+        apply_protection(&mut new_xf.protection, prot_patch);
+        new_xf.apply_protection = Some(BooleanValue::from_bool(true));
+    }
 
     Ok(intern_cell_format(sheet, new_xf))
 }
@@ -216,6 +220,9 @@ pub(crate) fn upsert_dxf(
         let mut tmp = x::CellFormat::default();
         apply_alignment(&mut tmp, align_patch);
         dxf.alignment = tmp.alignment;
+    }
+    if let Some(prot_patch) = patch.protection.as_ref() {
+        apply_protection(&mut dxf.protection, prot_patch);
     }
     let dxfs = sheet
         .differential_formats
@@ -488,6 +495,16 @@ fn apply_alignment(xf: &mut x::CellFormat, patch: &AlignmentPatch) {
             rot as u32
         };
         align.text_rotation = Some(normalized);
+    }
+}
+
+fn apply_protection(slot: &mut Option<x::Protection>, patch: &ProtectionPatch) {
+    let prot = slot.get_or_insert_with(Default::default);
+    if let Some(locked) = patch.locked {
+        prot.locked = Some(BooleanValue::from_bool(locked));
+    }
+    if let Some(hidden) = patch.hidden {
+        prot.hidden = Some(BooleanValue::from_bool(hidden));
     }
 }
 
@@ -812,7 +829,9 @@ fn xfs_equal(a: &x::CellFormat, b: &x::CellFormat) -> bool {
         && a.apply_border == b.apply_border
         && a.apply_number_format == b.apply_number_format
         && a.apply_alignment == b.apply_alignment
+        && a.apply_protection == b.apply_protection
         && alignment_equal(&a.alignment, &b.alignment)
+        && a.protection == b.protection
 }
 
 fn alignment_equal(a: &Option<x::Alignment>, b: &Option<x::Alignment>) -> bool {
