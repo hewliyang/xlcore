@@ -101,8 +101,11 @@ pub struct ChartAxisPatch {
 - Combo charts / secondary axis: renderer renders them; `set_chart` can't author
   them. Needs `ChartSeriesPatch.axis: primary|secondary` + per-series `kind`.
 - Series styling: marker (style/size), line width/dash, `smooth`,
-  `varyColors`, `invertIfNegative`. **— `gapWidth`/`overlap` done** (chart-level,
-  bar/column, on `ChartPatch`/`ChartUpdate`/`ChartInfo`; renderer-visible).
+  `varyColors`, `invertIfNegative`. **— `gapWidth`/`overlap` + marker done**;
+  `ChartSeriesPatch.marker` (`ChartMarker { style, size }` + `MarkerStyle` enum,
+  sdk `ST_MarkerStyle` transliterated) builds `c:marker` on line/scatter series,
+  round-trips, and is renderer-visible. Remaining: line width/dash, `smooth`,
+  `varyColors`, `invertIfNegative`.
 - Pie/doughnut: `firstSliceAngle`, `holeSize`, per-point `explosion`.
 - Per-point fills (`c:dPt`) — required for the waterfall-via-noFill idiom we
   already render.

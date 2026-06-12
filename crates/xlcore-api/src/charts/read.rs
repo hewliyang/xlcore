@@ -119,6 +119,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.marker = read_marker(s.marker.as_deref());
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -193,6 +194,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.marker = read_marker(s.marker.as_deref());
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -330,6 +332,37 @@ pub(super) fn read_xy_series(
         bubble_sizes_ref: None,
         color: None,
         data_labels: read_data_labels(dl),
+        marker: None,
+    }
+}
+
+pub(super) fn marker_style_from(v: &c::MarkerStyleValues) -> MarkerStyle {
+    match v {
+        c::MarkerStyleValues::Auto => MarkerStyle::Auto,
+        c::MarkerStyleValues::Circle => MarkerStyle::Circle,
+        c::MarkerStyleValues::Dash => MarkerStyle::Dash,
+        c::MarkerStyleValues::Diamond => MarkerStyle::Diamond,
+        c::MarkerStyleValues::Dot => MarkerStyle::Dot,
+        c::MarkerStyleValues::None => MarkerStyle::None,
+        c::MarkerStyleValues::Picture => MarkerStyle::Picture,
+        c::MarkerStyleValues::Plus => MarkerStyle::Plus,
+        c::MarkerStyleValues::Square => MarkerStyle::Square,
+        c::MarkerStyleValues::Star => MarkerStyle::Star,
+        c::MarkerStyleValues::Triangle => MarkerStyle::Triangle,
+        c::MarkerStyleValues::X => MarkerStyle::X,
+    }
+}
+
+pub(super) fn read_marker(m: Option<&c::Marker>) -> Option<ChartMarker> {
+    let m = m?;
+    let out = ChartMarker {
+        style: m.symbol.as_ref().map(|s| marker_style_from(&s.val)),
+        size: m.size.as_ref().and_then(|s| s.val),
+    };
+    if out == ChartMarker::default() {
+        None
+    } else {
+        Some(out)
     }
 }
 
@@ -386,6 +419,7 @@ pub(super) fn read_series(
         bubble_sizes_ref: None,
         color: None,
         data_labels: read_data_labels(dl),
+        marker: None,
     }
 }
 

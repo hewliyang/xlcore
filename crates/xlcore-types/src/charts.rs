@@ -76,6 +76,52 @@ pub enum CrossBetween {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// Data-point marker symbol (`c:marker/c:symbol`, OOXML `ST_MarkerStyle`).
+/// Applies to line and scatter series; ignored for other chart kinds.
+pub enum MarkerStyle {
+    Auto,
+    Circle,
+    Dash,
+    Diamond,
+    Dot,
+    None,
+    Picture,
+    Plus,
+    Square,
+    Star,
+    Triangle,
+    X,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// Series data-point marker (`c:marker`), distilled from ooxmlsdk `Marker`.
+///
+/// Intentionally not modeled (preserved on update, author via raw XML):
+/// `spPr` styling, `pictureOptions`, `extLst`.
+pub struct ChartMarker {
+    /// `c:symbol/@val`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<MarkerStyle>,
+    /// `c:size/@val` (2..=72).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<u8>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
@@ -306,6 +352,10 @@ pub struct ChartSeriesPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
+    /// `c:marker`; line/scatter series only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub marker: Option<ChartMarker>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -335,6 +385,10 @@ pub struct ChartSeriesInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
+    /// `c:marker`; line/scatter series only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub marker: Option<ChartMarker>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

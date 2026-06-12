@@ -63,6 +63,15 @@ pub(super) fn validate_chart_series(
                 .with_sheet(sheet));
             }
         }
+        if let Some(size) = s.marker.as_ref().and_then(|m| m.size) {
+            if !(2..=72).contains(&size) {
+                return Err(ApiError::new(
+                    ApiErrorCode::InvalidChart,
+                    format!("chart series marker size must be 2..=72, got: {size}"),
+                )
+                .with_sheet(sheet));
+            }
+        }
     }
     Ok(())
 }
@@ -492,11 +501,43 @@ pub(super) fn build_line_series(
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
+        marker: build_marker(s.marker.as_ref()),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
     }
+}
+
+pub(super) fn marker_style_to(s: MarkerStyle) -> c::MarkerStyleValues {
+    match s {
+        MarkerStyle::Auto => c::MarkerStyleValues::Auto,
+        MarkerStyle::Circle => c::MarkerStyleValues::Circle,
+        MarkerStyle::Dash => c::MarkerStyleValues::Dash,
+        MarkerStyle::Diamond => c::MarkerStyleValues::Diamond,
+        MarkerStyle::Dot => c::MarkerStyleValues::Dot,
+        MarkerStyle::None => c::MarkerStyleValues::None,
+        MarkerStyle::Picture => c::MarkerStyleValues::Picture,
+        MarkerStyle::Plus => c::MarkerStyleValues::Plus,
+        MarkerStyle::Square => c::MarkerStyleValues::Square,
+        MarkerStyle::Star => c::MarkerStyleValues::Star,
+        MarkerStyle::Triangle => c::MarkerStyleValues::Triangle,
+        MarkerStyle::X => c::MarkerStyleValues::X,
+    }
+}
+
+pub(super) fn build_marker(m: Option<&ChartMarker>) -> Option<Box<c::Marker>> {
+    let m = m?;
+    if m.style.is_none() && m.size.is_none() {
+        return None;
+    }
+    Some(Box::new(c::Marker {
+        symbol: m.style.map(|s| c::Symbol {
+            val: marker_style_to(s),
+        }),
+        size: m.size.map(|sz| c::Size { val: Some(sz) }),
+        ..Default::default()
+    }))
 }
 
 pub(super) fn build_area_series(
@@ -538,6 +579,7 @@ pub(super) fn build_scatter_series(idx: usize, s: &ChartSeriesPatch) -> c::Scatt
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
+        marker: build_marker(s.marker.as_ref()),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         x_values: s.x_values_ref.as_deref().map(build_x_values),
         y_values: Some(build_y_values(&s.values_ref)),

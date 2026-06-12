@@ -358,6 +358,7 @@ fn charts_supports_multiple_kinds() {
                 .then(|| "Sheet1!$C$2:$C$4".to_string()),
             color: None,
             data_labels: None,
+            marker: None,
         }],
         anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
@@ -429,6 +430,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             bubble_sizes_ref: None,
             color: Some("FF8800".to_string()),
             data_labels: None,
+            marker: None,
         }],
         anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 4,
@@ -1161,6 +1163,99 @@ fn chart_gap_width_overlap_roundtrip_and_update() {
         .update_chart("Sheet1", &info.id, ChartUpdate {
             gap_width: Some(999),
             ..Default::default()
+        })
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidChart);
+}
+
+#[test]
+fn chart_series_marker_roundtrip_and_validation() {
+    use xlcore_types::{ChartMarker, MarkerStyle};
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 20.0).unwrap();
+    wb.set_value("Sheet1!B4", 15.0).unwrap();
+
+    let info = wb
+        .set_chart("Sheet1", ChartPatch {
+            name: None,
+            kind: ChartKind::Line,
+            title: None,
+            legend_position: None,
+            categories_ref: None,
+            series: vec![ChartSeriesPatch {
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                marker: Some(ChartMarker {
+                    style: Some(MarkerStyle::Diamond),
+                    size: Some(9),
+                }),
+                ..Default::default()
+            }],
+            anchor: AnchorSpec::Cells(ChartAnchor {
+                from_column: 3,
+                from_row: 1,
+                to_column: 10,
+                to_row: 16,
+                ..Default::default()
+            }),
+            category_axis_title: None,
+            value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
+            stacking: None,
+            gap_width: None,
+            overlap: None,
+            data_labels: None,
+        })
+        .unwrap();
+    assert_eq!(
+        info.series[0].marker,
+        Some(ChartMarker {
+            style: Some(MarkerStyle::Diamond),
+            size: Some(9)
+        })
+    );
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("c:marker"));
+    assert!(xml.contains("diamond"));
+
+    let mut wb = Workbook::open_bytes(bytes).unwrap();
+    let read = wb.charts(Some("Sheet1")).unwrap();
+    assert_eq!(
+        read[0].series[0].marker,
+        Some(ChartMarker {
+            style: Some(MarkerStyle::Diamond),
+            size: Some(9)
+        })
+    );
+
+    let err = wb
+        .set_chart("Sheet1", ChartPatch {
+            name: None,
+            kind: ChartKind::Line,
+            title: None,
+            legend_position: None,
+            categories_ref: None,
+            series: vec![ChartSeriesPatch {
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                marker: Some(ChartMarker {
+                    style: None,
+                    size: Some(100),
+                }),
+                ..Default::default()
+            }],
+            anchor: AnchorSpec::default(),
+            category_axis_title: None,
+            value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
+            stacking: None,
+            gap_width: None,
+            overlap: None,
+            data_labels: None,
         })
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidChart);
