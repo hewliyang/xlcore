@@ -68,6 +68,7 @@ pub(super) struct ParsedChart {
     pub(super) disp_blanks_as: Option<DispBlanksAs>,
     pub(super) vary_colors: Option<bool>,
     pub(super) data_labels: Option<ChartDataLabels>,
+    pub(super) data_table: Option<ChartDataTable>,
 }
 
 pub(super) fn group_is_secondary(axis_ids: &[c::AxisId], sec: &[u32]) -> bool {
@@ -436,6 +437,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         }
     }
 
+    let data_table = read_data_table(plot.data_table.as_deref());
+
     let title = space
         .chart
         .title
@@ -482,6 +485,26 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         disp_blanks_as,
         vary_colors,
         data_labels,
+        data_table,
+    }
+}
+
+pub(super) fn read_data_table(dt: Option<&c::DataTable>) -> Option<ChartDataTable> {
+    let dt = dt?;
+    let b = |v: Option<&BooleanValue>| v.map(|x| bool::from(*x));
+    let out = ChartDataTable {
+        show_horizontal_border: b(dt
+            .show_horizontal_border
+            .as_ref()
+            .and_then(|s| s.val.as_ref())),
+        show_vertical_border: b(dt.show_vertical_border.as_ref().and_then(|s| s.val.as_ref())),
+        show_outline: b(dt.show_outline_border.as_ref().and_then(|s| s.val.as_ref())),
+        show_keys: b(dt.show_keys.as_ref().and_then(|s| s.val.as_ref())),
+    };
+    if out == ChartDataTable::default() {
+        None
+    } else {
+        Some(out)
     }
 }
 

@@ -15,7 +15,7 @@ use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
     AnchorSpec, ApiError, ApiErrorCode, ApiWarning, BuiltInUnit, ChartAnchor, ChartAxisGroup,
     ChartAxisPatch, ChartDataLabel, ChartDataLabelPosition, ChartDataLabels, ChartDataPoint,
-    ChartErrorBarType,
+    ChartDataTable, ChartErrorBarType,
     ChartErrorBars, ChartErrorDirection, ChartErrorValueType, ChartInfo, ChartKind,
     ChartLegendPosition, ChartLine, ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch,
     ChartStacking, ChartTrendline, ChartUpdate, CrossBetween, DispBlanksAs, DisplayUnits, LineDash,
@@ -112,6 +112,7 @@ impl Workbook {
                     overlap: parsed.overlap,
                     radar_style: parsed.radar_style,
                     data_labels: parsed.data_labels,
+                    data_table: parsed.data_table,
                 });
             }
         }
@@ -125,6 +126,7 @@ impl Workbook {
         validate_pie_options(sheet, patch.hole_size, patch.first_slice_angle)?;
         validate_axis_options(sheet, patch.category_axis.as_ref())?;
         validate_axis_options(sheet, patch.value_axis.as_ref())?;
+        validate_data_table(sheet, patch.kind, patch.data_table.as_ref())?;
         let anchor = crate::refs::resolve_anchor(&patch.anchor)?;
 
         if !self.sheet_exists(sheet)? {
@@ -269,6 +271,7 @@ impl Workbook {
             disp_blanks_as: Some(patch.disp_blanks_as.unwrap_or(DispBlanksAs::Gap)),
             vary_colors: Some(vary_colors_effective(patch.kind, patch.vary_colors)),
             data_labels: patch.data_labels.clone(),
+            data_table: patch.data_table.filter(|_| is_cartesian(patch.kind)),
         })
     }
 
@@ -362,6 +365,7 @@ impl Workbook {
         validate_pie_options(&sheet, update.hole_size, update.first_slice_angle)?;
         validate_axis_options(&sheet, update.category_axis.as_ref())?;
         validate_axis_options(&sheet, update.value_axis.as_ref())?;
+        validate_data_table(&sheet, kind, update.data_table.as_ref())?;
 
         let plot_dirty = update.series.is_some()
             || update.stacking.is_some()
@@ -498,6 +502,7 @@ impl Workbook {
                 disp_blanks_as: None,
                 vary_colors,
                 data_labels: data_labels.clone(),
+                data_table: None,
             };
             space.chart.plot_area.plot_area_choice1 = build_plot_charts(&synth);
             space
@@ -552,6 +557,10 @@ impl Workbook {
             space.chart.display_blanks_as = Some(c::DisplayBlanksAs {
                 val: Some(disp_blanks_as_to(blanks)),
             });
+        }
+
+        if let Some(dt) = update.data_table {
+            space.chart.plot_area.data_table = build_data_table(Some(&dt));
         }
 
         let cat_axis_patch =

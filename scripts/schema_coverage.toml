@@ -88,6 +88,12 @@ dto = "ChartErrorBars"
 ns = "c"
 aliases = { errDir = "direction", errBarType = "bar_type", errValType = "value_type", val = "value", plus = "plus_ref", minus = "minus_ref" }
 
+[[pair]]
+sdk = "DataTable"
+dto = "ChartDataTable"
+ns = "c"
+aliases = { showHorzBorder = "show_horizontal_border", showVertBorder = "show_vertical_border", showOutline = "show_outline" }
+
 # --- chart kinds (plot-group containers) ------------------------------------
 [[pair]]
 sdk = "DoughnutChart"

@@ -50,6 +50,7 @@ fn charts_create_list_remove_roundtrip() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -167,6 +168,7 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -251,6 +253,7 @@ fn update_chart_replaces_series_and_stacking() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -339,6 +342,7 @@ fn chart_axis_patch_authors_and_round_trips() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -424,6 +428,7 @@ fn chart_value_axis_display_units_round_trip() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -503,6 +508,7 @@ fn chart_axis_label_rotation_round_trip() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -622,6 +628,7 @@ fn charts_supports_multiple_kinds() {
         disp_blanks_as: None,
         vary_colors: None,
         data_labels: None,
+        data_table: None,
     };
     for kind in [
         ChartKind::Column,
@@ -712,6 +719,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             disp_blanks_as: None,
             vary_colors: None,
             data_labels: None,
+            data_table: None,
         },
     )
     .unwrap();
@@ -754,6 +762,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             disp_blanks_as: None,
             vary_colors: None,
             data_labels: None,
+            data_table: None,
         },
     )
     .unwrap();
@@ -794,6 +803,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             disp_blanks_as: None,
             vary_colors: None,
             data_labels: None,
+            data_table: None,
         },
     )
     .unwrap();
@@ -879,6 +889,7 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
             disp_blanks_as: None,
             vary_colors: None,
             data_labels: None,
+            data_table: None,
         },
     )
     .unwrap();
@@ -930,6 +941,7 @@ fn chart_series_color_rejects_malformed_hex() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap_err();
@@ -1019,6 +1031,7 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
             disp_blanks_as: None,
             vary_colors: None,
             data_labels: None,
+            data_table: None,
         },
     )
     .unwrap();
@@ -1107,6 +1120,7 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
         disp_blanks_as: None,
         vary_colors: None,
         data_labels: None,
+        data_table: None,
     };
 
     let col_stacked = wb
@@ -1220,6 +1234,7 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -1262,6 +1277,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             disp_blanks_as: None,
             vary_colors: None,
             data_labels: None,
+            data_table: None,
         },
     );
     assert!(missing_x.is_err());
@@ -1296,6 +1312,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             disp_blanks_as: None,
             vary_colors: None,
             data_labels: None,
+            data_table: None,
         },
     );
     assert!(bad_color.is_err());
@@ -1352,6 +1369,7 @@ fn charts_data_labels_roundtrip() {
                     number_format: Some("0.0%".to_string()),
                     per_point: vec![],
                 }),
+                data_table: None,
             },
         )
         .unwrap();
@@ -1418,6 +1436,7 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
                 position: Some(ChartDataLabelPosition::Center),
                 ..Default::default()
             }),
+            data_table: None,
         },
     )
     .unwrap();
@@ -1486,6 +1505,7 @@ fn charts_per_series_data_labels_override_chart_level() {
                 position: Some(ChartDataLabelPosition::Center),
                 ..Default::default()
             }),
+            data_table: None,
         },
     )
     .unwrap();
@@ -1574,6 +1594,7 @@ fn charts_per_point_data_labels_roundtrip_and_update() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -1674,6 +1695,7 @@ fn chart_gap_width_overlap_roundtrip_and_update() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -1765,6 +1787,7 @@ fn chart_series_marker_roundtrip_and_validation() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -1825,6 +1848,7 @@ fn chart_series_marker_roundtrip_and_validation() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap_err();
@@ -1879,6 +1903,7 @@ fn chart_series_smooth_roundtrips_and_sets_scatter_style() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -1945,6 +1970,7 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -2001,6 +2027,7 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap_err();
@@ -2052,6 +2079,7 @@ fn chart_data_point_explosion_roundtrip() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -2132,6 +2160,7 @@ fn combo_chart_secondary_axis_roundtrip() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -2182,6 +2211,7 @@ fn combo_chart_secondary_axis_roundtrip() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap_err();
@@ -2245,6 +2275,7 @@ fn radar_chart_build_roundtrip_and_update() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -2319,6 +2350,7 @@ fn doughnut_hole_size_and_first_slice_angle_roundtrip_and_update() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -2384,6 +2416,7 @@ fn doughnut_hole_size_out_of_range_rejected() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap_err();
@@ -2459,6 +2492,7 @@ fn stock_chart_build_roundtrip_and_update() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -2539,6 +2573,7 @@ fn stock_chart_requires_three_to_six_series() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap_err();
@@ -2590,6 +2625,7 @@ fn chart_series_line_roundtrips_and_updates() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -2675,6 +2711,7 @@ fn disp_blanks_as_builds_reads_updates() {
                 disp_blanks_as: Some(DispBlanksAs::Span),
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -2749,6 +2786,7 @@ fn vary_colors_and_invert_if_negative_roundtrip_and_update() {
                 disp_blanks_as: None,
                 vary_colors: Some(true),
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -2840,6 +2878,7 @@ fn chart_trendline_roundtrips_and_updates() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -2945,6 +2984,7 @@ fn chart_trendline_moving_average_on_scatter_roundtrips() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -2996,6 +3036,7 @@ fn chart_trendline_rejected_on_pie_and_bad_params() {
         disp_blanks_as: None,
         vary_colors: None,
         data_labels: None,
+        data_table: None,
     };
 
     let linear = ChartTrendline {
@@ -3083,6 +3124,7 @@ fn chart_error_bars_fixed_roundtrips_and_updates() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -3194,6 +3236,7 @@ fn chart_error_bars_custom_on_scatter_roundtrips() {
                 disp_blanks_as: None,
                 vary_colors: None,
                 data_labels: None,
+                data_table: None,
             },
         )
         .unwrap();
@@ -3249,6 +3292,7 @@ fn chart_error_bars_rejected_on_pie_and_bad_params() {
         disp_blanks_as: None,
         vary_colors: None,
         data_labels: None,
+        data_table: None,
     };
 
     let fixed = ChartErrorBars {
@@ -3281,5 +3325,144 @@ fn chart_error_bars_rejected_on_pie_and_bad_params() {
     };
     assert!(wb
         .set_chart("Sheet1", mk(ChartKind::Column, custom_empty))
+        .is_err());
+}
+
+#[test]
+fn chart_data_table_roundtrips_and_updates() {
+    use xlcore_types::ChartDataTable;
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 12.0).unwrap();
+    wb.set_value("Sheet1!B4", 15.0).unwrap();
+
+    let dt = ChartDataTable {
+        show_horizontal_border: Some(true),
+        show_vertical_border: Some(true),
+        show_outline: Some(true),
+        show_keys: Some(true),
+    };
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Column,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::default(),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
+                disp_blanks_as: None,
+                vary_colors: None,
+                data_labels: None,
+                data_table: Some(dt.clone()),
+            },
+        )
+        .unwrap();
+    assert_eq!(info.data_table.as_ref(), Some(&dt));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("c:dTable"));
+    assert!(xml.contains("c:showHorzBorder val=\"1\""));
+    assert!(xml.contains("c:showVertBorder val=\"1\""));
+    assert!(xml.contains("c:showOutline val=\"1\""));
+    assert!(xml.contains("c:showKeys val=\"1\""));
+    let dtable_at = xml.find("c:dTable").unwrap();
+    let valax_at = xml.find("c:valAx").unwrap();
+    assert!(dtable_at > valax_at, "dTable must come after the axes");
+
+    let mut wb = Workbook::open_bytes(bytes).unwrap();
+    let read = wb.charts(Some("Sheet1")).unwrap();
+    assert_eq!(read[0].data_table.as_ref(), Some(&dt));
+
+    let id = read[0].id.clone();
+    let dt2 = ChartDataTable {
+        show_horizontal_border: Some(false),
+        show_vertical_border: None,
+        show_outline: None,
+        show_keys: Some(false),
+    };
+    let updated = wb
+        .update_chart(
+            "Sheet1",
+            &id,
+            ChartUpdate {
+                data_table: Some(dt2.clone()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(updated.data_table.as_ref(), Some(&dt2));
+
+    let xml2 = chart_xml(&wb.save_bytes().unwrap());
+    assert!(xml2.contains("c:showHorzBorder val=\"0\""));
+    assert!(xml2.contains("c:showKeys val=\"0\""));
+    assert!(!xml2.contains("c:showVertBorder"));
+}
+
+#[test]
+fn chart_data_table_rejected_on_pie() {
+    use xlcore_types::ChartDataTable;
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 12.0).unwrap();
+
+    let dt = ChartDataTable {
+        show_keys: Some(true),
+        ..Default::default()
+    };
+    assert!(wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Pie,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$3".to_string(),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::default(),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
+                disp_blanks_as: None,
+                vary_colors: None,
+                data_labels: None,
+                data_table: Some(dt),
+            },
+        )
         .is_err());
 }

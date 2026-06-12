@@ -79,7 +79,9 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   refs/values; round-trip-only, renderer doesn't draw), per-point data labels
   (`c:dLbl` via `ChartDataLabels.perPoint`: per-index delete flag or overrides of
   showValue/showCategoryName/showSeriesName/showPercent/showLegendKey/position/
-  numFmt/separator; renderer-visible). In-place `update_chart`
+  numFmt/separator; renderer-visible), data table (`c:dTable` via
+  `ChartPatch.dataTable`: showHorzBorder/showVertBorder/showOutline/showKeys;
+  cartesian only, round-trip-only, renderer doesn't draw). In-place `update_chart`
   (atomic, preserves unmodeled XML).
 - **Rich text in cells**: `setRichText`/`richText` (inline-string `CT_RElt`
   runs with per-run `FontPatch`); `CellInfo.richText`, renderer-visible.
@@ -98,7 +100,7 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 
 ### P2 — backlog
 
-Data table, 3D variants, surface, ofPie, manual layout, plot-area/legend
+3D variants, surface, ofPie, manual layout, plot-area/legend
 spPr+fonts, chartStyle/colorStyle companion parts, chartEx authoring, named
 styles / `cellStyles` authoring, remaining `c:dPt` fields (per-point
 invertIfNegative/marker, gradient/pattern fills).

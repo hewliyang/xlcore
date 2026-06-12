@@ -787,6 +787,44 @@ pub struct ChartErrorBars {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// Chart data table (`c:dTable` in `c:plotArea`), distilled from ooxmlsdk
+/// `DataTable`.
+///
+/// A grid of the source values drawn beneath a cartesian plot. Cartesian charts
+/// only (column/bar/line/area); Excel rejects data tables on
+/// pie/doughnut/scatter/bubble/radar/stock. Round-trips for Excel; the
+/// xlsx-preview renderer does not draw the data table.
+///
+/// Intentionally not modeled (preserved on update, author via raw XML): `spPr`
+/// shape/border styling, `txPr` font, `extLst`.
+///
+/// schema-excluded: spPr, txPr
+pub struct ChartDataTable {
+    /// `c:showHorzBorder/@val`; draw horizontal cell borders.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_horizontal_border: Option<bool>,
+    /// `c:showVertBorder/@val`; draw vertical cell borders.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_vertical_border: Option<bool>,
+    /// `c:showOutline/@val`; draw the table's outline border.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_outline: Option<bool>,
+    /// `c:showKeys/@val`; show the series legend keys in the first column.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_keys: Option<bool>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
@@ -1022,6 +1060,10 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
+    /// `c:dTable`; data table beneath the plot. Cartesian charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_table: Option<ChartDataTable>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1109,6 +1151,10 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
+    /// `c:dTable`; data table beneath the plot. Cartesian charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_table: Option<ChartDataTable>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1200,4 +1246,8 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
+    /// `c:dTable`; data table beneath the plot. Cartesian charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_table: Option<ChartDataTable>,
 }

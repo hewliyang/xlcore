@@ -164,6 +164,21 @@ pub(super) fn validate_chart_series(
     Ok(())
 }
 
+pub(super) fn validate_data_table(
+    sheet: &str,
+    kind: ChartKind,
+    data_table: Option<&ChartDataTable>,
+) -> Result<()> {
+    if data_table.is_some() && !is_cartesian(kind) {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidChart,
+            format!("data tables are not supported on {kind:?} charts (cartesian only)"),
+        )
+        .with_sheet(sheet));
+    }
+    Ok(())
+}
+
 pub(super) fn is_cartesian(kind: ChartKind) -> bool {
     matches!(
         kind,
@@ -367,6 +382,7 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
                         build_sec_cat_axis(),
                     )));
             }
+            plot_area.data_table = build_data_table(patch.data_table.as_ref());
         }
     }
 
@@ -895,6 +911,26 @@ pub(super) fn build_trendline(t: Option<&ChartTrendline>) -> Vec<c::Trendline> {
             .map(|v| c::DisplayEquation { val: bv(v) }),
         ..Default::default()
     }]
+}
+
+pub(super) fn build_data_table(dt: Option<&ChartDataTable>) -> Option<Box<c::DataTable>> {
+    let dt = dt?;
+    let b = |v: Option<bool>| v.map(BooleanValue::from_bool);
+    Some(Box::new(c::DataTable {
+        show_horizontal_border: dt.show_horizontal_border.map(|_| c::ShowHorizontalBorder {
+            val: b(dt.show_horizontal_border),
+        }),
+        show_vertical_border: dt.show_vertical_border.map(|_| c::ShowVerticalBorder {
+            val: b(dt.show_vertical_border),
+        }),
+        show_outline_border: dt.show_outline.map(|_| c::ShowOutlineBorder {
+            val: b(dt.show_outline),
+        }),
+        show_keys: dt.show_keys.map(|_| c::ShowKeys {
+            val: b(dt.show_keys),
+        }),
+        ..Default::default()
+    }))
 }
 
 pub(super) fn build_num_literal(vals: &[f64]) -> Box<c::NumberLiteral> {

@@ -2,6 +2,7 @@
 import type { AnchorSpec } from "./AnchorSpec.js";
 import type { ChartAxisPatch } from "./ChartAxisPatch.js";
 import type { ChartDataLabels } from "./ChartDataLabels.js";
+import type { ChartDataTable } from "./ChartDataTable.js";
 import type { ChartKind } from "./ChartKind.js";
 import type { ChartLegendPosition } from "./ChartLegendPosition.js";
 import type { ChartSeriesPatch } from "./ChartSeriesPatch.js";
@@ -70,4 +71,8 @@ export type ChartPatch = {
    */
   varyColors?: boolean;
   dataLabels?: ChartDataLabels;
+  /**
+   * `c:dTable`; data table beneath the plot. Cartesian charts only.
+   */
+  dataTable?: ChartDataTable;
 };
