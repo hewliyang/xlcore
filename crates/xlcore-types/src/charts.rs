@@ -157,6 +157,30 @@ pub struct ChartMarker {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// A single data point override (`c:dPt`), distilled from ooxmlsdk `DataPoint`.
+///
+/// Currently only per-point fill is modeled, which the xlsx-preview renderer
+/// reads for bar/column/pie/doughnut series (e.g. the waterfall-via-noFill idiom).
+/// Intentionally not modeled (preserved on update, author via raw XML):
+/// `invertIfNegative`, per-point `marker`, `bubble3D`, `explosion`,
+/// non-solid `spPr` styling, `pictureOptions`, `extLst`.
+pub struct ChartDataPoint {
+    /// `c:idx/@val`; 0-based data-point index within the series.
+    pub index: u32,
+    /// `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
+    /// `"none"` for an explicit no-fill (`a:noFill`).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<String>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
@@ -395,6 +419,11 @@ pub struct ChartSeriesPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub marker: Option<ChartMarker>,
+    /// Per-data-point fill overrides (`c:dPt`). Each entry recolors one point by
+    /// index; use `fill: "none"` for the waterfall-via-noFill idiom.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_points: Option<Vec<ChartDataPoint>>,
     /// Per-series chart type, overriding the chart's `kind` to build a combo
     /// chart. Only `Column`/`Bar`/`Line`/`Area` are valid here; mixing those on
     /// one chart emits multiple `c:barChart`/`c:lineChart`/`c:areaChart` groups.
@@ -439,6 +468,10 @@ pub struct ChartSeriesInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub marker: Option<ChartMarker>,
+    /// Per-data-point fill overrides (`c:dPt`); see {@link ChartSeriesPatch.dataPoints}.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_points: Option<Vec<ChartDataPoint>>,
     /// Per-series chart type for combo charts; see {@link ChartSeriesPatch.kind}.
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]

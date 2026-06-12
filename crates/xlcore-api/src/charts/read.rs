@@ -128,6 +128,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     info.kind = Some(this_kind);
                     info.axis = gsec.then_some(ChartAxisGroup::Secondary);
+                    info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -153,6 +154,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.marker = read_marker(s.marker.as_deref());
                     info.kind = Some(ChartKind::Line);
                     info.axis = gsec.then_some(ChartAxisGroup::Secondary);
+                    info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -173,6 +175,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -193,6 +196,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -220,6 +224,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     );
                     info.kind = Some(ChartKind::Area);
                     info.axis = gsec.then_some(ChartAxisGroup::Secondary);
+                    info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -244,6 +249,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     info.marker = read_marker(s.marker.as_deref());
+                    info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -273,6 +279,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         }
                     });
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -299,6 +306,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     info.marker = read_marker(s.marker.as_deref());
+                    info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -427,6 +435,7 @@ pub(super) fn read_xy_series(
         color: None,
         data_labels: read_data_labels(dl),
         marker: None,
+        data_points: None,
         kind: None,
         axis: None,
     }
@@ -459,6 +468,35 @@ pub(super) fn read_marker(m: Option<&c::Marker>) -> Option<ChartMarker> {
         None
     } else {
         Some(out)
+    }
+}
+
+pub(super) fn read_data_points(dps: &[c::DataPoint]) -> Option<Vec<ChartDataPoint>> {
+    let mut out: Vec<ChartDataPoint> = Vec::new();
+    for dp in dps {
+        let sp = dp.chart_shape_properties.as_deref();
+        let fill = read_shape_fill(sp);
+        if fill.is_some() {
+            out.push(ChartDataPoint {
+                index: dp.index.val,
+                fill,
+            });
+        }
+    }
+    (!out.is_empty()).then_some(out)
+}
+
+pub(super) fn read_shape_fill(sp: Option<&c::ChartShapeProperties>) -> Option<String> {
+    let sp = sp?;
+    match sp.chart_shape_properties_choice2.as_ref()? {
+        c::ChartShapePropertiesChoice2::NoFill(_) => Some("none".to_string()),
+        c::ChartShapePropertiesChoice2::SolidFill(sf) => {
+            let a::SolidFillChoice::RgbColorModelHex(rgb) = sf.solid_fill_choice.as_ref()? else {
+                return None;
+            };
+            Some(rgb.val.to_string().to_uppercase())
+        }
+        _ => None,
     }
 }
 
@@ -516,6 +554,7 @@ pub(super) fn read_series(
         color: None,
         data_labels: read_data_labels(dl),
         marker: None,
+        data_points: None,
         kind: None,
         axis: None,
     }

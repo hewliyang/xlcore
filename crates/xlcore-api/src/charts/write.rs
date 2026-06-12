@@ -63,6 +63,21 @@ pub(super) fn validate_chart_series(
                 .with_sheet(sheet));
             }
         }
+        if let Some(points) = s.data_points.as_ref() {
+            for p in points {
+                if let Some(fill) = p.fill.as_deref() {
+                    if !fill.trim().eq_ignore_ascii_case("none") && !is_valid_hex_color(fill) {
+                        return Err(ApiError::new(
+                            ApiErrorCode::InvalidChart,
+                            format!(
+                                "chart data point fill must be 6-hex RRGGBB, 8-hex AARRGGBB, or \"none\", got: {fill}"
+                            ),
+                        )
+                        .with_sheet(sheet));
+                    }
+                }
+            }
+        }
         if let Some(size) = s.marker.as_ref().and_then(|m| m.size) {
             if !(2..=72).contains(&size) {
                 return Err(ApiError::new(
@@ -313,6 +328,7 @@ pub(super) fn build_radar_series(
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
         marker: build_marker(s.marker.as_ref()),
+        data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
@@ -622,6 +638,7 @@ pub(super) fn build_bar_series(
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
+        data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
@@ -640,6 +657,7 @@ pub(super) fn build_line_series(
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
         marker: build_marker(s.marker.as_ref()),
+        data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
@@ -687,6 +705,7 @@ pub(super) fn build_area_series(
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
+        data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
@@ -704,6 +723,7 @@ pub(super) fn build_pie_series(
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
+        data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
@@ -718,6 +738,7 @@ pub(super) fn build_scatter_series(idx: usize, s: &ChartSeriesPatch) -> c::Scatt
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
         marker: build_marker(s.marker.as_ref()),
+        data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         x_values: s.x_values_ref.as_deref().map(build_x_values),
         y_values: Some(build_y_values(&s.values_ref)),
@@ -734,6 +755,7 @@ pub(super) fn build_bubble_series(idx: usize, s: &ChartSeriesPatch) -> c::Bubble
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape(s.color.as_deref()),
+        data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         x_values: s.x_values_ref.as_deref().map(build_x_values),
         y_values: Some(build_y_values(&s.values_ref)),
@@ -773,6 +795,34 @@ pub(super) fn build_bubble_size(r: &str) -> Box<c::BubbleSize> {
             },
         ))),
     })
+}
+
+pub(super) fn build_data_points(points: &Option<Vec<ChartDataPoint>>) -> Vec<c::DataPoint> {
+    let Some(points) = points else {
+        return Vec::new();
+    };
+    points
+        .iter()
+        .map(|p| c::DataPoint {
+            index: Box::new(c::Index { val: p.index }),
+            chart_shape_properties: p.fill.as_deref().and_then(build_point_shape),
+            ..Default::default()
+        })
+        .collect()
+}
+
+pub(super) fn build_point_shape(fill: &str) -> Option<Box<c::ChartShapeProperties>> {
+    if fill.trim().eq_ignore_ascii_case("none") {
+        return Some(Box::new(c::ChartShapeProperties {
+            chart_shape_properties_choice2: Some(c::ChartShapePropertiesChoice2::NoFill(Box::new(
+                a::NoFill {
+                    ..Default::default()
+                },
+            ))),
+            ..Default::default()
+        }));
+    }
+    build_series_shape(Some(fill))
 }
 
 pub(super) fn build_series_shape(color: Option<&str>) -> Option<Box<c::ChartShapeProperties>> {

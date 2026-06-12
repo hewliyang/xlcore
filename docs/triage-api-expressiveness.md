@@ -114,8 +114,14 @@ pub struct ChartAxisPatch {
   round-trips, and is renderer-visible. Remaining: line width/dash, `smooth`,
   `varyColors`, `invertIfNegative`.
 - Pie/doughnut: `firstSliceAngle`, `holeSize`, per-point `explosion`.
-- Per-point fills (`c:dPt`) — required for the waterfall-via-noFill idiom we
-  already render.
+- Per-point fills (`c:dPt`): **— done**. `ChartSeriesPatch.data_points`
+  (`ChartDataPoint { index, fill }`, sdk `CT_DPt` distilled) builds `c:dPt` with
+  a solid `RRGGBB`/`AARRGGBB` fill or `fill: "none"` → `a:noFill` for the
+  waterfall idiom, on every series kind (bar/line/area/pie/doughnut/scatter/
+  bubble/radar). Round-trips (reads solidFill + noFill back), survives in-place
+  update, and is renderer-visible (column chart with 4 distinct per-point fills
+  verified e2e). Remaining dPt fields (`invertIfNegative`, per-point marker,
+  `explosion`, gradient/pattern fills) preserved-on-update, deferred.
 - `dispBlanksAs` (span|gap|zero).
 - Kinds: **— radar done** (`ChartKind::Radar` + `RadarStyle` enum (sdk
   `ST_RadarStyle` transliterated) on `ChartPatch`/`ChartInfo`/`ChartUpdate`;
