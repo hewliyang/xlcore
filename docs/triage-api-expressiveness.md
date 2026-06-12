@@ -152,6 +152,8 @@ scope), search, structural ops.
    a markdown coverage table (field, xml tag, optional, choice, covered) plus an
    `unmodeled`/`dto-only` summary. Run it when touching a domain; paste the table
    into the DTO doc comment. E.g. `ValueAxis` vs `ChartPatch` reports covered 1/20.
+   (DTO lookup scans every `xlcore-types/src/*.rs` module — it was `lib.rs`-only and
+   silently broken for every split-out DTO until fixed alongside the anchor work.)
 2. **Transliterate sdk enums verbatim** when a domain is opened up.
 3. **Escape hatch** (openpyxl ≈ lxml access): raw part XML get/set on `Workbook`
    for anything we haven't modeled yet, so users are never hard-blocked.
