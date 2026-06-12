@@ -108,10 +108,14 @@ pub struct ChartAxisPatch {
   group kind/axis; simple single-group charts stay clean), updates in place, and
   is renderer-visible (column + line on dual axes verified e2e).
 - Series styling: marker (style/size), line width/dash, `smooth`,
-  `varyColors`, `invertIfNegative`. **— `gapWidth`/`overlap` + marker done**;
-  `ChartSeriesPatch.marker` (`ChartMarker { style, size }` + `MarkerStyle` enum,
-  sdk `ST_MarkerStyle` transliterated) builds `c:marker` on line/scatter series,
-  round-trips, and is renderer-visible. Remaining: line width/dash, `smooth`,
+  `varyColors`, `invertIfNegative`. **— `gapWidth`/`overlap` + marker + `smooth`
+  done**; `ChartSeriesPatch.marker` (`ChartMarker { style, size }` + `MarkerStyle`
+  enum, sdk `ST_MarkerStyle` transliterated) builds `c:marker` on line/scatter
+  series, round-trips, and is renderer-visible. `ChartSeriesPatch.smooth`
+  (`c:smooth`) builds on line/scatter series, round-trips, updates in place, and
+  on scatter charts any smoothed series flips the chart's `c:scatterStyle` to
+  `smoothMarker` — renderer-visible (smooth scatter draws curved splines verified
+  e2e). Remaining: line width/dash (lives in `spPr/a:ln`, preserved-on-update),
   `varyColors`, `invertIfNegative`.
 - Pie/doughnut: **— `holeSize` + `firstSliceAngle` done**. `ChartPatch.hole_size`
   (10..=90, `c:holeSize`, doughnut only) and `ChartPatch.first_slice_angle`

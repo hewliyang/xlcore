@@ -419,6 +419,13 @@ pub struct ChartSeriesPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub marker: Option<ChartMarker>,
+    /// Smooth the connecting line with a spline (`c:smooth`); line/scatter series
+    /// only. On a scatter chart any smoothed series sets the chart's
+    /// `c:scatterStyle` to `smoothMarker`, which the xlsx-preview renderer draws
+    /// as curved.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub smooth: Option<bool>,
     /// Per-data-point fill overrides (`c:dPt`). Each entry recolors one point by
     /// index; use `fill: "none"` for the waterfall-via-noFill idiom.
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -468,6 +475,10 @@ pub struct ChartSeriesInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub marker: Option<ChartMarker>,
+    /// Spline-smoothed line (`c:smooth`); see {@link ChartSeriesPatch.smooth}.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub smooth: Option<bool>,
     /// Per-data-point fill overrides (`c:dPt`); see {@link ChartSeriesPatch.dataPoints}.
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]

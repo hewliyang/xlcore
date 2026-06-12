@@ -156,6 +156,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     info.marker = read_marker(s.marker.as_deref());
+                    info.smooth = read_smooth(s.smooth.as_ref());
                     info.kind = Some(ChartKind::Line);
                     info.axis = gsec.then_some(ChartAxisGroup::Secondary);
                     info.data_points = read_data_points(&s.data_point);
@@ -258,6 +259,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     info.marker = read_marker(s.marker.as_deref());
+                    info.smooth = read_smooth(s.smooth.as_ref());
                     info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
@@ -446,6 +448,7 @@ pub(super) fn read_xy_series(
         color: None,
         data_labels: read_data_labels(dl),
         marker: None,
+        smooth: None,
         data_points: None,
         kind: None,
         axis: None,
@@ -480,6 +483,10 @@ pub(super) fn read_marker(m: Option<&c::Marker>) -> Option<ChartMarker> {
     } else {
         Some(out)
     }
+}
+
+pub(super) fn read_smooth(s: Option<&c::Smooth>) -> Option<bool> {
+    s?.val.as_ref().map(|v| v.as_bool())
 }
 
 pub(super) fn read_data_points(dps: &[c::DataPoint]) -> Option<Vec<ChartDataPoint>> {
@@ -565,6 +572,7 @@ pub(super) fn read_series(
         color: None,
         data_labels: read_data_labels(dl),
         marker: None,
+        smooth: None,
         data_points: None,
         kind: None,
         axis: None,

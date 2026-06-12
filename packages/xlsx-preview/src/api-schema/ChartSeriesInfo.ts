@@ -18,6 +18,10 @@ export type ChartSeriesInfo = {
    */
   marker?: ChartMarker;
   /**
+   * Spline-smoothed line (`c:smooth`); see {@link ChartSeriesPatch.smooth}.
+   */
+  smooth?: boolean;
+  /**
    * Per-data-point fill overrides (`c:dPt`); see {@link ChartSeriesPatch.dataPoints}.
    */
   dataPoints?: Array<ChartDataPoint>;

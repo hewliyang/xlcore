@@ -18,6 +18,13 @@ export type ChartSeriesPatch = {
    */
   marker?: ChartMarker;
   /**
+   * Smooth the connecting line with a spline (`c:smooth`); line/scatter series
+   * only. On a scatter chart any smoothed series sets the chart's
+   * `c:scatterStyle` to `smoothMarker`, which the xlsx-preview renderer draws
+   * as curved.
+   */
+  smooth?: boolean;
+  /**
    * Per-data-point fill overrides (`c:dPt`). Each entry recolors one point by
    * index; use `fill: "none"` for the waterfall-via-noFill idiom.
    */

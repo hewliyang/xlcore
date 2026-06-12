@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `ChartSeriesPatch.smooth` (`c:smooth`) for line/scatter series; on scatter charts a smoothed series sets `c:scatterStyle` to `smoothMarker`. Authored, round-tripped, updated in place, and rendered as curved splines by the previewer.
 - `ChartPatch.holeSize` (10..=90, `c:holeSize`) for doughnut charts and `ChartPatch.firstSliceAngle` (0..=360, `c:firstSliceAng`) for pie/doughnut charts, on `ChartPatch`/`ChartUpdate`/`ChartInfo`; authored, round-tripped, updated in place, and rendered by the previewer.
 - `ChartSeriesPatch.dataPoints` (`ChartDataPoint { index, fill }`, `c:dPt`): per-point fill overrides — hex `RRGGBB`/`AARRGGBB` or `"none"` (`a:noFill`) for the waterfall idiom; authored on every series kind, round-tripped, updated in place, and rendered by the previewer.
 - `ChartDataLabels.numberFormat` (`c:numFmt`) on chart data labels; authored, round-tripped, updated in place, and rendered by the previewer.

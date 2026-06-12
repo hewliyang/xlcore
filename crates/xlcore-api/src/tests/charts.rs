@@ -383,6 +383,7 @@ fn charts_supports_multiple_kinds() {
             color: None,
             data_labels: None,
             marker: None,
+            smooth: None,
             data_points: None,
             kind: None,
             axis: None,
@@ -463,6 +464,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
                 color: Some("FF8800".to_string()),
                 data_labels: None,
                 marker: None,
+                smooth: None,
                 data_points: None,
                 kind: None,
                 axis: None,
@@ -1408,6 +1410,63 @@ fn chart_series_marker_roundtrip_and_validation() {
         )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidChart);
+}
+
+#[test]
+fn chart_series_smooth_roundtrips_and_sets_scatter_style() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A2", 1.0).unwrap();
+    wb.set_value("Sheet1!A3", 2.0).unwrap();
+    wb.set_value("Sheet1!A4", 3.0).unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 20.0).unwrap();
+    wb.set_value("Sheet1!B4", 15.0).unwrap();
+
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Scatter,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    x_values_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+                    smooth: Some(true),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 3,
+                    from_row: 1,
+                    to_column: 10,
+                    to_row: 16,
+                    ..Default::default()
+                }),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                data_labels: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(info.series[0].smooth, Some(true));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("smoothMarker"));
+
+    let mut wb = Workbook::open_bytes(bytes).unwrap();
+    let read = wb.charts(Some("Sheet1")).unwrap();
+    assert_eq!(read[0].series[0].smooth, Some(true));
 }
 
 #[test]

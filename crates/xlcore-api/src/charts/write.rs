@@ -521,7 +521,11 @@ pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
         })),
         ChartKind::Scatter => c::PlotAreaChoice::ScatterChart(Box::new(c::ScatterChart {
             scatter_style: Box::new(c::ScatterStyle {
-                val: Some(c::ScatterStyleValues::LineMarker),
+                val: Some(if patch.series.iter().any(|s| s.smooth == Some(true)) {
+                    c::ScatterStyleValues::SmoothMarker
+                } else {
+                    c::ScatterStyleValues::LineMarker
+                }),
             }),
             vary_colors: Some(c::VaryColors {
                 val: Some(BooleanValue::from_bool(false)),
@@ -709,6 +713,9 @@ pub(super) fn build_line_series(
         data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
+        smooth: s.smooth.map(|v| c::Smooth {
+            val: Some(BooleanValue::from_bool(v)),
+        }),
         ..Default::default()
     }
 }
@@ -791,7 +798,7 @@ pub(super) fn build_scatter_series(idx: usize, s: &ChartSeriesPatch) -> c::Scatt
         x_values: s.x_values_ref.as_deref().map(build_x_values),
         y_values: Some(build_y_values(&s.values_ref)),
         smooth: Some(c::Smooth {
-            val: Some(BooleanValue::from_bool(false)),
+            val: Some(BooleanValue::from_bool(s.smooth.unwrap_or(false))),
         }),
         ..Default::default()
     }
