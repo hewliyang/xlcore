@@ -70,6 +70,68 @@ fn pivots_create_list_remove_roundtrip() {
 }
 
 #[test]
+fn pivot_update_merges_partial_and_keeps_unset_fields() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A1", "Region").unwrap();
+    wb.set_value("Sheet1!B1", "Product").unwrap();
+    wb.set_value("Sheet1!C1", "Amount").unwrap();
+    let rows = [
+        ("North", "Widget", 100.0),
+        ("South", "Widget", 75.0),
+        ("North", "Gadget", 50.0),
+    ];
+    for (i, (region, product, amount)) in rows.iter().enumerate() {
+        let r = i as u32 + 2;
+        wb.set_value(format!("Sheet1!A{r}"), *region).unwrap();
+        wb.set_value(format!("Sheet1!B{r}"), *product).unwrap();
+        wb.set_value(format!("Sheet1!C{r}"), *amount).unwrap();
+    }
+    wb.create_sheet("Pivot").unwrap();
+
+    let info = wb
+        .set_pivot(PivotPatch {
+            sheet: "Pivot".to_string(),
+            anchor_cell: "Pivot!A1".to_string(),
+            source_ref: "Sheet1!A1:C4".to_string(),
+            name: Some("SalesPivot".to_string()),
+            row_fields: vec!["Region".to_string()],
+            column_fields: vec!["Product".to_string()],
+            filter_fields: vec![],
+            data_fields: vec![PivotDataField {
+                field: "Amount".to_string(),
+                aggregation: PivotAggregation::Sum,
+                name: None,
+                number_format: None,
+            }],
+            hidden_items: None,
+        })
+        .unwrap();
+
+    let updated = wb
+        .update_pivot(
+            "Pivot",
+            &info.id,
+            PivotUpdate {
+                row_fields: Some(vec!["Product".to_string()]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(updated.name, "SalesPivot");
+    assert_eq!(updated.row_fields, vec!["Product".to_string()]);
+    assert_eq!(updated.column_fields, vec!["Product".to_string()]);
+    assert_eq!(updated.source_ref, "Sheet1!A1:C4");
+    assert_eq!(updated.data_fields[0].field, "Amount");
+
+    assert_eq!(wb.pivots(Some("Pivot")).unwrap().len(), 1);
+
+    let err = wb
+        .update_pivot("Pivot", "missing-id", PivotUpdate::default())
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::Other);
+}
+
+#[test]
 fn pivot_requires_data_field_and_axis() {
     let mut wb = Workbook::new().unwrap();
     wb.set_value("Sheet1!A1", "Region").unwrap();

@@ -47,7 +47,7 @@ pub use xlcore_types::{
     HyperlinkPatch, IconSetPatch, ImageFormat, ImageInfo, ImagePatch, LayoutOptions, MergeInfo,
     PageMarginsInfo, PageMarginsPatch, PageOrder, PageOrientation, PageSetupSettings,
     PageSetupSettingsPatch, PivotAggregation, PivotCellRole, PivotDataField, PivotFieldFilter,
-    PivotGrid, PivotGridCell, PivotInfo, PivotPatch, PrintCellComments, PrintErrors,
+    PivotGrid, PivotGridCell, PivotInfo, PivotPatch, PivotUpdate, PrintCellComments, PrintErrors,
     PrintOptionsInfo, PrintOptionsPatch, RangeInfo, SearchHit, SearchMatch, SearchMode,
     SearchOptions, SearchTarget, ShapeInfo, ShapeLineEnd, ShapePatch, SheetInfo, SheetPageSetup,
     SheetPageSetupPatch, SheetProtectionInfo, SheetProtectionPatch, SheetVisibility,

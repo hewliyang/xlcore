@@ -88,6 +88,7 @@ export type { PivotGrid } from "./PivotGrid.js";
 export type { PivotGridCell } from "./PivotGridCell.js";
 export type { PivotInfo } from "./PivotInfo.js";
 export type { PivotPatch } from "./PivotPatch.js";
+export type { PivotUpdate } from "./PivotUpdate.js";
 export type { PrintCellComments } from "./PrintCellComments.js";
 export type { PrintErrors } from "./PrintErrors.js";
 export type { PrintOptionsInfo } from "./PrintOptionsInfo.js";

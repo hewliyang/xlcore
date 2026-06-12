@@ -12,12 +12,26 @@ use ooxmlsdk::simple_type::BooleanValue;
 
 use xlcore_types::{
     ApiCellValue as CellValue, ApiError, ApiErrorCode, PivotAggregation, PivotCellRole,
-    PivotDataField, PivotFieldFilter, PivotGrid, PivotGridCell, PivotInfo, PivotPatch,
+    PivotDataField, PivotFieldFilter, PivotGrid, PivotGridCell, PivotInfo, PivotPatch, PivotUpdate,
 };
 
 use crate::errors::sdk_err_to_api;
 use crate::refs::{quote_sheet_name, ResolvedCellRef};
 use crate::{Result, Workbook};
+
+fn pivot_info_to_patch(info: &PivotInfo) -> PivotPatch {
+    PivotPatch {
+        sheet: info.sheet.clone(),
+        anchor_cell: info.anchor_cell.clone(),
+        source_ref: info.source_ref.clone(),
+        name: Some(info.name.clone()),
+        row_fields: info.row_fields.clone(),
+        column_fields: info.column_fields.clone(),
+        filter_fields: info.filter_fields.clone(),
+        data_fields: info.data_fields.clone(),
+        hidden_items: info.hidden_items.clone(),
+    }
+}
 
 const SPREADSHEETML: &str = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
 const RELATIONSHIPS: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
@@ -515,6 +529,57 @@ impl Workbook {
             .into_iter()
             .find(|p| p.id == pivot_rid)
             .ok_or_else(|| ApiError::new(ApiErrorCode::Other, "pivot not found after authoring"))
+    }
+
+    pub fn update_pivot(
+        &mut self,
+        sheet: impl AsRef<str>,
+        id: impl AsRef<str>,
+        update: PivotUpdate,
+    ) -> Result<PivotInfo> {
+        let sheet = sheet.as_ref().to_string();
+        let id = id.as_ref().to_string();
+        let existing = self
+            .pivots(Some(&sheet))?
+            .into_iter()
+            .find(|p| p.id == id)
+            .ok_or_else(|| {
+                ApiError::new(
+                    ApiErrorCode::Other,
+                    format!("pivot not found on sheet '{sheet}': {id}"),
+                )
+                .with_sheet(&sheet)
+            })?;
+
+        let base = pivot_info_to_patch(&existing);
+        let merged = PivotPatch {
+            sheet: sheet.clone(),
+            anchor_cell: update
+                .anchor_cell
+                .unwrap_or_else(|| base.anchor_cell.clone()),
+            source_ref: update.source_ref.unwrap_or_else(|| base.source_ref.clone()),
+            name: update.name.or_else(|| base.name.clone()),
+            row_fields: update.row_fields.unwrap_or_else(|| base.row_fields.clone()),
+            column_fields: update
+                .column_fields
+                .unwrap_or_else(|| base.column_fields.clone()),
+            filter_fields: update
+                .filter_fields
+                .unwrap_or_else(|| base.filter_fields.clone()),
+            data_fields: update
+                .data_fields
+                .unwrap_or_else(|| base.data_fields.clone()),
+            hidden_items: update.hidden_items.or_else(|| base.hidden_items.clone()),
+        };
+
+        self.remove_pivot(&sheet, &id)?;
+        match self.set_pivot(merged) {
+            Ok(info) => Ok(info),
+            Err(err) => {
+                let _ = self.set_pivot(base);
+                Err(err)
+            }
+        }
     }
 
     pub fn remove_pivot(

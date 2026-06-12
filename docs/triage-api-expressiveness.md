@@ -231,7 +231,8 @@ domain. #5/#6 are nice-to-haves.
 Test: could someone write a pyo3 binding without reading `api-collections.ts`?
 Today no — semantics have leaked into the TS frontend:
 
-- `charts.update` / `pivots.update` merge semantics + rollback
+- ~~`charts.update` / `pivots.update` merge semantics + rollback~~ *(done: both now
+  forward to Rust `update_chart`/`update_pivot`)*
 - dataBar `min`/`max` defaulting
 - autoFilter `setColumnValues/Top10/Custom` sugar + friendly `criteria.kind` error
 - `anchorA1` string→`ChartAnchor` parsing (no Rust counterpart at all)

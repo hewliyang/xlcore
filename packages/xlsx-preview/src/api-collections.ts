@@ -28,6 +28,7 @@ import type {
   PivotGrid,
   PivotInfo,
   PivotPatch,
+  PivotUpdate,
   SparklineGroupInfo,
   SparklineGroupPatch,
   TableInfo,
@@ -310,42 +311,12 @@ export class PivotCollection extends SheetScopedCollection {
   preview(patch: Omit<PivotPatch, "sheet">): PivotGrid {
     return this.handle.pivotPreview({ ...patch, sheet: this.sheet }) as PivotGrid;
   }
-  update(id: string, partial: Partial<Omit<PivotPatch, "sheet">>): PivotInfo {
-    const existing = (this.handle.pivots(this.sheet) as PivotInfo[]).find((p) => p.id === id);
-    if (!existing) {
-      throw new Error(`pivot not found on sheet '${this.sheet}': ${id}`);
-    }
-    const base = pivotInfoToPatch(existing);
-    const merged: PivotPatch = { ...base, ...partial, sheet: this.sheet };
-    const removed = this.handle.removePivot(this.sheet, id) as PivotInfo | null;
-    try {
-      return this.handle.setPivot(merged) as PivotInfo;
-    } catch (err) {
-      if (removed) {
-        try {
-          this.handle.setPivot(base);
-        } catch {}
-      }
-      throw err;
-    }
+  update(id: string, update: PivotUpdate): PivotInfo {
+    return this.handle.updatePivot(this.sheet, id, update) as PivotInfo;
   }
   remove(id: string): PivotInfo | null {
     return (this.handle.removePivot(this.sheet, id) as PivotInfo | null) ?? null;
   }
-}
-
-function pivotInfoToPatch(info: PivotInfo): PivotPatch {
-  return {
-    sheet: info.sheet,
-    anchorCell: info.anchorCell,
-    sourceRef: info.sourceRef,
-    name: info.name,
-    rowFields: info.rowFields,
-    columnFields: info.columnFields,
-    filterFields: info.filterFields,
-    dataFields: info.dataFields,
-    hiddenItems: info.hiddenItems,
-  };
 }
 
 export class WorkbookPivots {

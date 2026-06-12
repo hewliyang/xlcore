@@ -12,6 +12,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- `Worksheet.pivots.update(id, partial)` is now pure forwarding to a Rust `update_pivot` + `PivotUpdate` DTO; the merge/remove/rollback logic moved out of TS so bindings stay marshaling-only.
 - `Worksheet.charts.update(id, patch)` now mutates the existing `chart<n>.xml` in place (new Rust `update_chart` + `ChartUpdate` DTO) instead of remove+`setChart`. The chart's `rId`/id is now stable across updates, and chart XML not modeled by `ChartPatch` (rounded corners, manual layout, per-point styling, etc.) survives an update that only touches one field. Series/stacking/data-label/categories changes still rebuild the plot node; chart-level title/legend/axes and unmodeled siblings are preserved. Changing `kind` via `update` is no longer supported (use `remove` + `set`).
 
 - `absoluteAnchor(x, y, w, h, { colWidthPx?, rowHeightPx? })` helper (exported from `./api` next to `anchorA1`) converts an absolute pixel rect into a two-cell `ChartAnchor` with in-cell EMU offsets, replacing hand-rolled px → (col, row, offset) math on the default 64×20 grid. Offsets are always strictly inside their cell, so results never trip the engine's anchor-overflow warning.
