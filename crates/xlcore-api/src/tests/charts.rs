@@ -1038,6 +1038,7 @@ fn charts_data_labels_roundtrip() {
                     show_legend_key: Some(false),
                     position: Some(ChartDataLabelPosition::OutsideEnd),
                     separator: Some(", ".to_string()),
+                    number_format: Some("0.0%".to_string()),
                 }),
             },
         )
@@ -1058,6 +1059,7 @@ fn charts_data_labels_roundtrip() {
     assert_eq!(dl.show_category_name, Some(false));
     assert_eq!(dl.position, Some(ChartDataLabelPosition::OutsideEnd));
     assert_eq!(dl.separator.as_deref(), Some(", "));
+    assert_eq!(dl.number_format.as_deref(), Some("0.0%"));
 }
 
 #[test]
@@ -1541,3 +1543,4 @@ fn radar_chart_build_roundtrip_and_update() {
     assert_eq!(chart.radar_style, Some(RadarStyle::Filled));
     assert_eq!(chart.series.len(), 2);
 }
+

@@ -301,6 +301,10 @@ pub struct ChartDataLabels {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub separator: Option<String>,
+    /// `c:numFmt/@formatCode`; number format applied to the displayed value.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number_format: Option<String>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

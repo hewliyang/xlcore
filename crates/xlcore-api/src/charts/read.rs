@@ -580,6 +580,10 @@ pub(super) fn read_data_labels(dl: Option<&c::DataLabels>) -> Option<ChartDataLa
             .as_ref()
             .map(|p| data_label_pos_from(&p.val)),
         separator: seq.separator.clone(),
+        number_format: seq
+            .numbering_format
+            .as_ref()
+            .map(|n| n.format_code.clone()),
     };
     if out == ChartDataLabels::default() {
         None

@@ -122,7 +122,9 @@ pub struct ChartAxisPatch {
   builds `c:radarChart` with cat+val axes, round-trips, updates style in place,
   renderer-visible e2e). Remaining: stock (needs hi/lo/close/open series
   semantics + hiLowLines/upDownBars).
-- Data label `numFmt`.
+- Data label `numFmt`. **— done**: `ChartDataLabels.number_format` (`c:numFmt`)
+  builds, round-trips, updates in place, and is renderer-visible (pie labels
+  format `0.42` → `42.0%` via `0.0%` verified e2e).
 
 ### Charts — P2
 

@@ -515,6 +515,10 @@ pub(super) fn build_data_labels(dl: Option<&ChartDataLabels>) -> Option<Box<c::D
         v.map(BooleanValue::from_bool)
     }
     let seq = c::DataLabelsChoiceSequence {
+        numbering_format: dl.number_format.as_ref().map(|nf| c::NumberingFormat {
+            format_code: nf.clone(),
+            source_linked: Some(BooleanValue::from_bool(false)),
+        }),
         data_label_position: dl.position.map(|p| c::DataLabelPosition {
             val: data_label_pos_to(p),
         }),

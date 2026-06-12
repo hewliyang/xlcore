@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `ChartDataLabels.numberFormat` (`c:numFmt`) on chart data labels; authored, round-tripped, updated in place, and rendered by the previewer.
 - `ChartKind` `radar` + `RadarStyle` (`standard`|`marker`|`filled`) on `ChartPatch`/`ChartUpdate`/`ChartInfo`; authored as `c:radarChart`, read back, updated in place, and rendered by the previewer.
 - `scripts/schema_diff.py <SdkStruct> [DtoStruct]`: coverage diff of an ooxmlsdk `CT_*` struct's fields against an `xlcore-types` DTO; emits a markdown table for the DTO doc comment. Run when opening a domain.
 - Combo charts / secondary axis: per-series `kind` + `axis` (`ChartAxisGroup` primary|secondary) on chart series; mixing column/bar/line/area emits multiple plot groups and synthesizes a right-hand value axis. Authored, round-tripped, and rendered by the previewer.
