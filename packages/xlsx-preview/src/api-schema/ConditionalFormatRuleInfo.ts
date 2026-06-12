@@ -5,4 +5,24 @@ import type { ColorScalePatch } from "./ColorScalePatch.js";
 import type { DataBarPatch } from "./DataBarPatch.js";
 import type { IconSetPatch } from "./IconSetPatch.js";
 
-export type ConditionalFormatRuleInfo = { sheet: string, ranges: Array<string>, kind: CfRuleKind, priority: number, operator?: CfOperator, formula1?: string, formula2?: string, text?: string, rank?: number, percent: boolean, bottom: boolean, aboveAverage?: boolean, equalAverage: boolean, stdDev?: number, stopIfTrue: boolean, dxfId?: number, colorScale?: ColorScalePatch, dataBar?: DataBarPatch, iconSet?: IconSetPatch, };
+export type ConditionalFormatRuleInfo = {
+  sheet: string;
+  ranges: Array<string>;
+  kind: CfRuleKind;
+  priority: number;
+  operator?: CfOperator;
+  formula1?: string;
+  formula2?: string;
+  text?: string;
+  rank?: number;
+  percent: boolean;
+  bottom: boolean;
+  aboveAverage?: boolean;
+  equalAverage: boolean;
+  stdDev?: number;
+  stopIfTrue: boolean;
+  dxfId?: number;
+  colorScale?: ColorScalePatch;
+  dataBar?: DataBarPatch;
+  iconSet?: IconSetPatch;
+};

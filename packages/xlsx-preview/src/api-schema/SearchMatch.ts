@@ -2,4 +2,13 @@
 import type { ApiCellValue } from "./ApiCellValue.js";
 import type { SearchHit } from "./SearchHit.js";
 
-export type SearchMatch = { sheet: string, reference: string, row: number, column: number, hit: SearchHit, matched: string, value: ApiCellValue, formula?: string, };
+export type SearchMatch = {
+  sheet: string;
+  reference: string;
+  row: number;
+  column: number;
+  hit: SearchHit;
+  matched: string;
+  value: ApiCellValue;
+  formula?: string;
+};

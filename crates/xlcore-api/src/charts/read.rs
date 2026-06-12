@@ -675,6 +675,29 @@ pub(super) fn cross_between_from(v: &c::CrossBetweenValues) -> CrossBetween {
     }
 }
 
+pub(super) fn built_in_unit_from(v: &c::BuiltInUnitValues) -> BuiltInUnit {
+    match v {
+        c::BuiltInUnitValues::Hundreds => BuiltInUnit::Hundreds,
+        c::BuiltInUnitValues::Thousands => BuiltInUnit::Thousands,
+        c::BuiltInUnitValues::TenThousands => BuiltInUnit::TenThousands,
+        c::BuiltInUnitValues::HundredThousands => BuiltInUnit::HundredThousands,
+        c::BuiltInUnitValues::Millions => BuiltInUnit::Millions,
+        c::BuiltInUnitValues::TenMillions => BuiltInUnit::TenMillions,
+        c::BuiltInUnitValues::HundredMillions => BuiltInUnit::HundredMillions,
+        c::BuiltInUnitValues::Billions => BuiltInUnit::Billions,
+        c::BuiltInUnitValues::Trillions => BuiltInUnit::Trillions,
+    }
+}
+
+pub(super) fn read_display_units(du: Option<&c::DisplayUnits>) -> Option<DisplayUnits> {
+    match du?.display_units_choice.as_ref()? {
+        c::DisplayUnitsChoice::BuiltInUnit(b) => Some(DisplayUnits::Builtin(built_in_unit_from(
+            b.val.as_ref().unwrap_or(&c::BuiltInUnitValues::Hundreds),
+        ))),
+        c::DisplayUnitsChoice::CustomDisplayUnit(cu) => Some(DisplayUnits::Custom(cu.val)),
+    }
+}
+
 pub(super) fn read_cat_axis_patch(ax: &c::CategoryAxis) -> Option<ChartAxisPatch> {
     let mut p = ChartAxisPatch {
         title: ax.title.as_deref().and_then(extract_title_text),
@@ -750,6 +773,7 @@ pub(super) fn read_val_axis_patch(ax: &c::ValueAxis) -> Option<ChartAxisPatch> {
             Some(c::ValueAxisChoice::CrossesAt(c)) => Some(c.val),
             _ => None,
         },
+        display_units: read_display_units(ax.display_units.as_deref()),
     };
     p.title = p.title.filter(|t| !t.is_empty());
     if p == ChartAxisPatch::default() {

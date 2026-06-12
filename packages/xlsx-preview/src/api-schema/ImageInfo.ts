@@ -2,4 +2,18 @@
 import type { ChartAnchor } from "./ChartAnchor.js";
 import type { ImageFormat } from "./ImageFormat.js";
 
-export type ImageInfo = { sheet: string, id: string, name: string, anchor: ChartAnchor, format: ImageFormat, byteLen: bigint, rotationDegrees: number, cropLeftPct: number, cropTopPct: number, cropRightPct: number, cropBottomPct: number, flipHorizontal: boolean, flipVertical: boolean, };
+export type ImageInfo = {
+  sheet: string;
+  id: string;
+  name: string;
+  anchor: ChartAnchor;
+  format: ImageFormat;
+  byteLen: bigint;
+  rotationDegrees: number;
+  cropLeftPct: number;
+  cropTopPct: number;
+  cropRightPct: number;
+  cropBottomPct: number;
+  flipHorizontal: boolean;
+  flipVertical: boolean;
+};

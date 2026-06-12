@@ -8,27 +8,41 @@ import type { ChartSeriesPatch } from "./ChartSeriesPatch.js";
 import type { ChartStacking } from "./ChartStacking.js";
 import type { RadarStyle } from "./RadarStyle.js";
 
-export type ChartPatch = { name?: string, kind: ChartKind, title?: string, legendPosition?: ChartLegendPosition, categoriesRef?: string, series: Array<ChartSeriesPatch>, anchor: AnchorSpec, categoryAxisTitle?: string, valueAxisTitle?: string, categoryAxis?: ChartAxisPatch, valueAxis?: ChartAxisPatch, stacking?: ChartStacking, 
-/**
- * `c:gapWidth` (0..=500); bar/column charts only. Space between bar clusters
- * as a percentage of bar width.
- */
-gapWidth?: number, 
-/**
- * `c:overlap` (-100..=100); bar/column charts only. Stacked charts force 100.
- */
-overlap?: number, 
-/**
- * `c:radarStyle`; radar charts only. Defaults to `Standard` when omitted.
- */
-radarStyle?: RadarStyle, 
-/**
- * `c:holeSize` (10..=90); doughnut charts only. Inner-hole diameter as a
- * percentage of the chart radius. Defaults to 50 when omitted.
- */
-holeSize?: number, 
-/**
- * `c:firstSliceAng` (0..=360); pie/doughnut charts only. Clockwise rotation
- * of the first slice from the top (12 o'clock), in degrees.
- */
-firstSliceAngle?: number, dataLabels?: ChartDataLabels, };
+export type ChartPatch = {
+  name?: string;
+  kind: ChartKind;
+  title?: string;
+  legendPosition?: ChartLegendPosition;
+  categoriesRef?: string;
+  series: Array<ChartSeriesPatch>;
+  anchor: AnchorSpec;
+  categoryAxisTitle?: string;
+  valueAxisTitle?: string;
+  categoryAxis?: ChartAxisPatch;
+  valueAxis?: ChartAxisPatch;
+  stacking?: ChartStacking;
+  /**
+   * `c:gapWidth` (0..=500); bar/column charts only. Space between bar clusters
+   * as a percentage of bar width.
+   */
+  gapWidth?: number;
+  /**
+   * `c:overlap` (-100..=100); bar/column charts only. Stacked charts force 100.
+   */
+  overlap?: number;
+  /**
+   * `c:radarStyle`; radar charts only. Defaults to `Standard` when omitted.
+   */
+  radarStyle?: RadarStyle;
+  /**
+   * `c:holeSize` (10..=90); doughnut charts only. Inner-hole diameter as a
+   * percentage of the chart radius. Defaults to 50 when omitted.
+   */
+  holeSize?: number;
+  /**
+   * `c:firstSliceAng` (0..=360); pie/doughnut charts only. Clockwise rotation
+   * of the first slice from the top (12 o'clock), in degrees.
+   */
+  firstSliceAngle?: number;
+  dataLabels?: ChartDataLabels;
+};

@@ -1076,6 +1076,36 @@ pub(super) fn cross_between_to(v: CrossBetween) -> c::CrossBetweenValues {
     }
 }
 
+pub(super) fn built_in_unit_to(u: BuiltInUnit) -> c::BuiltInUnitValues {
+    match u {
+        BuiltInUnit::Hundreds => c::BuiltInUnitValues::Hundreds,
+        BuiltInUnit::Thousands => c::BuiltInUnitValues::Thousands,
+        BuiltInUnit::TenThousands => c::BuiltInUnitValues::TenThousands,
+        BuiltInUnit::HundredThousands => c::BuiltInUnitValues::HundredThousands,
+        BuiltInUnit::Millions => c::BuiltInUnitValues::Millions,
+        BuiltInUnit::TenMillions => c::BuiltInUnitValues::TenMillions,
+        BuiltInUnit::HundredMillions => c::BuiltInUnitValues::HundredMillions,
+        BuiltInUnit::Billions => c::BuiltInUnitValues::Billions,
+        BuiltInUnit::Trillions => c::BuiltInUnitValues::Trillions,
+    }
+}
+
+pub(super) fn build_display_units(du: &DisplayUnits) -> c::DisplayUnits {
+    let choice = match du {
+        DisplayUnits::Builtin(u) => c::DisplayUnitsChoice::BuiltInUnit(Box::new(c::BuiltInUnit {
+            val: Some(built_in_unit_to(*u)),
+        })),
+        DisplayUnits::Custom(v) => {
+            c::DisplayUnitsChoice::CustomDisplayUnit(Box::new(c::CustomDisplayUnit { val: *v }))
+        }
+    };
+    c::DisplayUnits {
+        display_units_choice: Some(choice),
+        display_units_label: Some(Box::new(c::DisplayUnitsLabel::default())),
+        ..Default::default()
+    }
+}
+
 pub(super) fn merge_axis_title(
     axis: Option<&ChartAxisPatch>,
     legacy_title: &Option<String>,
@@ -1188,6 +1218,9 @@ pub(super) fn apply_val_axis_patch(ax: &mut c::ValueAxis, p: &ChartAxisPatch) {
         ax.value_axis_choice = Some(c::ValueAxisChoice::CrossesAt(Box::new(c::CrossesAt {
             val: at,
         })));
+    }
+    if let Some(du) = &p.display_units {
+        ax.display_units = Some(Box::new(build_display_units(du)));
     }
 }
 

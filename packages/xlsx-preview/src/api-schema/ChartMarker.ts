@@ -7,12 +7,13 @@ import type { MarkerStyle } from "./MarkerStyle.js";
  * Intentionally not modeled (preserved on update, author via raw XML):
  * `spPr` styling, `pictureOptions`, `extLst`.
  */
-export type ChartMarker = { 
-/**
- * `c:symbol/@val`.
- */
-style?: MarkerStyle, 
-/**
- * `c:size/@val` (2..=72).
- */
-size?: number, };
+export type ChartMarker = {
+  /**
+   * `c:symbol/@val`.
+   */
+  style?: MarkerStyle;
+  /**
+   * `c:size/@val` (2..=72).
+   */
+  size?: number;
+};

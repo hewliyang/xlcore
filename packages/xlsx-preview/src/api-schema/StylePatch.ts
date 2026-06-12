@@ -4,4 +4,10 @@ import type { BorderPatch } from "./BorderPatch.js";
 import type { FillPatch } from "./FillPatch.js";
 import type { FontPatch } from "./FontPatch.js";
 
-export type StylePatch = { font?: FontPatch, fill?: FillPatch, border?: BorderPatch, alignment?: AlignmentPatch, numberFormat?: string, };
+export type StylePatch = {
+  font?: FontPatch;
+  fill?: FillPatch;
+  border?: BorderPatch;
+  alignment?: AlignmentPatch;
+  numberFormat?: string;
+};

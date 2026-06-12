@@ -94,10 +94,16 @@ pub struct ChartAxisPatch {
 
 - Axis object: min/max/log/reversed, units, tick marks, tick label pos, gridlines,
   numFmt, crossBetween/crossesAt, dispUnits, hidden axis. **— done** (except
-  dispUnits + label rotation, deferred to P2): `ChartAxisPatch` is on
+  label rotation, deferred to P2): `ChartAxisPatch` is on
   `ChartPatch`/`ChartUpdate`/`ChartInfo` as `category_axis`/`value_axis`, with
   build + read + in-place update. `min`/`max`/`major_unit`/`major_gridlines`/
   `number_format` are renderer-visible; the rest round-trips for Excel.
+  `display_units` (`ChartAxisPatch.display_units`, value axis only,
+  `DisplayUnits` = builtin `ST_BuiltInUnit` name | custom divisor, sdk
+  `DisplayUnits` distilled) builds `c:dispUnits` (+ empty `c:dispUnitsLbl` so the
+  builtin unit name renders as a label band), round-trips, updates in place, and
+  is renderer-visible (column chart scaled to "Millions" — axis labels 0/5/10/15
+  + label band verified e2e).
 - Combo charts / secondary axis: **— done**. `ChartSeriesPatch`/`ChartSeriesInfo`
   carry `kind: Option<ChartKind>` (per-series type override, cartesian-only) and
   `axis: Option<ChartAxisGroup>` (`primary`/`secondary`, sdk transliteration).

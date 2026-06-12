@@ -2,4 +2,10 @@
 import type { CfIconSetKind } from "./CfIconSetKind.js";
 import type { CfValueObject } from "./CfValueObject.js";
 
-export type IconSetPatch = { iconSet: CfIconSetKind, values: Array<CfValueObject>, showValue?: boolean, percent?: boolean, reverse?: boolean, };
+export type IconSetPatch = {
+  iconSet: CfIconSetKind;
+  values: Array<CfValueObject>;
+  showValue?: boolean;
+  percent?: boolean;
+  reverse?: boolean;
+};

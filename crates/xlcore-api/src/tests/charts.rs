@@ -364,6 +364,79 @@ fn chart_axis_patch_authors_and_round_trips() {
 }
 
 #[test]
+fn chart_value_axis_display_units_round_trip() {
+    use xlcore_types::{BuiltInUnit, DisplayUnits};
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 3_000_000.0).unwrap();
+    wb.set_value("Sheet1!B3", 8_000_000.0).unwrap();
+
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Column,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$3".to_string(),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::A1("D2:K17".to_string()),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: Some(ChartAxisPatch {
+                    display_units: Some(DisplayUnits::Builtin(BuiltInUnit::Millions)),
+                    ..Default::default()
+                }),
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                data_labels: None,
+            },
+        )
+        .unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let chart = reopened
+        .charts(Some("Sheet1"))
+        .unwrap()
+        .into_iter()
+        .find(|c| c.id == info.id)
+        .unwrap();
+    let va = chart.value_axis.expect("value axis round-trips");
+    assert_eq!(
+        va.display_units,
+        Some(DisplayUnits::Builtin(BuiltInUnit::Millions))
+    );
+
+    let updated = reopened
+        .update_chart(
+            "Sheet1",
+            &info.id,
+            ChartUpdate {
+                value_axis: Some(ChartAxisPatch {
+                    display_units: Some(DisplayUnits::Custom(2500.0)),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        updated.value_axis.unwrap().display_units,
+        Some(DisplayUnits::Custom(2500.0))
+    );
+}
+
+#[test]
 fn charts_supports_multiple_kinds() {
     let mut wb = Workbook::new().unwrap();
     let patch = |kind: ChartKind| ChartPatch {

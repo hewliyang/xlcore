@@ -100,6 +100,48 @@ pub enum CrossBetween {
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "camelCase")]
+/// Built-in axis display-unit scale (`c:builtInUnit`, OOXML `ST_BuiltInUnit`).
+///
+/// Each variant divides the value-axis labels by its power of ten (e.g. `Millions`
+/// shows `5` for `5_000_000`). The xlsx-preview renderer applies the factor to the
+/// tick labels and draws the unit name as a label band.
+pub enum BuiltInUnit {
+    Hundreds,
+    Thousands,
+    TenThousands,
+    HundredThousands,
+    Millions,
+    TenMillions,
+    HundredMillions,
+    Billions,
+    Trillions,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(untagged)]
+/// Value-axis display units (`c:dispUnits`), distilled from ooxmlsdk `DisplayUnits`.
+///
+/// Either a {@link BuiltInUnit} name (`"millions"`) or a custom divisor number
+/// (`1000000`). Both scale the axis tick labels; built-in units also render their
+/// name as a label band. Intentionally not modeled (preserved on update, author
+/// via raw XML): a custom `dispUnitsLbl` text/styling and `extLst`.
+pub enum DisplayUnits {
+    Builtin(BuiltInUnit),
+    Custom(f64),
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
 /// Which value axis a series is plotted against in a combo chart.
 ///
 /// `Secondary` puts the series on a second value axis (`c:valAx` at the right of
@@ -191,7 +233,7 @@ pub struct ChartDataPoint {
 /// ooxmlsdk `CategoryAxis`/`ValueAxis` per `scripts/schema_diff.py`.
 ///
 /// Intentionally not modeled here (preserved on update, author via raw XML):
-/// `spPr`/`txPr` styling, `label_rotation` (txPr bodyPr rot), `display_units`,
+/// `spPr`/`txPr` styling, `label_rotation` (txPr bodyPr rot),
 /// `pictureOptions`, `extLst`, multi-level category labels, and date-axis fields.
 /// `min`/`max`/`major_unit`/`major_gridlines`/`number_format` are also surfaced
 /// in the xlsx-preview renderer; the remainder round-trips for Excel.
@@ -254,6 +296,11 @@ pub struct ChartAxisPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub crosses_at: Option<f64>,
+    /// `c:dispUnits`; value axis only. A built-in unit name or custom divisor that
+    /// scales the value-axis labels. Renderer-visible.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_units: Option<DisplayUnits>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

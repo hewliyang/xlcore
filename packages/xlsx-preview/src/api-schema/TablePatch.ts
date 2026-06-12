@@ -2,4 +2,13 @@
 import type { TableColumnPatch } from "./TableColumnPatch.js";
 import type { TableStylePatch } from "./TableStylePatch.js";
 
-export type TablePatch = { name: string, displayName?: string, reference?: string, headerRowCount?: number, totalsRowCount?: number, hasAutoFilter?: boolean, columns?: Array<TableColumnPatch>, style?: TableStylePatch, };
+export type TablePatch = {
+  name: string;
+  displayName?: string;
+  reference?: string;
+  headerRowCount?: number;
+  totalsRowCount?: number;
+  hasAutoFilter?: boolean;
+  columns?: Array<TableColumnPatch>;
+  style?: TableStylePatch;
+};

@@ -2,4 +2,12 @@
 import type { SearchMode } from "./SearchMode.js";
 import type { SearchTarget } from "./SearchTarget.js";
 
-export type SearchOptions = { sheet?: string, range?: string, target: SearchTarget, mode: SearchMode, caseSensitive: boolean, maxResults?: number, includeHidden?: boolean, };
+export type SearchOptions = {
+  sheet?: string;
+  range?: string;
+  target: SearchTarget;
+  mode: SearchMode;
+  caseSensitive: boolean;
+  maxResults?: number;
+  includeHidden?: boolean;
+};

@@ -13,11 +13,10 @@ use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
-    AnchorSpec, ApiError, ApiErrorCode, ApiWarning, ChartAnchor, ChartAxisGroup, ChartAxisPatch,
-    ChartDataLabelPosition, ChartDataLabels, ChartDataPoint, ChartInfo, ChartKind,
-    ChartLegendPosition,
-    ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking, ChartUpdate,
-    CrossBetween, MarkerStyle, RadarStyle, TickLabelPosition, TickMark,
+    AnchorSpec, ApiError, ApiErrorCode, ApiWarning, BuiltInUnit, ChartAnchor, ChartAxisGroup,
+    ChartAxisPatch, ChartDataLabelPosition, ChartDataLabels, ChartDataPoint, ChartInfo, ChartKind,
+    ChartLegendPosition, ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking,
+    ChartUpdate, CrossBetween, DisplayUnits, MarkerStyle, RadarStyle, TickLabelPosition, TickMark,
 };
 
 use crate::errors::sdk_err_to_api;

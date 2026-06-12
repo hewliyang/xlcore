@@ -2,4 +2,10 @@
 import type { HorizontalAlign } from "./HorizontalAlign.js";
 import type { VerticalAlign } from "./VerticalAlign.js";
 
-export type AlignmentPatch = { horizontal?: HorizontalAlign, vertical?: VerticalAlign, wrap?: boolean, indent?: number, textRotation?: number, };
+export type AlignmentPatch = {
+  horizontal?: HorizontalAlign;
+  vertical?: VerticalAlign;
+  wrap?: boolean;
+  indent?: number;
+  textRotation?: number;
+};

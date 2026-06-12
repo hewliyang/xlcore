@@ -2,4 +2,11 @@
 import type { EngineCellValue } from "./EngineCellValue.js";
 import type { FormulaFallback } from "./FormulaFallback.js";
 
-export type RecalcCell = { r: number, c: number, formula: string, cachedValue?: EngineCellValue, value: EngineCellValue, fallback?: FormulaFallback, };
+export type RecalcCell = {
+  r: number;
+  c: number;
+  formula: string;
+  cachedValue?: EngineCellValue;
+  value: EngineCellValue;
+  fallback?: FormulaFallback;
+};
