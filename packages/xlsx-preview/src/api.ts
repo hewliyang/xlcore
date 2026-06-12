@@ -128,6 +128,7 @@ export type {
   PageOrientation,
   PageSetupSettings,
   PageSetupSettingsPatch,
+  PatternType,
   PivotAggregation,
   PivotCellRole,
   PivotDataField,

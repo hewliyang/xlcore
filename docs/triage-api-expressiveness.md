@@ -185,8 +185,13 @@ authoring, per-point data labels.
   `x:protection` + sets `@applyProtection` on the cellXf (and on dxfs), deduped
   via the cell-format signature, and round-trips. Write-only for Excel (renderer
   doesn't consume cell-level protection).
-- `FillPatch`: pattern type + fg/bg, gradient fills (schema: `CT_PatternFill`,
-  `CT_GradientFill`).
+- `FillPatch`: pattern type + fg/bg — **done**: `FillPatch.pattern`
+  (`PatternType`, sdk `ST_PatternType` transliterated 1:1), `foreground`,
+  `background`; builds `x:patternFill` with the chosen `@patternType` + fg/bg
+  colors (solid stays the default when only `color`/`foreground` is set, with the
+  legacy indexed-64 bg), deduped via the fill signature, round-trips, and is
+  renderer-visible (all 16 pattern tiles verified e2e). Gradient fills
+  (`CT_GradientFill`) deferred.
 - `FontPatch`: `vertAlign` (sub/superscript), `family`, `scheme`.
 - `BorderPatch`: `diagonal` + `diagonalUp`/`diagonalDown`.
 - `AlignmentPatch`: `shrinkToFit`, `justifyLastLine`, `readingOrder`.

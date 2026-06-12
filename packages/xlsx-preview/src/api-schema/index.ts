@@ -81,6 +81,7 @@ export type { PageOrder } from "./PageOrder.js";
 export type { PageOrientation } from "./PageOrientation.js";
 export type { PageSetupSettings } from "./PageSetupSettings.js";
 export type { PageSetupSettings as PageSetupSettingsPatch } from "./PageSetupSettings.js";
+export type { PatternType } from "./PatternType.js";
 export type { PivotAggregation } from "./PivotAggregation.js";
 export type { PivotCellRole } from "./PivotCellRole.js";
 export type { PivotDataField } from "./PivotDataField.js";

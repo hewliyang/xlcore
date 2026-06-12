@@ -200,6 +200,7 @@ fn set_style_applies_font_fill_border_align_and_numfmt() {
         }),
         fill: Some(FillPatch {
             color: Some("E2F0D9".to_string()),
+            ..Default::default()
         }),
         border: Some(BorderPatch {
             all: Some(BorderLinePatch {
@@ -253,6 +254,42 @@ fn set_style_applies_font_fill_border_align_and_numfmt() {
 }
 
 #[test]
+fn set_style_applies_pattern_fill_with_fg_and_bg() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value("Sheet1!A1", "x").unwrap();
+    workbook
+        .set_style(
+            "Sheet1!A1",
+            StylePatch {
+                fill: Some(FillPatch {
+                    pattern: Some(PatternType::DarkGrid),
+                    foreground: Some("FF0000".into()),
+                    background: Some("FFFFFF".into()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    let bytes = workbook.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let idx = reopened.get_cell("Sheet1!A1").unwrap().style_index.unwrap();
+    let layout = reopened.layout(LayoutOptions::default()).unwrap();
+    let xf = &layout.styles.cell_xfs[idx as usize];
+    let fill = &layout.styles.fills[xf.fill_id.unwrap() as usize];
+    assert_eq!(fill.pattern_type.as_deref(), Some("darkGrid"));
+    assert_eq!(
+        fill.fg_color.as_ref().and_then(|c| c.rgb.as_deref()),
+        Some("FFFF0000")
+    );
+    assert_eq!(
+        fill.bg_color.as_ref().and_then(|c| c.rgb.as_deref()),
+        Some("FFFFFFFF")
+    );
+}
+
+#[test]
 fn set_style_dedupes_across_cells_and_invalid_color_errors() {
     let mut workbook = Workbook::new().unwrap();
     let bold = StylePatch {
@@ -275,6 +312,7 @@ fn set_style_dedupes_across_cells_and_invalid_color_errors() {
             StylePatch {
                 fill: Some(FillPatch {
                     color: Some("notacolor".into()),
+                    ..Default::default()
                 }),
                 ..Default::default()
             },

@@ -17,6 +17,7 @@ fn conditional_format_add_list_remove_round_trip() {
                 dxf: Some(StylePatch {
                     fill: Some(FillPatch {
                         color: Some("#FFEB3B".into()),
+                        ..Default::default()
                     }),
                     font: Some(FontPatch {
                         bold: Some(true),

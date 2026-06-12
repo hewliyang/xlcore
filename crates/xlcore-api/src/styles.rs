@@ -3,7 +3,7 @@ use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 pub use xlcore_types::{
     AlignmentPatch, BorderLinePatch, BorderLineStyle, BorderPatch, FillPatch, FontPatch,
-    HorizontalAlign, ProtectionPatch, StylePatch, UnderlinePatch, VerticalAlign,
+    HorizontalAlign, PatternType, ProtectionPatch, StylePatch, UnderlinePatch, VerticalAlign,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -364,27 +364,81 @@ fn build_font(sheet: &x::Stylesheet, current: usize, patch: &FontPatch) -> Resul
     Ok(font)
 }
 
+fn pattern_type_to_x(p: PatternType) -> x::PatternValues {
+    match p {
+        PatternType::None => x::PatternValues::None,
+        PatternType::Solid => x::PatternValues::Solid,
+        PatternType::MediumGray => x::PatternValues::MediumGray,
+        PatternType::DarkGray => x::PatternValues::DarkGray,
+        PatternType::LightGray => x::PatternValues::LightGray,
+        PatternType::DarkHorizontal => x::PatternValues::DarkHorizontal,
+        PatternType::DarkVertical => x::PatternValues::DarkVertical,
+        PatternType::DarkDown => x::PatternValues::DarkDown,
+        PatternType::DarkUp => x::PatternValues::DarkUp,
+        PatternType::DarkGrid => x::PatternValues::DarkGrid,
+        PatternType::DarkTrellis => x::PatternValues::DarkTrellis,
+        PatternType::LightHorizontal => x::PatternValues::LightHorizontal,
+        PatternType::LightVertical => x::PatternValues::LightVertical,
+        PatternType::LightDown => x::PatternValues::LightDown,
+        PatternType::LightUp => x::PatternValues::LightUp,
+        PatternType::LightGrid => x::PatternValues::LightGrid,
+        PatternType::LightTrellis => x::PatternValues::LightTrellis,
+        PatternType::Gray125 => x::PatternValues::Gray125,
+        PatternType::Gray0625 => x::PatternValues::Gray0625,
+    }
+}
+
 fn build_fill(patch: &FillPatch) -> Result<x::Fill> {
-    let Some(color) = patch.color.as_deref() else {
+    let pattern = match patch.pattern {
+        Some(p) => pattern_type_to_x(p),
+        None => {
+            if patch.color.is_some() || patch.foreground.is_some() || patch.background.is_some() {
+                x::PatternValues::Solid
+            } else {
+                return Ok(pattern_fill_none());
+            }
+        }
+    };
+    if matches!(pattern, x::PatternValues::None) {
         return Ok(pattern_fill_none());
+    }
+    let solid = matches!(pattern, x::PatternValues::Solid);
+    let fg_src = patch.foreground.as_deref().or(patch.color.as_deref());
+    let foreground_color = match fg_src {
+        Some(c) => {
+            let parsed = parse_color(c)?;
+            Some(x::ForegroundColor {
+                rgb: parsed.rgb,
+                theme: parsed.theme,
+                tint: parsed.tint,
+                indexed: parsed.indexed,
+                auto: parsed.auto,
+            })
+        }
+        None => None,
     };
-    let parsed = parse_color(color)?;
-    let fg = x::ForegroundColor {
-        rgb: parsed.rgb.clone(),
-        theme: parsed.theme,
-        tint: parsed.tint,
-        indexed: parsed.indexed,
-        auto: parsed.auto,
-    };
-    let bg = x::BackgroundColor {
-        indexed: Some(64),
-        ..Default::default()
+    let background_color = match patch.background.as_deref() {
+        Some(c) => {
+            let parsed = parse_color(c)?;
+            Some(x::BackgroundColor {
+                rgb: parsed.rgb,
+                theme: parsed.theme,
+                tint: parsed.tint,
+                indexed: parsed.indexed,
+                auto: parsed.auto,
+            })
+        }
+        None if solid => Some(x::BackgroundColor {
+            indexed: Some(64),
+            ..Default::default()
+        }),
+        None => None,
     };
     Ok(x::Fill {
         fill_choice: Some(x::FillChoice::PatternFill(Box::new(x::PatternFill {
-            pattern_type: Some(x::PatternValues::Solid),
-            foreground_color: Some(fg),
-            background_color: Some(bg),
+            pattern_type: Some(pattern),
+            foreground_color,
+            background_color,
         }))),
         ..Default::default()
     })
