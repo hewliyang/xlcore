@@ -23,7 +23,10 @@ fn append_rows_lands_after_existing_data() {
         )
         .unwrap();
     assert_eq!(appended.reference, "A3:B3");
-    assert_eq!(appended.values[0][0], CellValue::String("South".to_string()));
+    assert_eq!(
+        appended.values[0][0],
+        CellValue::String("South".to_string())
+    );
     assert_eq!(appended.values[0][1], CellValue::Number(20.0));
 
     let block = workbook
@@ -449,7 +452,10 @@ fn set_style_applies_diagonal_border() {
     assert!(border.diagonal_down);
     let diag = border.diagonal.as_ref().unwrap();
     assert_eq!(diag.style, "thin");
-    assert_eq!(diag.color.as_ref().and_then(|c| c.rgb.as_deref()), Some("FFFF0000"));
+    assert_eq!(
+        diag.color.as_ref().and_then(|c| c.rgb.as_deref()),
+        Some("FFFF0000")
+    );
 }
 
 #[test]
@@ -674,4 +680,3 @@ fn row_and_column_invalid_indices_diagnosed() {
         ApiErrorCode::MissingSheet,
     );
 }
-

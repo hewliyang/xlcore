@@ -145,7 +145,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.line = read_line(s.chart_shape_properties.as_deref());
                     info.kind = Some(this_kind);
                     info.axis = gsec.then_some(ChartAxisGroup::Secondary);
-                    info.invert_if_negative = read_invert_if_negative(s.invert_if_negative.as_ref());
+                    info.invert_if_negative =
+                        read_invert_if_negative(s.invert_if_negative.as_ref());
                     info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
@@ -307,7 +308,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     });
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     info.line = read_line(s.chart_shape_properties.as_deref());
-                    info.invert_if_negative = read_invert_if_negative(s.invert_if_negative.as_ref());
+                    info.invert_if_negative =
+                        read_invert_if_negative(s.invert_if_negative.as_ref());
                     info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }

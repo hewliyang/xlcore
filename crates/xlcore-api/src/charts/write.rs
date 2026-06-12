@@ -348,7 +348,9 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
             val: Some(BooleanValue::from_bool(true)),
         }),
         display_blanks_as: Some(c::DisplayBlanksAs {
-            val: Some(disp_blanks_as_to(patch.disp_blanks_as.unwrap_or(DispBlanksAs::Gap))),
+            val: Some(disp_blanks_as_to(
+                patch.disp_blanks_as.unwrap_or(DispBlanksAs::Gap),
+            )),
         }),
         ..Default::default()
     };
@@ -945,9 +947,7 @@ pub(super) fn build_data_points(points: &Option<Vec<ChartDataPoint>>) -> Vec<c::
         .iter()
         .map(|p| c::DataPoint {
             index: Box::new(c::Index { val: p.index }),
-            explosion: p
-                .explosion
-                .map(|val| c::Explosion { val: val.min(400) }),
+            explosion: p.explosion.map(|val| c::Explosion { val: val.min(400) }),
             chart_shape_properties: p.fill.as_deref().and_then(build_point_shape),
             ..Default::default()
         })

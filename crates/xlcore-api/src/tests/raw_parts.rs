@@ -10,27 +10,32 @@ fn lists_gets_and_round_trips_parts() {
     let workbook_xml = workbook.get_part_xml("xl/workbook.xml").unwrap().unwrap();
     assert!(workbook_xml.contains("<sheets>"));
     assert!(workbook.get_part_xml("xl/missing.xml").unwrap().is_none());
-    assert!(workbook
-        .get_part_xml("/xl/workbook.xml")
-        .unwrap()
-        .is_some());
+    assert!(workbook.get_part_xml("/xl/workbook.xml").unwrap().is_some());
 }
 
 #[test]
 fn sets_new_unmodeled_part_and_preserves_it() {
     let mut workbook = Workbook::new().unwrap();
     let custom = "<?xml version=\"1.0\"?>\n<root><note>escape hatch</note></root>";
-    workbook.set_part_xml("customXml/item1.xml", custom).unwrap();
+    workbook
+        .set_part_xml("customXml/item1.xml", custom)
+        .unwrap();
 
     assert_eq!(
-        workbook.get_part_xml("customXml/item1.xml").unwrap().as_deref(),
+        workbook
+            .get_part_xml("customXml/item1.xml")
+            .unwrap()
+            .as_deref(),
         Some(custom)
     );
 
     let bytes = workbook.save_bytes().unwrap();
     let reopened = Workbook::open_bytes(bytes).unwrap();
     assert_eq!(
-        reopened.get_part_xml("customXml/item1.xml").unwrap().as_deref(),
+        reopened
+            .get_part_xml("customXml/item1.xml")
+            .unwrap()
+            .as_deref(),
         Some(custom)
     );
 }
@@ -44,7 +49,9 @@ fn overwrites_existing_modeled_part() {
         .unwrap()
         .unwrap()
         .replace("before", "after");
-    workbook.set_part_xml("xl/worksheets/sheet1.xml", &edited).unwrap();
+    workbook
+        .set_part_xml("xl/worksheets/sheet1.xml", &edited)
+        .unwrap();
     assert_eq!(
         workbook.get_cell("Sheet1!A1").unwrap().value,
         CellValue::String("after".to_string())
@@ -54,8 +61,13 @@ fn overwrites_existing_modeled_part() {
 #[test]
 fn removes_part() {
     let mut workbook = Workbook::new().unwrap();
-    workbook.set_part_xml("customXml/item1.xml", "<root/>").unwrap();
+    workbook
+        .set_part_xml("customXml/item1.xml", "<root/>")
+        .unwrap();
     assert!(workbook.remove_part_xml("customXml/item1.xml").unwrap());
-    assert!(workbook.get_part_xml("customXml/item1.xml").unwrap().is_none());
+    assert!(workbook
+        .get_part_xml("customXml/item1.xml")
+        .unwrap()
+        .is_none());
     assert!(!workbook.remove_part_xml("customXml/item1.xml").unwrap());
 }

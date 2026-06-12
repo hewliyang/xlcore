@@ -3,7 +3,10 @@ use crate::*;
 
 fn outline_levels(workbook: &mut Workbook, sheet: &str) -> (Vec<(u32, u8, bool)>, Option<u8>) {
     let part = workbook.worksheet_part_for_sheet(sheet).unwrap();
-    let ws = part.root_element(&mut workbook.doc).map_err(sdk_err_to_api).unwrap();
+    let ws = part
+        .root_element(&mut workbook.doc)
+        .map_err(sdk_err_to_api)
+        .unwrap();
     let rows = ws
         .sheet_data
         .row
@@ -47,12 +50,28 @@ fn group_rows_collapsed_hides_and_marks_summary() {
     workbook.group_rows("Sheet1", 2, 4, 1, true).unwrap();
 
     let part = workbook.worksheet_part_for_sheet("Sheet1").unwrap();
-    let ws = part.root_element(&mut workbook.doc).map_err(sdk_err_to_api).unwrap();
+    let ws = part
+        .root_element(&mut workbook.doc)
+        .map_err(sdk_err_to_api)
+        .unwrap();
     for row in 2..=4 {
-        let entry = ws.sheet_data.row.iter().find(|r| r.row_index == Some(row)).unwrap();
-        assert!(entry.hidden.map(bool::from).unwrap_or(false), "row {row} hidden");
+        let entry = ws
+            .sheet_data
+            .row
+            .iter()
+            .find(|r| r.row_index == Some(row))
+            .unwrap();
+        assert!(
+            entry.hidden.map(bool::from).unwrap_or(false),
+            "row {row} hidden"
+        );
     }
-    let summary = ws.sheet_data.row.iter().find(|r| r.row_index == Some(5)).unwrap();
+    let summary = ws
+        .sheet_data
+        .row
+        .iter()
+        .find(|r| r.row_index == Some(5))
+        .unwrap();
     assert!(summary.collapsed.map(bool::from).unwrap_or(false));
 }
 
@@ -74,7 +93,10 @@ fn group_columns_sets_outline_and_roundtrips() {
     let bytes = workbook.save_bytes().unwrap();
     let mut reopened = Workbook::open_bytes(bytes).unwrap();
     let part = reopened.worksheet_part_for_sheet("Sheet1").unwrap();
-    let ws = part.root_element(&mut reopened.doc).map_err(sdk_err_to_api).unwrap();
+    let ws = part
+        .root_element(&mut reopened.doc)
+        .map_err(sdk_err_to_api)
+        .unwrap();
     let levels: Vec<(u32, u32, u8)> = ws
         .columns
         .first()
@@ -85,8 +107,12 @@ fn group_columns_sets_outline_and_roundtrips() {
                 .collect()
         })
         .unwrap_or_default();
-    assert!(levels.iter().any(|&(min, max, lvl)| min <= 2 && 2 <= max && lvl == 1));
-    assert!(levels.iter().any(|&(min, max, lvl)| min <= 3 && 3 <= max && lvl == 1));
+    assert!(levels
+        .iter()
+        .any(|&(min, max, lvl)| min <= 2 && 2 <= max && lvl == 1));
+    assert!(levels
+        .iter()
+        .any(|&(min, max, lvl)| min <= 3 && 3 <= max && lvl == 1));
     let max = ws
         .sheet_format_properties
         .as_ref()

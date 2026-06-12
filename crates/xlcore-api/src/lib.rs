@@ -28,8 +28,8 @@ mod structural;
 mod styles;
 mod tables;
 mod threaded_notes;
-mod worksheet_props;
 mod vml_comments;
+mod worksheet_props;
 mod xml;
 
 use std::path::Path;
@@ -43,21 +43,20 @@ pub use xlcore_types::{
     ChartAxisGroup, ChartAxisPatch, ChartInfo, ChartKind, ChartLegendPosition, ChartLine,
     ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking, ChartUpdate,
     ClearMode, ColorScalePatch, CommentInfo, CommentPatch, ConditionalFormatRuleInfo,
-    ConditionalFormatRulePatch, CrossBetween, DataBarPatch, DispBlanksAs, DataValidationErrorStyle,
+    ConditionalFormatRulePatch, CrossBetween, DataBarPatch, DataValidationErrorStyle,
     DataValidationInfo, DataValidationOperator, DataValidationPatch, DataValidationType,
-    DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference, FillPatch, FontPatch,
-    FontScheme, FreezeInfo, GradientFillPatch, GradientStopPatch, GradientType, HeaderFooterInfo,
-    HeaderFooterPatch, HorizontalAlign, HyperlinkInfo,
+    DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference, DispBlanksAs,
+    FillPatch, FontPatch, FontScheme, FreezeInfo, GradientFillPatch, GradientStopPatch,
+    GradientType, HeaderFooterInfo, HeaderFooterPatch, HorizontalAlign, HyperlinkInfo,
     HyperlinkPatch, IconSetPatch, ImageFormat, ImageInfo, ImagePatch, LayoutOptions, LineDash,
     MarkerStyle, MergeInfo, PageMarginsInfo, PageMarginsPatch, PageOrder, PageOrientation,
     PageSetupSettings, PageSetupSettingsPatch, PatternType, PivotAggregation, PivotCellRole,
-    PivotDataField,
-    PivotFieldFilter, PivotGrid, PivotGridCell, PivotInfo, PivotPatch, PivotUpdate,
+    PivotDataField, PivotFieldFilter, PivotGrid, PivotGridCell, PivotInfo, PivotPatch, PivotUpdate,
     PrintCellComments, PrintErrors, PrintOptionsInfo, PrintOptionsPatch, ProtectionPatch,
-    RadarStyle, RangeInfo, ReadingOrder,
-    SearchHit, SearchMatch, SearchMode, SearchOptions, SearchTarget, ShapeInfo, ShapeLineEnd,
-    ShapePatch, SheetInfo, SheetPageSetup, SheetPageSetupPatch, SheetProperties,
-    SheetPropertiesPatch, SheetProtectionInfo, SheetProtectionPatch, SheetVisibility, SparklineAxisType, SparklineDisplayBlanks,
+    RadarStyle, RangeInfo, ReadingOrder, SearchHit, SearchMatch, SearchMode, SearchOptions,
+    SearchTarget, ShapeInfo, ShapeLineEnd, ShapePatch, SheetInfo, SheetPageSetup,
+    SheetPageSetupPatch, SheetProperties, SheetPropertiesPatch, SheetProtectionInfo,
+    SheetProtectionPatch, SheetVisibility, SparklineAxisType, SparklineDisplayBlanks,
     SparklineEntry, SparklineGroupInfo, SparklineGroupPatch, SparklineKind, StylePatch,
     TableColumnInfo, TableColumnPatch, TableInfo, TablePatch, TableStylePatch, TableStyleSettings,
     TableTotalsFunction, ThreadedNoteInfo, ThreadedNotePatch, TickLabelPosition, TickMark,

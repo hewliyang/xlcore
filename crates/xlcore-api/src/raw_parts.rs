@@ -1,8 +1,8 @@
 use std::io::{Cursor, Read, Write};
 
 use crate::errors::zip_err;
-use crate::{ApiError, ApiErrorCode, Workbook};
 use crate::Result;
+use crate::{ApiError, ApiErrorCode, Workbook};
 
 fn normalize(name: &str) -> String {
     name.trim_start_matches('/').to_string()
@@ -40,9 +40,12 @@ impl Workbook {
         };
         let mut buf = Vec::new();
         file.read_to_end(&mut buf).map_err(zip_err)?;
-        String::from_utf8(buf)
-            .map(Some)
-            .map_err(|_| ApiError::new(ApiErrorCode::Other, format!("part '{name}' is not UTF-8 text")))
+        String::from_utf8(buf).map(Some).map_err(|_| {
+            ApiError::new(
+                ApiErrorCode::Other,
+                format!("part '{name}' is not UTF-8 text"),
+            )
+        })
     }
 
     pub fn set_part_xml(&mut self, name: &str, xml: &str) -> Result<()> {
@@ -51,10 +54,7 @@ impl Workbook {
 
     pub fn remove_part_xml(&mut self, name: &str) -> Result<bool> {
         let name = normalize(name);
-        let existed = self
-            .part_names()?
-            .iter()
-            .any(|existing| existing == &name);
+        let existed = self.part_names()?.iter().any(|existing| existing == &name);
         if existed {
             self.write_part(&name, None)?;
         }

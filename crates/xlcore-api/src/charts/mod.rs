@@ -17,8 +17,7 @@ use xlcore_types::{
     ChartAxisPatch, ChartDataLabelPosition, ChartDataLabels, ChartDataPoint, ChartInfo, ChartKind,
     ChartLegendPosition, ChartLine, ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch,
     ChartStacking, ChartUpdate, CrossBetween, DispBlanksAs, DisplayUnits, LineDash, MarkerStyle,
-    RadarStyle,
-    TickLabelPosition, TickMark,
+    RadarStyle, TickLabelPosition, TickMark,
 };
 
 use crate::errors::sdk_err_to_api;

@@ -88,10 +88,7 @@ fn read_sheet_properties(sheet: &str, ws: &x::Worksheet) -> SheetProperties {
         .as_ref()
         .and_then(|sp| sp.tab_color.as_ref())
         .and_then(|tc| tc.rgb.as_ref().map(|s| s.as_str().to_string()));
-    let view = ws
-        .sheet_views
-        .as_ref()
-        .and_then(|v| v.sheet_view.first());
+    let view = ws.sheet_views.as_ref().and_then(|v| v.sheet_view.first());
     let fmt = ws.sheet_format_properties.as_ref();
     SheetProperties {
         sheet: sheet.to_string(),
@@ -99,9 +96,7 @@ fn read_sheet_properties(sheet: &str, ws: &x::Worksheet) -> SheetProperties {
         zoom: view.and_then(|v| v.zoom_scale),
         show_zeros: view.and_then(|v| v.show_zeros).map(bool::from),
         right_to_left: view.and_then(|v| v.right_to_left).map(bool::from),
-        default_row_height: fmt
-            .map(|f| f.default_row_height)
-            .filter(|h| *h > 0.0),
+        default_row_height: fmt.map(|f| f.default_row_height).filter(|h| *h > 0.0),
         default_col_width: fmt.and_then(|f| f.default_column_width),
     }
 }

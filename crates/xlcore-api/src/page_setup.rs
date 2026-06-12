@@ -96,8 +96,11 @@ impl Workbook {
             .position(|s| s.name.as_str() == sheet)
             .map(|i| i as u32)
             .ok_or_else(|| {
-                ApiError::new(ApiErrorCode::MissingSheet, format!("sheet not found: {sheet}"))
-                    .with_sheet(sheet)
+                ApiError::new(
+                    ApiErrorCode::MissingSheet,
+                    format!("sheet not found: {sheet}"),
+                )
+                .with_sheet(sheet)
             })
     }
 
@@ -128,12 +131,11 @@ impl Workbook {
             }
         }
         if patch.print_title_rows.is_some() || patch.print_title_columns.is_some() {
-            let (existing_cols, existing_rows) = match self
-                .local_defined_name_value(idx, PRINT_TITLES_NAME)?
-            {
-                Some(v) => parse_print_titles(&v),
-                None => (None, None),
-            };
+            let (existing_cols, existing_rows) =
+                match self.local_defined_name_value(idx, PRINT_TITLES_NAME)? {
+                    Some(v) => parse_print_titles(&v),
+                    None => (None, None),
+                };
             let pick = |patched: &Option<String>, existing: Option<String>| -> Option<String> {
                 match patched {
                     Some(v) if v.trim().is_empty() => None,
@@ -153,7 +155,9 @@ impl Workbook {
 
     fn local_defined_name_value(&mut self, idx: u32, name: &str) -> Result<Option<String>> {
         let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
-        let wb = wb_part.root_element(&mut self.doc).map_err(sdk_err_to_api)?;
+        let wb = wb_part
+            .root_element(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
         let Some(dns) = wb.defined_names.as_ref() else {
             return Ok(None);
         };
@@ -166,8 +170,12 @@ impl Workbook {
 
     fn set_local_defined_name(&mut self, idx: u32, name: &str, value: &str) -> Result<()> {
         let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
-        let wb = wb_part.root_element_mut(&mut self.doc).map_err(sdk_err_to_api)?;
-        let dns = wb.defined_names.get_or_insert_with(x::DefinedNames::default);
+        let wb = wb_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let dns = wb
+            .defined_names
+            .get_or_insert_with(x::DefinedNames::default);
         match dns
             .defined_name
             .iter_mut()
@@ -186,7 +194,9 @@ impl Workbook {
 
     fn remove_local_defined_name(&mut self, idx: u32, name: &str) -> Result<()> {
         let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
-        let wb = wb_part.root_element_mut(&mut self.doc).map_err(sdk_err_to_api)?;
+        let wb = wb_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
         let Some(dns) = wb.defined_names.as_mut() else {
             return Ok(());
         };

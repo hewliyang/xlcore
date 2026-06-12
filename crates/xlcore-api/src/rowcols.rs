@@ -109,18 +109,20 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         for row in start..=end {
             let entry = ensure_row(ws, row);
-            entry.outline_level = if level == 0 {
-                None
-            } else {
-                Some(level.into())
-            };
+            entry.outline_level = if level == 0 { None } else { Some(level.into()) };
             entry.hidden = if level != 0 && collapsed {
                 Some(BooleanValue::from_bool(true))
             } else {
                 None
             };
         }
-        let summary = if summary_below(ws) { end + 1 } else if start > 1 { start - 1 } else { 0 };
+        let summary = if summary_below(ws) {
+            end + 1
+        } else if start > 1 {
+            start - 1
+        } else {
+            0
+        };
         if summary != 0 && summary <= MAX_ROW {
             let entry = ensure_row(ws, summary);
             entry.collapsed = if level != 0 && collapsed {
@@ -165,11 +167,7 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         for column in start..=end {
             let col = ensure_single_column(ws, column);
-            col.outline_level = if level == 0 {
-                None
-            } else {
-                Some(level.into())
-            };
+            col.outline_level = if level == 0 { None } else { Some(level.into()) };
             col.hidden = if level != 0 && collapsed {
                 Some(BooleanValue::from_bool(true))
             } else {

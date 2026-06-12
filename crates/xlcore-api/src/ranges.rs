@@ -48,11 +48,7 @@ impl Workbook {
         self.append_rows(sheet, vec![values])
     }
 
-    pub fn append_rows(
-        &mut self,
-        sheet: &str,
-        rows: Vec<Vec<CellValue>>,
-    ) -> Result<RangeInfo> {
+    pub fn append_rows(&mut self, sheet: &str, rows: Vec<Vec<CellValue>>) -> Result<RangeInfo> {
         if rows.is_empty() {
             return Err(ApiError::new(
                 ApiErrorCode::ShapeMismatch,

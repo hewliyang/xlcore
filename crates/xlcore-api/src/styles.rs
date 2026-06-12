@@ -4,8 +4,7 @@ use xlcore_io::spreadsheetml as x;
 pub use xlcore_types::{
     AlignmentPatch, BorderLinePatch, BorderLineStyle, BorderPatch, FillPatch, FontPatch,
     FontScheme, GradientFillPatch, GradientType, HorizontalAlign, PatternType, ProtectionPatch,
-    ReadingOrder, StylePatch,
-    UnderlinePatch, VertAlign, VerticalAlign,
+    ReadingOrder, StylePatch, UnderlinePatch, VertAlign, VerticalAlign,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -367,26 +366,28 @@ fn build_font(sheet: &x::Stylesheet, current: usize, patch: &FontPatch) -> Resul
         font.font_choice
             .retain(|c| !matches!(c, x::FontChoice::VerticalTextAlignment(_)));
         if !matches!(vert, VertAlign::Baseline) {
-            font.font_choice.push(x::FontChoice::VerticalTextAlignment(
-                Box::new(x::VerticalTextAlignment {
-                    val: match vert {
-                        VertAlign::Baseline => x::VerticalAlignmentRunValues::Baseline,
-                        VertAlign::Superscript => x::VerticalAlignmentRunValues::Superscript,
-                        VertAlign::Subscript => x::VerticalAlignmentRunValues::Subscript,
+            font.font_choice
+                .push(x::FontChoice::VerticalTextAlignment(Box::new(
+                    x::VerticalTextAlignment {
+                        val: match vert {
+                            VertAlign::Baseline => x::VerticalAlignmentRunValues::Baseline,
+                            VertAlign::Superscript => x::VerticalAlignmentRunValues::Superscript,
+                            VertAlign::Subscript => x::VerticalAlignmentRunValues::Subscript,
+                        },
                     },
-                }),
-            ));
+                )));
         }
     }
     if let Some(family) = patch.family {
         font.font_choice
             .retain(|c| !matches!(c, x::FontChoice::FontFamilyNumbering(_)));
-        font.font_choice.push(x::FontChoice::FontFamilyNumbering(
-            Box::new(x::FontFamilyNumbering {
-                val: family as i32,
-                ..Default::default()
-            }),
-        ));
+        font.font_choice
+            .push(x::FontChoice::FontFamilyNumbering(Box::new(
+                x::FontFamilyNumbering {
+                    val: family as i32,
+                    ..Default::default()
+                },
+            )));
     }
     if let Some(scheme) = patch.scheme {
         font.font_choice
@@ -434,7 +435,10 @@ fn build_gradient_fill(patch: &GradientFillPatch) -> Result<x::Fill> {
         if !(0.0..=1.0).contains(&stop.position) {
             return Err(ApiError::new(
                 ApiErrorCode::UnsupportedStyle,
-                format!("gradient stop position out of range 0..=1: {}", stop.position),
+                format!(
+                    "gradient stop position out of range 0..=1: {}",
+                    stop.position
+                ),
             ));
         }
         stops.push(x::GradientStop {
