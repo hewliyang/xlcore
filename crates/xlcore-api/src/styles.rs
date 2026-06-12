@@ -457,6 +457,13 @@ fn build_border(sheet: &x::Stylesheet, current: usize, patch: &BorderPatch) -> R
     apply_side(&mut border.right_border, resolved(&patch.right).as_ref())?;
     apply_side(&mut border.top_border, resolved(&patch.top).as_ref())?;
     apply_side(&mut border.bottom_border, resolved(&patch.bottom).as_ref())?;
+    apply_side(&mut border.diagonal_border, patch.diagonal.as_ref())?;
+    if let Some(up) = patch.diagonal_up {
+        border.diagonal_up = Some(BooleanValue::from_bool(up));
+    }
+    if let Some(down) = patch.diagonal_down {
+        border.diagonal_down = Some(BooleanValue::from_bool(down));
+    }
     Ok(border)
 }
 
@@ -499,6 +506,7 @@ impl_border_side!(x::LeftBorder);
 impl_border_side!(x::RightBorder);
 impl_border_side!(x::TopBorder);
 impl_border_side!(x::BottomBorder);
+impl_border_side!(x::DiagonalBorder);
 
 fn border_style_to_x(style: BorderLineStyle) -> x::BorderStyleValues {
     match style {
@@ -843,11 +851,14 @@ fn border_signature(b: &x::Border) -> String {
         }
     }
     format!(
-        "{}|{}|{}|{}",
+        "{}|{}|{}|{}|{}|{:?}|{:?}",
         side(&b.left_border),
         side(&b.right_border),
         side(&b.top_border),
         side(&b.bottom_border),
+        side(&b.diagonal_border),
+        b.diagonal_up.clone().map(bool::from),
+        b.diagonal_down.clone().map(bool::from),
     )
 }
 
@@ -871,6 +882,7 @@ impl_border_side_read!(x::LeftBorder);
 impl_border_side_read!(x::RightBorder);
 impl_border_side_read!(x::TopBorder);
 impl_border_side_read!(x::BottomBorder);
+impl_border_side_read!(x::DiagonalBorder);
 
 fn xfs_equal(a: &x::CellFormat, b: &x::CellFormat) -> bool {
     a.number_format_id == b.number_format_id

@@ -193,7 +193,11 @@ authoring, per-point data labels.
   renderer-visible (all 16 pattern tiles verified e2e). Gradient fills
   (`CT_GradientFill`) deferred.
 - `FontPatch`: `vertAlign` (sub/superscript), `family`, `scheme`.
-- `BorderPatch`: `diagonal` + `diagonalUp`/`diagonalDown`.
+- `BorderPatch`: `diagonal` + `diagonalUp`/`diagonalDown` — **done**:
+  `BorderPatch.diagonal` (`BorderLinePatch`), `diagonal_up`, `diagonal_down` build
+  `x:border` `<diagonal>` + the `@diagonalUp`/`@diagonalDown` attrs, deduped via the
+  border signature, round-trip, and are renderer-visible (blue `\`, red thick `/`,
+  green X verified e2e).
 - `AlignmentPatch`: `shrinkToFit`, `justifyLastLine`, `readingOrder`.
 - Named styles / `cellStyles` authoring — P2.
 

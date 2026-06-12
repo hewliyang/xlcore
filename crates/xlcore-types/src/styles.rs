@@ -163,6 +163,15 @@ pub struct BorderPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bottom: Option<BorderLinePatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagonal: Option<BorderLinePatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagonal_up: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagonal_down: Option<bool>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

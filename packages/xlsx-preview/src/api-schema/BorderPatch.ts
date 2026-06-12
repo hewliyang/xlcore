@@ -7,4 +7,7 @@ export type BorderPatch = {
   right?: BorderLinePatch;
   top?: BorderLinePatch;
   bottom?: BorderLinePatch;
+  diagonal?: BorderLinePatch;
+  diagonalUp?: boolean;
+  diagonalDown?: boolean;
 };

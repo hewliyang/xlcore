@@ -254,6 +254,41 @@ fn set_style_applies_font_fill_border_align_and_numfmt() {
 }
 
 #[test]
+fn set_style_applies_diagonal_border() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value("Sheet1!A1", "x").unwrap();
+
+    let patch = StylePatch {
+        border: Some(BorderPatch {
+            diagonal: Some(BorderLinePatch {
+                style: BorderLineStyle::Thin,
+                color: Some("FF0000".to_string()),
+            }),
+            diagonal_up: Some(true),
+            diagonal_down: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    workbook.set_style("Sheet1!A1", patch).unwrap();
+
+    let bytes = workbook.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let cell = reopened.get_cell("Sheet1!A1").unwrap();
+    let idx = cell.style_index.unwrap();
+    assert!(idx > 0);
+
+    let layout = reopened.layout(LayoutOptions::default()).unwrap();
+    let xf = &layout.styles.cell_xfs[idx as usize];
+    let border = &layout.styles.borders[xf.border_id.unwrap() as usize];
+    assert!(border.diagonal_up);
+    assert!(border.diagonal_down);
+    let diag = border.diagonal.as_ref().unwrap();
+    assert_eq!(diag.style, "thin");
+    assert_eq!(diag.color.as_ref().and_then(|c| c.rgb.as_deref()), Some("FFFF0000"));
+}
+
+#[test]
 fn set_style_applies_pattern_fill_with_fg_and_bg() {
     let mut workbook = Workbook::new().unwrap();
     workbook.set_value("Sheet1!A1", "x").unwrap();
@@ -475,3 +510,4 @@ fn row_and_column_invalid_indices_diagnosed() {
         ApiErrorCode::MissingSheet,
     );
 }
+
