@@ -94,6 +94,7 @@ export class WorkbookHandle {
     setProperties(patch: any): any;
     setRangeFormulas(sheet: string, reference: string, formulas: any): any;
     setRangeValues(sheet: string, reference: string, values: any): any;
+    setRichText(sheet: string, reference: string, runs: any): any;
     setRowHeight(sheet: string, row: number, height: number): void;
     setRowVisible(sheet: string, row: number, visible: boolean): void;
     setShape(sheet: string, patch: any): any;
@@ -227,6 +228,7 @@ export interface InitOutput {
     readonly workbookhandle_setProperties: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setRangeFormulas: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly workbookhandle_setRangeValues: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+    readonly workbookhandle_setRichText: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly workbookhandle_setRowHeight: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setRowVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setShape: (a: number, b: number, c: number, d: number, e: number) => void;

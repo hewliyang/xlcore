@@ -21,6 +21,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `Cell.setRichText(runs)`/`Cell.richText()` + `CellInfo.richText` (`RichText`/`RichTextRun`): author and read multi-run inline-string cells (`CT_RElt`), each run carrying a per-run `FontPatch`; renderer-visible. Semantics in Rust (`Workbook::set_rich_text_in`).
 - `Workbook.partNames()`/`getPart(name)`/`setPart(name, xml)`/`removePart(name)` — escape hatch for raw OPC part XML (read/author/delete unmodeled schema); unmodeled parts round-trip verbatim. Semantics in Rust (`Workbook::part_names`/`get_part_xml`/`set_part_xml`/`remove_part_xml`).
 - `Worksheet.appendRow(values)`/`appendRows(rows)` (openpyxl `ws.append` idiom): write rows starting at column A after the last data-bearing row; returns the written block's `RangeInfo`. Semantics in Rust (`Workbook::append_rows`).
 - `SheetPageSetupPatch.printArea`/`printTitleRows`/`printTitleColumns`/`rowBreaks`/`columnBreaks` (defined-name-backed `_xlnm.Print_Area`/`_xlnm.Print_Titles` + `x:rowBreaks`/`x:colBreaks`): print area, repeating row/column titles, and manual page breaks; authored via `setPageSetup`, merged/cleared component-wise, and round-tripped (round-trip-only for Excel).

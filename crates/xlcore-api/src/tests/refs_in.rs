@@ -35,7 +35,10 @@ fn cell_in_honors_embedded_sheet_prefix() {
         .set_value_in("Sheet1", "'Q1 ''Final'' Inputs'!A1", 7.0)
         .unwrap();
     assert_eq!(
-        workbook.get_cell_in("Sheet1", "'Q1 ''Final'' Inputs'!A1").unwrap().value,
+        workbook
+            .get_cell_in("Sheet1", "'Q1 ''Final'' Inputs'!A1")
+            .unwrap()
+            .value,
         CellValue::Number(7.0)
     );
     assert_eq!(
@@ -85,7 +88,9 @@ fn copy_and_fill_in_across_quoted_sheets() {
     workbook
         .set_range_values_in(TRICKY, "A1:A1", vec![vec![9.0.into()]])
         .unwrap();
-    let filled = workbook.fill_range_in(TRICKY, "A1", TRICKY, "A1:A3").unwrap();
+    let filled = workbook
+        .fill_range_in(TRICKY, "A1", TRICKY, "A1:A3")
+        .unwrap();
     assert_eq!(filled.sheet, TRICKY);
     assert_eq!(
         workbook.get_cell_in(TRICKY, "A3").unwrap().value,

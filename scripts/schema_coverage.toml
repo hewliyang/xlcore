@@ -117,3 +117,16 @@ sdk = "Font"
 dto = "FontPatch"
 ns = "x"
 aliases = { b = "bold", i = "italic", u = "underline", sz = "size" }
+
+# --- rich text runs in cells -------------------------------------------------
+[[pair]]
+sdk = "Run"
+dto = "RichTextRun"
+ns = "x"
+aliases = { rPr = "font", t = "text" }
+
+[[pair]]
+sdk = "InlineString"
+dto = "RichText"
+ns = "x"
+aliases = { r = "runs" }

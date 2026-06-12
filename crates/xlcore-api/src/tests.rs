@@ -15,6 +15,7 @@ mod ranges_styles;
 mod raw_parts;
 mod refs_in;
 mod refs_sheets;
+mod rich_text;
 mod rowcols;
 mod search;
 mod shapes;

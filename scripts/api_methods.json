@@ -339,6 +339,30 @@
     "ret": "json"
   },
   {
+    "name": "set_rich_text_in",
+    "jsName": "setRichText",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "runs",
+        "kind": "de",
+        "type": "Vec<xlcore_api::RichTextRun>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
     "name": "merges",
     "jsName": "merges",
     "source": "table",

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::styles::FontPatch;
+
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
@@ -138,6 +140,36 @@ impl From<bool> for ApiCellValue {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// A single formatted run of a rich-text cell (`CT_RElt`). `text` is the run's
+/// literal text; `font` carries its per-run formatting (`CT_RPrElt`).
+pub struct RichTextRun {
+    pub text: String,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font: Option<FontPatch>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// A rich-text cell value: an ordered list of formatted runs (`CT_Rst`).
+///
+/// schema-excluded: t, rPh, phoneticPr
+pub struct RichText {
+    pub runs: Vec<RichTextRun>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
@@ -156,6 +188,9 @@ pub struct CellInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub style_index: Option<u32>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rich_text: Option<RichText>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

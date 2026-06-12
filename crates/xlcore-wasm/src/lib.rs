@@ -318,6 +318,7 @@ api_methods! {
     { precedents_in as "precedents" (s sheet, s reference) -> json }
     { dependents_in as "dependents" (s sheet, s reference) -> json }
     { set_style_in as "setStyle" (s sheet, s reference, deopt patch: xlcore_api::StylePatch) -> json }
+    { set_rich_text_in as "setRichText" (s sheet, s reference, de runs: Vec<xlcore_api::RichTextRun>) -> json }
     { merges (s sheet) -> json }
     { add_merge as "addMerge" (s sheet, s reference) -> json }
     { remove_merge as "removeMerge" (s sheet, s reference) -> json }

@@ -96,6 +96,7 @@ export const workbookhandle_setPivot: (a: number, b: number, c: number, d: numbe
 export const workbookhandle_setProperties: (a: number, b: number, c: number) => void;
 export const workbookhandle_setRangeFormulas: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
 export const workbookhandle_setRangeValues: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+export const workbookhandle_setRichText: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
 export const workbookhandle_setRowHeight: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setRowVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setShape: (a: number, b: number, c: number, d: number, e: number) => void;

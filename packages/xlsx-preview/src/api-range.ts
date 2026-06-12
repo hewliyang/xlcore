@@ -10,6 +10,8 @@ import type {
   HyperlinkInfo,
   HyperlinkPatch,
   RangeInfo,
+  RichText,
+  RichTextRun,
   StylePatch,
 } from "./api-schema/index.js";
 import {
@@ -82,24 +84,14 @@ export class Range {
   copyTo(dest: Range | string): Range {
     const destSheet = dest instanceof Range ? dest.sheet : this.sheet;
     const destRef = dest instanceof Range ? dest.reference : dest;
-    const info = this.handle.copyRange(
-      this.sheet,
-      this.reference,
-      destSheet,
-      destRef,
-    ) as RangeInfo;
+    const info = this.handle.copyRange(this.sheet, this.reference, destSheet, destRef) as RangeInfo;
     return new Range(this.handle, this.sheetRef, info.reference);
   }
 
   fillTo(dest: Range | string): Range {
     const destSheet = dest instanceof Range ? dest.sheet : this.sheet;
     const destRef = dest instanceof Range ? dest.reference : dest;
-    const info = this.handle.fillRange(
-      this.sheet,
-      this.reference,
-      destSheet,
-      destRef,
-    ) as RangeInfo;
+    const info = this.handle.fillRange(this.sheet, this.reference, destSheet, destRef) as RangeInfo;
     return new Range(this.handle, this.sheetRef, info.reference);
   }
 
@@ -148,6 +140,17 @@ export class Cell {
 
   setFormula(formula: string): this {
     this.handle.setFormula(this.sheet, this.reference, formula);
+    return this;
+  }
+
+  /** The cell's rich-text runs, if it holds a multi-run inline string. */
+  richText(): RichText | undefined {
+    return this.info().richText;
+  }
+
+  /** Write the cell as a rich-text inline string of formatted runs. */
+  setRichText(runs: RichTextRun[]): this {
+    this.handle.setRichText(this.sheet, this.reference, runs);
     return this;
   }
 

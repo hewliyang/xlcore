@@ -19,6 +19,7 @@ mod protection;
 mod ranges;
 mod raw_parts;
 mod refs;
+mod rich_text;
 mod rowcols;
 mod search;
 mod shapes;
@@ -53,8 +54,8 @@ pub use xlcore_types::{
     PageSetupSettings, PageSetupSettingsPatch, PatternType, PivotAggregation, PivotCellRole,
     PivotDataField, PivotFieldFilter, PivotGrid, PivotGridCell, PivotInfo, PivotPatch, PivotUpdate,
     PrintCellComments, PrintErrors, PrintOptionsInfo, PrintOptionsPatch, ProtectionPatch,
-    RadarStyle, RangeInfo, ReadingOrder, SearchHit, SearchMatch, SearchMode, SearchOptions,
-    SearchTarget, ShapeInfo, ShapeLineEnd, ShapePatch, SheetInfo, SheetPageSetup,
+    RadarStyle, RangeInfo, ReadingOrder, RichText, RichTextRun, SearchHit, SearchMatch, SearchMode,
+    SearchOptions, SearchTarget, ShapeInfo, ShapeLineEnd, ShapePatch, SheetInfo, SheetPageSetup,
     SheetPageSetupPatch, SheetProperties, SheetPropertiesPatch, SheetProtectionInfo,
     SheetProtectionPatch, SheetVisibility, SparklineAxisType, SparklineDisplayBlanks,
     SparklineEntry, SparklineGroupInfo, SparklineGroupPatch, SparklineKind, StylePatch,

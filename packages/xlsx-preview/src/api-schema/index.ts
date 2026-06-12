@@ -69,6 +69,8 @@ export type { RangeInfo } from "./RangeInfo.js";
 export type { RecalcCell } from "./RecalcCell.js";
 export type { RecalcSheet } from "./RecalcSheet.js";
 export type { RecalcWorkbook } from "./RecalcWorkbook.js";
+export type { RichText } from "./RichText.js";
+export type { RichTextRun } from "./RichTextRun.js";
 export type { SearchHit } from "./SearchHit.js";
 export type { SearchMatch } from "./SearchMatch.js";
 export type { SearchMode } from "./SearchMode.js";
