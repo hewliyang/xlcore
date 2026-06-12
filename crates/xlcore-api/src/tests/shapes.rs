@@ -4,26 +4,29 @@ use crate::*;
 fn shapes_create_list_remove_roundtrip() {
     let mut wb = Workbook::new().unwrap();
     let info = wb
-        .set_shape("Sheet1", ShapePatch {
-            name: Some("Box".to_string()),
-            anchor: AnchorSpec::Cells(ChartAnchor {
-                from_column: 1,
-                from_row: 1,
-                to_column: 5,
-                to_row: 6,
+        .set_shape(
+            "Sheet1",
+            ShapePatch {
+                name: Some("Box".to_string()),
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 1,
+                    from_row: 1,
+                    to_column: 5,
+                    to_row: 6,
+                    ..Default::default()
+                }),
+                preset: "roundRect".to_string(),
+                fill_color: Some("#4472C4".to_string()),
+                line_color: Some("#1F3864".to_string()),
+                line_width_emu: Some(19050),
+                text: Some("Hello".to_string()),
+                text_color: Some("#FFFFFF".to_string()),
+                font_size_pt: Some(14.0),
+                bold: Some(true),
+                rotation_degrees: Some(15.0),
                 ..Default::default()
-            }),
-            preset: "roundRect".to_string(),
-            fill_color: Some("#4472C4".to_string()),
-            line_color: Some("#1F3864".to_string()),
-            line_width_emu: Some(19050),
-            text: Some("Hello".to_string()),
-            text_color: Some("#FFFFFF".to_string()),
-            font_size_pt: Some(14.0),
-            bold: Some(true),
-            rotation_degrees: Some(15.0),
-            ..Default::default()
-        })
+            },
+        )
         .unwrap();
     assert_eq!(info.name, "Box");
     assert_eq!(info.preset, "roundRect");
@@ -57,42 +60,48 @@ fn shapes_create_list_remove_roundtrip() {
 fn shapes_emit_alignment_underline_arrow_rotation_box() {
     use std::io::Read;
     let mut wb = Workbook::new().unwrap();
-    wb.set_shape("Sheet1", ShapePatch {
-        anchor: AnchorSpec::Cells(ChartAnchor {
-            from_column: 1,
-            from_row: 1,
-            to_column: 6,
-            to_row: 8,
+    wb.set_shape(
+        "Sheet1",
+        ShapePatch {
+            anchor: AnchorSpec::Cells(ChartAnchor {
+                from_column: 1,
+                from_row: 1,
+                to_column: 6,
+                to_row: 8,
+                ..Default::default()
+            }),
+            preset: "roundRect".into(),
+            fill_color: Some("#4472C4".into()),
+            text: Some("Quarter\nResults".into()),
+            align: Some("ctr".into()),
+            vertical_align: Some("ctr".into()),
+            underline: Some(true),
+            rotation_degrees: Some(15.0),
             ..Default::default()
-        }),
-        preset: "roundRect".into(),
-        fill_color: Some("#4472C4".into()),
-        text: Some("Quarter\nResults".into()),
-        align: Some("ctr".into()),
-        vertical_align: Some("ctr".into()),
-        underline: Some(true),
-        rotation_degrees: Some(15.0),
-        ..Default::default()
-    })
+        },
+    )
     .unwrap();
-    wb.set_shape("Sheet1", ShapePatch {
-        anchor: AnchorSpec::Cells(ChartAnchor {
-            from_column: 1,
-            from_row: 10,
-            to_column: 6,
-            to_row: 10,
+    wb.set_shape(
+        "Sheet1",
+        ShapePatch {
+            anchor: AnchorSpec::Cells(ChartAnchor {
+                from_column: 1,
+                from_row: 10,
+                to_column: 6,
+                to_row: 10,
+                ..Default::default()
+            }),
+            preset: "line".into(),
+            line_color: Some("#FF0000".into()),
+            line_width_emu: Some(28575),
+            tail_end: Some(ShapeLineEnd {
+                r#type: Some("triangle".into()),
+                w: Some("med".into()),
+                len: Some("lg".into()),
+            }),
             ..Default::default()
-        }),
-        preset: "line".into(),
-        line_color: Some("#FF0000".into()),
-        line_width_emu: Some(28575),
-        tail_end: Some(ShapeLineEnd {
-            r#type: Some("triangle".into()),
-            w: Some("med".into()),
-            len: Some("lg".into()),
-        }),
-        ..Default::default()
-    })
+        },
+    )
     .unwrap();
     let bytes = wb.save_bytes().unwrap();
     let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
@@ -116,20 +125,23 @@ fn shapes_emit_alignment_underline_arrow_rotation_box() {
 #[test]
 fn shapes_warn_on_offset_exceeding_referenced_cell() {
     let mut wb = Workbook::new().unwrap();
-    wb.set_shape("Sheet1", ShapePatch {
-        anchor: AnchorSpec::Cells(ChartAnchor {
-            from_column: 0,
-            from_row: 0,
-            to_column: 0,
-            to_row: 0,
-            to_column_offset_emu: Some(5_000_000),
-            to_row_offset_emu: Some(5_000_000),
+    wb.set_shape(
+        "Sheet1",
+        ShapePatch {
+            anchor: AnchorSpec::Cells(ChartAnchor {
+                from_column: 0,
+                from_row: 0,
+                to_column: 0,
+                to_row: 0,
+                to_column_offset_emu: Some(5_000_000),
+                to_row_offset_emu: Some(5_000_000),
+                ..Default::default()
+            }),
+            preset: "rect".into(),
+            fill_color: Some("#4472C4".into()),
             ..Default::default()
-        }),
-        preset: "rect".into(),
-        fill_color: Some("#4472C4".into()),
-        ..Default::default()
-    })
+        },
+    )
     .unwrap();
     let warnings = wb.take_warnings();
     assert_eq!(warnings.len(), 2, "{warnings:?}");
@@ -143,20 +155,23 @@ fn shapes_warn_on_offset_exceeding_referenced_cell() {
 #[test]
 fn shapes_no_warn_when_offsets_fit_cell() {
     let mut wb = Workbook::new().unwrap();
-    wb.set_shape("Sheet1", ShapePatch {
-        anchor: AnchorSpec::Cells(ChartAnchor {
-            from_column: 0,
-            from_row: 0,
-            to_column: 3,
-            to_row: 3,
-            to_column_offset_emu: Some(100_000),
-            to_row_offset_emu: Some(50_000),
+    wb.set_shape(
+        "Sheet1",
+        ShapePatch {
+            anchor: AnchorSpec::Cells(ChartAnchor {
+                from_column: 0,
+                from_row: 0,
+                to_column: 3,
+                to_row: 3,
+                to_column_offset_emu: Some(100_000),
+                to_row_offset_emu: Some(50_000),
+                ..Default::default()
+            }),
+            preset: "rect".into(),
+            fill_color: Some("#4472C4".into()),
             ..Default::default()
-        }),
-        preset: "rect".into(),
-        fill_color: Some("#4472C4".into()),
-        ..Default::default()
-    })
+        },
+    )
     .unwrap();
     assert!(wb.take_warnings().is_empty());
 }
@@ -165,11 +180,14 @@ fn shapes_no_warn_when_offsets_fit_cell() {
 fn shapes_reject_unknown_preset() {
     let mut wb = Workbook::new().unwrap();
     let err = wb
-        .set_shape("Sheet1", ShapePatch {
-            anchor: AnchorSpec::Cells(ChartAnchor::default()),
-            preset: "notARealShape".to_string(),
-            ..Default::default()
-        })
+        .set_shape(
+            "Sheet1",
+            ShapePatch {
+                anchor: AnchorSpec::Cells(ChartAnchor::default()),
+                preset: "notARealShape".to_string(),
+                ..Default::default()
+            },
+        )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidShape);
 }
@@ -178,11 +196,14 @@ fn shapes_reject_unknown_preset() {
 fn shape_anchor_accepts_a1_range_string() {
     let mut wb = Workbook::new().unwrap();
     let info = wb
-        .set_shape("Sheet1", ShapePatch {
-            anchor: AnchorSpec::A1("D2:H15".to_string()),
-            preset: "rect".to_string(),
-            ..Default::default()
-        })
+        .set_shape(
+            "Sheet1",
+            ShapePatch {
+                anchor: AnchorSpec::A1("D2:H15".to_string()),
+                preset: "rect".to_string(),
+                ..Default::default()
+            },
+        )
         .unwrap();
     assert_eq!(info.anchor.from_column, 3);
     assert_eq!(info.anchor.from_row, 1);
@@ -190,11 +211,14 @@ fn shape_anchor_accepts_a1_range_string() {
     assert_eq!(info.anchor.to_row, 15);
 
     let err = wb
-        .set_shape("Sheet1", ShapePatch {
-            anchor: AnchorSpec::A1("D2".to_string()),
-            preset: "rect".to_string(),
-            ..Default::default()
-        })
+        .set_shape(
+            "Sheet1",
+            ShapePatch {
+                anchor: AnchorSpec::A1("D2".to_string()),
+                preset: "rect".to_string(),
+                ..Default::default()
+            },
+        )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidRef);
 }
@@ -204,19 +228,22 @@ fn shapes_rotation_keeps_anchor_footprint() {
     use std::io::Read;
     let off_ext = |rotation_degrees: Option<f64>| -> String {
         let mut wb = Workbook::new().unwrap();
-        wb.set_shape("Sheet1", ShapePatch {
-            anchor: AnchorSpec::Cells(ChartAnchor {
-                from_column: 1,
-                from_row: 1,
-                to_column: 5,
-                to_row: 6,
+        wb.set_shape(
+            "Sheet1",
+            ShapePatch {
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 1,
+                    from_row: 1,
+                    to_column: 5,
+                    to_row: 6,
+                    ..Default::default()
+                }),
+                preset: "rect".into(),
+                fill_color: Some("#4472C4".into()),
+                rotation_degrees,
                 ..Default::default()
-            }),
-            preset: "rect".into(),
-            fill_color: Some("#4472C4".into()),
-            rotation_degrees,
-            ..Default::default()
-        })
+            },
+        )
         .unwrap();
         let bytes = wb.save_bytes().unwrap();
         let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();

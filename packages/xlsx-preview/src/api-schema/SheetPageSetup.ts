@@ -4,10 +4,4 @@ import type { PageMarginsInfo } from "./PageMarginsInfo.js";
 import type { PageSetupSettings } from "./PageSetupSettings.js";
 import type { PrintOptionsInfo } from "./PrintOptionsInfo.js";
 
-export type SheetPageSetup = {
-  sheet: string;
-  page?: PageSetupSettings;
-  margins?: PageMarginsInfo;
-  printOptions?: PrintOptionsInfo;
-  headerFooter?: HeaderFooterInfo;
-};
+export type SheetPageSetup = { sheet: string, page?: PageSetupSettings, margins?: PageMarginsInfo, printOptions?: PrintOptionsInfo, headerFooter?: HeaderFooterInfo, };

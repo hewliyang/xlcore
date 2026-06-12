@@ -62,10 +62,28 @@ pub(super) struct ParsedChart {
     pub(super) data_labels: Option<ChartDataLabels>,
 }
 
+pub(super) fn group_is_secondary(axis_ids: &[c::AxisId], sec: &[u32]) -> bool {
+    !sec.is_empty() && axis_ids.iter().any(|a| sec.contains(&a.val))
+}
+
 pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     let plot = &space.chart.plot_area;
 
+    let secondary_ax_ids: Vec<u32> = plot
+        .plot_area_choice2
+        .iter()
+        .filter_map(|ax| match ax {
+            c::PlotAreaChoice2::ValueAxis(v) => matches!(
+                v.axis_position.val,
+                c::AxisPositionValues::Right | c::AxisPositionValues::Top
+            )
+            .then_some(v.axis_id.val),
+            _ => None,
+        })
+        .collect();
+
     let mut kind = ChartKind::Column;
+    let mut kind_set = false;
     let mut series: Vec<ChartSeriesInfo> = Vec::new();
     let mut categories_ref: Option<String> = None;
     let mut stacking: Option<ChartStacking> = None;
@@ -76,10 +94,15 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     for ch in &plot.plot_area_choice1 {
         match ch {
             c::PlotAreaChoice::BarChart(bc) => {
-                kind = match bc.bar_direction.val {
+                let this_kind = match bc.bar_direction.val {
                     c::BarDirectionValues::Bar => ChartKind::Bar,
                     c::BarDirectionValues::Column => ChartKind::Column,
                 };
+                if !kind_set {
+                    kind = this_kind;
+                    kind_set = true;
+                }
+                let gsec = group_is_secondary(&bc.axis_id, &secondary_ax_ids);
                 stacking = bc
                     .bar_grouping
                     .as_ref()
@@ -101,6 +124,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.kind = Some(this_kind);
+                    info.axis = gsec.then_some(ChartAxisGroup::Secondary);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -108,7 +133,11 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                 }
             }
             c::PlotAreaChoice::LineChart(lc) => {
-                kind = ChartKind::Line;
+                if !kind_set {
+                    kind = ChartKind::Line;
+                    kind_set = true;
+                }
+                let gsec = group_is_secondary(&lc.axis_id, &secondary_ax_ids);
                 stacking = lc.grouping.val.as_ref().map(grouping_to_stacking);
                 for s in &lc.line_chart_series {
                     let mut info = read_series(
@@ -120,6 +149,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     info.marker = read_marker(s.marker.as_deref());
+                    info.kind = Some(ChartKind::Line);
+                    info.axis = gsec.then_some(ChartAxisGroup::Secondary);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -127,7 +158,10 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                 }
             }
             c::PlotAreaChoice::PieChart(pc) => {
-                kind = ChartKind::Pie;
+                if !kind_set {
+                    kind = ChartKind::Pie;
+                    kind_set = true;
+                }
                 for s in &pc.pie_chart_series {
                     let mut info = read_series(
                         s.series_text.as_deref(),
@@ -144,7 +178,10 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                 }
             }
             c::PlotAreaChoice::DoughnutChart(dc) => {
-                kind = ChartKind::Doughnut;
+                if !kind_set {
+                    kind = ChartKind::Doughnut;
+                    kind_set = true;
+                }
                 for s in &dc.pie_chart_series {
                     let mut info = read_series(
                         s.series_text.as_deref(),
@@ -161,27 +198,37 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                 }
             }
             c::PlotAreaChoice::AreaChart(ac) => {
-                kind = ChartKind::Area;
+                if !kind_set {
+                    kind = ChartKind::Area;
+                    kind_set = true;
+                }
+                let gsec = group_is_secondary(&ac.axis_id, &secondary_ax_ids);
                 stacking = ac
                     .grouping
                     .as_ref()
                     .and_then(|g| g.val.as_ref())
                     .map(grouping_to_stacking);
                 for s in &ac.area_chart_series {
-                    series.push(read_series(
+                    let mut info = read_series(
                         s.series_text.as_deref(),
                         s.category_axis_data.as_deref(),
                         s.values.as_deref(),
                         &mut categories_ref,
                         s.data_labels.as_deref(),
-                    ));
+                    );
+                    info.kind = Some(ChartKind::Area);
+                    info.axis = gsec.then_some(ChartAxisGroup::Secondary);
+                    series.push(info);
                 }
                 if data_labels.is_none() {
                     data_labels = read_data_labels(ac.data_labels.as_deref());
                 }
             }
             c::PlotAreaChoice::ScatterChart(sc) => {
-                kind = ChartKind::Scatter;
+                if !kind_set {
+                    kind = ChartKind::Scatter;
+                    kind_set = true;
+                }
                 for s in &sc.scatter_chart_series {
                     let mut info = read_xy_series(
                         s.series_text.as_deref(),
@@ -202,7 +249,10 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                 }
             }
             c::PlotAreaChoice::BubbleChart(bc) => {
-                kind = ChartKind::Bubble;
+                if !kind_set {
+                    kind = ChartKind::Bubble;
+                    kind_set = true;
+                }
                 for s in &bc.bubble_chart_series {
                     let mut info = read_xy_series(
                         s.series_text.as_deref(),
@@ -231,6 +281,15 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         }
     }
 
+    let first_kind = series.iter().find_map(|s| s.kind);
+    let multi_kind = series.iter().any(|s| s.kind != first_kind);
+    let any_secondary = series.iter().any(|s| s.axis.is_some());
+    if !multi_kind && !any_secondary {
+        for s in &mut series {
+            s.kind = None;
+        }
+    }
+
     let mut category_axis_title: Option<String> = None;
     let mut value_axis_title: Option<String> = None;
     let mut category_axis: Option<ChartAxisPatch> = None;
@@ -238,12 +297,18 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     for ax in &plot.plot_area_choice2 {
         match ax {
             c::PlotAreaChoice2::CategoryAxis(c) => {
+                if c.axis_id.val == SEC_CAT_AX_ID || category_axis.is_some() {
+                    continue;
+                }
                 if let Some(t) = c.title.as_deref() {
                     category_axis_title = extract_title_text(t);
                 }
                 category_axis = read_cat_axis_patch(c);
             }
             c::PlotAreaChoice2::ValueAxis(v) => {
+                if v.axis_id.val == SEC_VAL_AX_ID {
+                    continue;
+                }
                 let is_cat = v.axis_position.val == c::AxisPositionValues::Bottom
                     && category_axis_title.is_none()
                     && category_axis.is_none();
@@ -333,6 +398,8 @@ pub(super) fn read_xy_series(
         color: None,
         data_labels: read_data_labels(dl),
         marker: None,
+        kind: None,
+        axis: None,
     }
 }
 
@@ -420,6 +487,8 @@ pub(super) fn read_series(
         color: None,
         data_labels: read_data_labels(dl),
         marker: None,
+        kind: None,
+        axis: None,
     }
 }
 

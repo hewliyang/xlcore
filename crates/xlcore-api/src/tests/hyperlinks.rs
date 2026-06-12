@@ -7,7 +7,9 @@ fn hyperlinks_add_list_remove_and_round_trip() {
     wb.set_value("Sheet1!B2", "internal").unwrap();
 
     let info = wb
-        .set_hyperlink("Sheet1", "A1",
+        .set_hyperlink(
+            "Sheet1",
+            "A1",
             HyperlinkPatch {
                 target: Some("https://anthropic.com".to_string()),
                 tooltip: Some("home".to_string()),
@@ -18,7 +20,9 @@ fn hyperlinks_add_list_remove_and_round_trip() {
     assert_eq!(info.reference, "A1:A1");
     assert_eq!(info.target.as_deref(), Some("https://anthropic.com"));
 
-    wb.set_hyperlink("Sheet1", "B2:C3",
+    wb.set_hyperlink(
+        "Sheet1",
+        "B2:C3",
         HyperlinkPatch {
             location: Some("Sheet1!Z9".to_string()),
             display: Some("jump".to_string()),
@@ -52,7 +56,9 @@ fn hyperlinks_add_list_remove_and_round_trip() {
     assert_eq!(reopened.hyperlinks("Sheet1").unwrap().len(), 1);
 
     reopened
-        .set_hyperlink("Sheet1", "A1",
+        .set_hyperlink(
+            "Sheet1",
+            "A1",
             HyperlinkPatch {
                 target: Some("https://example.com".to_string()),
                 ..Default::default()
@@ -87,7 +93,9 @@ fn hyperlinks_add_list_remove_and_round_trip() {
 #[test]
 fn set_hyperlink_populates_display_into_blank_top_left_cell() {
     let mut wb = Workbook::new().unwrap();
-    wb.set_hyperlink("Sheet1", "A1",
+    wb.set_hyperlink(
+        "Sheet1",
+        "A1",
         HyperlinkPatch {
             target: Some("https://anthropic.com".to_string()),
             display: Some("Anthropic".to_string()),
@@ -99,7 +107,9 @@ fn set_hyperlink_populates_display_into_blank_top_left_cell() {
     assert_eq!(cell.value, ApiCellValue::String("Anthropic".to_string()));
 
     wb.set_value("Sheet1!B2", "existing").unwrap();
-    wb.set_hyperlink("Sheet1", "B2",
+    wb.set_hyperlink(
+        "Sheet1",
+        "B2",
         HyperlinkPatch {
             target: Some("https://example.com".to_string()),
             display: Some("do not overwrite".to_string()),
@@ -110,7 +120,9 @@ fn set_hyperlink_populates_display_into_blank_top_left_cell() {
     let cell = wb.get_cell("Sheet1!B2").unwrap();
     assert_eq!(cell.value, ApiCellValue::String("existing".to_string()));
 
-    wb.set_hyperlink("Sheet1", "C3:D4",
+    wb.set_hyperlink(
+        "Sheet1",
+        "C3:D4",
         HyperlinkPatch {
             location: Some("Sheet1!Z9".to_string()),
             display: Some("jump".to_string()),

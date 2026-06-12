@@ -14,16 +14,19 @@ fn tables_create_resize_remove_roundtrip() {
     wb.set_value("Sheet1!C3", 2.5).unwrap();
 
     let info = wb
-        .set_table("Sheet1", TablePatch {
-            name: "Sales".to_string(),
-            reference: Some("Sheet1!A1:C3".to_string()),
-            style: Some(TableStylePatch {
-                name: Some("TableStyleMedium2".to_string()),
-                show_row_stripes: Some(true),
+        .set_table(
+            "Sheet1",
+            TablePatch {
+                name: "Sales".to_string(),
+                reference: Some("Sheet1!A1:C3".to_string()),
+                style: Some(TableStylePatch {
+                    name: Some("TableStyleMedium2".to_string()),
+                    show_row_stripes: Some(true),
+                    ..Default::default()
+                }),
                 ..Default::default()
-            }),
-            ..Default::default()
-        })
+            },
+        )
         .unwrap();
     assert_eq!(info.name, "Sales");
     assert_eq!(info.display_name, "Sales");
@@ -40,29 +43,32 @@ fn tables_create_resize_remove_roundtrip() {
     assert!(style.show_row_stripes);
 
     let resized = wb
-        .set_table("Sheet1", TablePatch {
-            name: "Sales".to_string(),
-            reference: Some("Sheet1!A1:C5".to_string()),
-            totals_row_count: Some(1),
-            columns: Some(vec![
-                TableColumnPatch {
-                    name: Some("Region".to_string()),
-                    totals_label: Some("Total".to_string()),
-                    ..Default::default()
-                },
-                TableColumnPatch {
-                    name: Some("Units".to_string()),
-                    totals_function: Some(TableTotalsFunction::Sum),
-                    ..Default::default()
-                },
-                TableColumnPatch {
-                    name: Some("Price".to_string()),
-                    totals_function: Some(TableTotalsFunction::Average),
-                    ..Default::default()
-                },
-            ]),
-            ..Default::default()
-        })
+        .set_table(
+            "Sheet1",
+            TablePatch {
+                name: "Sales".to_string(),
+                reference: Some("Sheet1!A1:C5".to_string()),
+                totals_row_count: Some(1),
+                columns: Some(vec![
+                    TableColumnPatch {
+                        name: Some("Region".to_string()),
+                        totals_label: Some("Total".to_string()),
+                        ..Default::default()
+                    },
+                    TableColumnPatch {
+                        name: Some("Units".to_string()),
+                        totals_function: Some(TableTotalsFunction::Sum),
+                        ..Default::default()
+                    },
+                    TableColumnPatch {
+                        name: Some("Price".to_string()),
+                        totals_function: Some(TableTotalsFunction::Average),
+                        ..Default::default()
+                    },
+                ]),
+                ..Default::default()
+            },
+        )
         .unwrap();
     assert_eq!(resized.reference, "A1:C5");
     assert_eq!(resized.totals_row_count, 1);
@@ -97,35 +103,47 @@ fn tables_create_resize_remove_roundtrip() {
 #[test]
 fn tables_reject_overlap_and_invalid_names() {
     let mut wb = Workbook::new().unwrap();
-    wb.set_table("Sheet1", TablePatch {
-        name: "T1".to_string(),
-        reference: Some("Sheet1!A1:B5".to_string()),
-        ..Default::default()
-    })
+    wb.set_table(
+        "Sheet1",
+        TablePatch {
+            name: "T1".to_string(),
+            reference: Some("Sheet1!A1:B5".to_string()),
+            ..Default::default()
+        },
+    )
     .unwrap();
     let err = wb
-        .set_table("Sheet1", TablePatch {
-            name: "T2".to_string(),
-            reference: Some("Sheet1!B3:D8".to_string()),
-            ..Default::default()
-        })
+        .set_table(
+            "Sheet1",
+            TablePatch {
+                name: "T2".to_string(),
+                reference: Some("Sheet1!B3:D8".to_string()),
+                ..Default::default()
+            },
+        )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidTable);
 
     let err = wb
-        .set_table("Sheet1", TablePatch {
-            name: "Bad Name".to_string(),
-            reference: Some("Sheet1!E1:F2".to_string()),
-            ..Default::default()
-        })
+        .set_table(
+            "Sheet1",
+            TablePatch {
+                name: "Bad Name".to_string(),
+                reference: Some("Sheet1!E1:F2".to_string()),
+                ..Default::default()
+            },
+        )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidTable);
 
     let err = wb
-        .set_table("Sheet1", TablePatch {
-            name: "Other".to_string(),
-            ..Default::default()
-        })
+        .set_table(
+            "Sheet1",
+            TablePatch {
+                name: "Other".to_string(),
+                ..Default::default()
+            },
+        )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidTable);
 }
@@ -133,11 +151,14 @@ fn tables_reject_overlap_and_invalid_names() {
 #[test]
 fn tables_shift_through_structural_edits() {
     let mut wb = Workbook::new().unwrap();
-    wb.set_table("Sheet1", TablePatch {
-        name: "T".to_string(),
-        reference: Some("Sheet1!B2:D6".to_string()),
-        ..Default::default()
-    })
+    wb.set_table(
+        "Sheet1",
+        TablePatch {
+            name: "T".to_string(),
+            reference: Some("Sheet1!B2:D6".to_string()),
+            ..Default::default()
+        },
+    )
     .unwrap();
     wb.insert_rows("Sheet1", 1, 2).unwrap();
     let t = &wb.tables(None).unwrap()[0];

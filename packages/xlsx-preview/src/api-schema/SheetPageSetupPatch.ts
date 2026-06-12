@@ -4,9 +4,4 @@ import type { PageMarginsPatch } from "./PageMarginsPatch.js";
 import type { PageSetupSettings } from "./PageSetupSettings.js";
 import type { PrintOptionsInfo } from "./PrintOptionsInfo.js";
 
-export type SheetPageSetupPatch = {
-  page?: PageSetupSettings;
-  margins?: PageMarginsPatch;
-  printOptions?: PrintOptionsInfo;
-  headerFooter?: HeaderFooterInfo;
-};
+export type SheetPageSetupPatch = { page?: PageSetupSettings, margins?: PageMarginsPatch, printOptions?: PrintOptionsInfo, headerFooter?: HeaderFooterInfo, };

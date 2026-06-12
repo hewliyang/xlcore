@@ -82,6 +82,23 @@ pub enum CrossBetween {
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "camelCase")]
+/// Which value axis a series is plotted against in a combo chart.
+///
+/// `Secondary` puts the series on a second value axis (`c:valAx` at the right of
+/// the plot area), the standard idiom for charts mixing series at different
+/// scales (e.g. revenue bars + margin-% line).
+pub enum ChartAxisGroup {
+    Primary,
+    Secondary,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
 /// Data-point marker symbol (`c:marker/c:symbol`, OOXML `ST_MarkerStyle`).
 /// Applies to line and scatter series; ignored for other chart kinds.
 pub enum MarkerStyle {
@@ -356,6 +373,17 @@ pub struct ChartSeriesPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub marker: Option<ChartMarker>,
+    /// Per-series chart type, overriding the chart's `kind` to build a combo
+    /// chart. Only `Column`/`Bar`/`Line`/`Area` are valid here; mixing those on
+    /// one chart emits multiple `c:barChart`/`c:lineChart`/`c:areaChart` groups.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<ChartKind>,
+    /// Plot this series on the primary or secondary value axis. `Secondary`
+    /// synthesizes a right-hand `c:valAx`. Combo/cartesian charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub axis: Option<ChartAxisGroup>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -389,6 +417,14 @@ pub struct ChartSeriesInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub marker: Option<ChartMarker>,
+    /// Per-series chart type for combo charts; see {@link ChartSeriesPatch.kind}.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<ChartKind>,
+    /// Primary/secondary value-axis group; see {@link ChartSeriesPatch.axis}.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub axis: Option<ChartAxisGroup>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

@@ -13,51 +13,44 @@ import type { TickMark } from "./TickMark.js";
  * `min`/`max`/`major_unit`/`major_gridlines`/`number_format` are also surfaced
  * in the xlsx-preview renderer; the remainder round-trips for Excel.
  */
-export type ChartAxisPatch = {
-  title?: string;
-  /**
-   * Hide the axis entirely (`c:delete = 1`).
-   */
-  hidden?: boolean;
-  /**
-   * `c:scaling/c:min`.
-   */
-  min?: number;
-  /**
-   * `c:scaling/c:max`.
-   */
-  max?: number;
-  /**
-   * `c:scaling/c:logBase` (2..=1000); value axis only.
-   */
-  logBase?: number;
-  /**
-   * Reverse axis direction (`c:scaling/c:orientation = maxMin`).
-   */
-  reversed?: boolean;
-  /**
-   * `c:majorUnit`; value axis only.
-   */
-  majorUnit?: number;
-  /**
-   * `c:minorUnit`; value axis only.
-   */
-  minorUnit?: number;
-  majorGridlines?: boolean;
-  minorGridlines?: boolean;
-  majorTickMark?: TickMark;
-  minorTickMark?: TickMark;
-  tickLabelPosition?: TickLabelPosition;
-  /**
-   * `c:numFmt`.
-   */
-  numberFormat?: string;
-  /**
-   * `c:crossBetween`; value axis only.
-   */
-  crossBetween?: CrossBetween;
-  /**
-   * `c:crossesAt`.
-   */
-  crossesAt?: number;
-};
+export type ChartAxisPatch = { title?: string, 
+/**
+ * Hide the axis entirely (`c:delete = 1`).
+ */
+hidden?: boolean, 
+/**
+ * `c:scaling/c:min`.
+ */
+min?: number, 
+/**
+ * `c:scaling/c:max`.
+ */
+max?: number, 
+/**
+ * `c:scaling/c:logBase` (2..=1000); value axis only.
+ */
+logBase?: number, 
+/**
+ * Reverse axis direction (`c:scaling/c:orientation = maxMin`).
+ */
+reversed?: boolean, 
+/**
+ * `c:majorUnit`; value axis only.
+ */
+majorUnit?: number, 
+/**
+ * `c:minorUnit`; value axis only.
+ */
+minorUnit?: number, majorGridlines?: boolean, minorGridlines?: boolean, majorTickMark?: TickMark, minorTickMark?: TickMark, tickLabelPosition?: TickLabelPosition, 
+/**
+ * `c:numFmt`.
+ */
+numberFormat?: string, 
+/**
+ * `c:crossBetween`; value axis only.
+ */
+crossBetween?: CrossBetween, 
+/**
+ * `c:crossesAt`.
+ */
+crossesAt?: number, };

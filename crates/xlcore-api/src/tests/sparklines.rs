@@ -20,39 +20,45 @@ fn sparkline_groups_create_list_remove_roundtrip() {
     .unwrap();
 
     let info = wb
-        .set_sparkline_group("Sheet1", SparklineGroupPatch {
-            kind: SparklineKind::Line,
-            sparklines: vec![
-                SparklineEntry {
-                    location: "F1".into(),
-                    data_ref: "Sheet1!A1:E1".into(),
-                },
-                SparklineEntry {
-                    location: "F2".into(),
-                    data_ref: "Sheet1!A2:E2".into(),
-                },
-            ],
-            markers: Some(true),
-            high: Some(true),
-            low: Some(true),
-            series_color: Some("4472C4".into()),
-            ..Default::default()
-        })
+        .set_sparkline_group(
+            "Sheet1",
+            SparklineGroupPatch {
+                kind: SparklineKind::Line,
+                sparklines: vec![
+                    SparklineEntry {
+                        location: "F1".into(),
+                        data_ref: "Sheet1!A1:E1".into(),
+                    },
+                    SparklineEntry {
+                        location: "F2".into(),
+                        data_ref: "Sheet1!A2:E2".into(),
+                    },
+                ],
+                markers: Some(true),
+                high: Some(true),
+                low: Some(true),
+                series_color: Some("4472C4".into()),
+                ..Default::default()
+            },
+        )
         .unwrap();
     assert!(info.id.starts_with("Sheet1:"));
     assert_eq!(info.kind, SparklineKind::Line);
     assert_eq!(info.sparklines.len(), 2);
 
     let _ = wb
-        .set_sparkline_group("Sheet1", SparklineGroupPatch {
-            kind: SparklineKind::Column,
-            sparklines: vec![SparklineEntry {
-                location: "F3".into(),
-                data_ref: "Sheet1!A3:E3".into(),
-            }],
-            negative: Some(true),
-            ..Default::default()
-        })
+        .set_sparkline_group(
+            "Sheet1",
+            SparklineGroupPatch {
+                kind: SparklineKind::Column,
+                sparklines: vec![SparklineEntry {
+                    location: "F3".into(),
+                    data_ref: "Sheet1!A3:E3".into(),
+                }],
+                negative: Some(true),
+                ..Default::default()
+            },
+        )
         .unwrap();
 
     let bytes = wb.save_bytes().unwrap();
@@ -94,51 +100,63 @@ fn sparkline_groups_create_list_remove_roundtrip() {
 fn sparkline_groups_validate_inputs() {
     let mut wb = Workbook::new().unwrap();
     let err = wb
-        .set_sparkline_group("Sheet1", SparklineGroupPatch {
-            kind: SparklineKind::Line,
-            sparklines: vec![],
-            ..Default::default()
-        })
+        .set_sparkline_group(
+            "Sheet1",
+            SparklineGroupPatch {
+                kind: SparklineKind::Line,
+                sparklines: vec![],
+                ..Default::default()
+            },
+        )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidSparklineGroup);
 
     let err = wb
-        .set_sparkline_group("Sheet1", SparklineGroupPatch {
-            kind: SparklineKind::Line,
-            sparklines: vec![SparklineEntry {
-                location: "nope".into(),
-                data_ref: "A1:E1".into(),
-            }],
-            ..Default::default()
-        })
+        .set_sparkline_group(
+            "Sheet1",
+            SparklineGroupPatch {
+                kind: SparklineKind::Line,
+                sparklines: vec![SparklineEntry {
+                    location: "nope".into(),
+                    data_ref: "A1:E1".into(),
+                }],
+                ..Default::default()
+            },
+        )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidSparklineGroup);
 
     let info = wb
-        .set_sparkline_group("Sheet1", SparklineGroupPatch {
-            kind: SparklineKind::Line,
-            sparklines: vec![SparklineEntry {
-                location: "F1".into(),
-                data_ref: "A1:E1".into(),
-            }],
-            series_color: Some("#4472c4".into()),
-            negative_color: Some("FF0000".into()),
-            ..Default::default()
-        })
+        .set_sparkline_group(
+            "Sheet1",
+            SparklineGroupPatch {
+                kind: SparklineKind::Line,
+                sparklines: vec![SparklineEntry {
+                    location: "F1".into(),
+                    data_ref: "A1:E1".into(),
+                }],
+                series_color: Some("#4472c4".into()),
+                negative_color: Some("FF0000".into()),
+                ..Default::default()
+            },
+        )
         .unwrap();
     assert_eq!(info.series_color.as_deref(), Some("4472C4"));
     assert_eq!(info.negative_color.as_deref(), Some("FF0000"));
 
     let err = wb
-        .set_sparkline_group("Sheet1", SparklineGroupPatch {
-            kind: SparklineKind::Line,
-            sparklines: vec![SparklineEntry {
-                location: "F2".into(),
-                data_ref: "A2:E2".into(),
-            }],
-            series_color: Some("not-a-color".into()),
-            ..Default::default()
-        })
+        .set_sparkline_group(
+            "Sheet1",
+            SparklineGroupPatch {
+                kind: SparklineKind::Line,
+                sparklines: vec![SparklineEntry {
+                    location: "F2".into(),
+                    data_ref: "A2:E2".into(),
+                }],
+                series_color: Some("not-a-color".into()),
+                ..Default::default()
+            },
+        )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidSparklineGroup);
 }

@@ -6,25 +6,12 @@ import type { ChartLegendPosition } from "./ChartLegendPosition.js";
 import type { ChartSeriesPatch } from "./ChartSeriesPatch.js";
 import type { ChartStacking } from "./ChartStacking.js";
 
-export type ChartUpdate = {
-  name?: string;
-  title?: string;
-  legendPosition?: ChartLegendPosition;
-  categoriesRef?: string;
-  series?: Array<ChartSeriesPatch>;
-  anchor?: AnchorSpec;
-  categoryAxisTitle?: string;
-  valueAxisTitle?: string;
-  categoryAxis?: ChartAxisPatch;
-  valueAxis?: ChartAxisPatch;
-  stacking?: ChartStacking;
-  /**
-   * `c:gapWidth` (0..=500); bar/column charts only.
-   */
-  gapWidth?: number;
-  /**
-   * `c:overlap` (-100..=100); bar/column charts only.
-   */
-  overlap?: number;
-  dataLabels?: ChartDataLabels;
-};
+export type ChartUpdate = { name?: string, title?: string, legendPosition?: ChartLegendPosition, categoriesRef?: string, series?: Array<ChartSeriesPatch>, anchor?: AnchorSpec, categoryAxisTitle?: string, valueAxisTitle?: string, categoryAxis?: ChartAxisPatch, valueAxis?: ChartAxisPatch, stacking?: ChartStacking, 
+/**
+ * `c:gapWidth` (0..=500); bar/column charts only.
+ */
+gapWidth?: number, 
+/**
+ * `c:overlap` (-100..=100); bar/column charts only.
+ */
+overlap?: number, dataLabels?: ChartDataLabels, };

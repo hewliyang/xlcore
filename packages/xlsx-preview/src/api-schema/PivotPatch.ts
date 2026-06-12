@@ -2,13 +2,4 @@
 import type { PivotDataField } from "./PivotDataField.js";
 import type { PivotFieldFilter } from "./PivotFieldFilter.js";
 
-export type PivotPatch = {
-  anchorCell: string;
-  sourceRef: string;
-  name?: string;
-  rowFields: Array<string>;
-  columnFields: Array<string>;
-  filterFields: Array<string>;
-  dataFields: Array<PivotDataField>;
-  hiddenItems?: Array<PivotFieldFilter>;
-};
+export type PivotPatch = { anchorCell: string, sourceRef: string, name?: string, rowFields: Array<string>, columnFields: Array<string>, filterFields: Array<string>, dataFields: Array<PivotDataField>, hiddenItems?: Array<PivotFieldFilter>, };

@@ -7,7 +7,9 @@ fn conditional_format_add_list_remove_round_trip() {
     workbook.set_value("Sheet1!A2", 10.0).unwrap();
 
     workbook
-        .set_conditional_format("Sheet1", "A1:A10",
+        .set_conditional_format(
+            "Sheet1",
+            "A1:A10",
             ConditionalFormatRulePatch {
                 kind: CfRuleKind::CellIs,
                 operator: Some(CfOperator::GreaterThan),
@@ -28,7 +30,9 @@ fn conditional_format_add_list_remove_round_trip() {
         .unwrap();
 
     workbook
-        .set_conditional_format("Sheet1", "A1:A10",
+        .set_conditional_format(
+            "Sheet1",
+            "A1:A10",
             ConditionalFormatRulePatch {
                 kind: CfRuleKind::Expression,
                 formula1: Some("MOD(ROW(),2)=0".into()),
@@ -53,7 +57,9 @@ fn conditional_format_add_list_remove_round_trip() {
     assert_eq!(after[0].formula1.as_deref(), Some("7"));
     assert!(after[0].dxf_id.is_some());
 
-    let removed = reopened.clear_conditional_formats("Sheet1", "A1:A10").unwrap();
+    let removed = reopened
+        .clear_conditional_formats("Sheet1", "A1:A10")
+        .unwrap();
     assert_eq!(removed.len(), 2);
     assert!(reopened.conditional_formats("Sheet1").unwrap().is_empty());
 }
@@ -62,7 +68,9 @@ fn conditional_format_add_list_remove_round_trip() {
 fn conditional_format_rejects_missing_formula() {
     let mut workbook = Workbook::new().unwrap();
     let err = workbook
-        .set_conditional_format("Sheet1", "A1:A10",
+        .set_conditional_format(
+            "Sheet1",
+            "A1:A10",
             ConditionalFormatRulePatch {
                 kind: CfRuleKind::CellIs,
                 operator: Some(CfOperator::Equal),
@@ -77,7 +85,9 @@ fn conditional_format_rejects_missing_formula() {
 fn conditional_format_color_scale_round_trip() {
     let mut workbook = Workbook::new().unwrap();
     workbook
-        .set_conditional_format("Sheet1", "A1:A10",
+        .set_conditional_format(
+            "Sheet1",
+            "A1:A10",
             ConditionalFormatRulePatch {
                 kind: CfRuleKind::ColorScale,
                 color_scale: Some(ColorScalePatch {
@@ -119,7 +129,9 @@ fn conditional_format_color_scale_round_trip() {
 fn conditional_format_data_bar_round_trip() {
     let mut workbook = Workbook::new().unwrap();
     workbook
-        .set_conditional_format("Sheet1", "B1:B20",
+        .set_conditional_format(
+            "Sheet1",
+            "B1:B20",
             ConditionalFormatRulePatch {
                 kind: CfRuleKind::DataBar,
                 data_bar: Some(DataBarPatch {
@@ -151,7 +163,9 @@ fn conditional_format_data_bar_round_trip() {
 fn conditional_format_icon_set_round_trip() {
     let mut workbook = Workbook::new().unwrap();
     workbook
-        .set_conditional_format("Sheet1", "C1:C30",
+        .set_conditional_format(
+            "Sheet1",
+            "C1:C30",
             ConditionalFormatRulePatch {
                 kind: CfRuleKind::IconSet,
                 icon_set: Some(IconSetPatch {
@@ -198,7 +212,9 @@ fn conditional_format_icon_set_round_trip() {
 fn conditional_format_color_scale_rejects_mismatched_lengths() {
     let mut workbook = Workbook::new().unwrap();
     let err = workbook
-        .set_conditional_format("Sheet1", "A1:A10",
+        .set_conditional_format(
+            "Sheet1",
+            "A1:A10",
             ConditionalFormatRulePatch {
                 kind: CfRuleKind::ColorScale,
                 color_scale: Some(ColorScalePatch {
@@ -225,7 +241,9 @@ fn conditional_format_color_scale_rejects_mismatched_lengths() {
 fn conditional_format_icon_set_rejects_wrong_arity() {
     let mut workbook = Workbook::new().unwrap();
     let err = workbook
-        .set_conditional_format("Sheet1", "A1:A10",
+        .set_conditional_format(
+            "Sheet1",
+            "A1:A10",
             ConditionalFormatRulePatch {
                 kind: CfRuleKind::IconSet,
                 icon_set: Some(IconSetPatch {

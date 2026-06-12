@@ -13,34 +13,37 @@ fn charts_create_list_remove_roundtrip() {
     wb.set_value("Sheet1!B4", 30.0).unwrap();
 
     let info = wb
-        .set_chart("Sheet1", ChartPatch {
-            name: Some("Sales".to_string()),
-            kind: ChartKind::Column,
-            title: Some("Units by Region".to_string()),
-            legend_position: Some(ChartLegendPosition::Bottom),
-            categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
-            series: vec![ChartSeriesPatch {
-                name: None,
-                name_ref: Some("Sheet1!$B$1".to_string()),
-                values_ref: "Sheet1!$B$2:$B$4".to_string(),
-                ..Default::default()
-            }],
-            anchor: AnchorSpec::Cells(ChartAnchor {
-                from_column: 3,
-                from_row: 1,
-                to_column: 10,
-                to_row: 16,
-                ..Default::default()
-            }),
-            category_axis_title: None,
-            value_axis_title: None,
-            category_axis: None,
-            value_axis: None,
-            stacking: None,
-            gap_width: None,
-            overlap: None,
-            data_labels: None,
-        })
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: Some("Sales".to_string()),
+                kind: ChartKind::Column,
+                title: Some("Units by Region".to_string()),
+                legend_position: Some(ChartLegendPosition::Bottom),
+                categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+                series: vec![ChartSeriesPatch {
+                    name: None,
+                    name_ref: Some("Sheet1!$B$1".to_string()),
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 3,
+                    from_row: 1,
+                    to_column: 10,
+                    to_row: 16,
+                    ..Default::default()
+                }),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                data_labels: None,
+            },
+        )
         .unwrap();
     assert_eq!(info.sheet, "Sheet1");
     assert_eq!(info.kind, ChartKind::Column);
@@ -120,33 +123,36 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
     wb.set_value("Sheet1!B3", 20.0).unwrap();
 
     let info = wb
-        .set_chart("Sheet1", ChartPatch {
-            name: Some("Sales".to_string()),
-            kind: ChartKind::Column,
-            title: Some("Old".to_string()),
-            legend_position: Some(ChartLegendPosition::Bottom),
-            categories_ref: Some("Sheet1!$A$2:$A$3".to_string()),
-            series: vec![ChartSeriesPatch {
-                name_ref: Some("Sheet1!$B$1".to_string()),
-                values_ref: "Sheet1!$B$2:$B$3".to_string(),
-                ..Default::default()
-            }],
-            anchor: AnchorSpec::Cells(ChartAnchor {
-                from_column: 3,
-                from_row: 1,
-                to_column: 10,
-                to_row: 16,
-                ..Default::default()
-            }),
-            category_axis_title: None,
-            value_axis_title: None,
-            category_axis: None,
-            value_axis: None,
-            stacking: None,
-            gap_width: None,
-            overlap: None,
-            data_labels: None,
-        })
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: Some("Sales".to_string()),
+                kind: ChartKind::Column,
+                title: Some("Old".to_string()),
+                legend_position: Some(ChartLegendPosition::Bottom),
+                categories_ref: Some("Sheet1!$A$2:$A$3".to_string()),
+                series: vec![ChartSeriesPatch {
+                    name_ref: Some("Sheet1!$B$1".to_string()),
+                    values_ref: "Sheet1!$B$2:$B$3".to_string(),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 3,
+                    from_row: 1,
+                    to_column: 10,
+                    to_row: 16,
+                    ..Default::default()
+                }),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                data_labels: None,
+            },
+        )
         .unwrap();
 
     let bytes = inject_rounded_corners(&wb.save_bytes().unwrap());
@@ -194,32 +200,35 @@ fn update_chart_replaces_series_and_stacking() {
     wb.set_value("Sheet1!C3", 7.0).unwrap();
 
     let info = wb
-        .set_chart("Sheet1", ChartPatch {
-            name: None,
-            kind: ChartKind::Column,
-            title: None,
-            legend_position: None,
-            categories_ref: None,
-            series: vec![ChartSeriesPatch {
-                values_ref: "Sheet1!$B$2:$B$3".to_string(),
-                ..Default::default()
-            }],
-            anchor: AnchorSpec::Cells(ChartAnchor {
-                from_column: 3,
-                from_row: 1,
-                to_column: 10,
-                to_row: 16,
-                ..Default::default()
-            }),
-            category_axis_title: None,
-            value_axis_title: None,
-            category_axis: None,
-            value_axis: None,
-            stacking: None,
-            gap_width: None,
-            overlap: None,
-            data_labels: None,
-        })
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Column,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$3".to_string(),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 3,
+                    from_row: 1,
+                    to_column: 10,
+                    to_row: 16,
+                    ..Default::default()
+                }),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                data_labels: None,
+            },
+        )
         .unwrap();
 
     let updated = wb
@@ -259,44 +268,47 @@ fn chart_axis_patch_authors_and_round_trips() {
     wb.set_value("Sheet1!B3", 80.0).unwrap();
 
     let info = wb
-        .set_chart("Sheet1", ChartPatch {
-            name: None,
-            kind: ChartKind::Column,
-            title: None,
-            legend_position: None,
-            categories_ref: None,
-            series: vec![ChartSeriesPatch {
-                values_ref: "Sheet1!$B$2:$B$3".to_string(),
-                ..Default::default()
-            }],
-            anchor: AnchorSpec::Cells(ChartAnchor {
-                from_column: 3,
-                from_row: 1,
-                to_column: 10,
-                to_row: 16,
-                ..Default::default()
-            }),
-            category_axis_title: None,
-            value_axis_title: None,
-            category_axis: None,
-            value_axis: Some(ChartAxisPatch {
-                title: Some("Revenue".to_string()),
-                min: Some(0.0),
-                max: Some(100.0),
-                major_unit: Some(25.0),
-                major_gridlines: Some(true),
-                major_tick_mark: Some(TickMark::Outside),
-                tick_label_position: Some(TickLabelPosition::Low),
-                number_format: Some("#,##0".to_string()),
-                cross_between: Some(CrossBetween::Between),
-                reversed: Some(true),
-                ..Default::default()
-            }),
-            stacking: None,
-            gap_width: None,
-            overlap: None,
-            data_labels: None,
-        })
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Column,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$3".to_string(),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 3,
+                    from_row: 1,
+                    to_column: 10,
+                    to_row: 16,
+                    ..Default::default()
+                }),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: Some(ChartAxisPatch {
+                    title: Some("Revenue".to_string()),
+                    min: Some(0.0),
+                    max: Some(100.0),
+                    major_unit: Some(25.0),
+                    major_gridlines: Some(true),
+                    major_tick_mark: Some(TickMark::Outside),
+                    tick_label_position: Some(TickLabelPosition::Low),
+                    number_format: Some("#,##0".to_string()),
+                    cross_between: Some(CrossBetween::Between),
+                    reversed: Some(true),
+                    ..Default::default()
+                }),
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                data_labels: None,
+            },
+        )
         .unwrap();
 
     let bytes = wb.save_bytes().unwrap();
@@ -359,6 +371,8 @@ fn charts_supports_multiple_kinds() {
             color: None,
             data_labels: None,
             marker: None,
+            kind: None,
+            axis: None,
         }],
         anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
@@ -416,98 +430,109 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             .unwrap();
     }
 
-    wb.set_chart("Sheet1", ChartPatch {
-        name: Some("Sc".to_string()),
-        kind: ChartKind::Scatter,
-        title: Some("S".to_string()),
-        legend_position: Some(ChartLegendPosition::Right),
-        categories_ref: None,
-        series: vec![ChartSeriesPatch {
-            name: Some("P".to_string()),
-            name_ref: None,
-            values_ref: "Sheet1!$B$2:$B$4".to_string(),
-            x_values_ref: Some("Sheet1!$A$2:$A$4".to_string()),
-            bubble_sizes_ref: None,
-            color: Some("FF8800".to_string()),
+    wb.set_chart(
+        "Sheet1",
+        ChartPatch {
+            name: Some("Sc".to_string()),
+            kind: ChartKind::Scatter,
+            title: Some("S".to_string()),
+            legend_position: Some(ChartLegendPosition::Right),
+            categories_ref: None,
+            series: vec![ChartSeriesPatch {
+                name: Some("P".to_string()),
+                name_ref: None,
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                x_values_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+                bubble_sizes_ref: None,
+                color: Some("FF8800".to_string()),
+                data_labels: None,
+                marker: None,
+                kind: None,
+                axis: None,
+            }],
+            anchor: AnchorSpec::Cells(ChartAnchor {
+                from_column: 4,
+                from_row: 1,
+                to_column: 12,
+                to_row: 16,
+                ..Default::default()
+            }),
+            category_axis_title: Some("X-Axis".to_string()),
+            value_axis_title: Some("Y-Axis".to_string()),
+            category_axis: None,
+            value_axis: None,
+            stacking: None,
+            gap_width: None,
+            overlap: None,
             data_labels: None,
-            marker: None,
-        }],
-        anchor: AnchorSpec::Cells(ChartAnchor {
-            from_column: 4,
-            from_row: 1,
-            to_column: 12,
-            to_row: 16,
-            ..Default::default()
-        }),
-        category_axis_title: Some("X-Axis".to_string()),
-        value_axis_title: Some("Y-Axis".to_string()),
-        category_axis: None,
-        value_axis: None,
-        stacking: None,
-        gap_width: None,
-        overlap: None,
-        data_labels: None,
-    })
+        },
+    )
     .unwrap();
 
-    wb.set_chart("Sheet1", ChartPatch {
-        name: Some("Bu".to_string()),
-        kind: ChartKind::Bubble,
-        title: None,
-        legend_position: None,
-        categories_ref: None,
-        series: vec![ChartSeriesPatch {
-            name_ref: Some("Sheet1!$B$1".to_string()),
-            values_ref: "Sheet1!$B$2:$B$4".to_string(),
-            x_values_ref: Some("Sheet1!$A$2:$A$4".to_string()),
-            bubble_sizes_ref: Some("Sheet1!$C$2:$C$4".to_string()),
-            ..Default::default()
-        }],
-        anchor: AnchorSpec::Cells(ChartAnchor {
-            from_column: 1,
-            from_row: 18,
-            to_column: 8,
-            to_row: 30,
-            ..Default::default()
-        }),
-        category_axis_title: None,
-        value_axis_title: None,
-        category_axis: None,
-        value_axis: None,
-        stacking: None,
-        gap_width: None,
-        overlap: None,
-        data_labels: None,
-    })
+    wb.set_chart(
+        "Sheet1",
+        ChartPatch {
+            name: Some("Bu".to_string()),
+            kind: ChartKind::Bubble,
+            title: None,
+            legend_position: None,
+            categories_ref: None,
+            series: vec![ChartSeriesPatch {
+                name_ref: Some("Sheet1!$B$1".to_string()),
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                x_values_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+                bubble_sizes_ref: Some("Sheet1!$C$2:$C$4".to_string()),
+                ..Default::default()
+            }],
+            anchor: AnchorSpec::Cells(ChartAnchor {
+                from_column: 1,
+                from_row: 18,
+                to_column: 8,
+                to_row: 30,
+                ..Default::default()
+            }),
+            category_axis_title: None,
+            value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
+            stacking: None,
+            gap_width: None,
+            overlap: None,
+            data_labels: None,
+        },
+    )
     .unwrap();
 
-    wb.set_chart("Sheet1", ChartPatch {
-        name: Some("Do".to_string()),
-        kind: ChartKind::Doughnut,
-        title: None,
-        legend_position: Some(ChartLegendPosition::None),
-        categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
-        series: vec![ChartSeriesPatch {
-            values_ref: "Sheet1!$B$2:$B$4".to_string(),
-            color: Some("#00aacc".to_string()),
-            ..Default::default()
-        }],
-        anchor: AnchorSpec::Cells(ChartAnchor {
-            from_column: 9,
-            from_row: 18,
-            to_column: 16,
-            to_row: 30,
-            ..Default::default()
-        }),
-        category_axis_title: None,
-        value_axis_title: None,
-        category_axis: None,
-        value_axis: None,
-        stacking: None,
-        gap_width: None,
-        overlap: None,
-        data_labels: None,
-    })
+    wb.set_chart(
+        "Sheet1",
+        ChartPatch {
+            name: Some("Do".to_string()),
+            kind: ChartKind::Doughnut,
+            title: None,
+            legend_position: Some(ChartLegendPosition::None),
+            categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+            series: vec![ChartSeriesPatch {
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                color: Some("#00aacc".to_string()),
+                ..Default::default()
+            }],
+            anchor: AnchorSpec::Cells(ChartAnchor {
+                from_column: 9,
+                from_row: 18,
+                to_column: 16,
+                to_row: 30,
+                ..Default::default()
+            }),
+            category_axis_title: None,
+            value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
+            stacking: None,
+            gap_width: None,
+            overlap: None,
+            data_labels: None,
+        },
+    )
     .unwrap();
 
     let bytes = wb.save_bytes().unwrap();
@@ -555,55 +580,17 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
         wb.set_value(format!("Sheet1!B{r}").as_str(), (r as f64) * 2.0)
             .unwrap();
     }
-    wb.set_chart("Sheet1", ChartPatch {
-        name: Some("C".to_string()),
-        kind: ChartKind::Column,
-        title: None,
-        legend_position: None,
-        categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
-        series: vec![ChartSeriesPatch {
-            values_ref: "Sheet1!$B$2:$B$4".to_string(),
-            color: Some("FF1D4ED8".to_string()),
-            ..Default::default()
-        }],
-        anchor: AnchorSpec::Cells(ChartAnchor {
-            from_column: 4,
-            from_row: 1,
-            to_column: 12,
-            to_row: 16,
-            ..Default::default()
-        }),
-        category_axis_title: None,
-        value_axis_title: None,
-        category_axis: None,
-        value_axis: None,
-        stacking: None,
-        gap_width: None,
-        overlap: None,
-        data_labels: None,
-    })
-    .unwrap();
-
-    let bytes = wb.save_bytes().unwrap();
-    let mut reopened = Workbook::open_bytes(bytes).unwrap();
-    let charts = reopened.charts(None).unwrap();
-    assert_eq!(charts[0].series[0].color.as_deref(), Some("1D4ED8"));
-}
-
-#[test]
-fn chart_series_color_rejects_malformed_hex() {
-    let mut wb = Workbook::new().unwrap();
-    wb.set_value("Sheet1!B2", 1.0).unwrap();
-    let err = wb
-        .set_chart("Sheet1", ChartPatch {
-            name: None,
+    wb.set_chart(
+        "Sheet1",
+        ChartPatch {
+            name: Some("C".to_string()),
             kind: ChartKind::Column,
             title: None,
             legend_position: None,
-            categories_ref: None,
+            categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
             series: vec![ChartSeriesPatch {
-                values_ref: "Sheet1!$B$2:$B$2".to_string(),
-                color: Some("nothex".to_string()),
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                color: Some("FF1D4ED8".to_string()),
                 ..Default::default()
             }],
             anchor: AnchorSpec::Cells(ChartAnchor {
@@ -621,7 +608,51 @@ fn chart_series_color_rejects_malformed_hex() {
             gap_width: None,
             overlap: None,
             data_labels: None,
-        })
+        },
+    )
+    .unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    assert_eq!(charts[0].series[0].color.as_deref(), Some("1D4ED8"));
+}
+
+#[test]
+fn chart_series_color_rejects_malformed_hex() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 1.0).unwrap();
+    let err = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Column,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$2".to_string(),
+                    color: Some("nothex".to_string()),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 4,
+                    from_row: 1,
+                    to_column: 12,
+                    to_row: 16,
+                    ..Default::default()
+                }),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                data_labels: None,
+            },
+        )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidChart);
 }
@@ -645,7 +676,9 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
         },
     )
     .unwrap();
-    wb.set_comment("Sheet1", "A1",
+    wb.set_comment(
+        "Sheet1",
+        "A1",
         CommentPatch {
             author: Some("a".into()),
             text: "hello".into(),
@@ -653,7 +686,9 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
         },
     )
     .unwrap();
-    wb.add_threaded_note("Sheet1", "A2",
+    wb.add_threaded_note(
+        "Sheet1",
+        "A2",
         ThreadedNotePatch {
             author: Some("a".into()),
             text: "modern".into(),
@@ -661,38 +696,44 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
         },
     )
     .unwrap();
-    wb.set_table("Sheet1", TablePatch {
-        name: "T".into(),
-        reference: Some("Sheet1!A1:A2".into()),
-        ..Default::default()
-    })
+    wb.set_table(
+        "Sheet1",
+        TablePatch {
+            name: "T".into(),
+            reference: Some("Sheet1!A1:A2".into()),
+            ..Default::default()
+        },
+    )
     .unwrap();
-    wb.set_chart("Sheet1", ChartPatch {
-        name: Some("C".into()),
-        kind: ChartKind::Column,
-        title: None,
-        legend_position: None,
-        categories_ref: None,
-        series: vec![ChartSeriesPatch {
-            values_ref: "Sheet1!$A$1:$A$2".into(),
-            ..Default::default()
-        }],
-        anchor: AnchorSpec::Cells(ChartAnchor {
-            from_column: 3,
-            from_row: 1,
-            to_column: 9,
-            to_row: 12,
-            ..Default::default()
-        }),
-        category_axis_title: None,
-        value_axis_title: None,
-        category_axis: None,
-        value_axis: None,
-        stacking: None,
-        gap_width: None,
-        overlap: None,
-        data_labels: None,
-    })
+    wb.set_chart(
+        "Sheet1",
+        ChartPatch {
+            name: Some("C".into()),
+            kind: ChartKind::Column,
+            title: None,
+            legend_position: None,
+            categories_ref: None,
+            series: vec![ChartSeriesPatch {
+                values_ref: "Sheet1!$A$1:$A$2".into(),
+                ..Default::default()
+            }],
+            anchor: AnchorSpec::Cells(ChartAnchor {
+                from_column: 3,
+                from_row: 1,
+                to_column: 9,
+                to_row: 12,
+                ..Default::default()
+            }),
+            category_axis_title: None,
+            value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
+            stacking: None,
+            gap_width: None,
+            overlap: None,
+            data_labels: None,
+        },
+    )
     .unwrap();
 
     let bytes = wb.save_bytes().unwrap();
@@ -774,7 +815,10 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
     };
 
     let col_stacked = wb
-        .set_chart("Sheet1", base(ChartKind::Column, Some(ChartStacking::Stacked), 1))
+        .set_chart(
+            "Sheet1",
+            base(ChartKind::Column, Some(ChartStacking::Stacked), 1),
+        )
         .unwrap();
     assert_eq!(col_stacked.stacking, Some(ChartStacking::Stacked));
 
@@ -787,7 +831,10 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
     assert_eq!(bar_pct.stacking, Some(ChartStacking::PercentStacked));
 
     let line_stacked = wb
-        .set_chart("Sheet1", base(ChartKind::Line, Some(ChartStacking::Stacked), 28))
+        .set_chart(
+            "Sheet1",
+            base(ChartKind::Line, Some(ChartStacking::Stacked), 28),
+        )
         .unwrap();
     assert_eq!(line_stacked.stacking, Some(ChartStacking::Stacked));
 
@@ -843,32 +890,35 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
 fn charts_stacking_on_pie_emits_warning_and_drops() {
     let mut wb = Workbook::new().unwrap();
     let info = wb
-        .set_chart("Sheet1", ChartPatch {
-            name: None,
-            kind: ChartKind::Pie,
-            title: None,
-            legend_position: None,
-            categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
-            series: vec![ChartSeriesPatch {
-                values_ref: "Sheet1!$B$2:$B$4".to_string(),
-                ..Default::default()
-            }],
-            anchor: AnchorSpec::Cells(ChartAnchor {
-                from_column: 1,
-                from_row: 1,
-                to_column: 5,
-                to_row: 10,
-                ..Default::default()
-            }),
-            category_axis_title: None,
-            value_axis_title: None,
-            category_axis: None,
-            value_axis: None,
-            stacking: Some(ChartStacking::Stacked),
-            gap_width: None,
-            overlap: None,
-            data_labels: None,
-        })
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Pie,
+                title: None,
+                legend_position: None,
+                categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 1,
+                    from_row: 1,
+                    to_column: 5,
+                    to_row: 10,
+                    ..Default::default()
+                }),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: Some(ChartStacking::Stacked),
+                gap_width: None,
+                overlap: None,
+                data_labels: None,
+            },
+        )
         .unwrap();
     assert_eq!(info.stacking, None);
     let warnings = wb.take_warnings();
@@ -880,49 +930,55 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
 #[test]
 fn charts_scatter_requires_x_values_and_rejects_bad_color() {
     let mut wb = Workbook::new().unwrap();
-    let missing_x = wb.set_chart("Sheet1", ChartPatch {
-        name: None,
-        kind: ChartKind::Scatter,
-        title: None,
-        legend_position: None,
-        categories_ref: None,
-        series: vec![ChartSeriesPatch {
-            values_ref: "Sheet1!$B$2:$B$4".to_string(),
-            ..Default::default()
-        }],
-        anchor: AnchorSpec::Cells(ChartAnchor::default()),
-        category_axis_title: None,
-        value_axis_title: None,
-        category_axis: None,
-        value_axis: None,
-        stacking: None,
-        gap_width: None,
-        overlap: None,
-        data_labels: None,
-    });
+    let missing_x = wb.set_chart(
+        "Sheet1",
+        ChartPatch {
+            name: None,
+            kind: ChartKind::Scatter,
+            title: None,
+            legend_position: None,
+            categories_ref: None,
+            series: vec![ChartSeriesPatch {
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                ..Default::default()
+            }],
+            anchor: AnchorSpec::Cells(ChartAnchor::default()),
+            category_axis_title: None,
+            value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
+            stacking: None,
+            gap_width: None,
+            overlap: None,
+            data_labels: None,
+        },
+    );
     assert!(missing_x.is_err());
 
-    let bad_color = wb.set_chart("Sheet1", ChartPatch {
-        name: None,
-        kind: ChartKind::Column,
-        title: None,
-        legend_position: None,
-        categories_ref: None,
-        series: vec![ChartSeriesPatch {
-            values_ref: "Sheet1!$B$2:$B$4".to_string(),
-            color: Some("nope".to_string()),
-            ..Default::default()
-        }],
-        anchor: AnchorSpec::Cells(ChartAnchor::default()),
-        category_axis_title: None,
-        value_axis_title: None,
-        category_axis: None,
-        value_axis: None,
-        stacking: None,
-        gap_width: None,
-        overlap: None,
-        data_labels: None,
-    });
+    let bad_color = wb.set_chart(
+        "Sheet1",
+        ChartPatch {
+            name: None,
+            kind: ChartKind::Column,
+            title: None,
+            legend_position: None,
+            categories_ref: None,
+            series: vec![ChartSeriesPatch {
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                color: Some("nope".to_string()),
+                ..Default::default()
+            }],
+            anchor: AnchorSpec::Cells(ChartAnchor::default()),
+            category_axis_title: None,
+            value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
+            stacking: None,
+            gap_width: None,
+            overlap: None,
+            data_labels: None,
+        },
+    );
     assert!(bad_color.is_err());
 }
 
@@ -931,41 +987,44 @@ fn charts_data_labels_roundtrip() {
     use xlcore_types::{ChartDataLabelPosition, ChartDataLabels};
     let mut wb = Workbook::new().unwrap();
     let info = wb
-        .set_chart("Sheet1", ChartPatch {
-            name: Some("WithLabels".to_string()),
-            kind: ChartKind::Column,
-            title: None,
-            legend_position: None,
-            categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
-            series: vec![ChartSeriesPatch {
-                name: Some("S1".to_string()),
-                values_ref: "Sheet1!$B$2:$B$4".to_string(),
-                ..Default::default()
-            }],
-            anchor: AnchorSpec::Cells(ChartAnchor {
-                from_column: 1,
-                from_row: 1,
-                to_column: 8,
-                to_row: 12,
-                ..Default::default()
-            }),
-            category_axis_title: None,
-            value_axis_title: None,
-            category_axis: None,
-            value_axis: None,
-            stacking: None,
-            gap_width: None,
-            overlap: None,
-            data_labels: Some(ChartDataLabels {
-                show_value: Some(true),
-                show_category_name: Some(false),
-                show_series_name: Some(false),
-                show_percent: None,
-                show_legend_key: Some(false),
-                position: Some(ChartDataLabelPosition::OutsideEnd),
-                separator: Some(", ".to_string()),
-            }),
-        })
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: Some("WithLabels".to_string()),
+                kind: ChartKind::Column,
+                title: None,
+                legend_position: None,
+                categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+                series: vec![ChartSeriesPatch {
+                    name: Some("S1".to_string()),
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 1,
+                    from_row: 1,
+                    to_column: 8,
+                    to_row: 12,
+                    ..Default::default()
+                }),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                data_labels: Some(ChartDataLabels {
+                    show_value: Some(true),
+                    show_category_name: Some(false),
+                    show_series_name: Some(false),
+                    show_percent: None,
+                    show_legend_key: Some(false),
+                    position: Some(ChartDataLabelPosition::OutsideEnd),
+                    separator: Some(", ".to_string()),
+                }),
+            },
+        )
         .unwrap();
     let dl = info.data_labels.as_ref().expect("data_labels echoed");
     assert_eq!(dl.show_value, Some(true));
@@ -989,37 +1048,40 @@ fn charts_data_labels_roundtrip() {
 fn charts_data_labels_pie_show_percent_roundtrip() {
     use xlcore_types::{ChartDataLabelPosition, ChartDataLabels};
     let mut wb = Workbook::new().unwrap();
-    wb.set_chart("Sheet1", ChartPatch {
-        name: Some("Pie".to_string()),
-        kind: ChartKind::Pie,
-        title: None,
-        legend_position: None,
-        categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
-        series: vec![ChartSeriesPatch {
-            values_ref: "Sheet1!$B$2:$B$4".to_string(),
-            ..Default::default()
-        }],
-        anchor: AnchorSpec::Cells(ChartAnchor {
-            from_column: 1,
-            from_row: 1,
-            to_column: 6,
-            to_row: 10,
-            ..Default::default()
-        }),
-        category_axis_title: None,
-        value_axis_title: None,
-        category_axis: None,
-        value_axis: None,
-        stacking: None,
-        gap_width: None,
-        overlap: None,
-        data_labels: Some(ChartDataLabels {
-            show_percent: Some(true),
-            show_category_name: Some(true),
-            position: Some(ChartDataLabelPosition::Center),
-            ..Default::default()
-        }),
-    })
+    wb.set_chart(
+        "Sheet1",
+        ChartPatch {
+            name: Some("Pie".to_string()),
+            kind: ChartKind::Pie,
+            title: None,
+            legend_position: None,
+            categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+            series: vec![ChartSeriesPatch {
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                ..Default::default()
+            }],
+            anchor: AnchorSpec::Cells(ChartAnchor {
+                from_column: 1,
+                from_row: 1,
+                to_column: 6,
+                to_row: 10,
+                ..Default::default()
+            }),
+            category_axis_title: None,
+            value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
+            stacking: None,
+            gap_width: None,
+            overlap: None,
+            data_labels: Some(ChartDataLabels {
+                show_percent: Some(true),
+                show_category_name: Some(true),
+                position: Some(ChartDataLabelPosition::Center),
+                ..Default::default()
+            }),
+        },
+    )
     .unwrap();
     let bytes = wb.save_bytes().unwrap();
     let mut wb2 = Workbook::open_bytes(bytes).unwrap();
@@ -1034,49 +1096,52 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
 fn charts_per_series_data_labels_override_chart_level() {
     use xlcore_types::{ChartDataLabelPosition, ChartDataLabels};
     let mut wb = Workbook::new().unwrap();
-    wb.set_chart("Sheet1", ChartPatch {
-        name: Some("PerSeries".to_string()),
-        kind: ChartKind::Column,
-        title: None,
-        legend_position: None,
-        categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
-        series: vec![
-            ChartSeriesPatch {
-                name: Some("A".to_string()),
-                values_ref: "Sheet1!$B$2:$B$4".to_string(),
-                data_labels: Some(ChartDataLabels {
-                    show_value: Some(true),
-                    position: Some(ChartDataLabelPosition::OutsideEnd),
+    wb.set_chart(
+        "Sheet1",
+        ChartPatch {
+            name: Some("PerSeries".to_string()),
+            kind: ChartKind::Column,
+            title: None,
+            legend_position: None,
+            categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+            series: vec![
+                ChartSeriesPatch {
+                    name: Some("A".to_string()),
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    data_labels: Some(ChartDataLabels {
+                        show_value: Some(true),
+                        position: Some(ChartDataLabelPosition::OutsideEnd),
+                        ..Default::default()
+                    }),
                     ..Default::default()
-                }),
+                },
+                ChartSeriesPatch {
+                    name: Some("B".to_string()),
+                    values_ref: "Sheet1!$C$2:$C$4".to_string(),
+                    ..Default::default()
+                },
+            ],
+            anchor: AnchorSpec::Cells(ChartAnchor {
+                from_column: 1,
+                from_row: 1,
+                to_column: 8,
+                to_row: 12,
                 ..Default::default()
-            },
-            ChartSeriesPatch {
-                name: Some("B".to_string()),
-                values_ref: "Sheet1!$C$2:$C$4".to_string(),
+            }),
+            category_axis_title: None,
+            value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
+            stacking: None,
+            gap_width: None,
+            overlap: None,
+            data_labels: Some(ChartDataLabels {
+                show_series_name: Some(true),
+                position: Some(ChartDataLabelPosition::Center),
                 ..Default::default()
-            },
-        ],
-        anchor: AnchorSpec::Cells(ChartAnchor {
-            from_column: 1,
-            from_row: 1,
-            to_column: 8,
-            to_row: 12,
-            ..Default::default()
-        }),
-        category_axis_title: None,
-        value_axis_title: None,
-        category_axis: None,
-        value_axis: None,
-        stacking: None,
-        gap_width: None,
-        overlap: None,
-        data_labels: Some(ChartDataLabels {
-            show_series_name: Some(true),
-            position: Some(ChartDataLabelPosition::Center),
-            ..Default::default()
-        }),
-    })
+            }),
+        },
+    )
     .unwrap();
 
     let bytes = wb.save_bytes().unwrap();
@@ -1110,32 +1175,35 @@ fn chart_gap_width_overlap_roundtrip_and_update() {
     wb.set_value("Sheet1!B3", 20.0).unwrap();
 
     let info = wb
-        .set_chart("Sheet1", ChartPatch {
-            name: None,
-            kind: ChartKind::Column,
-            title: None,
-            legend_position: None,
-            categories_ref: None,
-            series: vec![ChartSeriesPatch {
-                values_ref: "Sheet1!$B$2:$B$3".to_string(),
-                ..Default::default()
-            }],
-            anchor: AnchorSpec::Cells(ChartAnchor {
-                from_column: 3,
-                from_row: 1,
-                to_column: 10,
-                to_row: 16,
-                ..Default::default()
-            }),
-            category_axis_title: None,
-            value_axis_title: None,
-            category_axis: None,
-            value_axis: None,
-            stacking: None,
-            gap_width: Some(219),
-            overlap: Some(-27),
-            data_labels: None,
-        })
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Column,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$3".to_string(),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 3,
+                    from_row: 1,
+                    to_column: 10,
+                    to_row: 16,
+                    ..Default::default()
+                }),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: Some(219),
+                overlap: Some(-27),
+                data_labels: None,
+            },
+        )
         .unwrap();
     assert_eq!(info.gap_width, Some(219));
     assert_eq!(info.overlap, Some(-27));
@@ -1151,19 +1219,27 @@ fn chart_gap_width_overlap_roundtrip_and_update() {
     assert_eq!(read[0].overlap, Some(-27));
 
     let updated = wb
-        .update_chart("Sheet1", &info.id, ChartUpdate {
-            gap_width: Some(50),
-            ..Default::default()
-        })
+        .update_chart(
+            "Sheet1",
+            &info.id,
+            ChartUpdate {
+                gap_width: Some(50),
+                ..Default::default()
+            },
+        )
         .unwrap();
     assert_eq!(updated.gap_width, Some(50));
     assert_eq!(updated.overlap, Some(-27), "unspecified overlap preserved");
 
     let err = wb
-        .update_chart("Sheet1", &info.id, ChartUpdate {
-            gap_width: Some(999),
-            ..Default::default()
-        })
+        .update_chart(
+            "Sheet1",
+            &info.id,
+            ChartUpdate {
+                gap_width: Some(999),
+                ..Default::default()
+            },
+        )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidChart);
 }
@@ -1178,36 +1254,39 @@ fn chart_series_marker_roundtrip_and_validation() {
     wb.set_value("Sheet1!B4", 15.0).unwrap();
 
     let info = wb
-        .set_chart("Sheet1", ChartPatch {
-            name: None,
-            kind: ChartKind::Line,
-            title: None,
-            legend_position: None,
-            categories_ref: None,
-            series: vec![ChartSeriesPatch {
-                values_ref: "Sheet1!$B$2:$B$4".to_string(),
-                marker: Some(ChartMarker {
-                    style: Some(MarkerStyle::Diamond),
-                    size: Some(9),
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Line,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    marker: Some(ChartMarker {
+                        style: Some(MarkerStyle::Diamond),
+                        size: Some(9),
+                    }),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 3,
+                    from_row: 1,
+                    to_column: 10,
+                    to_row: 16,
+                    ..Default::default()
                 }),
-                ..Default::default()
-            }],
-            anchor: AnchorSpec::Cells(ChartAnchor {
-                from_column: 3,
-                from_row: 1,
-                to_column: 10,
-                to_row: 16,
-                ..Default::default()
-            }),
-            category_axis_title: None,
-            value_axis_title: None,
-            category_axis: None,
-            value_axis: None,
-            stacking: None,
-            gap_width: None,
-            overlap: None,
-            data_labels: None,
-        })
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                data_labels: None,
+            },
+        )
         .unwrap();
     assert_eq!(
         info.series[0].marker,
@@ -1233,30 +1312,132 @@ fn chart_series_marker_roundtrip_and_validation() {
     );
 
     let err = wb
-        .set_chart("Sheet1", ChartPatch {
-            name: None,
-            kind: ChartKind::Line,
-            title: None,
-            legend_position: None,
-            categories_ref: None,
-            series: vec![ChartSeriesPatch {
-                values_ref: "Sheet1!$B$2:$B$4".to_string(),
-                marker: Some(ChartMarker {
-                    style: None,
-                    size: Some(100),
-                }),
-                ..Default::default()
-            }],
-            anchor: AnchorSpec::default(),
-            category_axis_title: None,
-            value_axis_title: None,
-            category_axis: None,
-            value_axis: None,
-            stacking: None,
-            gap_width: None,
-            overlap: None,
-            data_labels: None,
-        })
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Line,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    marker: Some(ChartMarker {
+                        style: None,
+                        size: Some(100),
+                    }),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::default(),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                data_labels: None,
+            },
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidChart);
+}
+
+#[test]
+fn combo_chart_secondary_axis_roundtrip() {
+    let mut wb = Workbook::new().unwrap();
+    for (i, (region, units, margin)) in [
+        ("North", 100.0, 0.12),
+        ("South", 200.0, 0.18),
+        ("East", 150.0, 0.09),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let r = i + 2;
+        wb.set_value(&format!("Sheet1!A{r}"), *region).unwrap();
+        wb.set_value(&format!("Sheet1!B{r}"), *units).unwrap();
+        wb.set_value(&format!("Sheet1!C{r}"), *margin).unwrap();
+    }
+    wb.set_value("Sheet1!B1", "Units").unwrap();
+    wb.set_value("Sheet1!C1", "Margin").unwrap();
+
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: Some("Combo".to_string()),
+                kind: ChartKind::Column,
+                title: Some("Units vs Margin".to_string()),
+                legend_position: Some(ChartLegendPosition::Bottom),
+                categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+                series: vec![
+                    ChartSeriesPatch {
+                        name_ref: Some("Sheet1!$B$1".to_string()),
+                        values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                        ..Default::default()
+                    },
+                    ChartSeriesPatch {
+                        name_ref: Some("Sheet1!$C$1".to_string()),
+                        values_ref: "Sheet1!$C$2:$C$4".to_string(),
+                        kind: Some(ChartKind::Line),
+                        axis: Some(ChartAxisGroup::Secondary),
+                        ..Default::default()
+                    },
+                ],
+                anchor: AnchorSpec::default(),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                data_labels: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(info.series.len(), 2);
+    assert_eq!(info.series[1].kind, Some(ChartKind::Line));
+    assert_eq!(info.series[1].axis, Some(ChartAxisGroup::Secondary));
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    assert_eq!(charts.len(), 1);
+    let chart = &charts[0];
+    assert_eq!(chart.kind, ChartKind::Column);
+    assert_eq!(chart.series.len(), 2);
+    assert_eq!(chart.series[0].kind, Some(ChartKind::Column));
+    assert_eq!(chart.series[0].axis, None);
+    assert_eq!(chart.series[1].kind, Some(ChartKind::Line));
+    assert_eq!(chart.series[1].axis, Some(ChartAxisGroup::Secondary));
+
+    let err = reopened
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Pie,
+                title: None,
+                legend_position: None,
+                categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    axis: Some(ChartAxisGroup::Secondary),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::default(),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                data_labels: None,
+            },
+        )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidChart);
 }

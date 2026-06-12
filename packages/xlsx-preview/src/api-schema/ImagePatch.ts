@@ -2,16 +2,4 @@
 import type { AnchorSpec } from "./AnchorSpec.js";
 import type { ImageFormat } from "./ImageFormat.js";
 
-export type ImagePatch = {
-  name?: string;
-  anchor: AnchorSpec;
-  bytes: Uint8Array | number[];
-  format?: ImageFormat;
-  rotationDegrees?: number;
-  cropLeftPct?: number;
-  cropTopPct?: number;
-  cropRightPct?: number;
-  cropBottomPct?: number;
-  flipHorizontal?: boolean;
-  flipVertical?: boolean;
-};
+export type ImagePatch = { name?: string, anchor: AnchorSpec, bytes: Uint8Array | number[], format?: ImageFormat, rotationDegrees?: number, cropLeftPct?: number, cropTopPct?: number, cropRightPct?: number, cropBottomPct?: number, flipHorizontal?: boolean, flipVertical?: boolean, };

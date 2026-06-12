@@ -23,21 +23,24 @@ fn pivots_create_list_remove_roundtrip() {
     wb.create_sheet("Pivot").unwrap();
 
     let info = wb
-        .set_pivot("Pivot", PivotPatch {
-            anchor_cell: "Pivot!A1".to_string(),
-            source_ref: "Sheet1!A1:C7".to_string(),
-            name: Some("SalesPivot".to_string()),
-            row_fields: vec!["Region".to_string()],
-            column_fields: vec!["Product".to_string()],
-            filter_fields: vec![],
-            data_fields: vec![PivotDataField {
-                field: "Amount".to_string(),
-                aggregation: PivotAggregation::Sum,
-                name: None,
-                number_format: Some("0.00%".to_string()),
-            }],
-            hidden_items: None,
-        })
+        .set_pivot(
+            "Pivot",
+            PivotPatch {
+                anchor_cell: "Pivot!A1".to_string(),
+                source_ref: "Sheet1!A1:C7".to_string(),
+                name: Some("SalesPivot".to_string()),
+                row_fields: vec!["Region".to_string()],
+                column_fields: vec!["Product".to_string()],
+                filter_fields: vec![],
+                data_fields: vec![PivotDataField {
+                    field: "Amount".to_string(),
+                    aggregation: PivotAggregation::Sum,
+                    name: None,
+                    number_format: Some("0.00%".to_string()),
+                }],
+                hidden_items: None,
+            },
+        )
         .unwrap();
     assert_eq!(info.name, "SalesPivot");
     assert_eq!(info.row_fields, vec!["Region".to_string()]);
@@ -88,21 +91,24 @@ fn pivot_update_merges_partial_and_keeps_unset_fields() {
     wb.create_sheet("Pivot").unwrap();
 
     let info = wb
-        .set_pivot("Pivot", PivotPatch {
-            anchor_cell: "Pivot!A1".to_string(),
-            source_ref: "Sheet1!A1:C4".to_string(),
-            name: Some("SalesPivot".to_string()),
-            row_fields: vec!["Region".to_string()],
-            column_fields: vec!["Product".to_string()],
-            filter_fields: vec![],
-            data_fields: vec![PivotDataField {
-                field: "Amount".to_string(),
-                aggregation: PivotAggregation::Sum,
-                name: None,
-                number_format: None,
-            }],
-            hidden_items: None,
-        })
+        .set_pivot(
+            "Pivot",
+            PivotPatch {
+                anchor_cell: "Pivot!A1".to_string(),
+                source_ref: "Sheet1!A1:C4".to_string(),
+                name: Some("SalesPivot".to_string()),
+                row_fields: vec!["Region".to_string()],
+                column_fields: vec!["Product".to_string()],
+                filter_fields: vec![],
+                data_fields: vec![PivotDataField {
+                    field: "Amount".to_string(),
+                    aggregation: PivotAggregation::Sum,
+                    name: None,
+                    number_format: None,
+                }],
+                hidden_items: None,
+            },
+        )
         .unwrap();
 
     let updated = wb
@@ -137,33 +143,39 @@ fn pivot_requires_data_field_and_axis() {
     wb.set_value("Sheet1!A2", "North").unwrap();
     wb.set_value("Sheet1!B2", 10.0).unwrap();
 
-    let no_data = wb.set_pivot("Sheet1", PivotPatch {
-        anchor_cell: "Sheet1!D1".to_string(),
-        source_ref: "Sheet1!A1:B2".to_string(),
-        name: None,
-        row_fields: vec!["Region".to_string()],
-        column_fields: vec![],
-        filter_fields: vec![],
-        data_fields: vec![],
-        hidden_items: None,
-    });
+    let no_data = wb.set_pivot(
+        "Sheet1",
+        PivotPatch {
+            anchor_cell: "Sheet1!D1".to_string(),
+            source_ref: "Sheet1!A1:B2".to_string(),
+            name: None,
+            row_fields: vec!["Region".to_string()],
+            column_fields: vec![],
+            filter_fields: vec![],
+            data_fields: vec![],
+            hidden_items: None,
+        },
+    );
     assert_eq!(no_data.unwrap_err().code, ApiErrorCode::InvalidPivot);
 
-    let no_axis = wb.set_pivot("Sheet1", PivotPatch {
-        anchor_cell: "Sheet1!D1".to_string(),
-        source_ref: "Sheet1!A1:B2".to_string(),
-        name: None,
-        row_fields: vec![],
-        column_fields: vec![],
-        filter_fields: vec![],
-        data_fields: vec![PivotDataField {
-            field: "Amount".to_string(),
-            aggregation: PivotAggregation::Sum,
+    let no_axis = wb.set_pivot(
+        "Sheet1",
+        PivotPatch {
+            anchor_cell: "Sheet1!D1".to_string(),
+            source_ref: "Sheet1!A1:B2".to_string(),
             name: None,
-            number_format: None,
-        }],
-        hidden_items: None,
-    });
+            row_fields: vec![],
+            column_fields: vec![],
+            filter_fields: vec![],
+            data_fields: vec![PivotDataField {
+                field: "Amount".to_string(),
+                aggregation: PivotAggregation::Sum,
+                name: None,
+                number_format: None,
+            }],
+            hidden_items: None,
+        },
+    );
     assert_eq!(no_axis.unwrap_err().code, ApiErrorCode::InvalidPivot);
 }
 
@@ -189,21 +201,24 @@ fn pivot_preview_aggregates_without_writing_parts() {
     }
 
     let grid = wb
-        .pivot_preview("Sheet1", PivotPatch {
-            anchor_cell: "Sheet1!E1".to_string(),
-            source_ref: "Sheet1!A1:C7".to_string(),
-            name: None,
-            row_fields: vec!["Region".to_string()],
-            column_fields: vec![],
-            filter_fields: vec![],
-            data_fields: vec![PivotDataField {
-                field: "Amount".to_string(),
-                aggregation: PivotAggregation::Sum,
-                name: Some("Sum of Amount".to_string()),
-                number_format: None,
-            }],
-            hidden_items: None,
-        })
+        .pivot_preview(
+            "Sheet1",
+            PivotPatch {
+                anchor_cell: "Sheet1!E1".to_string(),
+                source_ref: "Sheet1!A1:C7".to_string(),
+                name: None,
+                row_fields: vec!["Region".to_string()],
+                column_fields: vec![],
+                filter_fields: vec![],
+                data_fields: vec![PivotDataField {
+                    field: "Amount".to_string(),
+                    aggregation: PivotAggregation::Sum,
+                    name: Some("Sum of Amount".to_string()),
+                    number_format: None,
+                }],
+                hidden_items: None,
+            },
+        )
         .unwrap();
 
     let at = |row: u32, col: u32| -> &PivotGridCell {

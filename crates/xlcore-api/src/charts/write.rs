@@ -72,8 +72,39 @@ pub(super) fn validate_chart_series(
                 .with_sheet(sheet));
             }
         }
+        if (s.kind.is_some() || s.axis.is_some()) && !is_cartesian(kind) {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                "per-series kind/axis (combo charts) require a column/bar/line/area chart",
+            )
+            .with_sheet(sheet));
+        }
+        if let Some(k) = s.kind {
+            if !is_cartesian(k) {
+                return Err(ApiError::new(
+                    ApiErrorCode::InvalidChart,
+                    format!("per-series kind must be column/bar/line/area, got: {k:?}"),
+                )
+                .with_sheet(sheet));
+            }
+        }
     }
     Ok(())
+}
+
+pub(super) fn is_cartesian(kind: ChartKind) -> bool {
+    matches!(
+        kind,
+        ChartKind::Column | ChartKind::Bar | ChartKind::Line | ChartKind::Area
+    )
+}
+
+pub(super) fn effective_series_kind(chart_kind: ChartKind, s: &ChartSeriesPatch) -> ChartKind {
+    s.kind.unwrap_or(chart_kind)
+}
+
+pub(super) fn series_secondary(s: &ChartSeriesPatch) -> bool {
+    matches!(s.axis, Some(ChartAxisGroup::Secondary))
 }
 
 pub(super) fn validate_bar_options(
@@ -147,13 +178,13 @@ pub(super) fn legend_pos_to(p: ChartLegendPosition) -> c::LegendPositionValues {
 }
 
 pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
-    let plot_chart = build_plot_chart(patch);
+    let plot_charts = build_plot_charts(patch);
     let cat_axis = merge_axis_title(patch.category_axis.as_ref(), &patch.category_axis_title);
     let val_axis = merge_axis_title(patch.value_axis.as_ref(), &patch.value_axis_title);
 
     let mut plot_area = c::PlotArea {
         layout: Some(Box::new(c::Layout::default())),
-        plot_area_choice1: vec![plot_chart],
+        plot_area_choice1: plot_charts,
         plot_area_choice2: Vec::new(),
         ..Default::default()
     };
@@ -191,6 +222,18 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
             plot_area
                 .plot_area_choice2
                 .push(c::PlotAreaChoice2::ValueAxis(Box::new(val)));
+            if patch.series.iter().any(series_secondary) {
+                plot_area
+                    .plot_area_choice2
+                    .push(c::PlotAreaChoice2::ValueAxis(
+                        Box::new(build_sec_val_axis()),
+                    ));
+                plot_area
+                    .plot_area_choice2
+                    .push(c::PlotAreaChoice2::CategoryAxis(Box::new(
+                        build_sec_cat_axis(),
+                    )));
+            }
         }
     }
 
@@ -238,7 +281,120 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
     }
 }
 
-pub(super) fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
+pub(super) fn build_plot_charts(patch: &ChartPatch) -> Vec<c::PlotAreaChoice> {
+    match patch.kind {
+        ChartKind::Pie | ChartKind::Doughnut | ChartKind::Scatter | ChartKind::Bubble => {
+            vec![build_single_plot_chart(patch)]
+        }
+        _ => build_cartesian_plot_charts(patch),
+    }
+}
+
+pub(super) fn build_cartesian_plot_charts(patch: &ChartPatch) -> Vec<c::PlotAreaChoice> {
+    let mut groups: Vec<(ChartKind, bool, Vec<usize>)> = Vec::new();
+    for (i, s) in patch.series.iter().enumerate() {
+        let k = effective_series_kind(patch.kind, s);
+        let sec = series_secondary(s);
+        if let Some(g) = groups.iter_mut().find(|g| g.0 == k && g.1 == sec) {
+            g.2.push(i);
+        } else {
+            groups.push((k, sec, vec![i]));
+        }
+    }
+    groups
+        .iter()
+        .enumerate()
+        .map(|(gi, (k, sec, idxs))| build_cartesian_group(*k, *sec, idxs, patch, gi == 0))
+        .collect()
+}
+
+pub(super) fn build_cartesian_group(
+    kind: ChartKind,
+    secondary: bool,
+    idxs: &[usize],
+    patch: &ChartPatch,
+    attach_chart_dl: bool,
+) -> c::PlotAreaChoice {
+    let (cat_id, val_id) = if secondary {
+        (SEC_CAT_AX_ID, SEC_VAL_AX_ID)
+    } else {
+        (CAT_AX_ID, VAL_AX_ID)
+    };
+    let cat_ref = patch.categories_ref.as_deref();
+    let dl = if attach_chart_dl {
+        build_data_labels(patch.data_labels.as_ref())
+    } else {
+        None
+    };
+    let series = || idxs.iter().map(|&i| (i, &patch.series[i]));
+    match kind {
+        ChartKind::Line => c::PlotAreaChoice::LineChart(Box::new(c::LineChart {
+            grouping: Box::new(c::Grouping {
+                val: Some(line_area_grouping(patch.stacking)),
+            }),
+            vary_colors: Some(c::VaryColors {
+                val: Some(BooleanValue::from_bool(false)),
+            }),
+            line_chart_series: series()
+                .map(|(i, s)| build_line_series(i, s, cat_ref))
+                .collect(),
+            data_labels: dl,
+            show_marker: Some(c::ShowMarker {
+                val: Some(BooleanValue::from_bool(true)),
+            }),
+            axis_id: vec![axis_id(cat_id), axis_id(val_id)],
+            ..Default::default()
+        })),
+        ChartKind::Area => c::PlotAreaChoice::AreaChart(Box::new(c::AreaChart {
+            grouping: Some(c::Grouping {
+                val: Some(line_area_grouping(patch.stacking)),
+            }),
+            vary_colors: Some(c::VaryColors {
+                val: Some(BooleanValue::from_bool(false)),
+            }),
+            area_chart_series: series()
+                .map(|(i, s)| build_area_series(i, s, cat_ref))
+                .collect(),
+            data_labels: dl,
+            axis_id: vec![axis_id(cat_id), axis_id(val_id)],
+            ..Default::default()
+        })),
+        _ => c::PlotAreaChoice::BarChart(Box::new(c::BarChart {
+            bar_direction: Box::new(c::BarDirection {
+                val: if matches!(kind, ChartKind::Bar) {
+                    c::BarDirectionValues::Bar
+                } else {
+                    c::BarDirectionValues::Column
+                },
+            }),
+            bar_grouping: Some(c::BarGrouping {
+                val: Some(bar_grouping(patch.stacking)),
+            }),
+            vary_colors: Some(c::VaryColors {
+                val: Some(BooleanValue::from_bool(false)),
+            }),
+            bar_chart_series: series()
+                .map(|(i, s)| build_bar_series(i, s, cat_ref))
+                .collect(),
+            data_labels: dl,
+            gap_width: patch.gap_width.map(|g| c::GapWidth { val: Some(g) }),
+            overlap: patch
+                .overlap
+                .map(|o| c::Overlap { val: Some(o) })
+                .or_else(|| {
+                    matches!(
+                        patch.stacking,
+                        Some(ChartStacking::Stacked | ChartStacking::PercentStacked)
+                    )
+                    .then(|| c::Overlap { val: Some(100) })
+                }),
+            axis_id: vec![axis_id(cat_id), axis_id(val_id)],
+            ..Default::default()
+        })),
+    }
+}
+
+pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
     let dl_ref = patch.data_labels.as_ref();
     let dl = build_data_labels(dl_ref);
     match patch.kind {
@@ -300,78 +456,9 @@ pub(super) fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
             axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
             ..Default::default()
         })),
-        ChartKind::Line => c::PlotAreaChoice::LineChart(Box::new(c::LineChart {
-            grouping: Box::new(c::Grouping {
-                val: Some(line_area_grouping(patch.stacking)),
-            }),
-            vary_colors: Some(c::VaryColors {
-                val: Some(BooleanValue::from_bool(false)),
-            }),
-            line_chart_series: patch
-                .series
-                .iter()
-                .enumerate()
-                .map(|(i, s)| build_line_series(i, s, patch.categories_ref.as_deref()))
-                .collect(),
-            data_labels: dl,
-            show_marker: Some(c::ShowMarker {
-                val: Some(BooleanValue::from_bool(true)),
-            }),
-            axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
-            ..Default::default()
-        })),
-        ChartKind::Area => c::PlotAreaChoice::AreaChart(Box::new(c::AreaChart {
-            grouping: Some(c::Grouping {
-                val: Some(line_area_grouping(patch.stacking)),
-            }),
-            vary_colors: Some(c::VaryColors {
-                val: Some(BooleanValue::from_bool(false)),
-            }),
-            area_chart_series: patch
-                .series
-                .iter()
-                .enumerate()
-                .map(|(i, s)| build_area_series(i, s, patch.categories_ref.as_deref()))
-                .collect(),
-            data_labels: dl,
-            axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
-            ..Default::default()
-        })),
-        ChartKind::Column | ChartKind::Bar => c::PlotAreaChoice::BarChart(Box::new(c::BarChart {
-            bar_direction: Box::new(c::BarDirection {
-                val: if matches!(patch.kind, ChartKind::Bar) {
-                    c::BarDirectionValues::Bar
-                } else {
-                    c::BarDirectionValues::Column
-                },
-            }),
-            bar_grouping: Some(c::BarGrouping {
-                val: Some(bar_grouping(patch.stacking)),
-            }),
-            vary_colors: Some(c::VaryColors {
-                val: Some(BooleanValue::from_bool(false)),
-            }),
-            bar_chart_series: patch
-                .series
-                .iter()
-                .enumerate()
-                .map(|(i, s)| build_bar_series(i, s, patch.categories_ref.as_deref()))
-                .collect(),
-            data_labels: dl,
-            gap_width: patch.gap_width.map(|g| c::GapWidth { val: Some(g) }),
-            overlap: patch
-                .overlap
-                .map(|o| c::Overlap { val: Some(o) })
-                .or_else(|| {
-                    matches!(
-                        patch.stacking,
-                        Some(ChartStacking::Stacked | ChartStacking::PercentStacked)
-                    )
-                    .then(|| c::Overlap { val: Some(100) })
-                }),
-            axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
-            ..Default::default()
-        })),
+        ChartKind::Column | ChartKind::Bar | ChartKind::Line | ChartKind::Area => {
+            unreachable!("cartesian kinds are built via build_cartesian_plot_charts")
+        }
     }
 }
 
@@ -761,6 +848,49 @@ pub(super) fn build_val_axis_xy(id: u32, cross: u32, pos: c::AxisPositionValues)
         }),
         axis_position: Box::new(c::AxisPosition { val: pos }),
         crossing_axis: Box::new(c::CrossingAxis { val: cross }),
+        ..Default::default()
+    }
+}
+
+pub(super) fn build_sec_val_axis() -> c::ValueAxis {
+    c::ValueAxis {
+        axis_id: Box::new(axis_id(SEC_VAL_AX_ID)),
+        scaling: Box::new(c::Scaling {
+            orientation: Some(c::Orientation {
+                val: Some(c::OrientationValues::MinMax),
+            }),
+            ..Default::default()
+        }),
+        delete: Some(c::Delete {
+            val: Some(BooleanValue::from_bool(false)),
+        }),
+        axis_position: Box::new(c::AxisPosition {
+            val: c::AxisPositionValues::Right,
+        }),
+        crossing_axis: Box::new(c::CrossingAxis { val: SEC_CAT_AX_ID }),
+        value_axis_choice: Some(c::ValueAxisChoice::Crosses(Box::new(c::Crosses {
+            val: c::CrossesValues::Maximum,
+        }))),
+        ..Default::default()
+    }
+}
+
+pub(super) fn build_sec_cat_axis() -> c::CategoryAxis {
+    c::CategoryAxis {
+        axis_id: Box::new(axis_id(SEC_CAT_AX_ID)),
+        scaling: Box::new(c::Scaling {
+            orientation: Some(c::Orientation {
+                val: Some(c::OrientationValues::MinMax),
+            }),
+            ..Default::default()
+        }),
+        delete: Some(c::Delete {
+            val: Some(BooleanValue::from_bool(true)),
+        }),
+        axis_position: Box::new(c::AxisPosition {
+            val: c::AxisPositionValues::Bottom,
+        }),
+        crossing_axis: Box::new(c::CrossingAxis { val: SEC_VAL_AX_ID }),
         ..Default::default()
     }
 }

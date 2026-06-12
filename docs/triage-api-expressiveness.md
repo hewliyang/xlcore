@@ -98,8 +98,15 @@ pub struct ChartAxisPatch {
   `ChartPatch`/`ChartUpdate`/`ChartInfo` as `category_axis`/`value_axis`, with
   build + read + in-place update. `min`/`max`/`major_unit`/`major_gridlines`/
   `number_format` are renderer-visible; the rest round-trips for Excel.
-- Combo charts / secondary axis: renderer renders them; `set_chart` can't author
-  them. Needs `ChartSeriesPatch.axis: primary|secondary` + per-series `kind`.
+- Combo charts / secondary axis: **— done**. `ChartSeriesPatch`/`ChartSeriesInfo`
+  carry `kind: Option<ChartKind>` (per-series type override, cartesian-only) and
+  `axis: Option<ChartAxisGroup>` (`primary`/`secondary`, sdk transliteration).
+  Cartesian series are grouped by (effective kind, axis) into multiple
+  `c:barChart`/`c:lineChart`/`c:areaChart` plot groups; any secondary series
+  synthesizes a right-hand `c:valAx` + deleted secondary `c:catAx`. Builds via
+  `build_cartesian_plot_charts`, round-trips (read tags each series with its
+  group kind/axis; simple single-group charts stay clean), updates in place, and
+  is renderer-visible (column + line on dual axes verified e2e).
 - Series styling: marker (style/size), line width/dash, `smooth`,
   `varyColors`, `invertIfNegative`. **— `gapWidth`/`overlap` + marker done**;
   `ChartSeriesPatch.marker` (`ChartMarker { style, size }` + `MarkerStyle` enum,

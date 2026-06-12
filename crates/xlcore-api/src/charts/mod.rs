@@ -13,10 +13,10 @@ use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
-    AnchorSpec, ApiError, ApiErrorCode, ApiWarning, ChartAnchor, ChartAxisPatch,
-    ChartDataLabelPosition, ChartDataLabels, ChartInfo, ChartKind, ChartLegendPosition, ChartMarker,
-    ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking, ChartUpdate, CrossBetween,
-    MarkerStyle, TickLabelPosition, TickMark,
+    AnchorSpec, ApiError, ApiErrorCode, ApiWarning, ChartAnchor, ChartAxisGroup, ChartAxisPatch,
+    ChartDataLabelPosition, ChartDataLabels, ChartInfo, ChartKind, ChartLegendPosition,
+    ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking, ChartUpdate,
+    CrossBetween, MarkerStyle, TickLabelPosition, TickMark,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -25,6 +25,8 @@ use crate::{Result, Workbook};
 const CHART_GRAPHIC_DATA_URI: &str = "http://schemas.openxmlformats.org/drawingml/2006/chart";
 const CAT_AX_ID: u32 = 111_111_111;
 const VAL_AX_ID: u32 = 222_222_222;
+const SEC_CAT_AX_ID: u32 = 333_333_333;
+const SEC_VAL_AX_ID: u32 = 444_444_444;
 
 impl Workbook {
     pub fn charts(&mut self, sheet: Option<&str>) -> Result<Vec<ChartInfo>> {
@@ -225,6 +227,8 @@ impl Workbook {
                     color: s.color.clone(),
                     data_labels: s.data_labels.clone(),
                     marker: s.marker.clone(),
+                    kind: s.kind,
+                    axis: s.axis,
                 })
                 .collect(),
             anchor,
@@ -348,6 +352,8 @@ impl Workbook {
                     color: s.color.clone(),
                     data_labels: s.data_labels.clone(),
                     marker: s.marker.clone(),
+                    kind: s.kind,
+                    axis: s.axis,
                 })
                 .collect(),
         };
@@ -433,7 +439,32 @@ impl Workbook {
                 overlap,
                 data_labels: data_labels.clone(),
             };
-            space.chart.plot_area.plot_area_choice1 = vec![build_plot_chart(&synth)];
+            space.chart.plot_area.plot_area_choice1 = build_plot_charts(&synth);
+            space
+                .chart
+                .plot_area
+                .plot_area_choice2
+                .retain(|ax| match ax {
+                    c::PlotAreaChoice2::ValueAxis(v) => v.axis_id.val != SEC_VAL_AX_ID,
+                    c::PlotAreaChoice2::CategoryAxis(cx) => cx.axis_id.val != SEC_CAT_AX_ID,
+                    _ => true,
+                });
+            if synth.series.iter().any(series_secondary) {
+                space
+                    .chart
+                    .plot_area
+                    .plot_area_choice2
+                    .push(c::PlotAreaChoice2::ValueAxis(
+                        Box::new(build_sec_val_axis()),
+                    ));
+                space
+                    .chart
+                    .plot_area
+                    .plot_area_choice2
+                    .push(c::PlotAreaChoice2::CategoryAxis(Box::new(
+                        build_sec_cat_axis(),
+                    )));
+            }
         }
 
         if let Some(title) = &update.title {
