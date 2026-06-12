@@ -20,5 +20,14 @@ export type ChartPatch = {
   categoryAxis?: ChartAxisPatch;
   valueAxis?: ChartAxisPatch;
   stacking?: ChartStacking;
+  /**
+   * `c:gapWidth` (0..=500); bar/column charts only. Space between bar clusters
+   * as a percentage of bar width.
+   */
+  gapWidth?: number;
+  /**
+   * `c:overlap` (-100..=100); bar/column charts only. Stacked charts force 100.
+   */
+  overlap?: number;
   dataLabels?: ChartDataLabels;
 };

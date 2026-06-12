@@ -8,6 +8,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - `scripts/schema_diff.py <SdkStruct> [DtoStruct]`: coverage diff of an ooxmlsdk `CT_*` struct's fields against an `xlcore-types` DTO; emits a markdown table for the DTO doc comment. Run when opening a domain.
+- `gapWidth` (0..=500) + `overlap` (-100..=100) on `ChartPatch`/`ChartUpdate`/`ChartInfo` for bar/column charts; authored, read back, and rendered by the previewer.
 - `ChartAxisPatch` on `ChartPatch`/`ChartUpdate`/`ChartInfo` as `categoryAxis`/`valueAxis`: author axis `title`, `hidden`, `min`/`max`, `logBase`, `reversed`, `majorUnit`/`minorUnit`, `major`/`minorGridlines`, `major`/`minorTickMark` (`TickMark`), `tickLabelPosition` (`TickLabelPosition`), `numberFormat`, `crossBetween` (`CrossBetween`), `crossesAt`. `min`/`max`/`majorUnit`/`majorGridlines`/`numberFormat` render in the previewer; the rest round-trips for Excel. The legacy `categoryAxisTitle`/`valueAxisTitle` remain as sugar (axis `title` wins).
 
 ### Changed

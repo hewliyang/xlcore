@@ -100,8 +100,9 @@ pub struct ChartAxisPatch {
   `number_format` are renderer-visible; the rest round-trips for Excel.
 - Combo charts / secondary axis: renderer renders them; `set_chart` can't author
   them. Needs `ChartSeriesPatch.axis: primary|secondary` + per-series `kind`.
-- Series styling: marker (style/size), line width/dash, `smooth`, `gapWidth`,
-  `overlap`, `varyColors`, `invertIfNegative`.
+- Series styling: marker (style/size), line width/dash, `smooth`,
+  `varyColors`, `invertIfNegative`. **— `gapWidth`/`overlap` done** (chart-level,
+  bar/column, on `ChartPatch`/`ChartUpdate`/`ChartInfo`; renderer-visible).
 - Pie/doughnut: `firstSliceAngle`, `holeSize`, per-point `explosion`.
 - Per-point fills (`c:dPt`) — required for the waterfall-via-noFill idiom we
   already render.

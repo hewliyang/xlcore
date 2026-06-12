@@ -376,6 +376,15 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stacking: Option<ChartStacking>,
+    /// `c:gapWidth` (0..=500); bar/column charts only. Space between bar clusters
+    /// as a percentage of bar width.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gap_width: Option<u16>,
+    /// `c:overlap` (-100..=100); bar/column charts only. Stacked charts force 100.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub overlap: Option<i8>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
@@ -419,6 +428,14 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stacking: Option<ChartStacking>,
+    /// `c:gapWidth` (0..=500); bar/column charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gap_width: Option<u16>,
+    /// `c:overlap` (-100..=100); bar/column charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub overlap: Option<i8>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
@@ -466,6 +483,14 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stacking: Option<ChartStacking>,
+    /// `c:gapWidth` (0..=500); bar/column charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gap_width: Option<u16>,
+    /// `c:overlap` (-100..=100); bar/column charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub overlap: Option<i8>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,

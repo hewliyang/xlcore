@@ -18,5 +18,13 @@ export type ChartUpdate = {
   categoryAxis?: ChartAxisPatch;
   valueAxis?: ChartAxisPatch;
   stacking?: ChartStacking;
+  /**
+   * `c:gapWidth` (0..=500); bar/column charts only.
+   */
+  gapWidth?: number;
+  /**
+   * `c:overlap` (-100..=100); bar/column charts only.
+   */
+  overlap?: number;
   dataLabels?: ChartDataLabels;
 };

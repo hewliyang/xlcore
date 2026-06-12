@@ -37,6 +37,8 @@ fn charts_create_list_remove_roundtrip() {
             category_axis: None,
             value_axis: None,
             stacking: None,
+            gap_width: None,
+            overlap: None,
             data_labels: None,
         })
         .unwrap();
@@ -141,6 +143,8 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
             category_axis: None,
             value_axis: None,
             stacking: None,
+            gap_width: None,
+            overlap: None,
             data_labels: None,
         })
         .unwrap();
@@ -212,6 +216,8 @@ fn update_chart_replaces_series_and_stacking() {
             category_axis: None,
             value_axis: None,
             stacking: None,
+            gap_width: None,
+            overlap: None,
             data_labels: None,
         })
         .unwrap();
@@ -287,6 +293,8 @@ fn chart_axis_patch_authors_and_round_trips() {
                 ..Default::default()
             }),
             stacking: None,
+            gap_width: None,
+            overlap: None,
             data_labels: None,
         })
         .unwrap();
@@ -363,6 +371,8 @@ fn charts_supports_multiple_kinds() {
         category_axis: None,
         value_axis: None,
         stacking: None,
+        gap_width: None,
+        overlap: None,
         data_labels: None,
     };
     for kind in [
@@ -432,6 +442,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
         category_axis: None,
         value_axis: None,
         stacking: None,
+        gap_width: None,
+        overlap: None,
         data_labels: None,
     })
     .unwrap();
@@ -461,6 +473,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
         category_axis: None,
         value_axis: None,
         stacking: None,
+        gap_width: None,
+        overlap: None,
         data_labels: None,
     })
     .unwrap();
@@ -488,6 +502,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
         category_axis: None,
         value_axis: None,
         stacking: None,
+        gap_width: None,
+        overlap: None,
         data_labels: None,
     })
     .unwrap();
@@ -560,6 +576,8 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
         category_axis: None,
         value_axis: None,
         stacking: None,
+        gap_width: None,
+        overlap: None,
         data_labels: None,
     })
     .unwrap();
@@ -598,6 +616,8 @@ fn chart_series_color_rejects_malformed_hex() {
             category_axis: None,
             value_axis: None,
             stacking: None,
+            gap_width: None,
+            overlap: None,
             data_labels: None,
         })
         .unwrap_err();
@@ -667,6 +687,8 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
         category_axis: None,
         value_axis: None,
         stacking: None,
+        gap_width: None,
+        overlap: None,
         data_labels: None,
     })
     .unwrap();
@@ -744,6 +766,8 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
         category_axis: None,
         value_axis: None,
         stacking,
+        gap_width: None,
+        overlap: None,
         data_labels: None,
     };
 
@@ -839,6 +863,8 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
             category_axis: None,
             value_axis: None,
             stacking: Some(ChartStacking::Stacked),
+            gap_width: None,
+            overlap: None,
             data_labels: None,
         })
         .unwrap();
@@ -868,6 +894,8 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
         category_axis: None,
         value_axis: None,
         stacking: None,
+        gap_width: None,
+        overlap: None,
         data_labels: None,
     });
     assert!(missing_x.is_err());
@@ -889,6 +917,8 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
         category_axis: None,
         value_axis: None,
         stacking: None,
+        gap_width: None,
+        overlap: None,
         data_labels: None,
     });
     assert!(bad_color.is_err());
@@ -922,6 +952,8 @@ fn charts_data_labels_roundtrip() {
             category_axis: None,
             value_axis: None,
             stacking: None,
+            gap_width: None,
+            overlap: None,
             data_labels: Some(ChartDataLabels {
                 show_value: Some(true),
                 show_category_name: Some(false),
@@ -977,6 +1009,8 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
         category_axis: None,
         value_axis: None,
         stacking: None,
+        gap_width: None,
+        overlap: None,
         data_labels: Some(ChartDataLabels {
             show_percent: Some(true),
             show_category_name: Some(true),
@@ -1033,6 +1067,8 @@ fn charts_per_series_data_labels_override_chart_level() {
         category_axis: None,
         value_axis: None,
         stacking: None,
+        gap_width: None,
+        overlap: None,
         data_labels: Some(ChartDataLabels {
             show_series_name: Some(true),
             position: Some(ChartDataLabelPosition::Center),
@@ -1063,4 +1099,69 @@ fn charts_per_series_data_labels_override_chart_level() {
     let chart_dl = info.data_labels.as_ref().expect("chart-level dl preserved");
     assert_eq!(chart_dl.show_series_name, Some(true));
     assert_eq!(chart_dl.position, Some(ChartDataLabelPosition::Center));
+}
+
+#[test]
+fn chart_gap_width_overlap_roundtrip_and_update() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 20.0).unwrap();
+
+    let info = wb
+        .set_chart("Sheet1", ChartPatch {
+            name: None,
+            kind: ChartKind::Column,
+            title: None,
+            legend_position: None,
+            categories_ref: None,
+            series: vec![ChartSeriesPatch {
+                values_ref: "Sheet1!$B$2:$B$3".to_string(),
+                ..Default::default()
+            }],
+            anchor: AnchorSpec::Cells(ChartAnchor {
+                from_column: 3,
+                from_row: 1,
+                to_column: 10,
+                to_row: 16,
+                ..Default::default()
+            }),
+            category_axis_title: None,
+            value_axis_title: None,
+            category_axis: None,
+            value_axis: None,
+            stacking: None,
+            gap_width: Some(219),
+            overlap: Some(-27),
+            data_labels: None,
+        })
+        .unwrap();
+    assert_eq!(info.gap_width, Some(219));
+    assert_eq!(info.overlap, Some(-27));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("gapWidth"));
+    assert!(xml.contains("overlap"));
+
+    let mut wb = Workbook::open_bytes(bytes).unwrap();
+    let read = wb.charts(Some("Sheet1")).unwrap();
+    assert_eq!(read[0].gap_width, Some(219));
+    assert_eq!(read[0].overlap, Some(-27));
+
+    let updated = wb
+        .update_chart("Sheet1", &info.id, ChartUpdate {
+            gap_width: Some(50),
+            ..Default::default()
+        })
+        .unwrap();
+    assert_eq!(updated.gap_width, Some(50));
+    assert_eq!(updated.overlap, Some(-27), "unspecified overlap preserved");
+
+    let err = wb
+        .update_chart("Sheet1", &info.id, ChartUpdate {
+            gap_width: Some(999),
+            ..Default::default()
+        })
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidChart);
 }

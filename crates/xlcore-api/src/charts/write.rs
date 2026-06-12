@@ -67,6 +67,39 @@ pub(super) fn validate_chart_series(
     Ok(())
 }
 
+pub(super) fn validate_bar_options(
+    sheet: &str,
+    gap_width: Option<u16>,
+    overlap: Option<i8>,
+) -> Result<()> {
+    if let Some(g) = gap_width {
+        if g > 500 {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                format!("chart gap_width must be 0..=500, got: {g}"),
+            )
+            .with_sheet(sheet));
+        }
+    }
+    if let Some(o) = overlap {
+        if !(-100..=100).contains(&o) {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                format!("chart overlap must be -100..=100, got: {o}"),
+            )
+            .with_sheet(sheet));
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn bar_option_for_kind<T>(kind: ChartKind, value: Option<T>) -> Option<T> {
+    match kind {
+        ChartKind::Column | ChartKind::Bar => value,
+        _ => None,
+    }
+}
+
 pub(super) fn stacking_for_kind(
     kind: ChartKind,
     requested: Option<ChartStacking>,
@@ -316,11 +349,17 @@ pub(super) fn build_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .map(|(i, s)| build_bar_series(i, s, patch.categories_ref.as_deref()))
                 .collect(),
             data_labels: dl,
-            overlap: matches!(
-                patch.stacking,
-                Some(ChartStacking::Stacked | ChartStacking::PercentStacked)
-            )
-            .then(|| c::Overlap { val: Some(100) }),
+            gap_width: patch.gap_width.map(|g| c::GapWidth { val: Some(g) }),
+            overlap: patch
+                .overlap
+                .map(|o| c::Overlap { val: Some(o) })
+                .or_else(|| {
+                    matches!(
+                        patch.stacking,
+                        Some(ChartStacking::Stacked | ChartStacking::PercentStacked)
+                    )
+                    .then(|| c::Overlap { val: Some(100) })
+                }),
             axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
             ..Default::default()
         })),

@@ -96,6 +96,8 @@ impl Workbook {
                     category_axis: parsed.category_axis,
                     value_axis: parsed.value_axis,
                     stacking: parsed.stacking,
+                    gap_width: parsed.gap_width,
+                    overlap: parsed.overlap,
                     data_labels: parsed.data_labels,
                 });
             }
@@ -106,6 +108,7 @@ impl Workbook {
     pub fn set_chart(&mut self, sheet: impl AsRef<str>, patch: ChartPatch) -> Result<ChartInfo> {
         let sheet = sheet.as_ref();
         validate_chart_series(sheet, patch.kind, &patch.series)?;
+        validate_bar_options(sheet, patch.gap_width, patch.overlap)?;
         let anchor = crate::refs::resolve_anchor(&patch.anchor)?;
 
         if !self.sheet_exists(sheet)? {
@@ -229,6 +232,8 @@ impl Workbook {
             category_axis: patch.category_axis.clone(),
             value_axis: patch.value_axis.clone(),
             stacking: stacking_for_kind(patch.kind, patch.stacking),
+            gap_width: bar_option_for_kind(patch.kind, patch.gap_width),
+            overlap: bar_option_for_kind(patch.kind, patch.overlap),
             data_labels: patch.data_labels.clone(),
         })
     }
@@ -319,10 +324,14 @@ impl Workbook {
         );
         let kind = existing.kind;
 
+        validate_bar_options(&sheet, update.gap_width, update.overlap)?;
+
         let plot_dirty = update.series.is_some()
             || update.stacking.is_some()
             || update.data_labels.is_some()
-            || update.categories_ref.is_some();
+            || update.categories_ref.is_some()
+            || update.gap_width.is_some()
+            || update.overlap.is_some();
 
         let series: Vec<ChartSeriesPatch> = match &update.series {
             Some(s) => s.clone(),
@@ -349,6 +358,8 @@ impl Workbook {
             .clone()
             .or_else(|| existing.categories_ref.clone());
         let stacking = update.stacking.or(existing.stacking);
+        let gap_width = update.gap_width.or(existing.gap_width);
+        let overlap = update.overlap.or(existing.overlap);
         let data_labels = update
             .data_labels
             .clone()
@@ -416,6 +427,8 @@ impl Workbook {
                 category_axis: None,
                 value_axis: None,
                 stacking,
+                gap_width,
+                overlap,
                 data_labels: data_labels.clone(),
             };
             space.chart.plot_area.plot_area_choice1 = vec![build_plot_chart(&synth)];

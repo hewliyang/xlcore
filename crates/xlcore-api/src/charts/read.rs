@@ -57,6 +57,8 @@ pub(super) struct ParsedChart {
     pub(super) category_axis: Option<ChartAxisPatch>,
     pub(super) value_axis: Option<ChartAxisPatch>,
     pub(super) stacking: Option<ChartStacking>,
+    pub(super) gap_width: Option<u16>,
+    pub(super) overlap: Option<i8>,
     pub(super) data_labels: Option<ChartDataLabels>,
 }
 
@@ -67,6 +69,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     let mut series: Vec<ChartSeriesInfo> = Vec::new();
     let mut categories_ref: Option<String> = None;
     let mut stacking: Option<ChartStacking> = None;
+    let mut gap_width: Option<u16> = None;
+    let mut overlap: Option<i8> = None;
     let mut data_labels: Option<ChartDataLabels> = None;
 
     for ch in &plot.plot_area_choice1 {
@@ -86,6 +90,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         c::BarGroupingValues::PercentStacked => ChartStacking::PercentStacked,
                         c::BarGroupingValues::Standard => ChartStacking::Clustered,
                     });
+                gap_width = bc.gap_width.as_ref().and_then(|g| g.val);
+                overlap = bc.overlap.as_ref().and_then(|o| o.val);
                 for s in &bc.bar_chart_series {
                     let mut info = read_series(
                         s.series_text.as_deref(),
@@ -280,6 +286,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         category_axis,
         value_axis,
         stacking,
+        gap_width,
+        overlap,
         data_labels,
     }
 }
