@@ -13,6 +13,7 @@ mod properties;
 mod rowcols;
 mod protection;
 mod ranges_styles;
+mod raw_parts;
 mod refs_sheets;
 mod search;
 mod shapes;

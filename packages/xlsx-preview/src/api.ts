@@ -314,6 +314,37 @@ export class Workbook {
     return this.handle.save();
   }
 
+  /**
+   * Escape hatch: list every part path in the package (the modeled object
+   * graph serialized to OPC), e.g. `xl/workbook.xml`. Use with
+   * {@link getPart}/{@link setPart} to read or author schema we don't model.
+   */
+  partNames(): string[] {
+    return this.handle.partNames() as string[];
+  }
+
+  /**
+   * Escape hatch: read a part's raw XML by path, or `undefined` if absent.
+   * Leading `/` is optional. Throws on non-UTF-8 (binary) parts.
+   */
+  getPart(name: string): string | undefined {
+    return (this.handle.getPartXml(name) as string | null) ?? undefined;
+  }
+
+  /**
+   * Escape hatch: write a part's raw XML, overwriting or creating it. For a
+   * brand-new part path you must also declare its content type by editing
+   * `[Content_Types].xml` via this same method. Round-trips verbatim.
+   */
+  setPart(name: string, xml: string): void {
+    this.handle.setPartXml(name, xml);
+  }
+
+  /** Escape hatch: delete a part by path. Returns whether it existed. */
+  removePart(name: string): boolean {
+    return this.handle.removePartXml(name) as boolean;
+  }
+
   dispose(): void {
     this.handle.dispose();
   }

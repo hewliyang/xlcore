@@ -275,7 +275,14 @@ scope), search, structural ops.
    silently broken for every split-out DTO until fixed alongside the anchor work.)
 2. **Transliterate sdk enums verbatim** when a domain is opened up.
 3. **Escape hatch** (openpyxl ≈ lxml access): raw part XML get/set on `Workbook`
-   for anything we haven't modeled yet, so users are never hard-blocked.
+   for anything we haven't modeled yet, so users are never hard-blocked. **—
+   done**: `Workbook::part_names`/`get_part_xml`/`set_part_xml`/`remove_part_xml`
+   in `xlcore-api` list/read/author/delete OPC parts by path (serialize the
+   modeled graph to package bytes, edit the zip, re-open). Unmodeled parts
+   (e.g. `customXml/item1.xml`) round-trip verbatim through save/open; existing
+   modeled parts re-parse on set. wasm `partNames`/`getPartXml`/`setPartXml`/
+   `removePartXml` + TS `Workbook.partNames`/`getPart`/`setPart`/`removePart`
+   forward only. Verified e2e (set unmodeled part → save → reopen preserves it).
 4. Land P0 chart axis + combo/series styling first — it's the densest cluster of
    "renderer reads it, API can't write it" asymmetry.
 

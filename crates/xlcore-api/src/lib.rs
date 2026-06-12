@@ -17,6 +17,7 @@ mod pivots;
 mod properties;
 mod protection;
 mod ranges;
+mod raw_parts;
 mod refs;
 mod rowcols;
 mod search;

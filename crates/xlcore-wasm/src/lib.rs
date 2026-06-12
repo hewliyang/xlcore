@@ -1278,6 +1278,37 @@ impl WorkbookHandle {
         self.workbook_mut()?.save_bytes().map_err(api_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = partNames)]
+    pub fn part_names(&mut self) -> Result<JsValue, JsValue> {
+        let names = self.workbook_mut()?.part_names().map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&names).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = getPartXml)]
+    pub fn get_part_xml(&mut self, name: &str) -> Result<JsValue, JsValue> {
+        let part = self
+            .workbook_mut()?
+            .get_part_xml(name)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&part).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setPartXml)]
+    pub fn set_part_xml(&mut self, name: &str, xml: &str) -> Result<(), JsValue> {
+        self.workbook_mut()?
+            .set_part_xml(name, xml)
+            .map_err(api_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = removePartXml)]
+    pub fn remove_part_xml(&mut self, name: &str) -> Result<JsValue, JsValue> {
+        let removed = self
+            .workbook_mut()?
+            .remove_part_xml(name)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
+    }
+
     pub fn dispose(&mut self) {
         self.workbook = None;
     }

@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `Workbook.partNames()`/`getPart(name)`/`setPart(name, xml)`/`removePart(name)` — escape hatch for raw OPC part XML (read/author/delete unmodeled schema); unmodeled parts round-trip verbatim. Semantics in Rust (`Workbook::part_names`/`get_part_xml`/`set_part_xml`/`remove_part_xml`).
 - `Worksheet.appendRow(values)`/`appendRows(rows)` (openpyxl `ws.append` idiom): write rows starting at column A after the last data-bearing row; returns the written block's `RangeInfo`. Semantics in Rust (`Workbook::append_rows`).
 - `SheetPageSetupPatch.printArea`/`printTitleRows`/`printTitleColumns`/`rowBreaks`/`columnBreaks` (defined-name-backed `_xlnm.Print_Area`/`_xlnm.Print_Titles` + `x:rowBreaks`/`x:colBreaks`): print area, repeating row/column titles, and manual page breaks; authored via `setPageSetup`, merged/cleared component-wise, and round-tripped (round-trip-only for Excel).
 - `Worksheet.properties.get`/`.set` (`SheetPropertiesPatch`): tab color, zoom (10..=400), `showZeros`, `rightToLeft`, default row height / col width; round-tripped, with tab color + default row/col sizes rendered by the previewer.
