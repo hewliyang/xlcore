@@ -13,13 +13,13 @@ use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
-    AnchorSpec, ApiError, ApiErrorCode, ApiWarning, BuiltInUnit, ChartAnchor, ChartAxisGroup,
-    ChartAxisPatch, ChartDataLabel, ChartDataLabelPosition, ChartDataLabels, ChartDataPoint,
-    ChartDataTable, ChartErrorBarType,
-    ChartErrorBars, ChartErrorDirection, ChartErrorValueType, ChartInfo, ChartKind,
-    ChartLegendPosition, ChartLine, ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch,
-    ChartStacking, ChartTrendline, ChartUpdate, CrossBetween, DispBlanksAs, DisplayUnits, LineDash,
-    MarkerStyle, RadarStyle, TickLabelPosition, TickMark, TrendlineKind,
+    AnchorSpec, ApiError, ApiErrorCode, ApiWarning, Bar3DShape, BuiltInUnit, ChartAnchor,
+    ChartAxisGroup, ChartAxisPatch, ChartDataLabel, ChartDataLabelPosition, ChartDataLabels,
+    ChartDataPoint, ChartDataTable, ChartErrorBarType, ChartErrorBars, ChartErrorDirection,
+    ChartErrorValueType, ChartInfo, ChartKind, ChartLegendPosition, ChartLine, ChartMarker,
+    ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking, ChartTrendline, ChartUpdate,
+    ChartView3D, CrossBetween, DispBlanksAs, DisplayUnits, LineDash, MarkerStyle, RadarStyle,
+    TickLabelPosition, TickMark, TrendlineKind,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -30,6 +30,7 @@ const CAT_AX_ID: u32 = 111_111_111;
 const VAL_AX_ID: u32 = 222_222_222;
 const SEC_CAT_AX_ID: u32 = 333_333_333;
 const SEC_VAL_AX_ID: u32 = 444_444_444;
+const SER_AX_ID: u32 = 555_555_555;
 
 impl Workbook {
     pub fn charts(&mut self, sheet: Option<&str>) -> Result<Vec<ChartInfo>> {
@@ -113,6 +114,8 @@ impl Workbook {
                     radar_style: parsed.radar_style,
                     data_labels: parsed.data_labels,
                     data_table: parsed.data_table,
+                    view_3d: parsed.view_3d,
+                    bar_shape: parsed.bar_shape,
                 });
             }
         }
@@ -127,6 +130,8 @@ impl Workbook {
         validate_axis_options(sheet, patch.category_axis.as_ref())?;
         validate_axis_options(sheet, patch.value_axis.as_ref())?;
         validate_data_table(sheet, patch.kind, patch.data_table.as_ref())?;
+        validate_view_3d(sheet, patch.kind, patch.view_3d.as_ref())?;
+        validate_bar_shape(sheet, patch.kind, patch.bar_shape.as_ref())?;
         let anchor = crate::refs::resolve_anchor(&patch.anchor)?;
 
         if !self.sheet_exists(sheet)? {
@@ -137,12 +142,7 @@ impl Workbook {
             .with_sheet(sheet));
         }
 
-        if patch.stacking.is_some()
-            && !matches!(
-                patch.kind,
-                ChartKind::Column | ChartKind::Bar | ChartKind::Line | ChartKind::Area
-            )
-        {
+        if patch.stacking.is_some() && !supports_stacking(patch.kind) {
             self.push_warning(
                 ApiWarning::new(
                     ApiErrorCode::LossyOperation,
@@ -259,7 +259,7 @@ impl Workbook {
             category_axis: patch.category_axis.clone(),
             value_axis: patch.value_axis.clone(),
             stacking: stacking_for_kind(patch.kind, patch.stacking),
-            gap_width: bar_option_for_kind(patch.kind, patch.gap_width),
+            gap_width: gap_width_for_kind(patch.kind, patch.gap_width),
             overlap: bar_option_for_kind(patch.kind, patch.overlap),
             radar_style: (patch.kind == ChartKind::Radar)
                 .then(|| patch.radar_style.unwrap_or(RadarStyle::Standard)),
@@ -272,6 +272,8 @@ impl Workbook {
             vary_colors: Some(vary_colors_effective(patch.kind, patch.vary_colors)),
             data_labels: patch.data_labels.clone(),
             data_table: patch.data_table.filter(|_| is_cartesian(patch.kind)),
+            view_3d: patch.view_3d.filter(|_| is_3d(patch.kind)),
+            bar_shape: patch.bar_shape.filter(|_| is_bar_3d(patch.kind)),
         })
     }
 
@@ -366,6 +368,8 @@ impl Workbook {
         validate_axis_options(&sheet, update.category_axis.as_ref())?;
         validate_axis_options(&sheet, update.value_axis.as_ref())?;
         validate_data_table(&sheet, kind, update.data_table.as_ref())?;
+        validate_view_3d(&sheet, kind, update.view_3d.as_ref())?;
+        validate_bar_shape(&sheet, kind, update.bar_shape.as_ref())?;
 
         let plot_dirty = update.series.is_some()
             || update.stacking.is_some()
@@ -379,6 +383,7 @@ impl Workbook {
             || update.hi_low_lines.is_some()
             || update.up_down_bars.is_some()
             || update.drop_lines.is_some()
+            || update.bar_shape.is_some()
             || update.vary_colors.is_some();
 
         let series: Vec<ChartSeriesPatch> = match &update.series {
@@ -423,6 +428,7 @@ impl Workbook {
         let hi_low_lines = update.hi_low_lines.or(existing.hi_low_lines);
         let up_down_bars = update.up_down_bars.or(existing.up_down_bars);
         let drop_lines = update.drop_lines.or(existing.drop_lines);
+        let bar_shape = update.bar_shape.or(existing.bar_shape);
         let vary_colors = update.vary_colors.or(existing.vary_colors);
         let data_labels = update
             .data_labels
@@ -503,6 +509,8 @@ impl Workbook {
                 vary_colors,
                 data_labels: data_labels.clone(),
                 data_table: None,
+                view_3d: None,
+                bar_shape,
             };
             space.chart.plot_area.plot_area_choice1 = build_plot_charts(&synth);
             space
@@ -563,6 +571,10 @@ impl Workbook {
             space.chart.plot_area.data_table = build_data_table(Some(&dt));
         }
 
+        if let Some(v) = &update.view_3d {
+            space.chart.view3_d = Some(Box::new(build_view_3d(v)));
+        }
+
         let cat_axis_patch =
             merge_axis_title(update.category_axis.as_ref(), &update.category_axis_title);
         let val_axis_patch = merge_axis_title(update.value_axis.as_ref(), &update.value_axis_title);
@@ -588,12 +600,7 @@ impl Workbook {
             }
         }
 
-        if stacking.is_some()
-            && !matches!(
-                kind,
-                ChartKind::Column | ChartKind::Bar | ChartKind::Line | ChartKind::Area
-            )
-        {
+        if stacking.is_some() && !supports_stacking(kind) {
             self.push_warning(
                 ApiWarning::new(
                     ApiErrorCode::LossyOperation,

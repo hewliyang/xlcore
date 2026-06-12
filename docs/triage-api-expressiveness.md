@@ -81,8 +81,14 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   showValue/showCategoryName/showSeriesName/showPercent/showLegendKey/position/
   numFmt/separator; renderer-visible), data table (`c:dTable` via
   `ChartPatch.dataTable`: showHorzBorder/showVertBorder/showOutline/showKeys;
-  cartesian only, round-trip-only, renderer doesn't draw). In-place `update_chart`
-  (atomic, preserves unmodeled XML).
+  cartesian only, round-trip-only, renderer doesn't draw), 3D chart kinds
+  (`ChartKind` bar3d/column3d/line3d/pie3d/area3d → `c:bar3DChart`/`c:line3DChart`/
+  `c:pie3DChart`/`c:area3DChart`; 3D cartesian emit the required `c:serAx` third
+  axis (deleted), pie3D none), `ChartView3D` (`c:view3D`:
+  rotX/rotY/perspective/rightAngleAxes/depthPercent/heightPercent; plot order
+  rotX→rotY preserved) + bar3D `c:shape` (`Bar3DShape`, ST_Shape transliterated);
+  the export renderer draws 3D charts flat as their 2D equivalent, view3D/shape
+  round-trip-only. In-place `update_chart` (atomic, preserves unmodeled XML).
 - **Rich text in cells**: `setRichText`/`richText` (inline-string `CT_RElt`
   runs with per-run `FontPatch`); `CellInfo.richText`, renderer-visible.
 - **Styles P1**: cell protection, pattern + gradient fills, font
@@ -100,7 +106,8 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 
 ### P2 — backlog
 
-3D variants, surface, ofPie, manual layout, plot-area/legend
+surface (incl. surface3D), ofPie, remaining 3D extras (floor/sideWall/backWall
+formatting, gapDepth, per-series shape), manual layout, plot-area/legend
 spPr+fonts, chartStyle/colorStyle companion parts, chartEx authoring, named
 styles / `cellStyles` authoring, remaining `c:dPt` fields (per-point
 invertIfNegative/marker, gradient/pattern fills).

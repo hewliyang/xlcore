@@ -108,6 +108,43 @@ ns = "c"
 derived = ["axId"]
 aliases = { ser = "series" }
 
+# --- 3D chart kinds ---------------------------------------------------------
+[[pair]]
+sdk = "View3D"
+dto = "ChartView3D"
+ns = "c"
+aliases = { rotX = "rot_x", rotY = "rot_y", hPercent = "height_percent" }
+
+[[pair]]
+sdk = "Bar3DChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["barDir", "axId"]
+excluded = ["gapDepth"]
+aliases = { ser = "series", grouping = "stacking", shape = "bar_shape" }
+
+[[pair]]
+sdk = "Line3DChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["axId"]
+excluded = ["gapDepth"]
+aliases = { ser = "series", grouping = "stacking" }
+
+[[pair]]
+sdk = "Area3DChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["axId"]
+excluded = ["gapDepth"]
+aliases = { ser = "series", grouping = "stacking" }
+
+[[pair]]
+sdk = "Pie3DChart"
+dto = "ChartPatch"
+ns = "c"
+aliases = { ser = "series" }
+
 # --- styles -----------------------------------------------------------------
 [[pair]]
 sdk = "Protection"

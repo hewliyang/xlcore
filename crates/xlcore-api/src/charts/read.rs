@@ -69,6 +69,8 @@ pub(super) struct ParsedChart {
     pub(super) vary_colors: Option<bool>,
     pub(super) data_labels: Option<ChartDataLabels>,
     pub(super) data_table: Option<ChartDataTable>,
+    pub(super) view_3d: Option<ChartView3D>,
+    pub(super) bar_shape: Option<Bar3DShape>,
 }
 
 pub(super) fn group_is_secondary(axis_ids: &[c::AxisId], sec: &[u32]) -> bool {
@@ -106,6 +108,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     let mut drop_lines: Option<bool> = None;
     let mut vary_colors: Option<bool> = None;
     let mut data_labels: Option<ChartDataLabels> = None;
+    let mut bar_shape: Option<Bar3DShape> = None;
 
     for ch in &plot.plot_area_choice1 {
         match ch {
@@ -359,6 +362,133 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     data_labels = read_data_labels(rc.data_labels.as_deref());
                 }
             }
+            c::PlotAreaChoice::Bar3DChart(bc) => {
+                let this_kind = match bc.bar_direction.val {
+                    c::BarDirectionValues::Bar => ChartKind::Bar3D,
+                    c::BarDirectionValues::Column => ChartKind::Column3D,
+                };
+                if !kind_set {
+                    kind = this_kind;
+                    kind_set = true;
+                }
+                stacking = bc
+                    .bar_grouping
+                    .as_ref()
+                    .and_then(|g| g.val.as_ref())
+                    .map(|v| match v {
+                        c::BarGroupingValues::Clustered => ChartStacking::Clustered,
+                        c::BarGroupingValues::Stacked => ChartStacking::Stacked,
+                        c::BarGroupingValues::PercentStacked => ChartStacking::PercentStacked,
+                        c::BarGroupingValues::Standard => ChartStacking::Clustered,
+                    });
+                gap_width = bc.gap_width.as_ref().and_then(|g| g.val);
+                bar_shape = bc
+                    .shape
+                    .as_ref()
+                    .and_then(|s| s.val.as_ref())
+                    .map(shape_from);
+                if vary_colors.is_none() {
+                    vary_colors = read_vary_colors(bc.vary_colors.as_ref());
+                }
+                for s in &bc.bar_chart_series {
+                    let mut info = read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                        s.data_labels.as_deref(),
+                    );
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
+                    info.invert_if_negative =
+                        read_invert_if_negative(s.invert_if_negative.as_ref());
+                    info.data_points = read_data_points(&s.data_point);
+                    series.push(info);
+                }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(bc.data_labels.as_deref());
+                }
+            }
+            c::PlotAreaChoice::Line3DChart(lc) => {
+                if !kind_set {
+                    kind = ChartKind::Line3D;
+                    kind_set = true;
+                }
+                stacking = lc.grouping.val.as_ref().map(grouping_to_stacking);
+                if vary_colors.is_none() {
+                    vary_colors = read_vary_colors(lc.vary_colors.as_ref());
+                }
+                for s in &lc.line_chart_series {
+                    let mut info = read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                        s.data_labels.as_deref(),
+                    );
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
+                    info.marker = read_marker(s.marker.as_deref());
+                    info.data_points = read_data_points(&s.data_point);
+                    series.push(info);
+                }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(lc.data_labels.as_deref());
+                }
+            }
+            c::PlotAreaChoice::Area3DChart(ac) => {
+                if !kind_set {
+                    kind = ChartKind::Area3D;
+                    kind_set = true;
+                }
+                stacking = ac
+                    .grouping
+                    .as_ref()
+                    .and_then(|g| g.val.as_ref())
+                    .map(grouping_to_stacking);
+                if vary_colors.is_none() {
+                    vary_colors = read_vary_colors(ac.vary_colors.as_ref());
+                }
+                for s in &ac.area_chart_series {
+                    let mut info = read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                        s.data_labels.as_deref(),
+                    );
+                    info.data_points = read_data_points(&s.data_point);
+                    series.push(info);
+                }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(ac.data_labels.as_deref());
+                }
+            }
+            c::PlotAreaChoice::Pie3DChart(pc) => {
+                if !kind_set {
+                    kind = ChartKind::Pie3D;
+                    kind_set = true;
+                }
+                if vary_colors.is_none() {
+                    vary_colors = read_vary_colors(pc.vary_colors.as_ref());
+                }
+                for s in &pc.pie_chart_series {
+                    let mut info = read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                        s.data_labels.as_deref(),
+                    );
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
+                    info.data_points = read_data_points(&s.data_point);
+                    series.push(info);
+                }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(pc.data_labels.as_deref());
+                }
+            }
             c::PlotAreaChoice::StockChart(sc) => {
                 if !kind_set {
                     kind = ChartKind::Stock;
@@ -438,6 +568,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     }
 
     let data_table = read_data_table(plot.data_table.as_deref());
+    let view_3d = read_view_3d(space.chart.view3_d.as_deref());
 
     let title = space
         .chart
@@ -486,6 +617,40 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         vary_colors,
         data_labels,
         data_table,
+        view_3d,
+        bar_shape,
+    }
+}
+
+pub(super) fn shape_from(v: &c::ShapeValues) -> Bar3DShape {
+    match v {
+        c::ShapeValues::Cone => Bar3DShape::Cone,
+        c::ShapeValues::ConeToMax => Bar3DShape::ConeToMax,
+        c::ShapeValues::Box => Bar3DShape::Box,
+        c::ShapeValues::Cylinder => Bar3DShape::Cylinder,
+        c::ShapeValues::Pyramid => Bar3DShape::Pyramid,
+        c::ShapeValues::PyramidToMaximum => Bar3DShape::PyramidToMaximum,
+    }
+}
+
+pub(super) fn read_view_3d(v: Option<&c::View3D>) -> Option<ChartView3D> {
+    let v = v?;
+    let out = ChartView3D {
+        rot_x: v.rotate_x.as_ref().and_then(|r| r.val),
+        rot_y: v.rotate_y.as_ref().and_then(|r| r.val),
+        perspective: v.perspective.as_ref().and_then(|p| p.val),
+        right_angle_axes: v
+            .right_angle_axes
+            .as_ref()
+            .and_then(|r| r.val.as_ref())
+            .map(|b| b.as_bool()),
+        depth_percent: v.depth_percent.as_ref().and_then(|d| d.val),
+        height_percent: v.height_percent.as_ref().and_then(|h| h.val),
+    };
+    if out == ChartView3D::default() {
+        None
+    } else {
+        Some(out)
     }
 }
 
@@ -497,7 +662,10 @@ pub(super) fn read_data_table(dt: Option<&c::DataTable>) -> Option<ChartDataTabl
             .show_horizontal_border
             .as_ref()
             .and_then(|s| s.val.as_ref())),
-        show_vertical_border: b(dt.show_vertical_border.as_ref().and_then(|s| s.val.as_ref())),
+        show_vertical_border: b(dt
+            .show_vertical_border
+            .as_ref()
+            .and_then(|s| s.val.as_ref())),
         show_outline: b(dt.show_outline_border.as_ref().and_then(|s| s.val.as_ref())),
         show_keys: b(dt.show_keys.as_ref().and_then(|s| s.val.as_ref())),
     };

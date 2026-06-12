@@ -10,4 +10,9 @@ export type ChartKind =
   | "bubble"
   | "doughnut"
   | "radar"
-  | "stock";
+  | "stock"
+  | "column3d"
+  | "bar3d"
+  | "line3d"
+  | "pie3d"
+  | "area3d";

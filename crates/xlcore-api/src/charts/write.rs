@@ -179,11 +179,77 @@ pub(super) fn validate_data_table(
     Ok(())
 }
 
+pub(super) fn validate_view_3d(
+    sheet: &str,
+    kind: ChartKind,
+    view: Option<&ChartView3D>,
+) -> Result<()> {
+    let Some(v) = view else { return Ok(()) };
+    if !is_3d(kind) {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidChart,
+            format!("view3D is only supported on 3D charts, not {kind:?}"),
+        )
+        .with_sheet(sheet));
+    }
+    let check = |ok: bool, msg: &str| {
+        if ok {
+            Ok(())
+        } else {
+            Err(ApiError::new(ApiErrorCode::InvalidChart, msg.to_string()).with_sheet(sheet))
+        }
+    };
+    if let Some(x) = v.rot_x {
+        check((-90..=90).contains(&x), "view3D rot_x must be -90..=90")?;
+    }
+    if let Some(y) = v.rot_y {
+        check(y <= 360, "view3D rot_y must be 0..=360")?;
+    }
+    if let Some(p) = v.perspective {
+        check(p <= 240, "view3D perspective must be 0..=240")?;
+    }
+    if let Some(d) = v.depth_percent {
+        check(
+            (20..=2000).contains(&d),
+            "view3D depth_percent must be 20..=2000",
+        )?;
+    }
+    if let Some(h) = v.height_percent {
+        check(
+            (5..=500).contains(&h),
+            "view3D height_percent must be 5..=500",
+        )?;
+    }
+    Ok(())
+}
+
+pub(super) fn validate_bar_shape(
+    sheet: &str,
+    kind: ChartKind,
+    shape: Option<&Bar3DShape>,
+) -> Result<()> {
+    if shape.is_some() && !is_bar_3d(kind) {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidChart,
+            format!("bar_shape is only supported on bar3D/column3D charts, not {kind:?}"),
+        )
+        .with_sheet(sheet));
+    }
+    Ok(())
+}
+
 pub(super) fn is_cartesian(kind: ChartKind) -> bool {
     matches!(
         kind,
         ChartKind::Column | ChartKind::Bar | ChartKind::Line | ChartKind::Area
     )
+}
+
+pub(super) fn gap_width_for_kind(kind: ChartKind, value: Option<u16>) -> Option<u16> {
+    match kind {
+        ChartKind::Column | ChartKind::Bar | ChartKind::Column3D | ChartKind::Bar3D => value,
+        _ => None,
+    }
 }
 
 pub(super) fn effective_series_kind(chart_kind: ChartKind, s: &ChartSeriesPatch) -> ChartKind {
@@ -284,9 +350,10 @@ pub(super) fn stacking_for_kind(
     kind: ChartKind,
     requested: Option<ChartStacking>,
 ) -> Option<ChartStacking> {
-    match kind {
-        ChartKind::Column | ChartKind::Bar | ChartKind::Line | ChartKind::Area => requested,
-        _ => None,
+    if supports_stacking(kind) {
+        requested
+    } else {
+        None
     }
 }
 
@@ -338,7 +405,26 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
     };
 
     match patch.kind {
-        ChartKind::Pie | ChartKind::Doughnut => {}
+        ChartKind::Pie | ChartKind::Doughnut | ChartKind::Pie3D => {}
+        k if is_3d_cartesian(k) => {
+            let mut cat = build_cat_axis();
+            if let Some(p) = &cat_axis {
+                apply_cat_axis_patch(&mut cat, p);
+            }
+            plot_area
+                .plot_area_choice2
+                .push(c::PlotAreaChoice2::CategoryAxis(Box::new(cat)));
+            let mut val = build_val_axis();
+            if let Some(p) = &val_axis {
+                apply_val_axis_patch(&mut val, p);
+            }
+            plot_area
+                .plot_area_choice2
+                .push(c::PlotAreaChoice2::ValueAxis(Box::new(val)));
+            plot_area
+                .plot_area_choice2
+                .push(c::PlotAreaChoice2::SeriesAxis(Box::new(build_ser_axis())));
+        }
         ChartKind::Scatter | ChartKind::Bubble => {
             let mut bottom = build_val_axis_xy(CAT_AX_ID, VAL_AX_ID, c::AxisPositionValues::Bottom);
             if let Some(p) = &cat_axis {
@@ -411,6 +497,11 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
     let chart = c::Chart {
         title: title.map(Box::new),
         auto_title_deleted,
+        view3_d: patch
+            .view_3d
+            .as_ref()
+            .filter(|_| is_3d(patch.kind))
+            .map(|v| Box::new(build_view_3d(v))),
         plot_area: Box::new(plot_area),
         legend,
         plot_visible_only: Some(c::PlotVisibleOnly {
@@ -442,8 +533,161 @@ pub(super) fn build_plot_charts(patch: &ChartPatch) -> Vec<c::PlotAreaChoice> {
             vec![build_single_plot_chart(patch)]
         }
         ChartKind::Stock => vec![build_stock_chart(patch)],
+        ChartKind::Pie3D => vec![build_pie_3d_chart(patch)],
+        ChartKind::Bar3D | ChartKind::Column3D | ChartKind::Line3D | ChartKind::Area3D => {
+            vec![build_3d_cartesian_chart(patch)]
+        }
         _ => build_cartesian_plot_charts(patch),
     }
+}
+
+pub(super) fn is_3d(kind: ChartKind) -> bool {
+    matches!(
+        kind,
+        ChartKind::Bar3D
+            | ChartKind::Column3D
+            | ChartKind::Line3D
+            | ChartKind::Pie3D
+            | ChartKind::Area3D
+    )
+}
+
+pub(super) fn is_3d_cartesian(kind: ChartKind) -> bool {
+    matches!(
+        kind,
+        ChartKind::Bar3D | ChartKind::Column3D | ChartKind::Line3D | ChartKind::Area3D
+    )
+}
+
+pub(super) fn is_bar_3d(kind: ChartKind) -> bool {
+    matches!(kind, ChartKind::Bar3D | ChartKind::Column3D)
+}
+
+pub(super) fn supports_stacking(kind: ChartKind) -> bool {
+    is_cartesian(kind) || is_3d_cartesian(kind)
+}
+
+pub(super) fn shape_to(s: Bar3DShape) -> c::ShapeValues {
+    match s {
+        Bar3DShape::Cone => c::ShapeValues::Cone,
+        Bar3DShape::ConeToMax => c::ShapeValues::ConeToMax,
+        Bar3DShape::Box => c::ShapeValues::Box,
+        Bar3DShape::Cylinder => c::ShapeValues::Cylinder,
+        Bar3DShape::Pyramid => c::ShapeValues::Pyramid,
+        Bar3DShape::PyramidToMaximum => c::ShapeValues::PyramidToMaximum,
+    }
+}
+
+pub(super) fn build_view_3d(v: &ChartView3D) -> c::View3D {
+    c::View3D {
+        rotate_x: v.rot_x.map(|val| c::RotateX { val: Some(val) }),
+        height_percent: v
+            .height_percent
+            .map(|val| c::HeightPercent { val: Some(val) }),
+        rotate_y: v.rot_y.map(|val| c::RotateY { val: Some(val) }),
+        depth_percent: v
+            .depth_percent
+            .map(|val| c::DepthPercent { val: Some(val) }),
+        right_angle_axes: v.right_angle_axes.map(|val| c::RightAngleAxes {
+            val: Some(BooleanValue::from_bool(val)),
+        }),
+        perspective: v.perspective.map(|val| c::Perspective { val: Some(val) }),
+        ..Default::default()
+    }
+}
+
+pub(super) fn build_ser_axis() -> c::SeriesAxis {
+    c::SeriesAxis {
+        axis_id: Box::new(axis_id(SER_AX_ID)),
+        scaling: Box::new(c::Scaling {
+            orientation: Some(c::Orientation {
+                val: Some(c::OrientationValues::MinMax),
+            }),
+            ..Default::default()
+        }),
+        delete: Some(c::Delete {
+            val: Some(BooleanValue::from_bool(true)),
+        }),
+        axis_position: Box::new(c::AxisPosition {
+            val: c::AxisPositionValues::Bottom,
+        }),
+        crossing_axis: Box::new(c::CrossingAxis { val: VAL_AX_ID }),
+        ..Default::default()
+    }
+}
+
+pub(super) fn build_3d_axis_ids() -> Vec<c::AxisId> {
+    vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID), axis_id(SER_AX_ID)]
+}
+
+pub(super) fn build_3d_cartesian_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
+    let cat_ref = patch.categories_ref.as_deref();
+    let dl = build_data_labels(patch.data_labels.as_ref());
+    let series = || patch.series.iter().enumerate();
+    match patch.kind {
+        ChartKind::Line3D => c::PlotAreaChoice::Line3DChart(Box::new(c::Line3DChart {
+            grouping: Box::new(c::Grouping {
+                val: Some(line_area_grouping(patch.stacking)),
+            }),
+            vary_colors: vary_colors_el(patch.vary_colors, false),
+            line_chart_series: series()
+                .map(|(i, s)| build_line_series(i, s, cat_ref))
+                .collect(),
+            data_labels: dl,
+            axis_id: build_3d_axis_ids(),
+            ..Default::default()
+        })),
+        ChartKind::Area3D => c::PlotAreaChoice::Area3DChart(Box::new(c::Area3DChart {
+            grouping: Some(c::Grouping {
+                val: Some(line_area_grouping(patch.stacking)),
+            }),
+            vary_colors: vary_colors_el(patch.vary_colors, false),
+            area_chart_series: series()
+                .map(|(i, s)| build_area_series(i, s, cat_ref))
+                .collect(),
+            data_labels: dl,
+            axis_id: build_3d_axis_ids(),
+            ..Default::default()
+        })),
+        _ => c::PlotAreaChoice::Bar3DChart(Box::new(c::Bar3DChart {
+            bar_direction: Box::new(c::BarDirection {
+                val: if matches!(patch.kind, ChartKind::Bar3D) {
+                    c::BarDirectionValues::Bar
+                } else {
+                    c::BarDirectionValues::Column
+                },
+            }),
+            bar_grouping: Some(c::BarGrouping {
+                val: Some(bar_grouping(patch.stacking)),
+            }),
+            vary_colors: vary_colors_el(patch.vary_colors, false),
+            bar_chart_series: series()
+                .map(|(i, s)| build_bar_series(i, s, cat_ref))
+                .collect(),
+            data_labels: dl,
+            gap_width: patch.gap_width.map(|g| c::GapWidth { val: Some(g) }),
+            shape: patch.bar_shape.map(|s| c::Shape {
+                val: Some(shape_to(s)),
+                ..Default::default()
+            }),
+            axis_id: build_3d_axis_ids(),
+            ..Default::default()
+        })),
+    }
+}
+
+pub(super) fn build_pie_3d_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
+    c::PlotAreaChoice::Pie3DChart(Box::new(c::Pie3DChart {
+        vary_colors: vary_colors_el(patch.vary_colors, true),
+        pie_chart_series: patch
+            .series
+            .iter()
+            .enumerate()
+            .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref()))
+            .collect(),
+        data_labels: build_data_labels(patch.data_labels.as_ref()),
+        ..Default::default()
+    }))
 }
 
 pub(super) fn radar_style_to(s: RadarStyle) -> c::RadarStyleValues {
@@ -656,6 +900,10 @@ pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
             unreachable!("cartesian kinds are built via build_cartesian_plot_charts")
         }
         ChartKind::Stock => unreachable!("stock is built via build_stock_chart"),
+        ChartKind::Pie3D => unreachable!("pie3D is built via build_pie_3d_chart"),
+        ChartKind::Bar3D | ChartKind::Column3D | ChartKind::Line3D | ChartKind::Area3D => {
+            unreachable!("3D cartesian kinds are built via build_3d_cartesian_chart")
+        }
     }
 }
 

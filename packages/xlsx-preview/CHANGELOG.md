@@ -21,6 +21,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- 3D chart kinds (`ChartKind` `bar3d`/`column3d`/`line3d`/`pie3d`/`area3d` → `c:bar3DChart`/`c:line3DChart`/`c:pie3DChart`/`c:area3DChart`) plus `ChartPatch/Update/Info.view3d` (`ChartView3D`: rotX/rotY/perspective/rightAngleAxes/depthPercent/heightPercent) and `.barShape` (`Bar3DShape`, `c:shape`, bar3D/column3D only). 3D cartesian emit the required `c:serAx` third axis (deleted); pie3D needs no axes. The export renderer draws 3D charts flat as their 2D equivalent; view3D/shape round-trip for Excel. Rides on `setChart`/`updateChart`.
 - `ChartPatch.dataTable`/`ChartUpdate.dataTable`/`ChartInfo.dataTable` (`ChartDataTable`): chart data table (`c:dTable` in `c:plotArea`, after the axes) — showHorzBorder/showVertBorder/showOutline/showKeys; cartesian charts only (rejected on pie/doughnut/scatter/bubble/radar/stock); round-trips for Excel (renderer doesn't draw). Rides on `setChart`/`updateChart`.
 - `ChartAxisPatch.labelRotation`: tick-label rotation in whole degrees (-90..=90), stored as axis `c:txPr`/`a:bodyPr/@rot` (60000ths of a degree) on cat+val axes; round-trips for Excel (renderer draws labels horizontally). Rides on `setChart`/`updateChart`.
 - `ChartDataLabels.perPoint` (`ChartDataLabel`): per-point data labels (`c:dLbl`) — per data-point `index` delete flag or overrides of showValue/showCategoryName/showSeriesName/showPercent/showLegendKey/position/numFmt/separator; renderer-visible. Rides on `setChart`/`updateChart`.

@@ -18,6 +18,84 @@ pub enum ChartKind {
     Doughnut,
     Radar,
     Stock,
+    /// 3D clustered column (`c:bar3DChart` with `barDir=col`).
+    #[serde(rename = "column3d")]
+    Column3D,
+    /// 3D bar (`c:bar3DChart` with `barDir=bar`).
+    #[serde(rename = "bar3d")]
+    Bar3D,
+    /// 3D line (`c:line3DChart`).
+    #[serde(rename = "line3d")]
+    Line3D,
+    /// 3D pie (`c:pie3DChart`); no axes.
+    #[serde(rename = "pie3d")]
+    Pie3D,
+    /// 3D area (`c:area3DChart`).
+    #[serde(rename = "area3d")]
+    Area3D,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+/// 3D bar/column shape (`c:shape/@val`, OOXML `ST_Shape`), transliterated from
+/// ooxmlsdk `ShapeValues`. Bar3D/Column3D charts only.
+pub enum Bar3DShape {
+    #[serde(rename = "cone")]
+    Cone,
+    #[serde(rename = "coneToMax")]
+    ConeToMax,
+    #[serde(rename = "box")]
+    Box,
+    #[serde(rename = "cylinder")]
+    Cylinder,
+    #[serde(rename = "pyramid")]
+    Pyramid,
+    #[serde(rename = "pyramidToMax")]
+    PyramidToMaximum,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// 3D view settings (`c:view3D`), distilled from ooxmlsdk `View3D`. Applies to
+/// any 3D chart kind (bar3D/column3D/line3D/pie3D/area3D). Round-trips for
+/// Excel; the xlsx-preview renderer draws 3D charts flat (no rotation/depth).
+///
+/// schema-excluded: extLst
+pub struct ChartView3D {
+    /// `c:rotX/@val` (-90..=90); rotation about the x-axis in degrees.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rot_x: Option<i8>,
+    /// `c:rotY/@val` (0..=360); rotation about the y-axis in degrees.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rot_y: Option<u16>,
+    /// `c:perspective/@val` (0..=240); perspective distance. Ignored when
+    /// `right_angle_axes` is `true`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub perspective: Option<u8>,
+    /// `c:rAngAx/@val`; render axes at right angles (no perspective).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub right_angle_axes: Option<bool>,
+    /// `c:depthPercent/@val` (20..=2000); depth of the plot as a percent of width.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub depth_percent: Option<u16>,
+    /// `c:hPercent/@val` (5..=500); height of the plot as a percent of width.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub height_percent: Option<u16>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1064,6 +1142,14 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_table: Option<ChartDataTable>,
+    /// `c:view3D`; 3D view settings. 3D chart kinds only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub view_3d: Option<ChartView3D>,
+    /// `c:shape`; bar/column 3D shape. Bar3D/Column3D charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bar_shape: Option<Bar3DShape>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1155,6 +1241,14 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_table: Option<ChartDataTable>,
+    /// `c:view3D`; 3D view settings. 3D chart kinds only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub view_3d: Option<ChartView3D>,
+    /// `c:shape`; bar/column 3D shape. Bar3D/Column3D charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bar_shape: Option<Bar3DShape>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1250,4 +1344,12 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_table: Option<ChartDataTable>,
+    /// `c:view3D`; 3D view settings. 3D chart kinds only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub view_3d: Option<ChartView3D>,
+    /// `c:shape`; bar/column 3D shape. Bar3D/Column3D charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bar_shape: Option<Bar3DShape>,
 }
