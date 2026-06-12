@@ -21,6 +21,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `ChartAxisPatch.labelRotation`: tick-label rotation in whole degrees (-90..=90), stored as axis `c:txPr`/`a:bodyPr/@rot` (60000ths of a degree) on cat+val axes; round-trips for Excel (renderer draws labels horizontally). Rides on `setChart`/`updateChart`.
 - `ChartDataLabels.perPoint` (`ChartDataLabel`): per-point data labels (`c:dLbl`) — per data-point `index` delete flag or overrides of showValue/showCategoryName/showSeriesName/showPercent/showLegendKey/position/numFmt/separator; renderer-visible. Rides on `setChart`/`updateChart`.
 - `ChartSeriesPatch.errorBars`/`ChartSeriesInfo.errorBars` (`ChartErrorBars`/`ChartErrorDirection`/`ChartErrorBarType`/`ChartErrorValueType`): per-series error bars (`c:errBars`) — errDir x/y, errBarType both/minus/plus, errValType fixedVal/percentage/stdDev/stdErr/cust, value, noEndCap, custom plus/minus refs or inline values; bar/column/line/area/scatter/bubble only; round-trips for Excel (renderer doesn't draw). Rides on `setChart`/`updateChart`.
 - `ChartSeriesPatch.trendline`/`ChartSeriesInfo.trendline` (`ChartTrendline`/`TrendlineKind`): per-series regression trendline (`c:trendline`) — linear/poly/movingAvg/exp/log/power, dispEq/dispRSqr, forward/backward, intercept, custom name; bar/column/line/area/scatter/bubble only; round-trips for Excel (renderer doesn't draw). Rides on `setChart`/`updateChart`.

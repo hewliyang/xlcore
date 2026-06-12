@@ -462,6 +462,115 @@ fn chart_value_axis_display_units_round_trip() {
 }
 
 #[test]
+fn chart_axis_label_rotation_round_trip() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 80.0).unwrap();
+
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Column,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$3".to_string(),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::A1("D2:K17".to_string()),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: Some(ChartAxisPatch {
+                    label_rotation: Some(-45),
+                    ..Default::default()
+                }),
+                value_axis: Some(ChartAxisPatch {
+                    label_rotation: Some(90),
+                    ..Default::default()
+                }),
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
+                disp_blanks_as: None,
+                vary_colors: None,
+                data_labels: None,
+            },
+        )
+        .unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(
+        xml.contains("rot=\"-2700000\""),
+        "category axis rot present: {xml}"
+    );
+    assert!(
+        xml.contains("rot=\"5400000\""),
+        "value axis rot present: {xml}"
+    );
+
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let chart = reopened
+        .charts(Some("Sheet1"))
+        .unwrap()
+        .into_iter()
+        .find(|c| c.id == info.id)
+        .unwrap();
+    assert_eq!(
+        chart.category_axis.expect("cat axis").label_rotation,
+        Some(-45)
+    );
+    assert_eq!(chart.value_axis.expect("val axis").label_rotation, Some(90));
+
+    let updated = reopened
+        .update_chart(
+            "Sheet1",
+            &info.id,
+            ChartUpdate {
+                value_axis: Some(ChartAxisPatch {
+                    label_rotation: Some(0),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        updated.value_axis.expect("val axis after update").label_rotation,
+        Some(0)
+    );
+    assert_eq!(
+        updated.category_axis.expect("cat axis preserved").label_rotation,
+        Some(-45),
+        "unspecified axis preserved on update"
+    );
+
+    let err = reopened
+        .update_chart(
+            "Sheet1",
+            &info.id,
+            ChartUpdate {
+                value_axis: Some(ChartAxisPatch {
+                    label_rotation: Some(120),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidChart);
+}
+
+#[test]
 fn charts_supports_multiple_kinds() {
     let mut wb = Workbook::new().unwrap();
     let patch = |kind: ChartKind| ChartPatch {

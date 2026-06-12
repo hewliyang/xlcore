@@ -19,14 +19,14 @@ sdk = "ValueAxis"
 dto = "ChartAxisPatch"
 ns = "c"
 derived = ["axId", "axPos", "crossAx"]
-aliases = { delete = "hidden", numFmt = "number_format", orientation = "reversed" }
+aliases = { delete = "hidden", numFmt = "number_format", orientation = "reversed", txPr = "label_rotation" }
 
 [[pair]]
 sdk = "CategoryAxis"
 dto = "ChartAxisPatch"
 ns = "c"
 derived = ["axId", "axPos", "crossAx"]
-aliases = { delete = "hidden", numFmt = "number_format", orientation = "reversed" }
+aliases = { delete = "hidden", numFmt = "number_format", orientation = "reversed", txPr = "label_rotation" }
 
 # --- chart series -----------------------------------------------------------
 [[pair]]

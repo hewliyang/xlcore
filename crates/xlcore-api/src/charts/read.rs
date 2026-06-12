@@ -988,6 +988,7 @@ pub(super) fn read_cat_axis_patch(ax: &c::CategoryAxis) -> Option<ChartAxisPatch
             Some(c::CategoryAxisChoice::CrossesAt(c)) => Some(c.val),
             _ => None,
         },
+        label_rotation: read_axis_label_rotation(ax.text_properties.as_deref()),
         ..Default::default()
     };
     p.title = p.title.filter(|t| !t.is_empty());
@@ -1035,6 +1036,7 @@ pub(super) fn read_val_axis_patch(ax: &c::ValueAxis) -> Option<ChartAxisPatch> {
             _ => None,
         },
         display_units: read_display_units(ax.display_units.as_deref()),
+        label_rotation: read_axis_label_rotation(ax.text_properties.as_deref()),
     };
     p.title = p.title.filter(|t| !t.is_empty());
     if p == ChartAxisPatch::default() {
@@ -1042,6 +1044,11 @@ pub(super) fn read_val_axis_patch(ax: &c::ValueAxis) -> Option<ChartAxisPatch> {
     } else {
         Some(p)
     }
+}
+
+pub(super) fn read_axis_label_rotation(txpr: Option<&c::TextProperties>) -> Option<i32> {
+    let rot = txpr?.body_properties.rotation?;
+    Some(rot / 60000)
 }
 
 pub(super) fn read_axis_hidden(delete: Option<&c::Delete>) -> Option<bool> {

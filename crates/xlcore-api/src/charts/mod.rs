@@ -123,6 +123,8 @@ impl Workbook {
         validate_chart_series(sheet, patch.kind, &patch.series)?;
         validate_bar_options(sheet, patch.gap_width, patch.overlap)?;
         validate_pie_options(sheet, patch.hole_size, patch.first_slice_angle)?;
+        validate_axis_options(sheet, patch.category_axis.as_ref())?;
+        validate_axis_options(sheet, patch.value_axis.as_ref())?;
         let anchor = crate::refs::resolve_anchor(&patch.anchor)?;
 
         if !self.sheet_exists(sheet)? {
@@ -358,6 +360,8 @@ impl Workbook {
 
         validate_bar_options(&sheet, update.gap_width, update.overlap)?;
         validate_pie_options(&sheet, update.hole_size, update.first_slice_angle)?;
+        validate_axis_options(&sheet, update.category_axis.as_ref())?;
+        validate_axis_options(&sheet, update.value_axis.as_ref())?;
 
         let plot_dirty = update.series.is_some()
             || update.stacking.is_some()

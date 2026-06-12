@@ -231,6 +231,19 @@ pub(super) fn validate_pie_options(
     Ok(())
 }
 
+pub(super) fn validate_axis_options(sheet: &str, axis: Option<&ChartAxisPatch>) -> Result<()> {
+    if let Some(rot) = axis.and_then(|a| a.label_rotation) {
+        if !(-90..=90).contains(&rot) {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                format!("chart axis label_rotation must be -90..=90, got: {rot}"),
+            )
+            .with_sheet(sheet));
+        }
+    }
+    Ok(())
+}
+
 pub(super) fn hole_size_for_kind(kind: ChartKind, value: Option<u8>) -> Option<u8> {
     match kind {
         ChartKind::Doughnut => value,
@@ -1459,6 +1472,21 @@ pub(super) fn built_in_unit_to(u: BuiltInUnit) -> c::BuiltInUnitValues {
     }
 }
 
+pub(super) fn build_axis_txpr(rotation_degrees: i32) -> c::TextProperties {
+    c::TextProperties {
+        body_properties: Box::new(a::BodyProperties {
+            rotation: Some(rotation_degrees * 60000),
+            ..Default::default()
+        }),
+        list_style: Some(Box::new(a::ListStyle::default())),
+        paragraph: vec![a::Paragraph {
+            paragraph_properties: Some(Box::new(a::ParagraphProperties::default())),
+            ..Default::default()
+        }],
+        ..Default::default()
+    }
+}
+
 pub(super) fn build_display_units(du: &DisplayUnits) -> c::DisplayUnits {
     let choice = match du {
         DisplayUnits::Builtin(u) => c::DisplayUnitsChoice::BuiltInUnit(Box::new(c::BuiltInUnit {
@@ -1554,6 +1582,9 @@ macro_rules! apply_axis_common {
             $ax.tick_label_position = Some(c::TickLabelPosition {
                 val: Some(tick_label_pos_to(tlp)),
             });
+        }
+        if let Some(rot) = $p.label_rotation {
+            $ax.text_properties = Some(Box::new(build_axis_txpr(rot)));
         }
     }};
 }

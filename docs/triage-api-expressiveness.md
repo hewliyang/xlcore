@@ -66,7 +66,8 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 ## Shipped (summary)
 
 - **Charts P0**: axis object (`ChartAxisPatch`: min/max/log/reversed, units,
-  ticks, gridlines, numFmt, crossBetween/crossesAt, dispUnits, hidden), combo
+  ticks, gridlines, numFmt, crossBetween/crossesAt, dispUnits, labelRotation
+  (txPr bodyPr rot; round-trip-only, renderer draws labels horizontally), hidden), combo
   charts + secondary axis, series styling (marker, line, smooth, varyColors,
   invertIfNegative, gapWidth/overlap), per-point fills + explosion (`c:dPt`),
   pie/doughnut holeSize + firstSliceAngle, dispBlanksAs, radar + stock kinds,
@@ -94,10 +95,6 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   cached per stable sheet id, raw part XML escape hatch, verb/naming audit.
 
 ## Remaining gaps
-
-### P2 — next up
-
-- Axis **label rotation** (txPr bodyPr rot — the one `ChartAxisPatch` deferral).
 
 ### P2 — backlog
 

@@ -326,12 +326,12 @@ pub struct ChartDataPoint {
 /// ooxmlsdk `CategoryAxis`/`ValueAxis` per `scripts/schema_diff.py`.
 ///
 /// Intentionally not modeled here (preserved on update, author via raw XML):
-/// `spPr`/`txPr` styling, `label_rotation` (txPr bodyPr rot),
-/// `pictureOptions`, `extLst`, multi-level category labels, and date-axis fields.
+/// `spPr`/`txPr` styling (beyond `label_rotation`), `pictureOptions`, `extLst`,
+/// multi-level category labels, and date-axis fields.
 /// `min`/`max`/`major_unit`/`major_gridlines`/`number_format` are also surfaced
 /// in the xlsx-preview renderer; the remainder round-trips for Excel.
 ///
-/// schema-excluded: spPr, txPr, auto, lblAlgn, lblOffset, tickLblSkip, tickMarkSkip, noMultiLvlLbl
+/// schema-excluded: spPr, auto, lblAlgn, lblOffset, tickLblSkip, tickMarkSkip, noMultiLvlLbl
 pub struct ChartAxisPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -396,6 +396,12 @@ pub struct ChartAxisPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub display_units: Option<DisplayUnits>,
+    /// Tick-label rotation in whole degrees (-90..=90), stored as `c:txPr`'s
+    /// `a:bodyPr/@rot` in 60000ths of a degree. Round-trips for Excel; the
+    /// xlsx-preview renderer draws axis labels horizontally regardless.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label_rotation: Option<i32>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

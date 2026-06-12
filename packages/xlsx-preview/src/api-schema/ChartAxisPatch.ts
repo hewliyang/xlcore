@@ -9,12 +9,12 @@ import type { TickMark } from "./TickMark.js";
  * ooxmlsdk `CategoryAxis`/`ValueAxis` per `scripts/schema_diff.py`.
  *
  * Intentionally not modeled here (preserved on update, author via raw XML):
- * `spPr`/`txPr` styling, `label_rotation` (txPr bodyPr rot),
- * `pictureOptions`, `extLst`, multi-level category labels, and date-axis fields.
+ * `spPr`/`txPr` styling (beyond `label_rotation`), `pictureOptions`, `extLst`,
+ * multi-level category labels, and date-axis fields.
  * `min`/`max`/`major_unit`/`major_gridlines`/`number_format` are also surfaced
  * in the xlsx-preview renderer; the remainder round-trips for Excel.
  *
- * schema-excluded: spPr, txPr, auto, lblAlgn, lblOffset, tickLblSkip, tickMarkSkip, noMultiLvlLbl
+ * schema-excluded: spPr, auto, lblAlgn, lblOffset, tickLblSkip, tickMarkSkip, noMultiLvlLbl
  */
 export type ChartAxisPatch = {
   title?: string;
@@ -68,4 +68,10 @@ export type ChartAxisPatch = {
    * scales the value-axis labels. Renderer-visible.
    */
   displayUnits?: DisplayUnits;
+  /**
+   * Tick-label rotation in whole degrees (-90..=90), stored as `c:txPr`'s
+   * `a:bodyPr/@rot` in 60000ths of a degree. Round-trips for Excel; the
+   * xlsx-preview renderer draws axis labels horizontally regardless.
+   */
+  labelRotation?: number;
 };
