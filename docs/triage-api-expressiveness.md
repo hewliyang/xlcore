@@ -389,6 +389,17 @@ conventions** are less principled. Different layers, different grades.
    (`api-collections.ts` pure-forwarding methods + `as T` casts) is still
    hand-written — generating it from the same table (or a shared data file the
    macro and a TS emitter both read) is the remaining drift surface.
+   **Follow-up landed (machine-checkable manifest)**: `scripts/api_manifest.py`
+   parses both the `api_methods!` table rows and the hand-written
+   `#[wasm_bindgen]` `WorkbookHandle` methods out of `lib.rs` into a checked-in
+   `scripts/api_methods.json` (`name`, `jsName`, `kind`, `args` with
+   kinds/types, `ret`). `--check` regenerates and diffs against the checked-in
+   JSON (fails if stale) and cross-checks the TS layer: every forwarded `jsName`
+   must appear as a `handle.<jsName>(` call under `packages/xlsx-preview/src`
+   (catches forwarding drift), and any `handle.<name>(` call absent from the
+   manifest is reported (catches phantom methods). Wired into xlsx-preview
+   `check` as `check:api` (sibling of `check:schema`). The JSON is the contract
+   a future pyo3/napi emitter consumes.
 5. *(done)* **Worksheet identity is fake.** `Worksheet` wraps a throwaway
    `{current: name}` ref; `wb.sheet("X")` twice gives two objects, and
    `rename()` on one strands the other (and any stored `Range`s). openpyxl's
