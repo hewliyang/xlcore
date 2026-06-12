@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use xlcore_io::spreadsheetml as x;
-use xlcore_types::{ApiCellValue as CellValue, ClearMode, RangeInfo, StylePatch};
+use xlcore_types::{
+    ApiCellValue as CellValue, ApiError, ApiErrorCode, ClearMode, RangeInfo, StylePatch,
+};
 
 use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_range_reference, validate_matrix_shape, ResolvedRangeRef};
@@ -39,6 +41,60 @@ impl Workbook {
             }
         }
         mark_formulas_stale(&mut self.doc)?;
+        self.read_range(&range_ref)
+    }
+
+    pub fn append_row(&mut self, sheet: &str, values: Vec<CellValue>) -> Result<RangeInfo> {
+        self.append_rows(sheet, vec![values])
+    }
+
+    pub fn append_rows(
+        &mut self,
+        sheet: &str,
+        rows: Vec<Vec<CellValue>>,
+    ) -> Result<RangeInfo> {
+        if rows.is_empty() {
+            return Err(ApiError::new(
+                ApiErrorCode::ShapeMismatch,
+                "append_rows: no rows provided",
+            ));
+        }
+        let sheet = if sheet.is_empty() {
+            self.default_sheet_name()?
+        } else {
+            sheet.to_string()
+        };
+        let ws_part = self.worksheet_part_for_sheet(&sheet)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let max_row = ws
+            .sheet_data
+            .row
+            .iter()
+            .filter(|row| !row.cell.is_empty())
+            .filter_map(|row| row.row_index)
+            .max()
+            .unwrap_or(0);
+        let start_row = max_row + 1;
+        let mut max_cols = 0u32;
+        for (r_off, row) in rows.iter().enumerate() {
+            let row_idx = start_row + r_off as u32;
+            max_cols = max_cols.max(row.len() as u32);
+            for (c_off, value) in row.iter().enumerate() {
+                let col_idx = 1 + c_off as u32;
+                let cell = ensure_cell(ws, row_idx, col_idx);
+                set_cell_value(cell, value);
+            }
+        }
+        mark_formulas_stale(&mut self.doc)?;
+        let range_ref = ResolvedRangeRef {
+            sheet,
+            start_row,
+            start_column: 1,
+            end_row: start_row + rows.len() as u32 - 1,
+            end_column: max_cols.max(1),
+        };
         self.read_range(&range_ref)
     }
 

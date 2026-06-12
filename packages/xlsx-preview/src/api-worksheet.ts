@@ -1,6 +1,7 @@
 import type { WorkbookHandle as WasmWorkbookHandle } from "./xlcore_wasm.js";
 import type {
   FreezeInfo,
+  RangeInfo,
   SheetInfo,
   SheetPageSetup,
   SheetPageSetupPatch,
@@ -27,7 +28,7 @@ import {
   ThreadedNotesCollection,
 } from "./api-collections.js";
 import { type CellAddress, type RangeAddress, type SheetRef, qualify } from "./api-refs.js";
-import { Cell, Range, makeCell, makeRange } from "./api-range.js";
+import { Cell, type CellInput, Range, makeCell, makeRange } from "./api-range.js";
 
 abstract class SheetScopedApi {
   constructor(
@@ -159,6 +160,16 @@ export class Worksheet {
 
   cell(addr: CellAddress): Cell {
     return makeCell(this.handle, this.sheetRef, addr);
+  }
+
+  /** Append a single row of values after the last row that contains data. */
+  appendRow(values: CellInput[]): RangeInfo {
+    return this.handle.appendRows(this.name, [values]) as RangeInfo;
+  }
+
+  /** Append multiple rows after the last row that contains data. */
+  appendRows(rows: CellInput[][]): RangeInfo {
+    return this.handle.appendRows(this.name, rows) as RangeInfo;
   }
 
   /**

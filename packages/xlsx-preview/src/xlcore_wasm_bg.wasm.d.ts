@@ -8,6 +8,7 @@ export const extract_parquet: (a: number, b: number, c: number, d: number) => vo
 export const extract_xlsx: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_addMerge: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_addThreadedNote: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+export const workbookhandle_appendRows: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_autoFilter: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_calcProperties: (a: number, b: number) => void;
 export const workbookhandle_charts: (a: number, b: number, c: number, d: number) => void;

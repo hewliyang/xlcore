@@ -296,6 +296,16 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = appendRows)]
+    pub fn append_rows(&mut self, sheet: &str, rows: JsValue) -> Result<JsValue, JsValue> {
+        let rows = range_values_from_js(rows)?;
+        let range = self
+            .workbook_mut()?
+            .append_rows(sheet, rows)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = setRangeFormulas)]
     pub fn set_range_formulas(
         &mut self,

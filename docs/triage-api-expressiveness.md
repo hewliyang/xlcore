@@ -341,15 +341,19 @@ conventions** are less principled. Different layers, different grades.
    workbook owns its worksheet objects — same name, same object. Fix:
    `Workbook` caches `Worksheet` per stable `SheetInfo.id`; rename updates the
    shared ref.
-6. **No bulk-data idiom.** openpyxl's most-used method is `ws.append(row)`.
-   `setValues(matrix)` exists but there's no append/iter-rows ergonomic; agents
-   reconstruct ranges manually.
+6. *(done)* **No bulk-data idiom.** openpyxl's most-used method is `ws.append(row)`.
+   **Resolved**: `Workbook::append_rows(sheet, rows)` + `append_row` in
+   `xlcore-api` write rows starting at column A after the last data-bearing row
+   (max `row_index` among rows with cells, `+1`; empty sheet → row 1) and return
+   the written block's `RangeInfo`. wasm `appendRows` + TS
+   `Worksheet.appendRow`/`appendRows` forward only. (iter-rows is still served by
+   existing range reads.)
 
 ### Priority
 
 #3 is correctness — land before expanding `ChartPatch`. #1/#2 are breaking
 renames, cheapest while the user count is ~1. #4 pays off across every future
-domain. #5/#6 are nice-to-haves.
+domain. #5 is a nice-to-have; #6 is done.
 
 ## Where to enforce the structure (Rust vs binding) — pyo3/napi readiness
 

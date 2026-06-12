@@ -6,6 +6,7 @@ export class WorkbookHandle {
     [Symbol.dispose](): void;
     addMerge(sheet: string, reference: string): any;
     addThreadedNote(sheet: string, reference: string, patch: any): any;
+    appendRows(sheet: string, rows: any): any;
     autoFilter(sheet: string): any;
     calcProperties(): any;
     charts(sheet?: string | null): any;
@@ -134,6 +135,7 @@ export interface InitOutput {
     readonly extract_xlsx: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_addMerge: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_addThreadedNote: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+    readonly workbookhandle_appendRows: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_autoFilter: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_calcProperties: (a: number, b: number) => void;
     readonly workbookhandle_charts: (a: number, b: number, c: number, d: number) => void;

@@ -1,6 +1,58 @@
 use crate::*;
 
 #[test]
+fn append_rows_lands_after_existing_data() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook
+        .set_range_values(
+            "Sheet1!A1:B2",
+            vec![
+                vec![
+                    CellValue::String("Region".into()),
+                    CellValue::String("Units".into()),
+                ],
+                vec![CellValue::String("North".into()), CellValue::Number(10.0)],
+            ],
+        )
+        .unwrap();
+
+    let appended = workbook
+        .append_row(
+            "Sheet1",
+            vec![CellValue::String("South".into()), CellValue::Number(20.0)],
+        )
+        .unwrap();
+    assert_eq!(appended.reference, "A3:B3");
+    assert_eq!(appended.values[0][0], CellValue::String("South".to_string()));
+    assert_eq!(appended.values[0][1], CellValue::Number(20.0));
+
+    let block = workbook
+        .append_rows(
+            "Sheet1",
+            vec![
+                vec![CellValue::String("East".into()), CellValue::Number(30.0)],
+                vec![CellValue::String("West".into()), CellValue::Number(40.0)],
+            ],
+        )
+        .unwrap();
+    assert_eq!(block.reference, "A4:B5");
+
+    let all = workbook.get_range("Sheet1!A1:B5").unwrap();
+    assert_eq!(all.values[4][0], CellValue::String("West".to_string()));
+    assert_eq!(all.values[4][1], CellValue::Number(40.0));
+
+    let empty = Workbook::new().unwrap();
+    let mut empty = empty;
+    let first = empty
+        .append_row("Sheet1", vec![CellValue::String("first".into())])
+        .unwrap();
+    assert_eq!(first.reference, "A1:A1");
+
+    let err = workbook.append_rows("Sheet1", vec![]).unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::ShapeMismatch);
+}
+
+#[test]
 fn range_round_trip_values_formulas_and_clear() {
     let mut workbook = Workbook::new().unwrap();
     workbook
