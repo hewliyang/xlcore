@@ -94,13 +94,15 @@ impl Workbook {
             ..Default::default()
         };
         fc.filter_column_choice = Some(build_choice(&patch.criteria));
+        let info = read_filter_column(&fc);
         af.filter_column.push(fc);
         af.filter_column.sort_by_key(|fc| u32::from(fc.column_id));
-        Ok(AutoFilterColumnInfo {
-            column_offset: patch.column_offset,
-            hidden_button: patch.hidden_button,
-            show_button: patch.show_button,
-            criteria: patch.criteria,
+        info.ok_or_else(|| {
+            ApiError::new(
+                ApiErrorCode::InvalidAutoFilter,
+                "failed to materialize filter column",
+            )
+            .with_sheet(&sheet)
         })
     }
 
@@ -164,7 +166,7 @@ fn validate_criteria(criteria: &AutoFilterCriteria, sheet: &str) -> Result<()> {
         |msg: &str| Err(ApiError::new(ApiErrorCode::InvalidAutoFilter, msg).with_sheet(sheet));
     match criteria {
         AutoFilterCriteria::Values { values, blank } => {
-            if values.is_empty() && !*blank {
+            if values.is_empty() && !blank.unwrap_or(false) {
                 return err("values criteria requires at least one value or blank=true");
             }
             for v in values {
@@ -177,7 +179,7 @@ fn validate_criteria(criteria: &AutoFilterCriteria, sheet: &str) -> Result<()> {
             if !val.is_finite() || *val <= 0.0 {
                 return err("top10 val must be positive and finite");
             }
-            if *percent && *val > 100.0 {
+            if percent.unwrap_or(false) && *val > 100.0 {
                 return err("top10 percent val must be <= 100");
             }
         }
@@ -202,7 +204,11 @@ fn build_choice(criteria: &AutoFilterCriteria) -> x::FilterColumnChoice {
     match criteria {
         AutoFilterCriteria::Values { values, blank } => {
             let mut filters = x::Filters {
-                blank: if *blank { Some(true.into()) } else { None },
+                blank: if blank.unwrap_or(false) {
+                    Some(true.into())
+                } else {
+                    None
+                },
                 ..Default::default()
             };
             for v in values {
@@ -216,8 +222,8 @@ fn build_choice(criteria: &AutoFilterCriteria) -> x::FilterColumnChoice {
         }
         AutoFilterCriteria::Top10 { top, percent, val } => {
             let t10 = x::Top10 {
-                top: Some((*top).into()),
-                percent: Some((*percent).into()),
+                top: Some(top.unwrap_or(true).into()),
+                percent: Some(percent.unwrap_or(false).into()),
                 val: (*val).into(),
                 filter_value: None,
             };
@@ -228,7 +234,7 @@ fn build_choice(criteria: &AutoFilterCriteria) -> x::FilterColumnChoice {
             criteria,
         } => {
             let mut cf = x::CustomFilters {
-                and: Some((*logical_and).into()),
+                and: Some(logical_and.unwrap_or(false).into()),
                 custom_filter: Vec::new(),
             };
             for c in criteria {
@@ -274,11 +280,7 @@ fn read_filter_column(fc: &x::FilterColumn) -> Option<AutoFilterColumnInfo> {
     let column_offset = u32::from(fc.column_id);
     let criteria = match fc.filter_column_choice.as_ref() {
         Some(x::FilterColumnChoice::Filters(filters)) => {
-            let blank = filters
-                .blank
-                .as_ref()
-                .map(|b| bool::from(*b))
-                .unwrap_or(false);
+            let blank = filters.blank.as_ref().map(|b| bool::from(*b));
             let mut values: Vec<String> = Vec::new();
             for fc in &filters.filters_choice {
                 if let x::FiltersChoice::XFilter(f) = fc {
@@ -288,16 +290,12 @@ fn read_filter_column(fc: &x::FilterColumn) -> Option<AutoFilterColumnInfo> {
             AutoFilterCriteria::Values { values, blank }
         }
         Some(x::FilterColumnChoice::Top10(t10)) => AutoFilterCriteria::Top10 {
-            top: t10.top.as_ref().map(|b| bool::from(*b)).unwrap_or(true),
-            percent: t10
-                .percent
-                .as_ref()
-                .map(|b| bool::from(*b))
-                .unwrap_or(false),
+            top: t10.top.as_ref().map(|b| bool::from(*b)),
+            percent: t10.percent.as_ref().map(|b| bool::from(*b)),
             val: f64::from(t10.val),
         },
         Some(x::FilterColumnChoice::XCustomFilters(cf)) => {
-            let logical_and = cf.and.as_ref().map(|b| bool::from(*b)).unwrap_or(false);
+            let logical_and = cf.and.as_ref().map(|b| bool::from(*b));
             let criteria = cf
                 .custom_filter
                 .iter()
@@ -328,7 +326,7 @@ fn read_filter_column(fc: &x::FilterColumn) -> Option<AutoFilterColumnInfo> {
             name: "iconFilter".to_string(),
         },
         Some(x::FilterColumnChoice::X14CustomFilters(cf)) => {
-            let logical_and = cf.and.as_ref().map(|b| bool::from(*b)).unwrap_or(false);
+            let logical_and = cf.and.as_ref().map(|b| bool::from(*b));
             let criteria = cf
                 .custom_filter
                 .iter()
@@ -357,7 +355,7 @@ fn read_filter_column(fc: &x::FilterColumn) -> Option<AutoFilterColumnInfo> {
         },
         None => AutoFilterCriteria::Values {
             values: Vec::new(),
-            blank: false,
+            blank: None,
         },
     };
     Some(AutoFilterColumnInfo {

@@ -48,19 +48,23 @@ pub enum AutoFilterCriteria {
     Values {
         #[serde(default)]
         values: Vec<String>,
-        #[serde(default)]
-        blank: bool,
+        #[cfg_attr(feature = "typescript", ts(optional))]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        blank: Option<bool>,
     },
     Top10 {
-        #[serde(default)]
-        top: bool,
-        #[serde(default)]
-        percent: bool,
+        #[cfg_attr(feature = "typescript", ts(optional))]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        top: Option<bool>,
+        #[cfg_attr(feature = "typescript", ts(optional))]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        percent: Option<bool>,
         val: f64,
     },
     Custom {
-        #[serde(default)]
-        logical_and: bool,
+        #[cfg_attr(feature = "typescript", ts(optional))]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        logical_and: Option<bool>,
         #[serde(default)]
         criteria: Vec<AutoFilterCustomCriterion>,
     },

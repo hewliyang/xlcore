@@ -2,7 +2,7 @@
 import type { AutoFilterCustomCriterion } from "./AutoFilterCustomCriterion.js";
 
 export type AutoFilterCriteria =
-  | { kind: "values"; values: Array<string>; blank: boolean }
-  | { kind: "top10"; top: boolean; percent: boolean; val: number }
-  | { kind: "custom"; logical_and: boolean; criteria: Array<AutoFilterCustomCriterion> }
+  | { kind: "values"; values: Array<string>; blank?: boolean }
+  | { kind: "top10"; top?: boolean; percent?: boolean; val: number }
+  | { kind: "custom"; logical_and?: boolean; criteria: Array<AutoFilterCustomCriterion> }
   | { kind: "unsupported"; name: string };

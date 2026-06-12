@@ -236,7 +236,10 @@ Today no — semantics have leaked into the TS frontend:
 - ~~`charts.update` / `pivots.update` merge semantics + rollback~~ *(done: both now
   forward to Rust `update_chart`/`update_pivot`)*
 - ~~dataBar `min`/`max` defaulting~~ *(done: optional in DTO, defaulted in Rust)*
-- autoFilter `setColumnValues/Top10/Custom` sugar + friendly `criteria.kind` error
+- ~~autoFilter `setColumnValues/Top10/Custom` sugar + friendly `criteria.kind` error~~
+  *(done: criteria booleans are optional + defaulted in Rust (`top`→true); the TS
+  helpers carry no defaults and the `criteria.kind` guard is dropped — serde + Rust
+  `validate_criteria` reject bad/unsupported kinds)*
 - ~~`anchorA1` string→`ChartAnchor` parsing (no Rust counterpart at all)~~ *(done:
   `AnchorSpec` DTO + `resolve_anchor` in `xlcore-api`; patches accept A1 strings)*
 - `qref` sheet-qualification of unqualified refs

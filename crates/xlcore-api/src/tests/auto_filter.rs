@@ -82,7 +82,7 @@ fn auto_filter_column_criteria_round_trip() {
                 show_button: None,
                 criteria: AutoFilterCriteria::Values {
                     values: Vec::new(),
-                    blank: true,
+                    blank: Some(true),
                 },
             },
         )
@@ -97,8 +97,8 @@ fn auto_filter_column_criteria_round_trip() {
             hidden_button: None,
             show_button: None,
             criteria: AutoFilterCriteria::Top10 {
-                top: true,
-                percent: false,
+                top: Some(true),
+                percent: Some(false),
                 val: 5.0,
             },
         },
@@ -112,7 +112,7 @@ fn auto_filter_column_criteria_round_trip() {
             hidden_button: None,
             show_button: None,
             criteria: AutoFilterCriteria::Custom {
-                logical_and: true,
+                logical_and: Some(true),
                 criteria: vec![
                     AutoFilterCustomCriterion {
                         operator: AutoFilterOperator::GreaterThanOrEqual,
@@ -135,14 +135,14 @@ fn auto_filter_column_criteria_round_trip() {
     match &after.columns[0].criteria {
         AutoFilterCriteria::Values { values, blank } => {
             assert!(values.is_empty());
-            assert!(*blank);
+            assert_eq!(*blank, Some(true));
         }
         other => panic!("expected Values, got {other:?}"),
     }
     match &after.columns[1].criteria {
         AutoFilterCriteria::Top10 { top, percent, val } => {
-            assert!(*top);
-            assert!(!*percent);
+            assert_eq!(*top, Some(true));
+            assert_eq!(*percent, Some(false));
             assert_eq!(*val, 5.0);
         }
         other => panic!("expected Top10, got {other:?}"),
@@ -152,7 +152,7 @@ fn auto_filter_column_criteria_round_trip() {
             logical_and,
             criteria,
         } => {
-            assert!(*logical_and);
+            assert_eq!(*logical_and, Some(true));
             assert_eq!(criteria.len(), 2);
             assert_eq!(criteria[0].operator, AutoFilterOperator::GreaterThanOrEqual);
             assert_eq!(criteria[0].value, "50");
@@ -187,7 +187,7 @@ fn auto_filter_column_values_multi_value_round_trip() {
             show_button: None,
             criteria: AutoFilterCriteria::Values {
                 values: vec!["alpha".into(), "gamma".into()],
-                blank: true,
+                blank: Some(true),
             },
         },
     )
@@ -199,7 +199,7 @@ fn auto_filter_column_values_multi_value_round_trip() {
     match &after.columns[0].criteria {
         AutoFilterCriteria::Values { values, blank } => {
             assert_eq!(values, &vec!["alpha".to_string(), "gamma".to_string()]);
-            assert!(*blank);
+            assert_eq!(*blank, Some(true));
         }
         other => panic!("expected Values, got {other:?}"),
     }
@@ -218,8 +218,8 @@ fn auto_filter_column_validation_errors() {
                 hidden_button: None,
                 show_button: None,
                 criteria: AutoFilterCriteria::Top10 {
-                    top: true,
-                    percent: false,
+                    top: Some(true),
+                    percent: Some(false),
                     val: 5.0,
                 },
             },
@@ -237,8 +237,8 @@ fn auto_filter_column_validation_errors() {
                 hidden_button: None,
                 show_button: None,
                 criteria: AutoFilterCriteria::Top10 {
-                    top: true,
-                    percent: false,
+                    top: Some(true),
+                    percent: Some(false),
                     val: 5.0,
                 },
             },
@@ -255,7 +255,7 @@ fn auto_filter_column_validation_errors() {
                 show_button: None,
                 criteria: AutoFilterCriteria::Values {
                     values: vec!["".into()],
-                    blank: false,
+                    blank: Some(false),
                 },
             },
         )
@@ -270,8 +270,8 @@ fn auto_filter_column_validation_errors() {
                 hidden_button: None,
                 show_button: None,
                 criteria: AutoFilterCriteria::Top10 {
-                    top: true,
-                    percent: false,
+                    top: Some(true),
+                    percent: Some(false),
                     val: 0.0,
                 },
             },

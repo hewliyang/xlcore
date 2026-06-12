@@ -140,12 +140,6 @@ export class AutoFilterApi extends SheetScopedCollection {
     return (this.handle.removeAutoFilter(this.sheet) as AutoFilterInfo | null) ?? null;
   }
   setColumn(patch: AutoFilterColumnPatch): AutoFilterColumnInfo {
-    const kind = (patch as { criteria?: { kind?: unknown } } | undefined)?.criteria?.kind;
-    if (kind !== "values" && kind !== "top10" && kind !== "custom") {
-      throw new Error(
-        `autoFilter.setColumn: patch.criteria.kind must be one of "values" | "top10" | "custom" (got ${JSON.stringify(kind)}). Prefer the typed helpers autoFilter.setColumnValues / setColumnTop10 / setColumnCustom.`,
-      );
-    }
     return this.handle.setAutoFilterColumn(this.sheet, patch) as AutoFilterColumnInfo;
   }
   setColumnValues(
@@ -157,7 +151,7 @@ export class AutoFilterApi extends SheetScopedCollection {
       columnOffset,
       hiddenButton: opts.hiddenButton,
       showButton: opts.showButton,
-      criteria: { kind: "values", values, blank: opts.blank ?? false },
+      criteria: { kind: "values", values, blank: opts.blank },
     });
   }
   setColumnTop10(
@@ -169,7 +163,7 @@ export class AutoFilterApi extends SheetScopedCollection {
       columnOffset,
       hiddenButton: opts.hiddenButton,
       showButton: opts.showButton,
-      criteria: { kind: "top10", top: opts.top ?? true, percent: opts.percent ?? false, val },
+      criteria: { kind: "top10", top: opts.top, percent: opts.percent, val },
     });
   }
   setColumnCustom(
@@ -181,7 +175,7 @@ export class AutoFilterApi extends SheetScopedCollection {
       columnOffset,
       hiddenButton: opts.hiddenButton,
       showButton: opts.showButton,
-      criteria: { kind: "custom", logical_and: opts.logicalAnd ?? false, criteria },
+      criteria: { kind: "custom", logical_and: opts.logicalAnd, criteria },
     });
   }
   removeColumn(columnOffset: number): AutoFilterColumnInfo | null {
