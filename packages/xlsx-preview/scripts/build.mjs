@@ -19,8 +19,8 @@ await build({
 
 for (const [entry, outfile, platform, external = []] of [
   ["src/index.ts", "dist/index.js", "browser", ["./xlcore_wasm.js", "node:fs"]],
-  ["src/node.ts", "dist/node.js", "node", ["skia-canvas"]],
-  ["src/cli.ts", "dist/cli.js", "node", ["skia-canvas"]],
+  ["src/node.ts", "dist/node.js", "node", ["skia-canvas", "./api.js"]],
+  ["src/cli.ts", "dist/cli.js", "node", ["skia-canvas", "./api.js"]],
   ["src/previewer.ts", "dist/previewer.js", "browser"],
   ["src/color.ts", "dist/color.js", "browser"],
   ["src/react.tsx", "dist/react.js", "browser", ["react", "react/jsx-runtime"]],

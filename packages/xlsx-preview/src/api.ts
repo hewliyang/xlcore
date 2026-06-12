@@ -180,22 +180,20 @@ const DEFAULT_WASM_BINARY_URL = new URL("./xlcore_wasm_bg.wasm", import.meta.url
 
 let wasmReady: Promise<void> | null = null;
 
-function isNode(): boolean {
-  return (
-    typeof process !== "undefined" &&
-    process.versions != null &&
-    typeof process.versions.node === "string"
-  );
-}
+export type DefaultWasmInput = string | URL | RequestInfo | BufferSource | WebAssembly.Module;
+export type DefaultWasmInputResolver = () => DefaultWasmInput | Promise<DefaultWasmInput>;
 
-async function resolveDefaultWasmInput(): Promise<
-  string | URL | RequestInfo | BufferSource | WebAssembly.Module
-> {
-  if (isNode()) {
-    const { readFileSync } = await import("node:fs");
-    return readFileSync(new URL("./xlcore_wasm_bg.wasm", import.meta.url));
-  }
-  return DEFAULT_WASM_BINARY_URL;
+let defaultWasmInputResolver: DefaultWasmInputResolver = () => DEFAULT_WASM_BINARY_URL;
+
+/**
+ * Override how {@link Workbook.create}/{@link Workbook.open} locate the default
+ * wasm binary when no explicit `wasmBinaryUrl` is given. The browser entry
+ * resolves to a same-origin URL; importing `@hewliyang/xlsx-preview/node`
+ * registers a Node resolver that reads the bundled binary off disk so the
+ * browser entry stays free of `node:fs`.
+ */
+export function registerDefaultWasmInputResolver(resolver: DefaultWasmInputResolver): void {
+  defaultWasmInputResolver = resolver;
 }
 
 export interface WorkbookApiOptions {
@@ -374,7 +372,7 @@ export class Workbook {
 
 async function ensureWasm(options: WorkbookApiOptions): Promise<void> {
   wasmReady ??= (async () => {
-    const module_or_path = options.wasmBinaryUrl ?? (await resolveDefaultWasmInput());
+    const module_or_path = options.wasmBinaryUrl ?? (await defaultWasmInputResolver());
     await init({ module_or_path });
   })();
   await wasmReady;

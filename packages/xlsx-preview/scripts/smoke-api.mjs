@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
-import { NumberFormat, Workbook } from "../dist/api.js";
+import { NumberFormat, Workbook } from "../dist/node.js";
 
 const wasm = readFileSync(new URL("../dist/xlcore_wasm_bg.wasm", import.meta.url));
 const wb = await Workbook.create({ wasmBinaryUrl: wasm });

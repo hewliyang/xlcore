@@ -5,6 +5,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep the browser entry (`dist/index.js`) free of `node:fs`: the default wasm resolver is now injectable via `registerDefaultWasmInputResolver`, registered by `@hewliyang/xlsx-preview/node` (which also re-exports `Workbook`/`NumberFormat`). Node consumers needing default-wasm bootstrap should import `Workbook` from `./node`.
+
 ### Added
 
 - `Workbook.partNames()`/`getPart(name)`/`setPart(name, xml)`/`removePart(name)` — escape hatch for raw OPC part XML (read/author/delete unmodeled schema); unmodeled parts round-trip verbatim. Semantics in Rust (`Workbook::part_names`/`get_part_xml`/`set_part_xml`/`remove_part_xml`).

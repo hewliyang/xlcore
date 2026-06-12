@@ -2,6 +2,7 @@ import { Canvas, Image } from "skia-canvas";
 import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import initWasm, { extract_csv, extract_parquet, extract_xlsx } from "xlcore-wasm";
+import { registerDefaultWasmInputResolver } from "./api.js";
 import { decodeWorkbookLayout } from "./columnar.js";
 import {
   EMPTY_LOAD_REPORT,
@@ -46,6 +47,12 @@ setOffscreenCanvasFactory(
 if (typeof globalThis.Image === "undefined") {
   (globalThis as unknown as { Image: typeof Image }).Image = Image;
 }
+
+registerDefaultWasmInputResolver(() =>
+  readFileSync(new URL("./xlcore_wasm_bg.wasm", import.meta.url)),
+);
+
+export { NumberFormat, Workbook } from "./api.js";
 
 let wasmReady: Promise<unknown> | null = null;
 
