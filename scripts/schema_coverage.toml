@@ -75,6 +75,12 @@ dto = "ChartTrendline"
 ns = "c"
 aliases = { trendlineType = "kind", dispRSqr = "display_r_squared" }
 
+[[pair]]
+sdk = "ErrorBars"
+dto = "ChartErrorBars"
+ns = "c"
+aliases = { errDir = "direction", errBarType = "bar_type", errValType = "value_type", val = "value", plus = "plus_ref", minus = "minus_ref" }
+
 # --- chart kinds (plot-group containers) ------------------------------------
 [[pair]]
 sdk = "DoughnutChart"

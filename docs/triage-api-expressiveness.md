@@ -72,8 +72,11 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   pie/doughnut holeSize + firstSliceAngle, dispBlanksAs, radar + stock kinds,
   data label numFmt, series trendlines (`c:trendline`:
   linear/poly/movingAvg/exp/log/power, dispEq/dispRSqr, forward/backward,
-  intercept, custom name; round-trip-only, renderer doesn't draw). In-place
-  `update_chart` (atomic, preserves unmodeled XML).
+  intercept, custom name; round-trip-only, renderer doesn't draw), series error
+  bars (`c:errBars`: errDir x/y, errBarType both/minus/plus, errValType
+  fixedVal/percentage/stdDev/stdErr/cust, val, noEndCap, custom plus/minus
+  refs/values; round-trip-only, renderer doesn't draw). In-place `update_chart`
+  (atomic, preserves unmodeled XML).
 - **Rich text in cells**: `setRichText`/`richText` (inline-string `CT_RElt`
   runs with per-run `FontPatch`); `CellInfo.richText`, renderer-visible.
 - **Styles P1**: cell protection, pattern + gradient fills, font
@@ -91,7 +94,6 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 
 ### P2 — next up
 
-- **Error bars** (`c:errBars`) — common ask.
 - **Per-point data labels** (`c:dLbl`).
 - Axis **label rotation** (txPr bodyPr rot — the one `ChartAxisPatch` deferral).
 

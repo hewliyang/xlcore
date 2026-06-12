@@ -120,15 +120,39 @@ pub(super) fn validate_chart_series(
                 .with_sheet(sheet));
             }
         }
-        let no_trend =
-            matches!(kind, ChartKind::Pie | ChartKind::Doughnut | ChartKind::Radar | ChartKind::Stock);
+        let no_decorations = matches!(
+            kind,
+            ChartKind::Pie | ChartKind::Doughnut | ChartKind::Radar | ChartKind::Stock
+        );
         if let Some(t) = s.trendline.as_ref() {
-            let msg = if no_trend {
+            let msg = if no_decorations {
                 Some(format!("trendlines are not supported on {kind:?} charts"))
             } else if t.polynomial_order.is_some_and(|o| !(2..=6).contains(&o)) {
                 Some("trendline polynomial_order must be 2..=6".to_string())
             } else if t.period.is_some_and(|p| p < 2) {
                 Some("trendline period must be >= 2".to_string())
+            } else {
+                None
+            };
+            if let Some(msg) = msg {
+                return Err(ApiError::new(ApiErrorCode::InvalidChart, msg).with_sheet(sheet));
+            }
+        }
+        if let Some(e) = s.error_bars.as_ref() {
+            let custom = matches!(e.value_type, ChartErrorValueType::Custom);
+            let has_custom_data = e.plus_ref.is_some()
+                || e.minus_ref.is_some()
+                || e.plus_values.is_some()
+                || e.minus_values.is_some();
+            let msg = if no_decorations {
+                Some(format!("error bars are not supported on {kind:?} charts"))
+            } else if custom && !has_custom_data {
+                Some(
+                    "custom error bars require plus_ref/minus_ref or plus_values/minus_values"
+                        .to_string(),
+                )
+            } else if !custom && e.value.is_none() {
+                Some(format!("{:?} error bars require a value", e.value_type))
             } else {
                 None
             };
@@ -802,10 +826,101 @@ pub(super) fn build_trendline(t: Option<&ChartTrendline>) -> Vec<c::Trendline> {
         forward: t.forward.map(|val| c::Forward { val }),
         backward: t.backward.map(|val| c::Backward { val }),
         intercept: t.intercept.map(|val| c::Intercept { val }),
-        display_r_squared_value: t.display_r_squared.map(|v| c::DisplayRSquaredValue { val: bv(v) }),
-        display_equation: t.display_equation.map(|v| c::DisplayEquation { val: bv(v) }),
+        display_r_squared_value: t
+            .display_r_squared
+            .map(|v| c::DisplayRSquaredValue { val: bv(v) }),
+        display_equation: t
+            .display_equation
+            .map(|v| c::DisplayEquation { val: bv(v) }),
         ..Default::default()
     }]
+}
+
+pub(super) fn build_num_literal(vals: &[f64]) -> Box<c::NumberLiteral> {
+    Box::new(c::NumberLiteral {
+        point_count: Some(c::PointCount {
+            val: vals.len() as u32,
+        }),
+        numeric_point: vals
+            .iter()
+            .enumerate()
+            .map(|(i, v)| c::NumericPoint {
+                index: i as u32,
+                numeric_value: v.to_string(),
+                ..Default::default()
+            })
+            .collect(),
+        ..Default::default()
+    })
+}
+
+pub(super) fn build_error_bars(e: Option<&ChartErrorBars>) -> Option<c::ErrorBars> {
+    let e = e?;
+    let bar_type = match e.bar_type {
+        ChartErrorBarType::Both => c::ErrorBarValues::Both,
+        ChartErrorBarType::Minus => c::ErrorBarValues::Minus,
+        ChartErrorBarType::Plus => c::ErrorBarValues::Plus,
+    };
+    let value_type = match e.value_type {
+        ChartErrorValueType::Custom => c::ErrorValues::Custom,
+        ChartErrorValueType::FixedValue => c::ErrorValues::FixedValue,
+        ChartErrorValueType::Percentage => c::ErrorValues::Percentage,
+        ChartErrorValueType::StandardDeviation => c::ErrorValues::StandardDeviation,
+        ChartErrorValueType::StandardError => c::ErrorValues::StandardError,
+    };
+    let plus = e
+        .plus_ref
+        .as_deref()
+        .map(|r| {
+            c::PlusChoice::NumberReference(Box::new(c::NumberReference {
+                formula: r.to_string(),
+                ..Default::default()
+            }))
+        })
+        .or_else(|| {
+            e.plus_values
+                .as_deref()
+                .map(|v| c::PlusChoice::NumberLiteral(build_num_literal(v)))
+        });
+    let minus = e
+        .minus_ref
+        .as_deref()
+        .map(|r| {
+            c::MinusChoice::NumberReference(Box::new(c::NumberReference {
+                formula: r.to_string(),
+                ..Default::default()
+            }))
+        })
+        .or_else(|| {
+            e.minus_values
+                .as_deref()
+                .map(|v| c::MinusChoice::NumberLiteral(build_num_literal(v)))
+        });
+    Some(c::ErrorBars {
+        error_direction: e.direction.map(|d| c::ErrorDirection {
+            val: match d {
+                ChartErrorDirection::X => c::ErrorBarDirectionValues::X,
+                ChartErrorDirection::Y => c::ErrorBarDirectionValues::Y,
+            },
+        }),
+        error_bar_type: Box::new(c::ErrorBarType { val: bar_type }),
+        error_bar_value_type: Box::new(c::ErrorBarValueType { val: value_type }),
+        no_end_cap: e.no_end_cap.map(|v| c::NoEndCap {
+            val: Some(BooleanValue::from_bool(v)),
+        }),
+        plus: plus.map(|ch| {
+            Box::new(c::Plus {
+                plus_choice: Some(ch),
+            })
+        }),
+        minus: minus.map(|ch| {
+            Box::new(c::Minus {
+                minus_choice: Some(ch),
+            })
+        }),
+        error_bar_value: e.value.map(|val| c::ErrorBarValue { val }),
+        ..Default::default()
+    })
 }
 
 pub(super) fn build_bar_series(
@@ -822,6 +937,7 @@ pub(super) fn build_bar_series(
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         trendline: build_trendline(s.trendline.as_ref()),
+        error_bars: build_error_bars(s.error_bars.as_ref()).map(Box::new),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
@@ -842,6 +958,7 @@ pub(super) fn build_line_series(
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         trendline: build_trendline(s.trendline.as_ref()),
+        error_bars: build_error_bars(s.error_bars.as_ref()).map(Box::new),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         smooth: s.smooth.map(|v| c::Smooth {
@@ -894,6 +1011,9 @@ pub(super) fn build_area_series(
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         trendline: build_trendline(s.trendline.as_ref()),
+        error_bars: build_error_bars(s.error_bars.as_ref())
+            .into_iter()
+            .collect(),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
@@ -928,6 +1048,9 @@ pub(super) fn build_scatter_series(idx: usize, s: &ChartSeriesPatch) -> c::Scatt
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         trendline: build_trendline(s.trendline.as_ref()),
+        error_bars: build_error_bars(s.error_bars.as_ref())
+            .into_iter()
+            .collect(),
         x_values: s.x_values_ref.as_deref().map(build_x_values),
         y_values: Some(build_y_values(&s.values_ref)),
         smooth: Some(c::Smooth {
@@ -947,6 +1070,9 @@ pub(super) fn build_bubble_series(idx: usize, s: &ChartSeriesPatch) -> c::Bubble
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         trendline: build_trendline(s.trendline.as_ref()),
+        error_bars: build_error_bars(s.error_bars.as_ref())
+            .into_iter()
+            .collect(),
         x_values: s.x_values_ref.as_deref().map(build_x_values),
         y_values: Some(build_y_values(&s.values_ref)),
         bubble_size: s.bubble_sizes_ref.as_deref().map(build_bubble_size),

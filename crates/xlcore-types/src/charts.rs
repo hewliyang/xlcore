@@ -612,6 +612,120 @@ pub struct ChartTrendline {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+/// Error-bar axis direction (`c:errDir/@val`, OOXML `ST_ErrDir`), transliterated
+/// from ooxmlsdk `ErrorBarDirectionValues`.
+pub enum ChartErrorDirection {
+    #[default]
+    #[serde(rename = "x")]
+    X,
+    #[serde(rename = "y")]
+    Y,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+/// Which sides the error bars extend (`c:errBarType/@val`, OOXML `ST_ErrBarType`),
+/// transliterated from ooxmlsdk `ErrorBarValues`.
+pub enum ChartErrorBarType {
+    #[default]
+    #[serde(rename = "both")]
+    Both,
+    #[serde(rename = "minus")]
+    Minus,
+    #[serde(rename = "plus")]
+    Plus,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+/// How error-bar magnitudes are computed (`c:errValType/@val`, OOXML
+/// `ST_ErrValType`), transliterated from ooxmlsdk `ErrorValues`.
+pub enum ChartErrorValueType {
+    #[default]
+    #[serde(rename = "cust")]
+    Custom,
+    #[serde(rename = "fixedVal")]
+    FixedValue,
+    #[serde(rename = "percentage")]
+    Percentage,
+    #[serde(rename = "stdDev")]
+    StandardDeviation,
+    #[serde(rename = "stdErr")]
+    StandardError,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+#[allow(clippy::derive_partial_eq_without_eq)]
+/// Series error bars (`c:errBars`), distilled from ooxmlsdk `ErrorBars`.
+///
+/// Supported on bar/column, line, area, scatter and bubble series only (Excel
+/// disallows error bars on pie/doughnut/radar/stock). `value` carries the
+/// magnitude for `FixedValue`/`Percentage` and the multiplier for
+/// `StandardDeviation`/`StandardError`; `plusRef`/`minusRef` (range formulas) or
+/// `plusValues`/`minusValues` (inline literals) carry per-point magnitudes for
+/// `Custom`. Round-trips for Excel; the xlsx-preview renderer does not draw
+/// error bars.
+///
+/// Intentionally not modeled (preserved on update, author via raw XML): `spPr`
+/// line styling, numbering caches, `extLst`.
+///
+/// schema-excluded: spPr
+pub struct ChartErrorBars {
+    /// `c:errDir/@val`; the axis the bars run along. Omitted (Excel default) for
+    /// bar/column/line/area; set `Y` (and a second `X` set) for scatter/bubble.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub direction: Option<ChartErrorDirection>,
+    /// `c:errBarType/@val`; which sides the bars extend.
+    pub bar_type: ChartErrorBarType,
+    /// `c:errValType/@val`; how magnitudes are computed.
+    pub value_type: ChartErrorValueType,
+    /// `c:val/@val`; magnitude (fixed/percentage) or multiplier (stdDev/stdErr).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub value: Option<f64>,
+    /// `c:noEndCap/@val`; draw the bars without end caps (T-less).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub no_end_cap: Option<bool>,
+    /// `c:plus` as a range formula (`numRef`); custom positive magnitudes.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plus_ref: Option<String>,
+    /// `c:minus` as a range formula (`numRef`); custom negative magnitudes.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minus_ref: Option<String>,
+    /// `c:plus` as inline literals (`numLit`); custom positive magnitudes.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plus_values: Option<Vec<f64>>,
+    /// `c:minus` as inline literals (`numLit`); custom negative magnitudes.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minus_values: Option<Vec<f64>>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
@@ -623,7 +737,7 @@ pub struct ChartTrendline {
 /// the series text, refs (cat/val/xVal/yVal), idx and order are derived from the
 /// patch fields and the series' position.
 ///
-/// schema-excluded: spPr, pictureOptions, errBars, shape, explosion
+/// schema-excluded: spPr, pictureOptions, shape, explosion
 pub struct ChartSeriesPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -685,6 +799,11 @@ pub struct ChartSeriesPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trendline: Option<ChartTrendline>,
+    /// Series error bars (`c:errBars`). Bar/column, line, area, scatter and
+    /// bubble series only. Round-trips for Excel.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_bars: Option<ChartErrorBars>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -747,6 +866,10 @@ pub struct ChartSeriesInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trendline: Option<ChartTrendline>,
+    /// Series error bars; see {@link ChartSeriesPatch.errorBars}.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error_bars: Option<ChartErrorBars>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

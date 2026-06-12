@@ -14,7 +14,8 @@ use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
     AnchorSpec, ApiError, ApiErrorCode, ApiWarning, BuiltInUnit, ChartAnchor, ChartAxisGroup,
-    ChartAxisPatch, ChartDataLabelPosition, ChartDataLabels, ChartDataPoint, ChartInfo, ChartKind,
+    ChartAxisPatch, ChartDataLabelPosition, ChartDataLabels, ChartDataPoint, ChartErrorBarType,
+    ChartErrorBars, ChartErrorDirection, ChartErrorValueType, ChartInfo, ChartKind,
     ChartLegendPosition, ChartLine, ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch,
     ChartStacking, ChartTrendline, ChartUpdate, CrossBetween, DispBlanksAs, DisplayUnits, LineDash,
     MarkerStyle, RadarStyle, TickLabelPosition, TickMark, TrendlineKind,
@@ -244,6 +245,7 @@ impl Workbook {
                     axis: s.axis,
                     invert_if_negative: s.invert_if_negative,
                     trendline: s.trendline.clone(),
+                    error_bars: s.error_bars.clone(),
                 })
                 .collect(),
             anchor,
@@ -391,6 +393,7 @@ impl Workbook {
                     axis: s.axis,
                     invert_if_negative: s.invert_if_negative,
                     trendline: s.trendline.clone(),
+                    error_bars: s.error_bars.clone(),
                 })
                 .collect(),
         };

@@ -488,6 +488,7 @@ fn charts_supports_multiple_kinds() {
             axis: None,
             invert_if_negative: None,
             trendline: None,
+            error_bars: None,
         }],
         anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
@@ -577,6 +578,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
                 axis: None,
                 invert_if_negative: None,
                 trendline: None,
+                error_bars: None,
             }],
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 4,
@@ -2779,19 +2781,277 @@ fn chart_trendline_rejected_on_pie_and_bad_params() {
         display_equation: None,
         display_r_squared: None,
     };
-    assert!(wb.set_chart("Sheet1", mk(ChartKind::Pie, linear.clone())).is_err());
+    assert!(wb
+        .set_chart("Sheet1", mk(ChartKind::Pie, linear.clone()))
+        .is_err());
 
     let bad_order = ChartTrendline {
         kind: TrendlineKind::Polynomial,
         polynomial_order: Some(7),
         ..linear.clone()
     };
-    assert!(wb.set_chart("Sheet1", mk(ChartKind::Column, bad_order)).is_err());
+    assert!(wb
+        .set_chart("Sheet1", mk(ChartKind::Column, bad_order))
+        .is_err());
 
     let bad_period = ChartTrendline {
         kind: TrendlineKind::MovingAverage,
         period: Some(1),
         ..linear
     };
-    assert!(wb.set_chart("Sheet1", mk(ChartKind::Column, bad_period)).is_err());
+    assert!(wb
+        .set_chart("Sheet1", mk(ChartKind::Column, bad_period))
+        .is_err());
+}
+
+#[test]
+fn chart_error_bars_fixed_roundtrips_and_updates() {
+    use xlcore_types::{ChartErrorBarType, ChartErrorBars, ChartErrorValueType};
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 12.0).unwrap();
+    wb.set_value("Sheet1!B4", 15.0).unwrap();
+
+    let eb = ChartErrorBars {
+        direction: None,
+        bar_type: ChartErrorBarType::Both,
+        value_type: ChartErrorValueType::FixedValue,
+        value: Some(1.5),
+        no_end_cap: Some(true),
+        plus_ref: None,
+        minus_ref: None,
+        plus_values: None,
+        minus_values: None,
+    };
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Column,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    error_bars: Some(eb.clone()),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::default(),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
+                disp_blanks_as: None,
+                vary_colors: None,
+                data_labels: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(info.series[0].error_bars.as_ref(), Some(&eb));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("c:errBars"));
+    assert!(xml.contains("c:errBarType val=\"both\""));
+    assert!(xml.contains("c:errValType val=\"fixedVal\""));
+    assert!(xml.contains("c:val val=\"1.5\""));
+    assert!(xml.contains("c:noEndCap val=\"1\""));
+
+    let mut wb = Workbook::open_bytes(bytes).unwrap();
+    let read = wb.charts(Some("Sheet1")).unwrap();
+    assert_eq!(read[0].series[0].error_bars.as_ref(), Some(&eb));
+
+    let id = read[0].id.clone();
+    let pct = ChartErrorBars {
+        direction: None,
+        bar_type: ChartErrorBarType::Plus,
+        value_type: ChartErrorValueType::Percentage,
+        value: Some(5.0),
+        no_end_cap: None,
+        plus_ref: None,
+        minus_ref: None,
+        plus_values: None,
+        minus_values: None,
+    };
+    let updated = wb
+        .update_chart(
+            "Sheet1",
+            &id,
+            ChartUpdate {
+                series: Some(vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    error_bars: Some(pct.clone()),
+                    ..Default::default()
+                }]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(updated.series[0].error_bars.as_ref(), Some(&pct));
+
+    let xml2 = chart_xml(&wb.save_bytes().unwrap());
+    assert!(xml2.contains("c:errBarType val=\"plus\""));
+    assert!(xml2.contains("c:errValType val=\"percentage\""));
+    assert!(!xml2.contains("c:noEndCap"));
+}
+
+#[test]
+fn chart_error_bars_custom_on_scatter_roundtrips() {
+    use xlcore_types::{
+        ChartErrorBarType, ChartErrorBars, ChartErrorDirection, ChartErrorValueType,
+    };
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A2", 1.0).unwrap();
+    wb.set_value("Sheet1!A3", 2.0).unwrap();
+    wb.set_value("Sheet1!A4", 3.0).unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 12.0).unwrap();
+    wb.set_value("Sheet1!B4", 15.0).unwrap();
+    wb.set_value("Sheet1!C2", 0.5).unwrap();
+    wb.set_value("Sheet1!C3", 0.4).unwrap();
+    wb.set_value("Sheet1!C4", 0.3).unwrap();
+
+    let eb = ChartErrorBars {
+        direction: Some(ChartErrorDirection::Y),
+        bar_type: ChartErrorBarType::Both,
+        value_type: ChartErrorValueType::Custom,
+        value: None,
+        no_end_cap: None,
+        plus_ref: Some("Sheet1!$C$2:$C$4".to_string()),
+        minus_ref: None,
+        plus_values: None,
+        minus_values: Some(vec![0.1, 0.2, 0.3]),
+    };
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Scatter,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    x_values_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+                    error_bars: Some(eb.clone()),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::default(),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
+                disp_blanks_as: None,
+                vary_colors: None,
+                data_labels: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(info.series[0].error_bars.as_ref(), Some(&eb));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("c:errDir val=\"y\""));
+    assert!(xml.contains("c:errValType val=\"cust\""));
+    assert!(xml.contains("c:plus"));
+    assert!(xml.contains("Sheet1!$C$2:$C$4"));
+    assert!(xml.contains("c:minus"));
+    assert!(xml.contains("c:numLit"));
+
+    let mut wb = Workbook::open_bytes(bytes).unwrap();
+    let read = wb.charts(Some("Sheet1")).unwrap();
+    assert_eq!(read[0].series[0].error_bars.as_ref(), Some(&eb));
+}
+
+#[test]
+fn chart_error_bars_rejected_on_pie_and_bad_params() {
+    use xlcore_types::{ChartErrorBarType, ChartErrorBars, ChartErrorValueType};
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 12.0).unwrap();
+
+    let mk = |kind: ChartKind, eb: ChartErrorBars| ChartPatch {
+        name: None,
+        kind,
+        title: None,
+        legend_position: None,
+        categories_ref: None,
+        series: vec![ChartSeriesPatch {
+            values_ref: "Sheet1!$B$2:$B$3".to_string(),
+            error_bars: Some(eb),
+            ..Default::default()
+        }],
+        anchor: AnchorSpec::default(),
+        category_axis_title: None,
+        value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
+        stacking: None,
+        gap_width: None,
+        overlap: None,
+        radar_style: None,
+        hole_size: None,
+        first_slice_angle: None,
+        hi_low_lines: None,
+        up_down_bars: None,
+        drop_lines: None,
+        disp_blanks_as: None,
+        vary_colors: None,
+        data_labels: None,
+    };
+
+    let fixed = ChartErrorBars {
+        direction: None,
+        bar_type: ChartErrorBarType::Both,
+        value_type: ChartErrorValueType::FixedValue,
+        value: Some(1.0),
+        no_end_cap: None,
+        plus_ref: None,
+        minus_ref: None,
+        plus_values: None,
+        minus_values: None,
+    };
+    assert!(wb
+        .set_chart("Sheet1", mk(ChartKind::Pie, fixed.clone()))
+        .is_err());
+
+    let no_value = ChartErrorBars {
+        value: None,
+        ..fixed.clone()
+    };
+    assert!(wb
+        .set_chart("Sheet1", mk(ChartKind::Column, no_value))
+        .is_err());
+
+    let custom_empty = ChartErrorBars {
+        value_type: ChartErrorValueType::Custom,
+        value: None,
+        ..fixed
+    };
+    assert!(wb
+        .set_chart("Sheet1", mk(ChartKind::Column, custom_empty))
+        .is_err());
 }

@@ -2,6 +2,7 @@
 import type { ChartAxisGroup } from "./ChartAxisGroup.js";
 import type { ChartDataLabels } from "./ChartDataLabels.js";
 import type { ChartDataPoint } from "./ChartDataPoint.js";
+import type { ChartErrorBars } from "./ChartErrorBars.js";
 import type { ChartKind } from "./ChartKind.js";
 import type { ChartLine } from "./ChartLine.js";
 import type { ChartMarker } from "./ChartMarker.js";
@@ -12,7 +13,7 @@ import type { ChartTrendline } from "./ChartTrendline.js";
  * the series text, refs (cat/val/xVal/yVal), idx and order are derived from the
  * patch fields and the series' position.
  *
- * schema-excluded: spPr, pictureOptions, errBars, shape, explosion
+ * schema-excluded: spPr, pictureOptions, shape, explosion
  */
 export type ChartSeriesPatch = {
   name?: string;
@@ -63,4 +64,9 @@ export type ChartSeriesPatch = {
    * scatter and bubble series only. Round-trips for Excel.
    */
   trendline?: ChartTrendline;
+  /**
+   * Series error bars (`c:errBars`). Bar/column, line, area, scatter and
+   * bubble series only. Round-trips for Excel.
+   */
+  errorBars?: ChartErrorBars;
 };

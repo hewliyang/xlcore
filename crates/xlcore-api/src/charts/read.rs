@@ -149,6 +149,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         read_invert_if_negative(s.invert_if_negative.as_ref());
                     info.data_points = read_data_points(&s.data_point);
                     info.trendline = read_trendline(&s.trendline);
+                    info.error_bars = read_error_bars(s.error_bars.as_deref());
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -178,6 +179,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.axis = gsec.then_some(ChartAxisGroup::Secondary);
                     info.data_points = read_data_points(&s.data_point);
                     info.trendline = read_trendline(&s.trendline);
+                    info.error_bars = read_error_bars(s.error_bars.as_deref());
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -254,6 +256,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.axis = gsec.then_some(ChartAxisGroup::Secondary);
                     info.data_points = read_data_points(&s.data_point);
                     info.trendline = read_trendline(&s.trendline);
+                    info.error_bars = read_error_bars(s.error_bars.first());
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -282,6 +285,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.smooth = read_smooth(s.smooth.as_ref());
                     info.data_points = read_data_points(&s.data_point);
                     info.trendline = read_trendline(&s.trendline);
+                    info.error_bars = read_error_bars(s.error_bars.first());
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -316,6 +320,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         read_invert_if_negative(s.invert_if_negative.as_ref());
                     info.data_points = read_data_points(&s.data_point);
                     info.trendline = read_trendline(&s.trendline);
+                    info.error_bars = read_error_bars(s.error_bars.first());
                     series.push(info);
                 }
                 if vary_colors.is_none() {
@@ -526,6 +531,7 @@ pub(super) fn read_xy_series(
         axis: None,
         invert_if_negative: None,
         trendline: None,
+        error_bars: None,
     }
 }
 
@@ -566,6 +572,74 @@ pub(super) fn read_trendline(tls: &[c::Trendline]) -> Option<ChartTrendline> {
             .and_then(|d| d.val.as_ref())
             .map(|b| b.as_bool()),
     })
+}
+
+pub(super) fn read_num_source_ref(formula: Option<&str>) -> Option<String> {
+    let f = formula?;
+    (!f.is_empty()).then(|| f.to_string())
+}
+
+pub(super) fn read_error_bars(eb: Option<&c::ErrorBars>) -> Option<ChartErrorBars> {
+    let e = eb?;
+    let read_plus = |p: &c::PlusChoice| match p {
+        c::PlusChoice::NumberReference(nr) => {
+            (read_num_source_ref(Some(nr.formula.as_str())), None)
+        }
+        c::PlusChoice::NumberLiteral(nl) => (None, Some(read_num_literal(nl))),
+    };
+    let read_minus = |m: &c::MinusChoice| match m {
+        c::MinusChoice::NumberReference(nr) => {
+            (read_num_source_ref(Some(nr.formula.as_str())), None)
+        }
+        c::MinusChoice::NumberLiteral(nl) => (None, Some(read_num_literal(nl))),
+    };
+    let (plus_ref, plus_values) = e
+        .plus
+        .as_deref()
+        .and_then(|p| p.plus_choice.as_ref())
+        .map(read_plus)
+        .unwrap_or((None, None));
+    let (minus_ref, minus_values) = e
+        .minus
+        .as_deref()
+        .and_then(|m| m.minus_choice.as_ref())
+        .map(read_minus)
+        .unwrap_or((None, None));
+    Some(ChartErrorBars {
+        direction: e.error_direction.as_ref().map(|d| match d.val {
+            c::ErrorBarDirectionValues::X => ChartErrorDirection::X,
+            c::ErrorBarDirectionValues::Y => ChartErrorDirection::Y,
+        }),
+        bar_type: match e.error_bar_type.val {
+            c::ErrorBarValues::Both => ChartErrorBarType::Both,
+            c::ErrorBarValues::Minus => ChartErrorBarType::Minus,
+            c::ErrorBarValues::Plus => ChartErrorBarType::Plus,
+        },
+        value_type: match e.error_bar_value_type.val {
+            c::ErrorValues::Custom => ChartErrorValueType::Custom,
+            c::ErrorValues::FixedValue => ChartErrorValueType::FixedValue,
+            c::ErrorValues::Percentage => ChartErrorValueType::Percentage,
+            c::ErrorValues::StandardDeviation => ChartErrorValueType::StandardDeviation,
+            c::ErrorValues::StandardError => ChartErrorValueType::StandardError,
+        },
+        value: e.error_bar_value.as_ref().map(|v| v.val),
+        no_end_cap: e
+            .no_end_cap
+            .as_ref()
+            .and_then(|n| n.val.as_ref())
+            .map(|b| b.as_bool()),
+        plus_ref,
+        minus_ref,
+        plus_values,
+        minus_values,
+    })
+}
+
+pub(super) fn read_num_literal(nl: &c::NumberLiteral) -> Vec<f64> {
+    nl.numeric_point
+        .iter()
+        .filter_map(|p| p.numeric_value.parse::<f64>().ok())
+        .collect()
 }
 
 pub(super) fn marker_style_from(v: &c::MarkerStyleValues) -> MarkerStyle {
@@ -733,6 +807,7 @@ pub(super) fn read_series(
         axis: None,
         invert_if_negative: None,
         trendline: None,
+        error_bars: None,
     }
 }
 

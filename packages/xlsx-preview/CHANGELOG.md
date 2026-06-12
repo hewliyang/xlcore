@@ -21,6 +21,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `ChartSeriesPatch.errorBars`/`ChartSeriesInfo.errorBars` (`ChartErrorBars`/`ChartErrorDirection`/`ChartErrorBarType`/`ChartErrorValueType`): per-series error bars (`c:errBars`) — errDir x/y, errBarType both/minus/plus, errValType fixedVal/percentage/stdDev/stdErr/cust, value, noEndCap, custom plus/minus refs or inline values; bar/column/line/area/scatter/bubble only; round-trips for Excel (renderer doesn't draw). Rides on `setChart`/`updateChart`.
 - `ChartSeriesPatch.trendline`/`ChartSeriesInfo.trendline` (`ChartTrendline`/`TrendlineKind`): per-series regression trendline (`c:trendline`) — linear/poly/movingAvg/exp/log/power, dispEq/dispRSqr, forward/backward, intercept, custom name; bar/column/line/area/scatter/bubble only; round-trips for Excel (renderer doesn't draw). Rides on `setChart`/`updateChart`.
 - `Cell.setRichText(runs)`/`Cell.richText()` + `CellInfo.richText` (`RichText`/`RichTextRun`): author and read multi-run inline-string cells (`CT_RElt`), each run carrying a per-run `FontPatch`; renderer-visible. Semantics in Rust (`Workbook::set_rich_text_in`).
 - `Workbook.partNames()`/`getPart(name)`/`setPart(name, xml)`/`removePart(name)` — escape hatch for raw OPC part XML (read/author/delete unmodeled schema); unmodeled parts round-trip verbatim. Semantics in Rust (`Workbook::part_names`/`get_part_xml`/`set_part_xml`/`remove_part_xml`).

@@ -2,6 +2,7 @@
 import type { ChartAxisGroup } from "./ChartAxisGroup.js";
 import type { ChartDataLabels } from "./ChartDataLabels.js";
 import type { ChartDataPoint } from "./ChartDataPoint.js";
+import type { ChartErrorBars } from "./ChartErrorBars.js";
 import type { ChartKind } from "./ChartKind.js";
 import type { ChartLine } from "./ChartLine.js";
 import type { ChartMarker } from "./ChartMarker.js";
@@ -47,4 +48,8 @@ export type ChartSeriesInfo = {
    * Series regression trendline; see {@link ChartSeriesPatch.trendline}.
    */
   trendline?: ChartTrendline;
+  /**
+   * Series error bars; see {@link ChartSeriesPatch.errorBars}.
+   */
+  errorBars?: ChartErrorBars;
 };
