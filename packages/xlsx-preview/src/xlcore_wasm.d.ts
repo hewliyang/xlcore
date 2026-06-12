@@ -92,6 +92,7 @@ export class WorkbookHandle {
     setRowHeight(sheet: string, row: number, height: number): void;
     setRowVisible(sheet: string, row: number, visible: boolean): void;
     setShape(sheet: string, patch: any): any;
+    setSheetProperties(sheet: string, patch: any): any;
     setSheetProtection(sheet: string, patch: any): any;
     setSheetVisibility(name: string, visibility: string): any;
     setShowGridLines(sheet: string, visible: boolean): boolean;
@@ -101,6 +102,7 @@ export class WorkbookHandle {
     setValue(reference: string, value: any): any;
     setWorkbookProtection(patch: any): any;
     shapes(sheet?: string | null): any;
+    sheetProperties(sheet: string): any;
     sheetProtection(sheet: string): any;
     sheets(): any;
     sparklineGroups(sheet?: string | null): any;
@@ -218,6 +220,7 @@ export interface InitOutput {
     readonly workbookhandle_setRowHeight: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setRowVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setShape: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly workbookhandle_setSheetProperties: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setSheetProtection: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setSheetVisibility: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setShowGridLines: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -227,6 +230,7 @@ export interface InitOutput {
     readonly workbookhandle_setValue: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setWorkbookProtection: (a: number, b: number, c: number) => void;
     readonly workbookhandle_shapes: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_sheetProperties: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_sheetProtection: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_sheets: (a: number, b: number) => void;
     readonly workbookhandle_sparklineGroups: (a: number, b: number, c: number, d: number) => void;

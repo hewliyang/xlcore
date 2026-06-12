@@ -973,6 +973,26 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = sheetProperties)]
+    pub fn sheet_properties(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
+        let info = self
+            .workbook_mut()?
+            .sheet_properties(sheet)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = setSheetProperties)]
+    pub fn set_sheet_properties(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
+        let patch: xlcore_api::SheetPropertiesPatch =
+            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
+        let info = self
+            .workbook_mut()?
+            .set_sheet_properties(sheet, patch)
+            .map_err(api_err_to_js)?;
+        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = clearRange)]
     pub fn clear_range(&mut self, reference: &str) -> Result<JsValue, JsValue> {
         let range = self

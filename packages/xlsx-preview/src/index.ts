@@ -15,6 +15,7 @@ export {
   Range,
   SheetFreeze,
   SheetPageSetupApi,
+  SheetPropertiesApi,
   SheetProtection,
   SparklineGroupCollection,
   TableCollection,

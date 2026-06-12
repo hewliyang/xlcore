@@ -103,6 +103,8 @@ export type { ShapePatch } from "./ShapePatch.js";
 export type { SheetInfo } from "./SheetInfo.js";
 export type { SheetPageSetup } from "./SheetPageSetup.js";
 export type { SheetPageSetupPatch } from "./SheetPageSetupPatch.js";
+export type { SheetProperties } from "./SheetProperties.js";
+export type { SheetPropertiesPatch } from "./SheetPropertiesPatch.js";
 export type { SheetProtectionInfo } from "./SheetProtectionInfo.js";
 export type { SheetProtectionPatch } from "./SheetProtectionPatch.js";
 export type { SheetVisibility } from "./SheetVisibility.js";

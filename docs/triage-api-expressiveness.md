@@ -224,7 +224,15 @@ authoring, per-point data labels.
   below/right); `level: 0` ungroups. TS `groupRows`/`groupColumns` +
   `ungroupRows`/`ungroupColumns` forward only. Round-trips and is
   renderer-visible (gutter brackets + collapse buttons verified e2e).
-- Tab color, zoom, `showZeros`, `rightToLeft`, default row height / col width.
+- Tab color, zoom, `showZeros`, `rightToLeft`, default row height / col width —
+  **done**: `SheetPropertiesPatch`/`SheetProperties` + `sheet_properties`/
+  `set_sheet_properties(sheet, patch)` in `xlcore-api` set `sheetPr/tabColor`,
+  `sheetView/@zoomScale`/`@showZeros`/`@rightToLeft`, and `sheetFormatPr/
+  @defaultRowHeight`/`@defaultColWidth` (zoom validated 10..=400, dimensions
+  non-negative; tab color via `parse_color` → AARRGGBB). Round-trips, updates in
+  place, exposed as `worksheet.properties.get`/`.set`. `tab_color` +
+  `default_row_height`/`default_col_width` are renderer-visible (taller rows /
+  wider cols verified e2e); zoom/showZeros/rightToLeft round-trip for Excel.
 - Print area + print titles (defined-name backed) and manual page breaks —
   page_setup.rs covers everything except these.
 - Rich text runs in cells (`CT_RElt`) — P2, but agents ask for it.

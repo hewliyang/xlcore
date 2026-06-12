@@ -4,6 +4,8 @@ import type {
   SheetInfo,
   SheetPageSetup,
   SheetPageSetupPatch,
+  SheetProperties,
+  SheetPropertiesPatch,
   SheetProtectionInfo,
   SheetProtectionPatch,
   SheetVisibility,
@@ -58,6 +60,15 @@ export class SheetPageSetupApi extends SheetScopedApi {
   }
 }
 
+export class SheetPropertiesApi extends SheetScopedApi {
+  get(): SheetProperties {
+    return this.handle.sheetProperties(this.sheet) as SheetProperties;
+  }
+  set(patch: SheetPropertiesPatch): SheetProperties {
+    return this.handle.setSheetProperties(this.sheet, patch) as SheetProperties;
+  }
+}
+
 export class SheetProtection extends SheetScopedApi {
   get(): SheetProtectionInfo | null {
     return (this.handle.sheetProtection(this.sheet) as SheetProtectionInfo | null) ?? null;
@@ -87,6 +98,7 @@ export class Worksheet {
   readonly pivots: PivotCollection;
   readonly freeze: SheetFreeze;
   readonly pageSetup: SheetPageSetupApi;
+  readonly properties: SheetPropertiesApi;
   readonly protection: SheetProtection;
 
   constructor(
@@ -109,6 +121,7 @@ export class Worksheet {
     this.pivots = new PivotCollection(handle, this.sheetRef);
     this.freeze = new SheetFreeze(handle, this.sheetRef);
     this.pageSetup = new SheetPageSetupApi(handle, this.sheetRef);
+    this.properties = new SheetPropertiesApi(handle, this.sheetRef);
     this.protection = new SheetProtection(handle, this.sheetRef);
   }
 

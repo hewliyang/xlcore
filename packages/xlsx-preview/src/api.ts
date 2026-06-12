@@ -46,7 +46,12 @@ export {
   WorkbookSparklineGroups,
   WorkbookTables,
 } from "./api-collections.js";
-export { SheetFreeze, SheetPageSetupApi, SheetProtection } from "./api-worksheet.js";
+export {
+  SheetFreeze,
+  SheetPageSetupApi,
+  SheetPropertiesApi,
+  SheetProtection,
+} from "./api-worksheet.js";
 export { NumberFormat } from "./number-formats.js";
 export type { NumberFormatCode, NumberFormatKey } from "./number-formats.js";
 export { absoluteAnchor, anchorA1, cellA1, colLetter, rangeA1 } from "./api-refs.js";
@@ -144,6 +149,8 @@ export type {
   SheetInfo,
   SheetPageSetup,
   SheetPageSetupPatch,
+  SheetProperties,
+  SheetPropertiesPatch,
   SheetProtectionInfo,
   SheetProtectionPatch,
   SheetVisibility,

@@ -94,6 +94,7 @@ export const workbookhandle_setRangeValues: (a: number, b: number, c: number, d:
 export const workbookhandle_setRowHeight: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setRowVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setShape: (a: number, b: number, c: number, d: number, e: number) => void;
+export const workbookhandle_setSheetProperties: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setSheetProtection: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setSheetVisibility: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setShowGridLines: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -103,6 +104,7 @@ export const workbookhandle_setTable: (a: number, b: number, c: number, d: numbe
 export const workbookhandle_setValue: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setWorkbookProtection: (a: number, b: number, c: number) => void;
 export const workbookhandle_shapes: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_sheetProperties: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_sheetProtection: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_sheets: (a: number, b: number) => void;
 export const workbookhandle_sparklineGroups: (a: number, b: number, c: number, d: number) => void;

@@ -27,6 +27,7 @@ mod structural;
 mod styles;
 mod tables;
 mod threaded_notes;
+mod worksheet_props;
 mod vml_comments;
 mod xml;
 
@@ -53,8 +54,8 @@ pub use xlcore_types::{
     PrintCellComments, PrintErrors, PrintOptionsInfo, PrintOptionsPatch, ProtectionPatch,
     RadarStyle, RangeInfo, ReadingOrder,
     SearchHit, SearchMatch, SearchMode, SearchOptions, SearchTarget, ShapeInfo, ShapeLineEnd,
-    ShapePatch, SheetInfo, SheetPageSetup, SheetPageSetupPatch, SheetProtectionInfo,
-    SheetProtectionPatch, SheetVisibility, SparklineAxisType, SparklineDisplayBlanks,
+    ShapePatch, SheetInfo, SheetPageSetup, SheetPageSetupPatch, SheetProperties,
+    SheetPropertiesPatch, SheetProtectionInfo, SheetProtectionPatch, SheetVisibility, SparklineAxisType, SparklineDisplayBlanks,
     SparklineEntry, SparklineGroupInfo, SparklineGroupPatch, SparklineKind, StylePatch,
     TableColumnInfo, TableColumnPatch, TableInfo, TablePatch, TableStylePatch, TableStyleSettings,
     TableTotalsFunction, ThreadedNoteInfo, ThreadedNotePatch, TickLabelPosition, TickMark,

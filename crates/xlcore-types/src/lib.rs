@@ -13,6 +13,7 @@ mod sparklines;
 mod styles;
 mod tables;
 mod validation;
+mod worksheet;
 
 pub use annotations::*;
 pub use cells::*;
@@ -29,6 +30,7 @@ pub use sparklines::*;
 pub use styles::*;
 pub use tables::*;
 pub use validation::*;
+pub use worksheet::*;
 
 #[cfg(test)]
 mod tests {

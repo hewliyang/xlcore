@@ -19,3 +19,4 @@ mod shapes;
 mod sparklines;
 mod structural;
 mod tables;
+mod worksheet_props;
