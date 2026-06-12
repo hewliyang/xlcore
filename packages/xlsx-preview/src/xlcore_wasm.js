@@ -777,13 +777,16 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {any} patch
      * @returns {any}
      */
-    pivotPreview(patch) {
+    pivotPreview(sheet, patch) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.workbookhandle_pivotPreview(retptr, this.__wbg_ptr, addHeapObject(patch));
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_pivotPreview(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(patch));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1435,13 +1438,16 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {any} patch
      * @returns {any}
      */
-    setChart(patch) {
+    setChart(sheet, patch) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.workbookhandle_setChart(retptr, this.__wbg_ptr, addHeapObject(patch));
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_setChart(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(patch));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1660,13 +1666,16 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {any} patch
      * @returns {any}
      */
-    setImage(patch) {
+    setImage(sheet, patch) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.workbookhandle_setImage(retptr, this.__wbg_ptr, addHeapObject(patch));
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_setImage(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(patch));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1701,13 +1710,16 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {any} patch
      * @returns {any}
      */
-    setPivot(patch) {
+    setPivot(sheet, patch) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.workbookhandle_setPivot(retptr, this.__wbg_ptr, addHeapObject(patch));
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_setPivot(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(patch));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1823,13 +1835,16 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {any} patch
      * @returns {any}
      */
-    setShape(patch) {
+    setShape(sheet, patch) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.workbookhandle_setShape(retptr, this.__wbg_ptr, addHeapObject(patch));
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_setShape(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(patch));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1910,13 +1925,16 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {any} patch
      * @returns {any}
      */
-    setSparklineGroup(patch) {
+    setSparklineGroup(sheet, patch) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.workbookhandle_setSparklineGroup(retptr, this.__wbg_ptr, addHeapObject(patch));
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_setSparklineGroup(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(patch));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);

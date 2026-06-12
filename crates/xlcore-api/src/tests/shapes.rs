@@ -4,8 +4,7 @@ use crate::*;
 fn shapes_create_list_remove_roundtrip() {
     let mut wb = Workbook::new().unwrap();
     let info = wb
-        .set_shape(ShapePatch {
-            sheet: "Sheet1".to_string(),
+        .set_shape("Sheet1", ShapePatch {
             name: Some("Box".to_string()),
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 1,
@@ -58,8 +57,7 @@ fn shapes_create_list_remove_roundtrip() {
 fn shapes_emit_alignment_underline_arrow_rotation_box() {
     use std::io::Read;
     let mut wb = Workbook::new().unwrap();
-    wb.set_shape(ShapePatch {
-        sheet: "Sheet1".into(),
+    wb.set_shape("Sheet1", ShapePatch {
         anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
             from_row: 1,
@@ -77,8 +75,7 @@ fn shapes_emit_alignment_underline_arrow_rotation_box() {
         ..Default::default()
     })
     .unwrap();
-    wb.set_shape(ShapePatch {
-        sheet: "Sheet1".into(),
+    wb.set_shape("Sheet1", ShapePatch {
         anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
             from_row: 10,
@@ -119,8 +116,7 @@ fn shapes_emit_alignment_underline_arrow_rotation_box() {
 #[test]
 fn shapes_warn_on_offset_exceeding_referenced_cell() {
     let mut wb = Workbook::new().unwrap();
-    wb.set_shape(ShapePatch {
-        sheet: "Sheet1".into(),
+    wb.set_shape("Sheet1", ShapePatch {
         anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 0,
             from_row: 0,
@@ -147,8 +143,7 @@ fn shapes_warn_on_offset_exceeding_referenced_cell() {
 #[test]
 fn shapes_no_warn_when_offsets_fit_cell() {
     let mut wb = Workbook::new().unwrap();
-    wb.set_shape(ShapePatch {
-        sheet: "Sheet1".into(),
+    wb.set_shape("Sheet1", ShapePatch {
         anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 0,
             from_row: 0,
@@ -170,8 +165,7 @@ fn shapes_no_warn_when_offsets_fit_cell() {
 fn shapes_reject_unknown_preset() {
     let mut wb = Workbook::new().unwrap();
     let err = wb
-        .set_shape(ShapePatch {
-            sheet: "Sheet1".to_string(),
+        .set_shape("Sheet1", ShapePatch {
             anchor: AnchorSpec::Cells(ChartAnchor::default()),
             preset: "notARealShape".to_string(),
             ..Default::default()
@@ -184,8 +178,7 @@ fn shapes_reject_unknown_preset() {
 fn shape_anchor_accepts_a1_range_string() {
     let mut wb = Workbook::new().unwrap();
     let info = wb
-        .set_shape(ShapePatch {
-            sheet: "Sheet1".to_string(),
+        .set_shape("Sheet1", ShapePatch {
             anchor: AnchorSpec::A1("D2:H15".to_string()),
             preset: "rect".to_string(),
             ..Default::default()
@@ -197,8 +190,7 @@ fn shape_anchor_accepts_a1_range_string() {
     assert_eq!(info.anchor.to_row, 15);
 
     let err = wb
-        .set_shape(ShapePatch {
-            sheet: "Sheet1".to_string(),
+        .set_shape("Sheet1", ShapePatch {
             anchor: AnchorSpec::A1("D2".to_string()),
             preset: "rect".to_string(),
             ..Default::default()
@@ -212,8 +204,7 @@ fn shapes_rotation_keeps_anchor_footprint() {
     use std::io::Read;
     let off_ext = |rotation_degrees: Option<f64>| -> String {
         let mut wb = Workbook::new().unwrap();
-        wb.set_shape(ShapePatch {
-            sheet: "Sheet1".into(),
+        wb.set_shape("Sheet1", ShapePatch {
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 1,
                 from_row: 1,

@@ -8,7 +8,6 @@ import type { ChartSeriesPatch } from "./ChartSeriesPatch.js";
 import type { ChartStacking } from "./ChartStacking.js";
 
 export type ChartPatch = {
-  sheet: string;
   name?: string;
   kind: ChartKind;
   title?: string;

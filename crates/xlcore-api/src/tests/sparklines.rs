@@ -20,8 +20,7 @@ fn sparkline_groups_create_list_remove_roundtrip() {
     .unwrap();
 
     let info = wb
-        .set_sparkline_group(SparklineGroupPatch {
-            sheet: "Sheet1".to_string(),
+        .set_sparkline_group("Sheet1", SparklineGroupPatch {
             kind: SparklineKind::Line,
             sparklines: vec![
                 SparklineEntry {
@@ -45,8 +44,7 @@ fn sparkline_groups_create_list_remove_roundtrip() {
     assert_eq!(info.sparklines.len(), 2);
 
     let _ = wb
-        .set_sparkline_group(SparklineGroupPatch {
-            sheet: "Sheet1".to_string(),
+        .set_sparkline_group("Sheet1", SparklineGroupPatch {
             kind: SparklineKind::Column,
             sparklines: vec![SparklineEntry {
                 location: "F3".into(),
@@ -96,8 +94,7 @@ fn sparkline_groups_create_list_remove_roundtrip() {
 fn sparkline_groups_validate_inputs() {
     let mut wb = Workbook::new().unwrap();
     let err = wb
-        .set_sparkline_group(SparklineGroupPatch {
-            sheet: "Sheet1".into(),
+        .set_sparkline_group("Sheet1", SparklineGroupPatch {
             kind: SparklineKind::Line,
             sparklines: vec![],
             ..Default::default()
@@ -106,8 +103,7 @@ fn sparkline_groups_validate_inputs() {
     assert_eq!(err.code, ApiErrorCode::InvalidSparklineGroup);
 
     let err = wb
-        .set_sparkline_group(SparklineGroupPatch {
-            sheet: "Sheet1".into(),
+        .set_sparkline_group("Sheet1", SparklineGroupPatch {
             kind: SparklineKind::Line,
             sparklines: vec![SparklineEntry {
                 location: "nope".into(),
@@ -119,8 +115,7 @@ fn sparkline_groups_validate_inputs() {
     assert_eq!(err.code, ApiErrorCode::InvalidSparklineGroup);
 
     let info = wb
-        .set_sparkline_group(SparklineGroupPatch {
-            sheet: "Sheet1".into(),
+        .set_sparkline_group("Sheet1", SparklineGroupPatch {
             kind: SparklineKind::Line,
             sparklines: vec![SparklineEntry {
                 location: "F1".into(),
@@ -135,8 +130,7 @@ fn sparkline_groups_validate_inputs() {
     assert_eq!(info.negative_color.as_deref(), Some("FF0000"));
 
     let err = wb
-        .set_sparkline_group(SparklineGroupPatch {
-            sheet: "Sheet1".into(),
+        .set_sparkline_group("Sheet1", SparklineGroupPatch {
             kind: SparklineKind::Line,
             sparklines: vec![SparklineEntry {
                 location: "F2".into(),

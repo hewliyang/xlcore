@@ -12,8 +12,7 @@ const PNG_1X1: &[u8] = &[
 fn images_create_list_remove_roundtrip() {
     let mut wb = Workbook::new().unwrap();
     let info = wb
-        .set_image(ImagePatch {
-            sheet: "Sheet1".to_string(),
+        .set_image("Sheet1", ImagePatch {
             name: Some("Logo".to_string()),
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 1,
@@ -57,8 +56,7 @@ fn images_create_list_remove_roundtrip() {
 fn images_rotation_crop_flip_roundtrip() {
     let mut wb = Workbook::new().unwrap();
     let info = wb
-        .set_image(ImagePatch {
-            sheet: "Sheet1".to_string(),
+        .set_image("Sheet1", ImagePatch {
             name: Some("Rotated".to_string()),
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 0,
@@ -101,8 +99,7 @@ fn images_rotation_crop_flip_roundtrip() {
 fn images_rejects_non_finite_rotation_and_crop() {
     let mut wb = Workbook::new().unwrap();
     let err = wb
-        .set_image(ImagePatch {
-            sheet: "Sheet1".to_string(),
+        .set_image("Sheet1", ImagePatch {
             name: None,
             anchor: AnchorSpec::Cells(ChartAnchor::default()),
             bytes: PNG_1X1.to_vec(),
@@ -119,8 +116,7 @@ fn images_rejects_non_finite_rotation_and_crop() {
     assert_eq!(err.code, ApiErrorCode::InvalidImage);
 
     let err = wb
-        .set_image(ImagePatch {
-            sheet: "Sheet1".to_string(),
+        .set_image("Sheet1", ImagePatch {
             name: None,
             anchor: AnchorSpec::Cells(ChartAnchor::default()),
             bytes: PNG_1X1.to_vec(),
@@ -141,8 +137,7 @@ fn images_rejects_non_finite_rotation_and_crop() {
 fn images_rejects_empty_bytes_and_unknown_format() {
     let mut wb = Workbook::new().unwrap();
     let err = wb
-        .set_image(ImagePatch {
-            sheet: "Sheet1".to_string(),
+        .set_image("Sheet1", ImagePatch {
             name: None,
             anchor: AnchorSpec::Cells(ChartAnchor::default()),
             bytes: Vec::new(),
@@ -153,8 +148,7 @@ fn images_rejects_empty_bytes_and_unknown_format() {
     assert_eq!(err.code, ApiErrorCode::InvalidImage);
 
     let err = wb
-        .set_image(ImagePatch {
-            sheet: "Sheet1".to_string(),
+        .set_image("Sheet1", ImagePatch {
             name: None,
             anchor: AnchorSpec::Cells(ChartAnchor::default()),
             bytes: b"not an image".to_vec(),

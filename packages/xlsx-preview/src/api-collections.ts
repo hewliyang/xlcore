@@ -202,7 +202,7 @@ export class ChartCollection extends SheetScopedCollection {
     return this.handle.charts(this.sheet) as ChartInfo[];
   }
   set(patch: ChartPatch): ChartInfo {
-    return this.handle.setChart(patch) as ChartInfo;
+    return this.handle.setChart(this.sheet, patch) as ChartInfo;
   }
   update(id: string, update: ChartUpdate): ChartInfo {
     return this.handle.updateChart(this.sheet, id, update) as ChartInfo;
@@ -217,7 +217,7 @@ export class ImageCollection extends SheetScopedCollection {
     return this.handle.images(this.sheet) as ImageInfo[];
   }
   set(patch: ImagePatch): ImageInfo {
-    return this.handle.setImage(patch) as ImageInfo;
+    return this.handle.setImage(this.sheet, patch) as ImageInfo;
   }
   remove(id: string): ImageInfo | null {
     return (this.handle.removeImage(this.sheet, id) as ImageInfo | null) ?? null;
@@ -228,8 +228,8 @@ export class ShapeCollection extends SheetScopedCollection {
   list(): ShapeInfo[] {
     return this.handle.shapes(this.sheet) as ShapeInfo[];
   }
-  set(patch: Omit<ShapePatch, "sheet">): ShapeInfo {
-    return this.handle.setShape({ ...patch, sheet: this.sheet }) as ShapeInfo;
+  set(patch: ShapePatch): ShapeInfo {
+    return this.handle.setShape(this.sheet, patch) as ShapeInfo;
   }
   remove(id: string): ShapeInfo | null {
     return (this.handle.removeShape(this.sheet, id) as ShapeInfo | null) ?? null;
@@ -241,7 +241,7 @@ export class SparklineGroupCollection extends SheetScopedCollection {
     return this.handle.sparklineGroups(this.sheet) as SparklineGroupInfo[];
   }
   set(patch: SparklineGroupPatch): SparklineGroupInfo {
-    return this.handle.setSparklineGroup(patch) as SparklineGroupInfo;
+    return this.handle.setSparklineGroup(this.sheet, patch) as SparklineGroupInfo;
   }
   remove(id: string): SparklineGroupInfo | null {
     return (this.handle.removeSparklineGroup(this.sheet, id) as SparklineGroupInfo | null) ?? null;
@@ -252,11 +252,11 @@ export class PivotCollection extends SheetScopedCollection {
   list(): PivotInfo[] {
     return this.handle.pivots(this.sheet) as PivotInfo[];
   }
-  set(patch: Omit<PivotPatch, "sheet">): PivotInfo {
-    return this.handle.setPivot({ ...patch, sheet: this.sheet }) as PivotInfo;
+  set(patch: PivotPatch): PivotInfo {
+    return this.handle.setPivot(this.sheet, patch) as PivotInfo;
   }
-  preview(patch: Omit<PivotPatch, "sheet">): PivotGrid {
-    return this.handle.pivotPreview({ ...patch, sheet: this.sheet }) as PivotGrid;
+  preview(patch: PivotPatch): PivotGrid {
+    return this.handle.pivotPreview(this.sheet, patch) as PivotGrid;
   }
   update(id: string, update: PivotUpdate): PivotInfo {
     return this.handle.updatePivot(this.sheet, id, update) as PivotInfo;

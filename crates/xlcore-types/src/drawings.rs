@@ -74,7 +74,6 @@ impl ImageFormat {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ImagePatch {
-    pub sheet: String,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
@@ -157,7 +156,6 @@ pub struct ShapeLineEnd {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ShapePatch {
-    pub sheet: String,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,

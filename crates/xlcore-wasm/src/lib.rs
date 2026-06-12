@@ -670,12 +670,12 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = setChart)]
-    pub fn set_chart(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+    pub fn set_chart(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
         let patch: xlcore_api::ChartPatch =
             serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
         let info = self
             .workbook_mut()?
-            .set_chart(patch)
+            .set_chart(sheet, patch)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
@@ -714,23 +714,23 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = setPivot)]
-    pub fn set_pivot(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+    pub fn set_pivot(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
         let patch: xlcore_api::PivotPatch =
             serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
         let info = self
             .workbook_mut()?
-            .set_pivot(patch)
+            .set_pivot(sheet, patch)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
 
     #[wasm_bindgen(js_name = pivotPreview)]
-    pub fn pivot_preview(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+    pub fn pivot_preview(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
         let patch: xlcore_api::PivotPatch =
             serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
         let grid = self
             .workbook_mut()?
-            .pivot_preview(patch)
+            .pivot_preview(sheet, patch)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&grid).map_err(other_err_to_js)
     }
@@ -769,12 +769,12 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = setImage)]
-    pub fn set_image(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+    pub fn set_image(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
         let patch: xlcore_api::ImagePatch =
             serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
         let info = self
             .workbook_mut()?
-            .set_image(patch)
+            .set_image(sheet, patch)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
@@ -797,12 +797,12 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = setShape)]
-    pub fn set_shape(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+    pub fn set_shape(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
         let patch: xlcore_api::ShapePatch =
             serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
         let info = self
             .workbook_mut()?
-            .set_shape(patch)
+            .set_shape(sheet, patch)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
@@ -826,12 +826,12 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = setSparklineGroup)]
-    pub fn set_sparkline_group(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+    pub fn set_sparkline_group(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
         let patch: xlcore_api::SparklineGroupPatch =
             serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
         let info = self
             .workbook_mut()?
-            .set_sparkline_group(patch)
+            .set_sparkline_group(sheet, patch)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }

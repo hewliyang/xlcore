@@ -187,11 +187,15 @@ conventions** are less principled. Different layers, different grades.
    `SheetPageSetupApi`, `SheetFreeze`, `WorkbookPropertiesApi` — the `Api`
    suffix appears on ~half. Fix: pick `list/get/set/add/remove/clear`
    semantics, write them down, audit every collection.
-2. **`sheet` inside some patches, argument in others.** `ChartPatch.sheet`,
+2. *(done)* **`sheet` inside some patches, argument in others.** `ChartPatch.sheet`,
    `ShapePatch.sheet`, `PivotPatch.sheet` vs `setComment(qref, patch)`. The TS
-   layer betrays it — `Omit<ShapePatch, "sheet">` then re-inject. Fix in
-   `xlcore-types`: sheet-scoped patches lose their `sheet` field; wasm fns take
-   sheet as first arg uniformly.
+   layer betrayed it — `Omit<ShapePatch, "sheet">` then re-inject.
+   **Resolved**: `ChartPatch`/`ImagePatch`/`ShapePatch`/`PivotPatch`/
+   `SparklineGroupPatch` dropped their `sheet` field; the facade fns
+   (`set_chart`/`set_image`/`set_shape`/`set_pivot`/`pivot_preview`/
+   `set_sparkline_group`) take `sheet` as the first arg uniformly, matching the
+   existing `update_chart`/`update_pivot` shape. The TS `Omit<…, "sheet">` +
+   re-inject plumbing is deleted; `Info` types still carry `sheet`.
 3. *(done)* **`ChartCollection.update` is remove+set in TS** (`chartInfoToPatch` →
    `removeChart` → `setChart` → manual rollback). Three problems: not atomic
    (rollback can fail; success regenerates the rId so stored chart ids go

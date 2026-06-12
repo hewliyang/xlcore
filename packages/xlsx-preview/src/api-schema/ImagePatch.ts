@@ -3,7 +3,6 @@ import type { AnchorSpec } from "./AnchorSpec.js";
 import type { ImageFormat } from "./ImageFormat.js";
 
 export type ImagePatch = {
-  sheet: string;
   name?: string;
   anchor: AnchorSpec;
   bytes: Uint8Array | number[];

@@ -3,7 +3,6 @@ import type { PivotDataField } from "./PivotDataField.js";
 import type { PivotFieldFilter } from "./PivotFieldFilter.js";
 
 export type PivotPatch = {
-  sheet: string;
   anchorCell: string;
   sourceRef: string;
   name?: string;

@@ -62,19 +62,21 @@ impl Workbook {
 
     pub fn set_sparkline_group(
         &mut self,
+        sheet: impl AsRef<str>,
         patch: SparklineGroupPatch,
     ) -> Result<SparklineGroupInfo> {
-        validate_patch(&patch)?;
-        if !self.sheet_exists(&patch.sheet)? {
+        let sheet = sheet.as_ref();
+        validate_patch(sheet, &patch)?;
+        if !self.sheet_exists(sheet)? {
             return Err(ApiError::new(
                 ApiErrorCode::MissingSheet,
-                format!("sheet not found: {}", patch.sheet),
+                format!("sheet not found: {sheet}"),
             )
-            .with_sheet(&patch.sheet));
+            .with_sheet(sheet));
         }
 
         let group = build_group(&patch);
-        let ws_part = self.worksheet_part_for_sheet(&patch.sheet)?;
+        let ws_part = self.worksheet_part_for_sheet(sheet)?;
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
@@ -128,8 +130,8 @@ impl Workbook {
             }
         }
 
-        let id = format!("{}:{}", patch.sheet, group_index);
-        Ok(patch_to_info(&patch, &id))
+        let id = format!("{sheet}:{group_index}");
+        Ok(patch_to_info(sheet, &patch, &id))
     }
 
     pub fn remove_sparkline_group(
@@ -201,13 +203,13 @@ fn total_groups_so_far(ext_lst: &xspread::WorksheetExtensionList) -> usize {
         .sum()
 }
 
-fn validate_patch(patch: &SparklineGroupPatch) -> Result<()> {
+fn validate_patch(sheet: &str, patch: &SparklineGroupPatch) -> Result<()> {
     if patch.sparklines.is_empty() {
         return Err(ApiError::new(
             ApiErrorCode::InvalidSparklineGroup,
             "sparkline group must have at least one sparkline",
         )
-        .with_sheet(&patch.sheet));
+        .with_sheet(sheet));
     }
     for sp in &patch.sparklines {
         if sp.location.trim().is_empty() {
@@ -215,7 +217,7 @@ fn validate_patch(patch: &SparklineGroupPatch) -> Result<()> {
                 ApiErrorCode::InvalidSparklineGroup,
                 "sparkline location must not be empty",
             )
-            .with_sheet(&patch.sheet));
+            .with_sheet(sheet));
         }
         let first = sp.location.split(':').next().unwrap_or("");
         if parse_a1(first).is_none() {
@@ -223,14 +225,14 @@ fn validate_patch(patch: &SparklineGroupPatch) -> Result<()> {
                 ApiErrorCode::InvalidSparklineGroup,
                 format!("sparkline location is not a valid A1 ref: {}", sp.location),
             )
-            .with_sheet(&patch.sheet));
+            .with_sheet(sheet));
         }
         if sp.data_ref.trim().is_empty() {
             return Err(ApiError::new(
                 ApiErrorCode::InvalidSparklineGroup,
                 "sparkline dataRef must not be empty",
             )
-            .with_sheet(&patch.sheet));
+            .with_sheet(sheet));
         }
     }
     for color in [
@@ -251,7 +253,7 @@ fn validate_patch(patch: &SparklineGroupPatch) -> Result<()> {
                 ApiErrorCode::InvalidSparklineGroup,
                 format!("sparkline color must be hex RRGGBB or AARRGGBB (with or without leading '#'), got: {color}"),
             )
-            .with_sheet(&patch.sheet));
+            .with_sheet(sheet));
         }
     }
     Ok(())
@@ -493,9 +495,9 @@ fn group_to_info(sheet: &str, index: usize, g: &x14::SparklineGroup) -> Sparklin
     }
 }
 
-fn patch_to_info(patch: &SparklineGroupPatch, id: &str) -> SparklineGroupInfo {
+fn patch_to_info(sheet: &str, patch: &SparklineGroupPatch, id: &str) -> SparklineGroupInfo {
     SparklineGroupInfo {
-        sheet: patch.sheet.clone(),
+        sheet: sheet.to_string(),
         id: id.to_string(),
         kind: patch.kind,
         sparklines: patch.sparklines.clone(),

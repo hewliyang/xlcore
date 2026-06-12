@@ -3,7 +3,6 @@ import type { AnchorSpec } from "./AnchorSpec.js";
 import type { ShapeLineEnd } from "./ShapeLineEnd.js";
 
 export type ShapePatch = {
-  sheet: string;
   name?: string;
   anchor: AnchorSpec;
   preset: string;

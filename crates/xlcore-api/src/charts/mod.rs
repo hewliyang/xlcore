@@ -103,16 +103,17 @@ impl Workbook {
         Ok(out)
     }
 
-    pub fn set_chart(&mut self, patch: ChartPatch) -> Result<ChartInfo> {
-        validate_chart_series(&patch.sheet, patch.kind, &patch.series)?;
+    pub fn set_chart(&mut self, sheet: impl AsRef<str>, patch: ChartPatch) -> Result<ChartInfo> {
+        let sheet = sheet.as_ref();
+        validate_chart_series(sheet, patch.kind, &patch.series)?;
         let anchor = crate::refs::resolve_anchor(&patch.anchor)?;
 
-        if !self.sheet_exists(&patch.sheet)? {
+        if !self.sheet_exists(sheet)? {
             return Err(ApiError::new(
                 ApiErrorCode::MissingSheet,
-                format!("sheet not found: {}", patch.sheet),
+                format!("sheet not found: {sheet}"),
             )
-            .with_sheet(&patch.sheet));
+            .with_sheet(sheet));
         }
 
         if patch.stacking.is_some()
@@ -129,11 +130,11 @@ impl Workbook {
                         patch.kind
                     ),
                 )
-                .with_sheet(&patch.sheet),
+                .with_sheet(sheet),
             );
         }
 
-        let ws_part = self.worksheet_part_for_sheet(&patch.sheet)?;
+        let ws_part = self.worksheet_part_for_sheet(sheet)?;
 
         let (drawings_part, fresh_drawings) = match ws_part.drawings_part(&self.doc) {
             Some(p) => (p.clone(), false),
@@ -202,7 +203,7 @@ impl Workbook {
             )));
 
         Ok(ChartInfo {
-            sheet: patch.sheet.clone(),
+            sheet: sheet.to_string(),
             id: chart_rid,
             name: chart_name,
             kind: patch.kind,
@@ -403,7 +404,6 @@ impl Workbook {
 
         if plot_dirty {
             let synth = ChartPatch {
-                sheet: sheet.clone(),
                 name: None,
                 kind,
                 title: None,

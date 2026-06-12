@@ -94,13 +94,14 @@ impl Workbook {
         Ok(out)
     }
 
-    pub fn set_shape(&mut self, patch: ShapePatch) -> Result<ShapeInfo> {
-        if !self.sheet_exists(&patch.sheet)? {
+    pub fn set_shape(&mut self, sheet: impl AsRef<str>, patch: ShapePatch) -> Result<ShapeInfo> {
+        let sheet = sheet.as_ref();
+        if !self.sheet_exists(sheet)? {
             return Err(ApiError::new(
                 ApiErrorCode::MissingSheet,
-                format!("sheet not found: {}", patch.sheet),
+                format!("sheet not found: {sheet}"),
             )
-            .with_sheet(&patch.sheet));
+            .with_sheet(sheet));
         }
         let resolved = resolve_anchor(&patch.anchor)?;
         let preset = a::ShapeTypeValues::from_str(&patch.preset).map_err(|_| {
@@ -108,14 +109,14 @@ impl Workbook {
                 ApiErrorCode::InvalidShape,
                 format!("unknown shape preset: {}", patch.preset),
             )
-            .with_sheet(&patch.sheet)
+            .with_sheet(sheet)
         })?;
         let rotation_emu = match patch.rotation_degrees {
-            Some(d) => Some(degrees_to_rot60000(d, &patch.sheet)?),
+            Some(d) => Some(degrees_to_rot60000(d, sheet)?),
             None => None,
         };
 
-        let ws_part = self.worksheet_part_for_sheet(&patch.sheet)?;
+        let ws_part = self.worksheet_part_for_sheet(sheet)?;
         let (drawings_part, fresh_drawings) = match ws_part.drawings_part(&self.doc) {
             Some(p) => (p.clone(), false),
             None => {
@@ -156,13 +157,13 @@ impl Workbook {
             .clone()
             .unwrap_or_else(|| format!("Shape {shape_id}"));
 
-        for warning in self.anchor_offset_overflow_warnings(&patch.sheet, &resolved)? {
+        for warning in self.anchor_offset_overflow_warnings(sheet, &resolved)? {
             self.push_warning(warning);
         }
 
         let flip_h = patch.flip_horizontal.unwrap_or(false);
         let flip_v = patch.flip_vertical.unwrap_or(false);
-        let xfrm_box = self.shape_box_emu(&patch.sheet, &resolved)?;
+        let xfrm_box = self.shape_box_emu(sheet, &resolved)?;
         let anchor = build_shape_two_cell_anchor(
             &patch,
             &resolved,
@@ -183,7 +184,7 @@ impl Workbook {
             .push(xdr::WorksheetDrawingChoice::TwoCellAnchor(Box::new(anchor)));
 
         Ok(ShapeInfo {
-            sheet: patch.sheet.clone(),
+            sheet: sheet.to_string(),
             id: shape_id.to_string(),
             name: shape_name,
             anchor: resolved,

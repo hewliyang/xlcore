@@ -21,7 +21,6 @@ use crate::{Result, Workbook};
 
 fn pivot_info_to_patch(info: &PivotInfo) -> PivotPatch {
     PivotPatch {
-        sheet: info.sheet.clone(),
         anchor_cell: info.anchor_cell.clone(),
         source_ref: info.source_ref.clone(),
         name: Some(info.name.clone()),
@@ -289,27 +288,27 @@ impl Workbook {
         Ok(out)
     }
 
-    fn prepare_pivot(&mut self, patch: &PivotPatch) -> Result<PivotPrep> {
+    fn prepare_pivot(&mut self, sheet: &str, patch: &PivotPatch) -> Result<PivotPrep> {
         if patch.data_fields.is_empty() {
             return Err(ApiError::new(
                 ApiErrorCode::InvalidPivot,
                 "pivot must have at least one data field",
             )
-            .with_sheet(&patch.sheet));
+            .with_sheet(sheet));
         }
         if patch.row_fields.is_empty() && patch.column_fields.is_empty() {
             return Err(ApiError::new(
                 ApiErrorCode::InvalidPivot,
                 "pivot must have at least one row or column field",
             )
-            .with_sheet(&patch.sheet));
+            .with_sheet(sheet));
         }
-        if !self.sheet_exists(&patch.sheet)? {
+        if !self.sheet_exists(sheet)? {
             return Err(ApiError::new(
                 ApiErrorCode::MissingSheet,
-                format!("sheet not found: {}", patch.sheet),
+                format!("sheet not found: {sheet}"),
             )
-            .with_sheet(&patch.sheet));
+            .with_sheet(sheet));
         }
 
         let anchor = self.resolve_cell_ref(&patch.anchor_cell)?;
@@ -320,7 +319,7 @@ impl Workbook {
                 ApiErrorCode::InvalidPivot,
                 "pivot source must have a header row and at least one data row",
             )
-            .with_sheet(&patch.sheet));
+            .with_sheet(sheet));
         }
         let source_sheet = source.sheet.clone();
         let source_a1 = format!(
@@ -373,7 +372,7 @@ impl Workbook {
                     ApiErrorCode::InvalidPivot,
                     format!("pivot field not found in source header: {field}"),
                 )
-                .with_sheet(&patch.sheet));
+                .with_sheet(sheet));
             }
         }
 
@@ -417,8 +416,13 @@ impl Workbook {
         })
     }
 
-    pub fn pivot_preview(&mut self, patch: PivotPatch) -> Result<PivotGrid> {
-        let prep = self.prepare_pivot(&patch)?;
+    pub fn pivot_preview(
+        &mut self,
+        sheet: impl AsRef<str>,
+        patch: PivotPatch,
+    ) -> Result<PivotGrid> {
+        let sheet = sheet.as_ref();
+        let prep = self.prepare_pivot(sheet, &patch)?;
         let cache_definition =
             build_cache_definition(&prep.source_sheet, &prep.source_a1, &prep.columns);
         let cache_records = build_cache_records(&prep.columns, &prep.data_rows);
@@ -449,8 +453,9 @@ impl Workbook {
         Ok(grid_from_cells(&cells, memo))
     }
 
-    pub fn set_pivot(&mut self, patch: PivotPatch) -> Result<PivotInfo> {
-        let prep = self.prepare_pivot(&patch)?;
+    pub fn set_pivot(&mut self, sheet: impl AsRef<str>, patch: PivotPatch) -> Result<PivotInfo> {
+        let sheet = sheet.as_ref();
+        let prep = self.prepare_pivot(sheet, &patch)?;
         let columns = prep.columns;
         let headers = prep.headers;
         let anchor = prep.anchor;
@@ -481,7 +486,7 @@ impl Workbook {
             &data_field_num_fmts,
         );
 
-        let ws_part = self.worksheet_part_for_sheet(&patch.sheet)?;
+        let ws_part = self.worksheet_part_for_sheet(sheet)?;
 
         let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
         let cache_def_part: PivotTableCacheDefinitionPart = wb_part
@@ -525,7 +530,7 @@ impl Workbook {
             .create_relationship_to_part(&mut self.doc, cache_def_part)
             .map_err(sdk_err_to_api)?;
 
-        self.pivots(Some(&patch.sheet))?
+        self.pivots(Some(sheet))?
             .into_iter()
             .find(|p| p.id == pivot_rid)
             .ok_or_else(|| ApiError::new(ApiErrorCode::Other, "pivot not found after authoring"))
@@ -553,7 +558,6 @@ impl Workbook {
 
         let base = pivot_info_to_patch(&existing);
         let merged = PivotPatch {
-            sheet: sheet.clone(),
             anchor_cell: update
                 .anchor_cell
                 .unwrap_or_else(|| base.anchor_cell.clone()),
@@ -573,10 +577,10 @@ impl Workbook {
         };
 
         self.remove_pivot(&sheet, &id)?;
-        match self.set_pivot(merged) {
+        match self.set_pivot(&sheet, merged) {
             Ok(info) => Ok(info),
             Err(err) => {
-                let _ = self.set_pivot(base);
+                let _ = self.set_pivot(&sheet, base);
                 Err(err)
             }
         }

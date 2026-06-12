@@ -5,7 +5,6 @@ import type { SparklineEntry } from "./SparklineEntry.js";
 import type { SparklineKind } from "./SparklineKind.js";
 
 export type SparklineGroupPatch = {
-  sheet: string;
   kind: SparklineKind;
   sparklines: Array<SparklineEntry>;
   markers?: boolean;

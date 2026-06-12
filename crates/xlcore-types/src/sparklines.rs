@@ -60,7 +60,6 @@ pub struct SparklineEntry {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct SparklineGroupPatch {
-    pub sheet: String,
     pub kind: SparklineKind,
     pub sparklines: Vec<SparklineEntry>,
     #[cfg_attr(feature = "typescript", ts(optional))]

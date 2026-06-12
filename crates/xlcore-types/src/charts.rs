@@ -346,7 +346,6 @@ pub struct ChartSeriesInfo {
 #[serde(rename_all = "camelCase")]
 #[allow(clippy::derive_partial_eq_without_eq)]
 pub struct ChartPatch {
-    pub sheet: String,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,

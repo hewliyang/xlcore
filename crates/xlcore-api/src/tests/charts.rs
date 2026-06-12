@@ -13,8 +13,7 @@ fn charts_create_list_remove_roundtrip() {
     wb.set_value("Sheet1!B4", 30.0).unwrap();
 
     let info = wb
-        .set_chart(ChartPatch {
-            sheet: "Sheet1".to_string(),
+        .set_chart("Sheet1", ChartPatch {
             name: Some("Sales".to_string()),
             kind: ChartKind::Column,
             title: Some("Units by Region".to_string()),
@@ -119,8 +118,7 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
     wb.set_value("Sheet1!B3", 20.0).unwrap();
 
     let info = wb
-        .set_chart(ChartPatch {
-            sheet: "Sheet1".to_string(),
+        .set_chart("Sheet1", ChartPatch {
             name: Some("Sales".to_string()),
             kind: ChartKind::Column,
             title: Some("Old".to_string()),
@@ -192,8 +190,7 @@ fn update_chart_replaces_series_and_stacking() {
     wb.set_value("Sheet1!C3", 7.0).unwrap();
 
     let info = wb
-        .set_chart(ChartPatch {
-            sheet: "Sheet1".to_string(),
+        .set_chart("Sheet1", ChartPatch {
             name: None,
             kind: ChartKind::Column,
             title: None,
@@ -256,8 +253,7 @@ fn chart_axis_patch_authors_and_round_trips() {
     wb.set_value("Sheet1!B3", 80.0).unwrap();
 
     let info = wb
-        .set_chart(ChartPatch {
-            sheet: "Sheet1".to_string(),
+        .set_chart("Sheet1", ChartPatch {
             name: None,
             kind: ChartKind::Column,
             title: None,
@@ -339,7 +335,6 @@ fn chart_axis_patch_authors_and_round_trips() {
 fn charts_supports_multiple_kinds() {
     let mut wb = Workbook::new().unwrap();
     let patch = |kind: ChartKind| ChartPatch {
-        sheet: "Sheet1".to_string(),
         name: None,
         kind,
         title: None,
@@ -380,7 +375,7 @@ fn charts_supports_multiple_kinds() {
         ChartKind::Bubble,
         ChartKind::Doughnut,
     ] {
-        let info = wb.set_chart(patch(kind)).unwrap();
+        let info = wb.set_chart("Sheet1", patch(kind)).unwrap();
         assert_eq!(info.kind, kind);
     }
     let bytes = wb.save_bytes().unwrap();
@@ -410,8 +405,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             .unwrap();
     }
 
-    wb.set_chart(ChartPatch {
-        sheet: "Sheet1".to_string(),
+    wb.set_chart("Sheet1", ChartPatch {
         name: Some("Sc".to_string()),
         kind: ChartKind::Scatter,
         title: Some("S".to_string()),
@@ -442,8 +436,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
     })
     .unwrap();
 
-    wb.set_chart(ChartPatch {
-        sheet: "Sheet1".to_string(),
+    wb.set_chart("Sheet1", ChartPatch {
         name: Some("Bu".to_string()),
         kind: ChartKind::Bubble,
         title: None,
@@ -472,8 +465,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
     })
     .unwrap();
 
-    wb.set_chart(ChartPatch {
-        sheet: "Sheet1".to_string(),
+    wb.set_chart("Sheet1", ChartPatch {
         name: Some("Do".to_string()),
         kind: ChartKind::Doughnut,
         title: None,
@@ -545,8 +537,7 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
         wb.set_value(format!("Sheet1!B{r}").as_str(), (r as f64) * 2.0)
             .unwrap();
     }
-    wb.set_chart(ChartPatch {
-        sheet: "Sheet1".to_string(),
+    wb.set_chart("Sheet1", ChartPatch {
         name: Some("C".to_string()),
         kind: ChartKind::Column,
         title: None,
@@ -584,8 +575,7 @@ fn chart_series_color_rejects_malformed_hex() {
     let mut wb = Workbook::new().unwrap();
     wb.set_value("Sheet1!B2", 1.0).unwrap();
     let err = wb
-        .set_chart(ChartPatch {
-            sheet: "Sheet1".to_string(),
+        .set_chart("Sheet1", ChartPatch {
             name: None,
             kind: ChartKind::Column,
             title: None,
@@ -655,8 +645,7 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
         ..Default::default()
     })
     .unwrap();
-    wb.set_chart(ChartPatch {
-        sheet: "Sheet1".into(),
+    wb.set_chart("Sheet1", ChartPatch {
         name: Some("C".into()),
         kind: ChartKind::Column,
         title: None,
@@ -726,7 +715,6 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
 fn charts_stacking_roundtrips_for_bar_line_area() {
     let mut wb = Workbook::new().unwrap();
     let base = |kind: ChartKind, stacking: Option<ChartStacking>, row: u32| ChartPatch {
-        sheet: "Sheet1".to_string(),
         name: None,
         kind,
         title: None,
@@ -760,35 +748,36 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
     };
 
     let col_stacked = wb
-        .set_chart(base(ChartKind::Column, Some(ChartStacking::Stacked), 1))
+        .set_chart("Sheet1", base(ChartKind::Column, Some(ChartStacking::Stacked), 1))
         .unwrap();
     assert_eq!(col_stacked.stacking, Some(ChartStacking::Stacked));
 
     let bar_pct = wb
-        .set_chart(base(
-            ChartKind::Bar,
-            Some(ChartStacking::PercentStacked),
-            14,
-        ))
+        .set_chart(
+            "Sheet1",
+            base(ChartKind::Bar, Some(ChartStacking::PercentStacked), 14),
+        )
         .unwrap();
     assert_eq!(bar_pct.stacking, Some(ChartStacking::PercentStacked));
 
     let line_stacked = wb
-        .set_chart(base(ChartKind::Line, Some(ChartStacking::Stacked), 28))
+        .set_chart("Sheet1", base(ChartKind::Line, Some(ChartStacking::Stacked), 28))
         .unwrap();
     assert_eq!(line_stacked.stacking, Some(ChartStacking::Stacked));
 
     let area_pct = wb
-        .set_chart(base(
-            ChartKind::Area,
-            Some(ChartStacking::PercentStacked),
-            42,
-        ))
+        .set_chart(
+            "Sheet1",
+            base(ChartKind::Area, Some(ChartStacking::PercentStacked), 42),
+        )
         .unwrap();
     assert_eq!(area_pct.stacking, Some(ChartStacking::PercentStacked));
 
     let col_clustered = wb
-        .set_chart(base(ChartKind::Column, Some(ChartStacking::Clustered), 56))
+        .set_chart(
+            "Sheet1",
+            base(ChartKind::Column, Some(ChartStacking::Clustered), 56),
+        )
         .unwrap();
     assert_eq!(col_clustered.stacking, Some(ChartStacking::Clustered));
 
@@ -828,8 +817,7 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
 fn charts_stacking_on_pie_emits_warning_and_drops() {
     let mut wb = Workbook::new().unwrap();
     let info = wb
-        .set_chart(ChartPatch {
-            sheet: "Sheet1".to_string(),
+        .set_chart("Sheet1", ChartPatch {
             name: None,
             kind: ChartKind::Pie,
             title: None,
@@ -864,8 +852,7 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
 #[test]
 fn charts_scatter_requires_x_values_and_rejects_bad_color() {
     let mut wb = Workbook::new().unwrap();
-    let missing_x = wb.set_chart(ChartPatch {
-        sheet: "Sheet1".to_string(),
+    let missing_x = wb.set_chart("Sheet1", ChartPatch {
         name: None,
         kind: ChartKind::Scatter,
         title: None,
@@ -885,8 +872,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
     });
     assert!(missing_x.is_err());
 
-    let bad_color = wb.set_chart(ChartPatch {
-        sheet: "Sheet1".to_string(),
+    let bad_color = wb.set_chart("Sheet1", ChartPatch {
         name: None,
         kind: ChartKind::Column,
         title: None,
@@ -913,8 +899,7 @@ fn charts_data_labels_roundtrip() {
     use xlcore_types::{ChartDataLabelPosition, ChartDataLabels};
     let mut wb = Workbook::new().unwrap();
     let info = wb
-        .set_chart(ChartPatch {
-            sheet: "Sheet1".to_string(),
+        .set_chart("Sheet1", ChartPatch {
             name: Some("WithLabels".to_string()),
             kind: ChartKind::Column,
             title: None,
@@ -970,8 +955,7 @@ fn charts_data_labels_roundtrip() {
 fn charts_data_labels_pie_show_percent_roundtrip() {
     use xlcore_types::{ChartDataLabelPosition, ChartDataLabels};
     let mut wb = Workbook::new().unwrap();
-    wb.set_chart(ChartPatch {
-        sheet: "Sheet1".to_string(),
+    wb.set_chart("Sheet1", ChartPatch {
         name: Some("Pie".to_string()),
         kind: ChartKind::Pie,
         title: None,
@@ -1014,8 +998,7 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
 fn charts_per_series_data_labels_override_chart_level() {
     use xlcore_types::{ChartDataLabelPosition, ChartDataLabels};
     let mut wb = Workbook::new().unwrap();
-    wb.set_chart(ChartPatch {
-        sheet: "Sheet1".to_string(),
+    wb.set_chart("Sheet1", ChartPatch {
         name: Some("PerSeries".to_string()),
         kind: ChartKind::Column,
         title: None,

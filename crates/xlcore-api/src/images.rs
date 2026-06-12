@@ -114,26 +114,27 @@ impl Workbook {
         Ok(out)
     }
 
-    pub fn set_image(&mut self, patch: ImagePatch) -> Result<ImageInfo> {
+    pub fn set_image(&mut self, sheet: impl AsRef<str>, patch: ImagePatch) -> Result<ImageInfo> {
+        let sheet = sheet.as_ref();
         let resolved = resolve_anchor(&patch.anchor)?;
         if patch.bytes.is_empty() {
             return Err(
                 ApiError::new(ApiErrorCode::InvalidImage, "image bytes must not be empty")
-                    .with_sheet(&patch.sheet),
+                    .with_sheet(sheet),
             );
         }
-        if !self.sheet_exists(&patch.sheet)? {
+        if !self.sheet_exists(sheet)? {
             return Err(ApiError::new(
                 ApiErrorCode::MissingSheet,
-                format!("sheet not found: {}", patch.sheet),
+                format!("sheet not found: {sheet}"),
             )
-            .with_sheet(&patch.sheet));
+            .with_sheet(sheet));
         }
         let rotation_emu = match patch.rotation_degrees {
-            Some(d) => Some(degrees_to_rot60000(d, &patch.sheet)?),
+            Some(d) => Some(degrees_to_rot60000(d, sheet)?),
             None => None,
         };
-        let src_rect = build_source_rectangle(&patch, &patch.sheet)?;
+        let src_rect = build_source_rectangle(&patch, sheet)?;
         let format = match patch.format {
             Some(f) => f,
             None => ImageFormat::sniff(&patch.bytes).ok_or_else(|| {
@@ -141,11 +142,11 @@ impl Workbook {
                     ApiErrorCode::InvalidImage,
                     "unable to detect image format; specify `format` explicitly",
                 )
-                .with_sheet(&patch.sheet)
+                .with_sheet(sheet)
             })?,
         };
 
-        let ws_part = self.worksheet_part_for_sheet(&patch.sheet)?;
+        let ws_part = self.worksheet_part_for_sheet(sheet)?;
         let (drawings_part, fresh_drawings) = match ws_part.drawings_part(&self.doc) {
             Some(p) => (p.clone(), false),
             None => {
@@ -216,7 +217,7 @@ impl Workbook {
             .push(xdr::WorksheetDrawingChoice::TwoCellAnchor(Box::new(anchor)));
 
         Ok(ImageInfo {
-            sheet: patch.sheet.clone(),
+            sheet: sheet.to_string(),
             id: image_rid,
             name: pic_name,
             anchor: resolved,

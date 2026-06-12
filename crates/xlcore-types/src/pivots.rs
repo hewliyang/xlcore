@@ -60,7 +60,6 @@ pub struct PivotFieldFilter {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct PivotPatch {
-    pub sheet: String,
     pub anchor_cell: String,
     pub source_ref: String,
     #[cfg_attr(feature = "typescript", ts(optional))]
