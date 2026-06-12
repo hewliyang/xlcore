@@ -342,12 +342,19 @@ conventions** are less principled. Different layers, different grades.
    method table → codegen for the wasm+TS layers would eliminate the drift
    class entirely. openpyxl's metaclass is the same instinct at runtime;
    codegen is the better version of it.
-5. **Worksheet identity is fake.** `Worksheet` wraps a throwaway
+5. *(done)* **Worksheet identity is fake.** `Worksheet` wraps a throwaway
    `{current: name}` ref; `wb.sheet("X")` twice gives two objects, and
    `rename()` on one strands the other (and any stored `Range`s). openpyxl's
-   workbook owns its worksheet objects — same name, same object. Fix:
-   `Workbook` caches `Worksheet` per stable `SheetInfo.id`; rename updates the
-   shared ref.
+   workbook owns its worksheet objects — same name, same object.
+   **Resolved**: `Workbook` caches `Worksheet` per stable `SheetInfo.id`
+   (`worksheetFor(info)`); `sheet`/`worksheets`/`activeSheet`/`addSheet` all
+   resolve through the cache so the same id always yields the same object, and a
+   cache hit re-syncs the worksheet's name to the live `SheetInfo.name` (covers
+   id reuse after delete+add). `rename()` mutates the shared ref, so every
+   handle (and any stored `Range`/collection) follows; `removeSheet` evicts.
+   TS-only — Rust already exposes the stable id. Verified via
+   `api.worksheetIdentity.test.ts` (`sheet()` twice is `toBe`-identical, rename
+   propagates, add caches / remove evicts).
 6. *(done)* **No bulk-data idiom.** openpyxl's most-used method is `ws.append(row)`.
    **Resolved**: `Workbook::append_rows(sheet, rows)` + `append_row` in
    `xlcore-api` write rows starting at column A after the last data-bearing row
@@ -360,7 +367,7 @@ conventions** are less principled. Different layers, different grades.
 
 #3 is correctness — land before expanding `ChartPatch`. #1/#2 are breaking
 renames, cheapest while the user count is ~1. #4 pays off across every future
-domain. #5 is a nice-to-have; #6 is done.
+domain. #5 is done; #6 is done.
 
 ## Where to enforce the structure (Rust vs binding) — pyo3/napi readiness
 

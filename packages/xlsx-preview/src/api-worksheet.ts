@@ -130,6 +130,11 @@ export class Worksheet {
     return this.sheetRef.current;
   }
 
+  /** @internal Re-point this cached worksheet at its current name (keyed by stable sheet id). */
+  syncName(name: string): void {
+    this.sheetRef.current = name;
+  }
+
   info(): SheetInfo {
     const found = (this.handle.sheets() as SheetInfo[]).find((s) => s.name === this.name);
     if (!found) {

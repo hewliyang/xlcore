@@ -232,6 +232,8 @@ export class Workbook {
   readonly calcProperties: CalcPropertiesApi;
   readonly protection: WorkbookProtection;
 
+  private readonly worksheetCache = new Map<number, Worksheet>();
+
   private constructor(private handle: WasmWorkbookHandle) {
     this.definedNames = new DefinedNamesCollection(handle);
     this.allTables = new WorkbookTables(handle);
@@ -244,16 +246,32 @@ export class Workbook {
     this.protection = new WorkbookProtection(handle);
   }
 
+  /**
+   * Resolve a stable {@link Worksheet} object for a sheet info. Worksheets are
+   * cached by their stable `SheetInfo.id`, so `wb.sheet('X')` twice returns the
+   * same object and a `rename()` on one handle is visible through every other.
+   */
+  private worksheetFor(info: SheetInfo): Worksheet {
+    const cached = this.worksheetCache.get(info.id);
+    if (cached) {
+      cached.syncName(info.name);
+      return cached;
+    }
+    const ws = new Worksheet(this.handle, info.name);
+    this.worksheetCache.set(info.id, ws);
+    return ws;
+  }
+
   sheet(name: string): Worksheet {
-    const exists = (this.handle.sheets() as SheetInfo[]).some((s) => s.name === name);
-    if (!exists) {
+    const info = (this.handle.sheets() as SheetInfo[]).find((s) => s.name === name);
+    if (!info) {
       throw new Error(`worksheet '${name}' does not exist`);
     }
-    return new Worksheet(this.handle, name);
+    return this.worksheetFor(info);
   }
 
   worksheets(): Worksheet[] {
-    return (this.handle.sheets() as SheetInfo[]).map((s) => new Worksheet(this.handle, s.name));
+    return (this.handle.sheets() as SheetInfo[]).map((info) => this.worksheetFor(info));
   }
 
   activeSheet(): Worksheet {
@@ -262,16 +280,20 @@ export class Workbook {
     if (!active) {
       throw new Error("workbook has no sheets");
     }
-    return new Worksheet(this.handle, active.name);
+    return this.worksheetFor(active);
   }
 
   addSheet(name: string): Worksheet {
     this.handle.createSheet(name);
-    return new Worksheet(this.handle, name);
+    return this.sheet(name);
   }
 
   removeSheet(name: string): void {
+    const info = (this.handle.sheets() as SheetInfo[]).find((s) => s.name === name);
     this.handle.deleteSheet(name);
+    if (info) {
+      this.worksheetCache.delete(info.id);
+    }
   }
 
   warnings(): ApiWarning[] {
