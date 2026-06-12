@@ -84,6 +84,128 @@ impl Workbook {
         Ok(())
     }
 
+    pub fn group_rows(
+        &mut self,
+        sheet: impl AsRef<str>,
+        start: u32,
+        end: u32,
+        level: u8,
+        collapsed: bool,
+    ) -> Result<()> {
+        let sheet = sheet.as_ref().to_string();
+        validate_row(start, &sheet)?;
+        validate_row(end, &sheet)?;
+        if start > end {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidRef,
+                "group start row must be <= end row",
+            )
+            .with_sheet(&sheet));
+        }
+        validate_outline_level(level)?;
+        let ws_part = self.worksheet_part_for_sheet(&sheet)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        for row in start..=end {
+            let entry = ensure_row(ws, row);
+            entry.outline_level = if level == 0 {
+                None
+            } else {
+                Some(level.into())
+            };
+            entry.hidden = if level != 0 && collapsed {
+                Some(BooleanValue::from_bool(true))
+            } else {
+                None
+            };
+        }
+        let summary = if summary_below(ws) { end + 1 } else if start > 1 { start - 1 } else { 0 };
+        if summary != 0 && summary <= MAX_ROW {
+            let entry = ensure_row(ws, summary);
+            entry.collapsed = if level != 0 && collapsed {
+                Some(BooleanValue::from_bool(true))
+            } else {
+                None
+            };
+        }
+        let max_level = ws
+            .sheet_data
+            .row
+            .iter()
+            .filter_map(|r| r.outline_level.map(u8::from))
+            .max()
+            .unwrap_or(0);
+        set_outline_level_row(ws, max_level);
+        Ok(())
+    }
+
+    pub fn group_columns(
+        &mut self,
+        sheet: impl AsRef<str>,
+        start: u32,
+        end: u32,
+        level: u8,
+        collapsed: bool,
+    ) -> Result<()> {
+        let sheet = sheet.as_ref().to_string();
+        validate_column(start, &sheet)?;
+        validate_column(end, &sheet)?;
+        if start > end {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidRef,
+                "group start column must be <= end column",
+            )
+            .with_sheet(&sheet));
+        }
+        validate_outline_level(level)?;
+        let ws_part = self.worksheet_part_for_sheet(&sheet)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        for column in start..=end {
+            let col = ensure_single_column(ws, column);
+            col.outline_level = if level == 0 {
+                None
+            } else {
+                Some(level.into())
+            };
+            col.hidden = if level != 0 && collapsed {
+                Some(BooleanValue::from_bool(true))
+            } else {
+                None
+            };
+        }
+        let summary = if summary_right(ws) {
+            Some(end + 1)
+        } else if start > 1 {
+            Some(start - 1)
+        } else {
+            None
+        };
+        if let Some(summary) = summary.filter(|&c| c <= MAX_COLUMN) {
+            let col = ensure_single_column(ws, summary);
+            col.collapsed = if level != 0 && collapsed {
+                Some(BooleanValue::from_bool(true))
+            } else {
+                None
+            };
+        }
+        let max_level = ws
+            .columns
+            .first()
+            .map(|cols| {
+                cols.column
+                    .iter()
+                    .filter_map(|c| c.outline_level.map(u8::from))
+                    .max()
+                    .unwrap_or(0)
+            })
+            .unwrap_or(0);
+        set_outline_level_column(ws, max_level);
+        Ok(())
+    }
+
     pub fn set_show_grid_lines(&mut self, sheet: impl AsRef<str>, visible: bool) -> Result<bool> {
         let sheet = sheet.as_ref().to_string();
         let ws_part = self.worksheet_part_for_sheet(&sheet)?;
@@ -232,6 +354,55 @@ fn validate_column(column: u32, sheet: &str) -> Result<()> {
         .with_sheet(sheet));
     }
     Ok(())
+}
+
+fn validate_outline_level(level: u8) -> Result<()> {
+    if level > 7 {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidRef,
+            "outline level must be between 0 and 7",
+        ));
+    }
+    Ok(())
+}
+
+fn summary_below(ws: &x::Worksheet) -> bool {
+    ws.sheet_properties
+        .as_ref()
+        .and_then(|sp| sp.outline_properties.as_ref())
+        .and_then(|op| op.summary_below)
+        .map(bool::from)
+        .unwrap_or(true)
+}
+
+fn summary_right(ws: &x::Worksheet) -> bool {
+    ws.sheet_properties
+        .as_ref()
+        .and_then(|sp| sp.outline_properties.as_ref())
+        .and_then(|op| op.summary_right)
+        .map(bool::from)
+        .unwrap_or(true)
+}
+
+fn set_outline_level_row(ws: &mut x::Worksheet, level: u8) {
+    let fmt = ws
+        .sheet_format_properties
+        .get_or_insert_with(default_sheet_format);
+    fmt.outline_level_row = if level == 0 { None } else { Some(level.into()) };
+}
+
+fn set_outline_level_column(ws: &mut x::Worksheet, level: u8) {
+    let fmt = ws
+        .sheet_format_properties
+        .get_or_insert_with(default_sheet_format);
+    fmt.outline_level_column = if level == 0 { None } else { Some(level.into()) };
+}
+
+fn default_sheet_format() -> x::SheetFormatProperties {
+    x::SheetFormatProperties {
+        default_row_height: 15.0,
+        ..Default::default()
+    }
 }
 
 fn validate_size(value: f64, label: &str) -> Result<()> {

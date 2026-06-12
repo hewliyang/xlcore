@@ -33,6 +33,8 @@ export const workbookhandle_getCell: (a: number, b: number, c: number, d: number
 export const workbookhandle_getFreeze: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_getRange: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_getShowGridLines: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_groupColumns: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
+export const workbookhandle_groupRows: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
 export const workbookhandle_hyperlinks: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_images: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_insertColumns: (a: number, b: number, c: number, d: number, e: number, f: number) => void;

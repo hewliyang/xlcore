@@ -1140,6 +1140,34 @@ impl WorkbookHandle {
             .map_err(api_err_to_js)
     }
 
+    #[wasm_bindgen(js_name = groupRows)]
+    pub fn group_rows(
+        &mut self,
+        sheet: &str,
+        start: u32,
+        end: u32,
+        level: u8,
+        collapsed: bool,
+    ) -> Result<(), JsValue> {
+        self.workbook_mut()?
+            .group_rows(sheet, start, end, level, collapsed)
+            .map_err(api_err_to_js)
+    }
+
+    #[wasm_bindgen(js_name = groupColumns)]
+    pub fn group_columns(
+        &mut self,
+        sheet: &str,
+        start: u32,
+        end: u32,
+        level: u8,
+        collapsed: bool,
+    ) -> Result<(), JsValue> {
+        self.workbook_mut()?
+            .group_columns(sheet, start, end, level, collapsed)
+            .map_err(api_err_to_js)
+    }
+
     #[wasm_bindgen(js_name = setShowGridLines)]
     pub fn set_show_grid_lines(&mut self, sheet: &str, visible: bool) -> Result<bool, JsValue> {
         self.workbook_mut()?

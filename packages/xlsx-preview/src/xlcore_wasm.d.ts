@@ -31,6 +31,8 @@ export class WorkbookHandle {
     getFreeze(sheet: string): any;
     getRange(reference: string): any;
     getShowGridLines(sheet: string): boolean;
+    groupColumns(sheet: string, start: number, end: number, level: number, collapsed: boolean): void;
+    groupRows(sheet: string, start: number, end: number, level: number, collapsed: boolean): void;
     hyperlinks(sheet: string): any;
     images(sheet?: string | null): any;
     insertColumns(sheet: string, before: number, count: number): void;
@@ -155,6 +157,8 @@ export interface InitOutput {
     readonly workbookhandle_getFreeze: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_getRange: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_getShowGridLines: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_groupColumns: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
+    readonly workbookhandle_groupRows: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
     readonly workbookhandle_hyperlinks: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_images: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_insertColumns: (a: number, b: number, c: number, d: number, e: number, f: number) => void;

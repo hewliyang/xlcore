@@ -10,6 +10,7 @@ mod images;
 mod page_setup;
 mod pivots;
 mod properties;
+mod rowcols;
 mod protection;
 mod ranges_styles;
 mod refs_sheets;

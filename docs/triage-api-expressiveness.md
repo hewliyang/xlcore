@@ -203,7 +203,15 @@ authoring, per-point data labels.
 
 ### Worksheet — P1
 
-- Row/column outline grouping (`outlineLevel`, collapsed) — gutter renderer exists.
+- Row/column outline grouping (`outlineLevel`, collapsed) — **done**:
+  `group_rows`/`group_columns(sheet, start, end, level, collapsed)` in
+  `xlcore-api` set `row/@outlineLevel`/`col/@outlineLevel` over the range, sync
+  `sheetFormatPr/@outlineLevelRow`/`@outlineLevelCol` to the max, and (when
+  collapsed) hide the grouped rows/cols + mark the summary row/col `@collapsed`
+  (summary side read from `outlinePr/@summaryBelow`/`@summaryRight`, default
+  below/right); `level: 0` ungroups. TS `groupRows`/`groupColumns` +
+  `ungroupRows`/`ungroupColumns` forward only. Round-trips and is
+  renderer-visible (gutter brackets + collapse buttons verified e2e).
 - Tab color, zoom, `showZeros`, `rightToLeft`, default row height / col width.
 - Print area + print titles (defined-name backed) and manual page breaks —
   page_setup.rs covers everything except these.

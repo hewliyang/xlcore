@@ -199,6 +199,26 @@ export class Worksheet {
     this.handle.setColumnVisible(this.name, column, visible);
     return this;
   }
+  /** @param start 1-based first row of the group; level 1-7 (0 ungroups). */
+  groupRows(start: number, end: number, level = 1, collapsed = false): this {
+    this.handle.groupRows(this.name, start, end, level, collapsed);
+    return this;
+  }
+  /** @param start 1-based first row of the group to ungroup. */
+  ungroupRows(start: number, end: number): this {
+    this.handle.groupRows(this.name, start, end, 0, false);
+    return this;
+  }
+  /** @param start 1-based first column of the group; level 1-7 (0 ungroups). */
+  groupColumns(start: number, end: number, level = 1, collapsed = false): this {
+    this.handle.groupColumns(this.name, start, end, level, collapsed);
+    return this;
+  }
+  /** @param start 1-based first column of the group to ungroup. */
+  ungroupColumns(start: number, end: number): this {
+    this.handle.groupColumns(this.name, start, end, 0, false);
+    return this;
+  }
   /** @param before 1-based row index to insert before (row 1 = A1's row). */
   insertRows(before: number, count: number): this {
     this.handle.insertRows(this.name, before, count);

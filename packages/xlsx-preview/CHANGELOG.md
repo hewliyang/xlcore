@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `Worksheet.groupRows`/`groupColumns` (+ `ungroupRows`/`ungroupColumns`) — row/column outline grouping (`outlineLevel`, optional collapsed hide + summary `collapsed` flag, `sheetFormatPr/@outlineLevelRow`/`@outlineLevelCol`); authored, round-tripped, and rendered as gutter brackets by the previewer.
 - `FillPatch.pattern`/`foreground`/`background` (`PatternType`, sdk `ST_PatternType` transliterated, `x:patternFill`): non-solid pattern fills with fg/bg colors; authored via `setStyle`, deduped, round-tripped, and rendered by the previewer.
 - `StylePatch.protection` (`ProtectionPatch { locked, hidden }`, `x:protection` + `@applyProtection`): cell-level lock/hide for sheet protection; authored via `setStyle`, deduped, and round-tripped (write-only for Excel).
 - `ChartDataPoint.explosion` (`c:explosion/@val`, 0..=400 percent of radius): per-point pie/doughnut slice offset; authored on every series kind, round-tripped, updated in place, and rendered as offset slices by the previewer.
