@@ -41,6 +41,7 @@ fn charts_create_list_remove_roundtrip() {
                 stacking: None,
                 gap_width: None,
                 overlap: None,
+                radar_style: None,
                 data_labels: None,
             },
         )
@@ -150,6 +151,7 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
                 stacking: None,
                 gap_width: None,
                 overlap: None,
+                radar_style: None,
                 data_labels: None,
             },
         )
@@ -226,6 +228,7 @@ fn update_chart_replaces_series_and_stacking() {
                 stacking: None,
                 gap_width: None,
                 overlap: None,
+                radar_style: None,
                 data_labels: None,
             },
         )
@@ -306,6 +309,7 @@ fn chart_axis_patch_authors_and_round_trips() {
                 stacking: None,
                 gap_width: None,
                 overlap: None,
+                radar_style: None,
                 data_labels: None,
             },
         )
@@ -388,6 +392,7 @@ fn charts_supports_multiple_kinds() {
         stacking: None,
         gap_width: None,
         overlap: None,
+        radar_style: None,
         data_labels: None,
     };
     for kind in [
@@ -464,6 +469,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             stacking: None,
             gap_width: None,
             overlap: None,
+            radar_style: None,
             data_labels: None,
         },
     )
@@ -498,6 +504,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             stacking: None,
             gap_width: None,
             overlap: None,
+            radar_style: None,
             data_labels: None,
         },
     )
@@ -530,6 +537,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             stacking: None,
             gap_width: None,
             overlap: None,
+            radar_style: None,
             data_labels: None,
         },
     )
@@ -607,6 +615,7 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
             stacking: None,
             gap_width: None,
             overlap: None,
+            radar_style: None,
             data_labels: None,
         },
     )
@@ -650,6 +659,7 @@ fn chart_series_color_rejects_malformed_hex() {
                 stacking: None,
                 gap_width: None,
                 overlap: None,
+                radar_style: None,
                 data_labels: None,
             },
         )
@@ -731,6 +741,7 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
             stacking: None,
             gap_width: None,
             overlap: None,
+            radar_style: None,
             data_labels: None,
         },
     )
@@ -811,6 +822,7 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
         stacking,
         gap_width: None,
         overlap: None,
+        radar_style: None,
         data_labels: None,
     };
 
@@ -916,6 +928,7 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
                 stacking: Some(ChartStacking::Stacked),
                 gap_width: None,
                 overlap: None,
+                radar_style: None,
                 data_labels: None,
             },
         )
@@ -950,6 +963,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             stacking: None,
             gap_width: None,
             overlap: None,
+            radar_style: None,
             data_labels: None,
         },
     );
@@ -976,6 +990,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             stacking: None,
             gap_width: None,
             overlap: None,
+            radar_style: None,
             data_labels: None,
         },
     );
@@ -1014,6 +1029,7 @@ fn charts_data_labels_roundtrip() {
                 stacking: None,
                 gap_width: None,
                 overlap: None,
+                radar_style: None,
                 data_labels: Some(ChartDataLabels {
                     show_value: Some(true),
                     show_category_name: Some(false),
@@ -1074,6 +1090,7 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
             stacking: None,
             gap_width: None,
             overlap: None,
+            radar_style: None,
             data_labels: Some(ChartDataLabels {
                 show_percent: Some(true),
                 show_category_name: Some(true),
@@ -1135,6 +1152,7 @@ fn charts_per_series_data_labels_override_chart_level() {
             stacking: None,
             gap_width: None,
             overlap: None,
+            radar_style: None,
             data_labels: Some(ChartDataLabels {
                 show_series_name: Some(true),
                 position: Some(ChartDataLabelPosition::Center),
@@ -1201,6 +1219,7 @@ fn chart_gap_width_overlap_roundtrip_and_update() {
                 stacking: None,
                 gap_width: Some(219),
                 overlap: Some(-27),
+                radar_style: None,
                 data_labels: None,
             },
         )
@@ -1284,6 +1303,7 @@ fn chart_series_marker_roundtrip_and_validation() {
                 stacking: None,
                 gap_width: None,
                 overlap: None,
+                radar_style: None,
                 data_labels: None,
             },
         )
@@ -1336,6 +1356,7 @@ fn chart_series_marker_roundtrip_and_validation() {
                 stacking: None,
                 gap_width: None,
                 overlap: None,
+                radar_style: None,
                 data_labels: None,
             },
         )
@@ -1393,6 +1414,7 @@ fn combo_chart_secondary_axis_roundtrip() {
                 stacking: None,
                 gap_width: None,
                 overlap: None,
+                radar_style: None,
                 data_labels: None,
             },
         )
@@ -1435,9 +1457,87 @@ fn combo_chart_secondary_axis_roundtrip() {
                 stacking: None,
                 gap_width: None,
                 overlap: None,
+                radar_style: None,
                 data_labels: None,
             },
         )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidChart);
+}
+
+#[test]
+fn radar_chart_build_roundtrip_and_update() {
+    let mut wb = Workbook::new().unwrap();
+    for (i, (cat, v1, v2)) in [("Speed", 8.0, 6.0), ("Power", 5.0, 9.0), ("Range", 7.0, 4.0)]
+        .iter()
+        .enumerate()
+    {
+        let row = i + 2;
+        wb.set_value(&format!("Sheet1!A{row}"), *cat).unwrap();
+        wb.set_value(&format!("Sheet1!B{row}"), *v1).unwrap();
+        wb.set_value(&format!("Sheet1!C{row}"), *v2).unwrap();
+    }
+    wb.set_value("Sheet1!B1", "Car A").unwrap();
+    wb.set_value("Sheet1!C1", "Car B").unwrap();
+
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: Some("Radar".to_string()),
+                kind: ChartKind::Radar,
+                title: Some("Comparison".to_string()),
+                legend_position: Some(ChartLegendPosition::Right),
+                categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+                series: vec![
+                    ChartSeriesPatch {
+                        name_ref: Some("Sheet1!$B$1".to_string()),
+                        values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                        ..Default::default()
+                    },
+                    ChartSeriesPatch {
+                        name_ref: Some("Sheet1!$C$1".to_string()),
+                        values_ref: "Sheet1!$C$2:$C$4".to_string(),
+                        ..Default::default()
+                    },
+                ],
+                anchor: AnchorSpec::A1("Sheet1!E1:M16".to_string()),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: Some(RadarStyle::Marker),
+                data_labels: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(info.kind, ChartKind::Radar);
+    assert_eq!(info.radar_style, Some(RadarStyle::Marker));
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    assert_eq!(charts.len(), 1);
+    let chart = &charts[0];
+    assert_eq!(chart.kind, ChartKind::Radar);
+    assert_eq!(chart.radar_style, Some(RadarStyle::Marker));
+    assert_eq!(chart.series.len(), 2);
+    assert_eq!(chart.categories_ref.as_deref(), Some("Sheet1!$A$2:$A$4"));
+
+    reopened
+        .update_chart(
+            "Sheet1",
+            &chart.id,
+            ChartUpdate {
+                radar_style: Some(RadarStyle::Filled),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let chart = reopened.charts(None).unwrap().into_iter().next().unwrap();
+    assert_eq!(chart.radar_style, Some(RadarStyle::Filled));
+    assert_eq!(chart.series.len(), 2);
 }

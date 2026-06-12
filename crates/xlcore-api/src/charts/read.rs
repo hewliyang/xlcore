@@ -59,6 +59,7 @@ pub(super) struct ParsedChart {
     pub(super) stacking: Option<ChartStacking>,
     pub(super) gap_width: Option<u16>,
     pub(super) overlap: Option<i8>,
+    pub(super) radar_style: Option<RadarStyle>,
     pub(super) data_labels: Option<ChartDataLabels>,
 }
 
@@ -89,6 +90,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     let mut stacking: Option<ChartStacking> = None;
     let mut gap_width: Option<u16> = None;
     let mut overlap: Option<i8> = None;
+    let mut radar_style: Option<RadarStyle> = None;
     let mut data_labels: Option<ChartDataLabels> = None;
 
     for ch in &plot.plot_area_choice1 {
@@ -277,6 +279,32 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     data_labels = read_data_labels(bc.data_labels.as_deref());
                 }
             }
+            c::PlotAreaChoice::RadarChart(rc) => {
+                if !kind_set {
+                    kind = ChartKind::Radar;
+                    kind_set = true;
+                }
+                radar_style = Some(match rc.radar_style.val {
+                    c::RadarStyleValues::Standard => RadarStyle::Standard,
+                    c::RadarStyleValues::Marker => RadarStyle::Marker,
+                    c::RadarStyleValues::Filled => RadarStyle::Filled,
+                });
+                for s in &rc.radar_chart_series {
+                    let mut info = read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                        s.data_labels.as_deref(),
+                    );
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.marker = read_marker(s.marker.as_deref());
+                    series.push(info);
+                }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(rc.data_labels.as_deref());
+                }
+            }
             _ => {}
         }
     }
@@ -355,6 +383,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         stacking,
         gap_width,
         overlap,
+        radar_style,
         data_labels,
     }
 }

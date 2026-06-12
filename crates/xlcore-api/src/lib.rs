@@ -49,7 +49,7 @@ pub use xlcore_types::{
     MergeInfo, PageMarginsInfo, PageMarginsPatch, PageOrder, PageOrientation, PageSetupSettings,
     PageSetupSettingsPatch, PivotAggregation, PivotCellRole, PivotDataField, PivotFieldFilter,
     PivotGrid, PivotGridCell, PivotInfo, PivotPatch, PivotUpdate, PrintCellComments, PrintErrors,
-    PrintOptionsInfo, PrintOptionsPatch, RangeInfo, SearchHit, SearchMatch, SearchMode,
+    PrintOptionsInfo, PrintOptionsPatch, RadarStyle, RangeInfo, SearchHit, SearchMatch, SearchMode,
     SearchOptions, SearchTarget, ShapeInfo, ShapeLineEnd, ShapePatch, SheetInfo, SheetPageSetup,
     SheetPageSetupPatch, SheetProtectionInfo, SheetProtectionPatch, SheetVisibility,
     SparklineAxisType, SparklineDisplayBlanks, SparklineEntry, SparklineGroupInfo,

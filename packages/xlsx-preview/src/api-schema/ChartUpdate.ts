@@ -5,6 +5,7 @@ import type { ChartDataLabels } from "./ChartDataLabels.js";
 import type { ChartLegendPosition } from "./ChartLegendPosition.js";
 import type { ChartSeriesPatch } from "./ChartSeriesPatch.js";
 import type { ChartStacking } from "./ChartStacking.js";
+import type { RadarStyle } from "./RadarStyle.js";
 
 export type ChartUpdate = { name?: string, title?: string, legendPosition?: ChartLegendPosition, categoriesRef?: string, series?: Array<ChartSeriesPatch>, anchor?: AnchorSpec, categoryAxisTitle?: string, valueAxisTitle?: string, categoryAxis?: ChartAxisPatch, valueAxis?: ChartAxisPatch, stacking?: ChartStacking, 
 /**
@@ -14,4 +15,8 @@ gapWidth?: number,
 /**
  * `c:overlap` (-100..=100); bar/column charts only.
  */
-overlap?: number, dataLabels?: ChartDataLabels, };
+overlap?: number, 
+/**
+ * `c:radarStyle`; radar charts only.
+ */
+radarStyle?: RadarStyle, dataLabels?: ChartDataLabels, };

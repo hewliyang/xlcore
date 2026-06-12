@@ -283,10 +283,40 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
 
 pub(super) fn build_plot_charts(patch: &ChartPatch) -> Vec<c::PlotAreaChoice> {
     match patch.kind {
-        ChartKind::Pie | ChartKind::Doughnut | ChartKind::Scatter | ChartKind::Bubble => {
+        ChartKind::Pie
+        | ChartKind::Doughnut
+        | ChartKind::Scatter
+        | ChartKind::Bubble
+        | ChartKind::Radar => {
             vec![build_single_plot_chart(patch)]
         }
         _ => build_cartesian_plot_charts(patch),
+    }
+}
+
+pub(super) fn radar_style_to(s: RadarStyle) -> c::RadarStyleValues {
+    match s {
+        RadarStyle::Standard => c::RadarStyleValues::Standard,
+        RadarStyle::Marker => c::RadarStyleValues::Marker,
+        RadarStyle::Filled => c::RadarStyleValues::Filled,
+    }
+}
+
+pub(super) fn build_radar_series(
+    idx: usize,
+    s: &ChartSeriesPatch,
+    cat_ref: Option<&str>,
+) -> c::RadarChartSeries {
+    c::RadarChartSeries {
+        index: Box::new(c::Index { val: idx as u32 }),
+        order: Box::new(c::Order { val: idx as u32 }),
+        series_text: build_series_text(s),
+        chart_shape_properties: build_series_shape(s.color.as_deref()),
+        marker: build_marker(s.marker.as_ref()),
+        data_labels: build_data_labels(s.data_labels.as_ref()),
+        category_axis_data: build_categories(cat_ref),
+        values: Some(build_values(&s.values_ref)),
+        ..Default::default()
     }
 }
 
@@ -451,6 +481,23 @@ pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .iter()
                 .enumerate()
                 .map(|(i, s)| build_bubble_series(i, s))
+                .collect(),
+            data_labels: dl,
+            axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
+            ..Default::default()
+        })),
+        ChartKind::Radar => c::PlotAreaChoice::RadarChart(Box::new(c::RadarChart {
+            radar_style: Box::new(c::RadarStyle {
+                val: radar_style_to(patch.radar_style.unwrap_or(RadarStyle::Standard)),
+            }),
+            vary_colors: Some(c::VaryColors {
+                val: Some(BooleanValue::from_bool(false)),
+            }),
+            radar_chart_series: patch
+                .series
+                .iter()
+                .enumerate()
+                .map(|(i, s)| build_radar_series(i, s, patch.categories_ref.as_deref()))
                 .collect(),
             data_labels: dl,
             axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],

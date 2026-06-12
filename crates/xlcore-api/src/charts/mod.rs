@@ -16,7 +16,7 @@ use xlcore_types::{
     AnchorSpec, ApiError, ApiErrorCode, ApiWarning, ChartAnchor, ChartAxisGroup, ChartAxisPatch,
     ChartDataLabelPosition, ChartDataLabels, ChartInfo, ChartKind, ChartLegendPosition,
     ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking, ChartUpdate,
-    CrossBetween, MarkerStyle, TickLabelPosition, TickMark,
+    CrossBetween, MarkerStyle, RadarStyle, TickLabelPosition, TickMark,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -100,6 +100,7 @@ impl Workbook {
                     stacking: parsed.stacking,
                     gap_width: parsed.gap_width,
                     overlap: parsed.overlap,
+                    radar_style: parsed.radar_style,
                     data_labels: parsed.data_labels,
                 });
             }
@@ -239,6 +240,8 @@ impl Workbook {
             stacking: stacking_for_kind(patch.kind, patch.stacking),
             gap_width: bar_option_for_kind(patch.kind, patch.gap_width),
             overlap: bar_option_for_kind(patch.kind, patch.overlap),
+            radar_style: (patch.kind == ChartKind::Radar)
+                .then(|| patch.radar_style.unwrap_or(RadarStyle::Standard)),
             data_labels: patch.data_labels.clone(),
         })
     }
@@ -336,7 +339,8 @@ impl Workbook {
             || update.data_labels.is_some()
             || update.categories_ref.is_some()
             || update.gap_width.is_some()
-            || update.overlap.is_some();
+            || update.overlap.is_some()
+            || update.radar_style.is_some();
 
         let series: Vec<ChartSeriesPatch> = match &update.series {
             Some(s) => s.clone(),
@@ -368,6 +372,7 @@ impl Workbook {
         let stacking = update.stacking.or(existing.stacking);
         let gap_width = update.gap_width.or(existing.gap_width);
         let overlap = update.overlap.or(existing.overlap);
+        let radar_style = update.radar_style.or(existing.radar_style);
         let data_labels = update
             .data_labels
             .clone()
@@ -437,6 +442,7 @@ impl Workbook {
                 stacking,
                 gap_width,
                 overlap,
+                radar_style,
                 data_labels: data_labels.clone(),
             };
             space.chart.plot_area.plot_area_choice1 = build_plot_charts(&synth);

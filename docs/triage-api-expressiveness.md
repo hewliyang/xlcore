@@ -117,7 +117,11 @@ pub struct ChartAxisPatch {
 - Per-point fills (`c:dPt`) — required for the waterfall-via-noFill idiom we
   already render.
 - `dispBlanksAs` (span|gap|zero).
-- Kinds: radar + stock render today but aren't in `ChartKind`.
+- Kinds: **— radar done** (`ChartKind::Radar` + `RadarStyle` enum (sdk
+  `ST_RadarStyle` transliterated) on `ChartPatch`/`ChartInfo`/`ChartUpdate`;
+  builds `c:radarChart` with cat+val axes, round-trips, updates style in place,
+  renderer-visible e2e). Remaining: stock (needs hi/lo/close/open series
+  semantics + hiLowLines/upDownBars).
 - Data label `numFmt`.
 
 ### Charts — P2

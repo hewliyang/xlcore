@@ -16,6 +16,24 @@ pub enum ChartKind {
     Scatter,
     Bubble,
     Doughnut,
+    Radar,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// Radar plot style (`c:radarStyle`, OOXML `ST_RadarStyle`). Radar charts only.
+///
+/// `Standard` draws connecting lines only, `Marker` adds point markers, `Filled`
+/// fills each series' polygon. Defaults to `Standard` when omitted.
+pub enum RadarStyle {
+    Standard,
+    Marker,
+    Filled,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -475,6 +493,10 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub overlap: Option<i8>,
+    /// `c:radarStyle`; radar charts only. Defaults to `Standard` when omitted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub radar_style: Option<RadarStyle>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
@@ -526,6 +548,10 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub overlap: Option<i8>,
+    /// `c:radarStyle`; radar charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub radar_style: Option<RadarStyle>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
@@ -581,6 +607,10 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub overlap: Option<i8>,
+    /// `c:radarStyle`; radar charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub radar_style: Option<RadarStyle>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
