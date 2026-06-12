@@ -718,9 +718,57 @@ pub(super) fn build_data_labels(dl: Option<&ChartDataLabels>) -> Option<Box<c::D
         ..Default::default()
     };
     Some(Box::new(c::DataLabels {
+        data_label: dl.per_point.iter().map(build_point_data_label).collect(),
         data_labels_choice: Some(c::DataLabelsChoice::Sequence(Box::new(seq))),
         ..Default::default()
     }))
+}
+
+pub(super) fn build_point_data_label(p: &ChartDataLabel) -> c::DataLabel {
+    let index = Box::new(c::Index { val: p.index });
+    if p.delete {
+        return c::DataLabel {
+            index,
+            data_label_choice: Some(c::DataLabelChoice::Delete(Box::new(c::Delete {
+                val: Some(BooleanValue::from_bool(true)),
+            }))),
+            ..Default::default()
+        };
+    }
+    fn b(v: Option<bool>) -> Option<BooleanValue> {
+        v.map(BooleanValue::from_bool)
+    }
+    let seq = c::DataLabelChoiceSequence {
+        numbering_format: p.number_format.as_ref().map(|nf| c::NumberingFormat {
+            format_code: nf.clone(),
+            source_linked: Some(BooleanValue::from_bool(false)),
+        }),
+        data_label_position: p.position.map(|pos| c::DataLabelPosition {
+            val: data_label_pos_to(pos),
+        }),
+        show_legend_key: p.show_legend_key.map(|_| c::ShowLegendKey {
+            val: b(p.show_legend_key),
+        }),
+        show_value: p.show_value.map(|_| c::ShowValue {
+            val: b(p.show_value),
+        }),
+        show_category_name: p.show_category_name.map(|_| c::ShowCategoryName {
+            val: b(p.show_category_name),
+        }),
+        show_series_name: p.show_series_name.map(|_| c::ShowSeriesName {
+            val: b(p.show_series_name),
+        }),
+        show_percent: p.show_percent.map(|_| c::ShowPercent {
+            val: b(p.show_percent),
+        }),
+        separator: p.separator.clone(),
+        ..Default::default()
+    };
+    c::DataLabel {
+        index,
+        data_label_choice: Some(c::DataLabelChoice::Sequence(Box::new(seq))),
+        ..Default::default()
+    }
 }
 
 pub(super) fn data_label_pos_to(p: ChartDataLabelPosition) -> c::DataLabelPositionValues {

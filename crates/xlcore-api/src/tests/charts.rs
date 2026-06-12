@@ -1241,6 +1241,7 @@ fn charts_data_labels_roundtrip() {
                     position: Some(ChartDataLabelPosition::OutsideEnd),
                     separator: Some(", ".to_string()),
                     number_format: Some("0.0%".to_string()),
+                    per_point: vec![],
                 }),
             },
         )
@@ -1402,6 +1403,124 @@ fn charts_per_series_data_labels_override_chart_level() {
     let chart_dl = info.data_labels.as_ref().expect("chart-level dl preserved");
     assert_eq!(chart_dl.show_series_name, Some(true));
     assert_eq!(chart_dl.position, Some(ChartDataLabelPosition::Center));
+}
+
+#[test]
+fn charts_per_point_data_labels_roundtrip_and_update() {
+    use xlcore_types::{ChartDataLabel, ChartDataLabelPosition, ChartDataLabels};
+    let mut wb = Workbook::new().unwrap();
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: Some("PerPoint".to_string()),
+                kind: ChartKind::Column,
+                title: None,
+                legend_position: None,
+                categories_ref: Some("Sheet1!$A$2:$A$5".to_string()),
+                series: vec![ChartSeriesPatch {
+                    name: Some("S1".to_string()),
+                    values_ref: "Sheet1!$B$2:$B$5".to_string(),
+                    data_labels: Some(ChartDataLabels {
+                        show_value: Some(true),
+                        per_point: vec![
+                            ChartDataLabel {
+                                index: 1,
+                                delete: true,
+                                ..Default::default()
+                            },
+                            ChartDataLabel {
+                                index: 3,
+                                show_value: Some(true),
+                                show_category_name: Some(true),
+                                position: Some(ChartDataLabelPosition::InsideEnd),
+                                number_format: Some("0.00".to_string()),
+                                ..Default::default()
+                            },
+                        ],
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 1,
+                    from_row: 1,
+                    to_column: 8,
+                    to_row: 12,
+                    ..Default::default()
+                }),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
+                disp_blanks_as: None,
+                vary_colors: None,
+                data_labels: None,
+            },
+        )
+        .unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("<c:dLbl>"), "per-point dLbl emitted");
+    assert!(
+        xml.contains("<c:idx val=\"1\" /><c:delete val=\"1\" />"),
+        "delete flag emitted for point 1",
+    );
+    assert!(xml.contains("<c:dLblPos val=\"inEnd\" />"), "per-point position");
+
+    let mut wb2 = Workbook::open_bytes(bytes).unwrap();
+    let charts = wb2.charts(Some("Sheet1")).unwrap();
+    let dl = charts[0].series[0]
+        .data_labels
+        .as_ref()
+        .expect("series dl survives reopen");
+    assert_eq!(dl.per_point.len(), 2);
+    let p1 = dl.per_point.iter().find(|p| p.index == 1).unwrap();
+    assert!(p1.delete);
+    let p3 = dl.per_point.iter().find(|p| p.index == 3).unwrap();
+    assert!(!p3.delete);
+    assert_eq!(p3.show_value, Some(true));
+    assert_eq!(p3.show_category_name, Some(true));
+    assert_eq!(p3.position, Some(ChartDataLabelPosition::InsideEnd));
+    assert_eq!(p3.number_format.as_deref(), Some("0.00"));
+
+    let updated = wb2
+        .update_chart(
+            "Sheet1",
+            &info.id,
+            ChartUpdate {
+                series: Some(vec![ChartSeriesPatch {
+                    name: Some("S1".to_string()),
+                    values_ref: "Sheet1!$B$2:$B$5".to_string(),
+                    data_labels: Some(ChartDataLabels {
+                        show_value: Some(true),
+                        per_point: vec![ChartDataLabel {
+                            index: 0,
+                            show_percent: Some(true),
+                            ..Default::default()
+                        }],
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let dl = updated.series[0].data_labels.as_ref().unwrap();
+    assert_eq!(dl.per_point.len(), 1);
+    assert_eq!(dl.per_point[0].index, 0);
+    assert_eq!(dl.per_point[0].show_percent, Some(true));
 }
 
 #[test]

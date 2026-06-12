@@ -471,6 +471,61 @@ pub struct ChartDataLabels {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number_format: Option<String>,
+    /// Per-point label overrides (`c:dLbl`), keyed by 0-based data-point `index`.
+    /// Each entry either deletes that point's label or overrides individual
+    /// show flags / position / number format; unset fields inherit the
+    /// series-level settings above.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub per_point: Vec<ChartDataLabel>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// A single per-point data label (`c:dLbl`) inside `c:dLbls`.
+///
+/// `index` is the 0-based data-point this label applies to. Set `delete: true`
+/// to suppress that point's label entirely (all other fields ignored). Otherwise
+/// any set field overrides the series-level `ChartDataLabels` for this point only.
+///
+/// schema-excluded: layout (manual position), tx (rich-text override), spPr
+/// (label shape/fill), txPr (label font), showBubbleSize, extLst.
+pub struct ChartDataLabel {
+    /// 0-based data-point index this override applies to (`c:idx/@val`).
+    pub index: u32,
+    /// Suppress this point's label (`c:delete`). When `true`, all other fields
+    /// are ignored.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub delete: bool,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_value: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_category_name: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_series_name: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_percent: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_legend_key: Option<bool>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<ChartDataLabelPosition>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub separator: Option<String>,
+    /// `c:numFmt/@formatCode`; number format applied to this point's value.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number_format: Option<String>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

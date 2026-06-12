@@ -70,6 +70,13 @@ ns = "c"
 aliases = { symbol = "style" }
 
 [[pair]]
+sdk = "DataLabel"
+dto = "ChartDataLabel"
+ns = "c"
+derived = ["index"]
+aliases = { dLblPos = "position", numFmt = "number_format" }
+
+[[pair]]
 sdk = "Trendline"
 dto = "ChartTrendline"
 ns = "c"

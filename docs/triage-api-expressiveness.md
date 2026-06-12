@@ -75,7 +75,10 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   intercept, custom name; round-trip-only, renderer doesn't draw), series error
   bars (`c:errBars`: errDir x/y, errBarType both/minus/plus, errValType
   fixedVal/percentage/stdDev/stdErr/cust, val, noEndCap, custom plus/minus
-  refs/values; round-trip-only, renderer doesn't draw). In-place `update_chart`
+  refs/values; round-trip-only, renderer doesn't draw), per-point data labels
+  (`c:dLbl` via `ChartDataLabels.perPoint`: per-index delete flag or overrides of
+  showValue/showCategoryName/showSeriesName/showPercent/showLegendKey/position/
+  numFmt/separator; renderer-visible). In-place `update_chart`
   (atomic, preserves unmodeled XML).
 - **Rich text in cells**: `setRichText`/`richText` (inline-string `CT_RElt`
   runs with per-run `FontPatch`); `CellInfo.richText`, renderer-visible.
@@ -94,7 +97,6 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 
 ### P2 — next up
 
-- **Per-point data labels** (`c:dLbl`).
 - Axis **label rotation** (txPr bodyPr rot — the one `ChartAxisPatch` deferral).
 
 ### P2 — backlog

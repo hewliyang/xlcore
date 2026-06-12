@@ -871,11 +871,43 @@ pub(super) fn read_data_labels(dl: Option<&c::DataLabels>) -> Option<ChartDataLa
             .map(|p| data_label_pos_from(&p.val)),
         separator: seq.separator.clone(),
         number_format: seq.numbering_format.as_ref().map(|n| n.format_code.clone()),
+        per_point: dl.data_label.iter().map(read_point_data_label).collect(),
     };
     if out == ChartDataLabels::default() {
         None
     } else {
         Some(out)
+    }
+}
+
+pub(super) fn read_point_data_label(d: &c::DataLabel) -> ChartDataLabel {
+    let index = d.index.val;
+    let bv = |b: Option<&BooleanValue>| b.map(|v| bool::from(*v));
+    match d.data_label_choice.as_ref() {
+        Some(c::DataLabelChoice::Delete(_)) => ChartDataLabel {
+            index,
+            delete: true,
+            ..Default::default()
+        },
+        Some(c::DataLabelChoice::Sequence(seq)) => ChartDataLabel {
+            index,
+            delete: false,
+            show_value: bv(seq.show_value.as_ref().and_then(|s| s.val.as_ref())),
+            show_category_name: bv(seq.show_category_name.as_ref().and_then(|s| s.val.as_ref())),
+            show_series_name: bv(seq.show_series_name.as_ref().and_then(|s| s.val.as_ref())),
+            show_percent: bv(seq.show_percent.as_ref().and_then(|s| s.val.as_ref())),
+            show_legend_key: bv(seq.show_legend_key.as_ref().and_then(|s| s.val.as_ref())),
+            position: seq
+                .data_label_position
+                .as_ref()
+                .map(|p| data_label_pos_from(&p.val)),
+            separator: seq.separator.clone(),
+            number_format: seq.numbering_format.as_ref().map(|n| n.format_code.clone()),
+        },
+        None => ChartDataLabel {
+            index,
+            ..Default::default()
+        },
     }
 }
 
