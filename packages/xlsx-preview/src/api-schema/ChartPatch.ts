@@ -6,6 +6,7 @@ import type { ChartKind } from "./ChartKind.js";
 import type { ChartLegendPosition } from "./ChartLegendPosition.js";
 import type { ChartSeriesPatch } from "./ChartSeriesPatch.js";
 import type { ChartStacking } from "./ChartStacking.js";
+import type { DispBlanksAs } from "./DispBlanksAs.js";
 import type { RadarStyle } from "./RadarStyle.js";
 
 export type ChartPatch = {
@@ -59,5 +60,9 @@ export type ChartPatch = {
    * category axis. Defaults to `false` when omitted.
    */
   dropLines?: boolean;
+  /**
+   * `c:dispBlanksAs`; how blank source cells are plotted. Defaults to `Gap`.
+   */
+  dispBlanksAs?: DispBlanksAs;
   dataLabels?: ChartDataLabels;
 };

@@ -142,7 +142,11 @@ pub struct ChartAxisPatch {
   update, and is renderer-visible (column chart with 4 distinct per-point fills
   verified e2e). Remaining dPt fields (`invertIfNegative`, per-point marker,
   `explosion`, gradient/pattern fills) preserved-on-update, deferred.
-- `dispBlanksAs` (span|gap|zero).
+- `dispBlanksAs` (span|gap|zero): **— done**. `ChartPatch.disp_blanks_as`
+  (`DispBlanksAs` enum, sdk `ST_DispBlanksAs` transliterated) on
+  `ChartPatch`/`ChartUpdate`/`ChartInfo`; builds `c:dispBlanksAs` (default `Gap`),
+  round-trips, and updates the chart-root element in place. Round-trip-only for
+  Excel (renderer's read-side chart schema doesn't consume it yet).
 - Kinds: **— radar + stock done**. Radar: `ChartKind::Radar` + `RadarStyle` enum
   (sdk `ST_RadarStyle`); builds `c:radarChart`, round-trips, updates in place,
   renderer-visible e2e. Stock: `ChartKind::Stock` builds `c:stockChart` from

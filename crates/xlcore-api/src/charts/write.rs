@@ -249,6 +249,14 @@ pub(super) fn legend_pos_to(p: ChartLegendPosition) -> c::LegendPositionValues {
     }
 }
 
+pub(super) fn disp_blanks_as_to(v: DispBlanksAs) -> c::DisplayBlanksAsValues {
+    match v {
+        DispBlanksAs::Span => c::DisplayBlanksAsValues::Span,
+        DispBlanksAs::Gap => c::DisplayBlanksAsValues::Gap,
+        DispBlanksAs::Zero => c::DisplayBlanksAsValues::Zero,
+    }
+}
+
 pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
     let plot_charts = build_plot_charts(patch);
     let cat_axis = merge_axis_title(patch.category_axis.as_ref(), &patch.category_axis_title);
@@ -340,7 +348,7 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
             val: Some(BooleanValue::from_bool(true)),
         }),
         display_blanks_as: Some(c::DisplayBlanksAs {
-            val: Some(c::DisplayBlanksAsValues::Gap),
+            val: Some(disp_blanks_as_to(patch.disp_blanks_as.unwrap_or(DispBlanksAs::Gap))),
         }),
         ..Default::default()
     };

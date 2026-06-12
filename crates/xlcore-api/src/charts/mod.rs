@@ -16,7 +16,8 @@ use xlcore_types::{
     AnchorSpec, ApiError, ApiErrorCode, ApiWarning, BuiltInUnit, ChartAnchor, ChartAxisGroup,
     ChartAxisPatch, ChartDataLabelPosition, ChartDataLabels, ChartDataPoint, ChartInfo, ChartKind,
     ChartLegendPosition, ChartLine, ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch,
-    ChartStacking, ChartUpdate, CrossBetween, DisplayUnits, LineDash, MarkerStyle, RadarStyle,
+    ChartStacking, ChartUpdate, CrossBetween, DispBlanksAs, DisplayUnits, LineDash, MarkerStyle,
+    RadarStyle,
     TickLabelPosition, TickMark,
 };
 
@@ -104,6 +105,7 @@ impl Workbook {
                     hi_low_lines: parsed.hi_low_lines,
                     up_down_bars: parsed.up_down_bars,
                     drop_lines: parsed.drop_lines,
+                    disp_blanks_as: parsed.disp_blanks_as,
                     gap_width: parsed.gap_width,
                     overlap: parsed.overlap,
                     radar_style: parsed.radar_style,
@@ -257,6 +259,7 @@ impl Workbook {
             hi_low_lines: (patch.kind == ChartKind::Stock).then(|| stock_hi_low_lines(&patch)),
             up_down_bars: (patch.kind == ChartKind::Stock).then(|| stock_up_down_bars(&patch)),
             drop_lines: (patch.kind == ChartKind::Stock).then(|| stock_drop_lines(&patch)),
+            disp_blanks_as: Some(patch.disp_blanks_as.unwrap_or(DispBlanksAs::Gap)),
             data_labels: patch.data_labels.clone(),
         })
     }
@@ -477,6 +480,7 @@ impl Workbook {
                 hi_low_lines,
                 up_down_bars,
                 drop_lines,
+                disp_blanks_as: None,
                 data_labels: data_labels.clone(),
             };
             space.chart.plot_area.plot_area_choice1 = build_plot_charts(&synth);
@@ -526,6 +530,12 @@ impl Workbook {
                 ChartLegendPosition::None => None,
                 pos => Some(Box::new(build_legend(legend_pos_to(pos)))),
             };
+        }
+
+        if let Some(blanks) = update.disp_blanks_as {
+            space.chart.display_blanks_as = Some(c::DisplayBlanksAs {
+                val: Some(disp_blanks_as_to(blanks)),
+            });
         }
 
         let cat_axis_patch =

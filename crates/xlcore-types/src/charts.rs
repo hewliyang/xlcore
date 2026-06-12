@@ -101,6 +101,22 @@ pub enum CrossBetween {
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "camelCase")]
+/// How blank/empty source cells are plotted (`c:dispBlanksAs`, OOXML
+/// `ST_DispBlanksAs`). `Gap` leaves a hole, `Zero` plots zero, `Span` bridges
+/// across the gap (line/area charts). Excel defaults new charts to `Gap`.
+pub enum DispBlanksAs {
+    Span,
+    Gap,
+    Zero,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
 /// Built-in axis display-unit scale (`c:builtInUnit`, OOXML `ST_BuiltInUnit`).
 ///
 /// Each variant divides the value-axis labels by its power of ten (e.g. `Millions`
@@ -692,6 +708,10 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub drop_lines: Option<bool>,
+    /// `c:dispBlanksAs`; how blank source cells are plotted. Defaults to `Gap`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disp_blanks_as: Option<DispBlanksAs>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
@@ -770,6 +790,10 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub drop_lines: Option<bool>,
+    /// `c:dispBlanksAs`; how blank source cells are plotted. Defaults to `Gap`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disp_blanks_as: Option<DispBlanksAs>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
@@ -852,6 +876,10 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub drop_lines: Option<bool>,
+    /// `c:dispBlanksAs`; how blank source cells are plotted. Defaults to `Gap`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub disp_blanks_as: Option<DispBlanksAs>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,

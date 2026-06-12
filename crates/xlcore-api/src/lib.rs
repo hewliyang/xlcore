@@ -41,7 +41,7 @@ pub use xlcore_types::{
     ChartAxisGroup, ChartAxisPatch, ChartInfo, ChartKind, ChartLegendPosition, ChartLine,
     ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking, ChartUpdate,
     ClearMode, ColorScalePatch, CommentInfo, CommentPatch, ConditionalFormatRuleInfo,
-    ConditionalFormatRulePatch, CrossBetween, DataBarPatch, DataValidationErrorStyle,
+    ConditionalFormatRulePatch, CrossBetween, DataBarPatch, DispBlanksAs, DataValidationErrorStyle,
     DataValidationInfo, DataValidationOperator, DataValidationPatch, DataValidationType,
     DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference, FillPatch, FontPatch,
     FreezeInfo, HeaderFooterInfo, HeaderFooterPatch, HorizontalAlign, HyperlinkInfo,

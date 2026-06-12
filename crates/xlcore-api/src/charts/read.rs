@@ -65,6 +65,7 @@ pub(super) struct ParsedChart {
     pub(super) hi_low_lines: Option<bool>,
     pub(super) up_down_bars: Option<bool>,
     pub(super) drop_lines: Option<bool>,
+    pub(super) disp_blanks_as: Option<DispBlanksAs>,
     pub(super) data_labels: Option<ChartDataLabels>,
 }
 
@@ -426,6 +427,17 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
             .map(legend_pos_from)
     });
 
+    let disp_blanks_as = space
+        .chart
+        .display_blanks_as
+        .as_ref()
+        .and_then(|d| d.val.as_ref())
+        .map(|v| match v {
+            c::DisplayBlanksAsValues::Span => DispBlanksAs::Span,
+            c::DisplayBlanksAsValues::Gap => DispBlanksAs::Gap,
+            c::DisplayBlanksAsValues::Zero => DispBlanksAs::Zero,
+        });
+
     ParsedChart {
         kind,
         title,
@@ -445,6 +457,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         hi_low_lines,
         up_down_bars,
         drop_lines,
+        disp_blanks_as,
         data_labels,
     }
 }
