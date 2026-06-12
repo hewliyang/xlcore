@@ -250,6 +250,19 @@ pub struct SheetPageSetup {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub header_footer: Option<HeaderFooterInfo>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub print_area: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub print_title_rows: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub print_title_columns: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub row_breaks: Vec<u32>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub column_breaks: Vec<u32>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -272,4 +285,19 @@ pub struct SheetPageSetupPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub header_footer: Option<HeaderFooterPatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub print_area: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub print_title_rows: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub print_title_columns: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub row_breaks: Option<Vec<u32>>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub column_breaks: Option<Vec<u32>>,
 }

@@ -10,4 +10,9 @@ export type SheetPageSetup = {
   margins?: PageMarginsInfo;
   printOptions?: PrintOptionsInfo;
   headerFooter?: HeaderFooterInfo;
+  printArea?: string;
+  printTitleRows?: string;
+  printTitleColumns?: string;
+  rowBreaks: Array<number>;
+  columnBreaks: Array<number>;
 };

@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `SheetPageSetupPatch.printArea`/`printTitleRows`/`printTitleColumns`/`rowBreaks`/`columnBreaks` (defined-name-backed `_xlnm.Print_Area`/`_xlnm.Print_Titles` + `x:rowBreaks`/`x:colBreaks`): print area, repeating row/column titles, and manual page breaks; authored via `setPageSetup`, merged/cleared component-wise, and round-tripped (round-trip-only for Excel).
 - `Worksheet.properties.get`/`.set` (`SheetPropertiesPatch`): tab color, zoom (10..=400), `showZeros`, `rightToLeft`, default row height / col width; round-tripped, with tab color + default row/col sizes rendered by the previewer.
 - `AlignmentPatch.shrinkToFit`/`justifyLastLine`/`readingOrder` (`ReadingOrder` context|leftToRight|rightToLeft, sdk `CT_CellAlignment` 1:1): authored via `setStyle`, deduped, round-tripped, and surfaced in the layout (round-trip-only for Excel).
 - `FontPatch.vertAlign`/`family`/`scheme` (`VertAlign` baseline|superscript|subscript, `FontScheme` none|major|minor, sdk-transliterated; `font/vertAlign`+`@family`+`scheme`): authored via `setStyle`, deduped, round-tripped, and `vertAlign` rendered as raised/lowered runs by the previewer.

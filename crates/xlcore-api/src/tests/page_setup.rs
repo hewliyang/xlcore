@@ -48,6 +48,7 @@ fn page_setup_set_read_remove_and_round_trip() {
                     scale_with_doc: Some(false),
                     ..Default::default()
                 }),
+                ..Default::default()
             },
         )
         .unwrap();
@@ -131,4 +132,79 @@ fn page_setup_set_read_remove_and_round_trip() {
         .set_page_setup("Ghost", SheetPageSetupPatch::default())
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::MissingSheet);
+}
+
+#[test]
+fn print_area_titles_and_breaks_round_trip() {
+    let mut wb = Workbook::new().unwrap();
+    let info = wb
+        .set_page_setup(
+            "Sheet1",
+            SheetPageSetupPatch {
+                print_area: Some("A1:D10".to_string()),
+                print_title_rows: Some("1:2".to_string()),
+                print_title_columns: Some("A:A".to_string()),
+                row_breaks: Some(vec![10, 5, 5]),
+                column_breaks: Some(vec![3]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(info.print_area.as_deref(), Some("A1:D10"));
+    assert_eq!(info.print_title_rows.as_deref(), Some("1:2"));
+    assert_eq!(info.print_title_columns.as_deref(), Some("A:A"));
+    assert_eq!(info.row_breaks, vec![5, 10]);
+    assert_eq!(info.column_breaks, vec![3]);
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let after = reopened.page_setup("Sheet1").unwrap();
+    assert_eq!(after.print_area.as_deref(), Some("A1:D10"));
+    assert_eq!(after.print_title_rows.as_deref(), Some("1:2"));
+    assert_eq!(after.print_title_columns.as_deref(), Some("A:A"));
+    assert_eq!(after.row_breaks, vec![5, 10]);
+    assert_eq!(after.column_breaks, vec![3]);
+
+    let dns = reopened.defined_names().unwrap();
+    let area = dns.iter().find(|d| d.name == "_xlnm.Print_Area").unwrap();
+    assert_eq!(area.reference, "Sheet1!$A$1:$D$10");
+    assert_eq!(area.scope.as_deref(), Some("Sheet1"));
+    let titles = dns.iter().find(|d| d.name == "_xlnm.Print_Titles").unwrap();
+    assert_eq!(titles.reference, "Sheet1!$A:$A,Sheet1!$1:$2");
+
+    let updated = reopened
+        .set_page_setup(
+            "Sheet1",
+            SheetPageSetupPatch {
+                print_title_rows: Some("1:3".to_string()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(updated.print_title_rows.as_deref(), Some("1:3"));
+    assert_eq!(updated.print_title_columns.as_deref(), Some("A:A"));
+
+    let cleared = reopened
+        .set_page_setup(
+            "Sheet1",
+            SheetPageSetupPatch {
+                print_area: Some(String::new()),
+                print_title_rows: Some(String::new()),
+                print_title_columns: Some(String::new()),
+                row_breaks: Some(vec![]),
+                column_breaks: Some(vec![]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert!(cleared.print_area.is_none());
+    assert!(cleared.print_title_rows.is_none());
+    assert!(cleared.print_title_columns.is_none());
+    assert!(cleared.row_breaks.is_empty());
+    assert!(cleared.column_breaks.is_empty());
+    assert!(reopened
+        .defined_names()
+        .unwrap()
+        .iter()
+        .all(|d| !d.name.starts_with("_xlnm.Print")));
 }

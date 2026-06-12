@@ -7,16 +7,25 @@ use xlcore_types::{
 };
 
 use crate::errors::sdk_err_to_api;
+use crate::refs::quote_sheet_name;
 use crate::{Result, Workbook};
+
+const PRINT_AREA_NAME: &str = "_xlnm.Print_Area";
+const PRINT_TITLES_NAME: &str = "_xlnm.Print_Titles";
+const LAST_ROW: u32 = 1_048_575;
+const LAST_COL: u32 = 16_383;
 
 impl Workbook {
     pub fn page_setup(&mut self, sheet: impl AsRef<str>) -> Result<SheetPageSetup> {
         let sheet = sheet.as_ref().to_string();
+        let idx = self.sheet_index(&sheet)?;
         let ws_part = self.worksheet_part_for_sheet(&sheet)?;
         let ws = ws_part
             .root_element(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        Ok(read_page_setup(&sheet, ws))
+        let mut info = read_page_setup(&sheet, ws);
+        self.read_print_names(idx, &mut info)?;
+        Ok(info)
     }
 
     pub fn set_page_setup(
@@ -26,10 +35,17 @@ impl Workbook {
     ) -> Result<SheetPageSetup> {
         validate_patch(&patch)?;
         let sheet = sheet.as_ref().to_string();
+        let idx = self.sheet_index(&sheet)?;
         let ws_part = self.worksheet_part_for_sheet(&sheet)?;
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
+        if let Some(rows) = patch.row_breaks.as_ref() {
+            ws.row_breaks = build_row_breaks(rows);
+        }
+        if let Some(cols) = patch.column_breaks.as_ref() {
+            ws.column_breaks = build_column_breaks(cols);
+        }
         if let Some(p) = patch.page.as_ref() {
             let target = ws.page_setup.get_or_insert_with(x::PageSetup::default);
             apply_page_patch(target, p);
@@ -50,7 +66,8 @@ impl Workbook {
                 .get_or_insert_with(|| Box::new(x::HeaderFooter::default()));
             apply_header_footer_patch(target.as_mut(), p);
         }
-        Ok(read_page_setup(&sheet, ws))
+        self.apply_print_names(idx, &sheet, &patch)?;
+        self.page_setup(&sheet)
     }
 
     pub fn remove_page_setup(&mut self, sheet: impl AsRef<str>) -> Result<SheetPageSetup> {
@@ -59,12 +76,126 @@ impl Workbook {
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        let removed = read_page_setup(&sheet, ws);
+        let mut removed = read_page_setup(&sheet, ws);
         ws.page_setup = None;
         ws.page_margins = None;
         ws.print_options = None;
         ws.header_footer = None;
+        ws.row_breaks = None;
+        ws.column_breaks = None;
+        let idx = self.sheet_index(&sheet)?;
+        self.read_print_names(idx, &mut removed)?;
+        self.remove_local_defined_name(idx, PRINT_AREA_NAME)?;
+        self.remove_local_defined_name(idx, PRINT_TITLES_NAME)?;
         Ok(removed)
+    }
+
+    fn sheet_index(&mut self, sheet: &str) -> Result<u32> {
+        self.workbook_sheets()?
+            .iter()
+            .position(|s| s.name.as_str() == sheet)
+            .map(|i| i as u32)
+            .ok_or_else(|| {
+                ApiError::new(ApiErrorCode::MissingSheet, format!("sheet not found: {sheet}"))
+                    .with_sheet(sheet)
+            })
+    }
+
+    fn read_print_names(&mut self, idx: u32, info: &mut SheetPageSetup) -> Result<()> {
+        info.print_area = self
+            .local_defined_name_value(idx, PRINT_AREA_NAME)?
+            .map(|v| strip_ref_areas(&v));
+        if let Some(titles) = self.local_defined_name_value(idx, PRINT_TITLES_NAME)? {
+            let (cols, rows) = parse_print_titles(&titles);
+            info.print_title_columns = cols;
+            info.print_title_rows = rows;
+        }
+        Ok(())
+    }
+
+    fn apply_print_names(
+        &mut self,
+        idx: u32,
+        sheet: &str,
+        patch: &SheetPageSetupPatch,
+    ) -> Result<()> {
+        if let Some(area) = patch.print_area.as_ref() {
+            if area.trim().is_empty() {
+                self.remove_local_defined_name(idx, PRINT_AREA_NAME)?;
+            } else {
+                let value = build_area_value(sheet, area);
+                self.set_local_defined_name(idx, PRINT_AREA_NAME, &value)?;
+            }
+        }
+        if patch.print_title_rows.is_some() || patch.print_title_columns.is_some() {
+            let (existing_cols, existing_rows) = match self
+                .local_defined_name_value(idx, PRINT_TITLES_NAME)?
+            {
+                Some(v) => parse_print_titles(&v),
+                None => (None, None),
+            };
+            let pick = |patched: &Option<String>, existing: Option<String>| -> Option<String> {
+                match patched {
+                    Some(v) if v.trim().is_empty() => None,
+                    Some(v) => Some(v.clone()),
+                    None => existing,
+                }
+            };
+            let cols = pick(&patch.print_title_columns, existing_cols);
+            let rows = pick(&patch.print_title_rows, existing_rows);
+            match build_titles_value(sheet, cols.as_deref(), rows.as_deref()) {
+                Some(value) => self.set_local_defined_name(idx, PRINT_TITLES_NAME, &value)?,
+                None => self.remove_local_defined_name(idx, PRINT_TITLES_NAME)?,
+            }
+        }
+        Ok(())
+    }
+
+    fn local_defined_name_value(&mut self, idx: u32, name: &str) -> Result<Option<String>> {
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let wb = wb_part.root_element(&mut self.doc).map_err(sdk_err_to_api)?;
+        let Some(dns) = wb.defined_names.as_ref() else {
+            return Ok(None);
+        };
+        Ok(dns
+            .defined_name
+            .iter()
+            .find(|dn| dn.name.as_str() == name && dn.local_sheet_id == Some(idx))
+            .and_then(|dn| dn.xml_content.as_ref().map(|s| s.as_str().to_string())))
+    }
+
+    fn set_local_defined_name(&mut self, idx: u32, name: &str, value: &str) -> Result<()> {
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let wb = wb_part.root_element_mut(&mut self.doc).map_err(sdk_err_to_api)?;
+        let dns = wb.defined_names.get_or_insert_with(x::DefinedNames::default);
+        match dns
+            .defined_name
+            .iter_mut()
+            .find(|dn| dn.name.as_str() == name && dn.local_sheet_id == Some(idx))
+        {
+            Some(dn) => dn.xml_content = Some(value.to_string().into()),
+            None => dns.defined_name.push(x::DefinedName {
+                name: name.to_string(),
+                local_sheet_id: Some(idx),
+                xml_content: Some(value.to_string().into()),
+                ..Default::default()
+            }),
+        }
+        Ok(())
+    }
+
+    fn remove_local_defined_name(&mut self, idx: u32, name: &str) -> Result<()> {
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let wb = wb_part.root_element_mut(&mut self.doc).map_err(sdk_err_to_api)?;
+        let Some(dns) = wb.defined_names.as_mut() else {
+            return Ok(());
+        };
+        dns.defined_name
+            .retain(|dn| !(dn.name.as_str() == name && dn.local_sheet_id == Some(idx)));
+        if dns.defined_name.is_empty() {
+            wb.defined_names = None;
+        }
+        Ok(())
     }
 }
 
@@ -75,7 +206,173 @@ fn read_page_setup(sheet: &str, ws: &x::Worksheet) -> SheetPageSetup {
         margins: ws.page_margins.as_ref().map(read_margins),
         print_options: ws.print_options.as_ref().map(read_print_options),
         header_footer: ws.header_footer.as_deref().map(read_header_footer),
+        print_area: None,
+        print_title_rows: None,
+        print_title_columns: None,
+        row_breaks: read_breaks(ws.row_breaks.as_ref()),
+        column_breaks: read_breaks(ws.column_breaks.as_ref()),
     }
+}
+
+fn read_breaks<B: BreaksList>(breaks: Option<&B>) -> Vec<u32> {
+    let Some(breaks) = breaks else {
+        return Vec::new();
+    };
+    let mut out: Vec<u32> = breaks
+        .items()
+        .iter()
+        .filter(|b| b.manual_page_break.map(bool::from).unwrap_or(false))
+        .filter_map(|b| b.id)
+        .filter(|id| *id != 0)
+        .collect();
+    out.sort_unstable();
+    out.dedup();
+    out
+}
+
+trait BreaksList {
+    fn items(&self) -> &[x::Break];
+}
+
+impl BreaksList for x::RowBreaks {
+    fn items(&self) -> &[x::Break] {
+        &self.r#break
+    }
+}
+
+impl BreaksList for x::ColumnBreaks {
+    fn items(&self) -> &[x::Break] {
+        &self.r#break
+    }
+}
+
+fn make_breaks(ids: &[u32], max: u32) -> Vec<x::Break> {
+    let mut sorted: Vec<u32> = ids.iter().copied().filter(|id| *id != 0).collect();
+    sorted.sort_unstable();
+    sorted.dedup();
+    sorted
+        .into_iter()
+        .map(|id| x::Break {
+            id: Some(id),
+            min: Some(0),
+            max: Some(max),
+            manual_page_break: Some(BooleanValue::from_bool(true)),
+            ..Default::default()
+        })
+        .collect()
+}
+
+fn build_row_breaks(ids: &[u32]) -> Option<x::RowBreaks> {
+    let breaks = make_breaks(ids, LAST_COL);
+    if breaks.is_empty() {
+        return None;
+    }
+    let count = breaks.len() as u32;
+    Some(x::RowBreaks {
+        count: Some(count),
+        manual_break_count: Some(count),
+        r#break: breaks,
+    })
+}
+
+fn build_column_breaks(ids: &[u32]) -> Option<x::ColumnBreaks> {
+    let breaks = make_breaks(ids, LAST_ROW);
+    if breaks.is_empty() {
+        return None;
+    }
+    let count = breaks.len() as u32;
+    Some(x::ColumnBreaks {
+        count: Some(count),
+        manual_break_count: Some(count),
+        r#break: breaks,
+    })
+}
+
+fn absolutize_token(tok: &str) -> String {
+    let mut letters = String::new();
+    let mut digits = String::new();
+    for c in tok.chars() {
+        if c.is_ascii_alphabetic() {
+            letters.push(c.to_ascii_uppercase());
+        } else if c.is_ascii_digit() {
+            digits.push(c);
+        }
+    }
+    let mut out = String::new();
+    if !letters.is_empty() {
+        out.push('$');
+        out.push_str(&letters);
+    }
+    if !digits.is_empty() {
+        out.push('$');
+        out.push_str(&digits);
+    }
+    out
+}
+
+fn absolutize_range(reference: &str) -> String {
+    reference
+        .split(':')
+        .map(absolutize_token)
+        .collect::<Vec<_>>()
+        .join(":")
+}
+
+fn build_area_value(sheet: &str, area: &str) -> String {
+    let prefix = quote_sheet_name(sheet);
+    area.split(',')
+        .map(|a| a.trim())
+        .filter(|a| !a.is_empty())
+        .map(|a| format!("{prefix}!{}", absolutize_range(a)))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn build_titles_value(sheet: &str, cols: Option<&str>, rows: Option<&str>) -> Option<String> {
+    let prefix = quote_sheet_name(sheet);
+    let mut parts = Vec::new();
+    if let Some(c) = cols.map(str::trim).filter(|s| !s.is_empty()) {
+        parts.push(format!("{prefix}!{}", absolutize_range(c)));
+    }
+    if let Some(r) = rows.map(str::trim).filter(|s| !s.is_empty()) {
+        parts.push(format!("{prefix}!{}", absolutize_range(r)));
+    }
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(","))
+    }
+}
+
+fn strip_ref_part(part: &str) -> String {
+    let body = part.rsplit_once('!').map(|(_, r)| r).unwrap_or(part);
+    body.chars().filter(|&c| c != '$').collect()
+}
+
+fn strip_ref_areas(value: &str) -> String {
+    value
+        .split(',')
+        .map(|p| strip_ref_part(p.trim()))
+        .filter(|p| !p.is_empty())
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn parse_print_titles(value: &str) -> (Option<String>, Option<String>) {
+    let mut cols = None;
+    let mut rows = None;
+    for part in value.split(',') {
+        let cleaned = strip_ref_part(part.trim());
+        if cleaned.is_empty() {
+            continue;
+        }
+        if cleaned.chars().any(|c| c.is_ascii_digit()) {
+            rows = Some(cleaned);
+        } else {
+            cols = Some(cleaned);
+        }
+    }
+    (cols, rows)
 }
 
 fn read_page(p: &x::PageSetup) -> PageSetupSettings {

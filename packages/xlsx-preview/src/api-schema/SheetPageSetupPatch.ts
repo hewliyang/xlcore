@@ -9,4 +9,9 @@ export type SheetPageSetupPatch = {
   margins?: PageMarginsPatch;
   printOptions?: PrintOptionsInfo;
   headerFooter?: HeaderFooterInfo;
+  printArea?: string;
+  printTitleRows?: string;
+  printTitleColumns?: string;
+  rowBreaks?: Array<number>;
+  columnBreaks?: Array<number>;
 };

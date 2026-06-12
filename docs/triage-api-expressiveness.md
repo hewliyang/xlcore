@@ -241,7 +241,15 @@ authoring, per-point data labels.
   `default_row_height`/`default_col_width` are renderer-visible (taller rows /
   wider cols verified e2e); zoom/showZeros/rightToLeft round-trip for Excel.
 - Print area + print titles (defined-name backed) and manual page breaks —
-  page_setup.rs covers everything except these.
+  **done**: `SheetPageSetupPatch`/`SheetPageSetup` carry `print_area` (A1 range,
+  multi-area comma-ok), `print_title_rows`/`print_title_columns`, and
+  `row_breaks`/`column_breaks` (1-based break-after indices). Print area/titles
+  build sheet-scoped `_xlnm.Print_Area`/`_xlnm.Print_Titles` defined names
+  (absolutized `'Sheet'!$A$1:$D$10`, titles as `cols,rows`); breaks build
+  `x:rowBreaks`/`x:colBreaks` (`<brk man=1>`, full row/col span). Empty
+  string/`vec![]` clears each; titles merge component-wise. All round-trip,
+  update in place, and are read back de-absolutized. Round-trip-only for Excel
+  (renderer consumes neither).
 - Rich text runs in cells (`CT_RElt`) — P2, but agents ask for it.
 
 ### Already adequate
