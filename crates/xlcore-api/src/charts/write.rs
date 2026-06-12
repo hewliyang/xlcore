@@ -238,6 +238,17 @@ pub(super) fn validate_bar_shape(
     Ok(())
 }
 
+pub(super) fn validate_wireframe(sheet: &str, kind: ChartKind, wireframe: Option<bool>) -> Result<()> {
+    if wireframe.is_some() && !is_surface(kind) {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidChart,
+            format!("wireframe is only supported on surface/surface3D charts, not {kind:?}"),
+        )
+        .with_sheet(sheet));
+    }
+    Ok(())
+}
+
 pub(super) fn is_cartesian(kind: ChartKind) -> bool {
     matches!(
         kind,
@@ -406,7 +417,7 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
 
     match patch.kind {
         ChartKind::Pie | ChartKind::Doughnut | ChartKind::Pie3D => {}
-        k if is_3d_cartesian(k) => {
+        k if is_3d_cartesian(k) || is_surface(k) => {
             let mut cat = build_cat_axis();
             if let Some(p) = &cat_axis {
                 apply_cat_axis_patch(&mut cat, p);
@@ -537,6 +548,7 @@ pub(super) fn build_plot_charts(patch: &ChartPatch) -> Vec<c::PlotAreaChoice> {
         ChartKind::Bar3D | ChartKind::Column3D | ChartKind::Line3D | ChartKind::Area3D => {
             vec![build_3d_cartesian_chart(patch)]
         }
+        ChartKind::Surface | ChartKind::Surface3D => vec![build_surface_chart(patch)],
         _ => build_cartesian_plot_charts(patch),
     }
 }
@@ -549,7 +561,13 @@ pub(super) fn is_3d(kind: ChartKind) -> bool {
             | ChartKind::Line3D
             | ChartKind::Pie3D
             | ChartKind::Area3D
+            | ChartKind::Surface
+            | ChartKind::Surface3D
     )
+}
+
+pub(super) fn is_surface(kind: ChartKind) -> bool {
+    matches!(kind, ChartKind::Surface | ChartKind::Surface3D)
 }
 
 pub(super) fn is_3d_cartesian(kind: ChartKind) -> bool {
@@ -688,6 +706,50 @@ pub(super) fn build_pie_3d_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
         data_labels: build_data_labels(patch.data_labels.as_ref()),
         ..Default::default()
     }))
+}
+
+pub(super) fn build_wireframe_el(wireframe: Option<bool>) -> Option<c::Wireframe> {
+    wireframe.map(|v| c::Wireframe {
+        val: Some(BooleanValue::from_bool(v)),
+    })
+}
+
+pub(super) fn build_surface_series(idx: usize, s: &ChartSeriesPatch, cat_ref: Option<&str>) -> c::SurfaceChartSeries {
+    c::SurfaceChartSeries {
+        index: Box::new(c::Index { val: idx as u32 }),
+        order: Box::new(c::Order { val: idx as u32 }),
+        series_text: build_series_text(s),
+        chart_shape_properties: build_series_shape_with_line(s.color.as_deref(), s.line.as_ref()),
+        category_axis_data: build_categories(cat_ref),
+        values: Some(build_values(&s.values_ref)),
+        ..Default::default()
+    }
+}
+
+pub(super) fn build_surface_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
+    let cat_ref = patch.categories_ref.as_deref();
+    let series: Vec<c::SurfaceChartSeries> = patch
+        .series
+        .iter()
+        .enumerate()
+        .map(|(i, s)| build_surface_series(i, s, cat_ref))
+        .collect();
+    let wireframe = build_wireframe_el(patch.wireframe);
+    if matches!(patch.kind, ChartKind::Surface3D) {
+        c::PlotAreaChoice::Surface3DChart(Box::new(c::Surface3DChart {
+            wireframe,
+            surface_chart_series: series,
+            axis_id: build_3d_axis_ids(),
+            ..Default::default()
+        }))
+    } else {
+        c::PlotAreaChoice::SurfaceChart(Box::new(c::SurfaceChart {
+            wireframe,
+            surface_chart_series: series,
+            axis_id: build_3d_axis_ids(),
+            ..Default::default()
+        }))
+    }
 }
 
 pub(super) fn radar_style_to(s: RadarStyle) -> c::RadarStyleValues {
@@ -903,6 +965,9 @@ pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
         ChartKind::Pie3D => unreachable!("pie3D is built via build_pie_3d_chart"),
         ChartKind::Bar3D | ChartKind::Column3D | ChartKind::Line3D | ChartKind::Area3D => {
             unreachable!("3D cartesian kinds are built via build_3d_cartesian_chart")
+        }
+        ChartKind::Surface | ChartKind::Surface3D => {
+            unreachable!("surface kinds are built via build_surface_chart")
         }
     }
 }

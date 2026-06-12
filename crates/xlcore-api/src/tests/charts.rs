@@ -53,6 +53,7 @@ fn charts_create_list_remove_roundtrip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -173,6 +174,7 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -260,6 +262,7 @@ fn update_chart_replaces_series_and_stacking() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -351,6 +354,7 @@ fn chart_axis_patch_authors_and_round_trips() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -439,6 +443,7 @@ fn chart_value_axis_display_units_round_trip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -521,6 +526,7 @@ fn chart_axis_label_rotation_round_trip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -649,6 +655,7 @@ fn charts_supports_multiple_kinds() {
         data_table: None,
         view_3d: None,
         bar_shape: None,
+        wireframe: None,
     };
     for kind in [
         ChartKind::Column,
@@ -742,6 +749,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            wireframe: None,
         },
     )
     .unwrap();
@@ -787,6 +795,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            wireframe: None,
         },
     )
     .unwrap();
@@ -830,6 +839,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            wireframe: None,
         },
     )
     .unwrap();
@@ -918,6 +928,7 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            wireframe: None,
         },
     )
     .unwrap();
@@ -972,6 +983,7 @@ fn chart_series_color_rejects_malformed_hex() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap_err();
@@ -1064,6 +1076,7 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            wireframe: None,
         },
     )
     .unwrap();
@@ -1155,6 +1168,7 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
         data_table: None,
         view_3d: None,
         bar_shape: None,
+        wireframe: None,
     };
 
     let col_stacked = wb
@@ -1271,6 +1285,7 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -1316,6 +1331,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            wireframe: None,
         },
     );
     assert!(missing_x.is_err());
@@ -1353,6 +1369,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            wireframe: None,
         },
     );
     assert!(bad_color.is_err());
@@ -1412,6 +1429,7 @@ fn charts_data_labels_roundtrip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -1481,6 +1499,7 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            wireframe: None,
         },
     )
     .unwrap();
@@ -1552,6 +1571,7 @@ fn charts_per_series_data_labels_override_chart_level() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            wireframe: None,
         },
     )
     .unwrap();
@@ -1643,6 +1663,7 @@ fn charts_per_point_data_labels_roundtrip_and_update() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -1749,6 +1770,7 @@ fn chart_gap_width_overlap_roundtrip_and_update() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -1843,6 +1865,7 @@ fn chart_series_marker_roundtrip_and_validation() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -1906,6 +1929,7 @@ fn chart_series_marker_roundtrip_and_validation() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap_err();
@@ -1963,6 +1987,7 @@ fn chart_series_smooth_roundtrips_and_sets_scatter_style() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -2032,6 +2057,7 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -2091,6 +2117,7 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap_err();
@@ -2145,6 +2172,7 @@ fn chart_data_point_explosion_roundtrip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -2228,6 +2256,7 @@ fn combo_chart_secondary_axis_roundtrip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -2281,6 +2310,7 @@ fn combo_chart_secondary_axis_roundtrip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap_err();
@@ -2347,6 +2377,7 @@ fn radar_chart_build_roundtrip_and_update() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -2424,6 +2455,7 @@ fn doughnut_hole_size_and_first_slice_angle_roundtrip_and_update() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -2492,6 +2524,7 @@ fn doughnut_hole_size_out_of_range_rejected() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap_err();
@@ -2570,6 +2603,7 @@ fn stock_chart_build_roundtrip_and_update() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -2653,6 +2687,7 @@ fn stock_chart_requires_three_to_six_series() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap_err();
@@ -2707,6 +2742,7 @@ fn chart_series_line_roundtrips_and_updates() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -2795,6 +2831,7 @@ fn disp_blanks_as_builds_reads_updates() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -2872,6 +2909,7 @@ fn vary_colors_and_invert_if_negative_roundtrip_and_update() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -2966,6 +3004,7 @@ fn chart_trendline_roundtrips_and_updates() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -3074,6 +3113,7 @@ fn chart_trendline_moving_average_on_scatter_roundtrips() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -3128,6 +3168,7 @@ fn chart_trendline_rejected_on_pie_and_bad_params() {
         data_table: None,
         view_3d: None,
         bar_shape: None,
+        wireframe: None,
     };
 
     let linear = ChartTrendline {
@@ -3218,6 +3259,7 @@ fn chart_error_bars_fixed_roundtrips_and_updates() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -3332,6 +3374,7 @@ fn chart_error_bars_custom_on_scatter_roundtrips() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -3390,6 +3433,7 @@ fn chart_error_bars_rejected_on_pie_and_bad_params() {
         data_table: None,
         view_3d: None,
         bar_shape: None,
+        wireframe: None,
     };
 
     let fixed = ChartErrorBars {
@@ -3473,6 +3517,7 @@ fn chart_data_table_roundtrips_and_updates() {
                 data_table: Some(dt.clone()),
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .unwrap();
@@ -3563,6 +3608,7 @@ fn chart_data_table_rejected_on_pie() {
                 data_table: Some(dt),
                 view_3d: None,
                 bar_shape: None,
+                wireframe: None,
             },
         )
         .is_err());
@@ -3600,6 +3646,7 @@ fn base_3d_patch(kind: ChartKind) -> ChartPatch {
         data_table: None,
         view_3d: None,
         bar_shape: None,
+        wireframe: None,
     }
 }
 
@@ -3706,6 +3753,7 @@ fn chart_3d_column_view3d_and_shape_roundtrip_and_update() {
             ChartUpdate {
                 view_3d: Some(view2.clone()),
                 bar_shape: Some(Bar3DShape::Pyramid),
+                wireframe: None,
                 ..Default::default()
             },
         )
@@ -3752,4 +3800,91 @@ fn chart_3d_stacked_and_validation() {
         ..Default::default()
     });
     assert!(wb.set_chart("Sheet1", bad_rot).is_err());
+}
+
+#[test]
+fn chart_surface_kinds_build_and_read() {
+    let cases = [
+        (ChartKind::Surface3D, "c:surface3DChart"),
+        (ChartKind::Surface, "c:surfaceChart"),
+    ];
+    for (kind, tag) in cases {
+        let mut wb = Workbook::new().unwrap();
+        seed_3d(&mut wb);
+        let info = wb.set_chart("Sheet1", base_3d_patch(kind)).unwrap();
+        assert_eq!(info.kind, kind);
+        let bytes = wb.save_bytes().unwrap();
+        let xml = chart_xml(&bytes);
+        assert!(xml.contains(tag), "{kind:?} missing {tag}");
+        assert!(xml.contains("c:serAx"), "{kind:?} requires serAx");
+        assert!(xml.contains("c:catAx"), "{kind:?} requires catAx");
+        assert!(xml.contains("c:valAx"), "{kind:?} requires valAx");
+        let mut reopened = Workbook::open_bytes(bytes).unwrap();
+        let read = reopened.charts(Some("Sheet1")).unwrap();
+        assert_eq!(read[0].kind, kind, "round-trip kind for {kind:?}");
+    }
+}
+
+#[test]
+fn chart_surface_wireframe_and_view3d_roundtrip_and_update() {
+    use xlcore_types::ChartView3D;
+
+    let mut wb = Workbook::new().unwrap();
+    seed_3d(&mut wb);
+
+    let view = ChartView3D {
+        rot_x: Some(15),
+        rot_y: Some(20),
+        right_angle_axes: Some(false),
+        ..Default::default()
+    };
+    let mut patch = base_3d_patch(ChartKind::Surface3D);
+    patch.wireframe = Some(true);
+    patch.view_3d = Some(view.clone());
+
+    let info = wb.set_chart("Sheet1", patch).unwrap();
+    assert_eq!(info.wireframe, Some(true));
+    assert_eq!(info.view_3d.as_ref(), Some(&view));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("c:wireframe val=\"1\""), "wireframe val");
+    assert!(xml.contains("c:view3D"));
+    // wireframe is the first child of surface3DChart, before c:ser.
+    let wf_at = xml.find("c:wireframe").unwrap();
+    let ser_at = xml.find("c:ser>").or_else(|| xml.find("c:ser ")).unwrap();
+    assert!(wf_at < ser_at, "wireframe must precede ser");
+    let rotx_at = xml.find("c:rotX").unwrap();
+    let roty_at = xml.find("c:rotY").unwrap();
+    assert!(rotx_at < roty_at, "rotX must precede rotY");
+
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let read = reopened.charts(Some("Sheet1")).unwrap();
+    assert_eq!(read[0].wireframe, Some(true));
+    assert_eq!(read[0].view_3d.as_ref(), Some(&view));
+
+    let id = read[0].id.clone();
+    let updated = reopened
+        .update_chart(
+            "Sheet1",
+            &id,
+            ChartUpdate {
+                wireframe: Some(false),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(updated.wireframe, Some(false));
+    let xml2 = chart_xml(&reopened.save_bytes().unwrap());
+    assert!(xml2.contains("c:wireframe val=\"0\""), "updated wireframe val");
+    assert!(xml2.contains("c:serAx"), "serAx preserved after update");
+}
+
+#[test]
+fn chart_surface_wireframe_rejected_on_non_surface() {
+    let mut wb = Workbook::new().unwrap();
+    seed_3d(&mut wb);
+    let mut bad = base_3d_patch(ChartKind::Column);
+    bad.wireframe = Some(true);
+    assert!(wb.set_chart("Sheet1", bad).is_err());
 }

@@ -85,4 +85,9 @@ export type ChartPatch = {
    * `c:shape`; bar/column 3D shape. Bar3D/Column3D charts only.
    */
   barShape?: Bar3DShape;
+  /**
+   * `c:wireframe`; draw the surface as a wireframe (lines only) instead of
+   * filled bands. Surface/Surface3D charts only.
+   */
+  wireframe?: boolean;
 };

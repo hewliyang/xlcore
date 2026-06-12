@@ -33,6 +33,11 @@ pub enum ChartKind {
     /// 3D area (`c:area3DChart`).
     #[serde(rename = "area3d")]
     Area3D,
+    /// 3D surface (`c:surface3DChart`); needs the `c:serAx` third axis.
+    #[serde(rename = "surface3d")]
+    Surface3D,
+    /// 2D surface contour (`c:surfaceChart`); top-down view, needs `c:serAx`.
+    Surface,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1150,6 +1155,11 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bar_shape: Option<Bar3DShape>,
+    /// `c:wireframe`; draw the surface as a wireframe (lines only) instead of
+    /// filled bands. Surface/Surface3D charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wireframe: Option<bool>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1249,6 +1259,11 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bar_shape: Option<Bar3DShape>,
+    /// `c:wireframe`; draw the surface as a wireframe (lines only) instead of
+    /// filled bands. Surface/Surface3D charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wireframe: Option<bool>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1352,4 +1367,9 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub bar_shape: Option<Bar3DShape>,
+    /// `c:wireframe`; draw the surface as a wireframe (lines only) instead of
+    /// filled bands. Surface/Surface3D charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wireframe: Option<bool>,
 }

@@ -88,7 +88,11 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   rotX/rotY/perspective/rightAngleAxes/depthPercent/heightPercent; plot order
   rotX→rotY preserved) + bar3D `c:shape` (`Bar3DShape`, ST_Shape transliterated);
   the export renderer draws 3D charts flat as their 2D equivalent, view3D/shape
-  round-trip-only. In-place `update_chart` (atomic, preserves unmodeled XML).
+  round-trip-only. Surface kinds (`ChartKind` surface3d/surface →
+  `c:surface3DChart`/`c:surfaceChart`; emit the `c:serAx` third axis like 3D
+  cartesian) + `ChartPatch.wireframe` (`c:wireframe`, lines vs filled bands) +
+  reuse `ChartView3D`; renderer doesn't draw surface, round-trip-only
+  (bandFmts excluded). In-place `update_chart` (atomic, preserves unmodeled XML).
 - **Rich text in cells**: `setRichText`/`richText` (inline-string `CT_RElt`
   runs with per-run `FontPatch`); `CellInfo.richText`, renderer-visible.
 - **Styles P1**: cell protection, pattern + gradient fills, font
@@ -106,7 +110,7 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 
 ### P2 — backlog
 
-surface (incl. surface3D), ofPie, remaining 3D extras (floor/sideWall/backWall
+ofPie, remaining 3D extras (floor/sideWall/backWall
 formatting, gapDepth, per-series shape), manual layout, plot-area/legend
 spPr+fonts, chartStyle/colorStyle companion parts, chartEx authoring, named
 styles / `cellStyles` authoring, remaining `c:dPt` fields (per-point

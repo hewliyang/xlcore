@@ -17,10 +17,13 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `Range.copyTo(otherSheet.range(...))` now returns a destination-scoped `Range` instead of a stale source-sheet handle.
+- A failed default wasm initialization no longer poisons later `Workbook.create/open` attempts.
 - Keep the browser entry (`dist/index.js`) free of `node:fs`: the default wasm resolver is now injectable via `registerDefaultWasmInputResolver`, registered by `@hewliyang/xlsx-preview/node` (which also re-exports `Workbook`/`NumberFormat`). Node consumers needing default-wasm bootstrap should import `Workbook` from `./node`.
 
 ### Added
 
+- Surface chart kinds (`ChartKind` `surface3d`/`surface` → `c:surface3DChart`/`c:surfaceChart`; emit the `c:serAx` third axis like 3D cartesian) plus `ChartPatch/Update/Info.wireframe` (`c:wireframe`, lines vs filled bands). Reuses `ChartView3D` for `c:view3D`. Round-trips for Excel (renderer doesn't draw surface); `c:bandFmts` excluded. Rides on `setChart`/`updateChart`.
 - 3D chart kinds (`ChartKind` `bar3d`/`column3d`/`line3d`/`pie3d`/`area3d` → `c:bar3DChart`/`c:line3DChart`/`c:pie3DChart`/`c:area3DChart`) plus `ChartPatch/Update/Info.view3d` (`ChartView3D`: rotX/rotY/perspective/rightAngleAxes/depthPercent/heightPercent) and `.barShape` (`Bar3DShape`, `c:shape`, bar3D/column3D only). 3D cartesian emit the required `c:serAx` third axis (deleted); pie3D needs no axes. The export renderer draws 3D charts flat as their 2D equivalent; view3D/shape round-trip for Excel. Rides on `setChart`/`updateChart`.
 - `ChartPatch.dataTable`/`ChartUpdate.dataTable`/`ChartInfo.dataTable` (`ChartDataTable`): chart data table (`c:dTable` in `c:plotArea`, after the axes) — showHorzBorder/showVertBorder/showOutline/showKeys; cartesian charts only (rejected on pie/doughnut/scatter/bubble/radar/stock); round-trips for Excel (renderer doesn't draw). Rides on `setChart`/`updateChart`.
 - `ChartAxisPatch.labelRotation`: tick-label rotation in whole degrees (-90..=90), stored as axis `c:txPr`/`a:bodyPr/@rot` (60000ths of a degree) on cat+val axes; round-trips for Excel (renderer draws labels horizontally). Rides on `setChart`/`updateChart`.

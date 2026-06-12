@@ -145,6 +145,23 @@ dto = "ChartPatch"
 ns = "c"
 aliases = { ser = "series" }
 
+# --- surface chart kinds ----------------------------------------------------
+[[pair]]
+sdk = "SurfaceChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["axId"]
+excluded = ["bandFmts"]
+aliases = { ser = "series" }
+
+[[pair]]
+sdk = "Surface3DChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["axId"]
+excluded = ["bandFmts"]
+aliases = { ser = "series" }
+
 # --- styles -----------------------------------------------------------------
 [[pair]]
 sdk = "Protection"

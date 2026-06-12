@@ -71,6 +71,7 @@ pub(super) struct ParsedChart {
     pub(super) data_table: Option<ChartDataTable>,
     pub(super) view_3d: Option<ChartView3D>,
     pub(super) bar_shape: Option<Bar3DShape>,
+    pub(super) wireframe: Option<bool>,
 }
 
 pub(super) fn group_is_secondary(axis_ids: &[c::AxisId], sec: &[u32]) -> bool {
@@ -109,6 +110,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     let mut vary_colors: Option<bool> = None;
     let mut data_labels: Option<ChartDataLabels> = None;
     let mut bar_shape: Option<Bar3DShape> = None;
+    let mut wireframe: Option<bool> = None;
 
     for ch in &plot.plot_area_choice1 {
         match ch {
@@ -489,6 +491,44 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     data_labels = read_data_labels(pc.data_labels.as_deref());
                 }
             }
+            c::PlotAreaChoice::Surface3DChart(sc) => {
+                if !kind_set {
+                    kind = ChartKind::Surface3D;
+                    kind_set = true;
+                }
+                wireframe = read_wireframe(sc.wireframe.as_ref());
+                for s in &sc.surface_chart_series {
+                    let mut info = read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                        None,
+                    );
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
+                    series.push(info);
+                }
+            }
+            c::PlotAreaChoice::SurfaceChart(sc) => {
+                if !kind_set {
+                    kind = ChartKind::Surface;
+                    kind_set = true;
+                }
+                wireframe = read_wireframe(sc.wireframe.as_ref());
+                for s in &sc.surface_chart_series {
+                    let mut info = read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                        None,
+                    );
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
+                    series.push(info);
+                }
+            }
             c::PlotAreaChoice::StockChart(sc) => {
                 if !kind_set {
                     kind = ChartKind::Stock;
@@ -619,7 +659,12 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         data_table,
         view_3d,
         bar_shape,
+        wireframe,
     }
+}
+
+pub(super) fn read_wireframe(w: Option<&c::Wireframe>) -> Option<bool> {
+    w.map(|w| w.val.as_ref().map(|b| b.as_bool()).unwrap_or(true))
 }
 
 pub(super) fn shape_from(v: &c::ShapeValues) -> Bar3DShape {

@@ -116,6 +116,7 @@ impl Workbook {
                     data_table: parsed.data_table,
                     view_3d: parsed.view_3d,
                     bar_shape: parsed.bar_shape,
+                    wireframe: parsed.wireframe,
                 });
             }
         }
@@ -132,6 +133,7 @@ impl Workbook {
         validate_data_table(sheet, patch.kind, patch.data_table.as_ref())?;
         validate_view_3d(sheet, patch.kind, patch.view_3d.as_ref())?;
         validate_bar_shape(sheet, patch.kind, patch.bar_shape.as_ref())?;
+        validate_wireframe(sheet, patch.kind, patch.wireframe)?;
         let anchor = crate::refs::resolve_anchor(&patch.anchor)?;
 
         if !self.sheet_exists(sheet)? {
@@ -274,6 +276,7 @@ impl Workbook {
             data_table: patch.data_table.filter(|_| is_cartesian(patch.kind)),
             view_3d: patch.view_3d.filter(|_| is_3d(patch.kind)),
             bar_shape: patch.bar_shape.filter(|_| is_bar_3d(patch.kind)),
+            wireframe: patch.wireframe.filter(|_| is_surface(patch.kind)),
         })
     }
 
@@ -370,6 +373,7 @@ impl Workbook {
         validate_data_table(&sheet, kind, update.data_table.as_ref())?;
         validate_view_3d(&sheet, kind, update.view_3d.as_ref())?;
         validate_bar_shape(&sheet, kind, update.bar_shape.as_ref())?;
+        validate_wireframe(&sheet, kind, update.wireframe)?;
 
         let plot_dirty = update.series.is_some()
             || update.stacking.is_some()
@@ -384,6 +388,7 @@ impl Workbook {
             || update.up_down_bars.is_some()
             || update.drop_lines.is_some()
             || update.bar_shape.is_some()
+            || update.wireframe.is_some()
             || update.vary_colors.is_some();
 
         let series: Vec<ChartSeriesPatch> = match &update.series {
@@ -429,6 +434,7 @@ impl Workbook {
         let up_down_bars = update.up_down_bars.or(existing.up_down_bars);
         let drop_lines = update.drop_lines.or(existing.drop_lines);
         let bar_shape = update.bar_shape.or(existing.bar_shape);
+        let wireframe = update.wireframe.or(existing.wireframe);
         let vary_colors = update.vary_colors.or(existing.vary_colors);
         let data_labels = update
             .data_labels
@@ -511,6 +517,7 @@ impl Workbook {
                 data_table: None,
                 view_3d: None,
                 bar_shape,
+                wireframe,
             };
             space.chart.plot_area.plot_area_choice1 = build_plot_charts(&synth);
             space
