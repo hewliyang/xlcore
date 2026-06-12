@@ -3,8 +3,8 @@ use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 pub use xlcore_types::{
     AlignmentPatch, BorderLinePatch, BorderLineStyle, BorderPatch, FillPatch, FontPatch,
-    FontScheme, HorizontalAlign, PatternType, ProtectionPatch, StylePatch, UnderlinePatch,
-    VertAlign, VerticalAlign,
+    FontScheme, HorizontalAlign, PatternType, ProtectionPatch, ReadingOrder, StylePatch,
+    UnderlinePatch, VertAlign, VerticalAlign,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -596,6 +596,19 @@ fn apply_alignment(xf: &mut x::CellFormat, patch: &AlignmentPatch) {
         };
         align.text_rotation = Some(normalized);
     }
+    if let Some(shrink) = patch.shrink_to_fit {
+        align.shrink_to_fit = Some(BooleanValue::from_bool(shrink));
+    }
+    if let Some(justify) = patch.justify_last_line {
+        align.justify_last_line = Some(BooleanValue::from_bool(justify));
+    }
+    if let Some(order) = patch.reading_order {
+        align.reading_order = Some(match order {
+            ReadingOrder::Context => 0,
+            ReadingOrder::LeftToRight => 1,
+            ReadingOrder::RightToLeft => 2,
+        });
+    }
 }
 
 fn apply_protection(slot: &mut Option<x::Protection>, patch: &ProtectionPatch) {
@@ -951,6 +964,9 @@ fn alignment_equal(a: &Option<x::Alignment>, b: &Option<x::Alignment>) -> bool {
                 && a.wrap_text == b.wrap_text
                 && a.indent == b.indent
                 && a.text_rotation == b.text_rotation
+                && a.shrink_to_fit == b.shrink_to_fit
+                && a.justify_last_line == b.justify_last_line
+                && a.reading_order == b.reading_order
         }
         _ => false,
     }

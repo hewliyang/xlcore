@@ -204,7 +204,13 @@ authoring, per-point data labels.
   `x:border` `<diagonal>` + the `@diagonalUp`/`@diagonalDown` attrs, deduped via the
   border signature, round-trip, and are renderer-visible (blue `\`, red thick `/`,
   green X verified e2e).
-- `AlignmentPatch`: `shrinkToFit`, `justifyLastLine`, `readingOrder`.
+- `AlignmentPatch`: `shrinkToFit`, `justifyLastLine`, `readingOrder` — **done**:
+  `AlignmentPatch.shrink_to_fit`/`justify_last_line` (bool, sdk `CT_CellAlignment`
+  1:1) + `reading_order` (`ReadingOrder` = context|leftToRight|rightToLeft, sdk
+  `@readingOrder` 0/1/2) build `x:alignment` `@shrinkToFit`/`@justifyLastLine`/
+  `@readingOrder`, deduped via the alignment signature, round-trip, and surface in
+  the layout (`CellFormat.shrink_to_fit`/`justify_last_line`/`reading_order`).
+  Round-trip-only for Excel (renderer doesn't consume them yet).
 - Named styles / `cellStyles` authoring — P2.
 
 ### Worksheet — P1

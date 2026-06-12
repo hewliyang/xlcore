@@ -460,6 +460,9 @@ fn extract_xf_with_inheritance(xf: &XCellFormat, parents: &[CellFormat]) -> Cell
         cf.wrap_text = parent.wrap_text;
         cf.indent = parent.indent;
         cf.text_rotation = parent.text_rotation;
+        cf.shrink_to_fit = parent.shrink_to_fit;
+        cf.justify_last_line = parent.justify_last_line;
+        cf.reading_order = parent.reading_order;
     }
     cf
 }
@@ -506,6 +509,9 @@ fn extract_xf(xf: &XCellFormat) -> CellFormat {
         cf.wrap_text = align.wrap_text.unwrap_or(false.into()).into();
         cf.indent = align.indent;
         cf.text_rotation = align.text_rotation.map(|v| v as i32);
+        cf.shrink_to_fit = align.shrink_to_fit.map(Into::into).unwrap_or(false);
+        cf.justify_last_line = align.justify_last_line.map(Into::into).unwrap_or(false);
+        cf.reading_order = align.reading_order;
     }
     cf
 }

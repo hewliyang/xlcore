@@ -489,6 +489,13 @@ pub struct CellFormat {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text_rotation: Option<i32>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub shrink_to_fit: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub justify_last_line: bool,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reading_order: Option<u32>,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]

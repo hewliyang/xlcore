@@ -287,6 +287,34 @@ fn set_style_applies_font_vert_align_family_scheme() {
 }
 
 #[test]
+fn set_style_applies_alignment_extras() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value("Sheet1!A1", "x").unwrap();
+
+    let patch = StylePatch {
+        alignment: Some(AlignmentPatch {
+            shrink_to_fit: Some(true),
+            justify_last_line: Some(true),
+            reading_order: Some(ReadingOrder::RightToLeft),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    workbook.set_style("Sheet1!A1", patch).unwrap();
+
+    let bytes = workbook.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let idx = reopened.get_cell("Sheet1!A1").unwrap().style_index.unwrap();
+    assert!(idx > 0);
+
+    let layout = reopened.layout(LayoutOptions::default()).unwrap();
+    let xf = &layout.styles.cell_xfs[idx as usize];
+    assert!(xf.shrink_to_fit);
+    assert!(xf.justify_last_line);
+    assert_eq!(xf.reading_order, Some(2));
+}
+
+#[test]
 fn set_style_applies_diagonal_border() {
     let mut workbook = Workbook::new().unwrap();
     workbook.set_value("Sheet1!A1", "x").unwrap();

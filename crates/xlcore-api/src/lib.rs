@@ -51,7 +51,7 @@ pub use xlcore_types::{
     PivotDataField,
     PivotFieldFilter, PivotGrid, PivotGridCell, PivotInfo, PivotPatch, PivotUpdate,
     PrintCellComments, PrintErrors, PrintOptionsInfo, PrintOptionsPatch, ProtectionPatch,
-    RadarStyle, RangeInfo,
+    RadarStyle, RangeInfo, ReadingOrder,
     SearchHit, SearchMatch, SearchMode, SearchOptions, SearchTarget, ShapeInfo, ShapeLineEnd,
     ShapePatch, SheetInfo, SheetPageSetup, SheetPageSetupPatch, SheetProtectionInfo,
     SheetProtectionPatch, SheetVisibility, SparklineAxisType, SparklineDisplayBlanks,
