@@ -12,6 +12,7 @@ export type ChartSeries = {
   bubbleSizes: Array<number>;
   bubbleSizesRef?: string;
   pointColors: Array<string>;
+  pointExplosions: Array<number>;
   dataLabels?: DataLabels;
   axisGroup?: string;
   chartType?: string;

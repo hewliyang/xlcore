@@ -69,8 +69,9 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
   const innerR = chart.type === "doughnut" ? r * holeFrac : 0;
 
   const pointColors = ser.pointColors ?? [];
+  const pointExplosions = ser.pointExplosions ?? [];
 
-  type SliceGeom = { mid: number; idx: number; v: number };
+  type SliceGeom = { mid: number; idx: number; v: number; ox: number; oy: number };
   const slices: SliceGeom[] = [];
   let start = -Math.PI / 2 + ((chart.firstSliceAngle ?? 0) * Math.PI) / 180;
   for (let i = 0; i < ser.values.length; i++) {
@@ -78,17 +79,21 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
     if (v <= 0) continue;
     const sweep = (v / total) * Math.PI * 2;
     const end = start + sweep;
+    const mid = (start + end) / 2;
+    const offset = (Math.min(400, Math.max(0, pointExplosions[i] ?? 0)) / 100) * r;
+    const ox = Math.cos(mid) * offset;
+    const oy = Math.sin(mid) * offset;
     ctx.fillStyle = pieSliceColor(i, pointColors);
     ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, r, start, end);
+    ctx.moveTo(cx + ox, cy + oy);
+    ctx.arc(cx + ox, cy + oy, r, start, end);
     ctx.closePath();
     ctx.fill();
 
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    slices.push({ mid: (start + end) / 2, idx: i, v });
+    slices.push({ mid, idx: i, v, ox, oy });
     start = end;
   }
 
@@ -111,8 +116,8 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
         pos === "outEnd" || pos === "bestFit" ? r + 12 : pos === "ctr" ? (innerR + r) / 2 : r - 12;
       const text = po?.text ?? buildLabelText(edl, chart, ser, sl.idx, sl.v, total);
       if (!text) continue;
-      const lx = cx + Math.cos(sl.mid) * labelR;
-      const ly = cy + Math.sin(sl.mid) * labelR;
+      const lx = cx + sl.ox + Math.cos(sl.mid) * labelR;
+      const ly = cy + sl.oy + Math.sin(sl.mid) * labelR;
       const align: CanvasTextAlign =
         pos === "outEnd" || pos === "bestFit"
           ? Math.cos(sl.mid) >= 0

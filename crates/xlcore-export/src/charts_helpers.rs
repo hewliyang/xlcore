@@ -312,6 +312,7 @@ pub(crate) fn common_series(
             Some(theme_accent_color(n, theme))
         });
     let point_colors = extract_point_colors(d_pts, values.len(), theme);
+    let point_explosions = extract_point_explosions(d_pts, values.len());
     let (lw, ld) = extract_line_style(sp_pr);
     ChartSeries {
         name: name.unwrap_or_default(),
@@ -324,6 +325,7 @@ pub(crate) fn common_series(
         bubble_sizes: Vec::new(),
         bubble_sizes_ref: None,
         point_colors,
+        point_explosions,
         data_labels: None,
         axis_group: None,
         chart_type: None,
@@ -350,6 +352,7 @@ pub(crate) fn common_series_scatter(
             Some(theme_accent_color(n, theme))
         });
     let point_colors = extract_point_colors(d_pts, values.len(), theme);
+    let point_explosions = extract_point_explosions(d_pts, values.len());
     let (lw, ld) = extract_line_style(sp_pr);
     ChartSeries {
         name: name.unwrap_or_default(),
@@ -362,12 +365,42 @@ pub(crate) fn common_series_scatter(
         bubble_sizes: Vec::new(),
         bubble_sizes_ref: None,
         point_colors,
+        point_explosions,
         data_labels: None,
         axis_group: None,
         chart_type: None,
         marker_symbol: None,
         line_width_emu: lw,
         line_dash: ld,
+    }
+}
+
+pub(crate) fn extract_point_explosions(d_pts: &[c::DataPoint], values_len: usize) -> Vec<f64> {
+    if d_pts.is_empty() {
+        return Vec::new();
+    }
+    let max_idx = d_pts
+        .iter()
+        .map(|dp| dp.index.val as usize)
+        .max()
+        .unwrap_or(0);
+    let len = values_len.max(max_idx + 1);
+    let mut out = vec![0.0_f64; len];
+    let mut any = false;
+    for dp in d_pts {
+        let idx = dp.index.val as usize;
+        if idx >= len {
+            continue;
+        }
+        if let Some(e) = dp.explosion.as_ref() {
+            out[idx] = e.val as f64;
+            any = true;
+        }
+    }
+    if any {
+        out
+    } else {
+        Vec::new()
     }
 }
 

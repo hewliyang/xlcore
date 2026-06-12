@@ -718,6 +718,9 @@ pub struct ChartSeries {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub point_colors: Vec<String>,
 
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub point_explosions: Vec<f64>,
+
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<DataLabels>,

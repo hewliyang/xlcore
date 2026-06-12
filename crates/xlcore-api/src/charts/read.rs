@@ -599,10 +599,12 @@ pub(super) fn read_data_points(dps: &[c::DataPoint]) -> Option<Vec<ChartDataPoin
     for dp in dps {
         let sp = dp.chart_shape_properties.as_deref();
         let fill = read_shape_fill(sp);
-        if fill.is_some() {
+        let explosion = dp.explosion.as_ref().map(|e| e.val);
+        if fill.is_some() || explosion.is_some() {
             out.push(ChartDataPoint {
                 index: dp.index.val,
                 fill,
+                explosion,
             });
         }
     }

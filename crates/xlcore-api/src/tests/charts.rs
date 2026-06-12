@@ -1674,10 +1674,12 @@ fn chart_data_point_fills_roundtrip_and_validation() {
         ChartDataPoint {
             index: 0,
             fill: Some("FF0000".to_string()),
+            explosion: None,
         },
         ChartDataPoint {
             index: 1,
             fill: Some("none".to_string()),
+            explosion: None,
         },
     ];
     let info = wb
@@ -1746,6 +1748,7 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                     data_points: Some(vec![ChartDataPoint {
                         index: 0,
                         fill: Some("nope".to_string()),
+                        explosion: None,
                     }]),
                     ..Default::default()
                 }],
@@ -1770,6 +1773,72 @@ fn chart_data_point_fills_roundtrip_and_validation() {
         )
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidChart);
+}
+
+#[test]
+fn chart_data_point_explosion_roundtrip() {
+    use xlcore_types::ChartDataPoint;
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 30.0).unwrap();
+    wb.set_value("Sheet1!B3", 50.0).unwrap();
+    wb.set_value("Sheet1!B4", 20.0).unwrap();
+
+    let points = vec![ChartDataPoint {
+        index: 0,
+        fill: None,
+        explosion: Some(25),
+    }];
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Pie,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    data_points: Some(points.clone()),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::default(),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
+                disp_blanks_as: None,
+                vary_colors: None,
+                data_labels: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        info.series[0].data_points.as_deref(),
+        Some(points.as_slice())
+    );
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("c:explosion"));
+    assert!(xml.contains("val=\"25\""));
+
+    let mut wb = Workbook::open_bytes(bytes).unwrap();
+    let read = wb.charts(Some("Sheet1")).unwrap();
+    assert_eq!(
+        read[0].series[0].data_points.as_deref(),
+        Some(points.as_slice())
+    );
 }
 
 #[test]

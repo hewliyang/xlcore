@@ -290,10 +290,11 @@ pub struct ChartLine {
 #[serde(rename_all = "camelCase")]
 /// A single data point override (`c:dPt`), distilled from ooxmlsdk `DataPoint`.
 ///
-/// Currently only per-point fill is modeled, which the xlsx-preview renderer
-/// reads for bar/column/pie/doughnut series (e.g. the waterfall-via-noFill idiom).
+/// Per-point `fill` and `explosion` are modeled. The xlsx-preview renderer
+/// reads `fill` for bar/column/pie/doughnut series (e.g. the waterfall-via-noFill
+/// idiom) and `explosion` for pie/doughnut slice offset.
 /// Intentionally not modeled (preserved on update, author via raw XML):
-/// `invertIfNegative`, per-point `marker`, `bubble3D`, `explosion`,
+/// `invertIfNegative`, per-point `marker`, `bubble3D`,
 /// non-solid `spPr` styling, `pictureOptions`, `extLst`.
 pub struct ChartDataPoint {
     /// `c:idx/@val`; 0-based data-point index within the series.
@@ -303,6 +304,11 @@ pub struct ChartDataPoint {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fill: Option<String>,
+    /// `c:explosion/@val`; pie/doughnut slice offset as a percent of radius
+    /// (0..=400). Renderer-visible for pie/doughnut charts.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub explosion: Option<u32>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

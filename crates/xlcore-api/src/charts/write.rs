@@ -945,6 +945,9 @@ pub(super) fn build_data_points(points: &Option<Vec<ChartDataPoint>>) -> Vec<c::
         .iter()
         .map(|p| c::DataPoint {
             index: Box::new(c::Index { val: p.index }),
+            explosion: p
+                .explosion
+                .map(|val| c::Explosion { val: val.min(400) }),
             chart_shape_properties: p.fill.as_deref().and_then(build_point_shape),
             ..Default::default()
         })

@@ -138,15 +138,19 @@ pub struct ChartAxisPatch {
   (0..=360, `c:firstSliceAng`, pie/doughnut) on
   `ChartPatch`/`ChartUpdate`/`ChartInfo`; build (default hole 50), read,
   in-place update, validated in Rust, and both renderer-visible (doughnut hole
-  diameter + slice rotation verified e2e). Remaining: per-point `explosion`.
+  diameter + slice rotation verified e2e). Per-point `explosion`
+  (`ChartDataPoint.explosion`, `c:explosion/@val`, 0..=400 percent of radius)
+  builds on every series kind, round-trips, survives in-place update, and is
+  renderer-visible (pie slices offset outward — North +30% / East +15% verified
+  e2e). **— done.**
 - Per-point fills (`c:dPt`): **— done**. `ChartSeriesPatch.data_points`
-  (`ChartDataPoint { index, fill }`, sdk `CT_DPt` distilled) builds `c:dPt` with
-  a solid `RRGGBB`/`AARRGGBB` fill or `fill: "none"` → `a:noFill` for the
-  waterfall idiom, on every series kind (bar/line/area/pie/doughnut/scatter/
-  bubble/radar). Round-trips (reads solidFill + noFill back), survives in-place
-  update, and is renderer-visible (column chart with 4 distinct per-point fills
-  verified e2e). Remaining dPt fields (`invertIfNegative`, per-point marker,
-  `explosion`, gradient/pattern fills) preserved-on-update, deferred.
+  (`ChartDataPoint { index, fill, explosion }`, sdk `CT_DPt` distilled) builds
+  `c:dPt` with a solid `RRGGBB`/`AARRGGBB` fill or `fill: "none"` → `a:noFill`
+  for the waterfall idiom, on every series kind (bar/line/area/pie/doughnut/
+  scatter/bubble/radar). Round-trips (reads solidFill + noFill back), survives
+  in-place update, and is renderer-visible (column chart with 4 distinct
+  per-point fills verified e2e). Remaining dPt fields (`invertIfNegative`,
+  per-point marker, gradient/pattern fills) preserved-on-update, deferred.
 - `dispBlanksAs` (span|gap|zero): **— done**. `ChartPatch.disp_blanks_as`
   (`DispBlanksAs` enum, sdk `ST_DispBlanksAs` transliterated) on
   `ChartPatch`/`ChartUpdate`/`ChartInfo`; builds `c:dispBlanksAs` (default `Gap`),

@@ -3,10 +3,11 @@
 /**
  * A single data point override (`c:dPt`), distilled from ooxmlsdk `DataPoint`.
  *
- * Currently only per-point fill is modeled, which the xlsx-preview renderer
- * reads for bar/column/pie/doughnut series (e.g. the waterfall-via-noFill idiom).
+ * Per-point `fill` and `explosion` are modeled. The xlsx-preview renderer
+ * reads `fill` for bar/column/pie/doughnut series (e.g. the waterfall-via-noFill
+ * idiom) and `explosion` for pie/doughnut slice offset.
  * Intentionally not modeled (preserved on update, author via raw XML):
- * `invertIfNegative`, per-point `marker`, `bubble3D`, `explosion`,
+ * `invertIfNegative`, per-point `marker`, `bubble3D`,
  * non-solid `spPr` styling, `pictureOptions`, `extLst`.
  */
 export type ChartDataPoint = {
@@ -19,4 +20,9 @@ export type ChartDataPoint = {
    * `"none"` for an explicit no-fill (`a:noFill`).
    */
   fill?: string;
+  /**
+   * `c:explosion/@val`; pie/doughnut slice offset as a percent of radius
+   * (0..=400). Renderer-visible for pie/doughnut charts.
+   */
+  explosion?: number;
 };
