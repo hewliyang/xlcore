@@ -192,7 +192,13 @@ authoring, per-point data labels.
   legacy indexed-64 bg), deduped via the fill signature, round-trips, and is
   renderer-visible (all 16 pattern tiles verified e2e). Gradient fills
   (`CT_GradientFill`) deferred.
-- `FontPatch`: `vertAlign` (sub/superscript), `family`, `scheme`.
+- `FontPatch`: `vertAlign` (sub/superscript), `family`, `scheme` — **done**:
+  `FontPatch.vert_align` (`VertAlign` = baseline|superscript|subscript, sdk
+  `ST_VerticalAlignRun` transliterated), `family` (`u32` 0..=5, `font/@family`),
+  `scheme` (`FontScheme` = none|major|minor, sdk `ST_FontScheme`) build
+  `font/vertAlign`+`family`+`scheme`, deduped via the font signature, round-trip,
+  and `vert_align` is renderer-visible (superscript/subscript runs raised/lowered
+  verified e2e); `family`/`scheme` round-trip for Excel.
 - `BorderPatch`: `diagonal` + `diagonalUp`/`diagonalDown` — **done**:
   `BorderPatch.diagonal` (`BorderLinePatch`), `diagonal_up`, `diagonal_down` build
   `x:border` `<diagonal>` + the `@diagonalUp`/`@diagonalDown` attrs, deduped via the

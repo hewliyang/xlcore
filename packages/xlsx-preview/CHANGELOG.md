@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `FontPatch.vertAlign`/`family`/`scheme` (`VertAlign` baseline|superscript|subscript, `FontScheme` none|major|minor, sdk-transliterated; `font/vertAlign`+`@family`+`scheme`): authored via `setStyle`, deduped, round-tripped, and `vertAlign` rendered as raised/lowered runs by the previewer.
 - `Worksheet.groupRows`/`groupColumns` (+ `ungroupRows`/`ungroupColumns`) — row/column outline grouping (`outlineLevel`, optional collapsed hide + summary `collapsed` flag, `sheetFormatPr/@outlineLevelRow`/`@outlineLevelCol`); authored, round-tripped, and rendered as gutter brackets by the previewer.
 - `FillPatch.pattern`/`foreground`/`background` (`PatternType`, sdk `ST_PatternType` transliterated, `x:patternFill`): non-solid pattern fills with fg/bg colors; authored via `setStyle`, deduped, round-tripped, and rendered by the previewer.
 - `StylePatch.protection` (`ProtectionPatch { locked, hidden }`, `x:protection` + `@applyProtection`): cell-level lock/hide for sheet protection; authored via `setStyle`, deduped, and round-tripped (write-only for Excel).

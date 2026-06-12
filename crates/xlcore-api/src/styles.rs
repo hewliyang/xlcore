@@ -3,7 +3,8 @@ use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 pub use xlcore_types::{
     AlignmentPatch, BorderLinePatch, BorderLineStyle, BorderPatch, FillPatch, FontPatch,
-    HorizontalAlign, PatternType, ProtectionPatch, StylePatch, UnderlinePatch, VerticalAlign,
+    FontScheme, HorizontalAlign, PatternType, ProtectionPatch, StylePatch, UnderlinePatch,
+    VertAlign, VerticalAlign,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -360,6 +361,43 @@ fn build_font(sheet: &x::Stylesheet, current: usize, patch: &FontPatch) -> Resul
             .retain(|c| !matches!(c, x::FontChoice::Color(_)));
         font.font_choice
             .push(x::FontChoice::Color(Box::new(parse_color(color)?)));
+    }
+    if let Some(vert) = patch.vert_align {
+        font.font_choice
+            .retain(|c| !matches!(c, x::FontChoice::VerticalTextAlignment(_)));
+        if !matches!(vert, VertAlign::Baseline) {
+            font.font_choice.push(x::FontChoice::VerticalTextAlignment(
+                Box::new(x::VerticalTextAlignment {
+                    val: match vert {
+                        VertAlign::Baseline => x::VerticalAlignmentRunValues::Baseline,
+                        VertAlign::Superscript => x::VerticalAlignmentRunValues::Superscript,
+                        VertAlign::Subscript => x::VerticalAlignmentRunValues::Subscript,
+                    },
+                }),
+            ));
+        }
+    }
+    if let Some(family) = patch.family {
+        font.font_choice
+            .retain(|c| !matches!(c, x::FontChoice::FontFamilyNumbering(_)));
+        font.font_choice.push(x::FontChoice::FontFamilyNumbering(
+            Box::new(x::FontFamilyNumbering {
+                val: family as i32,
+                ..Default::default()
+            }),
+        ));
+    }
+    if let Some(scheme) = patch.scheme {
+        font.font_choice
+            .retain(|c| !matches!(c, x::FontChoice::FontScheme(_)));
+        font.font_choice
+            .push(x::FontChoice::FontScheme(Box::new(x::FontScheme {
+                val: match scheme {
+                    FontScheme::None => x::FontSchemeValues::None,
+                    FontScheme::Major => x::FontSchemeValues::Major,
+                    FontScheme::Minor => x::FontSchemeValues::Minor,
+                },
+            })));
     }
     Ok(font)
 }
@@ -767,6 +805,8 @@ fn font_signature(f: &x::Font) -> String {
     let mut underline = String::new();
     let mut color = String::new();
     let mut scheme = String::new();
+    let mut vert = String::new();
+    let mut family = String::new();
     for c in &f.font_choice {
         match c {
             x::FontChoice::FontName(n) => name = n.val.as_str(),
@@ -777,12 +817,14 @@ fn font_signature(f: &x::Font) -> String {
             x::FontChoice::Underline(u) => underline = format!("{:?}", u.val),
             x::FontChoice::Color(c) => color = color_sig(c),
             x::FontChoice::FontScheme(s) => scheme = format!("{:?}", s.val),
+            x::FontChoice::VerticalTextAlignment(v) => vert = format!("{:?}", v.val),
+            x::FontChoice::FontFamilyNumbering(fm) => family = fm.val.to_string(),
             _ => {}
         }
     }
     format!(
-        "{}|{}|{}|{}|{}|{}|{}|{}",
-        name, size, bold, italic, strike, underline, color, scheme
+        "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+        name, size, bold, italic, strike, underline, color, scheme, vert, family
     )
 }
 

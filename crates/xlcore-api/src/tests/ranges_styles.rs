@@ -254,6 +254,39 @@ fn set_style_applies_font_fill_border_align_and_numfmt() {
 }
 
 #[test]
+fn set_style_applies_font_vert_align_family_scheme() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value("Sheet1!A1", "x").unwrap();
+
+    workbook
+        .set_style(
+            "Sheet1!A1",
+            StylePatch {
+                font: Some(FontPatch {
+                    vert_align: Some(VertAlign::Superscript),
+                    family: Some(3),
+                    scheme: Some(FontScheme::Major),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    let bytes = workbook.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let idx = reopened.get_cell("Sheet1!A1").unwrap().style_index.unwrap();
+    assert!(idx > 0);
+
+    let layout = reopened.layout(LayoutOptions::default()).unwrap();
+    let xf = &layout.styles.cell_xfs[idx as usize];
+    let font = &layout.styles.fonts[xf.font_id.unwrap() as usize];
+    assert_eq!(font.vert_align.as_deref(), Some("superscript"));
+    assert_eq!(font.family, Some(3));
+    assert_eq!(font.scheme.as_deref(), Some("major"));
+}
+
+#[test]
 fn set_style_applies_diagonal_border() {
     let mut workbook = Workbook::new().unwrap();
     workbook.set_value("Sheet1!A1", "x").unwrap();

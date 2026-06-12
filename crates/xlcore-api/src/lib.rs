@@ -44,7 +44,7 @@ pub use xlcore_types::{
     ConditionalFormatRulePatch, CrossBetween, DataBarPatch, DispBlanksAs, DataValidationErrorStyle,
     DataValidationInfo, DataValidationOperator, DataValidationPatch, DataValidationType,
     DefinedNameInfo, DefinedNamePatch, DependencyInfo, DependencyReference, FillPatch, FontPatch,
-    FreezeInfo, HeaderFooterInfo, HeaderFooterPatch, HorizontalAlign, HyperlinkInfo,
+    FontScheme, FreezeInfo, HeaderFooterInfo, HeaderFooterPatch, HorizontalAlign, HyperlinkInfo,
     HyperlinkPatch, IconSetPatch, ImageFormat, ImageInfo, ImagePatch, LayoutOptions, LineDash,
     MarkerStyle, MergeInfo, PageMarginsInfo, PageMarginsPatch, PageOrder, PageOrientation,
     PageSetupSettings, PageSetupSettingsPatch, PatternType, PivotAggregation, PivotCellRole,
@@ -58,7 +58,7 @@ pub use xlcore_types::{
     SparklineEntry, SparklineGroupInfo, SparklineGroupPatch, SparklineKind, StylePatch,
     TableColumnInfo, TableColumnPatch, TableInfo, TablePatch, TableStylePatch, TableStyleSettings,
     TableTotalsFunction, ThreadedNoteInfo, ThreadedNotePatch, TickLabelPosition, TickMark,
-    UnderlinePatch, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,
+    UnderlinePatch, VertAlign, VerticalAlign, WorkbookProperties, WorkbookPropertiesPatch,
     WorkbookProtectionInfo, WorkbookProtectionPatch,
 };
 
