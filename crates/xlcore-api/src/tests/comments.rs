@@ -4,16 +4,14 @@ use crate::*;
 fn comments_add_list_update_remove_and_round_trip() {
     let mut wb = Workbook::new().unwrap();
     wb.set_value("Sheet1!A1", "Units").unwrap();
-    wb.set_comment(
-        "Sheet1!A1",
+    wb.set_comment("Sheet1", "A1",
         CommentPatch {
             text: "Units sold this quarter".to_string(),
             author: Some("Mario".to_string()),
         },
     )
     .unwrap();
-    wb.set_comment(
-        "Sheet1!B2",
+    wb.set_comment("Sheet1", "B2",
         CommentPatch {
             text: "double check".to_string(),
             author: None,
@@ -28,8 +26,7 @@ fn comments_add_list_update_remove_and_round_trip() {
     assert_eq!(a1.text, "Units sold this quarter");
 
     let updated = wb
-        .set_comment(
-            "Sheet1!A1",
+        .set_comment("Sheet1", "A1",
             CommentPatch {
                 text: "updated".to_string(),
                 author: Some("Mario".to_string()),
@@ -39,7 +36,7 @@ fn comments_add_list_update_remove_and_round_trip() {
     assert_eq!(updated.text, "updated");
     assert_eq!(wb.comments("Sheet1").unwrap().len(), 2);
 
-    let empty = wb.set_comment("Sheet1!C3", CommentPatch::default());
+    let empty = wb.set_comment("Sheet1", "C3", CommentPatch::default());
     assert_eq!(empty.unwrap_err().code, ApiErrorCode::InvalidComment);
 
     let bytes = wb.save_bytes().unwrap();
@@ -50,7 +47,7 @@ fn comments_add_list_update_remove_and_round_trip() {
         .iter()
         .any(|c| c.reference == "A1" && c.text == "updated"));
 
-    let removed = reopened.remove_comment("Sheet1!A1:B2").unwrap();
+    let removed = reopened.remove_comment("Sheet1", "A1:B2").unwrap();
     assert_eq!(removed.len(), 2);
     assert!(reopened.comments("Sheet1").unwrap().is_empty());
 
@@ -66,8 +63,7 @@ fn threaded_notes_add_reply_list_remove_and_round_trip() {
     let mut wb = Workbook::new().unwrap();
     wb.set_value("Sheet1!A1", "Units").unwrap();
     let root = wb
-        .add_threaded_note(
-            "Sheet1!A1",
+        .add_threaded_note("Sheet1", "A1",
             ThreadedNotePatch {
                 text: "check this".to_string(),
                 author: Some("Mario".to_string()),
@@ -93,7 +89,7 @@ fn threaded_notes_add_reply_list_remove_and_round_trip() {
     assert_eq!(reply.parent_id.as_deref(), Some(root.id.as_str()));
     assert_ne!(reply.person_id, root.person_id);
 
-    let empty = wb.add_threaded_note("Sheet1!B2", ThreadedNotePatch::default());
+    let empty = wb.add_threaded_note("Sheet1", "B2", ThreadedNotePatch::default());
     assert_eq!(empty.unwrap_err().code, ApiErrorCode::InvalidThreadedNote);
 
     let list = wb.threaded_notes("Sheet1").unwrap();
@@ -144,7 +140,7 @@ fn threaded_notes_add_reply_list_remove_and_round_trip() {
         .any(|n| n.author == "Luigi" && n.parent_id.is_some()));
     assert!(reopened.comments("Sheet1").unwrap().is_empty());
 
-    let removed = reopened.remove_threaded_thread("Sheet1!A1").unwrap();
+    let removed = reopened.remove_threaded_thread("Sheet1", "A1").unwrap();
     assert_eq!(removed.len(), 2);
     assert!(reopened.threaded_notes("Sheet1").unwrap().is_empty());
 
@@ -171,16 +167,14 @@ fn threaded_note_shadow_coexists_with_classic_comment() {
     use crate::ThreadedNotePatch;
 
     let mut wb = Workbook::new().unwrap();
-    wb.set_comment(
-        "Sheet1!B2",
+    wb.set_comment("Sheet1", "B2",
         CommentPatch {
             text: "old school".into(),
             author: Some("Peach".into()),
         },
     )
     .unwrap();
-    wb.add_threaded_note(
-        "Sheet1!A1",
+    wb.add_threaded_note("Sheet1", "A1",
         ThreadedNotePatch {
             text: "modern".into(),
             author: Some("Mario".into()),
@@ -201,8 +195,7 @@ fn threaded_note_shadow_coexists_with_classic_comment() {
     assert_eq!(reopened.threaded_notes("Sheet1").unwrap().len(), 1);
 
     reopened
-        .set_comment(
-            "Sheet1!B2",
+        .set_comment("Sheet1", "B2",
             CommentPatch {
                 text: "old school v2".into(),
                 author: Some("Peach".into()),
@@ -214,7 +207,7 @@ fn threaded_note_shadow_coexists_with_classic_comment() {
     assert_eq!(classics.len(), 1);
     assert_eq!(classics[0].text, "old school v2");
 
-    reopened.remove_comment("Sheet1!B2").unwrap();
+    reopened.remove_comment("Sheet1", "B2").unwrap();
     assert!(reopened.comments("Sheet1").unwrap().is_empty());
     assert_eq!(reopened.threaded_notes("Sheet1").unwrap().len(), 1);
 }
@@ -222,8 +215,7 @@ fn threaded_note_shadow_coexists_with_classic_comment() {
 #[test]
 fn comment_emits_vml_legacy_drawing_indicator() {
     let mut wb = Workbook::new().unwrap();
-    wb.set_comment(
-        "Sheet1!B3",
+    wb.set_comment("Sheet1", "B3",
         CommentPatch {
             text: "note".into(),
             author: Some("Mario".into()),

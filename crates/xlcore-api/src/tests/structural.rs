@@ -7,7 +7,7 @@ fn insert_rows_shifts_cells_formulas_and_merges() {
     workbook.set_value("Sheet1!A2", 1.0).unwrap();
     workbook.set_value("Sheet1!A3", 2.0).unwrap();
     workbook.set_formula("Sheet1!B3", "=SUM(A2:A3)").unwrap();
-    workbook.add_merge("Sheet1!C2:D3").unwrap();
+    workbook.add_merge("Sheet1", "C2:D3").unwrap();
 
     workbook.insert_rows("Sheet1", 2, 2).unwrap();
 

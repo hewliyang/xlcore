@@ -6,7 +6,7 @@ use xlcore_types::{ApiError, ApiErrorCode, HyperlinkInfo, HyperlinkPatch};
 use xlcore_types::ApiCellValue as CellValue;
 
 use crate::errors::sdk_err_to_api;
-use crate::refs::{parse_range_a1, ranges_overlap, ResolvedRangeRef};
+use crate::refs::{parse_range_a1, qualify_ref, ranges_overlap, ResolvedRangeRef};
 use crate::xml::{ensure_cell, mark_formulas_stale, set_cell_value};
 use crate::{Result, Workbook};
 
@@ -57,10 +57,12 @@ impl Workbook {
 
     pub fn set_hyperlink(
         &mut self,
+        sheet: impl AsRef<str>,
         reference: impl AsRef<str>,
         patch: HyperlinkPatch,
     ) -> Result<HyperlinkInfo> {
-        let reference = reference.as_ref();
+        let reference = qualify_ref(sheet.as_ref(), reference.as_ref())?;
+        let reference = reference.as_str();
         let range_ref = self.resolve_range_ref(reference)?;
         validate_patch(&patch, reference)?;
 
@@ -134,9 +136,13 @@ impl Workbook {
         Ok(hyperlink_info(&range_ref, &patch))
     }
 
-    pub fn remove_hyperlink(&mut self, reference: impl AsRef<str>) -> Result<Vec<HyperlinkInfo>> {
-        let reference = reference.as_ref();
-        let range_ref = self.resolve_range_ref(reference)?;
+    pub fn remove_hyperlink(
+        &mut self,
+        sheet: impl AsRef<str>,
+        reference: impl AsRef<str>,
+    ) -> Result<Vec<HyperlinkInfo>> {
+        let reference = qualify_ref(sheet.as_ref(), reference.as_ref())?;
+        let range_ref = self.resolve_range_ref(&reference)?;
         let sheet = range_ref.sheet.clone();
         let ws_part = self.worksheet_part_for_sheet(&sheet)?;
         let rels: Vec<(String, String)> = ws_part

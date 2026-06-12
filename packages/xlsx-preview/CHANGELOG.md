@@ -12,6 +12,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Sheet-qualification of unqualified refs moved into the Rust facade: collection/`Range` methods (`merges`, `hyperlinks`, `comments`, `threadedNotes`, `dataValidations`, `conditionalFormats`, `autoFilter`, `tables`) take `sheet` + a possibly-unqualified `ref` and qualify internally (`qualify_ref`); the TS `qref` helper is deleted so bindings stay marshaling-only.
 - `autoFilter` criteria booleans (`blank`, `top10.top`, `top10.percent`, `custom.logicalAnd`) are now optional in the DTO and default in the Rust facade (`top` → `true`, the rest → `false`); the TS `setColumnValues/Top10/Custom` helpers stop applying their own defaults and `setAutoFilterColumn` returns the resolved criteria. The redundant `setColumn` `criteria.kind` guard is removed (serde + Rust `validate_criteria` already reject bad/unsupported kinds).
 - `Range.setValues`/`setFormulas` matrix-shape validation now lives only in the Rust facade (`validate_matrix_shape`); the duplicate TS `validateMatrixShape`/`rangeDims` (which had divergent error messages) are removed, so shape errors come from a single source.
 - `Workbook.recalculate({ errorsOnly })` filtering moved into the Rust/wasm facade (`recalculate(errors_only)`); the TS no longer post-filters the report. `search` likewise forwards options verbatim now that its defaults live in the serde `Default` impls.

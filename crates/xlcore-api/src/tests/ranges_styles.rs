@@ -285,16 +285,16 @@ fn set_style_dedupes_across_cells_and_invalid_color_errors() {
 #[test]
 fn merges_add_list_remove_and_overlap_diagnosed() {
     let mut workbook = Workbook::new().unwrap();
-    let info = workbook.add_merge("Sheet1!A1:B2").unwrap();
+    let info = workbook.add_merge("Sheet1", "A1:B2").unwrap();
     assert_eq!(info.reference, "A1:B2");
     assert_eq!(info.rows, 2);
     assert_eq!(info.columns, 2);
 
-    workbook.add_merge("Sheet1!C1:D2").unwrap();
+    workbook.add_merge("Sheet1", "C1:D2").unwrap();
     let list = workbook.merges("Sheet1").unwrap();
     assert_eq!(list.len(), 2);
 
-    let err = workbook.add_merge("Sheet1!B2:C3").unwrap_err();
+    let err = workbook.add_merge("Sheet1", "B2:C3").unwrap_err();
     assert_eq!(err.code, ApiErrorCode::MergeOverlap);
     assert_eq!(err.sheet.as_deref(), Some("Sheet1"));
 
@@ -309,12 +309,12 @@ fn merges_add_list_remove_and_overlap_diagnosed() {
         ["A1:B2", "C1:D2"]
     );
 
-    let removed = reopened.remove_merge("Sheet1!B1").unwrap().unwrap();
+    let removed = reopened.remove_merge("Sheet1", "B1").unwrap().unwrap();
     assert_eq!(removed.reference, "A1:B2");
-    let removed_exact = reopened.remove_merge("Sheet1!C1:D2").unwrap().unwrap();
+    let removed_exact = reopened.remove_merge("Sheet1", "C1:D2").unwrap().unwrap();
     assert_eq!(removed_exact.reference, "C1:D2");
     assert!(reopened.merges("Sheet1").unwrap().is_empty());
-    assert!(reopened.remove_merge("Sheet1!A1").unwrap().is_none());
+    assert!(reopened.remove_merge("Sheet1", "A1").unwrap().is_none());
 }
 
 #[test]

@@ -3,8 +3,8 @@ use xlcore_types::{ApiError, ApiErrorCode, MergeInfo};
 
 use crate::errors::sdk_err_to_api;
 use crate::refs::{
-    parse_cell_address, parse_range_a1, parse_range_reference, quote_sheet_name, ranges_overlap,
-    split_sheet_reference, ResolvedRangeRef,
+    parse_cell_address, parse_range_a1, parse_range_reference, qualify_ref, quote_sheet_name,
+    ranges_overlap, split_sheet_reference, ResolvedRangeRef,
 };
 use crate::{Result, Workbook};
 
@@ -26,8 +26,13 @@ impl Workbook {
         Ok(out)
     }
 
-    pub fn add_merge(&mut self, reference: impl AsRef<str>) -> Result<MergeInfo> {
-        let range_ref = self.resolve_range_ref(reference.as_ref())?;
+    pub fn add_merge(
+        &mut self,
+        sheet: impl AsRef<str>,
+        reference: impl AsRef<str>,
+    ) -> Result<MergeInfo> {
+        let reference = qualify_ref(sheet.as_ref(), reference.as_ref())?;
+        let range_ref = self.resolve_range_ref(&reference)?;
         let ws_part = self.worksheet_part_for_sheet(&range_ref.sheet)?;
         let ws = ws_part
             .root_element_mut(&mut self.doc)
@@ -66,8 +71,13 @@ impl Workbook {
         Ok(merge_info(&range_ref.sheet, &range_ref))
     }
 
-    pub fn remove_merge(&mut self, reference: impl AsRef<str>) -> Result<Option<MergeInfo>> {
-        let reference = reference.as_ref();
+    pub fn remove_merge(
+        &mut self,
+        sheet: impl AsRef<str>,
+        reference: impl AsRef<str>,
+    ) -> Result<Option<MergeInfo>> {
+        let reference = qualify_ref(sheet.as_ref(), reference.as_ref())?;
+        let reference = reference.as_str();
         let (sheet, body) = match split_sheet_reference(reference)? {
             (Some(s), body) => (s, body.to_string()),
             (None, body) => (self.default_sheet_name()?, body.to_string()),

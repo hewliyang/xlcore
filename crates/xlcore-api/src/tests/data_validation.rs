@@ -6,8 +6,7 @@ fn data_validation_add_list_remove_and_round_trip() {
     wb.set_value("Sheet1!A1", "pick").unwrap();
 
     let info = wb
-        .set_data_validation(
-            "Sheet1!A2:A10",
+        .set_data_validation("Sheet1", "A2:A10",
             DataValidationPatch {
                 rule_type: DataValidationType::List,
                 formula1: Some("\"red,green,blue\"".to_string()),
@@ -20,8 +19,7 @@ fn data_validation_add_list_remove_and_round_trip() {
     assert_eq!(info.reference, "A2:A10");
     assert_eq!(info.rule_type, DataValidationType::List);
 
-    wb.set_data_validation(
-        "Sheet1!B1:B5",
+    wb.set_data_validation("Sheet1", "B1:B5",
         DataValidationPatch {
             rule_type: DataValidationType::Whole,
             operator: Some(DataValidationOperator::Between),
@@ -39,8 +37,7 @@ fn data_validation_add_list_remove_and_round_trip() {
     assert_eq!(list.len(), 2);
 
     let missing_f1 = wb
-        .set_data_validation(
-            "Sheet1!C1",
+        .set_data_validation("Sheet1", "C1",
             DataValidationPatch {
                 rule_type: DataValidationType::List,
                 ..Default::default()
@@ -50,8 +47,7 @@ fn data_validation_add_list_remove_and_round_trip() {
     assert_eq!(missing_f1.code, ApiErrorCode::InvalidDataValidation);
 
     let missing_op = wb
-        .set_data_validation(
-            "Sheet1!C1",
+        .set_data_validation("Sheet1", "C1",
             DataValidationPatch {
                 rule_type: DataValidationType::Whole,
                 formula1: Some("1".to_string()),
@@ -62,8 +58,7 @@ fn data_validation_add_list_remove_and_round_trip() {
     assert_eq!(missing_op.code, ApiErrorCode::InvalidDataValidation);
 
     let missing_f2 = wb
-        .set_data_validation(
-            "Sheet1!C1",
+        .set_data_validation("Sheet1", "C1",
             DataValidationPatch {
                 rule_type: DataValidationType::Whole,
                 operator: Some(DataValidationOperator::Between),
@@ -98,8 +93,7 @@ fn data_validation_add_list_remove_and_round_trip() {
     assert_eq!(whole_rule.error_style, Some(DataValidationErrorStyle::Stop));
 
     let replaced = reopened
-        .set_data_validation(
-            "Sheet1!A2:A5",
+        .set_data_validation("Sheet1", "A2:A5",
             DataValidationPatch {
                 rule_type: DataValidationType::List,
                 formula1: Some("\"alpha,beta\"".to_string()),
@@ -111,12 +105,12 @@ fn data_validation_add_list_remove_and_round_trip() {
     let after_replace = reopened.data_validations("Sheet1").unwrap();
     assert_eq!(after_replace.len(), 2);
 
-    let removed = reopened.remove_data_validation("Sheet1!B1:B100").unwrap();
+    let removed = reopened.remove_data_validation("Sheet1", "B1:B100").unwrap();
     assert_eq!(removed.len(), 1);
     assert_eq!(removed[0].rule_type, DataValidationType::Whole);
     assert_eq!(reopened.data_validations("Sheet1").unwrap().len(), 1);
 
-    let removed_all = reopened.remove_data_validation("Sheet1!A1:Z1000").unwrap();
+    let removed_all = reopened.remove_data_validation("Sheet1", "A1:Z1000").unwrap();
     assert_eq!(removed_all.len(), 1);
     assert!(reopened.data_validations("Sheet1").unwrap().is_empty());
 

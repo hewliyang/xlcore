@@ -242,7 +242,11 @@ Today no — semantics have leaked into the TS frontend:
   `validate_criteria` reject bad/unsupported kinds)*
 - ~~`anchorA1` string→`ChartAnchor` parsing (no Rust counterpart at all)~~ *(done:
   `AnchorSpec` DTO + `resolve_anchor` in `xlcore-api`; patches accept A1 strings)*
-- `qref` sheet-qualification of unqualified refs
+- ~~`qref` sheet-qualification of unqualified refs~~ *(done: collection facades take
+  `sheet: &str` + a possibly-unqualified `ref`; `qualify_ref` in `xlcore-api` prepends
+  the sheet when absent. The TS `qref` helper is deleted; collections/`Range` forward
+  `sheet` + raw ref. Workbook-level `allTables.set` passes an empty sheet to keep the
+  default-sheet fallback for qualified-or-default refs.)*
 - ~~`recalculate({errorsOnly})` filtering, `search` defaults~~ *(done: `recalculate`
   takes an `errors_only` flag in Rust/wasm and filters there; `search` defaults
   already lived in serde `Default` impls, so the TS now forwards options verbatim)*

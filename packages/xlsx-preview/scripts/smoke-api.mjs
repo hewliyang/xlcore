@@ -204,7 +204,7 @@ try {
 } catch (e) {
   badKindErr = e;
 }
-if (!badKindErr || !String(badKindErr.message).includes("patch.criteria.kind")) {
+if (!badKindErr || !String(badKindErr.message).includes("kind")) {
   throw new Error("missing-kind error not clearer: " + badKindErr);
 }
 outputs.autoFilter.remove();

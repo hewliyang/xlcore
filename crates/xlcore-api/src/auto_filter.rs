@@ -5,7 +5,7 @@ use xlcore_types::{
 };
 
 use crate::errors::sdk_err_to_api;
-use crate::refs::parse_range_a1;
+use crate::refs::{parse_range_a1, qualify_ref};
 use crate::{Result, Workbook};
 
 impl Workbook {
@@ -18,8 +18,13 @@ impl Workbook {
         Ok(read_auto_filter(&sheet, ws.auto_filter.as_deref()))
     }
 
-    pub fn set_auto_filter(&mut self, reference: impl AsRef<str>) -> Result<AutoFilterInfo> {
-        let range_ref = self.resolve_range_ref(reference.as_ref())?;
+    pub fn set_auto_filter(
+        &mut self,
+        sheet: impl AsRef<str>,
+        reference: impl AsRef<str>,
+    ) -> Result<AutoFilterInfo> {
+        let reference = qualify_ref(sheet.as_ref(), reference.as_ref())?;
+        let range_ref = self.resolve_range_ref(&reference)?;
         let new_ref = range_ref.range_reference();
         let ws_part = self.worksheet_part_for_sheet(&range_ref.sheet)?;
         let ws = ws_part

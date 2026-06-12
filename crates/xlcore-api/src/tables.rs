@@ -8,7 +8,7 @@ use xlcore_types::{
 };
 
 use crate::errors::sdk_err_to_api;
-use crate::refs::{parse_range_a1, ranges_overlap};
+use crate::refs::{parse_range_a1, qualify_ref, ranges_overlap};
 use crate::xml::{ensure_cell, mark_formulas_stale};
 use crate::{Result, Workbook};
 
@@ -45,7 +45,17 @@ impl Workbook {
         Ok(out)
     }
 
-    pub fn set_table(&mut self, patch: TablePatch) -> Result<TableInfo> {
+    pub fn set_table(
+        &mut self,
+        sheet: impl AsRef<str>,
+        mut patch: TablePatch,
+    ) -> Result<TableInfo> {
+        let sheet = sheet.as_ref();
+        if !sheet.is_empty() {
+            if let Some(reference) = patch.reference.as_deref() {
+                patch.reference = Some(qualify_ref(sheet, reference)?);
+            }
+        }
         validate_table_name(&patch.name)?;
         if let Some(dn) = patch.display_name.as_deref() {
             validate_table_name(dn)?;

@@ -6,7 +6,7 @@ use xlcore_types::{
 };
 
 use crate::errors::sdk_err_to_api;
-use crate::refs::{parse_range_a1, ranges_overlap};
+use crate::refs::{parse_range_a1, qualify_ref, ranges_overlap};
 use crate::{Result, Workbook};
 
 impl Workbook {
@@ -29,10 +29,12 @@ impl Workbook {
 
     pub fn set_data_validation(
         &mut self,
+        sheet: impl AsRef<str>,
         reference: impl AsRef<str>,
         patch: DataValidationPatch,
     ) -> Result<DataValidationInfo> {
-        let reference = reference.as_ref();
+        let reference = qualify_ref(sheet.as_ref(), reference.as_ref())?;
+        let reference = reference.as_str();
         let range_ref = self.resolve_range_ref(reference)?;
         validate_patch(&patch, reference)?;
 
@@ -88,10 +90,11 @@ impl Workbook {
 
     pub fn remove_data_validation(
         &mut self,
+        sheet: impl AsRef<str>,
         reference: impl AsRef<str>,
     ) -> Result<Vec<DataValidationInfo>> {
-        let reference = reference.as_ref();
-        let range_ref = self.resolve_range_ref(reference)?;
+        let reference = qualify_ref(sheet.as_ref(), reference.as_ref())?;
+        let range_ref = self.resolve_range_ref(&reference)?;
         let sheet = range_ref.sheet.clone();
         let target = (
             range_ref.start_row,

@@ -18,15 +18,18 @@ export class WorkbookHandle {
         wasm.__wbg_workbookhandle_free(ptr, 0);
     }
     /**
+     * @param {string} sheet
      * @param {string} reference
      * @returns {any}
      */
-    addMerge(reference) {
+    addMerge(sheet, reference) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_addMerge(retptr, this.__wbg_ptr, ptr0, len0);
+            const ptr1 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_addMerge(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -39,16 +42,19 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {string} reference
      * @param {any} patch
      * @returns {any}
      */
-    addThreadedNote(reference, patch) {
+    addThreadedNote(sheet, reference, patch) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_addThreadedNote(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(patch));
+            const ptr1 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_addThreadedNote(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, addHeapObject(patch));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -142,15 +148,18 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {string} reference
      * @returns {any}
      */
-    clearConditionalFormats(reference) {
+    clearConditionalFormats(sheet, reference) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_clearConditionalFormats(retptr, this.__wbg_ptr, ptr0, len0);
+            const ptr1 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_clearConditionalFormats(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -933,15 +942,18 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {string} reference
      * @returns {any}
      */
-    removeComment(reference) {
+    removeComment(sheet, reference) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_removeComment(retptr, this.__wbg_ptr, ptr0, len0);
+            const ptr1 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_removeComment(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -954,15 +966,18 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {string} reference
      * @returns {any}
      */
-    removeDataValidation(reference) {
+    removeDataValidation(sheet, reference) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_removeDataValidation(retptr, this.__wbg_ptr, ptr0, len0);
+            const ptr1 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_removeDataValidation(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -999,15 +1014,18 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {string} reference
      * @returns {any}
      */
-    removeHyperlink(reference) {
+    removeHyperlink(sheet, reference) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_removeHyperlink(retptr, this.__wbg_ptr, ptr0, len0);
+            const ptr1 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_removeHyperlink(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1044,15 +1062,18 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {string} reference
      * @returns {any}
      */
-    removeMerge(reference) {
+    removeMerge(sheet, reference) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_removeMerge(retptr, this.__wbg_ptr, ptr0, len0);
+            const ptr1 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_removeMerge(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1200,15 +1221,18 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {string} reference
      * @returns {any}
      */
-    removeThreadedThread(reference) {
+    removeThreadedThread(sheet, reference) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_removeThreadedThread(retptr, this.__wbg_ptr, ptr0, len0);
+            const ptr1 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_removeThreadedThread(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1346,15 +1370,18 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {string} reference
      * @returns {any}
      */
-    setAutoFilter(reference) {
+    setAutoFilter(sheet, reference) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_setAutoFilter(retptr, this.__wbg_ptr, ptr0, len0);
+            const ptr1 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_setAutoFilter(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1467,16 +1494,19 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {string} reference
      * @param {any} patch
      * @returns {any}
      */
-    setComment(reference, patch) {
+    setComment(sheet, reference, patch) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_setComment(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(patch));
+            const ptr1 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_setComment(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, addHeapObject(patch));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1489,16 +1519,19 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {string} reference
      * @param {any} patch
      * @returns {any}
      */
-    setConditionalFormat(reference, patch) {
+    setConditionalFormat(sheet, reference, patch) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_setConditionalFormat(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(patch));
+            const ptr1 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_setConditionalFormat(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, addHeapObject(patch));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1511,16 +1544,19 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {string} reference
      * @param {any} patch
      * @returns {any}
      */
-    setDataValidation(reference, patch) {
+    setDataValidation(sheet, reference, patch) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_setDataValidation(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(patch));
+            const ptr1 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_setDataValidation(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, addHeapObject(patch));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1599,16 +1635,19 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {string} reference
      * @param {any} patch
      * @returns {any}
      */
-    setHyperlink(reference, patch) {
+    setHyperlink(sheet, reference, patch) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            const ptr0 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_setHyperlink(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(patch));
+            const ptr1 = passStringToWasm0(reference, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len1 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_setHyperlink(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, addHeapObject(patch));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
@@ -1912,13 +1951,16 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {string} sheet
      * @param {any} patch
      * @returns {any}
      */
-    setTable(patch) {
+    setTable(sheet, patch) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.workbookhandle_setTable(retptr, this.__wbg_ptr, addHeapObject(patch));
+            const ptr0 = passStringToWasm0(sheet, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+            const len0 = WASM_VECTOR_LEN;
+            wasm.workbookhandle_setTable(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(patch));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);

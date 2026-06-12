@@ -39,7 +39,7 @@ import type {
   WorkbookProtectionInfo,
   WorkbookProtectionPatch,
 } from "./api-schema/index.js";
-import { type SheetRef, qualify } from "./api-refs.js";
+import type { SheetRef } from "./api-refs.js";
 
 abstract class SheetScopedCollection {
   constructor(
@@ -49,9 +49,6 @@ abstract class SheetScopedCollection {
   protected get sheet(): string {
     return this.sheetRef.current;
   }
-  protected qref(ref: string): string {
-    return qualify(this.sheet, ref);
-  }
 }
 
 export class MergeCollection extends SheetScopedCollection {
@@ -59,10 +56,10 @@ export class MergeCollection extends SheetScopedCollection {
     return this.handle.merges(this.sheet) as MergeInfo[];
   }
   add(ref: string): MergeInfo {
-    return this.handle.addMerge(this.qref(ref)) as MergeInfo;
+    return this.handle.addMerge(this.sheet, ref) as MergeInfo;
   }
   remove(ref: string): MergeInfo | null {
-    return (this.handle.removeMerge(this.qref(ref)) as MergeInfo | null) ?? null;
+    return (this.handle.removeMerge(this.sheet, ref) as MergeInfo | null) ?? null;
   }
 }
 
@@ -71,10 +68,10 @@ export class HyperlinkCollection extends SheetScopedCollection {
     return this.handle.hyperlinks(this.sheet) as HyperlinkInfo[];
   }
   set(ref: string, patch: HyperlinkPatch): HyperlinkInfo {
-    return this.handle.setHyperlink(this.qref(ref), patch) as HyperlinkInfo;
+    return this.handle.setHyperlink(this.sheet, ref, patch) as HyperlinkInfo;
   }
   remove(ref: string): HyperlinkInfo[] {
-    return this.handle.removeHyperlink(this.qref(ref)) as HyperlinkInfo[];
+    return this.handle.removeHyperlink(this.sheet, ref) as HyperlinkInfo[];
   }
 }
 
@@ -83,10 +80,10 @@ export class CommentCollection extends SheetScopedCollection {
     return this.handle.comments(this.sheet) as CommentInfo[];
   }
   set(ref: string, patch: CommentPatch): CommentInfo {
-    return this.handle.setComment(this.qref(ref), patch) as CommentInfo;
+    return this.handle.setComment(this.sheet, ref, patch) as CommentInfo;
   }
   remove(ref: string): CommentInfo[] {
-    return this.handle.removeComment(this.qref(ref)) as CommentInfo[];
+    return this.handle.removeComment(this.sheet, ref) as CommentInfo[];
   }
 }
 
@@ -95,13 +92,13 @@ export class ThreadedNotesCollection extends SheetScopedCollection {
     return this.handle.threadedNotes(this.sheet) as ThreadedNoteInfo[];
   }
   add(ref: string, patch: ThreadedNotePatch): ThreadedNoteInfo {
-    return this.handle.addThreadedNote(this.qref(ref), patch) as ThreadedNoteInfo;
+    return this.handle.addThreadedNote(this.sheet, ref, patch) as ThreadedNoteInfo;
   }
   reply(parentId: string, patch: ThreadedNotePatch): ThreadedNoteInfo {
     return this.handle.replyThreadedNote(parentId, patch) as ThreadedNoteInfo;
   }
   removeThread(ref: string): ThreadedNoteInfo[] {
-    return this.handle.removeThreadedThread(this.qref(ref)) as ThreadedNoteInfo[];
+    return this.handle.removeThreadedThread(this.sheet, ref) as ThreadedNoteInfo[];
   }
 }
 
@@ -110,10 +107,10 @@ export class DataValidationCollection extends SheetScopedCollection {
     return this.handle.dataValidations(this.sheet) as DataValidationInfo[];
   }
   set(ref: string, patch: DataValidationPatch): DataValidationInfo {
-    return this.handle.setDataValidation(this.qref(ref), patch) as DataValidationInfo;
+    return this.handle.setDataValidation(this.sheet, ref, patch) as DataValidationInfo;
   }
   remove(ref: string): DataValidationInfo[] {
-    return this.handle.removeDataValidation(this.qref(ref)) as DataValidationInfo[];
+    return this.handle.removeDataValidation(this.sheet, ref) as DataValidationInfo[];
   }
 }
 
@@ -122,10 +119,10 @@ export class ConditionalFormatCollection extends SheetScopedCollection {
     return this.handle.conditionalFormats(this.sheet) as ConditionalFormatRuleInfo[];
   }
   set(ref: string, patch: ConditionalFormatRulePatch): ConditionalFormatRuleInfo {
-    return this.handle.setConditionalFormat(this.qref(ref), patch) as ConditionalFormatRuleInfo;
+    return this.handle.setConditionalFormat(this.sheet, ref, patch) as ConditionalFormatRuleInfo;
   }
   clear(ref: string): ConditionalFormatRuleInfo[] {
-    return this.handle.clearConditionalFormats(this.qref(ref)) as ConditionalFormatRuleInfo[];
+    return this.handle.clearConditionalFormats(this.sheet, ref) as ConditionalFormatRuleInfo[];
   }
 }
 
@@ -134,7 +131,7 @@ export class AutoFilterApi extends SheetScopedCollection {
     return (this.handle.autoFilter(this.sheet) as AutoFilterInfo | null) ?? null;
   }
   set(ref: string): AutoFilterInfo {
-    return this.handle.setAutoFilter(this.qref(ref)) as AutoFilterInfo;
+    return this.handle.setAutoFilter(this.sheet, ref) as AutoFilterInfo;
   }
   remove(): AutoFilterInfo | null {
     return (this.handle.removeAutoFilter(this.sheet) as AutoFilterInfo | null) ?? null;
@@ -193,10 +190,7 @@ export class TableCollection extends SheetScopedCollection {
     return this.handle.tables(this.sheet) as TableInfo[];
   }
   set(patch: TablePatch): TableInfo {
-    const qualified: TablePatch = patch.reference
-      ? { ...patch, reference: this.qref(patch.reference) }
-      : patch;
-    return this.handle.setTable(qualified) as TableInfo;
+    return this.handle.setTable(this.sheet, patch) as TableInfo;
   }
   remove(name: string): TableInfo | null {
     return (this.handle.removeTable(name) as TableInfo | null) ?? null;
@@ -298,7 +292,7 @@ export class WorkbookTables {
     return this.handle.tables(null) as TableInfo[];
   }
   set(patch: TablePatch): TableInfo {
-    return this.handle.setTable(patch) as TableInfo;
+    return this.handle.setTable("", patch) as TableInfo;
   }
   remove(name: string): TableInfo | null {
     return (this.handle.removeTable(name) as TableInfo | null) ?? null;

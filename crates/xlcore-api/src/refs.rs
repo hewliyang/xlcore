@@ -267,6 +267,16 @@ pub(crate) fn ranges_overlap(
     ar1 <= br2 && br1 <= ar2 && ac1 <= bc2 && bc1 <= ac2
 }
 
+pub(crate) fn qualify_ref(sheet: &str, reference: &str) -> Result<String> {
+    let reference = reference.trim();
+    let (existing, _) = split_sheet_reference(reference)?;
+    if existing.is_some() {
+        Ok(reference.to_string())
+    } else {
+        Ok(format!("{}!{}", quote_sheet_name(sheet), reference))
+    }
+}
+
 pub(crate) fn quote_sheet_name(sheet: &str) -> String {
     if sheet
         .chars()

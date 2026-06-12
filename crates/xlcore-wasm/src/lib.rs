@@ -330,19 +330,19 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = addMerge)]
-    pub fn add_merge(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+    pub fn add_merge(&mut self, sheet: &str, reference: &str) -> Result<JsValue, JsValue> {
         let info = self
             .workbook_mut()?
-            .add_merge(reference)
+            .add_merge(sheet, reference)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
 
     #[wasm_bindgen(js_name = removeMerge)]
-    pub fn remove_merge(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+    pub fn remove_merge(&mut self, sheet: &str, reference: &str) -> Result<JsValue, JsValue> {
         let info = self
             .workbook_mut()?
-            .remove_merge(reference)
+            .remove_merge(sheet, reference)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
@@ -356,7 +356,12 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = setHyperlink)]
-    pub fn set_hyperlink(&mut self, reference: &str, patch: JsValue) -> Result<JsValue, JsValue> {
+    pub fn set_hyperlink(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+        patch: JsValue,
+    ) -> Result<JsValue, JsValue> {
         let patch: xlcore_api::HyperlinkPatch = if patch.is_null() || patch.is_undefined() {
             xlcore_api::HyperlinkPatch::default()
         } else {
@@ -364,16 +369,16 @@ impl WorkbookHandle {
         };
         let info = self
             .workbook_mut()?
-            .set_hyperlink(reference, patch)
+            .set_hyperlink(sheet, reference, patch)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
 
     #[wasm_bindgen(js_name = removeHyperlink)]
-    pub fn remove_hyperlink(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+    pub fn remove_hyperlink(&mut self, sheet: &str, reference: &str) -> Result<JsValue, JsValue> {
         let removed = self
             .workbook_mut()?
-            .remove_hyperlink(reference)
+            .remove_hyperlink(sheet, reference)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
@@ -388,10 +393,10 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = setAutoFilter)]
-    pub fn set_auto_filter(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+    pub fn set_auto_filter(&mut self, sheet: &str, reference: &str) -> Result<JsValue, JsValue> {
         let info = self
             .workbook_mut()?
-            .set_auto_filter(reference)
+            .set_auto_filter(sheet, reference)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
@@ -442,21 +447,26 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = setComment)]
-    pub fn set_comment(&mut self, reference: &str, patch: JsValue) -> Result<JsValue, JsValue> {
+    pub fn set_comment(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+        patch: JsValue,
+    ) -> Result<JsValue, JsValue> {
         let patch: xlcore_api::CommentPatch =
             serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
         let info = self
             .workbook_mut()?
-            .set_comment(reference, patch)
+            .set_comment(sheet, reference, patch)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
 
     #[wasm_bindgen(js_name = removeComment)]
-    pub fn remove_comment(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+    pub fn remove_comment(&mut self, sheet: &str, reference: &str) -> Result<JsValue, JsValue> {
         let removed = self
             .workbook_mut()?
-            .remove_comment(reference)
+            .remove_comment(sheet, reference)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
@@ -473,6 +483,7 @@ impl WorkbookHandle {
     #[wasm_bindgen(js_name = addThreadedNote)]
     pub fn add_threaded_note(
         &mut self,
+        sheet: &str,
         reference: &str,
         patch: JsValue,
     ) -> Result<JsValue, JsValue> {
@@ -480,7 +491,7 @@ impl WorkbookHandle {
             serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
         let info = self
             .workbook_mut()?
-            .add_threaded_note(reference, patch)
+            .add_threaded_note(sheet, reference, patch)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
@@ -501,10 +512,14 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = removeThreadedThread)]
-    pub fn remove_threaded_thread(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+    pub fn remove_threaded_thread(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+    ) -> Result<JsValue, JsValue> {
         let removed = self
             .workbook_mut()?
-            .remove_threaded_thread(reference)
+            .remove_threaded_thread(sheet, reference)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
@@ -521,6 +536,7 @@ impl WorkbookHandle {
     #[wasm_bindgen(js_name = setDataValidation)]
     pub fn set_data_validation(
         &mut self,
+        sheet: &str,
         reference: &str,
         patch: JsValue,
     ) -> Result<JsValue, JsValue> {
@@ -528,16 +544,20 @@ impl WorkbookHandle {
             serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
         let info = self
             .workbook_mut()?
-            .set_data_validation(reference, patch)
+            .set_data_validation(sheet, reference, patch)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
 
     #[wasm_bindgen(js_name = removeDataValidation)]
-    pub fn remove_data_validation(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+    pub fn remove_data_validation(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+    ) -> Result<JsValue, JsValue> {
         let removed = self
             .workbook_mut()?
-            .remove_data_validation(reference)
+            .remove_data_validation(sheet, reference)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
@@ -554,6 +574,7 @@ impl WorkbookHandle {
     #[wasm_bindgen(js_name = setConditionalFormat)]
     pub fn set_conditional_format(
         &mut self,
+        sheet: &str,
         reference: &str,
         patch: JsValue,
     ) -> Result<JsValue, JsValue> {
@@ -561,16 +582,20 @@ impl WorkbookHandle {
             serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
         let info = self
             .workbook_mut()?
-            .set_conditional_format(reference, patch)
+            .set_conditional_format(sheet, reference, patch)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }
 
     #[wasm_bindgen(js_name = clearConditionalFormats)]
-    pub fn clear_conditional_formats(&mut self, reference: &str) -> Result<JsValue, JsValue> {
+    pub fn clear_conditional_formats(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+    ) -> Result<JsValue, JsValue> {
         let removed = self
             .workbook_mut()?
-            .clear_conditional_formats(reference)
+            .clear_conditional_formats(sheet, reference)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
@@ -617,12 +642,12 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = setTable)]
-    pub fn set_table(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
+    pub fn set_table(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
         let patch: xlcore_api::TablePatch =
             serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
         let info = self
             .workbook_mut()?
-            .set_table(patch)
+            .set_table(sheet, patch)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
     }

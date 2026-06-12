@@ -14,7 +14,7 @@ fn tables_create_resize_remove_roundtrip() {
     wb.set_value("Sheet1!C3", 2.5).unwrap();
 
     let info = wb
-        .set_table(TablePatch {
+        .set_table("Sheet1", TablePatch {
             name: "Sales".to_string(),
             reference: Some("Sheet1!A1:C3".to_string()),
             style: Some(TableStylePatch {
@@ -40,7 +40,7 @@ fn tables_create_resize_remove_roundtrip() {
     assert!(style.show_row_stripes);
 
     let resized = wb
-        .set_table(TablePatch {
+        .set_table("Sheet1", TablePatch {
             name: "Sales".to_string(),
             reference: Some("Sheet1!A1:C5".to_string()),
             totals_row_count: Some(1),
@@ -97,14 +97,14 @@ fn tables_create_resize_remove_roundtrip() {
 #[test]
 fn tables_reject_overlap_and_invalid_names() {
     let mut wb = Workbook::new().unwrap();
-    wb.set_table(TablePatch {
+    wb.set_table("Sheet1", TablePatch {
         name: "T1".to_string(),
         reference: Some("Sheet1!A1:B5".to_string()),
         ..Default::default()
     })
     .unwrap();
     let err = wb
-        .set_table(TablePatch {
+        .set_table("Sheet1", TablePatch {
             name: "T2".to_string(),
             reference: Some("Sheet1!B3:D8".to_string()),
             ..Default::default()
@@ -113,7 +113,7 @@ fn tables_reject_overlap_and_invalid_names() {
     assert_eq!(err.code, ApiErrorCode::InvalidTable);
 
     let err = wb
-        .set_table(TablePatch {
+        .set_table("Sheet1", TablePatch {
             name: "Bad Name".to_string(),
             reference: Some("Sheet1!E1:F2".to_string()),
             ..Default::default()
@@ -122,7 +122,7 @@ fn tables_reject_overlap_and_invalid_names() {
     assert_eq!(err.code, ApiErrorCode::InvalidTable);
 
     let err = wb
-        .set_table(TablePatch {
+        .set_table("Sheet1", TablePatch {
             name: "Other".to_string(),
             ..Default::default()
         })
@@ -133,7 +133,7 @@ fn tables_reject_overlap_and_invalid_names() {
 #[test]
 fn tables_shift_through_structural_edits() {
     let mut wb = Workbook::new().unwrap();
-    wb.set_table(TablePatch {
+    wb.set_table("Sheet1", TablePatch {
         name: "T".to_string(),
         reference: Some("Sheet1!B2:D6".to_string()),
         ..Default::default()

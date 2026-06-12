@@ -633,8 +633,7 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
         },
     )
     .unwrap();
-    wb.set_comment(
-        "Sheet1!A1",
+    wb.set_comment("Sheet1", "A1",
         CommentPatch {
             author: Some("a".into()),
             text: "hello".into(),
@@ -642,8 +641,7 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
         },
     )
     .unwrap();
-    wb.add_threaded_note(
-        "Sheet1!A2",
+    wb.add_threaded_note("Sheet1", "A2",
         ThreadedNotePatch {
             author: Some("a".into()),
             text: "modern".into(),
@@ -651,7 +649,7 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
         },
     )
     .unwrap();
-    wb.set_table(TablePatch {
+    wb.set_table("Sheet1", TablePatch {
         name: "T".into(),
         reference: Some("Sheet1!A1:A2".into()),
         ..Default::default()

@@ -31,7 +31,7 @@ fn auto_filter_set_get_remove_and_round_trip() {
 
     assert!(wb.auto_filter("Sheet1").unwrap().is_none());
 
-    let info = wb.set_auto_filter("Sheet1!A1:C3").unwrap();
+    let info = wb.set_auto_filter("Sheet1", "A1:C3").unwrap();
     assert_eq!(info.sheet, "Sheet1");
     assert_eq!(info.reference, "A1:C3");
     assert_eq!(info.start_row, 1);
@@ -41,7 +41,7 @@ fn auto_filter_set_get_remove_and_round_trip() {
     let got = wb.auto_filter("Sheet1").unwrap().unwrap();
     assert_eq!(got.reference, "A1:C3");
 
-    wb.set_auto_filter("Sheet1!A1:B3").unwrap();
+    wb.set_auto_filter("Sheet1", "A1:B3").unwrap();
     let replaced = wb.auto_filter("Sheet1").unwrap().unwrap();
     assert_eq!(replaced.reference, "A1:B3");
 
@@ -55,7 +55,7 @@ fn auto_filter_set_get_remove_and_round_trip() {
     assert!(reopened.auto_filter("Sheet1").unwrap().is_none());
     assert!(reopened.remove_auto_filter("Sheet1").unwrap().is_none());
 
-    let err = reopened.set_auto_filter("Ghost!A1:B2").unwrap_err();
+    let err = reopened.set_auto_filter("Ghost", "A1:B2").unwrap_err();
     assert_eq!(err.code, ApiErrorCode::MissingSheet);
 }
 
@@ -71,7 +71,7 @@ fn auto_filter_column_criteria_round_trip() {
         ]],
     )
     .unwrap();
-    wb.set_auto_filter("Sheet1!A1:C3").unwrap();
+    wb.set_auto_filter("Sheet1", "A1:C3").unwrap();
 
     let info = wb
         .set_auto_filter_column(
@@ -177,7 +177,7 @@ fn auto_filter_column_values_multi_value_round_trip() {
     wb.set_value("Sheet1!A2", "alpha").unwrap();
     wb.set_value("Sheet1!A3", "beta").unwrap();
     wb.set_value("Sheet1!A4", "gamma").unwrap();
-    wb.set_auto_filter("Sheet1!A1:A4").unwrap();
+    wb.set_auto_filter("Sheet1", "A1:A4").unwrap();
 
     wb.set_auto_filter_column(
         "Sheet1",
@@ -227,7 +227,7 @@ fn auto_filter_column_validation_errors() {
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidAutoFilter);
 
-    wb.set_auto_filter("Sheet1!A1:B5").unwrap();
+    wb.set_auto_filter("Sheet1", "A1:B5").unwrap();
 
     let err = wb
         .set_auto_filter_column(

@@ -97,12 +97,12 @@ export class Range {
   }
 
   merge(): this {
-    this.handle.addMerge(this.qualifiedReference);
+    this.handle.addMerge(this.sheet, this.reference);
     return this;
   }
 
   unmerge(): this {
-    this.handle.removeMerge(this.qualifiedReference);
+    this.handle.removeMerge(this.sheet, this.reference);
     return this;
   }
 }
@@ -183,19 +183,19 @@ export class Cell {
   }
 
   setHyperlink(patch: HyperlinkPatch): HyperlinkInfo {
-    return this.handle.setHyperlink(this.qualifiedReference, patch) as HyperlinkInfo;
+    return this.handle.setHyperlink(this.sheet, this.reference, patch) as HyperlinkInfo;
   }
 
   removeHyperlink(): HyperlinkInfo[] {
-    return this.handle.removeHyperlink(this.qualifiedReference) as HyperlinkInfo[];
+    return this.handle.removeHyperlink(this.sheet, this.reference) as HyperlinkInfo[];
   }
 
   setComment(patch: CommentPatch): CommentInfo {
-    return this.handle.setComment(this.qualifiedReference, patch) as CommentInfo;
+    return this.handle.setComment(this.sheet, this.reference, patch) as CommentInfo;
   }
 
   removeComment(): CommentInfo[] {
-    return this.handle.removeComment(this.qualifiedReference) as CommentInfo[];
+    return this.handle.removeComment(this.sheet, this.reference) as CommentInfo[];
   }
 }
 

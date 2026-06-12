@@ -9,7 +9,7 @@ use xlcore_types::{ApiError, ApiErrorCode, ThreadedNoteInfo, ThreadedNotePatch};
 
 use crate::comments::{ensure_comments_part, is_threaded_shadow_author, upsert_author};
 use crate::errors::sdk_err_to_api;
-use crate::refs::ranges_overlap;
+use crate::refs::{qualify_ref, ranges_overlap};
 use crate::vml_comments::sync_vml_comment_indicators;
 use crate::{Result, Workbook};
 
@@ -35,10 +35,12 @@ impl Workbook {
 
     pub fn add_threaded_note(
         &mut self,
+        sheet: impl AsRef<str>,
         reference: impl AsRef<str>,
         patch: ThreadedNotePatch,
     ) -> Result<ThreadedNoteInfo> {
-        let reference = reference.as_ref();
+        let reference = qualify_ref(sheet.as_ref(), reference.as_ref())?;
+        let reference = reference.as_str();
         if patch.text.is_empty() {
             return Err(ApiError::new(
                 ApiErrorCode::InvalidThreadedNote,
@@ -146,10 +148,11 @@ impl Workbook {
 
     pub fn remove_threaded_thread(
         &mut self,
+        sheet: impl AsRef<str>,
         reference: impl AsRef<str>,
     ) -> Result<Vec<ThreadedNoteInfo>> {
-        let reference = reference.as_ref();
-        let range_ref = self.resolve_range_ref(reference)?;
+        let reference = qualify_ref(sheet.as_ref(), reference.as_ref())?;
+        let range_ref = self.resolve_range_ref(&reference)?;
         let sheet = range_ref.sheet.clone();
         let person_map = load_person_map(&mut self.doc)?;
         let ws_part = self.worksheet_part_for_sheet(&sheet)?;
