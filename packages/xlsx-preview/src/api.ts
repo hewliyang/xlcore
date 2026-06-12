@@ -1,12 +1,12 @@
 import init, { WorkbookHandle as WasmWorkbookHandle } from "./xlcore_wasm.js";
 import {
-  CalcPropertiesApi,
-  DefinedNamesCollection,
+  CalcPropertiesAccessor,
   WorkbookCharts,
+  WorkbookDefinedNames,
   WorkbookImages,
   WorkbookPivots,
-  WorkbookPropertiesApi,
-  WorkbookProtection,
+  WorkbookPropertiesAccessor,
+  WorkbookProtectionAccessor,
   WorkbookSparklineGroups,
   WorkbookTables,
 } from "./api-collections.js";
@@ -24,13 +24,12 @@ import type { WorkbookLayout } from "./types.js";
 export { Cell, Range } from "./api-range.js";
 export { Worksheet } from "./api-worksheet.js";
 export {
-  AutoFilterApi,
-  CalcPropertiesApi,
+  AutoFilterAccessor,
+  CalcPropertiesAccessor,
   ChartCollection,
   CommentCollection,
   ConditionalFormatCollection,
   DataValidationCollection,
-  DefinedNamesCollection,
   HyperlinkCollection,
   ImageCollection,
   MergeCollection,
@@ -39,18 +38,19 @@ export {
   TableCollection,
   ThreadedNotesCollection,
   WorkbookCharts,
+  WorkbookDefinedNames,
   WorkbookImages,
   WorkbookPivots,
-  WorkbookPropertiesApi,
-  WorkbookProtection,
+  WorkbookPropertiesAccessor,
+  WorkbookProtectionAccessor,
   WorkbookSparklineGroups,
   WorkbookTables,
 } from "./api-collections.js";
 export {
-  SheetFreeze,
-  SheetPageSetupApi,
-  SheetPropertiesApi,
-  SheetProtection,
+  SheetFreezeAccessor,
+  SheetPageSetupAccessor,
+  SheetPropertiesAccessor,
+  SheetProtectionAccessor,
 } from "./api-worksheet.js";
 export { NumberFormat } from "./number-formats.js";
 export type { NumberFormatCode, NumberFormatKey } from "./number-formats.js";
@@ -220,28 +220,28 @@ export class Workbook {
     return new Workbook(WasmWorkbookHandle.open(toUint8Array(bytes)));
   }
 
-  readonly definedNames: DefinedNamesCollection;
+  readonly definedNames: WorkbookDefinedNames;
   readonly allTables: WorkbookTables;
   readonly allCharts: WorkbookCharts;
   readonly allImages: WorkbookImages;
   readonly allSparklineGroups: WorkbookSparklineGroups;
   readonly allPivots: WorkbookPivots;
-  readonly properties: WorkbookPropertiesApi;
-  readonly calcProperties: CalcPropertiesApi;
-  readonly protection: WorkbookProtection;
+  readonly properties: WorkbookPropertiesAccessor;
+  readonly calcProperties: CalcPropertiesAccessor;
+  readonly protection: WorkbookProtectionAccessor;
 
   private readonly worksheetCache = new Map<number, Worksheet>();
 
   private constructor(private handle: WasmWorkbookHandle) {
-    this.definedNames = new DefinedNamesCollection(handle);
+    this.definedNames = new WorkbookDefinedNames(handle);
     this.allTables = new WorkbookTables(handle);
     this.allCharts = new WorkbookCharts(handle);
     this.allImages = new WorkbookImages(handle);
     this.allSparklineGroups = new WorkbookSparklineGroups(handle);
     this.allPivots = new WorkbookPivots(handle);
-    this.properties = new WorkbookPropertiesApi(handle);
-    this.calcProperties = new CalcPropertiesApi(handle);
-    this.protection = new WorkbookProtection(handle);
+    this.properties = new WorkbookPropertiesAccessor(handle);
+    this.calcProperties = new CalcPropertiesAccessor(handle);
+    this.protection = new WorkbookProtectionAccessor(handle);
   }
 
   /**

@@ -5,6 +5,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- API naming audit (see `docs/api-conventions.md`): drop the inconsistent `Api` class suffix and normalize wrapper class names to two cardinality-keyed suffixes — `<Concept>Collection`, `Workbook<Concept>`, `<Concept>Accessor`. Renames: `AutoFilterApi`→`AutoFilterAccessor`, `SheetFreeze`→`SheetFreezeAccessor`, `SheetPageSetupApi`→`SheetPageSetupAccessor`, `SheetPropertiesApi`→`SheetPropertiesAccessor`, `SheetProtection`→`SheetProtectionAccessor`, `WorkbookPropertiesApi`→`WorkbookPropertiesAccessor`, `CalcPropertiesApi`→`CalcPropertiesAccessor`, `WorkbookProtection`→`WorkbookProtectionAccessor`, `DefinedNamesCollection`→`WorkbookDefinedNames`. Method `ThreadedNotesCollection.removeThread`→`remove`. Instance accessors (`ws.freeze`, `wb.properties`, …) are unchanged.
+
 ### Fixed
 
 - Keep the browser entry (`dist/index.js`) free of `node:fs`: the default wasm resolver is now injectable via `registerDefaultWasmInputResolver`, registered by `@hewliyang/xlsx-preview/node` (which also re-exports `Workbook`/`NumberFormat`). Node consumers needing default-wasm bootstrap should import `Workbook` from `./node`.

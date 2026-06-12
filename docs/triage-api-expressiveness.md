@@ -307,12 +307,29 @@ conventions** are less principled. Different layers, different grades.
 
 ### Where we're unprincipled
 
-1. **Verb soup.** `merges.add` / `hyperlinks.set` / `threadedNotes.add` +
+1. *(done)* **Verb soup.** `merges.add` / `hyperlinks.set` / `threadedNotes.add` +
    `removeThread` / `conditionalFormats.set` + `clear` / `autoFilter.set` +
    `setColumn` + `setColumnValues`. Naming drift: `AutoFilterApi`,
    `SheetPageSetupApi`, `SheetFreeze`, `WorkbookPropertiesApi` — the `Api`
    suffix appears on ~half. Fix: pick `list/get/set/add/remove/clear`
    semantics, write them down, audit every collection.
+   **Resolved**: canonical verbs (`list/get/set/add/remove/clear`) + the
+   sanctioned domain-verb exceptions (`update`/`preview`/`reply`/autofilter
+   column ops) are written down in `docs/api-conventions.md`, and every
+   collection was audited against it. The only method drifter,
+   `ThreadedNotesCollection.removeThread`, is renamed `remove`. Class names are
+   normalized to two cardinality-keyed suffixes — `<Concept>Collection` (sheet),
+   `Workbook<Concept>` (workbook), `<Concept>Accessor` (singleton) — dropping the
+   `Api` suffix entirely: `AutoFilterApi`→`AutoFilterAccessor`,
+   `SheetFreeze`→`SheetFreezeAccessor`, `SheetPageSetupApi`→`SheetPageSetupAccessor`,
+   `SheetPropertiesApi`→`SheetPropertiesAccessor`,
+   `SheetProtection`→`SheetProtectionAccessor`,
+   `WorkbookPropertiesApi`→`WorkbookPropertiesAccessor`,
+   `CalcPropertiesApi`→`CalcPropertiesAccessor`,
+   `WorkbookProtection`→`WorkbookProtectionAccessor`,
+   `DefinedNamesCollection`→`WorkbookDefinedNames` (the `Accessor` suffix also
+   resolves the DTO name clashes on `SheetProperties`/`WorkbookProperties`/
+   `CalcProperties`/`SheetPageSetup`). Bindings stay marshaling-only.
 2. *(done)* **`sheet` inside some patches, argument in others.** `ChartPatch.sheet`,
    `ShapePatch.sheet`, `PivotPatch.sheet` vs `setComment(qref, patch)`. The TS
    layer betrayed it — `Omit<ShapePatch, "sheet">` then re-inject.
@@ -367,7 +384,7 @@ conventions** are less principled. Different layers, different grades.
 
 #3 is correctness — land before expanding `ChartPatch`. #1/#2 are breaking
 renames, cheapest while the user count is ~1. #4 pays off across every future
-domain. #5 is done; #6 is done.
+domain. #1/#2/#3/#5/#6 are done; #4 remains.
 
 ## Where to enforce the structure (Rust vs binding) — pyo3/napi readiness
 

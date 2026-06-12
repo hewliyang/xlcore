@@ -97,7 +97,7 @@ export class ThreadedNotesCollection extends SheetScopedCollection {
   reply(parentId: string, patch: ThreadedNotePatch): ThreadedNoteInfo {
     return this.handle.replyThreadedNote(parentId, patch) as ThreadedNoteInfo;
   }
-  removeThread(ref: string): ThreadedNoteInfo[] {
+  remove(ref: string): ThreadedNoteInfo[] {
     return this.handle.removeThreadedThread(this.sheet, ref) as ThreadedNoteInfo[];
   }
 }
@@ -126,7 +126,7 @@ export class ConditionalFormatCollection extends SheetScopedCollection {
   }
 }
 
-export class AutoFilterApi extends SheetScopedCollection {
+export class AutoFilterAccessor extends SheetScopedCollection {
   get(): AutoFilterInfo | null {
     return (this.handle.autoFilter(this.sheet) as AutoFilterInfo | null) ?? null;
   }
@@ -273,7 +273,7 @@ export class WorkbookPivots {
   }
 }
 
-export class DefinedNamesCollection {
+export class WorkbookDefinedNames {
   constructor(private readonly handle: WasmWorkbookHandle) {}
   list(): DefinedNameInfo[] {
     return this.handle.definedNames() as DefinedNameInfo[];
@@ -320,7 +320,7 @@ export class WorkbookSparklineGroups {
   }
 }
 
-export class WorkbookPropertiesApi {
+export class WorkbookPropertiesAccessor {
   constructor(private readonly handle: WasmWorkbookHandle) {}
   get(): WorkbookProperties {
     return this.handle.properties() as WorkbookProperties;
@@ -330,7 +330,7 @@ export class WorkbookPropertiesApi {
   }
 }
 
-export class CalcPropertiesApi {
+export class CalcPropertiesAccessor {
   constructor(private readonly handle: WasmWorkbookHandle) {}
   get(): CalcProperties {
     return this.handle.calcProperties() as CalcProperties;
@@ -340,7 +340,7 @@ export class CalcPropertiesApi {
   }
 }
 
-export class WorkbookProtection {
+export class WorkbookProtectionAccessor {
   constructor(private readonly handle: WasmWorkbookHandle) {}
   get(): WorkbookProtectionInfo | null {
     return (this.handle.workbookProtection() as WorkbookProtectionInfo | null) ?? null;

@@ -13,7 +13,7 @@ import type {
   StylePatch,
 } from "./api-schema/index.js";
 import {
-  AutoFilterApi,
+  AutoFilterAccessor,
   ChartCollection,
   CommentCollection,
   ConditionalFormatCollection,
@@ -40,7 +40,7 @@ abstract class SheetScopedApi {
   }
 }
 
-export class SheetFreeze extends SheetScopedApi {
+export class SheetFreezeAccessor extends SheetScopedApi {
   get(): FreezeInfo {
     return this.handle.getFreeze(this.sheet) as FreezeInfo;
   }
@@ -49,7 +49,7 @@ export class SheetFreeze extends SheetScopedApi {
   }
 }
 
-export class SheetPageSetupApi extends SheetScopedApi {
+export class SheetPageSetupAccessor extends SheetScopedApi {
   get(): SheetPageSetup {
     return this.handle.pageSetup(this.sheet) as SheetPageSetup;
   }
@@ -61,7 +61,7 @@ export class SheetPageSetupApi extends SheetScopedApi {
   }
 }
 
-export class SheetPropertiesApi extends SheetScopedApi {
+export class SheetPropertiesAccessor extends SheetScopedApi {
   get(): SheetProperties {
     return this.handle.sheetProperties(this.sheet) as SheetProperties;
   }
@@ -70,7 +70,7 @@ export class SheetPropertiesApi extends SheetScopedApi {
   }
 }
 
-export class SheetProtection extends SheetScopedApi {
+export class SheetProtectionAccessor extends SheetScopedApi {
   get(): SheetProtectionInfo | null {
     return (this.handle.sheetProtection(this.sheet) as SheetProtectionInfo | null) ?? null;
   }
@@ -90,17 +90,17 @@ export class Worksheet {
   readonly threadedNotes: ThreadedNotesCollection;
   readonly dataValidations: DataValidationCollection;
   readonly conditionalFormats: ConditionalFormatCollection;
-  readonly autoFilter: AutoFilterApi;
+  readonly autoFilter: AutoFilterAccessor;
   readonly tables: TableCollection;
   readonly charts: ChartCollection;
   readonly images: ImageCollection;
   readonly shapes: ShapeCollection;
   readonly sparklineGroups: SparklineGroupCollection;
   readonly pivots: PivotCollection;
-  readonly freeze: SheetFreeze;
-  readonly pageSetup: SheetPageSetupApi;
-  readonly properties: SheetPropertiesApi;
-  readonly protection: SheetProtection;
+  readonly freeze: SheetFreezeAccessor;
+  readonly pageSetup: SheetPageSetupAccessor;
+  readonly properties: SheetPropertiesAccessor;
+  readonly protection: SheetProtectionAccessor;
 
   constructor(
     private readonly handle: WasmWorkbookHandle,
@@ -113,17 +113,17 @@ export class Worksheet {
     this.threadedNotes = new ThreadedNotesCollection(handle, this.sheetRef);
     this.dataValidations = new DataValidationCollection(handle, this.sheetRef);
     this.conditionalFormats = new ConditionalFormatCollection(handle, this.sheetRef);
-    this.autoFilter = new AutoFilterApi(handle, this.sheetRef);
+    this.autoFilter = new AutoFilterAccessor(handle, this.sheetRef);
     this.tables = new TableCollection(handle, this.sheetRef);
     this.charts = new ChartCollection(handle, this.sheetRef);
     this.images = new ImageCollection(handle, this.sheetRef);
     this.shapes = new ShapeCollection(handle, this.sheetRef);
     this.sparklineGroups = new SparklineGroupCollection(handle, this.sheetRef);
     this.pivots = new PivotCollection(handle, this.sheetRef);
-    this.freeze = new SheetFreeze(handle, this.sheetRef);
-    this.pageSetup = new SheetPageSetupApi(handle, this.sheetRef);
-    this.properties = new SheetPropertiesApi(handle, this.sheetRef);
-    this.protection = new SheetProtection(handle, this.sheetRef);
+    this.freeze = new SheetFreezeAccessor(handle, this.sheetRef);
+    this.pageSetup = new SheetPageSetupAccessor(handle, this.sheetRef);
+    this.properties = new SheetPropertiesAccessor(handle, this.sheetRef);
+    this.protection = new SheetProtectionAccessor(handle, this.sheetRef);
   }
 
   get name(): string {
