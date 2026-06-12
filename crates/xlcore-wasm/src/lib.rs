@@ -502,10 +502,7 @@ fn cell_value_from_js(value: JsValue) -> Result<xlcore_api::CellValue, JsValue> 
         return Ok(xlcore_api::CellValue::Number(value));
     }
     if let Some(value) = value.as_string() {
-        if value.starts_with('#') {
-            return Ok(xlcore_api::CellValue::Error(value));
-        }
-        return Ok(xlcore_api::CellValue::String(value));
+        return Ok(xlcore_api::CellValue::from_scalar_string(value));
     }
     serde_wasm_bindgen::from_value(value).map_err(other_err_to_js)
 }

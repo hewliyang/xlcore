@@ -97,6 +97,16 @@ pub enum ApiCellValue {
     Error(String),
 }
 
+impl ApiCellValue {
+    pub fn from_scalar_string(value: String) -> Self {
+        if value.starts_with('#') {
+            Self::Error(value)
+        } else {
+            Self::String(value)
+        }
+    }
+}
+
 impl From<&str> for ApiCellValue {
     fn from(value: &str) -> Self {
         Self::String(value.to_string())
@@ -269,4 +279,29 @@ pub struct LayoutOptions {
     pub sheet_index: Option<usize>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     pub sheet_name: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_scalar_string_maps_hash_prefix_to_error() {
+        assert_eq!(
+            ApiCellValue::from_scalar_string("#DIV/0!".to_string()),
+            ApiCellValue::Error("#DIV/0!".to_string())
+        );
+        assert_eq!(
+            ApiCellValue::from_scalar_string("#NotAnError".to_string()),
+            ApiCellValue::Error("#NotAnError".to_string())
+        );
+        assert_eq!(
+            ApiCellValue::from_scalar_string("hello".to_string()),
+            ApiCellValue::String("hello".to_string())
+        );
+        assert_eq!(
+            ApiCellValue::from_scalar_string(String::new()),
+            ApiCellValue::String(String::new())
+        );
+    }
 }
