@@ -20,17 +20,26 @@ use super::{
     AUTO_WIDTH_SAMPLE_ROWS,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase", default)]
 pub struct ParquetOptions {
+    #[serde(
+        default = "crate::csv_reader::default_max_rows",
+        deserialize_with = "crate::csv_reader::de_max_rows"
+    )]
     pub max_rows: usize,
+    #[serde(
+        default = "crate::csv_reader::default_sheet_name",
+        deserialize_with = "crate::csv_reader::de_sheet_name"
+    )]
     pub sheet_name: String,
 }
 
 impl Default for ParquetOptions {
     fn default() -> Self {
         Self {
-            max_rows: 100_000,
-            sheet_name: "data".to_string(),
+            max_rows: crate::csv_reader::default_max_rows(),
+            sheet_name: crate::csv_reader::default_sheet_name(),
         }
     }
 }
