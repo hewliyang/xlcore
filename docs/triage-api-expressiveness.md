@@ -353,12 +353,28 @@ conventions** are less principled. Different layers, different grades.
    `chart<n>.xml` in place (stable rId, atomic, unmodeled XML preserved). The TS
    `ChartCollection.update` is now pure forwarding; `chartInfoToPatch` deleted.
    `kind` is no longer updatable via `update` (remove + set to change type).
-4. **Triple hand-written glue.** Every feature = Rust facade fn + wasm binding
-   (107 fns of serde_wasm_bindgen boilerplate) + TS collection method (pure
-   forwarding + `as T` cast). Mechanical and hand-maintained. A declarative
-   method table → codegen for the wasm+TS layers would eliminate the drift
-   class entirely. openpyxl's metaclass is the same instinct at runtime;
-   codegen is the better version of it.
+4. *(done, TS layer noted as follow-up)* **Triple hand-written glue.** Every
+   feature = Rust facade fn + wasm binding (107 fns of serde_wasm_bindgen
+   boilerplate) + TS collection method (pure forwarding + `as T` cast).
+   Mechanical and hand-maintained. **Resolved (wasm)**: the wasm binding layer
+   is now generated from a single declarative method table — the `api_methods!`
+   `macro_rules!` in `xlcore-wasm/src/lib.rs`. Each row is
+   `{ rust_name [as "jsName"] ( args ) -> ret }` (arg kinds `s`/`os`/`u32`/`u8`/
+   `usize`/`f64`/`bool`/`de Name: Ty`/`deopt Name: Ty`; ret `json`/`unit`/`bool`),
+   and a TT-muncher emits a marshaling-only `#[wasm_bindgen] impl` method per
+   row (serde↔JsValue, `api_err_to_js`, zero branching). 100 of the 107 binding
+   fns collapsed into the table; the 7 genuinely-custom ones (constructors,
+   `set_value`/`set_range_values`/`append_rows`/`set_range_formulas` JS-array
+   walks, `set_sheet_visibility` string match, slice-returning `warnings`/
+   `take_warnings`, name-mismatched `save`) stay hand-written next to it. The
+   generated `xlcore_wasm.d.ts` is byte-identical to the prior hand-written
+   output (verified by diff); `cargo test --workspace` + the xlsx-preview suite
+   stay green. The table is backend-agnostic: a future pyo3/napi emitter adds
+   sibling `@build`/`@munch` arms (or a parallel macro consuming the same rows)
+   for one table, N bindings. **Follow-up**: the TS forwarding layer
+   (`api-collections.ts` pure-forwarding methods + `as T` casts) is still
+   hand-written — generating it from the same table (or a shared data file the
+   macro and a TS emitter both read) is the remaining drift surface.
 5. *(done)* **Worksheet identity is fake.** `Worksheet` wraps a throwaway
    `{current: name}` ref; `wb.sheet("X")` twice gives two objects, and
    `rename()` on one strands the other (and any stored `Range`s). openpyxl's
@@ -384,7 +400,8 @@ conventions** are less principled. Different layers, different grades.
 
 #3 is correctness — land before expanding `ChartPatch`. #1/#2 are breaking
 renames, cheapest while the user count is ~1. #4 pays off across every future
-domain. #1/#2/#3/#5/#6 are done; #4 remains.
+domain. #1/#2/#3/#5/#6 are done; #4 is done for the wasm binding layer (TS
+forwarding-layer codegen is the noted follow-up).
 
 ## Where to enforce the structure (Rust vs binding) — pyo3/napi readiness
 

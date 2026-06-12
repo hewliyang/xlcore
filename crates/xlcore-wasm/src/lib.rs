@@ -169,6 +169,89 @@ pub struct WorkbookHandle {
     workbook: Option<xlcore_api::Workbook>,
 }
 
+macro_rules! api_methods {
+    ( $( { $($method:tt)* } )* ) => {
+        $( api_methods!(@m $($method)*); )*
+    };
+
+    (@m $rust:ident as $js:literal ( $($args:tt)* ) -> $ret:tt) => {
+        api_methods!(@emit $rust [ #[wasm_bindgen(js_name = $js)] ] $ret ( $($args)* ));
+    };
+    (@m $rust:ident ( $($args:tt)* ) -> $ret:tt) => {
+        api_methods!(@emit $rust [] $ret ( $($args)* ));
+    };
+
+    (@emit $rust:ident [$($attr:tt)*] $ret:tt ( $($args:tt)* )) => {
+        api_methods!(@munch $rust [$($attr)*] $ret {} {} {} ( $($args)* ));
+    };
+
+    (@munch $r:ident [$($a:tt)*] $ret:tt { $($sig:tt)* } { $($pre:tt)* } { $($call:tt)* } ()) => {
+        api_methods!(@build $r [$($a)*] $ret { $($sig)* } { $($pre)* } { $($call)* });
+    };
+
+    (@munch $r:ident [$($a:tt)*] $ret:tt {$($sig:tt)*} {$($pre:tt)*} {$($call:tt)*} ( s $n:ident $(, $($rest:tt)*)? )) => {
+        api_methods!(@munch $r [$($a)*] $ret { $($sig)* $n: &str, } { $($pre)* } { $($call)* $n, } ( $($($rest)*)? ));
+    };
+    (@munch $r:ident [$($a:tt)*] $ret:tt {$($sig:tt)*} {$($pre:tt)*} {$($call:tt)*} ( os $n:ident $(, $($rest:tt)*)? )) => {
+        api_methods!(@munch $r [$($a)*] $ret { $($sig)* $n: Option<String>, } { $($pre)* let $n = $n.as_deref(); } { $($call)* $n, } ( $($($rest)*)? ));
+    };
+    (@munch $r:ident [$($a:tt)*] $ret:tt {$($sig:tt)*} {$($pre:tt)*} {$($call:tt)*} ( u32 $n:ident $(, $($rest:tt)*)? )) => {
+        api_methods!(@munch $r [$($a)*] $ret { $($sig)* $n: u32, } { $($pre)* } { $($call)* $n, } ( $($($rest)*)? ));
+    };
+    (@munch $r:ident [$($a:tt)*] $ret:tt {$($sig:tt)*} {$($pre:tt)*} {$($call:tt)*} ( u8 $n:ident $(, $($rest:tt)*)? )) => {
+        api_methods!(@munch $r [$($a)*] $ret { $($sig)* $n: u8, } { $($pre)* } { $($call)* $n, } ( $($($rest)*)? ));
+    };
+    (@munch $r:ident [$($a:tt)*] $ret:tt {$($sig:tt)*} {$($pre:tt)*} {$($call:tt)*} ( usize $n:ident $(, $($rest:tt)*)? )) => {
+        api_methods!(@munch $r [$($a)*] $ret { $($sig)* $n: usize, } { $($pre)* } { $($call)* $n, } ( $($($rest)*)? ));
+    };
+    (@munch $r:ident [$($a:tt)*] $ret:tt {$($sig:tt)*} {$($pre:tt)*} {$($call:tt)*} ( f64 $n:ident $(, $($rest:tt)*)? )) => {
+        api_methods!(@munch $r [$($a)*] $ret { $($sig)* $n: f64, } { $($pre)* } { $($call)* $n, } ( $($($rest)*)? ));
+    };
+    (@munch $r:ident [$($a:tt)*] $ret:tt {$($sig:tt)*} {$($pre:tt)*} {$($call:tt)*} ( bool $n:ident $(, $($rest:tt)*)? )) => {
+        api_methods!(@munch $r [$($a)*] $ret { $($sig)* $n: bool, } { $($pre)* } { $($call)* $n, } ( $($($rest)*)? ));
+    };
+    (@munch $r:ident [$($a:tt)*] $ret:tt {$($sig:tt)*} {$($pre:tt)*} {$($call:tt)*} ( de $n:ident : $t:ty $(, $($rest:tt)*)? )) => {
+        api_methods!(@munch $r [$($a)*] $ret { $($sig)* $n: JsValue, } { $($pre)* let $n: $t = serde_wasm_bindgen::from_value($n).map_err(other_err_to_js)?; } { $($call)* $n, } ( $($($rest)*)? ));
+    };
+    (@munch $r:ident [$($a:tt)*] $ret:tt {$($sig:tt)*} {$($pre:tt)*} {$($call:tt)*} ( deopt $n:ident : $t:ty $(, $($rest:tt)*)? )) => {
+        api_methods!(@munch $r [$($a)*] $ret { $($sig)* $n: JsValue, } { $($pre)* let $n: $t = if $n.is_null() || $n.is_undefined() { Default::default() } else { serde_wasm_bindgen::from_value($n).map_err(other_err_to_js)? }; } { $($call)* $n, } ( $($($rest)*)? ));
+    };
+
+    (@build $r:ident [$($a:tt)*] json { $($sig:tt)* } { $($pre:tt)* } { $($call:tt)* }) => {
+        #[wasm_bindgen]
+        impl WorkbookHandle {
+            $($a)*
+            pub fn $r(&mut self, $($sig)*) -> Result<JsValue, JsValue> {
+                $($pre)*
+                let __ret = self.workbook_mut()?.$r($($call)*).map_err(api_err_to_js)?;
+                serde_wasm_bindgen::to_value(&__ret).map_err(other_err_to_js)
+            }
+        }
+    };
+    (@build $r:ident [$($a:tt)*] unit { $($sig:tt)* } { $($pre:tt)* } { $($call:tt)* }) => {
+        #[wasm_bindgen]
+        impl WorkbookHandle {
+            $($a)*
+            pub fn $r(&mut self, $($sig)*) -> Result<(), JsValue> {
+                $($pre)*
+                self.workbook_mut()?.$r($($call)*).map_err(api_err_to_js)
+            }
+        }
+    };
+    (@build $r:ident [$($a:tt)*] bool { $($sig:tt)* } { $($pre:tt)* } { $($call:tt)* }) => {
+        #[wasm_bindgen]
+        impl WorkbookHandle {
+            $($a)*
+            pub fn $r(&mut self, $($sig)*) -> Result<bool, JsValue> {
+                $($pre)*
+                self.workbook_mut()?.$r($($call)*).map_err(api_err_to_js)
+            }
+        }
+    };
+}
+
+// Hand-written bindings: constructors, custom JS-value marshaling, and the
+// name-mismatched/slice-returning methods that the table can't express.
 #[wasm_bindgen]
 impl WorkbookHandle {
     #[wasm_bindgen(constructor)]
@@ -185,11 +268,6 @@ impl WorkbookHandle {
         })
     }
 
-    pub fn sheets(&mut self) -> Result<JsValue, JsValue> {
-        let sheets = self.workbook_mut()?.sheets().map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&sheets).map_err(other_err_to_js)
-    }
-
     #[wasm_bindgen(js_name = warnings)]
     pub fn warnings(&mut self) -> Result<JsValue, JsValue> {
         let warnings = self.workbook_mut()?.warnings().to_vec();
@@ -202,15 +280,6 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&warnings).map_err(other_err_to_js)
     }
 
-    #[wasm_bindgen(js_name = getCell)]
-    pub fn get_cell(&mut self, reference: &str) -> Result<JsValue, JsValue> {
-        let cell = self
-            .workbook_mut()?
-            .get_cell(reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&cell).map_err(other_err_to_js)
-    }
-
     #[wasm_bindgen(js_name = setValue)]
     pub fn set_value(&mut self, reference: &str, value: JsValue) -> Result<JsValue, JsValue> {
         let value = cell_value_from_js(value)?;
@@ -219,67 +288,6 @@ impl WorkbookHandle {
             .set_value(reference, value)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&cell).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setFormula)]
-    pub fn set_formula(&mut self, reference: &str, formula: &str) -> Result<JsValue, JsValue> {
-        let cell = self
-            .workbook_mut()?
-            .set_formula(reference, formula)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&cell).map_err(other_err_to_js)
-    }
-
-    pub fn clear(&mut self, reference: &str) -> Result<JsValue, JsValue> {
-        let cell = self
-            .workbook_mut()?
-            .clear(reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&cell).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = clearWith)]
-    pub fn clear_with(&mut self, reference: &str, mode: JsValue) -> Result<JsValue, JsValue> {
-        let mode: xlcore_api::ClearMode =
-            serde_wasm_bindgen::from_value(mode).map_err(other_err_to_js)?;
-        let cell = self
-            .workbook_mut()?
-            .clear_with(reference, mode)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&cell).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = getRange)]
-    pub fn get_range(&mut self, reference: &str) -> Result<JsValue, JsValue> {
-        let range = self
-            .workbook_mut()?
-            .get_range(reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
-    }
-
-    pub fn dependencies(&mut self, reference: &str) -> Result<JsValue, JsValue> {
-        let info = self
-            .workbook_mut()?
-            .dependencies(reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    pub fn precedents(&mut self, reference: &str) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .precedents(reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
-    }
-
-    pub fn dependents(&mut self, reference: &str) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .dependents(reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
     }
 
     #[wasm_bindgen(js_name = setRangeValues)]
@@ -320,767 +328,6 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
     }
 
-    #[wasm_bindgen(js_name = setStyle)]
-    pub fn set_style(&mut self, reference: &str, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::StylePatch = if patch.is_null() || patch.is_undefined() {
-            xlcore_api::StylePatch::default()
-        } else {
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?
-        };
-        let range = self
-            .workbook_mut()?
-            .set_style(reference, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
-    }
-
-    pub fn merges(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let merges = self.workbook_mut()?.merges(sheet).map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&merges).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = addMerge)]
-    pub fn add_merge(&mut self, sheet: &str, reference: &str) -> Result<JsValue, JsValue> {
-        let info = self
-            .workbook_mut()?
-            .add_merge(sheet, reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeMerge)]
-    pub fn remove_merge(&mut self, sheet: &str, reference: &str) -> Result<JsValue, JsValue> {
-        let info = self
-            .workbook_mut()?
-            .remove_merge(sheet, reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    pub fn hyperlinks(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .hyperlinks(sheet)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setHyperlink)]
-    pub fn set_hyperlink(
-        &mut self,
-        sheet: &str,
-        reference: &str,
-        patch: JsValue,
-    ) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::HyperlinkPatch = if patch.is_null() || patch.is_undefined() {
-            xlcore_api::HyperlinkPatch::default()
-        } else {
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?
-        };
-        let info = self
-            .workbook_mut()?
-            .set_hyperlink(sheet, reference, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeHyperlink)]
-    pub fn remove_hyperlink(&mut self, sheet: &str, reference: &str) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_hyperlink(sheet, reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = autoFilter)]
-    pub fn auto_filter(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let info = self
-            .workbook_mut()?
-            .auto_filter(sheet)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setAutoFilter)]
-    pub fn set_auto_filter(&mut self, sheet: &str, reference: &str) -> Result<JsValue, JsValue> {
-        let info = self
-            .workbook_mut()?
-            .set_auto_filter(sheet, reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeAutoFilter)]
-    pub fn remove_auto_filter(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let info = self
-            .workbook_mut()?
-            .remove_auto_filter(sheet)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setAutoFilterColumn)]
-    pub fn set_auto_filter_column(
-        &mut self,
-        sheet: &str,
-        patch: JsValue,
-    ) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::AutoFilterColumnPatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_auto_filter_column(sheet, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeAutoFilterColumn)]
-    pub fn remove_auto_filter_column(
-        &mut self,
-        sheet: &str,
-        column_offset: u32,
-    ) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_auto_filter_column(sheet, column_offset)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    pub fn comments(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .comments(sheet)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setComment)]
-    pub fn set_comment(
-        &mut self,
-        sheet: &str,
-        reference: &str,
-        patch: JsValue,
-    ) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::CommentPatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_comment(sheet, reference, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeComment)]
-    pub fn remove_comment(&mut self, sheet: &str, reference: &str) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_comment(sheet, reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = threadedNotes)]
-    pub fn threaded_notes(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .threaded_notes(sheet)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = addThreadedNote)]
-    pub fn add_threaded_note(
-        &mut self,
-        sheet: &str,
-        reference: &str,
-        patch: JsValue,
-    ) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::ThreadedNotePatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .add_threaded_note(sheet, reference, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = replyThreadedNote)]
-    pub fn reply_threaded_note(
-        &mut self,
-        parent_id: &str,
-        patch: JsValue,
-    ) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::ThreadedNotePatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .reply_threaded_note(parent_id, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeThreadedThread)]
-    pub fn remove_threaded_thread(
-        &mut self,
-        sheet: &str,
-        reference: &str,
-    ) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_threaded_thread(sheet, reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = dataValidations)]
-    pub fn data_validations(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .data_validations(sheet)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setDataValidation)]
-    pub fn set_data_validation(
-        &mut self,
-        sheet: &str,
-        reference: &str,
-        patch: JsValue,
-    ) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::DataValidationPatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_data_validation(sheet, reference, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeDataValidation)]
-    pub fn remove_data_validation(
-        &mut self,
-        sheet: &str,
-        reference: &str,
-    ) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_data_validation(sheet, reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = conditionalFormats)]
-    pub fn conditional_formats(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .conditional_formats(sheet)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setConditionalFormat)]
-    pub fn set_conditional_format(
-        &mut self,
-        sheet: &str,
-        reference: &str,
-        patch: JsValue,
-    ) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::ConditionalFormatRulePatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_conditional_format(sheet, reference, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = clearConditionalFormats)]
-    pub fn clear_conditional_formats(
-        &mut self,
-        sheet: &str,
-        reference: &str,
-    ) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .clear_conditional_formats(sheet, reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = definedNames)]
-    pub fn defined_names(&mut self) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .defined_names()
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setDefinedName)]
-    pub fn set_defined_name(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::DefinedNamePatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_defined_name(patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeDefinedName)]
-    pub fn remove_defined_name(
-        &mut self,
-        name: &str,
-        scope: Option<String>,
-    ) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_defined_name(name, scope.as_deref())
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    pub fn tables(&mut self, sheet: Option<String>) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .tables(sheet.as_deref())
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setTable)]
-    pub fn set_table(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::TablePatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_table(sheet, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeTable)]
-    pub fn remove_table(&mut self, name: &str) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_table(name)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    pub fn charts(&mut self, sheet: Option<String>) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .charts(sheet.as_deref())
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setChart)]
-    pub fn set_chart(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::ChartPatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_chart(sheet, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeChart)]
-    pub fn remove_chart(&mut self, sheet: &str, id: &str) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_chart(sheet, id)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = updateChart)]
-    pub fn update_chart(
-        &mut self,
-        sheet: &str,
-        id: &str,
-        update: JsValue,
-    ) -> Result<JsValue, JsValue> {
-        let update: xlcore_api::ChartUpdate =
-            serde_wasm_bindgen::from_value(update).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .update_chart(sheet, id, update)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    pub fn pivots(&mut self, sheet: Option<String>) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .pivots(sheet.as_deref())
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setPivot)]
-    pub fn set_pivot(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::PivotPatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_pivot(sheet, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = pivotPreview)]
-    pub fn pivot_preview(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::PivotPatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let grid = self
-            .workbook_mut()?
-            .pivot_preview(sheet, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&grid).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = updatePivot)]
-    pub fn update_pivot(
-        &mut self,
-        sheet: &str,
-        id: &str,
-        update: JsValue,
-    ) -> Result<JsValue, JsValue> {
-        let update: xlcore_api::PivotUpdate =
-            serde_wasm_bindgen::from_value(update).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .update_pivot(sheet, id, update)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removePivot)]
-    pub fn remove_pivot(&mut self, sheet: &str, id: &str) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_pivot(sheet, id)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    pub fn images(&mut self, sheet: Option<String>) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .images(sheet.as_deref())
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setImage)]
-    pub fn set_image(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::ImagePatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_image(sheet, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeImage)]
-    pub fn remove_image(&mut self, sheet: &str, id: &str) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_image(sheet, id)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    pub fn shapes(&mut self, sheet: Option<String>) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .shapes(sheet.as_deref())
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setShape)]
-    pub fn set_shape(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::ShapePatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_shape(sheet, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeShape)]
-    pub fn remove_shape(&mut self, sheet: &str, id: &str) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_shape(sheet, id)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = sparklineGroups)]
-    pub fn sparkline_groups(&mut self, sheet: Option<String>) -> Result<JsValue, JsValue> {
-        let list = self
-            .workbook_mut()?
-            .sparkline_groups(sheet.as_deref())
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&list).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setSparklineGroup)]
-    pub fn set_sparkline_group(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::SparklineGroupPatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_sparkline_group(sheet, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeSparklineGroup)]
-    pub fn remove_sparkline_group(&mut self, sheet: &str, id: &str) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_sparkline_group(sheet, id)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = properties)]
-    pub fn properties(&mut self) -> Result<JsValue, JsValue> {
-        let props = self.workbook_mut()?.properties().map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&props).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setProperties)]
-    pub fn set_properties(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::WorkbookPropertiesPatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let props = self
-            .workbook_mut()?
-            .set_properties(patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&props).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = calcProperties)]
-    pub fn calc_properties(&mut self) -> Result<JsValue, JsValue> {
-        let calc = self
-            .workbook_mut()?
-            .calc_properties()
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&calc).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setCalcProperties)]
-    pub fn set_calc_properties(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::CalcPropertiesPatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let calc = self
-            .workbook_mut()?
-            .set_calc_properties(patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&calc).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = sheetProtection)]
-    pub fn sheet_protection(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let info = self
-            .workbook_mut()?
-            .sheet_protection(sheet)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setSheetProtection)]
-    pub fn set_sheet_protection(
-        &mut self,
-        sheet: &str,
-        patch: JsValue,
-    ) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::SheetProtectionPatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_sheet_protection(sheet, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeSheetProtection)]
-    pub fn remove_sheet_protection(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_sheet_protection(sheet)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = workbookProtection)]
-    pub fn workbook_protection(&mut self) -> Result<JsValue, JsValue> {
-        let info = self
-            .workbook_mut()?
-            .workbook_protection()
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setWorkbookProtection)]
-    pub fn set_workbook_protection(&mut self, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::WorkbookProtectionPatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_workbook_protection(patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removeWorkbookProtection)]
-    pub fn remove_workbook_protection(&mut self) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_workbook_protection()
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = pageSetup)]
-    pub fn page_setup(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let info = self
-            .workbook_mut()?
-            .page_setup(sheet)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setPageSetup)]
-    pub fn set_page_setup(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::SheetPageSetupPatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_page_setup(sheet, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removePageSetup)]
-    pub fn remove_page_setup(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_page_setup(sheet)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = sheetProperties)]
-    pub fn sheet_properties(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let info = self
-            .workbook_mut()?
-            .sheet_properties(sheet)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setSheetProperties)]
-    pub fn set_sheet_properties(&mut self, sheet: &str, patch: JsValue) -> Result<JsValue, JsValue> {
-        let patch: xlcore_api::SheetPropertiesPatch =
-            serde_wasm_bindgen::from_value(patch).map_err(other_err_to_js)?;
-        let info = self
-            .workbook_mut()?
-            .set_sheet_properties(sheet, patch)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = clearRange)]
-    pub fn clear_range(&mut self, reference: &str) -> Result<JsValue, JsValue> {
-        let range = self
-            .workbook_mut()?
-            .clear_range(reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = clearRangeWith)]
-    pub fn clear_range_with(&mut self, reference: &str, mode: JsValue) -> Result<JsValue, JsValue> {
-        let mode: xlcore_api::ClearMode =
-            serde_wasm_bindgen::from_value(mode).map_err(other_err_to_js)?;
-        let range = self
-            .workbook_mut()?
-            .clear_range_with(reference, mode)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = copyRange)]
-    pub fn copy_range(
-        &mut self,
-        src_reference: &str,
-        dst_reference: &str,
-    ) -> Result<JsValue, JsValue> {
-        let range = self
-            .workbook_mut()?
-            .copy_range(src_reference, dst_reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = fillRange)]
-    pub fn fill_range(
-        &mut self,
-        src_reference: &str,
-        dst_reference: &str,
-    ) -> Result<JsValue, JsValue> {
-        let range = self
-            .workbook_mut()?
-            .fill_range(src_reference, dst_reference)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = createSheet)]
-    pub fn create_sheet(&mut self, name: &str) -> Result<JsValue, JsValue> {
-        let sheet = self
-            .workbook_mut()?
-            .create_sheet(name)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&sheet).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = renameSheet)]
-    pub fn rename_sheet(&mut self, old_name: &str, new_name: &str) -> Result<(), JsValue> {
-        self.workbook_mut()?
-            .rename_sheet(old_name, new_name)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = deleteSheet)]
-    pub fn delete_sheet(&mut self, name: &str) -> Result<(), JsValue> {
-        self.workbook_mut()?
-            .delete_sheet(name)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = moveSheet)]
-    pub fn move_sheet(&mut self, name: &str, to_index: usize) -> Result<JsValue, JsValue> {
-        let sheet = self
-            .workbook_mut()?
-            .move_sheet(name, to_index)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&sheet).map_err(other_err_to_js)
-    }
-
     #[wasm_bindgen(js_name = setSheetVisibility)]
     pub fn set_sheet_visibility(
         &mut self,
@@ -1104,214 +351,126 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&sheet).map_err(other_err_to_js)
     }
 
-    #[wasm_bindgen(js_name = setRowHeight)]
-    pub fn set_row_height(&mut self, sheet: &str, row: u32, height: f64) -> Result<(), JsValue> {
-        self.workbook_mut()?
-            .set_row_height(sheet, row, height)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setRowVisible)]
-    pub fn set_row_visible(&mut self, sheet: &str, row: u32, visible: bool) -> Result<(), JsValue> {
-        self.workbook_mut()?
-            .set_row_visible(sheet, row, visible)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setColumnWidth)]
-    pub fn set_column_width(
-        &mut self,
-        sheet: &str,
-        column: u32,
-        width: f64,
-    ) -> Result<(), JsValue> {
-        self.workbook_mut()?
-            .set_column_width(sheet, column, width)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setColumnVisible)]
-    pub fn set_column_visible(
-        &mut self,
-        sheet: &str,
-        column: u32,
-        visible: bool,
-    ) -> Result<(), JsValue> {
-        self.workbook_mut()?
-            .set_column_visible(sheet, column, visible)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = insertRows)]
-    pub fn insert_rows(&mut self, sheet: &str, before: u32, count: u32) -> Result<(), JsValue> {
-        self.workbook_mut()?
-            .insert_rows(sheet, before, count)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = deleteRows)]
-    pub fn delete_rows(&mut self, sheet: &str, start: u32, count: u32) -> Result<(), JsValue> {
-        self.workbook_mut()?
-            .delete_rows(sheet, start, count)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = insertColumns)]
-    pub fn insert_columns(&mut self, sheet: &str, before: u32, count: u32) -> Result<(), JsValue> {
-        self.workbook_mut()?
-            .insert_columns(sheet, before, count)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = deleteColumns)]
-    pub fn delete_columns(&mut self, sheet: &str, start: u32, count: u32) -> Result<(), JsValue> {
-        self.workbook_mut()?
-            .delete_columns(sheet, start, count)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = groupRows)]
-    pub fn group_rows(
-        &mut self,
-        sheet: &str,
-        start: u32,
-        end: u32,
-        level: u8,
-        collapsed: bool,
-    ) -> Result<(), JsValue> {
-        self.workbook_mut()?
-            .group_rows(sheet, start, end, level, collapsed)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = groupColumns)]
-    pub fn group_columns(
-        &mut self,
-        sheet: &str,
-        start: u32,
-        end: u32,
-        level: u8,
-        collapsed: bool,
-    ) -> Result<(), JsValue> {
-        self.workbook_mut()?
-            .group_columns(sheet, start, end, level, collapsed)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setShowGridLines)]
-    pub fn set_show_grid_lines(&mut self, sheet: &str, visible: bool) -> Result<bool, JsValue> {
-        self.workbook_mut()?
-            .set_show_grid_lines(sheet, visible)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = getShowGridLines)]
-    pub fn get_show_grid_lines(&mut self, sheet: &str) -> Result<bool, JsValue> {
-        self.workbook_mut()?
-            .get_show_grid_lines(sheet)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setFreeze)]
-    pub fn set_freeze(
-        &mut self,
-        sheet: &str,
-        frozen_rows: u32,
-        frozen_columns: u32,
-    ) -> Result<JsValue, JsValue> {
-        let info = self
-            .workbook_mut()?
-            .set_freeze(sheet, frozen_rows, frozen_columns)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = getFreeze)]
-    pub fn get_freeze(&mut self, sheet: &str) -> Result<JsValue, JsValue> {
-        let info = self
-            .workbook_mut()?
-            .get_freeze(sheet)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&info).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setActiveSheet)]
-    pub fn set_active_sheet(&mut self, name: &str) -> Result<JsValue, JsValue> {
-        let sheet = self
-            .workbook_mut()?
-            .set_active_sheet(name)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&sheet).map_err(other_err_to_js)
-    }
-
-    pub fn search(&mut self, query: &str, options: JsValue) -> Result<JsValue, JsValue> {
-        let options: xlcore_api::SearchOptions = if options.is_null() || options.is_undefined() {
-            xlcore_api::SearchOptions::default()
-        } else {
-            serde_wasm_bindgen::from_value(options).map_err(other_err_to_js)?
-        };
-        let hits = self
-            .workbook_mut()?
-            .search(query, options)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&hits).map_err(other_err_to_js)
-    }
-
-    pub fn recalculate(&mut self, errors_only: bool) -> Result<JsValue, JsValue> {
-        let recalculated = self
-            .workbook_mut()?
-            .recalculate(errors_only)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&recalculated).map_err(other_err_to_js)
-    }
-
-    pub fn layout(&mut self, options: JsValue) -> Result<JsValue, JsValue> {
-        let options = parse_layout_options(options)?;
-        let layout = self
-            .workbook_mut()?
-            .layout(options)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&layout).map_err(other_err_to_js)
-    }
-
     pub fn save(&mut self) -> Result<Vec<u8>, JsValue> {
         self.workbook_mut()?.save_bytes().map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = partNames)]
-    pub fn part_names(&mut self) -> Result<JsValue, JsValue> {
-        let names = self.workbook_mut()?.part_names().map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&names).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = getPartXml)]
-    pub fn get_part_xml(&mut self, name: &str) -> Result<JsValue, JsValue> {
-        let part = self
-            .workbook_mut()?
-            .get_part_xml(name)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&part).map_err(other_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = setPartXml)]
-    pub fn set_part_xml(&mut self, name: &str, xml: &str) -> Result<(), JsValue> {
-        self.workbook_mut()?
-            .set_part_xml(name, xml)
-            .map_err(api_err_to_js)
-    }
-
-    #[wasm_bindgen(js_name = removePartXml)]
-    pub fn remove_part_xml(&mut self, name: &str) -> Result<JsValue, JsValue> {
-        let removed = self
-            .workbook_mut()?
-            .remove_part_xml(name)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&removed).map_err(other_err_to_js)
     }
 
     pub fn dispose(&mut self) {
         self.workbook = None;
     }
+}
+
+// Marshaling-only bindings generated from the declarative method table below.
+// Each row is `{ rust_name [as "jsName"] ( args ) -> ret }`; arg kinds are
+// `s` (&str), `os` (Option<String>), `u32`/`u8`/`usize`/`f64`/`bool`,
+// `de name: Ty` (serde from JsValue), `deopt name: Ty` (defaulted on
+// null/undefined); ret is `json`, `unit`, or `bool`. The generated code is
+// pure marshaling + `api_err_to_js` — no semantics. A future pyo3/napi emitter
+// consumes the same table by adding sibling `@build`/`@munch` backends.
+api_methods! {
+    { sheets () -> json }
+    { get_cell as "getCell" (s reference) -> json }
+    { set_formula as "setFormula" (s reference, s formula) -> json }
+    { clear (s reference) -> json }
+    { clear_with as "clearWith" (s reference, de mode: xlcore_api::ClearMode) -> json }
+    { get_range as "getRange" (s reference) -> json }
+    { dependencies (s reference) -> json }
+    { precedents (s reference) -> json }
+    { dependents (s reference) -> json }
+    { set_style as "setStyle" (s reference, deopt patch: xlcore_api::StylePatch) -> json }
+    { merges (s sheet) -> json }
+    { add_merge as "addMerge" (s sheet, s reference) -> json }
+    { remove_merge as "removeMerge" (s sheet, s reference) -> json }
+    { hyperlinks (s sheet) -> json }
+    { set_hyperlink as "setHyperlink" (s sheet, s reference, deopt patch: xlcore_api::HyperlinkPatch) -> json }
+    { remove_hyperlink as "removeHyperlink" (s sheet, s reference) -> json }
+    { auto_filter as "autoFilter" (s sheet) -> json }
+    { set_auto_filter as "setAutoFilter" (s sheet, s reference) -> json }
+    { remove_auto_filter as "removeAutoFilter" (s sheet) -> json }
+    { set_auto_filter_column as "setAutoFilterColumn" (s sheet, de patch: xlcore_api::AutoFilterColumnPatch) -> json }
+    { remove_auto_filter_column as "removeAutoFilterColumn" (s sheet, u32 column_offset) -> json }
+    { comments (s sheet) -> json }
+    { set_comment as "setComment" (s sheet, s reference, de patch: xlcore_api::CommentPatch) -> json }
+    { remove_comment as "removeComment" (s sheet, s reference) -> json }
+    { threaded_notes as "threadedNotes" (s sheet) -> json }
+    { add_threaded_note as "addThreadedNote" (s sheet, s reference, de patch: xlcore_api::ThreadedNotePatch) -> json }
+    { reply_threaded_note as "replyThreadedNote" (s parent_id, de patch: xlcore_api::ThreadedNotePatch) -> json }
+    { remove_threaded_thread as "removeThreadedThread" (s sheet, s reference) -> json }
+    { data_validations as "dataValidations" (s sheet) -> json }
+    { set_data_validation as "setDataValidation" (s sheet, s reference, de patch: xlcore_api::DataValidationPatch) -> json }
+    { remove_data_validation as "removeDataValidation" (s sheet, s reference) -> json }
+    { conditional_formats as "conditionalFormats" (s sheet) -> json }
+    { set_conditional_format as "setConditionalFormat" (s sheet, s reference, de patch: xlcore_api::ConditionalFormatRulePatch) -> json }
+    { clear_conditional_formats as "clearConditionalFormats" (s sheet, s reference) -> json }
+    { defined_names as "definedNames" () -> json }
+    { set_defined_name as "setDefinedName" (de patch: xlcore_api::DefinedNamePatch) -> json }
+    { remove_defined_name as "removeDefinedName" (s name, os scope) -> json }
+    { tables (os sheet) -> json }
+    { set_table as "setTable" (s sheet, de patch: xlcore_api::TablePatch) -> json }
+    { remove_table as "removeTable" (s name) -> json }
+    { charts (os sheet) -> json }
+    { set_chart as "setChart" (s sheet, de patch: xlcore_api::ChartPatch) -> json }
+    { remove_chart as "removeChart" (s sheet, s id) -> json }
+    { update_chart as "updateChart" (s sheet, s id, de update: xlcore_api::ChartUpdate) -> json }
+    { pivots (os sheet) -> json }
+    { set_pivot as "setPivot" (s sheet, de patch: xlcore_api::PivotPatch) -> json }
+    { pivot_preview as "pivotPreview" (s sheet, de patch: xlcore_api::PivotPatch) -> json }
+    { update_pivot as "updatePivot" (s sheet, s id, de update: xlcore_api::PivotUpdate) -> json }
+    { remove_pivot as "removePivot" (s sheet, s id) -> json }
+    { images (os sheet) -> json }
+    { set_image as "setImage" (s sheet, de patch: xlcore_api::ImagePatch) -> json }
+    { remove_image as "removeImage" (s sheet, s id) -> json }
+    { shapes (os sheet) -> json }
+    { set_shape as "setShape" (s sheet, de patch: xlcore_api::ShapePatch) -> json }
+    { remove_shape as "removeShape" (s sheet, s id) -> json }
+    { sparkline_groups as "sparklineGroups" (os sheet) -> json }
+    { set_sparkline_group as "setSparklineGroup" (s sheet, de patch: xlcore_api::SparklineGroupPatch) -> json }
+    { remove_sparkline_group as "removeSparklineGroup" (s sheet, s id) -> json }
+    { properties () -> json }
+    { set_properties as "setProperties" (de patch: xlcore_api::WorkbookPropertiesPatch) -> json }
+    { calc_properties as "calcProperties" () -> json }
+    { set_calc_properties as "setCalcProperties" (de patch: xlcore_api::CalcPropertiesPatch) -> json }
+    { sheet_protection as "sheetProtection" (s sheet) -> json }
+    { set_sheet_protection as "setSheetProtection" (s sheet, de patch: xlcore_api::SheetProtectionPatch) -> json }
+    { remove_sheet_protection as "removeSheetProtection" (s sheet) -> json }
+    { workbook_protection as "workbookProtection" () -> json }
+    { set_workbook_protection as "setWorkbookProtection" (de patch: xlcore_api::WorkbookProtectionPatch) -> json }
+    { remove_workbook_protection as "removeWorkbookProtection" () -> json }
+    { page_setup as "pageSetup" (s sheet) -> json }
+    { set_page_setup as "setPageSetup" (s sheet, de patch: xlcore_api::SheetPageSetupPatch) -> json }
+    { remove_page_setup as "removePageSetup" (s sheet) -> json }
+    { sheet_properties as "sheetProperties" (s sheet) -> json }
+    { set_sheet_properties as "setSheetProperties" (s sheet, de patch: xlcore_api::SheetPropertiesPatch) -> json }
+    { clear_range as "clearRange" (s reference) -> json }
+    { clear_range_with as "clearRangeWith" (s reference, de mode: xlcore_api::ClearMode) -> json }
+    { copy_range as "copyRange" (s src_reference, s dst_reference) -> json }
+    { fill_range as "fillRange" (s src_reference, s dst_reference) -> json }
+    { create_sheet as "createSheet" (s name) -> json }
+    { rename_sheet as "renameSheet" (s old_name, s new_name) -> unit }
+    { delete_sheet as "deleteSheet" (s name) -> unit }
+    { move_sheet as "moveSheet" (s name, usize to_index) -> json }
+    { set_row_height as "setRowHeight" (s sheet, u32 row, f64 height) -> unit }
+    { set_row_visible as "setRowVisible" (s sheet, u32 row, bool visible) -> unit }
+    { set_column_width as "setColumnWidth" (s sheet, u32 column, f64 width) -> unit }
+    { set_column_visible as "setColumnVisible" (s sheet, u32 column, bool visible) -> unit }
+    { insert_rows as "insertRows" (s sheet, u32 before, u32 count) -> unit }
+    { delete_rows as "deleteRows" (s sheet, u32 start, u32 count) -> unit }
+    { insert_columns as "insertColumns" (s sheet, u32 before, u32 count) -> unit }
+    { delete_columns as "deleteColumns" (s sheet, u32 start, u32 count) -> unit }
+    { group_rows as "groupRows" (s sheet, u32 start, u32 end, u8 level, bool collapsed) -> unit }
+    { group_columns as "groupColumns" (s sheet, u32 start, u32 end, u8 level, bool collapsed) -> unit }
+    { set_show_grid_lines as "setShowGridLines" (s sheet, bool visible) -> bool }
+    { get_show_grid_lines as "getShowGridLines" (s sheet) -> bool }
+    { set_freeze as "setFreeze" (s sheet, u32 frozen_rows, u32 frozen_columns) -> json }
+    { get_freeze as "getFreeze" (s sheet) -> json }
+    { set_active_sheet as "setActiveSheet" (s name) -> json }
+    { search (s query, deopt options: xlcore_api::SearchOptions) -> json }
+    { recalculate (bool errors_only) -> json }
+    { layout (deopt options: xlcore_api::LayoutOptions) -> json }
+    { part_names as "partNames" () -> json }
+    { get_part_xml as "getPartXml" (s name) -> json }
+    { set_part_xml as "setPartXml" (s name, s xml) -> unit }
+    { remove_part_xml as "removePartXml" (s name) -> json }
 }
 
 impl WorkbookHandle {
@@ -1342,14 +501,6 @@ fn run_extract(
 fn parse_options(options: JsValue) -> Result<WasmExtractOptions, JsValue> {
     if options.is_null() || options.is_undefined() {
         Ok(WasmExtractOptions::default())
-    } else {
-        serde_wasm_bindgen::from_value(options).map_err(other_err_to_js)
-    }
-}
-
-fn parse_layout_options(options: JsValue) -> Result<xlcore_api::LayoutOptions, JsValue> {
-    if options.is_null() || options.is_undefined() {
-        Ok(xlcore_api::LayoutOptions::default())
     } else {
         serde_wasm_bindgen::from_value(options).map_err(other_err_to_js)
     }
