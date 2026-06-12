@@ -42,7 +42,7 @@
     "build:wasm": "cd ../.. && wasm-pack build crates/xlcore-wasm --target web --out-dir pkg --profile wasm-size --no-opt",
     "build:release": "pnpm run build:wasm && pnpm run build:ts",
     "prepack": "pnpm run build:release",
-    "check": "pnpm run typecheck && pnpm run lint && pnpm run check:loc && pnpm run knip",
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run check:loc && pnpm run knip && pnpm run check:schema",
     "check:loc": "tsx scripts/check-loc.ts",
     "dev": "esbuild src/browser.ts --outfile=dist/browser.js --target=es2022 --platform=browser --format=iife --bundle --watch",
     "preview": "pnpm run build:ts && node scripts/preview.mjs",
@@ -55,7 +55,8 @@
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
     "test": "node scripts/check-wasm-fresh.mjs && pnpm run build:ts && node scripts/check-dist-imports.mjs && vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:schema": "python3 ../../scripts/schema_diff.py --check"
   },
   "exports": {
     ".": {
