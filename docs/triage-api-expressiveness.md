@@ -114,8 +114,8 @@ pub struct ChartAxisPatch {
   group kind/axis; simple single-group charts stay clean), updates in place, and
   is renderer-visible (column + line on dual axes verified e2e).
 - Series styling: marker (style/size), line width/dash, `smooth`,
-  `varyColors`, `invertIfNegative`. **— `gapWidth`/`overlap` + marker + `smooth`
-  + line width/dash done**; `ChartSeriesPatch.marker` (`ChartMarker { style, size }`
+  `varyColors`, `invertIfNegative`. **— done.** `gapWidth`/`overlap` + marker + `smooth`
+  + line width/dash + `varyColors` + `invertIfNegative`; `ChartSeriesPatch.marker` (`ChartMarker { style, size }`
   + `MarkerStyle` enum, sdk `ST_MarkerStyle` transliterated) builds `c:marker` on
   line/scatter series, round-trips, and is renderer-visible. `ChartSeriesPatch.smooth`
   (`c:smooth`) builds on line/scatter series, round-trips, updates in place, and
@@ -126,8 +126,13 @@ pub struct ChartAxisPatch {
   `spPr/a:ln` (`@w` + `a:prstDash`, or `a:noFill` for markers-only) on every
   series kind, round-trips, updates in place, and `width_emu`/`dash` are
   renderer-visible (thick red line + dashed blue line on a line chart verified
-  e2e); `none` round-trips for Excel only. Remaining: `varyColors`,
-  `invertIfNegative`.
+  e2e); `none` round-trips for Excel only. `ChartPatch.vary_colors`
+  (`c:varyColors`, chart-level; defaults pie/doughnut/bubble true, others false)
+  builds across every plot group, round-trips, and updates in place;
+  `ChartSeriesPatch.invert_if_negative` (`c:invertIfNegative`, sdk `CT_BarSer`/
+  `CT_BubbleSer` distilled; bar/column + bubble series) builds, round-trips, and
+  survives in-place update. Both round-trip for Excel only (renderer reads
+  neither yet).
 - Pie/doughnut: **— `holeSize` + `firstSliceAngle` done**. `ChartPatch.hole_size`
   (10..=90, `c:holeSize`, doughnut only) and `ChartPatch.first_slice_angle`
   (0..=360, `c:firstSliceAng`, pie/doughnut) on

@@ -576,6 +576,11 @@ pub struct ChartSeriesPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub axis: Option<ChartAxisGroup>,
+    /// Flip the fill color for negative values (`c:invertIfNegative`); bar/column
+    /// and bubble series only. Round-trips for Excel.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub invert_if_negative: Option<bool>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -629,6 +634,10 @@ pub struct ChartSeriesInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub axis: Option<ChartAxisGroup>,
+    /// Negative-value fill flip; see {@link ChartSeriesPatch.invertIfNegative}.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub invert_if_negative: Option<bool>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -712,6 +721,11 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disp_blanks_as: Option<DispBlanksAs>,
+    /// `c:varyColors`; color each data point (or each series) differently. Excel
+    /// defaults pie/doughnut/bubble charts to `true` and others to `false`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vary_colors: Option<bool>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
@@ -794,6 +808,11 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disp_blanks_as: Option<DispBlanksAs>,
+    /// `c:varyColors`; color each data point (or each series) differently. Excel
+    /// defaults pie/doughnut/bubble charts to `true` and others to `false`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vary_colors: Option<bool>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
@@ -880,6 +899,11 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disp_blanks_as: Option<DispBlanksAs>,
+    /// `c:varyColors`; color each data point (or each series) differently. Excel
+    /// defaults pie/doughnut/bubble charts to `true` and others to `false`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vary_colors: Option<bool>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,

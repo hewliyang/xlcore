@@ -63,5 +63,10 @@ export type ChartInfo = {
    * `c:dispBlanksAs`; how blank source cells are plotted. Defaults to `Gap`.
    */
   dispBlanksAs?: DispBlanksAs;
+  /**
+   * `c:varyColors`; color each data point (or each series) differently. Excel
+   * defaults pie/doughnut/bubble charts to `true` and others to `false`.
+   */
+  varyColors?: boolean;
   dataLabels?: ChartDataLabels;
 };

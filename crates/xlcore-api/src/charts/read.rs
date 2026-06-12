@@ -66,6 +66,7 @@ pub(super) struct ParsedChart {
     pub(super) up_down_bars: Option<bool>,
     pub(super) drop_lines: Option<bool>,
     pub(super) disp_blanks_as: Option<DispBlanksAs>,
+    pub(super) vary_colors: Option<bool>,
     pub(super) data_labels: Option<ChartDataLabels>,
 }
 
@@ -102,6 +103,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     let mut hi_low_lines: Option<bool> = None;
     let mut up_down_bars: Option<bool> = None;
     let mut drop_lines: Option<bool> = None;
+    let mut vary_colors: Option<bool> = None;
     let mut data_labels: Option<ChartDataLabels> = None;
 
     for ch in &plot.plot_area_choice1 {
@@ -128,6 +130,9 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     });
                 gap_width = bc.gap_width.as_ref().and_then(|g| g.val);
                 overlap = bc.overlap.as_ref().and_then(|o| o.val);
+                if vary_colors.is_none() {
+                    vary_colors = read_vary_colors(bc.vary_colors.as_ref());
+                }
                 for s in &bc.bar_chart_series {
                     let mut info = read_series(
                         s.series_text.as_deref(),
@@ -140,6 +145,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.line = read_line(s.chart_shape_properties.as_deref());
                     info.kind = Some(this_kind);
                     info.axis = gsec.then_some(ChartAxisGroup::Secondary);
+                    info.invert_if_negative = read_invert_if_negative(s.invert_if_negative.as_ref());
                     info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
@@ -301,8 +307,12 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     });
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
                     info.line = read_line(s.chart_shape_properties.as_deref());
+                    info.invert_if_negative = read_invert_if_negative(s.invert_if_negative.as_ref());
                     info.data_points = read_data_points(&s.data_point);
                     series.push(info);
+                }
+                if vary_colors.is_none() {
+                    vary_colors = read_vary_colors(bc.vary_colors.as_ref());
                 }
                 if data_labels.is_none() {
                     data_labels = read_data_labels(bc.data_labels.as_deref());
@@ -458,6 +468,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         up_down_bars,
         drop_lines,
         disp_blanks_as,
+        vary_colors,
         data_labels,
     }
 }
@@ -506,6 +517,7 @@ pub(super) fn read_xy_series(
         data_points: None,
         kind: None,
         axis: None,
+        invert_if_negative: None,
     }
 }
 
@@ -541,6 +553,14 @@ pub(super) fn read_marker(m: Option<&c::Marker>) -> Option<ChartMarker> {
 
 pub(super) fn read_smooth(s: Option<&c::Smooth>) -> Option<bool> {
     s?.val.as_ref().map(|v| v.as_bool())
+}
+
+pub(super) fn read_vary_colors(v: Option<&c::VaryColors>) -> Option<bool> {
+    v?.val.as_ref().map(|b| b.as_bool())
+}
+
+pub(super) fn read_invert_if_negative(v: Option<&c::InvertIfNegative>) -> Option<bool> {
+    v?.val.as_ref().map(|b| b.as_bool())
 }
 
 pub(super) fn line_dash_from(v: &a::PresetLineDashValues) -> LineDash {
@@ -662,6 +682,7 @@ pub(super) fn read_series(
         data_points: None,
         kind: None,
         axis: None,
+        invert_if_negative: None,
     }
 }
 

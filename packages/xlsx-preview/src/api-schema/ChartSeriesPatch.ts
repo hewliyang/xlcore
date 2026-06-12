@@ -45,4 +45,9 @@ export type ChartSeriesPatch = {
    * synthesizes a right-hand `c:valAx`. Combo/cartesian charts only.
    */
   axis?: ChartAxisGroup;
+  /**
+   * Flip the fill color for negative values (`c:invertIfNegative`); bar/column
+   * and bubble series only. Round-trips for Excel.
+   */
+  invertIfNegative?: boolean;
 };

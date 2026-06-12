@@ -106,6 +106,7 @@ impl Workbook {
                     up_down_bars: parsed.up_down_bars,
                     drop_lines: parsed.drop_lines,
                     disp_blanks_as: parsed.disp_blanks_as,
+                    vary_colors: parsed.vary_colors,
                     gap_width: parsed.gap_width,
                     overlap: parsed.overlap,
                     radar_style: parsed.radar_style,
@@ -242,6 +243,7 @@ impl Workbook {
                     data_points: s.data_points.clone(),
                     kind: s.kind,
                     axis: s.axis,
+                    invert_if_negative: s.invert_if_negative,
                 })
                 .collect(),
             anchor,
@@ -260,6 +262,7 @@ impl Workbook {
             up_down_bars: (patch.kind == ChartKind::Stock).then(|| stock_up_down_bars(&patch)),
             drop_lines: (patch.kind == ChartKind::Stock).then(|| stock_drop_lines(&patch)),
             disp_blanks_as: Some(patch.disp_blanks_as.unwrap_or(DispBlanksAs::Gap)),
+            vary_colors: Some(vary_colors_effective(patch.kind, patch.vary_colors)),
             data_labels: patch.data_labels.clone(),
         })
     }
@@ -364,7 +367,8 @@ impl Workbook {
             || update.first_slice_angle.is_some()
             || update.hi_low_lines.is_some()
             || update.up_down_bars.is_some()
-            || update.drop_lines.is_some();
+            || update.drop_lines.is_some()
+            || update.vary_colors.is_some();
 
         let series: Vec<ChartSeriesPatch> = match &update.series {
             Some(s) => s.clone(),
@@ -385,6 +389,7 @@ impl Workbook {
                     data_points: s.data_points.clone(),
                     kind: s.kind,
                     axis: s.axis,
+                    invert_if_negative: s.invert_if_negative,
                 })
                 .collect(),
         };
@@ -405,6 +410,7 @@ impl Workbook {
         let hi_low_lines = update.hi_low_lines.or(existing.hi_low_lines);
         let up_down_bars = update.up_down_bars.or(existing.up_down_bars);
         let drop_lines = update.drop_lines.or(existing.drop_lines);
+        let vary_colors = update.vary_colors.or(existing.vary_colors);
         let data_labels = update
             .data_labels
             .clone()
@@ -481,6 +487,7 @@ impl Workbook {
                 up_down_bars,
                 drop_lines,
                 disp_blanks_as: None,
+                vary_colors,
                 data_labels: data_labels.clone(),
             };
             space.chart.plot_area.plot_area_choice1 = build_plot_charts(&synth);

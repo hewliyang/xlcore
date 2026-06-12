@@ -38,4 +38,8 @@ export type ChartSeriesInfo = {
    * Primary/secondary value-axis group; see {@link ChartSeriesPatch.axis}.
    */
   axis?: ChartAxisGroup;
+  /**
+   * Negative-value fill flip; see {@link ChartSeriesPatch.invertIfNegative}.
+   */
+  invertIfNegative?: boolean;
 };

@@ -444,9 +444,7 @@ pub(super) fn build_cartesian_group(
             grouping: Box::new(c::Grouping {
                 val: Some(line_area_grouping(patch.stacking)),
             }),
-            vary_colors: Some(c::VaryColors {
-                val: Some(BooleanValue::from_bool(false)),
-            }),
+            vary_colors: vary_colors_el(patch.vary_colors, false),
             line_chart_series: series()
                 .map(|(i, s)| build_line_series(i, s, cat_ref))
                 .collect(),
@@ -461,9 +459,7 @@ pub(super) fn build_cartesian_group(
             grouping: Some(c::Grouping {
                 val: Some(line_area_grouping(patch.stacking)),
             }),
-            vary_colors: Some(c::VaryColors {
-                val: Some(BooleanValue::from_bool(false)),
-            }),
+            vary_colors: vary_colors_el(patch.vary_colors, false),
             area_chart_series: series()
                 .map(|(i, s)| build_area_series(i, s, cat_ref))
                 .collect(),
@@ -482,9 +478,7 @@ pub(super) fn build_cartesian_group(
             bar_grouping: Some(c::BarGrouping {
                 val: Some(bar_grouping(patch.stacking)),
             }),
-            vary_colors: Some(c::VaryColors {
-                val: Some(BooleanValue::from_bool(false)),
-            }),
+            vary_colors: vary_colors_el(patch.vary_colors, false),
             bar_chart_series: series()
                 .map(|(i, s)| build_bar_series(i, s, cat_ref))
                 .collect(),
@@ -511,9 +505,7 @@ pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
     let dl = build_data_labels(dl_ref);
     match patch.kind {
         ChartKind::Pie => c::PlotAreaChoice::PieChart(Box::new(c::PieChart {
-            vary_colors: Some(c::VaryColors {
-                val: Some(BooleanValue::from_bool(true)),
-            }),
+            vary_colors: vary_colors_el(patch.vary_colors, true),
             pie_chart_series: patch
                 .series
                 .iter()
@@ -527,9 +519,7 @@ pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
             ..Default::default()
         })),
         ChartKind::Doughnut => c::PlotAreaChoice::DoughnutChart(Box::new(c::DoughnutChart {
-            vary_colors: Some(c::VaryColors {
-                val: Some(BooleanValue::from_bool(true)),
-            }),
+            vary_colors: vary_colors_el(patch.vary_colors, true),
             pie_chart_series: patch
                 .series
                 .iter()
@@ -553,9 +543,7 @@ pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                     c::ScatterStyleValues::LineMarker
                 }),
             }),
-            vary_colors: Some(c::VaryColors {
-                val: Some(BooleanValue::from_bool(false)),
-            }),
+            vary_colors: vary_colors_el(patch.vary_colors, false),
             scatter_chart_series: patch
                 .series
                 .iter()
@@ -567,9 +555,7 @@ pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
             ..Default::default()
         })),
         ChartKind::Bubble => c::PlotAreaChoice::BubbleChart(Box::new(c::BubbleChart {
-            vary_colors: Some(c::VaryColors {
-                val: Some(BooleanValue::from_bool(true)),
-            }),
+            vary_colors: vary_colors_el(patch.vary_colors, true),
             bubble_chart_series: patch
                 .series
                 .iter()
@@ -584,9 +570,7 @@ pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
             radar_style: Box::new(c::RadarStyle {
                 val: radar_style_to(patch.radar_style.unwrap_or(RadarStyle::Standard)),
             }),
-            vary_colors: Some(c::VaryColors {
-                val: Some(BooleanValue::from_bool(false)),
-            }),
+            vary_colors: vary_colors_el(patch.vary_colors, false),
             radar_chart_series: patch
                 .series
                 .iter()
@@ -760,6 +744,25 @@ pub(super) fn build_values(values_ref: &str) -> Box<c::Values> {
     })
 }
 
+pub(super) fn vary_colors_el(opt: Option<bool>, default: bool) -> Option<c::VaryColors> {
+    Some(c::VaryColors {
+        val: Some(BooleanValue::from_bool(opt.unwrap_or(default))),
+    })
+}
+
+pub(super) fn vary_colors_effective(kind: ChartKind, opt: Option<bool>) -> bool {
+    opt.unwrap_or(matches!(
+        kind,
+        ChartKind::Pie | ChartKind::Doughnut | ChartKind::Bubble
+    ))
+}
+
+pub(super) fn build_invert_if_negative(opt: Option<bool>) -> Option<c::InvertIfNegative> {
+    opt.map(|v| c::InvertIfNegative {
+        val: Some(BooleanValue::from_bool(v)),
+    })
+}
+
 pub(super) fn build_bar_series(
     idx: usize,
     s: &ChartSeriesPatch,
@@ -770,6 +773,7 @@ pub(super) fn build_bar_series(
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape_with_line(s.color.as_deref(), s.line.as_ref()),
+        invert_if_negative: build_invert_if_negative(s.invert_if_negative),
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
@@ -890,6 +894,7 @@ pub(super) fn build_bubble_series(idx: usize, s: &ChartSeriesPatch) -> c::Bubble
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape_with_line(s.color.as_deref(), s.line.as_ref()),
+        invert_if_negative: build_invert_if_negative(s.invert_if_negative),
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         x_values: s.x_values_ref.as_deref().map(build_x_values),
