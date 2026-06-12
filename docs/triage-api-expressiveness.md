@@ -191,7 +191,14 @@ authoring, per-point data labels.
   colors (solid stays the default when only `color`/`foreground` is set, with the
   legacy indexed-64 bg), deduped via the fill signature, round-trips, and is
   renderer-visible (all 16 pattern tiles verified e2e). Gradient fills
-  (`CT_GradientFill`) deferred.
+  (`CT_GradientFill`) — **done**: `FillPatch.gradient` (`GradientFillPatch
+  { kind, degree, left, right, top, bottom, stops }` + `GradientStopPatch
+  { position, color }` + `GradientType` = linear|path, sdk `CT_GradientFill`/
+  `CT_GradientStop`/`ST_GradientType` distilled) builds `x:gradientFill` with
+  `@type`/`@degree` (linear) or `@left`/`@right`/`@top`/`@bottom` convergence
+  (path) + `x:stop`/`@position`/`x:color`, validates stop positions 0..=1,
+  dedupes via the gradient-aware fill signature, round-trips, and is
+  renderer-visible (45° linear gold→navy + radial path red→white verified e2e).
 - `FontPatch`: `vertAlign` (sub/superscript), `family`, `scheme` — **done**:
   `FontPatch.vert_align` (`VertAlign` = baseline|superscript|subscript, sdk
   `ST_VerticalAlignRun` transliterated), `family` (`u32` 0..=5, `font/@family`),

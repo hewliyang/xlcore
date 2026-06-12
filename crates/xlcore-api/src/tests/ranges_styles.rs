@@ -287,6 +287,57 @@ fn set_style_applies_font_vert_align_family_scheme() {
 }
 
 #[test]
+fn set_style_applies_gradient_fill() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value("Sheet1!A1", "x").unwrap();
+
+    let patch = StylePatch {
+        fill: Some(FillPatch {
+            gradient: Some(GradientFillPatch {
+                kind: Some(GradientType::Linear),
+                degree: Some(90.0),
+                stops: vec![
+                    GradientStopPatch {
+                        position: 0.0,
+                        color: "FF0000".to_string(),
+                    },
+                    GradientStopPatch {
+                        position: 1.0,
+                        color: "0000FF".to_string(),
+                    },
+                ],
+                ..Default::default()
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    workbook.set_style("Sheet1!A1", patch).unwrap();
+
+    let bytes = workbook.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let idx = reopened.get_cell("Sheet1!A1").unwrap().style_index.unwrap();
+    assert!(idx > 0);
+
+    let layout = reopened.layout(LayoutOptions::default()).unwrap();
+    let xf = &layout.styles.cell_xfs[idx as usize];
+    let fill = &layout.styles.fills[xf.fill_id.unwrap() as usize];
+    assert_eq!(fill.pattern_type.as_deref(), Some("gradient"));
+    assert_eq!(fill.gradient_degree, Some(90.0));
+    assert_eq!(fill.gradient_stops.len(), 2);
+    assert_eq!(fill.gradient_stops[0].position, 0.0);
+    assert_eq!(
+        fill.gradient_stops[0].color.rgb.as_deref(),
+        Some("FFFF0000")
+    );
+    assert_eq!(fill.gradient_stops[1].position, 1.0);
+    assert_eq!(
+        fill.gradient_stops[1].color.rgb.as_deref(),
+        Some("FF0000FF")
+    );
+}
+
+#[test]
 fn set_style_applies_alignment_extras() {
     let mut workbook = Workbook::new().unwrap();
     workbook.set_value("Sheet1!A1", "x").unwrap();

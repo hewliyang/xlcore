@@ -3,7 +3,8 @@ use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 pub use xlcore_types::{
     AlignmentPatch, BorderLinePatch, BorderLineStyle, BorderPatch, FillPatch, FontPatch,
-    FontScheme, HorizontalAlign, PatternType, ProtectionPatch, ReadingOrder, StylePatch,
+    FontScheme, GradientFillPatch, GradientType, HorizontalAlign, PatternType, ProtectionPatch,
+    ReadingOrder, StylePatch,
     UnderlinePatch, VertAlign, VerticalAlign,
 };
 
@@ -426,7 +427,39 @@ fn pattern_type_to_x(p: PatternType) -> x::PatternValues {
     }
 }
 
+fn build_gradient_fill(patch: &GradientFillPatch) -> Result<x::Fill> {
+    let path = matches!(patch.kind, Some(GradientType::Path));
+    let mut stops = Vec::with_capacity(patch.stops.len());
+    for stop in &patch.stops {
+        if !(0.0..=1.0).contains(&stop.position) {
+            return Err(ApiError::new(
+                ApiErrorCode::UnsupportedStyle,
+                format!("gradient stop position out of range 0..=1: {}", stop.position),
+            ));
+        }
+        stops.push(x::GradientStop {
+            position: stop.position,
+            color: Box::new(parse_color(&stop.color)?),
+        });
+    }
+    Ok(x::Fill {
+        fill_choice: Some(x::FillChoice::GradientFill(Box::new(x::GradientFill {
+            r#type: path.then_some(x::GradientValues::Path),
+            degree: if path { None } else { patch.degree },
+            left: if path { patch.left } else { None },
+            right: if path { patch.right } else { None },
+            top: if path { patch.top } else { None },
+            bottom: if path { patch.bottom } else { None },
+            gradient_stop: stops,
+        }))),
+        ..Default::default()
+    })
+}
+
 fn build_fill(patch: &FillPatch) -> Result<x::Fill> {
+    if let Some(gradient) = patch.gradient.as_ref() {
+        return build_gradient_fill(gradient);
+    }
     let pattern = match patch.pattern {
         Some(p) => pattern_type_to_x(p),
         None => {
@@ -853,7 +886,18 @@ fn fill_signature(f: &x::Fill) -> String {
             pf.foreground_color.as_ref().map(fg_sig).unwrap_or_default(),
             pf.background_color.as_ref().map(bg_sig).unwrap_or_default(),
         ),
-        Some(x::FillChoice::GradientFill(_)) => "gradient".to_string(),
+        Some(x::FillChoice::GradientFill(gf)) => {
+            let stops: String = gf
+                .gradient_stop
+                .iter()
+                .map(|s| format!("{}:{}", s.position, color_sig(&s.color)))
+                .collect::<Vec<_>>()
+                .join(",");
+            format!(
+                "grad|{:?}|{:?}|{:?}|{:?}|{:?}|{:?}|{}",
+                gf.r#type, gf.degree, gf.left, gf.right, gf.top, gf.bottom, stops
+            )
+        }
         None => "none".to_string(),
     }
 }
