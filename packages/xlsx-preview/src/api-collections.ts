@@ -246,10 +246,7 @@ export class ChartCollection extends SheetScopedCollection {
     const normalized: ChartPatch = { ...patch, anchor: normalizeAnchor(patch.anchor) };
     return this.handle.setChart(normalized) as ChartInfo;
   }
-  update(
-    id: string,
-    update: Omit<ChartUpdate, "anchor"> & { anchor?: AnchorInput },
-  ): ChartInfo {
+  update(id: string, update: Omit<ChartUpdate, "anchor"> & { anchor?: AnchorInput }): ChartInfo {
     const normalized: ChartUpdate = {
       ...update,
       anchor: update.anchor === undefined ? undefined : normalizeAnchor(update.anchor),
