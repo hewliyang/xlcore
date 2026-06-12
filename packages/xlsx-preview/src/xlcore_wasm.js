@@ -2049,7 +2049,7 @@ export class WorkbookHandle {
     }
     /**
      * @param {string} name
-     * @param {string} visibility
+     * @param {any} visibility
      * @returns {any}
      */
     setSheetVisibility(name, visibility) {
@@ -2057,9 +2057,7 @@ export class WorkbookHandle {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
             const ptr0 = passStringToWasm0(name, wasm.__wbindgen_export, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
-            const ptr1 = passStringToWasm0(visibility, wasm.__wbindgen_export, wasm.__wbindgen_export2);
-            const len1 = WASM_VECTOR_LEN;
-            wasm.workbookhandle_setSheetVisibility(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1);
+            wasm.workbookhandle_setSheetVisibility(retptr, this.__wbg_ptr, ptr0, len0, addHeapObject(visibility));
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);

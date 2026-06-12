@@ -99,7 +99,7 @@ export class WorkbookHandle {
     setShape(sheet: string, patch: any): any;
     setSheetProperties(sheet: string, patch: any): any;
     setSheetProtection(sheet: string, patch: any): any;
-    setSheetVisibility(name: string, visibility: string): any;
+    setSheetVisibility(name: string, visibility: any): any;
     setShowGridLines(sheet: string, visible: boolean): boolean;
     setSparklineGroup(sheet: string, patch: any): any;
     setStyle(reference: string, patch: any): any;
@@ -232,7 +232,7 @@ export interface InitOutput {
     readonly workbookhandle_setShape: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setSheetProperties: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setSheetProtection: (a: number, b: number, c: number, d: number, e: number) => void;
-    readonly workbookhandle_setSheetVisibility: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+    readonly workbookhandle_setSheetVisibility: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setShowGridLines: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setSparklineGroup: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setStyle: (a: number, b: number, c: number, d: number, e: number) => void;

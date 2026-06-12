@@ -328,29 +328,6 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
     }
 
-    #[wasm_bindgen(js_name = setSheetVisibility)]
-    pub fn set_sheet_visibility(
-        &mut self,
-        name: &str,
-        visibility: &str,
-    ) -> Result<JsValue, JsValue> {
-        let visibility = match visibility {
-            "visible" => xlcore_api::SheetVisibility::Visible,
-            "hidden" => xlcore_api::SheetVisibility::Hidden,
-            "veryHidden" => xlcore_api::SheetVisibility::VeryHidden,
-            other => {
-                return Err(other_err_to_js(format!(
-                    "unknown sheet visibility: {other}"
-                )))
-            }
-        };
-        let sheet = self
-            .workbook_mut()?
-            .set_sheet_visibility(name, visibility)
-            .map_err(api_err_to_js)?;
-        serde_wasm_bindgen::to_value(&sheet).map_err(other_err_to_js)
-    }
-
     pub fn save(&mut self) -> Result<Vec<u8>, JsValue> {
         self.workbook_mut()?.save_bytes().map_err(api_err_to_js)
     }
@@ -464,6 +441,7 @@ api_methods! {
     { set_freeze as "setFreeze" (s sheet, u32 frozen_rows, u32 frozen_columns) -> json }
     { get_freeze as "getFreeze" (s sheet) -> json }
     { set_active_sheet as "setActiveSheet" (s name) -> json }
+    { set_sheet_visibility as "setSheetVisibility" (s name, de visibility: xlcore_api::SheetVisibility) -> json }
     { search (s query, deopt options: xlcore_api::SearchOptions) -> json }
     { recalculate (bool errors_only) -> json }
     { layout (deopt options: xlcore_api::LayoutOptions) -> json }

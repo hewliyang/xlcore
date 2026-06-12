@@ -32,6 +32,7 @@ export const workbookhandle_dispose: (a: number) => void;
 export const workbookhandle_fillRange: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_getCell: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_getFreeze: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_getPartXml: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_getRange: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_getShowGridLines: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_groupColumns: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
@@ -46,6 +47,7 @@ export const workbookhandle_moveSheet: (a: number, b: number, c: number, d: numb
 export const workbookhandle_new: (a: number) => void;
 export const workbookhandle_open: (a: number, b: number, c: number) => void;
 export const workbookhandle_pageSetup: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_partNames: (a: number, b: number) => void;
 export const workbookhandle_pivotPreview: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_pivots: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_precedents: (a: number, b: number, c: number, d: number) => void;
@@ -61,6 +63,7 @@ export const workbookhandle_removeHyperlink: (a: number, b: number, c: number, d
 export const workbookhandle_removeImage: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removeMerge: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removePageSetup: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_removePartXml: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removePivot: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removeShape: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removeSheetProtection: (a: number, b: number, c: number, d: number) => void;
@@ -88,6 +91,7 @@ export const workbookhandle_setFreeze: (a: number, b: number, c: number, d: numb
 export const workbookhandle_setHyperlink: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
 export const workbookhandle_setImage: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setPageSetup: (a: number, b: number, c: number, d: number, e: number) => void;
+export const workbookhandle_setPartXml: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setPivot: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setProperties: (a: number, b: number, c: number) => void;
 export const workbookhandle_setRangeFormulas: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -97,7 +101,7 @@ export const workbookhandle_setRowVisible: (a: number, b: number, c: number, d: 
 export const workbookhandle_setShape: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setSheetProperties: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setSheetProtection: (a: number, b: number, c: number, d: number, e: number) => void;
-export const workbookhandle_setSheetVisibility: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+export const workbookhandle_setSheetVisibility: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setShowGridLines: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setSparklineGroup: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setStyle: (a: number, b: number, c: number, d: number, e: number) => void;
