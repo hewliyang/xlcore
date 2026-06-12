@@ -288,6 +288,38 @@ export function drawCategoryAxisExtraRowsCentered(
   }
 }
 
+export function seriesLineWidth(s: ChartSeries, fallback: number): number {
+  if (s.lineWidthEmu == null) return fallback;
+  return Math.max(0.5, s.lineWidthEmu / 12700);
+}
+
+export function seriesLineDash(s: ChartSeries): number[] {
+  switch (s.lineDash) {
+    case "dot":
+      return [1, 3];
+    case "dash":
+      return [4, 3];
+    case "lgDash":
+      return [8, 3];
+    case "dashDot":
+      return [4, 3, 1, 3];
+    case "lgDashDot":
+      return [8, 3, 1, 3];
+    case "lgDashDotDot":
+      return [8, 3, 1, 3, 1, 3];
+    case "sysDash":
+      return [3, 1];
+    case "sysDot":
+      return [1, 1];
+    case "sysDashDot":
+      return [3, 1, 1, 1];
+    case "sysDashDotDot":
+      return [3, 1, 1, 1, 1, 1];
+    default:
+      return [];
+  }
+}
+
 export function withAlpha(color: string, alpha: number): string {
   const m = /^#([0-9a-f]{6})$/i.exec(color);
   if (!m) return color;

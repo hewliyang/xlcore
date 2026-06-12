@@ -136,6 +136,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
                     info.kind = Some(this_kind);
                     info.axis = gsec.then_some(ChartAxisGroup::Secondary);
                     info.data_points = read_data_points(&s.data_point);
@@ -161,6 +162,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
                     info.marker = read_marker(s.marker.as_deref());
                     info.smooth = read_smooth(s.smooth.as_ref());
                     info.kind = Some(ChartKind::Line);
@@ -187,6 +189,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
                     info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
@@ -210,6 +213,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
                     info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
@@ -262,6 +266,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
                     info.marker = read_marker(s.marker.as_deref());
                     info.smooth = read_smooth(s.smooth.as_ref());
                     info.data_points = read_data_points(&s.data_point);
@@ -294,6 +299,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         }
                     });
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
                     info.data_points = read_data_points(&s.data_point);
                     series.push(info);
                 }
@@ -320,6 +326,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
                     info.marker = read_marker(s.marker.as_deref());
                     info.data_points = read_data_points(&s.data_point);
                     series.push(info);
@@ -345,6 +352,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         s.data_labels.as_deref(),
                     );
                     info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
                     info.marker = read_marker(s.marker.as_deref());
                     info.data_points = read_data_points(&s.data_point);
                     series.push(info);
@@ -480,6 +488,7 @@ pub(super) fn read_xy_series(
         color: None,
         data_labels: read_data_labels(dl),
         marker: None,
+        line: None,
         smooth: None,
         data_points: None,
         kind: None,
@@ -519,6 +528,37 @@ pub(super) fn read_marker(m: Option<&c::Marker>) -> Option<ChartMarker> {
 
 pub(super) fn read_smooth(s: Option<&c::Smooth>) -> Option<bool> {
     s?.val.as_ref().map(|v| v.as_bool())
+}
+
+pub(super) fn line_dash_from(v: &a::PresetLineDashValues) -> LineDash {
+    match v {
+        a::PresetLineDashValues::Solid => LineDash::Solid,
+        a::PresetLineDashValues::Dot => LineDash::Dot,
+        a::PresetLineDashValues::Dash => LineDash::Dash,
+        a::PresetLineDashValues::LargeDash => LineDash::LargeDash,
+        a::PresetLineDashValues::DashDot => LineDash::DashDot,
+        a::PresetLineDashValues::LargeDashDot => LineDash::LargeDashDot,
+        a::PresetLineDashValues::LargeDashDotDot => LineDash::LargeDashDotDot,
+        a::PresetLineDashValues::SystemDash => LineDash::SystemDash,
+        a::PresetLineDashValues::SystemDot => LineDash::SystemDot,
+        a::PresetLineDashValues::SystemDashDot => LineDash::SystemDashDot,
+        a::PresetLineDashValues::SystemDashDotDot => LineDash::SystemDashDotDot,
+    }
+}
+
+pub(super) fn read_line(sp: Option<&c::ChartShapeProperties>) -> Option<ChartLine> {
+    let outline = sp?.outline.as_deref()?;
+    let none = matches!(outline.outline_choice1, Some(a::OutlineChoice::NoFill(_))).then_some(true);
+    let dash = match outline.outline_choice2.as_ref() {
+        Some(a::OutlineChoice2::PresetDash(d)) => d.val.as_ref().map(line_dash_from),
+        _ => None,
+    };
+    let out = ChartLine {
+        width_emu: outline.width,
+        dash,
+        none,
+    };
+    (out != ChartLine::default()).then_some(out)
 }
 
 pub(super) fn read_data_points(dps: &[c::DataPoint]) -> Option<Vec<ChartDataPoint>> {
@@ -604,6 +644,7 @@ pub(super) fn read_series(
         color: None,
         data_labels: read_data_labels(dl),
         marker: None,
+        line: None,
         smooth: None,
         data_points: None,
         kind: None,

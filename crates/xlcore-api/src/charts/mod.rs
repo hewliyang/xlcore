@@ -15,8 +15,9 @@ use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
     AnchorSpec, ApiError, ApiErrorCode, ApiWarning, BuiltInUnit, ChartAnchor, ChartAxisGroup,
     ChartAxisPatch, ChartDataLabelPosition, ChartDataLabels, ChartDataPoint, ChartInfo, ChartKind,
-    ChartLegendPosition, ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking,
-    ChartUpdate, CrossBetween, DisplayUnits, MarkerStyle, RadarStyle, TickLabelPosition, TickMark,
+    ChartLegendPosition, ChartLine, ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch,
+    ChartStacking, ChartUpdate, CrossBetween, DisplayUnits, LineDash, MarkerStyle, RadarStyle,
+    TickLabelPosition, TickMark,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -234,6 +235,7 @@ impl Workbook {
                     color: s.color.clone(),
                     data_labels: s.data_labels.clone(),
                     marker: s.marker.clone(),
+                    line: s.line.clone(),
                     smooth: s.smooth,
                     data_points: s.data_points.clone(),
                     kind: s.kind,
@@ -375,6 +377,7 @@ impl Workbook {
                     color: s.color.clone(),
                     data_labels: s.data_labels.clone(),
                     marker: s.marker.clone(),
+                    line: s.line.clone(),
                     smooth: s.smooth,
                     data_points: s.data_points.clone(),
                     kind: s.kind,

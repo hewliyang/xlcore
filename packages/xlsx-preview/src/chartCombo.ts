@@ -14,6 +14,8 @@ import {
   paintZeroBaseline,
   pointLabel,
   resolveAxisRange,
+  seriesLineDash,
+  seriesLineWidth,
   withAlpha,
 } from "./chartUtils.js";
 
@@ -364,7 +366,8 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
       const k = seriesKind(s);
       if (k === "line") {
         ctx.strokeStyle = s.color ?? "#4472C4";
-        ctx.lineWidth = 2;
+        ctx.lineWidth = seriesLineWidth(s, 2);
+        ctx.setLineDash(seriesLineDash(s));
         ctx.beginPath();
         let penDown = false;
         for (let i = 0; i < categoryCount; i++) {
@@ -382,6 +385,7 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
           }
         }
         ctx.stroke();
+        ctx.setLineDash([]);
 
         if (s.markerSymbol !== "none") {
           ctx.fillStyle = s.color ?? "#4472C4";

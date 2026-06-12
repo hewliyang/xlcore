@@ -3,6 +3,7 @@ import type { ChartAxisGroup } from "./ChartAxisGroup.js";
 import type { ChartDataLabels } from "./ChartDataLabels.js";
 import type { ChartDataPoint } from "./ChartDataPoint.js";
 import type { ChartKind } from "./ChartKind.js";
+import type { ChartLine } from "./ChartLine.js";
 import type { ChartMarker } from "./ChartMarker.js";
 
 export type ChartSeriesPatch = {
@@ -17,6 +18,10 @@ export type ChartSeriesPatch = {
    * `c:marker`; line/scatter series only.
    */
   marker?: ChartMarker;
+  /**
+   * Connecting-line / outline styling (`spPr/a:ln`): width, dash, hidden.
+   */
+  line?: ChartLine;
   /**
    * Smooth the connecting line with a spline (`c:smooth`); line/scatter series
    * only. On a scatter chart any smoothed series sets the chart's

@@ -471,6 +471,7 @@ fn charts_supports_multiple_kinds() {
             color: None,
             data_labels: None,
             marker: None,
+            line: None,
             smooth: None,
             data_points: None,
             kind: None,
@@ -555,6 +556,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
                 color: Some("FF8800".to_string()),
                 data_labels: None,
                 marker: None,
+                line: None,
                 smooth: None,
                 data_points: None,
                 kind: None,
@@ -2174,4 +2176,88 @@ fn stock_chart_requires_three_to_six_series() {
         )
         .unwrap_err();
     assert!(err.to_string().contains("3..=6 series"));
+}
+
+#[test]
+fn chart_series_line_roundtrips_and_updates() {
+    use xlcore_types::{ChartLine, ChartUpdate, LineDash};
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 20.0).unwrap();
+    wb.set_value("Sheet1!B4", 15.0).unwrap();
+
+    let line = ChartLine {
+        width_emu: Some(38100),
+        dash: Some(LineDash::Dash),
+        none: None,
+    };
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Line,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    line: Some(line.clone()),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::default(),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
+                data_labels: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(info.series[0].line, Some(line.clone()));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("<a:ln"));
+    assert!(xml.contains("w=\"38100\""));
+    assert!(xml.contains("prstDash"));
+    assert!(xml.contains("\"dash\""));
+
+    let mut wb = Workbook::open_bytes(bytes).unwrap();
+    let id = wb.charts(Some("Sheet1")).unwrap()[0].id.clone();
+    assert_eq!(
+        wb.charts(Some("Sheet1")).unwrap()[0].series[0].line,
+        Some(line)
+    );
+
+    let updated = ChartLine {
+        width_emu: Some(12700),
+        dash: Some(LineDash::SystemDot),
+        none: None,
+    };
+    wb.update_chart(
+        "Sheet1",
+        id,
+        ChartUpdate {
+            series: Some(vec![ChartSeriesPatch {
+                values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                line: Some(updated.clone()),
+                ..Default::default()
+            }]),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let read = wb.charts(Some("Sheet1")).unwrap();
+    assert_eq!(read[0].series[0].line, Some(updated));
 }

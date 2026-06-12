@@ -1,6 +1,35 @@
 use crate::chart_colors::*;
 use crate::schema::*;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_chart as c;
+use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
+
+pub(crate) fn extract_line_style(
+    sp_pr: Option<&c::ChartShapeProperties>,
+) -> (Option<i32>, Option<String>) {
+    let Some(outline) = sp_pr.and_then(|p| p.outline.as_deref()) else {
+        return (None, None);
+    };
+    let dash = match outline.outline_choice2.as_ref() {
+        Some(a::OutlineChoice2::PresetDash(d)) => d.val.as_ref().map(|v| {
+            match v {
+                a::PresetLineDashValues::Solid => "solid",
+                a::PresetLineDashValues::Dot => "dot",
+                a::PresetLineDashValues::Dash => "dash",
+                a::PresetLineDashValues::LargeDash => "lgDash",
+                a::PresetLineDashValues::DashDot => "dashDot",
+                a::PresetLineDashValues::LargeDashDot => "lgDashDot",
+                a::PresetLineDashValues::LargeDashDotDot => "lgDashDotDot",
+                a::PresetLineDashValues::SystemDash => "sysDash",
+                a::PresetLineDashValues::SystemDot => "sysDot",
+                a::PresetLineDashValues::SystemDashDot => "sysDashDot",
+                a::PresetLineDashValues::SystemDashDotDot => "sysDashDotDot",
+            }
+            .to_string()
+        }),
+        _ => None,
+    };
+    (outline.width, dash)
+}
 
 pub(crate) fn built_in_unit_factor(b: &c::BuiltInUnitValues) -> f64 {
     match b {
@@ -283,6 +312,7 @@ pub(crate) fn common_series(
             Some(theme_accent_color(n, theme))
         });
     let point_colors = extract_point_colors(d_pts, values.len(), theme);
+    let (lw, ld) = extract_line_style(sp_pr);
     ChartSeries {
         name: name.unwrap_or_default(),
         name_ref,
@@ -298,6 +328,8 @@ pub(crate) fn common_series(
         axis_group: None,
         chart_type: None,
         marker_symbol: None,
+        line_width_emu: lw,
+        line_dash: ld,
     }
 }
 
@@ -318,6 +350,7 @@ pub(crate) fn common_series_scatter(
             Some(theme_accent_color(n, theme))
         });
     let point_colors = extract_point_colors(d_pts, values.len(), theme);
+    let (lw, ld) = extract_line_style(sp_pr);
     ChartSeries {
         name: name.unwrap_or_default(),
         name_ref,
@@ -333,6 +366,8 @@ pub(crate) fn common_series_scatter(
         axis_group: None,
         chart_type: None,
         marker_symbol: None,
+        line_width_emu: lw,
+        line_dash: ld,
     }
 }
 

@@ -384,7 +384,7 @@ pub(super) fn build_radar_series(
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
-        chart_shape_properties: build_series_shape(s.color.as_deref()),
+        chart_shape_properties: build_series_shape_with_line(s.color.as_deref(), s.line.as_ref()),
         marker: build_marker(s.marker.as_ref()),
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
@@ -761,7 +761,7 @@ pub(super) fn build_bar_series(
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
-        chart_shape_properties: build_series_shape(s.color.as_deref()),
+        chart_shape_properties: build_series_shape_with_line(s.color.as_deref(), s.line.as_ref()),
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
@@ -779,7 +779,7 @@ pub(super) fn build_line_series(
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
-        chart_shape_properties: build_series_shape(s.color.as_deref()),
+        chart_shape_properties: build_series_shape_with_line(s.color.as_deref(), s.line.as_ref()),
         marker: build_marker(s.marker.as_ref()),
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
@@ -849,7 +849,7 @@ pub(super) fn build_pie_series(
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
-        chart_shape_properties: build_series_shape(s.color.as_deref()),
+        chart_shape_properties: build_series_shape_with_line(s.color.as_deref(), s.line.as_ref()),
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         category_axis_data: build_categories(cat_ref),
@@ -863,7 +863,7 @@ pub(super) fn build_scatter_series(idx: usize, s: &ChartSeriesPatch) -> c::Scatt
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
-        chart_shape_properties: build_series_shape(s.color.as_deref()),
+        chart_shape_properties: build_series_shape_with_line(s.color.as_deref(), s.line.as_ref()),
         marker: build_marker(s.marker.as_ref()),
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
@@ -881,7 +881,7 @@ pub(super) fn build_bubble_series(idx: usize, s: &ChartSeriesPatch) -> c::Bubble
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
-        chart_shape_properties: build_series_shape(s.color.as_deref()),
+        chart_shape_properties: build_series_shape_with_line(s.color.as_deref(), s.line.as_ref()),
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
         x_values: s.x_values_ref.as_deref().map(build_x_values),
@@ -953,21 +953,80 @@ pub(super) fn build_point_shape(fill: &str) -> Option<Box<c::ChartShapePropertie
 }
 
 pub(super) fn build_series_shape(color: Option<&str>) -> Option<Box<c::ChartShapeProperties>> {
-    let hex = color?;
-    let val = normalize_chart_hex(hex)?;
-    let solid = a::SolidFill {
-        solid_fill_choice: Some(a::SolidFillChoice::RgbColorModelHex(Box::new(
-            a::RgbColorModelHex {
-                val,
+    build_series_shape_with_line(color, None)
+}
+
+pub(super) fn line_dash_to(d: LineDash) -> a::PresetLineDashValues {
+    match d {
+        LineDash::Solid => a::PresetLineDashValues::Solid,
+        LineDash::Dot => a::PresetLineDashValues::Dot,
+        LineDash::Dash => a::PresetLineDashValues::Dash,
+        LineDash::LargeDash => a::PresetLineDashValues::LargeDash,
+        LineDash::DashDot => a::PresetLineDashValues::DashDot,
+        LineDash::LargeDashDot => a::PresetLineDashValues::LargeDashDot,
+        LineDash::LargeDashDotDot => a::PresetLineDashValues::LargeDashDotDot,
+        LineDash::SystemDash => a::PresetLineDashValues::SystemDash,
+        LineDash::SystemDot => a::PresetLineDashValues::SystemDot,
+        LineDash::SystemDashDot => a::PresetLineDashValues::SystemDashDot,
+        LineDash::SystemDashDotDot => a::PresetLineDashValues::SystemDashDotDot,
+    }
+}
+
+pub(super) fn build_outline(line: &ChartLine, color: Option<&str>) -> Box<a::Outline> {
+    let choice1 = if line.none == Some(true) {
+        Some(a::OutlineChoice::NoFill(Box::new(a::NoFill::default())))
+    } else {
+        color.and_then(normalize_chart_hex).map(|val| {
+            a::OutlineChoice::SolidFill(Box::new(a::SolidFill {
+                solid_fill_choice: Some(a::SolidFillChoice::RgbColorModelHex(Box::new(
+                    a::RgbColorModelHex {
+                        val,
+                        ..Default::default()
+                    },
+                ))),
                 ..Default::default()
-            },
-        ))),
-        ..Default::default()
+            }))
+        })
     };
+    let choice2 = (line.none != Some(true))
+        .then(|| line.dash)
+        .flatten()
+        .map(|d| {
+            a::OutlineChoice2::PresetDash(Box::new(a::PresetDash {
+                val: Some(line_dash_to(d)),
+                ..Default::default()
+            }))
+        });
+    Box::new(a::Outline {
+        width: line.width_emu,
+        outline_choice1: choice1,
+        outline_choice2: choice2,
+        ..Default::default()
+    })
+}
+
+pub(super) fn build_series_shape_with_line(
+    color: Option<&str>,
+    line: Option<&ChartLine>,
+) -> Option<Box<c::ChartShapeProperties>> {
+    let fill = color.and_then(normalize_chart_hex).map(|val| {
+        c::ChartShapePropertiesChoice2::SolidFill(Box::new(a::SolidFill {
+            solid_fill_choice: Some(a::SolidFillChoice::RgbColorModelHex(Box::new(
+                a::RgbColorModelHex {
+                    val,
+                    ..Default::default()
+                },
+            ))),
+            ..Default::default()
+        }))
+    });
+    let outline = line.map(|l| build_outline(l, color));
+    if fill.is_none() && outline.is_none() {
+        return None;
+    }
     Some(Box::new(c::ChartShapeProperties {
-        chart_shape_properties_choice2: Some(c::ChartShapePropertiesChoice2::SolidFill(Box::new(
-            solid,
-        ))),
+        chart_shape_properties_choice2: fill,
+        outline,
         ..Default::default()
     }))
 }

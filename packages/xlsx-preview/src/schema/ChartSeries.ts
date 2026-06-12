@@ -16,4 +16,6 @@ export type ChartSeries = {
   axisGroup?: string;
   chartType?: string;
   markerSymbol?: string;
+  lineWidthEmu?: number;
+  lineDash?: string;
 };

@@ -200,6 +200,72 @@ pub struct ChartMarker {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+/// Preset line dash pattern (`a:prstDash/@val`, OOXML `ST_PresetLineDashVal`),
+/// transliterated from ooxmlsdk `PresetLineDashValues`.
+pub enum LineDash {
+    #[serde(rename = "solid")]
+    Solid,
+    #[serde(rename = "dot")]
+    Dot,
+    #[serde(rename = "dash")]
+    Dash,
+    #[serde(rename = "lgDash")]
+    LargeDash,
+    #[serde(rename = "dashDot")]
+    DashDot,
+    #[serde(rename = "lgDashDot")]
+    LargeDashDot,
+    #[serde(rename = "lgDashDotDot")]
+    LargeDashDotDot,
+    #[serde(rename = "sysDash")]
+    SystemDash,
+    #[serde(rename = "sysDot")]
+    SystemDot,
+    #[serde(rename = "sysDashDot")]
+    SystemDashDot,
+    #[serde(rename = "sysDashDotDot")]
+    SystemDashDotDot,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// Series connecting-line / outline styling (`spPr/a:ln`), distilled from
+/// ooxmlsdk `Outline`.
+///
+/// On line/scatter/radar series this is the connecting line; on bar/area/pie
+/// series it is the shape outline. `width`/`dash` are renderer-visible. Setting
+/// `none: true` emits `a:ln/a:noFill` (hidden line, markers-only) and overrides
+/// `width`/`dash`.
+///
+/// Intentionally not modeled (preserved on update, author via raw XML): `cap`,
+/// `cmpd`, `algn`, `custDash`, line joins, head/tail ends, gradient/pattern
+/// line fills, `extLst`.
+pub struct ChartLine {
+    /// `a:ln/@w` in EMU (1 pt = 12700 EMU, 0..=20116800).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub width_emu: Option<i32>,
+    /// `a:ln/a:prstDash/@val`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dash: Option<LineDash>,
+    /// Hide the line (`a:ln/a:noFill`); markers-only. Overrides `width`/`dash`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub none: Option<bool>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
@@ -467,6 +533,10 @@ pub struct ChartSeriesPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub marker: Option<ChartMarker>,
+    /// Connecting-line / outline styling (`spPr/a:ln`): width, dash, hidden.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line: Option<ChartLine>,
     /// Smooth the connecting line with a spline (`c:smooth`); line/scatter series
     /// only. On a scatter chart any smoothed series sets the chart's
     /// `c:scatterStyle` to `smoothMarker`, which the xlsx-preview renderer draws
@@ -523,6 +593,10 @@ pub struct ChartSeriesInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub marker: Option<ChartMarker>,
+    /// Connecting-line / outline styling; see {@link ChartSeriesPatch.line}.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line: Option<ChartLine>,
     /// Spline-smoothed line (`c:smooth`); see {@link ChartSeriesPatch.smooth}.
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]

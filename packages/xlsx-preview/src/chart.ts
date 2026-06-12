@@ -20,6 +20,8 @@ import {
   zeroAxisMetrics,
   resolveAxisRange,
   valueRange,
+  seriesLineWidth,
+  seriesLineDash,
 } from "./chartUtils.js";
 
 import {
@@ -682,7 +684,8 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     const s = series[si]!;
     const data = stackedSeries[si]!;
     ctx.strokeStyle = s.color ?? "#4472C4";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = seriesLineWidth(s, 2);
+    ctx.setLineDash(seriesLineDash(s));
     ctx.beginPath();
     let penDown = false;
     for (let i = 0; i < categoryCount; i++) {
@@ -700,6 +703,7 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
       }
     }
     ctx.stroke();
+    ctx.setLineDash([]);
 
     if (s.markerSymbol !== "none") {
       ctx.fillStyle = s.color ?? "#4472C4";

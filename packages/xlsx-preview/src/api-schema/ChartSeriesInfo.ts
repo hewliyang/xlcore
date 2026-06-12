@@ -3,6 +3,7 @@ import type { ChartAxisGroup } from "./ChartAxisGroup.js";
 import type { ChartDataLabels } from "./ChartDataLabels.js";
 import type { ChartDataPoint } from "./ChartDataPoint.js";
 import type { ChartKind } from "./ChartKind.js";
+import type { ChartLine } from "./ChartLine.js";
 import type { ChartMarker } from "./ChartMarker.js";
 
 export type ChartSeriesInfo = {
@@ -17,6 +18,10 @@ export type ChartSeriesInfo = {
    * `c:marker`; line/scatter series only.
    */
   marker?: ChartMarker;
+  /**
+   * Connecting-line / outline styling; see {@link ChartSeriesPatch.line}.
+   */
+  line?: ChartLine;
   /**
    * Spline-smoothed line (`c:smooth`); see {@link ChartSeriesPatch.smooth}.
    */

@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `ChartSeriesPatch.line` (`ChartLine { widthEmu, dash, none }` + `LineDash` enum, `spPr/a:ln`): per-series line/outline width, preset dash, or hidden line; authored on every series kind, round-tripped, updated in place, and `widthEmu`/`dash` rendered by the previewer.
 - `ChartAxisPatch.displayUnits` (`c:dispUnits`, value axis only): builtin `ST_BuiltInUnit` name (`"millions"`) or custom divisor number; authored, round-tripped, updated in place, and rendered (scaled axis labels + unit label band).
 - `ChartSeriesPatch.smooth` (`c:smooth`) for line/scatter series; on scatter charts a smoothed series sets `c:scatterStyle` to `smoothMarker`. Authored, round-tripped, updated in place, and rendered as curved splines by the previewer.
 - `ChartPatch.holeSize` (10..=90, `c:holeSize`) for doughnut charts and `ChartPatch.firstSliceAngle` (0..=360, `c:firstSliceAng`) for pie/doughnut charts, on `ChartPatch`/`ChartUpdate`/`ChartInfo`; authored, round-tripped, updated in place, and rendered by the previewer.

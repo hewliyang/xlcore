@@ -115,14 +115,19 @@ pub struct ChartAxisPatch {
   is renderer-visible (column + line on dual axes verified e2e).
 - Series styling: marker (style/size), line width/dash, `smooth`,
   `varyColors`, `invertIfNegative`. **— `gapWidth`/`overlap` + marker + `smooth`
-  done**; `ChartSeriesPatch.marker` (`ChartMarker { style, size }` + `MarkerStyle`
-  enum, sdk `ST_MarkerStyle` transliterated) builds `c:marker` on line/scatter
-  series, round-trips, and is renderer-visible. `ChartSeriesPatch.smooth`
+  + line width/dash done**; `ChartSeriesPatch.marker` (`ChartMarker { style, size }`
+  + `MarkerStyle` enum, sdk `ST_MarkerStyle` transliterated) builds `c:marker` on
+  line/scatter series, round-trips, and is renderer-visible. `ChartSeriesPatch.smooth`
   (`c:smooth`) builds on line/scatter series, round-trips, updates in place, and
   on scatter charts any smoothed series flips the chart's `c:scatterStyle` to
   `smoothMarker` — renderer-visible (smooth scatter draws curved splines verified
-  e2e). Remaining: line width/dash (lives in `spPr/a:ln`, preserved-on-update),
-  `varyColors`, `invertIfNegative`.
+  e2e). `ChartSeriesPatch.line` (`ChartLine { width_emu, dash, none }` +
+  `LineDash` enum, sdk `Outline`/`ST_PresetLineDashVal` distilled) builds
+  `spPr/a:ln` (`@w` + `a:prstDash`, or `a:noFill` for markers-only) on every
+  series kind, round-trips, updates in place, and `width_emu`/`dash` are
+  renderer-visible (thick red line + dashed blue line on a line chart verified
+  e2e); `none` round-trips for Excel only. Remaining: `varyColors`,
+  `invertIfNegative`.
 - Pie/doughnut: **— `holeSize` + `firstSliceAngle` done**. `ChartPatch.hole_size`
   (10..=90, `c:holeSize`, doughnut only) and `ChartPatch.first_slice_angle`
   (0..=360, `c:firstSliceAng`, pie/doughnut) on
