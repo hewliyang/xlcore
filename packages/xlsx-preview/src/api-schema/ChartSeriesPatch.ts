@@ -6,6 +6,13 @@ import type { ChartKind } from "./ChartKind.js";
 import type { ChartLine } from "./ChartLine.js";
 import type { ChartMarker } from "./ChartMarker.js";
 
+/**
+ * A chart series. `name`/`color`/`marker`/`line`/`smooth` etc. are flat sugar;
+ * the series text, refs (cat/val/xVal/yVal), idx and order are derived from the
+ * patch fields and the series' position.
+ *
+ * schema-excluded: spPr, pictureOptions, trendline, errBars, shape, explosion
+ */
 export type ChartSeriesPatch = {
   name?: string;
   nameRef?: string;

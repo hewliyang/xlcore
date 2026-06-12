@@ -13,6 +13,8 @@ import type { TickMark } from "./TickMark.js";
  * `pictureOptions`, `extLst`, multi-level category labels, and date-axis fields.
  * `min`/`max`/`major_unit`/`major_gridlines`/`number_format` are also surfaced
  * in the xlsx-preview renderer; the remainder round-trips for Excel.
+ *
+ * schema-excluded: spPr, txPr, auto, lblAlgn, lblOffset, tickLblSkip, tickMarkSkip, noMultiLvlLbl
  */
 export type ChartAxisPatch = {
   title?: string;

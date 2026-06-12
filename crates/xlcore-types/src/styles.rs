@@ -240,6 +240,9 @@ pub enum PatternType {
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "camelCase")]
+/// Cell border edges. `all` is sugar applied to every side.
+///
+/// schema-excluded: xmlns, xmlOtherAttrs, outline, start, end, vertical, horizontal
 pub struct BorderPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -307,6 +310,9 @@ pub enum BorderLineStyle {
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "camelCase")]
+/// Cell alignment.
+///
+/// schema-excluded: relativeIndent, mergeCell
 pub struct AlignmentPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]

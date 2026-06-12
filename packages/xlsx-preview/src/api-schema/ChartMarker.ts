@@ -6,6 +6,8 @@ import type { MarkerStyle } from "./MarkerStyle.js";
  *
  * Intentionally not modeled (preserved on update, author via raw XML):
  * `spPr` styling, `pictureOptions`, `extLst`.
+ *
+ * schema-excluded: xmlns, spPr
  */
 export type ChartMarker = {
   /**

@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Internal: `scripts/schema_diff.py` gains recursive one-level flattening, declared exclusions/derived (DTO `schema-excluded:` doc annotations + per-pair `scripts/schema_coverage.toml`), and a `--check` mode (non-zero on any undeclared MISSING field) over the opened-up (SdkStruct, DtoStruct) pairs.
 - Internal: wasm binding layer generated from a declarative `api_methods!` method table (~100 of 107 hand-written serde_wasm_bindgen fns); generated `.d.ts` is byte-identical, no behavior change. TS forwarding-layer codegen is a noted follow-up.
 - API naming audit (see `docs/api-conventions.md`): drop the inconsistent `Api` class suffix and normalize wrapper class names to two cardinality-keyed suffixes — `<Concept>Collection`, `Workbook<Concept>`, `<Concept>Accessor`. Renames: `AutoFilterApi`→`AutoFilterAccessor`, `SheetFreeze`→`SheetFreezeAccessor`, `SheetPageSetupApi`→`SheetPageSetupAccessor`, `SheetPropertiesApi`→`SheetPropertiesAccessor`, `SheetProtection`→`SheetProtectionAccessor`, `WorkbookPropertiesApi`→`WorkbookPropertiesAccessor`, `CalcPropertiesApi`→`CalcPropertiesAccessor`, `WorkbookProtection`→`WorkbookProtectionAccessor`, `DefinedNamesCollection`→`WorkbookDefinedNames`. Method `ThreadedNotesCollection.removeThread`→`remove`. Instance accessors (`ws.freeze`, `wb.properties`, …) are unchanged.
 

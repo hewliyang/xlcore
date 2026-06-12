@@ -273,6 +273,20 @@ scope), search, structural ops.
    into the DTO doc comment. E.g. `ValueAxis` vs `ChartPatch` reports covered 1/20.
    (DTO lookup scans every `xlcore-types/src/*.rs` module — it was `lib.rs`-only and
    silently broken for every split-out DTO until fixed alongside the anchor work.)
+
+   The diff now flattens one level (a struct/`Vec<choice>` field expands and matches
+   its leaf tags, e.g. `scaling` → flattened via min/max/logBase/orientation), and
+   reads declared exclusions: per-field statuses are covered / flattened (n/m) /
+   derived / excluded / MISSING, where only MISSING is a gap. Deferrals are deliberate
+   declarations, not a silent global skip — either a `schema-excluded:` line in the
+   DTO doc comment (e.g. `spPr, txPr` on `ChartAxisPatch`) or a per-pair
+   `derived`/`excluded`/`aliases`/`ns` entry in `scripts/schema_coverage.toml`
+   (only `extLst` is intrinsic). The manifest lists every (SdkStruct, DtoStruct)
+   pair we have opened up; `scripts/schema_diff.py --check` walks all of them and
+   exits non-zero listing any undeclared MISSING field. **Run `--check` after
+   touching any opened-up domain**; add the new field to its DTO/patch or declare
+   the deferral (each entry is a decision). A single-pair invocation reuses the
+   manifest's declarations for that pair, so the table shows the real statuses.
 2. **Transliterate sdk enums verbatim** when a domain is opened up.
 3. **Escape hatch** (openpyxl ≈ lxml access): raw part XML get/set on `Workbook`
    for anything we haven't modeled yet, so users are never hard-blocked. **—

@@ -9,6 +9,8 @@
  * Intentionally not modeled (preserved on update, author via raw XML):
  * `invertIfNegative`, per-point `marker`, `bubble3D`,
  * non-solid `spPr` styling, `pictureOptions`, `extLst`.
+ *
+ * schema-excluded: invertIfNegative, marker, bubble3D, pictureOptions
  */
 export type ChartDataPoint = {
   /**

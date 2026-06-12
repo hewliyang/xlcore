@@ -3,6 +3,11 @@ import type { HorizontalAlign } from "./HorizontalAlign.js";
 import type { ReadingOrder } from "./ReadingOrder.js";
 import type { VerticalAlign } from "./VerticalAlign.js";
 
+/**
+ * Cell alignment.
+ *
+ * schema-excluded: relativeIndent, mergeCell
+ */
 export type AlignmentPatch = {
   horizontal?: HorizontalAlign;
   vertical?: VerticalAlign;

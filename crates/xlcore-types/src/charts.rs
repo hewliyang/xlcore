@@ -204,6 +204,8 @@ pub enum MarkerStyle {
 ///
 /// Intentionally not modeled (preserved on update, author via raw XML):
 /// `spPr` styling, `pictureOptions`, `extLst`.
+///
+/// schema-excluded: xmlns, spPr
 pub struct ChartMarker {
     /// `c:symbol/@val`.
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -296,6 +298,8 @@ pub struct ChartLine {
 /// Intentionally not modeled (preserved on update, author via raw XML):
 /// `invertIfNegative`, per-point `marker`, `bubble3D`,
 /// non-solid `spPr` styling, `pictureOptions`, `extLst`.
+///
+/// schema-excluded: invertIfNegative, marker, bubble3D, pictureOptions
 pub struct ChartDataPoint {
     /// `c:idx/@val`; 0-based data-point index within the series.
     pub index: u32,
@@ -326,6 +330,8 @@ pub struct ChartDataPoint {
 /// `pictureOptions`, `extLst`, multi-level category labels, and date-axis fields.
 /// `min`/`max`/`major_unit`/`major_gridlines`/`number_format` are also surfaced
 /// in the xlsx-preview renderer; the remainder round-trips for Excel.
+///
+/// schema-excluded: spPr, txPr, auto, lblAlgn, lblOffset, tickLblSkip, tickMarkSkip, noMultiLvlLbl
 pub struct ChartAxisPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -531,6 +537,11 @@ impl Default for AnchorSpec {
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "camelCase")]
+/// A chart series. `name`/`color`/`marker`/`line`/`smooth` etc. are flat sugar;
+/// the series text, refs (cat/val/xVal/yVal), idx and order are derived from the
+/// patch fields and the series' position.
+///
+/// schema-excluded: spPr, pictureOptions, trendline, errBars, shape, explosion
 pub struct ChartSeriesPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]

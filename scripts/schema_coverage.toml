@@ -1,0 +1,119 @@
+# Schema-coverage manifest for scripts/schema_diff.py --check.
+#
+# Each [[pair]] is an (ooxmlsdk CT_* struct, xlcore-types DTO) we have opened up.
+# Per field the diff assigns: covered | flattened (n/m) | derived | excluded |
+# MISSING. Only MISSING counts as a gap; --check fails (non-zero) on any MISSING
+# field that is not declared here or via a DTO `schema-excluded:` doc annotation.
+#
+#   ns       namespace prefix to disambiguate same-named structs (c/x/a)
+#   derived  fields the API computes internally (axis ids, refs, order, index)
+#   excluded fields intentionally deferred for this pair (extLst is intrinsic)
+#   aliases  sdk leaf-tag/field -> dto field, for semantic renames
+#
+# Deferrals shared by a DTO live in its doc comment (`schema-excluded:`); per-pair
+# specifics live below. Every entry is a deliberate decision.
+
+# --- chart axes -------------------------------------------------------------
+[[pair]]
+sdk = "ValueAxis"
+dto = "ChartAxisPatch"
+ns = "c"
+derived = ["axId", "axPos", "crossAx"]
+aliases = { delete = "hidden", numFmt = "number_format", orientation = "reversed" }
+
+[[pair]]
+sdk = "CategoryAxis"
+dto = "ChartAxisPatch"
+ns = "c"
+derived = ["axId", "axPos", "crossAx"]
+aliases = { delete = "hidden", numFmt = "number_format", orientation = "reversed" }
+
+# --- chart series -----------------------------------------------------------
+[[pair]]
+sdk = "BarChartSeries"
+dto = "ChartSeriesPatch"
+ns = "c"
+derived = ["idx", "order", "tx", "cat", "val"]
+aliases = { dPt = "data_points" }
+
+[[pair]]
+sdk = "LineChartSeries"
+dto = "ChartSeriesPatch"
+ns = "c"
+derived = ["idx", "order", "tx", "cat", "val"]
+aliases = { dPt = "data_points" }
+
+[[pair]]
+sdk = "PieChartSeries"
+dto = "ChartSeriesPatch"
+ns = "c"
+derived = ["idx", "order", "tx", "cat", "val"]
+aliases = { dPt = "data_points" }
+
+[[pair]]
+sdk = "ScatterChartSeries"
+dto = "ChartSeriesPatch"
+ns = "c"
+derived = ["idx", "order", "tx", "xVal", "yVal"]
+aliases = { dPt = "data_points" }
+
+[[pair]]
+sdk = "DataPoint"
+dto = "ChartDataPoint"
+ns = "c"
+aliases = { spPr = "fill" }
+
+[[pair]]
+sdk = "Marker"
+dto = "ChartMarker"
+ns = "c"
+aliases = { symbol = "style" }
+
+# --- chart kinds (plot-group containers) ------------------------------------
+[[pair]]
+sdk = "DoughnutChart"
+dto = "ChartPatch"
+ns = "c"
+aliases = { ser = "series" }
+
+[[pair]]
+sdk = "StockChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["axId"]
+aliases = { ser = "series" }
+
+# --- styles -----------------------------------------------------------------
+[[pair]]
+sdk = "Protection"
+dto = "ProtectionPatch"
+ns = "x"
+
+[[pair]]
+sdk = "PatternFill"
+dto = "FillPatch"
+ns = "x"
+aliases = { patternType = "pattern", fgColor = "foreground", bgColor = "background" }
+
+[[pair]]
+sdk = "GradientFill"
+dto = "GradientFillPatch"
+ns = "x"
+aliases = { type = "kind", stop = "stops" }
+
+[[pair]]
+sdk = "Border"
+dto = "BorderPatch"
+ns = "x"
+
+[[pair]]
+sdk = "Alignment"
+dto = "AlignmentPatch"
+ns = "x"
+aliases = { wrapText = "wrap" }
+
+[[pair]]
+sdk = "Font"
+dto = "FontPatch"
+ns = "x"
+aliases = { b = "bold", i = "italic", u = "underline", sz = "size" }
