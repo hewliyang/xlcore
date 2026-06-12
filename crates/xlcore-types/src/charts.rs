@@ -259,6 +259,27 @@ pub struct ChartAnchor {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(untagged)]
+/// Anchor input: either a two-cell A1 range string (`"A1:E15"`, optionally
+/// sheet-qualified) or an explicit {@link ChartAnchor}. The range form is
+/// resolved to a `ChartAnchor` in the Rust facade.
+pub enum AnchorSpec {
+    A1(String),
+    Cells(ChartAnchor),
+}
+
+impl Default for AnchorSpec {
+    fn default() -> Self {
+        AnchorSpec::Cells(ChartAnchor::default())
+    }
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
@@ -340,7 +361,7 @@ pub struct ChartPatch {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub categories_ref: Option<String>,
     pub series: Vec<ChartSeriesPatch>,
-    pub anchor: ChartAnchor,
+    pub anchor: AnchorSpec,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub category_axis_title: Option<String>,
@@ -430,7 +451,7 @@ pub struct ChartUpdate {
     pub series: Option<Vec<ChartSeriesPatch>>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub anchor: Option<ChartAnchor>,
+    pub anchor: Option<AnchorSpec>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub category_axis_title: Option<String>,

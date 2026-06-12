@@ -26,13 +26,13 @@ fn charts_create_list_remove_roundtrip() {
                 values_ref: "Sheet1!$B$2:$B$4".to_string(),
                 ..Default::default()
             }],
-            anchor: ChartAnchor {
+            anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 3,
                 from_row: 1,
                 to_column: 10,
                 to_row: 16,
                 ..Default::default()
-            },
+            }),
             category_axis_title: None,
             value_axis_title: None,
             category_axis: None,
@@ -131,13 +131,13 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
                 values_ref: "Sheet1!$B$2:$B$3".to_string(),
                 ..Default::default()
             }],
-            anchor: ChartAnchor {
+            anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 3,
                 from_row: 1,
                 to_column: 10,
                 to_row: 16,
                 ..Default::default()
-            },
+            }),
             category_axis_title: None,
             value_axis_title: None,
             category_axis: None,
@@ -203,13 +203,13 @@ fn update_chart_replaces_series_and_stacking() {
                 values_ref: "Sheet1!$B$2:$B$3".to_string(),
                 ..Default::default()
             }],
-            anchor: ChartAnchor {
+            anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 3,
                 from_row: 1,
                 to_column: 10,
                 to_row: 16,
                 ..Default::default()
-            },
+            }),
             category_axis_title: None,
             value_axis_title: None,
             category_axis: None,
@@ -267,13 +267,13 @@ fn chart_axis_patch_authors_and_round_trips() {
                 values_ref: "Sheet1!$B$2:$B$3".to_string(),
                 ..Default::default()
             }],
-            anchor: ChartAnchor {
+            anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 3,
                 from_row: 1,
                 to_column: 10,
                 to_row: 16,
                 ..Default::default()
-            },
+            }),
             category_axis_title: None,
             value_axis_title: None,
             category_axis: None,
@@ -356,13 +356,13 @@ fn charts_supports_multiple_kinds() {
             color: None,
             data_labels: None,
         }],
-        anchor: ChartAnchor {
+        anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
             from_row: 1,
             to_column: 5,
             to_row: 10,
             ..Default::default()
-        },
+        }),
         category_axis_title: None,
         value_axis_title: None,
         category_axis: None,
@@ -426,13 +426,13 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             color: Some("FF8800".to_string()),
             data_labels: None,
         }],
-        anchor: ChartAnchor {
+        anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 4,
             from_row: 1,
             to_column: 12,
             to_row: 16,
             ..Default::default()
-        },
+        }),
         category_axis_title: Some("X-Axis".to_string()),
         value_axis_title: Some("Y-Axis".to_string()),
         category_axis: None,
@@ -456,13 +456,13 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             bubble_sizes_ref: Some("Sheet1!$C$2:$C$4".to_string()),
             ..Default::default()
         }],
-        anchor: ChartAnchor {
+        anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
             from_row: 18,
             to_column: 8,
             to_row: 30,
             ..Default::default()
-        },
+        }),
         category_axis_title: None,
         value_axis_title: None,
         category_axis: None,
@@ -484,13 +484,13 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             color: Some("#00aacc".to_string()),
             ..Default::default()
         }],
-        anchor: ChartAnchor {
+        anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 9,
             from_row: 18,
             to_column: 16,
             to_row: 30,
             ..Default::default()
-        },
+        }),
         category_axis_title: None,
         value_axis_title: None,
         category_axis: None,
@@ -557,13 +557,13 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
             color: Some("FF1D4ED8".to_string()),
             ..Default::default()
         }],
-        anchor: ChartAnchor {
+        anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 4,
             from_row: 1,
             to_column: 12,
             to_row: 16,
             ..Default::default()
-        },
+        }),
         category_axis_title: None,
         value_axis_title: None,
         category_axis: None,
@@ -596,13 +596,13 @@ fn chart_series_color_rejects_malformed_hex() {
                 color: Some("nothex".to_string()),
                 ..Default::default()
             }],
-            anchor: ChartAnchor {
+            anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 4,
                 from_row: 1,
                 to_column: 12,
                 to_row: 16,
                 ..Default::default()
-            },
+            }),
             category_axis_title: None,
             value_axis_title: None,
             category_axis: None,
@@ -668,13 +668,13 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
             values_ref: "Sheet1!$A$1:$A$2".into(),
             ..Default::default()
         }],
-        anchor: ChartAnchor {
+        anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 3,
             from_row: 1,
             to_column: 9,
             to_row: 12,
             ..Default::default()
-        },
+        }),
         category_axis_title: None,
         value_axis_title: None,
         category_axis: None,
@@ -746,13 +746,13 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
                 ..Default::default()
             },
         ],
-        anchor: ChartAnchor {
+        anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
             from_row: row,
             to_column: 8,
             to_row: row + 10,
             ..Default::default()
-        },
+        }),
         category_axis_title: None,
         value_axis_title: None,
         category_axis: None,
@@ -841,13 +841,13 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
                 values_ref: "Sheet1!$B$2:$B$4".to_string(),
                 ..Default::default()
             }],
-            anchor: ChartAnchor {
+            anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 1,
                 from_row: 1,
                 to_column: 5,
                 to_row: 10,
                 ..Default::default()
-            },
+            }),
             category_axis_title: None,
             value_axis_title: None,
             category_axis: None,
@@ -877,7 +877,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             values_ref: "Sheet1!$B$2:$B$4".to_string(),
             ..Default::default()
         }],
-        anchor: ChartAnchor::default(),
+        anchor: AnchorSpec::Cells(ChartAnchor::default()),
         category_axis_title: None,
         value_axis_title: None,
         category_axis: None,
@@ -899,7 +899,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             color: Some("nope".to_string()),
             ..Default::default()
         }],
-        anchor: ChartAnchor::default(),
+        anchor: AnchorSpec::Cells(ChartAnchor::default()),
         category_axis_title: None,
         value_axis_title: None,
         category_axis: None,
@@ -927,13 +927,13 @@ fn charts_data_labels_roundtrip() {
                 values_ref: "Sheet1!$B$2:$B$4".to_string(),
                 ..Default::default()
             }],
-            anchor: ChartAnchor {
+            anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 1,
                 from_row: 1,
                 to_column: 8,
                 to_row: 12,
                 ..Default::default()
-            },
+            }),
             category_axis_title: None,
             value_axis_title: None,
             category_axis: None,
@@ -983,13 +983,13 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
             values_ref: "Sheet1!$B$2:$B$4".to_string(),
             ..Default::default()
         }],
-        anchor: ChartAnchor {
+        anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
             from_row: 1,
             to_column: 6,
             to_row: 10,
             ..Default::default()
-        },
+        }),
         category_axis_title: None,
         value_axis_title: None,
         category_axis: None,
@@ -1040,13 +1040,13 @@ fn charts_per_series_data_labels_override_chart_level() {
                 ..Default::default()
             },
         ],
-        anchor: ChartAnchor {
+        anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
             from_row: 1,
             to_column: 8,
             to_row: 12,
             ..Default::default()
-        },
+        }),
         category_axis_title: None,
         value_axis_title: None,
         category_axis: None,

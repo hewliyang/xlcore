@@ -11,6 +11,7 @@ use xlcore_types::{
 };
 
 use crate::errors::sdk_err_to_api;
+use crate::refs::resolve_anchor;
 use crate::{Result, Workbook};
 
 impl Workbook {
@@ -101,6 +102,7 @@ impl Workbook {
             )
             .with_sheet(&patch.sheet));
         }
+        let resolved = resolve_anchor(&patch.anchor)?;
         let preset = a::ShapeTypeValues::from_str(&patch.preset).map_err(|_| {
             ApiError::new(
                 ApiErrorCode::InvalidShape,
@@ -154,15 +156,16 @@ impl Workbook {
             .clone()
             .unwrap_or_else(|| format!("Shape {shape_id}"));
 
-        for warning in self.anchor_offset_overflow_warnings(&patch.sheet, &patch.anchor)? {
+        for warning in self.anchor_offset_overflow_warnings(&patch.sheet, &resolved)? {
             self.push_warning(warning);
         }
 
         let flip_h = patch.flip_horizontal.unwrap_or(false);
         let flip_v = patch.flip_vertical.unwrap_or(false);
-        let xfrm_box = self.shape_box_emu(&patch.sheet, &patch.anchor)?;
+        let xfrm_box = self.shape_box_emu(&patch.sheet, &resolved)?;
         let anchor = build_shape_two_cell_anchor(
             &patch,
+            &resolved,
             &preset,
             shape_id,
             &shape_name,
@@ -183,7 +186,7 @@ impl Workbook {
             sheet: patch.sheet.clone(),
             id: shape_id.to_string(),
             name: shape_name,
-            anchor: patch.anchor,
+            anchor: resolved,
             preset: preset.to_string(),
             fill_color: patch.fill_color.map(normalize_hex),
             line_color: patch.line_color.map(normalize_hex),
@@ -651,6 +654,7 @@ fn build_tail_end(e: &ShapeLineEnd) -> a::TailEnd {
 
 fn build_shape_two_cell_anchor(
     patch: &ShapePatch,
+    anchor: &ChartAnchor,
     preset: &a::ShapeTypeValues,
     shape_id: u32,
     shape_name: &str,
@@ -659,7 +663,6 @@ fn build_shape_two_cell_anchor(
     flip_v: bool,
     xfrm_box: (i64, i64, i64, i64),
 ) -> xdr::TwoCellAnchor {
-    let anchor = &patch.anchor;
     let from = xdr::FromMarker {
         column_id: anchor.from_column as i32,
         column_offset: CoordinateValue::Emu(anchor.from_column_offset_emu.unwrap_or(0)),

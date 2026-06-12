@@ -1,4 +1,4 @@
-use crate::ChartAnchor;
+use crate::{AnchorSpec, ChartAnchor};
 use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -78,7 +78,7 @@ pub struct ImagePatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    pub anchor: ChartAnchor,
+    pub anchor: AnchorSpec,
     #[cfg_attr(feature = "typescript", ts(type = "Uint8Array | number[]"))]
     pub bytes: Vec<u8>,
     #[cfg_attr(feature = "typescript", ts(optional))]
@@ -161,7 +161,7 @@ pub struct ShapePatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    pub anchor: ChartAnchor,
+    pub anchor: AnchorSpec,
     pub preset: String,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]

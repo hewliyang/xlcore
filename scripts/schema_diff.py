@@ -85,15 +85,16 @@ DTO_FIELD_RE = re.compile(r"\n    pub (\w+):", re.DOTALL)
 
 
 def parse_dto_struct(name):
-    path = os.path.join(
-        os.path.dirname(__file__), "..", "crates", "xlcore-types", "src", "lib.rs"
-    )
-    with open(path, encoding="utf-8") as fh:
-        text = fh.read()
-    m = re.search(r"pub struct " + re.escape(name) + r" \{(.*?)\n\}", text, re.DOTALL)
-    if not m:
-        raise SystemExit(f"dto struct '{name}' not found in xlcore-types/src/lib.rs")
-    return [fm.group(1) for fm in DTO_FIELD_RE.finditer("\n" + m.group(1))]
+    src = os.path.join(os.path.dirname(__file__), "..", "crates", "xlcore-types", "src")
+    for path in sorted(glob.glob(os.path.join(src, "*.rs"))):
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        m = re.search(
+            r"pub struct " + re.escape(name) + r" \{(.*?)\n\}", text, re.DOTALL
+        )
+        if m:
+            return [fm.group(1) for fm in DTO_FIELD_RE.finditer("\n" + m.group(1))]
+    raise SystemExit(f"dto struct '{name}' not found in xlcore-types/src")
 
 
 def norm(s):

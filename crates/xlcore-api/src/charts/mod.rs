@@ -13,9 +13,10 @@ use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
-    ApiError, ApiErrorCode, ApiWarning, ChartAnchor, ChartAxisPatch, ChartDataLabelPosition,
-    ChartDataLabels, ChartInfo, ChartKind, ChartLegendPosition, ChartPatch, ChartSeriesInfo,
-    ChartSeriesPatch, ChartStacking, ChartUpdate, CrossBetween, TickLabelPosition, TickMark,
+    AnchorSpec, ApiError, ApiErrorCode, ApiWarning, ChartAnchor, ChartAxisPatch,
+    ChartDataLabelPosition, ChartDataLabels, ChartInfo, ChartKind, ChartLegendPosition, ChartPatch,
+    ChartSeriesInfo, ChartSeriesPatch, ChartStacking, ChartUpdate, CrossBetween, TickLabelPosition,
+    TickMark,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -104,6 +105,7 @@ impl Workbook {
 
     pub fn set_chart(&mut self, patch: ChartPatch) -> Result<ChartInfo> {
         validate_chart_series(&patch.sheet, patch.kind, &patch.series)?;
+        let anchor = crate::refs::resolve_anchor(&patch.anchor)?;
 
         if !self.sheet_exists(&patch.sheet)? {
             return Err(ApiError::new(
@@ -188,7 +190,7 @@ impl Workbook {
             .clone()
             .unwrap_or_else(|| format!("Chart {chart_index}"));
 
-        let new_anchor = build_two_cell_anchor(&patch.anchor, &chart_name, chart_index, &chart_rid);
+        let new_anchor = build_two_cell_anchor(&anchor, &chart_name, chart_index, &chart_rid);
 
         let drawing_mut = drawings_part
             .root_element_mut(&mut self.doc)
@@ -220,7 +222,7 @@ impl Workbook {
                     data_labels: s.data_labels.clone(),
                 })
                 .collect(),
-            anchor: patch.anchor,
+            anchor,
             category_axis_title: patch.category_axis_title.clone(),
             value_axis_title: patch.value_axis_title.clone(),
             category_axis: patch.category_axis.clone(),
@@ -274,6 +276,11 @@ impl Workbook {
     ) -> Result<ChartInfo> {
         let sheet = sheet.as_ref().to_string();
         let id = id.as_ref().to_string();
+        let resolved_anchor = update
+            .anchor
+            .as_ref()
+            .map(crate::refs::resolve_anchor)
+            .transpose()?;
 
         if !self.sheet_exists(&sheet)? {
             return Err(ApiError::new(
@@ -346,7 +353,7 @@ impl Workbook {
             .clone()
             .or_else(|| existing.data_labels.clone());
 
-        if update.anchor.is_some() || update.name.is_some() {
+        if resolved_anchor.is_some() || update.name.is_some() {
             let drawing_mut = drawings_part
                 .root_element_mut(&mut self.doc)
                 .map_err(sdk_err_to_api)?;
@@ -357,7 +364,7 @@ impl Workbook {
                 if anchor_chart_rid(a.as_ref()).as_deref() != Some(id.as_str()) {
                     continue;
                 }
-                if let Some(anchor) = &update.anchor {
+                if let Some(anchor) = &resolved_anchor {
                     a.from_marker = Box::new(xdr::FromMarker {
                         column_id: anchor.from_column as i32,
                         column_offset: CoordinateValue::Emu(
@@ -403,7 +410,7 @@ impl Workbook {
                 legend_position: None,
                 categories_ref: categories_ref.clone(),
                 series: series.clone(),
-                anchor: ChartAnchor::default(),
+                anchor: AnchorSpec::Cells(ChartAnchor::default()),
                 category_axis_title: None,
                 value_axis_title: None,
                 category_axis: None,

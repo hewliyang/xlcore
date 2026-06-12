@@ -7,13 +7,13 @@ fn shapes_create_list_remove_roundtrip() {
         .set_shape(ShapePatch {
             sheet: "Sheet1".to_string(),
             name: Some("Box".to_string()),
-            anchor: ChartAnchor {
+            anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 1,
                 from_row: 1,
                 to_column: 5,
                 to_row: 6,
                 ..Default::default()
-            },
+            }),
             preset: "roundRect".to_string(),
             fill_color: Some("#4472C4".to_string()),
             line_color: Some("#1F3864".to_string()),
@@ -60,13 +60,13 @@ fn shapes_emit_alignment_underline_arrow_rotation_box() {
     let mut wb = Workbook::new().unwrap();
     wb.set_shape(ShapePatch {
         sheet: "Sheet1".into(),
-        anchor: ChartAnchor {
+        anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
             from_row: 1,
             to_column: 6,
             to_row: 8,
             ..Default::default()
-        },
+        }),
         preset: "roundRect".into(),
         fill_color: Some("#4472C4".into()),
         text: Some("Quarter\nResults".into()),
@@ -79,13 +79,13 @@ fn shapes_emit_alignment_underline_arrow_rotation_box() {
     .unwrap();
     wb.set_shape(ShapePatch {
         sheet: "Sheet1".into(),
-        anchor: ChartAnchor {
+        anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
             from_row: 10,
             to_column: 6,
             to_row: 10,
             ..Default::default()
-        },
+        }),
         preset: "line".into(),
         line_color: Some("#FF0000".into()),
         line_width_emu: Some(28575),
@@ -121,7 +121,7 @@ fn shapes_warn_on_offset_exceeding_referenced_cell() {
     let mut wb = Workbook::new().unwrap();
     wb.set_shape(ShapePatch {
         sheet: "Sheet1".into(),
-        anchor: ChartAnchor {
+        anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 0,
             from_row: 0,
             to_column: 0,
@@ -129,7 +129,7 @@ fn shapes_warn_on_offset_exceeding_referenced_cell() {
             to_column_offset_emu: Some(5_000_000),
             to_row_offset_emu: Some(5_000_000),
             ..Default::default()
-        },
+        }),
         preset: "rect".into(),
         fill_color: Some("#4472C4".into()),
         ..Default::default()
@@ -149,7 +149,7 @@ fn shapes_no_warn_when_offsets_fit_cell() {
     let mut wb = Workbook::new().unwrap();
     wb.set_shape(ShapePatch {
         sheet: "Sheet1".into(),
-        anchor: ChartAnchor {
+        anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 0,
             from_row: 0,
             to_column: 3,
@@ -157,7 +157,7 @@ fn shapes_no_warn_when_offsets_fit_cell() {
             to_column_offset_emu: Some(100_000),
             to_row_offset_emu: Some(50_000),
             ..Default::default()
-        },
+        }),
         preset: "rect".into(),
         fill_color: Some("#4472C4".into()),
         ..Default::default()
@@ -172,12 +172,39 @@ fn shapes_reject_unknown_preset() {
     let err = wb
         .set_shape(ShapePatch {
             sheet: "Sheet1".to_string(),
-            anchor: ChartAnchor::default(),
+            anchor: AnchorSpec::Cells(ChartAnchor::default()),
             preset: "notARealShape".to_string(),
             ..Default::default()
         })
         .unwrap_err();
     assert_eq!(err.code, ApiErrorCode::InvalidShape);
+}
+
+#[test]
+fn shape_anchor_accepts_a1_range_string() {
+    let mut wb = Workbook::new().unwrap();
+    let info = wb
+        .set_shape(ShapePatch {
+            sheet: "Sheet1".to_string(),
+            anchor: AnchorSpec::A1("D2:H15".to_string()),
+            preset: "rect".to_string(),
+            ..Default::default()
+        })
+        .unwrap();
+    assert_eq!(info.anchor.from_column, 3);
+    assert_eq!(info.anchor.from_row, 1);
+    assert_eq!(info.anchor.to_column, 8);
+    assert_eq!(info.anchor.to_row, 15);
+
+    let err = wb
+        .set_shape(ShapePatch {
+            sheet: "Sheet1".to_string(),
+            anchor: AnchorSpec::A1("D2".to_string()),
+            preset: "rect".to_string(),
+            ..Default::default()
+        })
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidRef);
 }
 
 #[test]
@@ -187,13 +214,13 @@ fn shapes_rotation_keeps_anchor_footprint() {
         let mut wb = Workbook::new().unwrap();
         wb.set_shape(ShapePatch {
             sheet: "Sheet1".into(),
-            anchor: ChartAnchor {
+            anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 1,
                 from_row: 1,
                 to_column: 5,
                 to_row: 6,
                 ..Default::default()
-            },
+            }),
             preset: "rect".into(),
             fill_color: Some("#4472C4".into()),
             rotation_degrees,

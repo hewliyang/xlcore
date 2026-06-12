@@ -15,13 +15,13 @@ fn images_create_list_remove_roundtrip() {
         .set_image(ImagePatch {
             sheet: "Sheet1".to_string(),
             name: Some("Logo".to_string()),
-            anchor: ChartAnchor {
+            anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 1,
                 from_row: 1,
                 to_column: 5,
                 to_row: 10,
                 ..Default::default()
-            },
+            }),
             bytes: PNG_1X1.to_vec(),
             format: None,
             ..Default::default()
@@ -60,13 +60,13 @@ fn images_rotation_crop_flip_roundtrip() {
         .set_image(ImagePatch {
             sheet: "Sheet1".to_string(),
             name: Some("Rotated".to_string()),
-            anchor: ChartAnchor {
+            anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 0,
                 from_row: 0,
                 to_column: 4,
                 to_row: 8,
                 ..Default::default()
-            },
+            }),
             bytes: PNG_1X1.to_vec(),
             format: None,
             rotation_degrees: Some(90.0),
@@ -104,7 +104,7 @@ fn images_rejects_non_finite_rotation_and_crop() {
         .set_image(ImagePatch {
             sheet: "Sheet1".to_string(),
             name: None,
-            anchor: ChartAnchor::default(),
+            anchor: AnchorSpec::Cells(ChartAnchor::default()),
             bytes: PNG_1X1.to_vec(),
             format: None,
             rotation_degrees: Some(f64::NAN),
@@ -122,7 +122,7 @@ fn images_rejects_non_finite_rotation_and_crop() {
         .set_image(ImagePatch {
             sheet: "Sheet1".to_string(),
             name: None,
-            anchor: ChartAnchor::default(),
+            anchor: AnchorSpec::Cells(ChartAnchor::default()),
             bytes: PNG_1X1.to_vec(),
             format: None,
             rotation_degrees: None,
@@ -144,7 +144,7 @@ fn images_rejects_empty_bytes_and_unknown_format() {
         .set_image(ImagePatch {
             sheet: "Sheet1".to_string(),
             name: None,
-            anchor: ChartAnchor::default(),
+            anchor: AnchorSpec::Cells(ChartAnchor::default()),
             bytes: Vec::new(),
             format: None,
             ..Default::default()
@@ -156,7 +156,7 @@ fn images_rejects_empty_bytes_and_unknown_format() {
         .set_image(ImagePatch {
             sheet: "Sheet1".to_string(),
             name: None,
-            anchor: ChartAnchor::default(),
+            anchor: AnchorSpec::Cells(ChartAnchor::default()),
             bytes: b"not an image".to_vec(),
             format: None,
             ..Default::default()

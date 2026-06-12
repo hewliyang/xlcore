@@ -40,14 +40,7 @@ import type {
   WorkbookProtectionInfo,
   WorkbookProtectionPatch,
 } from "./api-schema/index.js";
-import { type SheetRef, anchorA1, qualify } from "./api-refs.js";
-import type { ChartAnchor } from "./api-schema/index.js";
-
-type AnchorInput = ChartAnchor | string;
-
-function normalizeAnchor(anchor: AnchorInput): ChartAnchor {
-  return typeof anchor === "string" ? anchorA1(anchor) : anchor;
-}
+import { type SheetRef, qualify } from "./api-refs.js";
 
 abstract class SheetScopedCollection {
   constructor(
@@ -243,16 +236,11 @@ export class ChartCollection extends SheetScopedCollection {
   list(): ChartInfo[] {
     return this.handle.charts(this.sheet) as ChartInfo[];
   }
-  set(patch: Omit<ChartPatch, "anchor"> & { anchor: AnchorInput }): ChartInfo {
-    const normalized: ChartPatch = { ...patch, anchor: normalizeAnchor(patch.anchor) };
-    return this.handle.setChart(normalized) as ChartInfo;
+  set(patch: ChartPatch): ChartInfo {
+    return this.handle.setChart(patch) as ChartInfo;
   }
-  update(id: string, update: Omit<ChartUpdate, "anchor"> & { anchor?: AnchorInput }): ChartInfo {
-    const normalized: ChartUpdate = {
-      ...update,
-      anchor: update.anchor === undefined ? undefined : normalizeAnchor(update.anchor),
-    };
-    return this.handle.updateChart(this.sheet, id, normalized) as ChartInfo;
+  update(id: string, update: ChartUpdate): ChartInfo {
+    return this.handle.updateChart(this.sheet, id, update) as ChartInfo;
   }
   remove(id: string): ChartInfo | null {
     return (this.handle.removeChart(this.sheet, id) as ChartInfo | null) ?? null;
@@ -263,9 +251,8 @@ export class ImageCollection extends SheetScopedCollection {
   list(): ImageInfo[] {
     return this.handle.images(this.sheet) as ImageInfo[];
   }
-  set(patch: Omit<ImagePatch, "anchor"> & { anchor: AnchorInput }): ImageInfo {
-    const normalized: ImagePatch = { ...patch, anchor: normalizeAnchor(patch.anchor) };
-    return this.handle.setImage(normalized) as ImageInfo;
+  set(patch: ImagePatch): ImageInfo {
+    return this.handle.setImage(patch) as ImageInfo;
   }
   remove(id: string): ImageInfo | null {
     return (this.handle.removeImage(this.sheet, id) as ImageInfo | null) ?? null;
@@ -276,13 +263,8 @@ export class ShapeCollection extends SheetScopedCollection {
   list(): ShapeInfo[] {
     return this.handle.shapes(this.sheet) as ShapeInfo[];
   }
-  set(patch: Omit<ShapePatch, "sheet" | "anchor"> & { anchor: AnchorInput }): ShapeInfo {
-    const normalized: ShapePatch = {
-      ...patch,
-      sheet: this.sheet,
-      anchor: normalizeAnchor(patch.anchor),
-    };
-    return this.handle.setShape(normalized) as ShapeInfo;
+  set(patch: Omit<ShapePatch, "sheet">): ShapeInfo {
+    return this.handle.setShape({ ...patch, sheet: this.sheet }) as ShapeInfo;
   }
   remove(id: string): ShapeInfo | null {
     return (this.handle.removeShape(this.sheet, id) as ShapeInfo | null) ?? null;

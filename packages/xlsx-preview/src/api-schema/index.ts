@@ -1,4 +1,5 @@
 export type { AlignmentPatch } from "./AlignmentPatch.js";
+export type { AnchorSpec } from "./AnchorSpec.js";
 export type { ApiCellValue } from "./ApiCellValue.js";
 export type { ApiError } from "./ApiError.js";
 export type { ApiErrorCode } from "./ApiErrorCode.js";

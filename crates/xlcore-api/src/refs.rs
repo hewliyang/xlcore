@@ -1,6 +1,35 @@
-use xlcore_types::{ApiError, ApiErrorCode};
+use xlcore_types::{AnchorSpec, ApiError, ApiErrorCode, ChartAnchor};
 
 use crate::Result;
+
+pub(crate) fn resolve_anchor(spec: &AnchorSpec) -> Result<ChartAnchor> {
+    match spec {
+        AnchorSpec::Cells(anchor) => Ok(anchor.clone()),
+        AnchorSpec::A1(range) => {
+            let bad = || {
+                ApiError::new(
+                    ApiErrorCode::InvalidRef,
+                    format!("anchor: expected a two-cell range like \"A1:E15\", got \"{range}\""),
+                )
+                .with_ref(range)
+            };
+            let (_, bare) = split_sheet_reference(range)?;
+            let (a, b) = bare.split_once(':').ok_or_else(bad)?;
+            let (r1, c1) = parse_cell_address(a).ok_or_else(bad)?;
+            let (r2, c2) = parse_cell_address(b).ok_or_else(bad)?;
+            Ok(ChartAnchor {
+                from_column: c1.min(c2) - 1,
+                from_row: r1.min(r2) - 1,
+                to_column: c1.max(c2),
+                to_row: r1.max(r2),
+                from_column_offset_emu: None,
+                from_row_offset_emu: None,
+                to_column_offset_emu: None,
+                to_row_offset_emu: None,
+            })
+        }
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct ParsedCellRef {

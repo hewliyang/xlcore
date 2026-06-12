@@ -8,6 +8,8 @@ use ooxmlsdk::units::DrawingmlPercentageValue;
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{ApiError, ApiErrorCode, ChartAnchor, ImageFormat, ImageInfo, ImagePatch};
 
+use crate::refs::resolve_anchor;
+
 use crate::errors::sdk_err_to_api;
 use crate::{Result, Workbook};
 
@@ -113,6 +115,7 @@ impl Workbook {
     }
 
     pub fn set_image(&mut self, patch: ImagePatch) -> Result<ImageInfo> {
+        let resolved = resolve_anchor(&patch.anchor)?;
         if patch.bytes.is_empty() {
             return Err(
                 ApiError::new(ApiErrorCode::InvalidImage, "image bytes must not be empty")
@@ -195,7 +198,7 @@ impl Workbook {
             .unwrap_or_else(|| format!("Image {pic_index}"));
 
         let anchor = build_picture_two_cell_anchor(
-            &patch.anchor,
+            &resolved,
             pic_index,
             &pic_name,
             &image_rid,
@@ -216,7 +219,7 @@ impl Workbook {
             sheet: patch.sheet.clone(),
             id: image_rid,
             name: pic_name,
-            anchor: patch.anchor,
+            anchor: resolved,
             format,
             byte_len: patch.bytes.len() as u64,
             rotation_degrees: patch.rotation_degrees.unwrap_or(0.0),

@@ -235,7 +235,8 @@ Today no — semantics have leaked into the TS frontend:
   forward to Rust `update_chart`/`update_pivot`)*
 - dataBar `min`/`max` defaulting
 - autoFilter `setColumnValues/Top10/Custom` sugar + friendly `criteria.kind` error
-- `anchorA1` string→`ChartAnchor` parsing (no Rust counterpart at all)
+- ~~`anchorA1` string→`ChartAnchor` parsing (no Rust counterpart at all)~~ *(done:
+  `AnchorSpec` DTO + `resolve_anchor` in `xlcore-api`; patches accept A1 strings)*
 - `qref` sheet-qualification of unqualified refs
 - `recalculate({errorsOnly})` filtering, `search` defaults
 - matrix-shape validation duplicated in both layers (two error behaviors)
