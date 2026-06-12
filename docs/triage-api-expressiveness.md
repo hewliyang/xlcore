@@ -113,7 +113,12 @@ pub struct ChartAxisPatch {
   sdk `ST_MarkerStyle` transliterated) builds `c:marker` on line/scatter series,
   round-trips, and is renderer-visible. Remaining: line width/dash, `smooth`,
   `varyColors`, `invertIfNegative`.
-- Pie/doughnut: `firstSliceAngle`, `holeSize`, per-point `explosion`.
+- Pie/doughnut: **— `holeSize` + `firstSliceAngle` done**. `ChartPatch.hole_size`
+  (10..=90, `c:holeSize`, doughnut only) and `ChartPatch.first_slice_angle`
+  (0..=360, `c:firstSliceAng`, pie/doughnut) on
+  `ChartPatch`/`ChartUpdate`/`ChartInfo`; build (default hole 50), read,
+  in-place update, validated in Rust, and both renderer-visible (doughnut hole
+  diameter + slice rotation verified e2e). Remaining: per-point `explosion`.
 - Per-point fills (`c:dPt`): **— done**. `ChartSeriesPatch.data_points`
   (`ChartDataPoint { index, fill }`, sdk `CT_DPt` distilled) builds `c:dPt` with
   a solid `RRGGBB`/`AARRGGBB` fill or `fill: "none"` → `a:noFill` for the

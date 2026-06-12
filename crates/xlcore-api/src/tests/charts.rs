@@ -42,6 +42,8 @@ fn charts_create_list_remove_roundtrip() {
                 gap_width: None,
                 overlap: None,
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -152,6 +154,8 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
                 gap_width: None,
                 overlap: None,
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -229,6 +233,8 @@ fn update_chart_replaces_series_and_stacking() {
                 gap_width: None,
                 overlap: None,
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -310,6 +316,8 @@ fn chart_axis_patch_authors_and_round_trips() {
                 gap_width: None,
                 overlap: None,
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -394,6 +402,8 @@ fn charts_supports_multiple_kinds() {
         gap_width: None,
         overlap: None,
         radar_style: None,
+        hole_size: None,
+        first_slice_angle: None,
         data_labels: None,
     };
     for kind in [
@@ -472,6 +482,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             gap_width: None,
             overlap: None,
             radar_style: None,
+            hole_size: None,
+            first_slice_angle: None,
             data_labels: None,
         },
     )
@@ -507,6 +519,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             gap_width: None,
             overlap: None,
             radar_style: None,
+            hole_size: None,
+            first_slice_angle: None,
             data_labels: None,
         },
     )
@@ -540,6 +554,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             gap_width: None,
             overlap: None,
             radar_style: None,
+            hole_size: None,
+            first_slice_angle: None,
             data_labels: None,
         },
     )
@@ -618,6 +634,8 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
             gap_width: None,
             overlap: None,
             radar_style: None,
+            hole_size: None,
+            first_slice_angle: None,
             data_labels: None,
         },
     )
@@ -662,6 +680,8 @@ fn chart_series_color_rejects_malformed_hex() {
                 gap_width: None,
                 overlap: None,
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -744,6 +764,8 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
             gap_width: None,
             overlap: None,
             radar_style: None,
+            hole_size: None,
+            first_slice_angle: None,
             data_labels: None,
         },
     )
@@ -825,6 +847,8 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
         gap_width: None,
         overlap: None,
         radar_style: None,
+        hole_size: None,
+        first_slice_angle: None,
         data_labels: None,
     };
 
@@ -931,6 +955,8 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
                 gap_width: None,
                 overlap: None,
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -966,6 +992,8 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             gap_width: None,
             overlap: None,
             radar_style: None,
+            hole_size: None,
+            first_slice_angle: None,
             data_labels: None,
         },
     );
@@ -993,6 +1021,8 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             gap_width: None,
             overlap: None,
             radar_style: None,
+            hole_size: None,
+            first_slice_angle: None,
             data_labels: None,
         },
     );
@@ -1032,6 +1062,8 @@ fn charts_data_labels_roundtrip() {
                 gap_width: None,
                 overlap: None,
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: Some(ChartDataLabels {
                     show_value: Some(true),
                     show_category_name: Some(false),
@@ -1095,6 +1127,8 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
             gap_width: None,
             overlap: None,
             radar_style: None,
+            hole_size: None,
+            first_slice_angle: None,
             data_labels: Some(ChartDataLabels {
                 show_percent: Some(true),
                 show_category_name: Some(true),
@@ -1157,6 +1191,8 @@ fn charts_per_series_data_labels_override_chart_level() {
             gap_width: None,
             overlap: None,
             radar_style: None,
+            hole_size: None,
+            first_slice_angle: None,
             data_labels: Some(ChartDataLabels {
                 show_series_name: Some(true),
                 position: Some(ChartDataLabelPosition::Center),
@@ -1224,6 +1260,8 @@ fn chart_gap_width_overlap_roundtrip_and_update() {
                 gap_width: Some(219),
                 overlap: Some(-27),
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -1308,6 +1346,8 @@ fn chart_series_marker_roundtrip_and_validation() {
                 gap_width: None,
                 overlap: None,
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -1361,6 +1401,8 @@ fn chart_series_marker_roundtrip_and_validation() {
                 gap_width: None,
                 overlap: None,
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -1410,6 +1452,8 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 gap_width: None,
                 overlap: None,
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -1455,6 +1499,8 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 gap_width: None,
                 overlap: None,
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -1513,6 +1559,8 @@ fn combo_chart_secondary_axis_roundtrip() {
                 gap_width: None,
                 overlap: None,
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -1556,6 +1604,8 @@ fn combo_chart_secondary_axis_roundtrip() {
                 gap_width: None,
                 overlap: None,
                 radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -1608,6 +1658,8 @@ fn radar_chart_build_roundtrip_and_update() {
                 gap_width: None,
                 overlap: None,
                 radar_style: Some(RadarStyle::Marker),
+                hole_size: None,
+                first_slice_angle: None,
                 data_labels: None,
             },
         )
@@ -1631,6 +1683,8 @@ fn radar_chart_build_roundtrip_and_update() {
             &chart.id,
             ChartUpdate {
                 radar_style: Some(RadarStyle::Filled),
+                hole_size: None,
+                first_slice_angle: None,
                 ..Default::default()
             },
         )
@@ -1638,5 +1692,108 @@ fn radar_chart_build_roundtrip_and_update() {
     let chart = reopened.charts(None).unwrap().into_iter().next().unwrap();
     assert_eq!(chart.radar_style, Some(RadarStyle::Filled));
     assert_eq!(chart.series.len(), 2);
+}
+
+
+#[test]
+fn doughnut_hole_size_and_first_slice_angle_roundtrip_and_update() {
+    let mut wb = Workbook::new().unwrap();
+    for (i, (cat, v)) in [("A", 30.0), ("B", 20.0), ("C", 50.0)].iter().enumerate() {
+        let row = i + 2;
+        wb.set_value(&format!("Sheet1!A{row}"), *cat).unwrap();
+        wb.set_value(&format!("Sheet1!B{row}"), *v).unwrap();
+    }
+    wb.set_value("Sheet1!B1", "Share").unwrap();
+
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: Some("Donut".to_string()),
+                kind: ChartKind::Doughnut,
+                title: None,
+                legend_position: None,
+                categories_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+                series: vec![ChartSeriesPatch {
+                    name_ref: Some("Sheet1!$B$1".to_string()),
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::A1("Sheet1!D1:K16".to_string()),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: Some(70),
+                first_slice_angle: Some(90),
+                data_labels: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(info.hole_size, Some(70));
+    assert_eq!(info.first_slice_angle, Some(90));
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let chart = reopened.charts(None).unwrap().into_iter().next().unwrap();
+    assert_eq!(chart.kind, ChartKind::Doughnut);
+    assert_eq!(chart.hole_size, Some(70));
+    assert_eq!(chart.first_slice_angle, Some(90));
+
+    reopened
+        .update_chart(
+            "Sheet1",
+            &chart.id,
+            ChartUpdate {
+                hole_size: Some(25),
+                first_slice_angle: Some(180),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let chart = reopened.charts(None).unwrap().into_iter().next().unwrap();
+    assert_eq!(chart.hole_size, Some(25));
+    assert_eq!(chart.first_slice_angle, Some(180));
+    assert_eq!(chart.series.len(), 1);
+}
+
+#[test]
+fn doughnut_hole_size_out_of_range_rejected() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B1", "Share").unwrap();
+    wb.set_value("Sheet1!B2", 1.0).unwrap();
+    let err = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Doughnut,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2".to_string(),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::A1("Sheet1!D1:K16".to_string()),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: Some(5),
+                first_slice_angle: None,
+                data_labels: None,
+            },
+        )
+        .unwrap_err();
+    assert!(err.to_string().contains("hole_size"));
 }
 

@@ -26,6 +26,8 @@ export type Chart = {
   majorUnitSecondary?: number;
   barGapWidth?: number;
   barOverlap?: number;
+  holeSize?: number;
+  firstSliceAngle?: number;
   xAxisTitle?: string;
   yAxisTitle?: string;
   yAxisTitleSecondary?: string;

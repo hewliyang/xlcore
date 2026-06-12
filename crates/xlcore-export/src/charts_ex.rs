@@ -308,6 +308,8 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
         major_unit_secondary: None,
         bar_gap_width: None,
         bar_overlap: None,
+        hole_size: None,
+        first_slice_angle: None,
         x_axis_title: None,
         y_axis_title: None,
         y_axis_title_secondary: None,

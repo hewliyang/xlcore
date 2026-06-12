@@ -148,6 +148,46 @@ pub(super) fn validate_bar_options(
     Ok(())
 }
 
+pub(super) fn validate_pie_options(
+    sheet: &str,
+    hole_size: Option<u8>,
+    first_slice_angle: Option<u16>,
+) -> Result<()> {
+    if let Some(h) = hole_size {
+        if !(10..=90).contains(&h) {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                format!("chart hole_size must be 10..=90, got: {h}"),
+            )
+            .with_sheet(sheet));
+        }
+    }
+    if let Some(a) = first_slice_angle {
+        if a > 360 {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                format!("chart first_slice_angle must be 0..=360, got: {a}"),
+            )
+            .with_sheet(sheet));
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn hole_size_for_kind(kind: ChartKind, value: Option<u8>) -> Option<u8> {
+    match kind {
+        ChartKind::Doughnut => value,
+        _ => None,
+    }
+}
+
+pub(super) fn first_slice_angle_for_kind(kind: ChartKind, value: Option<u16>) -> Option<u16> {
+    match kind {
+        ChartKind::Pie | ChartKind::Doughnut => value,
+        _ => None,
+    }
+}
+
 pub(super) fn bar_option_for_kind<T>(kind: ChartKind, value: Option<T>) -> Option<T> {
     match kind {
         ChartKind::Column | ChartKind::Bar => value,
@@ -455,6 +495,9 @@ pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref()))
                 .collect(),
             data_labels: dl,
+            first_slice_angle: patch
+                .first_slice_angle
+                .map(|v| c::FirstSliceAngle { val: Some(v) }),
             ..Default::default()
         })),
         ChartKind::Doughnut => c::PlotAreaChoice::DoughnutChart(Box::new(c::DoughnutChart {
@@ -468,7 +511,12 @@ pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
                 .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref()))
                 .collect(),
             data_labels: dl,
-            hole_size: Box::new(c::HoleSize { val: 50 }),
+            first_slice_angle: patch
+                .first_slice_angle
+                .map(|v| c::FirstSliceAngle { val: Some(v) }),
+            hole_size: Box::new(c::HoleSize {
+                val: patch.hole_size.unwrap_or(50),
+            }),
             ..Default::default()
         })),
         ChartKind::Scatter => c::PlotAreaChoice::ScatterChart(Box::new(c::ScatterChart {

@@ -60,6 +60,8 @@ pub(super) struct ParsedChart {
     pub(super) gap_width: Option<u16>,
     pub(super) overlap: Option<i8>,
     pub(super) radar_style: Option<RadarStyle>,
+    pub(super) hole_size: Option<u8>,
+    pub(super) first_slice_angle: Option<u16>,
     pub(super) data_labels: Option<ChartDataLabels>,
 }
 
@@ -91,6 +93,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     let mut gap_width: Option<u16> = None;
     let mut overlap: Option<i8> = None;
     let mut radar_style: Option<RadarStyle> = None;
+    let mut hole_size: Option<u8> = None;
+    let mut first_slice_angle: Option<u16> = None;
     let mut data_labels: Option<ChartDataLabels> = None;
 
     for ch in &plot.plot_area_choice1 {
@@ -166,6 +170,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     kind = ChartKind::Pie;
                     kind_set = true;
                 }
+                first_slice_angle =
+                    pc.first_slice_angle.as_ref().and_then(|f| f.val);
                 for s in &pc.pie_chart_series {
                     let mut info = read_series(
                         s.series_text.as_deref(),
@@ -187,6 +193,9 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     kind = ChartKind::Doughnut;
                     kind_set = true;
                 }
+                hole_size = Some(dc.hole_size.val);
+                first_slice_angle =
+                    dc.first_slice_angle.as_ref().and_then(|f| f.val);
                 for s in &dc.pie_chart_series {
                     let mut info = read_series(
                         s.series_text.as_deref(),
@@ -392,6 +401,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         gap_width,
         overlap,
         radar_style,
+        hole_size,
+        first_slice_angle,
         data_labels,
     }
 }

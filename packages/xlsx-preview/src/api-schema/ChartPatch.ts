@@ -21,4 +21,14 @@ overlap?: number,
 /**
  * `c:radarStyle`; radar charts only. Defaults to `Standard` when omitted.
  */
-radarStyle?: RadarStyle, dataLabels?: ChartDataLabels, };
+radarStyle?: RadarStyle, 
+/**
+ * `c:holeSize` (10..=90); doughnut charts only. Inner-hole diameter as a
+ * percentage of the chart radius. Defaults to 50 when omitted.
+ */
+holeSize?: number, 
+/**
+ * `c:firstSliceAng` (0..=360); pie/doughnut charts only. Clockwise rotation
+ * of the first slice from the top (12 o'clock), in degrees.
+ */
+firstSliceAngle?: number, dataLabels?: ChartDataLabels, };

@@ -188,6 +188,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
 
     let mut bar_gap_width: Option<u16> = None;
     let mut bar_overlap: Option<i8> = None;
+    let mut hole_size: Option<u8> = None;
+    let mut first_slice_angle: Option<u16> = None;
 
     let mut stock_hi_low_lines = false;
     let mut stock_up_down_bars = false;
@@ -308,13 +310,15 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
             }
             c::PlotAreaChoice::PieChart(pc) => {
                 chart_data_labels = extract_data_labels(pc.data_labels.as_deref());
-
+                first_slice_angle = pc.first_slice_angle.as_ref().and_then(|f| f.val);
                 extract_chartlike!(&pc.pie_chart_series, "pie", &[] as &[c::AxisId], true);
                 group_types.push("pie");
                 break;
             }
             c::PlotAreaChoice::DoughnutChart(dc) => {
                 chart_data_labels = extract_data_labels(dc.data_labels.as_deref());
+                hole_size = Some(dc.hole_size.val);
+                first_slice_angle = dc.first_slice_angle.as_ref().and_then(|f| f.val);
                 extract_chartlike!(&dc.pie_chart_series, "doughnut", &[] as &[c::AxisId], true);
                 group_types.push("doughnut");
                 break;
@@ -631,6 +635,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         major_unit_secondary,
         bar_gap_width,
         bar_overlap,
+        hole_size,
+        first_slice_angle,
         x_axis_title,
         y_axis_title,
         y_axis_title_secondary,

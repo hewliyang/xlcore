@@ -534,6 +534,16 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub radar_style: Option<RadarStyle>,
+    /// `c:holeSize` (10..=90); doughnut charts only. Inner-hole diameter as a
+    /// percentage of the chart radius. Defaults to 50 when omitted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hole_size: Option<u8>,
+    /// `c:firstSliceAng` (0..=360); pie/doughnut charts only. Clockwise rotation
+    /// of the first slice from the top (12 o'clock), in degrees.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_slice_angle: Option<u16>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
@@ -589,6 +599,14 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub radar_style: Option<RadarStyle>,
+    /// `c:holeSize` (10..=90); doughnut charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hole_size: Option<u8>,
+    /// `c:firstSliceAng` (0..=360); pie/doughnut charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_slice_angle: Option<u16>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
@@ -648,6 +666,14 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub radar_style: Option<RadarStyle>,
+    /// `c:holeSize` (10..=90); doughnut charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hole_size: Option<u8>,
+    /// `c:firstSliceAng` (0..=360); pie/doughnut charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub first_slice_angle: Option<u16>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,

@@ -20,4 +20,12 @@ overlap?: number,
 /**
  * `c:radarStyle`; radar charts only.
  */
-radarStyle?: RadarStyle, dataLabels?: ChartDataLabels, };
+radarStyle?: RadarStyle, 
+/**
+ * `c:holeSize` (10..=90); doughnut charts only.
+ */
+holeSize?: number, 
+/**
+ * `c:firstSliceAng` (0..=360); pie/doughnut charts only.
+ */
+firstSliceAngle?: number, dataLabels?: ChartDataLabels, };

@@ -99,6 +99,8 @@ impl Workbook {
                     category_axis: parsed.category_axis,
                     value_axis: parsed.value_axis,
                     stacking: parsed.stacking,
+                    hole_size: parsed.hole_size,
+                    first_slice_angle: parsed.first_slice_angle,
                     gap_width: parsed.gap_width,
                     overlap: parsed.overlap,
                     radar_style: parsed.radar_style,
@@ -113,6 +115,7 @@ impl Workbook {
         let sheet = sheet.as_ref();
         validate_chart_series(sheet, patch.kind, &patch.series)?;
         validate_bar_options(sheet, patch.gap_width, patch.overlap)?;
+        validate_pie_options(sheet, patch.hole_size, patch.first_slice_angle)?;
         let anchor = crate::refs::resolve_anchor(&patch.anchor)?;
 
         if !self.sheet_exists(sheet)? {
@@ -244,6 +247,8 @@ impl Workbook {
             overlap: bar_option_for_kind(patch.kind, patch.overlap),
             radar_style: (patch.kind == ChartKind::Radar)
                 .then(|| patch.radar_style.unwrap_or(RadarStyle::Standard)),
+            hole_size: hole_size_for_kind(patch.kind, patch.hole_size),
+            first_slice_angle: first_slice_angle_for_kind(patch.kind, patch.first_slice_angle),
             data_labels: patch.data_labels.clone(),
         })
     }
@@ -335,6 +340,7 @@ impl Workbook {
         let kind = existing.kind;
 
         validate_bar_options(&sheet, update.gap_width, update.overlap)?;
+        validate_pie_options(&sheet, update.hole_size, update.first_slice_angle)?;
 
         let plot_dirty = update.series.is_some()
             || update.stacking.is_some()
@@ -342,7 +348,9 @@ impl Workbook {
             || update.categories_ref.is_some()
             || update.gap_width.is_some()
             || update.overlap.is_some()
-            || update.radar_style.is_some();
+            || update.radar_style.is_some()
+            || update.hole_size.is_some()
+            || update.first_slice_angle.is_some();
 
         let series: Vec<ChartSeriesPatch> = match &update.series {
             Some(s) => s.clone(),
@@ -376,6 +384,8 @@ impl Workbook {
         let gap_width = update.gap_width.or(existing.gap_width);
         let overlap = update.overlap.or(existing.overlap);
         let radar_style = update.radar_style.or(existing.radar_style);
+        let hole_size = update.hole_size.or(existing.hole_size);
+        let first_slice_angle = update.first_slice_angle.or(existing.first_slice_angle);
         let data_labels = update
             .data_labels
             .clone()
@@ -446,6 +456,8 @@ impl Workbook {
                 gap_width,
                 overlap,
                 radar_style,
+                hole_size,
+                first_slice_angle,
                 data_labels: data_labels.clone(),
             };
             space.chart.plot_area.plot_area_choice1 = build_plot_charts(&synth);
