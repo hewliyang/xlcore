@@ -62,6 +62,9 @@ pub(super) struct ParsedChart {
     pub(super) radar_style: Option<RadarStyle>,
     pub(super) hole_size: Option<u8>,
     pub(super) first_slice_angle: Option<u16>,
+    pub(super) hi_low_lines: Option<bool>,
+    pub(super) up_down_bars: Option<bool>,
+    pub(super) drop_lines: Option<bool>,
     pub(super) data_labels: Option<ChartDataLabels>,
 }
 
@@ -95,6 +98,9 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     let mut radar_style: Option<RadarStyle> = None;
     let mut hole_size: Option<u8> = None;
     let mut first_slice_angle: Option<u16> = None;
+    let mut hi_low_lines: Option<bool> = None;
+    let mut up_down_bars: Option<bool> = None;
+    let mut drop_lines: Option<bool> = None;
     let mut data_labels: Option<ChartDataLabels> = None;
 
     for ch in &plot.plot_area_choice1 {
@@ -171,8 +177,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     kind = ChartKind::Pie;
                     kind_set = true;
                 }
-                first_slice_angle =
-                    pc.first_slice_angle.as_ref().and_then(|f| f.val);
+                first_slice_angle = pc.first_slice_angle.as_ref().and_then(|f| f.val);
                 for s in &pc.pie_chart_series {
                     let mut info = read_series(
                         s.series_text.as_deref(),
@@ -195,8 +200,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     kind_set = true;
                 }
                 hole_size = Some(dc.hole_size.val);
-                first_slice_angle =
-                    dc.first_slice_angle.as_ref().and_then(|f| f.val);
+                first_slice_angle = dc.first_slice_angle.as_ref().and_then(|f| f.val);
                 for s in &dc.pie_chart_series {
                     let mut info = read_series(
                         s.series_text.as_deref(),
@@ -324,6 +328,31 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     data_labels = read_data_labels(rc.data_labels.as_deref());
                 }
             }
+            c::PlotAreaChoice::StockChart(sc) => {
+                if !kind_set {
+                    kind = ChartKind::Stock;
+                    kind_set = true;
+                }
+                hi_low_lines = Some(sc.high_low_lines.is_some());
+                up_down_bars = Some(sc.up_down_bars.is_some());
+                drop_lines = Some(sc.drop_lines.is_some());
+                for s in &sc.line_chart_series {
+                    let mut info = read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                        s.data_labels.as_deref(),
+                    );
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.marker = read_marker(s.marker.as_deref());
+                    info.data_points = read_data_points(&s.data_point);
+                    series.push(info);
+                }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(sc.data_labels.as_deref());
+                }
+            }
             _ => {}
         }
     }
@@ -405,6 +434,9 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         radar_style,
         hole_size,
         first_slice_angle,
+        hi_low_lines,
+        up_down_bars,
+        drop_lines,
         data_labels,
     }
 }
@@ -638,10 +670,7 @@ pub(super) fn read_data_labels(dl: Option<&c::DataLabels>) -> Option<ChartDataLa
             .as_ref()
             .map(|p| data_label_pos_from(&p.val)),
         separator: seq.separator.clone(),
-        number_format: seq
-            .numbering_format
-            .as_ref()
-            .map(|n| n.format_code.clone()),
+        number_format: seq.numbering_format.as_ref().map(|n| n.format_code.clone()),
     };
     if out == ChartDataLabels::default() {
         None

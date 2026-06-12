@@ -17,6 +17,7 @@ pub enum ChartKind {
     Bubble,
     Doughnut,
     Radar,
+    Stock,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -602,6 +603,21 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_slice_angle: Option<u16>,
+    /// `c:hiLowLines`; stock charts only. Vertical line spanning each category's
+    /// high/low values. Defaults to `true` when omitted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hi_low_lines: Option<bool>,
+    /// `c:upDownBars`; stock charts only. Open/close bars (white up, black down).
+    /// Defaults to `true` for open-high-low-close (4+ series).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub up_down_bars: Option<bool>,
+    /// `c:dropLines`; stock charts only. Vertical line from each point to the
+    /// category axis. Defaults to `false` when omitted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub drop_lines: Option<bool>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
@@ -665,6 +681,21 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_slice_angle: Option<u16>,
+    /// `c:hiLowLines`; stock charts only. Vertical line spanning each category's
+    /// high/low values. Defaults to `true` when omitted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hi_low_lines: Option<bool>,
+    /// `c:upDownBars`; stock charts only. Open/close bars (white up, black down).
+    /// Defaults to `true` for open-high-low-close (4+ series).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub up_down_bars: Option<bool>,
+    /// `c:dropLines`; stock charts only. Vertical line from each point to the
+    /// category axis. Defaults to `false` when omitted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub drop_lines: Option<bool>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,
@@ -732,6 +763,21 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub first_slice_angle: Option<u16>,
+    /// `c:hiLowLines`; stock charts only. Vertical line spanning each category's
+    /// high/low values. Defaults to `true` when omitted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hi_low_lines: Option<bool>,
+    /// `c:upDownBars`; stock charts only. Open/close bars (white up, black down).
+    /// Defaults to `true` for open-high-low-close (4+ series).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub up_down_bars: Option<bool>,
+    /// `c:dropLines`; stock charts only. Vertical line from each point to the
+    /// category axis. Defaults to `false` when omitted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub drop_lines: Option<bool>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data_labels: Option<ChartDataLabels>,

@@ -100,6 +100,9 @@ impl Workbook {
                     stacking: parsed.stacking,
                     hole_size: parsed.hole_size,
                     first_slice_angle: parsed.first_slice_angle,
+                    hi_low_lines: parsed.hi_low_lines,
+                    up_down_bars: parsed.up_down_bars,
+                    drop_lines: parsed.drop_lines,
                     gap_width: parsed.gap_width,
                     overlap: parsed.overlap,
                     radar_style: parsed.radar_style,
@@ -249,6 +252,9 @@ impl Workbook {
                 .then(|| patch.radar_style.unwrap_or(RadarStyle::Standard)),
             hole_size: hole_size_for_kind(patch.kind, patch.hole_size),
             first_slice_angle: first_slice_angle_for_kind(patch.kind, patch.first_slice_angle),
+            hi_low_lines: (patch.kind == ChartKind::Stock).then(|| stock_hi_low_lines(&patch)),
+            up_down_bars: (patch.kind == ChartKind::Stock).then(|| stock_up_down_bars(&patch)),
+            drop_lines: (patch.kind == ChartKind::Stock).then(|| stock_drop_lines(&patch)),
             data_labels: patch.data_labels.clone(),
         })
     }
@@ -350,7 +356,10 @@ impl Workbook {
             || update.overlap.is_some()
             || update.radar_style.is_some()
             || update.hole_size.is_some()
-            || update.first_slice_angle.is_some();
+            || update.first_slice_angle.is_some()
+            || update.hi_low_lines.is_some()
+            || update.up_down_bars.is_some()
+            || update.drop_lines.is_some();
 
         let series: Vec<ChartSeriesPatch> = match &update.series {
             Some(s) => s.clone(),
@@ -387,6 +396,9 @@ impl Workbook {
         let radar_style = update.radar_style.or(existing.radar_style);
         let hole_size = update.hole_size.or(existing.hole_size);
         let first_slice_angle = update.first_slice_angle.or(existing.first_slice_angle);
+        let hi_low_lines = update.hi_low_lines.or(existing.hi_low_lines);
+        let up_down_bars = update.up_down_bars.or(existing.up_down_bars);
+        let drop_lines = update.drop_lines.or(existing.drop_lines);
         let data_labels = update
             .data_labels
             .clone()
@@ -459,6 +471,9 @@ impl Workbook {
                 radar_style,
                 hole_size,
                 first_slice_angle,
+                hi_low_lines,
+                up_down_bars,
+                drop_lines,
                 data_labels: data_labels.clone(),
             };
             space.chart.plot_area.plot_area_choice1 = build_plot_charts(&synth);

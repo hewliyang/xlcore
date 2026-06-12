@@ -138,11 +138,18 @@ pub struct ChartAxisPatch {
   verified e2e). Remaining dPt fields (`invertIfNegative`, per-point marker,
   `explosion`, gradient/pattern fills) preserved-on-update, deferred.
 - `dispBlanksAs` (span|gap|zero).
-- Kinds: **— radar done** (`ChartKind::Radar` + `RadarStyle` enum (sdk
-  `ST_RadarStyle` transliterated) on `ChartPatch`/`ChartInfo`/`ChartUpdate`;
-  builds `c:radarChart` with cat+val axes, round-trips, updates style in place,
-  renderer-visible e2e). Remaining: stock (needs hi/lo/close/open series
-  semantics + hiLowLines/upDownBars).
+- Kinds: **— radar + stock done**. Radar: `ChartKind::Radar` + `RadarStyle` enum
+  (sdk `ST_RadarStyle`); builds `c:radarChart`, round-trips, updates in place,
+  renderer-visible e2e. Stock: `ChartKind::Stock` builds `c:stockChart` from
+  3..=6 line series (high-low-close, open-high-low-close, or volume + OHLC),
+  with the connecting line suppressed (`a:ln/a:noFill`) so points show as
+  markers. `ChartPatch.hi_low_lines`/`up_down_bars`/`drop_lines`
+  (`c:hiLowLines`/`c:upDownBars`/`c:dropLines`, sdk `CT_StockChart` distilled)
+  gate the overlays — hi/low lines default on, up/down bars default on for
+  open-high-low-close (4+ series), drop lines default off. Round-trips, updates
+  in place, and is renderer-visible (OHLC chart with hi-low whiskers + white/black
+  up/down bars verified e2e). Remaining `CT_StockChart` fields (`extLst`)
+  preserved-on-update.
 - Data label `numFmt`. **— done**: `ChartDataLabels.number_format` (`c:numFmt`)
   builds, round-trips, updates in place, and is renderer-visible (pie labels
   format `0.42` → `42.0%` via `0.0%` verified e2e).

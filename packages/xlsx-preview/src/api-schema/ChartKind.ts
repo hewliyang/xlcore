@@ -9,4 +9,5 @@ export type ChartKind =
   | "scatter"
   | "bubble"
   | "doughnut"
-  | "radar";
+  | "radar"
+  | "stock";

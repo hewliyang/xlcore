@@ -39,5 +39,20 @@ export type ChartUpdate = {
    * `c:firstSliceAng` (0..=360); pie/doughnut charts only.
    */
   firstSliceAngle?: number;
+  /**
+   * `c:hiLowLines`; stock charts only. Vertical line spanning each category's
+   * high/low values. Defaults to `true` when omitted.
+   */
+  hiLowLines?: boolean;
+  /**
+   * `c:upDownBars`; stock charts only. Open/close bars (white up, black down).
+   * Defaults to `true` for open-high-low-close (4+ series).
+   */
+  upDownBars?: boolean;
+  /**
+   * `c:dropLines`; stock charts only. Vertical line from each point to the
+   * category axis. Defaults to `false` when omitted.
+   */
+  dropLines?: boolean;
   dataLabels?: ChartDataLabels;
 };

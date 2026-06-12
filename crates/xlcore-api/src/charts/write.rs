@@ -20,6 +20,16 @@ pub(super) fn validate_chart_series(
         )
         .with_sheet(sheet));
     }
+    if matches!(kind, ChartKind::Stock) && !(3..=6).contains(&series.len()) {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidChart,
+            format!(
+                "stock chart requires 3..=6 series (high-low-close, open-high-low-close, or volume + OHLC), got: {}",
+                series.len()
+            ),
+        )
+        .with_sheet(sheet));
+    }
     for s in series {
         if s.values_ref.trim().is_empty() {
             return Err(ApiError::new(
@@ -86,6 +96,13 @@ pub(super) fn validate_chart_series(
                 )
                 .with_sheet(sheet));
             }
+        }
+        if matches!(kind, ChartKind::Stock) && s.x_values_ref.is_some() {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                "stock chart series take values_ref only (no x_values_ref)",
+            )
+            .with_sheet(sheet));
         }
         if (s.kind.is_some() || s.axis.is_some()) && !is_cartesian(kind) {
             return Err(ApiError::new(
@@ -345,6 +362,7 @@ pub(super) fn build_plot_charts(patch: &ChartPatch) -> Vec<c::PlotAreaChoice> {
         | ChartKind::Radar => {
             vec![build_single_plot_chart(patch)]
         }
+        ChartKind::Stock => vec![build_stock_chart(patch)],
         _ => build_cartesian_plot_charts(patch),
     }
 }
@@ -574,7 +592,61 @@ pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
         ChartKind::Column | ChartKind::Bar | ChartKind::Line | ChartKind::Area => {
             unreachable!("cartesian kinds are built via build_cartesian_plot_charts")
         }
+        ChartKind::Stock => unreachable!("stock is built via build_stock_chart"),
     }
+}
+
+pub(super) fn stock_hi_low_lines(patch: &ChartPatch) -> bool {
+    patch.hi_low_lines.unwrap_or(true)
+}
+
+pub(super) fn stock_up_down_bars(patch: &ChartPatch) -> bool {
+    patch.up_down_bars.unwrap_or(patch.series.len() >= 4)
+}
+
+pub(super) fn stock_drop_lines(patch: &ChartPatch) -> bool {
+    patch.drop_lines.unwrap_or(false)
+}
+
+pub(super) fn build_stock_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
+    let cat_ref = patch.categories_ref.as_deref();
+    c::PlotAreaChoice::StockChart(Box::new(c::StockChart {
+        line_chart_series: patch
+            .series
+            .iter()
+            .enumerate()
+            .map(|(i, s)| build_stock_series(i, s, cat_ref))
+            .collect(),
+        data_labels: build_data_labels(patch.data_labels.as_ref()),
+        drop_lines: stock_drop_lines(patch).then(|| Box::new(c::DropLines::default())),
+        high_low_lines: stock_hi_low_lines(patch).then(|| Box::new(c::HighLowLines::default())),
+        up_down_bars: stock_up_down_bars(patch).then(|| {
+            Box::new(c::UpDownBars {
+                gap_width: Some(c::GapWidth { val: Some(150) }),
+                up_bars: Some(Box::new(c::UpBars::default())),
+                down_bars: Some(Box::new(c::DownBars::default())),
+                ..Default::default()
+            })
+        }),
+        axis_id: vec![axis_id(CAT_AX_ID), axis_id(VAL_AX_ID)],
+        ..Default::default()
+    }))
+}
+
+pub(super) fn build_stock_series(
+    idx: usize,
+    s: &ChartSeriesPatch,
+    cat_ref: Option<&str>,
+) -> c::LineChartSeries {
+    let mut ser = build_line_series(idx, s, cat_ref);
+    ser.chart_shape_properties = Some(Box::new(c::ChartShapeProperties {
+        outline: Some(Box::new(a::Outline {
+            outline_choice1: Some(a::OutlineChoice::NoFill(Box::new(a::NoFill::default()))),
+            ..Default::default()
+        })),
+        ..Default::default()
+    }));
+    ser
 }
 
 pub(super) fn build_data_labels(dl: Option<&ChartDataLabels>) -> Option<Box<c::DataLabels>> {

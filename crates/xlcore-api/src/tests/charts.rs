@@ -44,6 +44,9 @@ fn charts_create_list_remove_roundtrip() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -156,6 +159,9 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -235,6 +241,9 @@ fn update_chart_replaces_series_and_stacking() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -318,6 +327,9 @@ fn chart_axis_patch_authors_and_round_trips() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -398,6 +410,9 @@ fn chart_value_axis_display_units_round_trip() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -478,6 +493,9 @@ fn charts_supports_multiple_kinds() {
         radar_style: None,
         hole_size: None,
         first_slice_angle: None,
+        hi_low_lines: None,
+        up_down_bars: None,
+        drop_lines: None,
         data_labels: None,
     };
     for kind in [
@@ -559,6 +577,9 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             radar_style: None,
             hole_size: None,
             first_slice_angle: None,
+            hi_low_lines: None,
+            up_down_bars: None,
+            drop_lines: None,
             data_labels: None,
         },
     )
@@ -596,6 +617,9 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             radar_style: None,
             hole_size: None,
             first_slice_angle: None,
+            hi_low_lines: None,
+            up_down_bars: None,
+            drop_lines: None,
             data_labels: None,
         },
     )
@@ -631,6 +655,9 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             radar_style: None,
             hole_size: None,
             first_slice_angle: None,
+            hi_low_lines: None,
+            up_down_bars: None,
+            drop_lines: None,
             data_labels: None,
         },
     )
@@ -711,6 +738,9 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
             radar_style: None,
             hole_size: None,
             first_slice_angle: None,
+            hi_low_lines: None,
+            up_down_bars: None,
+            drop_lines: None,
             data_labels: None,
         },
     )
@@ -757,6 +787,9 @@ fn chart_series_color_rejects_malformed_hex() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -841,6 +874,9 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
             radar_style: None,
             hole_size: None,
             first_slice_angle: None,
+            hi_low_lines: None,
+            up_down_bars: None,
+            drop_lines: None,
             data_labels: None,
         },
     )
@@ -924,6 +960,9 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
         radar_style: None,
         hole_size: None,
         first_slice_angle: None,
+        hi_low_lines: None,
+        up_down_bars: None,
+        drop_lines: None,
         data_labels: None,
     };
 
@@ -1032,6 +1071,9 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -1069,6 +1111,9 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             radar_style: None,
             hole_size: None,
             first_slice_angle: None,
+            hi_low_lines: None,
+            up_down_bars: None,
+            drop_lines: None,
             data_labels: None,
         },
     );
@@ -1098,6 +1143,9 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             radar_style: None,
             hole_size: None,
             first_slice_angle: None,
+            hi_low_lines: None,
+            up_down_bars: None,
+            drop_lines: None,
             data_labels: None,
         },
     );
@@ -1139,6 +1187,9 @@ fn charts_data_labels_roundtrip() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: Some(ChartDataLabels {
                     show_value: Some(true),
                     show_category_name: Some(false),
@@ -1204,6 +1255,9 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
             radar_style: None,
             hole_size: None,
             first_slice_angle: None,
+            hi_low_lines: None,
+            up_down_bars: None,
+            drop_lines: None,
             data_labels: Some(ChartDataLabels {
                 show_percent: Some(true),
                 show_category_name: Some(true),
@@ -1268,6 +1322,9 @@ fn charts_per_series_data_labels_override_chart_level() {
             radar_style: None,
             hole_size: None,
             first_slice_angle: None,
+            hi_low_lines: None,
+            up_down_bars: None,
+            drop_lines: None,
             data_labels: Some(ChartDataLabels {
                 show_series_name: Some(true),
                 position: Some(ChartDataLabelPosition::Center),
@@ -1337,6 +1394,9 @@ fn chart_gap_width_overlap_roundtrip_and_update() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -1423,6 +1483,9 @@ fn chart_series_marker_roundtrip_and_validation() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -1478,6 +1541,9 @@ fn chart_series_marker_roundtrip_and_validation() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -1527,6 +1593,9 @@ fn chart_series_smooth_roundtrips_and_sets_scatter_style() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -1586,11 +1655,17 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
         .unwrap();
-    assert_eq!(info.series[0].data_points.as_deref(), Some(points.as_slice()));
+    assert_eq!(
+        info.series[0].data_points.as_deref(),
+        Some(points.as_slice())
+    );
 
     let bytes = wb.save_bytes().unwrap();
     let xml = chart_xml(&bytes);
@@ -1633,6 +1708,9 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -1693,6 +1771,9 @@ fn combo_chart_secondary_axis_roundtrip() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -1738,6 +1819,9 @@ fn combo_chart_secondary_axis_roundtrip() {
                 radar_style: None,
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -1748,9 +1832,13 @@ fn combo_chart_secondary_axis_roundtrip() {
 #[test]
 fn radar_chart_build_roundtrip_and_update() {
     let mut wb = Workbook::new().unwrap();
-    for (i, (cat, v1, v2)) in [("Speed", 8.0, 6.0), ("Power", 5.0, 9.0), ("Range", 7.0, 4.0)]
-        .iter()
-        .enumerate()
+    for (i, (cat, v1, v2)) in [
+        ("Speed", 8.0, 6.0),
+        ("Power", 5.0, 9.0),
+        ("Range", 7.0, 4.0),
+    ]
+    .iter()
+    .enumerate()
     {
         let row = i + 2;
         wb.set_value(&format!("Sheet1!A{row}"), *cat).unwrap();
@@ -1792,6 +1880,9 @@ fn radar_chart_build_roundtrip_and_update() {
                 radar_style: Some(RadarStyle::Marker),
                 hole_size: None,
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -1825,7 +1916,6 @@ fn radar_chart_build_roundtrip_and_update() {
     assert_eq!(chart.radar_style, Some(RadarStyle::Filled));
     assert_eq!(chart.series.len(), 2);
 }
-
 
 #[test]
 fn doughnut_hole_size_and_first_slice_angle_roundtrip_and_update() {
@@ -1862,6 +1952,9 @@ fn doughnut_hole_size_and_first_slice_angle_roundtrip_and_update() {
                 radar_style: None,
                 hole_size: Some(70),
                 first_slice_angle: Some(90),
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -1922,6 +2015,9 @@ fn doughnut_hole_size_out_of_range_rejected() {
                 radar_style: None,
                 hole_size: Some(5),
                 first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
                 data_labels: None,
             },
         )
@@ -1929,3 +2025,153 @@ fn doughnut_hole_size_out_of_range_rejected() {
     assert!(err.to_string().contains("hole_size"));
 }
 
+#[test]
+fn stock_chart_build_roundtrip_and_update() {
+    let mut wb = Workbook::new().unwrap();
+    let rows = [
+        ("Mon", 12.0, 15.0, 10.0, 14.0),
+        ("Tue", 14.0, 16.0, 13.0, 13.0),
+        ("Wed", 13.0, 14.0, 11.0, 12.0),
+        ("Thu", 12.0, 18.0, 12.0, 17.0),
+    ];
+    for (i, (cat, o, h, l, c)) in rows.iter().enumerate() {
+        let row = i + 2;
+        wb.set_value(&format!("Sheet1!A{row}"), *cat).unwrap();
+        wb.set_value(&format!("Sheet1!B{row}"), *o).unwrap();
+        wb.set_value(&format!("Sheet1!C{row}"), *h).unwrap();
+        wb.set_value(&format!("Sheet1!D{row}"), *l).unwrap();
+        wb.set_value(&format!("Sheet1!E{row}"), *c).unwrap();
+    }
+    for (col, name) in [("B", "Open"), ("C", "High"), ("D", "Low"), ("E", "Close")] {
+        wb.set_value(&format!("Sheet1!{col}1"), name).unwrap();
+    }
+
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: Some("Stock".to_string()),
+                kind: ChartKind::Stock,
+                title: Some("OHLC".to_string()),
+                legend_position: None,
+                categories_ref: Some("Sheet1!$A$2:$A$5".to_string()),
+                series: vec![
+                    ChartSeriesPatch {
+                        name_ref: Some("Sheet1!$B$1".to_string()),
+                        values_ref: "Sheet1!$B$2:$B$5".to_string(),
+                        ..Default::default()
+                    },
+                    ChartSeriesPatch {
+                        name_ref: Some("Sheet1!$C$1".to_string()),
+                        values_ref: "Sheet1!$C$2:$C$5".to_string(),
+                        ..Default::default()
+                    },
+                    ChartSeriesPatch {
+                        name_ref: Some("Sheet1!$D$1".to_string()),
+                        values_ref: "Sheet1!$D$2:$D$5".to_string(),
+                        ..Default::default()
+                    },
+                    ChartSeriesPatch {
+                        name_ref: Some("Sheet1!$E$1".to_string()),
+                        values_ref: "Sheet1!$E$2:$E$5".to_string(),
+                        ..Default::default()
+                    },
+                ],
+                anchor: AnchorSpec::A1("Sheet1!G1:O16".to_string()),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
+                data_labels: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(info.kind, ChartKind::Stock);
+    assert_eq!(info.hi_low_lines, Some(true));
+    assert_eq!(info.up_down_bars, Some(true));
+    assert_eq!(info.drop_lines, Some(false));
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    assert_eq!(charts.len(), 1);
+    let chart = &charts[0];
+    assert_eq!(chart.kind, ChartKind::Stock);
+    assert_eq!(chart.series.len(), 4);
+    assert_eq!(chart.hi_low_lines, Some(true));
+    assert_eq!(chart.up_down_bars, Some(true));
+    assert_eq!(chart.drop_lines, Some(false));
+    assert_eq!(chart.categories_ref.as_deref(), Some("Sheet1!$A$2:$A$5"));
+
+    reopened
+        .update_chart(
+            "Sheet1",
+            &chart.id,
+            ChartUpdate {
+                up_down_bars: Some(false),
+                drop_lines: Some(true),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let chart = reopened.charts(None).unwrap().into_iter().next().unwrap();
+    assert_eq!(chart.kind, ChartKind::Stock);
+    assert_eq!(chart.hi_low_lines, Some(true));
+    assert_eq!(chart.up_down_bars, Some(false));
+    assert_eq!(chart.drop_lines, Some(true));
+    assert_eq!(chart.series.len(), 4);
+}
+
+#[test]
+fn stock_chart_requires_three_to_six_series() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 1.0).unwrap();
+    wb.set_value("Sheet1!C2", 2.0).unwrap();
+    let err = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Stock,
+                series: vec![
+                    ChartSeriesPatch {
+                        values_ref: "Sheet1!$B$2".to_string(),
+                        ..Default::default()
+                    },
+                    ChartSeriesPatch {
+                        values_ref: "Sheet1!$C$2".to_string(),
+                        ..Default::default()
+                    },
+                ],
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                anchor: AnchorSpec::A1("Sheet1!E1:K16".to_string()),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
+                data_labels: None,
+            },
+        )
+        .unwrap_err();
+    assert!(err.to_string().contains("3..=6 series"));
+}
