@@ -148,6 +148,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.invert_if_negative =
                         read_invert_if_negative(s.invert_if_negative.as_ref());
                     info.data_points = read_data_points(&s.data_point);
+                    info.trendline = read_trendline(&s.trendline);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -176,6 +177,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.kind = Some(ChartKind::Line);
                     info.axis = gsec.then_some(ChartAxisGroup::Secondary);
                     info.data_points = read_data_points(&s.data_point);
+                    info.trendline = read_trendline(&s.trendline);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -251,6 +253,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.kind = Some(ChartKind::Area);
                     info.axis = gsec.then_some(ChartAxisGroup::Secondary);
                     info.data_points = read_data_points(&s.data_point);
+                    info.trendline = read_trendline(&s.trendline);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -278,6 +281,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.marker = read_marker(s.marker.as_deref());
                     info.smooth = read_smooth(s.smooth.as_ref());
                     info.data_points = read_data_points(&s.data_point);
+                    info.trendline = read_trendline(&s.trendline);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -311,6 +315,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.invert_if_negative =
                         read_invert_if_negative(s.invert_if_negative.as_ref());
                     info.data_points = read_data_points(&s.data_point);
+                    info.trendline = read_trendline(&s.trendline);
                     series.push(info);
                 }
                 if vary_colors.is_none() {
@@ -520,7 +525,47 @@ pub(super) fn read_xy_series(
         kind: None,
         axis: None,
         invert_if_negative: None,
+        trendline: None,
     }
+}
+
+pub(super) fn trendline_kind_from(v: &c::TrendlineValues) -> TrendlineKind {
+    match v {
+        c::TrendlineValues::Exponential => TrendlineKind::Exponential,
+        c::TrendlineValues::Linear => TrendlineKind::Linear,
+        c::TrendlineValues::Logarithmic => TrendlineKind::Logarithmic,
+        c::TrendlineValues::MovingAverage => TrendlineKind::MovingAverage,
+        c::TrendlineValues::Polynomial => TrendlineKind::Polynomial,
+        c::TrendlineValues::Power => TrendlineKind::Power,
+    }
+}
+
+pub(super) fn read_trendline(tls: &[c::Trendline]) -> Option<ChartTrendline> {
+    let t = tls.first()?;
+    Some(ChartTrendline {
+        kind: t
+            .trendline_type
+            .val
+            .as_ref()
+            .map(trendline_kind_from)
+            .unwrap_or(TrendlineKind::Linear),
+        name: t.trendline_name.clone(),
+        polynomial_order: t.polynomial_order.as_ref().map(|o| o.val),
+        period: t.period.as_ref().map(|p| p.val),
+        forward: t.forward.as_ref().map(|f| f.val),
+        backward: t.backward.as_ref().map(|b| b.val),
+        intercept: t.intercept.as_ref().map(|i| i.val),
+        display_equation: t
+            .display_equation
+            .as_ref()
+            .and_then(|d| d.val.as_ref())
+            .map(|b| b.as_bool()),
+        display_r_squared: t
+            .display_r_squared_value
+            .as_ref()
+            .and_then(|d| d.val.as_ref())
+            .map(|b| b.as_bool()),
+    })
 }
 
 pub(super) fn marker_style_from(v: &c::MarkerStyleValues) -> MarkerStyle {
@@ -687,6 +732,7 @@ pub(super) fn read_series(
         kind: None,
         axis: None,
         invert_if_negative: None,
+        trendline: None,
     }
 }
 

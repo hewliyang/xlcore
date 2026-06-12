@@ -69,6 +69,12 @@ dto = "ChartMarker"
 ns = "c"
 aliases = { symbol = "style" }
 
+[[pair]]
+sdk = "Trendline"
+dto = "ChartTrendline"
+ns = "c"
+aliases = { trendlineType = "kind", dispRSqr = "display_r_squared" }
+
 # --- chart kinds (plot-group containers) ------------------------------------
 [[pair]]
 sdk = "DoughnutChart"

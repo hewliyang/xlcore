@@ -70,7 +70,10 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   charts + secondary axis, series styling (marker, line, smooth, varyColors,
   invertIfNegative, gapWidth/overlap), per-point fills + explosion (`c:dPt`),
   pie/doughnut holeSize + firstSliceAngle, dispBlanksAs, radar + stock kinds,
-  data label numFmt. In-place `update_chart` (atomic, preserves unmodeled XML).
+  data label numFmt, series trendlines (`c:trendline`:
+  linear/poly/movingAvg/exp/log/power, dispEq/dispRSqr, forward/backward,
+  intercept, custom name; round-trip-only, renderer doesn't draw). In-place
+  `update_chart` (atomic, preserves unmodeled XML).
 - **Rich text in cells**: `setRichText`/`richText` (inline-string `CT_RElt`
   runs with per-run `FontPatch`); `CellInfo.richText`, renderer-visible.
 - **Styles P1**: cell protection, pattern + gradient fills, font
@@ -88,7 +91,7 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 
 ### P2 — next up
 
-- **Trendlines** (`c:trendline`) and **error bars** (`c:errBars`) — common asks.
+- **Error bars** (`c:errBars`) — common ask.
 - **Per-point data labels** (`c:dLbl`).
 - Axis **label rotation** (txPr bodyPr rot — the one `ChartAxisPatch` deferral).
 

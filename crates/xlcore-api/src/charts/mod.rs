@@ -16,8 +16,8 @@ use xlcore_types::{
     AnchorSpec, ApiError, ApiErrorCode, ApiWarning, BuiltInUnit, ChartAnchor, ChartAxisGroup,
     ChartAxisPatch, ChartDataLabelPosition, ChartDataLabels, ChartDataPoint, ChartInfo, ChartKind,
     ChartLegendPosition, ChartLine, ChartMarker, ChartPatch, ChartSeriesInfo, ChartSeriesPatch,
-    ChartStacking, ChartUpdate, CrossBetween, DispBlanksAs, DisplayUnits, LineDash, MarkerStyle,
-    RadarStyle, TickLabelPosition, TickMark,
+    ChartStacking, ChartTrendline, ChartUpdate, CrossBetween, DispBlanksAs, DisplayUnits, LineDash,
+    MarkerStyle, RadarStyle, TickLabelPosition, TickMark, TrendlineKind,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -243,6 +243,7 @@ impl Workbook {
                     kind: s.kind,
                     axis: s.axis,
                     invert_if_negative: s.invert_if_negative,
+                    trendline: s.trendline.clone(),
                 })
                 .collect(),
             anchor,
@@ -389,6 +390,7 @@ impl Workbook {
                     kind: s.kind,
                     axis: s.axis,
                     invert_if_negative: s.invert_if_negative,
+                    trendline: s.trendline.clone(),
                 })
                 .collect(),
         };

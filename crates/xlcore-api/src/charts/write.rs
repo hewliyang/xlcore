@@ -120,6 +120,22 @@ pub(super) fn validate_chart_series(
                 .with_sheet(sheet));
             }
         }
+        let no_trend =
+            matches!(kind, ChartKind::Pie | ChartKind::Doughnut | ChartKind::Radar | ChartKind::Stock);
+        if let Some(t) = s.trendline.as_ref() {
+            let msg = if no_trend {
+                Some(format!("trendlines are not supported on {kind:?} charts"))
+            } else if t.polynomial_order.is_some_and(|o| !(2..=6).contains(&o)) {
+                Some("trendline polynomial_order must be 2..=6".to_string())
+            } else if t.period.is_some_and(|p| p < 2) {
+                Some("trendline period must be >= 2".to_string())
+            } else {
+                None
+            };
+            if let Some(msg) = msg {
+                return Err(ApiError::new(ApiErrorCode::InvalidChart, msg).with_sheet(sheet));
+            }
+        }
     }
     Ok(())
 }
@@ -765,6 +781,33 @@ pub(super) fn build_invert_if_negative(opt: Option<bool>) -> Option<c::InvertIfN
     })
 }
 
+pub(super) fn build_trendline(t: Option<&ChartTrendline>) -> Vec<c::Trendline> {
+    let Some(t) = t else {
+        return Vec::new();
+    };
+    let bv = |v: bool| Some(BooleanValue::from_bool(v));
+    let kind = match t.kind {
+        TrendlineKind::Exponential => c::TrendlineValues::Exponential,
+        TrendlineKind::Linear => c::TrendlineValues::Linear,
+        TrendlineKind::Logarithmic => c::TrendlineValues::Logarithmic,
+        TrendlineKind::MovingAverage => c::TrendlineValues::MovingAverage,
+        TrendlineKind::Polynomial => c::TrendlineValues::Polynomial,
+        TrendlineKind::Power => c::TrendlineValues::Power,
+    };
+    vec![c::Trendline {
+        trendline_name: t.name.clone(),
+        trendline_type: Box::new(c::TrendlineType { val: Some(kind) }),
+        polynomial_order: t.polynomial_order.map(|val| c::PolynomialOrder { val }),
+        period: t.period.map(|val| c::Period { val }),
+        forward: t.forward.map(|val| c::Forward { val }),
+        backward: t.backward.map(|val| c::Backward { val }),
+        intercept: t.intercept.map(|val| c::Intercept { val }),
+        display_r_squared_value: t.display_r_squared.map(|v| c::DisplayRSquaredValue { val: bv(v) }),
+        display_equation: t.display_equation.map(|v| c::DisplayEquation { val: bv(v) }),
+        ..Default::default()
+    }]
+}
+
 pub(super) fn build_bar_series(
     idx: usize,
     s: &ChartSeriesPatch,
@@ -778,6 +821,7 @@ pub(super) fn build_bar_series(
         invert_if_negative: build_invert_if_negative(s.invert_if_negative),
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
+        trendline: build_trendline(s.trendline.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
@@ -797,6 +841,7 @@ pub(super) fn build_line_series(
         marker: build_marker(s.marker.as_ref()),
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
+        trendline: build_trendline(s.trendline.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         smooth: s.smooth.map(|v| c::Smooth {
@@ -848,6 +893,7 @@ pub(super) fn build_area_series(
         series_text: build_series_text(s),
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
+        trendline: build_trendline(s.trendline.as_ref()),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
         ..Default::default()
@@ -881,6 +927,7 @@ pub(super) fn build_scatter_series(idx: usize, s: &ChartSeriesPatch) -> c::Scatt
         marker: build_marker(s.marker.as_ref()),
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
+        trendline: build_trendline(s.trendline.as_ref()),
         x_values: s.x_values_ref.as_deref().map(build_x_values),
         y_values: Some(build_y_values(&s.values_ref)),
         smooth: Some(c::Smooth {
@@ -899,6 +946,7 @@ pub(super) fn build_bubble_series(idx: usize, s: &ChartSeriesPatch) -> c::Bubble
         invert_if_negative: build_invert_if_negative(s.invert_if_negative),
         data_point: build_data_points(&s.data_points),
         data_labels: build_data_labels(s.data_labels.as_ref()),
+        trendline: build_trendline(s.trendline.as_ref()),
         x_values: s.x_values_ref.as_deref().map(build_x_values),
         y_values: Some(build_y_values(&s.values_ref)),
         bubble_size: s.bubble_sizes_ref.as_deref().map(build_bubble_size),

@@ -5,6 +5,7 @@ import type { ChartDataPoint } from "./ChartDataPoint.js";
 import type { ChartKind } from "./ChartKind.js";
 import type { ChartLine } from "./ChartLine.js";
 import type { ChartMarker } from "./ChartMarker.js";
+import type { ChartTrendline } from "./ChartTrendline.js";
 
 export type ChartSeriesInfo = {
   name?: string;
@@ -42,4 +43,8 @@ export type ChartSeriesInfo = {
    * Negative-value fill flip; see {@link ChartSeriesPatch.invertIfNegative}.
    */
   invertIfNegative?: boolean;
+  /**
+   * Series regression trendline; see {@link ChartSeriesPatch.trendline}.
+   */
+  trendline?: ChartTrendline;
 };

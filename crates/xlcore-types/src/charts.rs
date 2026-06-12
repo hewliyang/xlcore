@@ -531,17 +531,99 @@ impl Default for AnchorSpec {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+/// Trendline regression type (`c:trendlineType/@val`, OOXML `ST_TrendlineType`),
+/// transliterated from ooxmlsdk `TrendlineValues`.
+pub enum TrendlineKind {
+    #[serde(rename = "exp")]
+    Exponential,
+    #[serde(rename = "linear")]
+    Linear,
+    #[serde(rename = "log")]
+    Logarithmic,
+    #[serde(rename = "movingAvg")]
+    MovingAverage,
+    #[serde(rename = "poly")]
+    Polynomial,
+    #[serde(rename = "power")]
+    Power,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "camelCase")]
+#[allow(clippy::derive_partial_eq_without_eq)]
+/// A series trendline (`c:trendline`), distilled from ooxmlsdk `Trendline`.
+///
+/// Supported on bar/column, line, area, scatter and bubble series only (Excel
+/// disallows trendlines on pie/doughnut/radar/stock). `polynomial_order` applies
+/// to `Polynomial`, `period` to `MovingAverage`; `intercept` to
+/// exp/linear/poly/power. Round-trips for Excel; the xlsx-preview renderer does
+/// not draw trendlines.
+///
+/// Intentionally not modeled (preserved on update, author via raw XML): `spPr`
+/// line styling, `trendlineLbl` label text/layout, `extLst`.
+///
+/// schema-excluded: spPr, trendlineLbl
+pub struct ChartTrendline {
+    /// `c:trendlineType/@val`.
+    #[serde(rename = "type")]
+    pub kind: TrendlineKind,
+    /// `c:name`; custom trendline label name overriding Excel's auto label.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// `c:order/@val` (2..=6); polynomial trendlines only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub polynomial_order: Option<u8>,
+    /// `c:period/@val` (>=2); moving-average trendlines only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub period: Option<u32>,
+    /// `c:forward/@val`; periods to project forward.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub forward: Option<f64>,
+    /// `c:backward/@val`; periods to project backward.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backward: Option<f64>,
+    /// `c:intercept/@val`; forced y-intercept.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intercept: Option<f64>,
+    /// `c:dispEq/@val`; show the regression equation on the chart.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_equation: Option<bool>,
+    /// `c:dispRSqr/@val`; show the R² value on the chart.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_r_squared: Option<bool>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+#[allow(clippy::derive_partial_eq_without_eq)]
 /// A chart series. `name`/`color`/`marker`/`line`/`smooth` etc. are flat sugar;
 /// the series text, refs (cat/val/xVal/yVal), idx and order are derived from the
 /// patch fields and the series' position.
 ///
-/// schema-excluded: spPr, pictureOptions, trendline, errBars, shape, explosion
+/// schema-excluded: spPr, pictureOptions, errBars, shape, explosion
 pub struct ChartSeriesPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -598,15 +680,21 @@ pub struct ChartSeriesPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub invert_if_negative: Option<bool>,
+    /// Series regression trendline (`c:trendline`). Bar/column, line, area,
+    /// scatter and bubble series only. Round-trips for Excel.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trendline: Option<ChartTrendline>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "camelCase")]
+#[allow(clippy::derive_partial_eq_without_eq)]
 pub struct ChartSeriesInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -655,6 +743,10 @@ pub struct ChartSeriesInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub invert_if_negative: Option<bool>,
+    /// Series regression trendline; see {@link ChartSeriesPatch.trendline}.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trendline: Option<ChartTrendline>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

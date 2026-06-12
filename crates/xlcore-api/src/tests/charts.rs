@@ -487,6 +487,7 @@ fn charts_supports_multiple_kinds() {
             kind: None,
             axis: None,
             invert_if_negative: None,
+            trendline: None,
         }],
         anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
@@ -575,6 +576,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
                 kind: None,
                 axis: None,
                 invert_if_negative: None,
+                trendline: None,
             }],
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 4,
@@ -2555,4 +2557,241 @@ fn vary_colors_and_invert_if_negative_roundtrip_and_update() {
         xml2.contains("<c:varyColors val=\"false\" />") || xml2.contains("varyColors val=\"0\""),
         "{xml2}"
     );
+}
+
+#[test]
+fn chart_trendline_roundtrips_and_updates() {
+    use xlcore_types::{ChartTrendline, TrendlineKind};
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 12.0).unwrap();
+    wb.set_value("Sheet1!B4", 15.0).unwrap();
+
+    let trend = ChartTrendline {
+        kind: TrendlineKind::Linear,
+        name: Some("Fit".to_string()),
+        polynomial_order: None,
+        period: None,
+        forward: Some(2.0),
+        backward: Some(1.0),
+        intercept: Some(0.0),
+        display_equation: Some(true),
+        display_r_squared: Some(true),
+    };
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Column,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    trendline: Some(trend.clone()),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::default(),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
+                disp_blanks_as: None,
+                vary_colors: None,
+                data_labels: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(info.series[0].trendline.as_ref(), Some(&trend));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("c:trendline"));
+    assert!(xml.contains("c:trendlineType val=\"linear\""));
+    assert!(xml.contains("c:dispEq"));
+    assert!(xml.contains("c:dispRSqr"));
+    assert!(xml.contains("c:forward val=\"2\""));
+
+    let mut wb = Workbook::open_bytes(bytes).unwrap();
+    let read = wb.charts(Some("Sheet1")).unwrap();
+    assert_eq!(read[0].series[0].trendline.as_ref(), Some(&trend));
+
+    let id = read[0].id.clone();
+    let poly = ChartTrendline {
+        kind: TrendlineKind::Polynomial,
+        name: None,
+        polynomial_order: Some(3),
+        period: None,
+        forward: None,
+        backward: None,
+        intercept: None,
+        display_equation: None,
+        display_r_squared: Some(true),
+    };
+    let updated = wb
+        .update_chart(
+            "Sheet1",
+            &id,
+            ChartUpdate {
+                series: Some(vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    trendline: Some(poly.clone()),
+                    ..Default::default()
+                }]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(updated.series[0].trendline.as_ref(), Some(&poly));
+
+    let xml2 = chart_xml(&wb.save_bytes().unwrap());
+    assert!(xml2.contains("c:trendlineType val=\"poly\""));
+    assert!(xml2.contains("c:order val=\"3\""));
+}
+
+#[test]
+fn chart_trendline_moving_average_on_scatter_roundtrips() {
+    use xlcore_types::{ChartTrendline, TrendlineKind};
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A2", 1.0).unwrap();
+    wb.set_value("Sheet1!A3", 2.0).unwrap();
+    wb.set_value("Sheet1!A4", 3.0).unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 12.0).unwrap();
+    wb.set_value("Sheet1!B4", 15.0).unwrap();
+
+    let trend = ChartTrendline {
+        kind: TrendlineKind::MovingAverage,
+        name: None,
+        polynomial_order: None,
+        period: Some(2),
+        forward: None,
+        backward: None,
+        intercept: None,
+        display_equation: None,
+        display_r_squared: None,
+    };
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            ChartPatch {
+                name: None,
+                kind: ChartKind::Scatter,
+                title: None,
+                legend_position: None,
+                categories_ref: None,
+                series: vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    x_values_ref: Some("Sheet1!$A$2:$A$4".to_string()),
+                    trendline: Some(trend.clone()),
+                    ..Default::default()
+                }],
+                anchor: AnchorSpec::default(),
+                category_axis_title: None,
+                value_axis_title: None,
+                category_axis: None,
+                value_axis: None,
+                stacking: None,
+                gap_width: None,
+                overlap: None,
+                radar_style: None,
+                hole_size: None,
+                first_slice_angle: None,
+                hi_low_lines: None,
+                up_down_bars: None,
+                drop_lines: None,
+                disp_blanks_as: None,
+                vary_colors: None,
+                data_labels: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(info.series[0].trendline.as_ref(), Some(&trend));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("c:trendlineType val=\"movingAvg\""));
+    assert!(xml.contains("c:period val=\"2\""));
+
+    let mut wb = Workbook::open_bytes(bytes).unwrap();
+    let read = wb.charts(Some("Sheet1")).unwrap();
+    assert_eq!(read[0].series[0].trendline.as_ref(), Some(&trend));
+}
+
+#[test]
+fn chart_trendline_rejected_on_pie_and_bad_params() {
+    use xlcore_types::{ChartTrendline, TrendlineKind};
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 12.0).unwrap();
+
+    let mk = |kind: ChartKind, trend: ChartTrendline| ChartPatch {
+        name: None,
+        kind,
+        title: None,
+        legend_position: None,
+        categories_ref: None,
+        series: vec![ChartSeriesPatch {
+            values_ref: "Sheet1!$B$2:$B$3".to_string(),
+            trendline: Some(trend),
+            ..Default::default()
+        }],
+        anchor: AnchorSpec::default(),
+        category_axis_title: None,
+        value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
+        stacking: None,
+        gap_width: None,
+        overlap: None,
+        radar_style: None,
+        hole_size: None,
+        first_slice_angle: None,
+        hi_low_lines: None,
+        up_down_bars: None,
+        drop_lines: None,
+        disp_blanks_as: None,
+        vary_colors: None,
+        data_labels: None,
+    };
+
+    let linear = ChartTrendline {
+        kind: TrendlineKind::Linear,
+        name: None,
+        polynomial_order: None,
+        period: None,
+        forward: None,
+        backward: None,
+        intercept: None,
+        display_equation: None,
+        display_r_squared: None,
+    };
+    assert!(wb.set_chart("Sheet1", mk(ChartKind::Pie, linear.clone())).is_err());
+
+    let bad_order = ChartTrendline {
+        kind: TrendlineKind::Polynomial,
+        polynomial_order: Some(7),
+        ..linear.clone()
+    };
+    assert!(wb.set_chart("Sheet1", mk(ChartKind::Column, bad_order)).is_err());
+
+    let bad_period = ChartTrendline {
+        kind: TrendlineKind::MovingAverage,
+        period: Some(1),
+        ..linear
+    };
+    assert!(wb.set_chart("Sheet1", mk(ChartKind::Column, bad_period)).is_err());
 }
