@@ -313,20 +313,6 @@ pub struct CfValueObject {
     pub value: Option<String>,
 }
 
-fn cfvo_default_min() -> CfValueObject {
-    CfValueObject {
-        kind: CfValueObjectKind::Min,
-        value: None,
-    }
-}
-
-fn cfvo_default_max() -> CfValueObject {
-    CfValueObject {
-        kind: CfValueObjectKind::Max,
-        value: None,
-    }
-}
-
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
@@ -347,10 +333,12 @@ pub struct ColorScalePatch {
 )]
 #[serde(rename_all = "camelCase")]
 pub struct DataBarPatch {
-    #[serde(default = "cfvo_default_min")]
-    pub min: CfValueObject,
-    #[serde(default = "cfvo_default_max")]
-    pub max: CfValueObject,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min: Option<CfValueObject>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max: Option<CfValueObject>,
     pub color: String,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]

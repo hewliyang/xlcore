@@ -85,7 +85,11 @@ impl Workbook {
             stop_if_true: patch.stop_if_true.unwrap_or(false),
             dxf_id,
             color_scale: patch.color_scale,
-            data_bar: patch.data_bar,
+            data_bar: patch.data_bar.map(|db| DataBarPatch {
+                min: Some(db_min(&db)),
+                max: Some(db_max(&db)),
+                ..db
+            }),
             icon_set: patch.icon_set,
         })
     }
@@ -190,8 +194,8 @@ fn validate_patch(patch: &ConditionalFormatRulePatch, reference: &str) -> Result
                 )
                 .with_ref(reference));
             };
-            validate_cfvo(&db.min, reference)?;
-            validate_cfvo(&db.max, reference)?;
+            validate_cfvo(&db_min(db), reference)?;
+            validate_cfvo(&db_max(db), reference)?;
             if db.color.trim().is_empty() {
                 return Err(ApiError::new(
                     ApiErrorCode::InvalidConditionalFormat,
@@ -369,7 +373,10 @@ fn build_rule(
             min_length: db.min_length.map(Into::into),
             max_length: db.max_length.map(Into::into),
             show_value: db.show_value.map(BooleanValue::from_bool),
-            conditional_format_value_object: vec![cfvo_to_sdk(&db.min), cfvo_to_sdk(&db.max)],
+            conditional_format_value_object: vec![
+                cfvo_to_sdk(&db_min(db)),
+                cfvo_to_sdk(&db_max(db)),
+            ],
             color: Box::new(color),
         }));
     }
@@ -404,8 +411,8 @@ fn read_rule(
         let min = iter.next().map(cfvo_from_sdk).unwrap_or_default();
         let max = iter.next().map(cfvo_from_sdk).unwrap_or_default();
         DataBarPatch {
-            min,
-            max,
+            min: Some(min),
+            max: Some(max),
             color: color_to_hex(&db.color),
             min_length: db.min_length.map(Into::into),
             max_length: db.max_length.map(Into::into),
@@ -455,6 +462,28 @@ fn read_rule(
         data_bar,
         icon_set,
     })
+}
+
+fn cfvo_default_min() -> CfValueObject {
+    CfValueObject {
+        kind: CfValueObjectKind::Min,
+        value: None,
+    }
+}
+
+fn cfvo_default_max() -> CfValueObject {
+    CfValueObject {
+        kind: CfValueObjectKind::Max,
+        value: None,
+    }
+}
+
+fn db_min(db: &DataBarPatch) -> CfValueObject {
+    db.min.clone().unwrap_or_else(cfvo_default_min)
+}
+
+fn db_max(db: &DataBarPatch) -> CfValueObject {
+    db.max.clone().unwrap_or_else(cfvo_default_max)
 }
 
 fn validate_cfvo(v: &CfValueObject, reference: &str) -> Result<()> {

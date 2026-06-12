@@ -2,8 +2,8 @@
 import type { CfValueObject } from "./CfValueObject.js";
 
 export type DataBarPatch = {
-  min: CfValueObject;
-  max: CfValueObject;
+  min?: CfValueObject;
+  max?: CfValueObject;
   color: string;
   minLength?: number;
   maxLength?: number;

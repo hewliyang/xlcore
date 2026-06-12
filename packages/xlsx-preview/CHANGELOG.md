@@ -12,6 +12,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- `conditionalFormats.set` dataBar `min`/`max` are now optional and default to `min`/`max` cfvo in the Rust facade (was defaulted in the TS collection); the returned info reflects the resolved values.
 - `scripts/schema_diff.py` resolves DTOs across all `xlcore-types/src/*.rs` modules (was `lib.rs`-only, broken since the module split).
 - Chart/image/shape `anchor` now accepts a two-cell A1 range string (`"D2:H15"`, optionally sheet-qualified) as well as an explicit `ChartAnchor`. The string→anchor resolution moved into the Rust facade (new `AnchorSpec` DTO), so the TS `normalizeAnchor`/`anchorA1` plumbing is gone from the collections and any future binding gets it for free.
 - `Worksheet.pivots.update(id, partial)` is now pure forwarding to a Rust `update_pivot` + `PivotUpdate` DTO; the merge/remove/rollback logic moved out of TS so bindings stay marshaling-only.

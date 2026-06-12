@@ -128,14 +128,8 @@ fn conditional_format_data_bar_round_trip() {
             ConditionalFormatRulePatch {
                 kind: CfRuleKind::DataBar,
                 data_bar: Some(DataBarPatch {
-                    min: CfValueObject {
-                        kind: CfValueObjectKind::Min,
-                        value: None,
-                    },
-                    max: CfValueObject {
-                        kind: CfValueObjectKind::Max,
-                        value: None,
-                    },
+                    min: None,
+                    max: None,
                     color: "#638EC6".into(),
                     min_length: Some(10),
                     max_length: Some(90),
@@ -150,8 +144,8 @@ fn conditional_format_data_bar_round_trip() {
     let mut reopened = Workbook::open_bytes(bytes).unwrap();
     let rules = reopened.conditional_formats("Sheet1").unwrap();
     let db = rules[0].data_bar.as_ref().expect("data_bar");
-    assert_eq!(db.min.kind, CfValueObjectKind::Min);
-    assert_eq!(db.max.kind, CfValueObjectKind::Max);
+    assert_eq!(db.min.as_ref().unwrap().kind, CfValueObjectKind::Min);
+    assert_eq!(db.max.as_ref().unwrap().kind, CfValueObjectKind::Max);
     assert_eq!(db.min_length, Some(10));
     assert_eq!(db.max_length, Some(90));
     assert_eq!(db.show_value, Some(true));

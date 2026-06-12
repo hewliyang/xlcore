@@ -13,7 +13,6 @@ import type {
   CommentPatch,
   ConditionalFormatRuleInfo,
   ConditionalFormatRulePatch,
-  DataBarPatch,
   DataValidationInfo,
   DataValidationPatch,
   DefinedNameInfo,
@@ -122,30 +121,8 @@ export class ConditionalFormatCollection extends SheetScopedCollection {
   list(): ConditionalFormatRuleInfo[] {
     return this.handle.conditionalFormats(this.sheet) as ConditionalFormatRuleInfo[];
   }
-  set(
-    ref: string,
-    patch: Omit<ConditionalFormatRulePatch, "dataBar"> & {
-      dataBar?: Omit<DataBarPatch, "min" | "max"> & {
-        min?: DataBarPatch["min"];
-        max?: DataBarPatch["max"];
-      };
-    },
-  ): ConditionalFormatRuleInfo {
-    const normalized: ConditionalFormatRulePatch =
-      patch.kind === "dataBar" && patch.dataBar
-        ? {
-            ...patch,
-            dataBar: {
-              ...patch.dataBar,
-              min: patch.dataBar.min ?? { kind: "min" },
-              max: patch.dataBar.max ?? { kind: "max" },
-            },
-          }
-        : (patch as ConditionalFormatRulePatch);
-    return this.handle.setConditionalFormat(
-      this.qref(ref),
-      normalized,
-    ) as ConditionalFormatRuleInfo;
+  set(ref: string, patch: ConditionalFormatRulePatch): ConditionalFormatRuleInfo {
+    return this.handle.setConditionalFormat(this.qref(ref), patch) as ConditionalFormatRuleInfo;
   }
   clear(ref: string): ConditionalFormatRuleInfo[] {
     return this.handle.clearConditionalFormats(this.qref(ref)) as ConditionalFormatRuleInfo[];
