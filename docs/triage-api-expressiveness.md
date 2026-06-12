@@ -240,7 +240,9 @@ Today no — semantics have leaked into the TS frontend:
 - ~~`anchorA1` string→`ChartAnchor` parsing (no Rust counterpart at all)~~ *(done:
   `AnchorSpec` DTO + `resolve_anchor` in `xlcore-api`; patches accept A1 strings)*
 - `qref` sheet-qualification of unqualified refs
-- `recalculate({errorsOnly})` filtering, `search` defaults
+- ~~`recalculate({errorsOnly})` filtering, `search` defaults~~ *(done: `recalculate`
+  takes an `errors_only` flag in Rust/wasm and filters there; `search` defaults
+  already lived in serde `Default` impls, so the TS now forwards options verbatim)*
 - matrix-shape validation duplicated in both layers (two error behaviors)
 
 Each is a re-implement-and-drift liability per future binding.

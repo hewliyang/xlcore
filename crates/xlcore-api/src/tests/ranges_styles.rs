@@ -31,7 +31,7 @@ fn range_round_trip_values_formulas_and_clear() {
     assert_eq!(range.formulas[0][2], None);
     assert_eq!(range.formulas[1][2].as_deref(), Some("B2*2"));
 
-    let recalc = workbook.recalculate().unwrap();
+    let recalc = workbook.recalculate(false).unwrap();
     assert_eq!(
         recalc.cell("Sheet1", "C2").unwrap().value,
         xlcore_engine::CellValue::Number(20.0)
@@ -70,7 +70,7 @@ fn clear_modes_respect_target() {
             },
         )
         .unwrap();
-    workbook.recalculate().unwrap();
+    workbook.recalculate(false).unwrap();
 
     let styled_a = workbook.get_cell("Sheet1!A1").unwrap().style_index;
     assert!(styled_a.is_some());

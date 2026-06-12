@@ -1174,8 +1174,11 @@ impl WorkbookHandle {
         serde_wasm_bindgen::to_value(&hits).map_err(other_err_to_js)
     }
 
-    pub fn recalculate(&mut self) -> Result<JsValue, JsValue> {
-        let recalculated = self.workbook_mut()?.recalculate().map_err(api_err_to_js)?;
+    pub fn recalculate(&mut self, errors_only: bool) -> Result<JsValue, JsValue> {
+        let recalculated = self
+            .workbook_mut()?
+            .recalculate(errors_only)
+            .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&recalculated).map_err(other_err_to_js)
     }
 

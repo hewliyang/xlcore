@@ -211,7 +211,7 @@ fn defined_names_resolve_in_recalculate() {
     wb.set_formula("Sheet1!B1", "=SUM(MyRange)").unwrap();
     wb.set_formula("Sheet1!B2", "=SUM(MyRange)+Pivot").unwrap();
 
-    let recalc = wb.recalculate().unwrap();
+    let recalc = wb.recalculate(false).unwrap();
     let b1 = recalc.cell("Sheet1", "B1").unwrap();
     assert!(b1.fallback.is_none(), "B1 fallback: {:?}", b1.fallback);
     assert_eq!(b1.value, xlcore_engine::CellValue::Number(60.0));

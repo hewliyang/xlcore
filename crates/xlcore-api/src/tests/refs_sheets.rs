@@ -30,7 +30,7 @@ fn creates_sets_recalculates_saves_and_reopens() {
     workbook.set_value("Sheet1!B1", 10.0).unwrap();
     workbook.set_formula("Sheet1!C1", "=B1*2").unwrap();
 
-    let recalc = workbook.recalculate().unwrap();
+    let recalc = workbook.recalculate(false).unwrap();
     assert_eq!(
         recalc.cell("Sheet1", "C1").unwrap().value,
         xlcore_engine::CellValue::Number(20.0)
@@ -76,7 +76,7 @@ fn engine_produced_errors_populate_fallback() {
     workbook.set_formula("Sheet1!C1", "=1/0").unwrap();
     workbook.set_formula("Sheet1!D1", "=A1+\"x\"").unwrap();
 
-    let recalc = workbook.recalculate().unwrap();
+    let recalc = workbook.recalculate(false).unwrap();
     let b1 = recalc.cell("Sheet1", "B1").unwrap();
     assert_eq!(
         b1.fallback.as_ref().map(|f| f.kind.as_str()),
@@ -151,7 +151,7 @@ fn rename_sheet_rewrites_cross_sheet_formula_refs() {
     workbook.rename_sheet("Data", "Inputs").unwrap();
     workbook.rename_sheet("Other Sheet", "Refs").unwrap();
 
-    let recalc = workbook.recalculate().unwrap();
+    let recalc = workbook.recalculate(false).unwrap();
     assert_eq!(
         recalc.cell("Sheet1", "A1").unwrap().value,
         xlcore_engine::CellValue::Number(25.0)

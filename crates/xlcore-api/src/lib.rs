@@ -125,7 +125,7 @@ impl Workbook {
     }
 
     pub fn save_bytes(&mut self) -> Result<Vec<u8>> {
-        let _ = self.recalculate()?;
+        let _ = self.recalculate(false)?;
         self.doc
             .to_package_bytes()
             .map_err(|err| ApiError::new(ApiErrorCode::OoxmlWriteError, err.to_string()))
@@ -168,8 +168,16 @@ impl Workbook {
         }
     }
 
-    pub fn recalculate(&mut self) -> Result<xlcore_bridge::RecalcWorkbook> {
-        xlcore_bridge::recalculate_doc_with_writeback(&mut self.doc).map_err(anyhow_err_to_api)
+    pub fn recalculate(&mut self, errors_only: bool) -> Result<xlcore_bridge::RecalcWorkbook> {
+        let mut report = xlcore_bridge::recalculate_doc_with_writeback(&mut self.doc)
+            .map_err(anyhow_err_to_api)?;
+        if errors_only {
+            for sheet in &mut report.sheets {
+                sheet.cells.retain(|cell| cell.fallback.is_some());
+            }
+            report.sheets.retain(|sheet| !sheet.cells.is_empty());
+        }
+        Ok(report)
     }
 
     pub fn layout(&mut self, options: LayoutOptions) -> Result<xlcore_export::WorkbookLayout> {
@@ -184,7 +192,7 @@ impl Workbook {
         &mut self,
         options: LayoutOptions,
     ) -> Result<(xlcore_bridge::RecalcWorkbook, xlcore_export::WorkbookLayout)> {
-        let recalculated = self.recalculate()?;
+        let recalculated = self.recalculate(false)?;
         let layout = self.layout(options)?;
         Ok((recalculated, layout))
     }

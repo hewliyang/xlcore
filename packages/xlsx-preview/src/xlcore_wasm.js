@@ -847,12 +847,13 @@ export class WorkbookHandle {
         }
     }
     /**
+     * @param {boolean} errors_only
      * @returns {any}
      */
-    recalculate() {
+    recalculate(errors_only) {
         try {
             const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
-            wasm.workbookhandle_recalculate(retptr, this.__wbg_ptr);
+            wasm.workbookhandle_recalculate(retptr, this.__wbg_ptr, errors_only);
             var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
             var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);

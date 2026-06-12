@@ -36,7 +36,7 @@ fn insert_rows_shifts_cells_formulas_and_merges() {
 
     let bytes = workbook.save_bytes().unwrap();
     let mut reopened = Workbook::open_bytes(bytes).unwrap();
-    let recalc = reopened.recalculate().unwrap();
+    let recalc = reopened.recalculate(false).unwrap();
     assert_eq!(
         recalc.cell("Sheet1", "B5").unwrap().value,
         xlcore_engine::CellValue::Number(3.0)

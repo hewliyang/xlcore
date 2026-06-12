@@ -284,16 +284,7 @@ export class Workbook {
    * visibility).
    */
   search(query: string, options: Partial<SearchOptions> = {}): SearchMatch[] {
-    const full: SearchOptions = {
-      sheet: options.sheet,
-      range: options.range,
-      target: options.target ?? "values",
-      mode: options.mode ?? "substring",
-      caseSensitive: options.caseSensitive ?? false,
-      maxResults: options.maxResults,
-      includeHidden: options.includeHidden,
-    };
-    return this.handle.search(query, full) as SearchMatch[];
+    return this.handle.search(query, options) as SearchMatch[];
   }
 
   /**
@@ -304,18 +295,7 @@ export class Workbook {
    * to get the full cell-by-cell report.
    */
   recalculate(options: RecalcOptions = {}): RecalcWorkbook {
-    const result = this.handle.recalculate() as RecalcWorkbook;
-    if (options.errorsOnly === false) {
-      return result;
-    }
-    return {
-      sheets: result.sheets
-        .map((sheet) => ({
-          ...sheet,
-          cells: sheet.cells.filter((cell) => cell.fallback !== undefined),
-        }))
-        .filter((sheet) => sheet.cells.length > 0),
-    };
+    return this.handle.recalculate(options.errorsOnly ?? true) as RecalcWorkbook;
   }
 
   layout(options: WorkbookLayoutOptions = {}): WorkbookLayout {
