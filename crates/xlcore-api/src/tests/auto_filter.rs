@@ -1,0 +1,281 @@
+use crate::*;
+
+#[test]
+fn auto_filter_set_get_remove_and_round_trip() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_range_values(
+        "Sheet1!A1:C1",
+        vec![vec![
+            CellValue::String("Region".into()),
+            CellValue::String("Units".into()),
+            CellValue::String("Rev".into()),
+        ]],
+    )
+    .unwrap();
+    wb.set_range_values(
+        "Sheet1!A2:C3",
+        vec![
+            vec![
+                CellValue::String("North".into()),
+                CellValue::Number(10.0),
+                CellValue::Number(99.0),
+            ],
+            vec![
+                CellValue::String("South".into()),
+                CellValue::Number(20.0),
+                CellValue::Number(199.0),
+            ],
+        ],
+    )
+    .unwrap();
+
+    assert!(wb.auto_filter("Sheet1").unwrap().is_none());
+
+    let info = wb.set_auto_filter("Sheet1!A1:C3").unwrap();
+    assert_eq!(info.sheet, "Sheet1");
+    assert_eq!(info.reference, "A1:C3");
+    assert_eq!(info.start_row, 1);
+    assert_eq!(info.end_row, 3);
+    assert_eq!(info.end_column, 3);
+
+    let got = wb.auto_filter("Sheet1").unwrap().unwrap();
+    assert_eq!(got.reference, "A1:C3");
+
+    wb.set_auto_filter("Sheet1!A1:B3").unwrap();
+    let replaced = wb.auto_filter("Sheet1").unwrap().unwrap();
+    assert_eq!(replaced.reference, "A1:B3");
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let after = reopened.auto_filter("Sheet1").unwrap().unwrap();
+    assert_eq!(after.reference, "A1:B3");
+
+    let removed = reopened.remove_auto_filter("Sheet1").unwrap().unwrap();
+    assert_eq!(removed.reference, "A1:B3");
+    assert!(reopened.auto_filter("Sheet1").unwrap().is_none());
+    assert!(reopened.remove_auto_filter("Sheet1").unwrap().is_none());
+
+    let err = reopened.set_auto_filter("Ghost!A1:B2").unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::MissingSheet);
+}
+
+#[test]
+fn auto_filter_column_criteria_round_trip() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_range_values(
+        "Sheet1!A1:C1",
+        vec![vec![
+            CellValue::String("Region".into()),
+            CellValue::String("Units".into()),
+            CellValue::String("Rev".into()),
+        ]],
+    )
+    .unwrap();
+    wb.set_auto_filter("Sheet1!A1:C3").unwrap();
+
+    let info = wb
+        .set_auto_filter_column(
+            "Sheet1",
+            AutoFilterColumnPatch {
+                column_offset: 0,
+                hidden_button: None,
+                show_button: None,
+                criteria: AutoFilterCriteria::Values {
+                    values: Vec::new(),
+                    blank: true,
+                },
+            },
+        )
+        .unwrap();
+    assert_eq!(info.column_offset, 0);
+    assert!(matches!(info.criteria, AutoFilterCriteria::Values { .. }));
+
+    wb.set_auto_filter_column(
+        "Sheet1",
+        AutoFilterColumnPatch {
+            column_offset: 1,
+            hidden_button: None,
+            show_button: None,
+            criteria: AutoFilterCriteria::Top10 {
+                top: true,
+                percent: false,
+                val: 5.0,
+            },
+        },
+    )
+    .unwrap();
+
+    wb.set_auto_filter_column(
+        "Sheet1",
+        AutoFilterColumnPatch {
+            column_offset: 2,
+            hidden_button: None,
+            show_button: None,
+            criteria: AutoFilterCriteria::Custom {
+                logical_and: true,
+                criteria: vec![
+                    AutoFilterCustomCriterion {
+                        operator: AutoFilterOperator::GreaterThanOrEqual,
+                        value: "50".to_string(),
+                    },
+                    AutoFilterCustomCriterion {
+                        operator: AutoFilterOperator::LessThan,
+                        value: "500".to_string(),
+                    },
+                ],
+            },
+        },
+    )
+    .unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let after = reopened.auto_filter("Sheet1").unwrap().unwrap();
+    assert_eq!(after.columns.len(), 3);
+    match &after.columns[0].criteria {
+        AutoFilterCriteria::Values { values, blank } => {
+            assert!(values.is_empty());
+            assert!(*blank);
+        }
+        other => panic!("expected Values, got {other:?}"),
+    }
+    match &after.columns[1].criteria {
+        AutoFilterCriteria::Top10 { top, percent, val } => {
+            assert!(*top);
+            assert!(!*percent);
+            assert_eq!(*val, 5.0);
+        }
+        other => panic!("expected Top10, got {other:?}"),
+    }
+    match &after.columns[2].criteria {
+        AutoFilterCriteria::Custom {
+            logical_and,
+            criteria,
+        } => {
+            assert!(*logical_and);
+            assert_eq!(criteria.len(), 2);
+            assert_eq!(criteria[0].operator, AutoFilterOperator::GreaterThanOrEqual);
+            assert_eq!(criteria[0].value, "50");
+            assert_eq!(criteria[1].operator, AutoFilterOperator::LessThan);
+        }
+        other => panic!("expected Custom, got {other:?}"),
+    }
+
+    let removed = reopened
+        .remove_auto_filter_column("Sheet1", 1)
+        .unwrap()
+        .unwrap();
+    assert!(matches!(removed.criteria, AutoFilterCriteria::Top10 { .. }));
+    let after_remove = reopened.auto_filter("Sheet1").unwrap().unwrap();
+    assert_eq!(after_remove.columns.len(), 2);
+}
+
+#[test]
+fn auto_filter_column_values_multi_value_round_trip() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A1", "H").unwrap();
+    wb.set_value("Sheet1!A2", "alpha").unwrap();
+    wb.set_value("Sheet1!A3", "beta").unwrap();
+    wb.set_value("Sheet1!A4", "gamma").unwrap();
+    wb.set_auto_filter("Sheet1!A1:A4").unwrap();
+
+    wb.set_auto_filter_column(
+        "Sheet1",
+        AutoFilterColumnPatch {
+            column_offset: 0,
+            hidden_button: None,
+            show_button: None,
+            criteria: AutoFilterCriteria::Values {
+                values: vec!["alpha".into(), "gamma".into()],
+                blank: true,
+            },
+        },
+    )
+    .unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let after = reopened.auto_filter("Sheet1").unwrap().unwrap();
+    match &after.columns[0].criteria {
+        AutoFilterCriteria::Values { values, blank } => {
+            assert_eq!(values, &vec!["alpha".to_string(), "gamma".to_string()]);
+            assert!(*blank);
+        }
+        other => panic!("expected Values, got {other:?}"),
+    }
+}
+
+#[test]
+fn auto_filter_column_validation_errors() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A1", "H").unwrap();
+
+    let err = wb
+        .set_auto_filter_column(
+            "Sheet1",
+            AutoFilterColumnPatch {
+                column_offset: 0,
+                hidden_button: None,
+                show_button: None,
+                criteria: AutoFilterCriteria::Top10 {
+                    top: true,
+                    percent: false,
+                    val: 5.0,
+                },
+            },
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidAutoFilter);
+
+    wb.set_auto_filter("Sheet1!A1:B5").unwrap();
+
+    let err = wb
+        .set_auto_filter_column(
+            "Sheet1",
+            AutoFilterColumnPatch {
+                column_offset: 5,
+                hidden_button: None,
+                show_button: None,
+                criteria: AutoFilterCriteria::Top10 {
+                    top: true,
+                    percent: false,
+                    val: 5.0,
+                },
+            },
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidAutoFilter);
+
+    let err = wb
+        .set_auto_filter_column(
+            "Sheet1",
+            AutoFilterColumnPatch {
+                column_offset: 0,
+                hidden_button: None,
+                show_button: None,
+                criteria: AutoFilterCriteria::Values {
+                    values: vec!["".into()],
+                    blank: false,
+                },
+            },
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidAutoFilter);
+
+    let err = wb
+        .set_auto_filter_column(
+            "Sheet1",
+            AutoFilterColumnPatch {
+                column_offset: 0,
+                hidden_button: None,
+                show_button: None,
+                criteria: AutoFilterCriteria::Top10 {
+                    top: true,
+                    percent: false,
+                    val: 0.0,
+                },
+            },
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::InvalidAutoFilter);
+}

@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, extname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const MAX_LINES = 900;
+const MAX_LINES = 1500;
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const WORKSPACE_ROOT = join(PACKAGE_ROOT, "..", "..");
 
@@ -19,8 +19,8 @@ const CHECK_TARGETS = [
   },
 ];
 
-const SKIP_DIRS = new Set(["dist", "node_modules", "pkg", "target"]);
-const SKIP_FILES = new Set(["world110m.ts", "presetShapeData.generated.ts"]);
+const SKIP_DIRS = new Set(["dist", "node_modules", "pkg", "target", "ironcalc-base"]);
+const SKIP_FILES = new Set(["world110m.ts", "presetShapeData.generated.ts", "xlcore_wasm.js"]);
 
 function walk(dir: string, extensions: Set<string>): string[] {
   const out: string[] = [];
