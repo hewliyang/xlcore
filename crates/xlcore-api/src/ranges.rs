@@ -6,7 +6,7 @@ use xlcore_types::{
 };
 
 use crate::errors::sdk_err_to_api;
-use crate::refs::{parse_range_reference, validate_matrix_shape, ResolvedRangeRef};
+use crate::refs::{parse_range_reference, qualify_ref, validate_matrix_shape, ResolvedRangeRef};
 use crate::styles;
 use crate::xml::{
     apply_clear_mode, ensure_cell, load_shared_strings, mark_formulas_stale, normalize_formula,
@@ -15,6 +15,56 @@ use crate::xml::{
 use crate::{Result, Workbook};
 
 impl Workbook {
+    pub fn get_range_in(&mut self, sheet: &str, reference: &str) -> Result<RangeInfo> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.get_range(reference)
+    }
+
+    pub fn set_range_values_in(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+        values: Vec<Vec<CellValue>>,
+    ) -> Result<RangeInfo> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.set_range_values(reference, values)
+    }
+
+    pub fn set_range_formulas_in(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+        formulas: Vec<Vec<Option<String>>>,
+    ) -> Result<RangeInfo> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.set_range_formulas(reference, formulas)
+    }
+
+    pub fn set_style_in(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+        patch: StylePatch,
+    ) -> Result<RangeInfo> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.set_style(reference, patch)
+    }
+
+    pub fn clear_range_in(&mut self, sheet: &str, reference: &str) -> Result<RangeInfo> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.clear_range(reference)
+    }
+
+    pub fn clear_range_with_in(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+        mode: ClearMode,
+    ) -> Result<RangeInfo> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.clear_range_with(reference, mode)
+    }
+
     pub fn get_range(&mut self, reference: impl AsRef<str>) -> Result<RangeInfo> {
         let range_ref = self.resolve_range_ref(reference.as_ref())?;
         self.read_range(&range_ref)

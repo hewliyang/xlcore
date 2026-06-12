@@ -4,7 +4,7 @@ use xlcore_io::spreadsheetml as x;
 use xlcore_types::{ApiError, ApiErrorCode, RangeInfo};
 
 use crate::errors::sdk_err_to_api;
-use crate::refs::{parse_range_reference, ResolvedRangeRef};
+use crate::refs::{parse_range_reference, qualify_ref, ResolvedRangeRef};
 use crate::structural::{translate_formula_refs, MAX_COLUMN, MAX_ROW};
 use crate::xml::{ensure_cell, mark_formulas_stale};
 use crate::{Result, Workbook};
@@ -19,6 +19,30 @@ struct CellSnapshot {
 }
 
 impl Workbook {
+    pub fn copy_range_in(
+        &mut self,
+        src_sheet: &str,
+        src_reference: &str,
+        dst_sheet: &str,
+        dst_reference: &str,
+    ) -> Result<RangeInfo> {
+        let src_reference = qualify_ref(src_sheet, src_reference)?;
+        let dst_reference = qualify_ref(dst_sheet, dst_reference)?;
+        self.copy_range(src_reference, dst_reference)
+    }
+
+    pub fn fill_range_in(
+        &mut self,
+        src_sheet: &str,
+        src_reference: &str,
+        dst_sheet: &str,
+        dst_reference: &str,
+    ) -> Result<RangeInfo> {
+        let src_reference = qualify_ref(src_sheet, src_reference)?;
+        let dst_reference = qualify_ref(dst_sheet, dst_reference)?;
+        self.fill_range(src_reference, dst_reference)
+    }
+
     pub fn copy_range(
         &mut self,
         src_reference: impl AsRef<str>,

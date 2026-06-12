@@ -5,10 +5,33 @@ use ironcalc_base::expressions::types::CellReferenceRC;
 use xlcore_types::{ApiError, ApiErrorCode, DependencyInfo, DependencyReference};
 
 use crate::errors::sdk_err_to_api;
-use crate::refs::{ranges_overlap, ResolvedRangeRef};
+use crate::refs::{qualify_ref, ranges_overlap, ResolvedRangeRef};
 use crate::{Result, Workbook};
 
 impl Workbook {
+    pub fn dependencies_in(&mut self, sheet: &str, reference: &str) -> Result<DependencyInfo> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.dependencies(reference)
+    }
+
+    pub fn precedents_in(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+    ) -> Result<Vec<DependencyReference>> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.precedents(reference)
+    }
+
+    pub fn dependents_in(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+    ) -> Result<Vec<DependencyReference>> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.dependents(reference)
+    }
+
     pub fn dependencies(&mut self, reference: impl AsRef<str>) -> Result<DependencyInfo> {
         let cell_ref = self.resolve_cell_ref(reference.as_ref())?;
         let precedents = self.precedents(cell_ref.full_reference())?;

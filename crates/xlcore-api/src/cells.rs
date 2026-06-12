@@ -2,7 +2,7 @@ use xlcore_io::spreadsheetml as x;
 use xlcore_types::{ApiCellValue as CellValue, CellInfo, ClearMode};
 
 use crate::errors::sdk_err_to_api;
-use crate::refs::{parse_cell_reference, ResolvedCellRef};
+use crate::refs::{parse_cell_reference, qualify_ref, ResolvedCellRef};
 use crate::xml::{
     apply_clear_mode, cell_info_from_cell, ensure_cell, load_shared_strings, mark_formulas_stale,
     normalize_formula, set_cell_value,
@@ -10,6 +10,46 @@ use crate::xml::{
 use crate::{Result, Workbook};
 
 impl Workbook {
+    pub fn get_cell_in(&mut self, sheet: &str, reference: &str) -> Result<CellInfo> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.get_cell(reference)
+    }
+
+    pub fn set_value_in(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+        value: impl Into<CellValue>,
+    ) -> Result<CellInfo> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.set_value(reference, value)
+    }
+
+    pub fn set_formula_in(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+        formula: &str,
+    ) -> Result<CellInfo> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.set_formula(reference, formula)
+    }
+
+    pub fn clear_in(&mut self, sheet: &str, reference: &str) -> Result<CellInfo> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.clear(reference)
+    }
+
+    pub fn clear_with_in(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+        mode: ClearMode,
+    ) -> Result<CellInfo> {
+        let reference = qualify_ref(sheet, reference)?;
+        self.clear_with(reference, mode)
+    }
+
     pub fn get_cell(&mut self, reference: impl AsRef<str>) -> Result<CellInfo> {
         let cell_ref = self.resolve_cell_ref(reference.as_ref())?;
         let shared_strings = load_shared_strings(&mut self.doc);

@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Internal: quote-aware sheet-reference qualification removed from the TS frontend; `Range`/`Cell`/`Worksheet` ops now pass `(sheet, ref)` to new Rust-owned `*_in` facade fns that qualify internally, so bindings are marshaling-only (pyo3/napi readiness). `api-refs.ts` no longer carries `qualify`/`hasSheetPrefix`/`quoteSheetName`; `refOnly`/`findUnquotedBang` deleted.
 - Internal: `scripts/schema_diff.py` gains recursive one-level flattening, declared exclusions/derived (DTO `schema-excluded:` doc annotations + per-pair `scripts/schema_coverage.toml`), and a `--check` mode (non-zero on any undeclared MISSING field) over the opened-up (SdkStruct, DtoStruct) pairs.
 - Internal: CSV/Parquet option semantics (delimiter `tab`/single-byte coercion+validation, field defaulting) moved out of the wasm binding into `xlcore-tabular`; `CsvOptions`/`ParquetOptions` now `serde::Deserialize` directly (camelCase, string delimiter), so the bindings are marshaling-only and pyo3/napi get the same behavior for free.
 - Internal: `setSheetVisibility` moved to the `api_methods!` table (`de` arg); serde owns the `SheetVisibility` parse/error instead of a hand-written match in the binding.

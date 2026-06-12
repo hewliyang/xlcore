@@ -16,7 +16,6 @@ import {
   type CellAddress,
   type RangeAddress,
   type SheetRef,
-  qualify,
   resolveCell,
   resolveRange,
 } from "./api-refs.js";
@@ -34,12 +33,8 @@ export class Range {
     return this.sheetRef.current;
   }
 
-  get qualifiedReference(): string {
-    return qualify(this.sheet, this.reference);
-  }
-
   info(): RangeInfo {
-    return this.handle.getRange(this.qualifiedReference) as RangeInfo;
+    return this.handle.getRange(this.sheet, this.reference) as RangeInfo;
   }
 
   values(): ApiCellValue[][] {
@@ -51,12 +46,12 @@ export class Range {
   }
 
   setValues(values: CellInput[][]): this {
-    this.handle.setRangeValues(this.qualifiedReference, values);
+    this.handle.setRangeValues(this.sheet, this.reference, values);
     return this;
   }
 
   setFormulas(formulas: Array<Array<string | null>>): this {
-    this.handle.setRangeFormulas(this.qualifiedReference, formulas);
+    this.handle.setRangeFormulas(this.sheet, this.reference, formulas);
     return this;
   }
 
@@ -71,29 +66,41 @@ export class Range {
    * a no-op on the merged remainder.
    */
   setStyle(patch: StylePatch): this {
-    this.handle.setStyle(this.qualifiedReference, patch);
+    this.handle.setStyle(this.sheet, this.reference, patch);
     return this;
   }
 
   clear(mode?: ClearMode): this {
     if (mode === undefined) {
-      this.handle.clearRange(this.qualifiedReference);
+      this.handle.clearRange(this.sheet, this.reference);
     } else {
-      this.handle.clearRangeWith(this.qualifiedReference, mode);
+      this.handle.clearRangeWith(this.sheet, this.reference, mode);
     }
     return this;
   }
 
   copyTo(dest: Range | string): Range {
-    const destRef = dest instanceof Range ? dest.qualifiedReference : qualify(this.sheet, dest);
-    this.handle.copyRange(this.qualifiedReference, destRef);
-    return new Range(this.handle, this.sheetRef, refOnly(destRef, this.sheet));
+    const destSheet = dest instanceof Range ? dest.sheet : this.sheet;
+    const destRef = dest instanceof Range ? dest.reference : dest;
+    const info = this.handle.copyRange(
+      this.sheet,
+      this.reference,
+      destSheet,
+      destRef,
+    ) as RangeInfo;
+    return new Range(this.handle, this.sheetRef, info.reference);
   }
 
   fillTo(dest: Range | string): Range {
-    const destRef = dest instanceof Range ? dest.qualifiedReference : qualify(this.sheet, dest);
-    this.handle.fillRange(this.qualifiedReference, destRef);
-    return new Range(this.handle, this.sheetRef, refOnly(destRef, this.sheet));
+    const destSheet = dest instanceof Range ? dest.sheet : this.sheet;
+    const destRef = dest instanceof Range ? dest.reference : dest;
+    const info = this.handle.fillRange(
+      this.sheet,
+      this.reference,
+      destSheet,
+      destRef,
+    ) as RangeInfo;
+    return new Range(this.handle, this.sheetRef, info.reference);
   }
 
   merge(): this {
@@ -118,16 +125,12 @@ export class Cell {
     return this.sheetRef.current;
   }
 
-  get qualifiedReference(): string {
-    return qualify(this.sheet, this.reference);
-  }
-
   asRange(): Range {
     return new Range(this.handle, this.sheetRef, this.reference);
   }
 
   info(): CellInfo {
-    return this.handle.getCell(this.qualifiedReference) as CellInfo;
+    return this.handle.getCell(this.sheet, this.reference) as CellInfo;
   }
 
   value(): ApiCellValue {
@@ -139,12 +142,12 @@ export class Cell {
   }
 
   setValue(value: CellInput): this {
-    this.handle.setValue(this.qualifiedReference, value);
+    this.handle.setValue(this.sheet, this.reference, value);
     return this;
   }
 
   setFormula(formula: string): this {
-    this.handle.setFormula(this.qualifiedReference, formula);
+    this.handle.setFormula(this.sheet, this.reference, formula);
     return this;
   }
 
@@ -157,29 +160,29 @@ export class Cell {
    * cell of the merge is silently a no-op at render time.
    */
   setStyle(patch: StylePatch): this {
-    this.handle.setStyle(this.qualifiedReference, patch);
+    this.handle.setStyle(this.sheet, this.reference, patch);
     return this;
   }
 
   clear(mode?: ClearMode): this {
     if (mode === undefined) {
-      this.handle.clear(this.qualifiedReference);
+      this.handle.clear(this.sheet, this.reference);
     } else {
-      this.handle.clearWith(this.qualifiedReference, mode);
+      this.handle.clearWith(this.sheet, this.reference, mode);
     }
     return this;
   }
 
   precedents(): DependencyReference[] {
-    return this.handle.precedents(this.qualifiedReference) as DependencyReference[];
+    return this.handle.precedents(this.sheet, this.reference) as DependencyReference[];
   }
 
   dependents(): DependencyReference[] {
-    return this.handle.dependents(this.qualifiedReference) as DependencyReference[];
+    return this.handle.dependents(this.sheet, this.reference) as DependencyReference[];
   }
 
   dependencies(): DependencyInfo {
-    return this.handle.dependencies(this.qualifiedReference) as DependencyInfo;
+    return this.handle.dependencies(this.sheet, this.reference) as DependencyInfo;
   }
 
   setHyperlink(patch: HyperlinkPatch): HyperlinkInfo {
@@ -209,28 +212,4 @@ export function makeRange(
 
 export function makeCell(handle: WasmWorkbookHandle, sheetRef: SheetRef, addr: CellAddress): Cell {
   return new Cell(handle, sheetRef, resolveCell(addr));
-}
-
-function refOnly(qualified: string, sheet: string): string {
-  const prefix = qualify(sheet, "");
-  if (qualified.startsWith(prefix)) return qualified.slice(prefix.length);
-  const bang = findUnquotedBang(qualified);
-  return bang >= 0 ? qualified.slice(bang + 1) : qualified;
-}
-
-function findUnquotedBang(s: string): number {
-  let quoted = false;
-  for (let i = 0; i < s.length; i++) {
-    const ch = s[i];
-    if (ch === "'") {
-      if (quoted && s[i + 1] === "'") {
-        i++;
-        continue;
-      }
-      quoted = !quoted;
-    } else if (ch === "!" && !quoted) {
-      return i;
-    }
-  }
-  return -1;
 }

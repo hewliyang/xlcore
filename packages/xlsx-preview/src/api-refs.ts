@@ -1,34 +1,5 @@
 import type { ChartAnchor } from "./api-schema/index.js";
 
-const SAFE_SHEET_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
-
-export function quoteSheetName(name: string): string {
-  if (SAFE_SHEET_NAME.test(name)) return name;
-  return `'${name.replace(/'/g, "''")}'`;
-}
-
-export function qualify(sheet: string, ref: string): string {
-  if (hasSheetPrefix(ref)) return ref;
-  return `${quoteSheetName(sheet)}!${ref}`;
-}
-
-export function hasSheetPrefix(ref: string): boolean {
-  let quoted = false;
-  for (let i = 0; i < ref.length; i++) {
-    const ch = ref[i];
-    if (ch === "'") {
-      if (quoted && ref[i + 1] === "'") {
-        i++;
-        continue;
-      }
-      quoted = !quoted;
-    } else if (ch === "!" && !quoted) {
-      return true;
-    }
-  }
-  return false;
-}
-
 export function colLetter(col1: number): string {
   if (!Number.isInteger(col1) || col1 < 1) {
     throw new RangeError(`column must be a positive 1-based integer, got ${col1}`);

@@ -237,11 +237,16 @@ impl WorkbookHandle {
     }
 
     #[wasm_bindgen(js_name = setValue)]
-    pub fn set_value(&mut self, reference: &str, value: JsValue) -> Result<JsValue, JsValue> {
+    pub fn set_value(
+        &mut self,
+        sheet: &str,
+        reference: &str,
+        value: JsValue,
+    ) -> Result<JsValue, JsValue> {
         let value = cell_value_from_js(value)?;
         let cell = self
             .workbook_mut()?
-            .set_value(reference, value)
+            .set_value_in(sheet, reference, value)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&cell).map_err(other_err_to_js)
     }
@@ -249,13 +254,14 @@ impl WorkbookHandle {
     #[wasm_bindgen(js_name = setRangeValues)]
     pub fn set_range_values(
         &mut self,
+        sheet: &str,
         reference: &str,
         values: JsValue,
     ) -> Result<JsValue, JsValue> {
         let values = range_values_from_js(values)?;
         let range = self
             .workbook_mut()?
-            .set_range_values(reference, values)
+            .set_range_values_in(sheet, reference, values)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
     }
@@ -273,13 +279,14 @@ impl WorkbookHandle {
     #[wasm_bindgen(js_name = setRangeFormulas)]
     pub fn set_range_formulas(
         &mut self,
+        sheet: &str,
         reference: &str,
         formulas: JsValue,
     ) -> Result<JsValue, JsValue> {
         let formulas = range_formulas_from_js(formulas)?;
         let range = self
             .workbook_mut()?
-            .set_range_formulas(reference, formulas)
+            .set_range_formulas_in(sheet, reference, formulas)
             .map_err(api_err_to_js)?;
         serde_wasm_bindgen::to_value(&range).map_err(other_err_to_js)
     }
@@ -302,15 +309,15 @@ impl WorkbookHandle {
 // consumes the same table by adding sibling `@build`/`@munch` backends.
 api_methods! {
     { sheets () -> json }
-    { get_cell as "getCell" (s reference) -> json }
-    { set_formula as "setFormula" (s reference, s formula) -> json }
-    { clear (s reference) -> json }
-    { clear_with as "clearWith" (s reference, de mode: xlcore_api::ClearMode) -> json }
-    { get_range as "getRange" (s reference) -> json }
-    { dependencies (s reference) -> json }
-    { precedents (s reference) -> json }
-    { dependents (s reference) -> json }
-    { set_style as "setStyle" (s reference, deopt patch: xlcore_api::StylePatch) -> json }
+    { get_cell_in as "getCell" (s sheet, s reference) -> json }
+    { set_formula_in as "setFormula" (s sheet, s reference, s formula) -> json }
+    { clear_in as "clear" (s sheet, s reference) -> json }
+    { clear_with_in as "clearWith" (s sheet, s reference, de mode: xlcore_api::ClearMode) -> json }
+    { get_range_in as "getRange" (s sheet, s reference) -> json }
+    { dependencies_in as "dependencies" (s sheet, s reference) -> json }
+    { precedents_in as "precedents" (s sheet, s reference) -> json }
+    { dependents_in as "dependents" (s sheet, s reference) -> json }
+    { set_style_in as "setStyle" (s sheet, s reference, deopt patch: xlcore_api::StylePatch) -> json }
     { merges (s sheet) -> json }
     { add_merge as "addMerge" (s sheet, s reference) -> json }
     { remove_merge as "removeMerge" (s sheet, s reference) -> json }
@@ -374,10 +381,10 @@ api_methods! {
     { remove_page_setup as "removePageSetup" (s sheet) -> json }
     { sheet_properties as "sheetProperties" (s sheet) -> json }
     { set_sheet_properties as "setSheetProperties" (s sheet, de patch: xlcore_api::SheetPropertiesPatch) -> json }
-    { clear_range as "clearRange" (s reference) -> json }
-    { clear_range_with as "clearRangeWith" (s reference, de mode: xlcore_api::ClearMode) -> json }
-    { copy_range as "copyRange" (s src_reference, s dst_reference) -> json }
-    { fill_range as "fillRange" (s src_reference, s dst_reference) -> json }
+    { clear_range_in as "clearRange" (s sheet, s reference) -> json }
+    { clear_range_with_in as "clearRangeWith" (s sheet, s reference, de mode: xlcore_api::ClearMode) -> json }
+    { copy_range_in as "copyRange" (s src_sheet, s src_reference, s dst_sheet, s dst_reference) -> json }
+    { fill_range_in as "fillRange" (s src_sheet, s src_reference, s dst_sheet, s dst_reference) -> json }
     { create_sheet as "createSheet" (s name) -> json }
     { rename_sheet as "renameSheet" (s old_name, s new_name) -> unit }
     { delete_sheet as "deleteSheet" (s name) -> unit }

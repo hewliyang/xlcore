@@ -27,7 +27,7 @@ import {
   TableCollection,
   ThreadedNotesCollection,
 } from "./api-collections.js";
-import { type CellAddress, type RangeAddress, type SheetRef, qualify } from "./api-refs.js";
+import { type CellAddress, type RangeAddress, type SheetRef } from "./api-refs.js";
 import { Cell, type CellInput, Range, makeCell, makeRange } from "./api-range.js";
 
 abstract class SheetScopedApi {
@@ -196,7 +196,7 @@ export class Worksheet {
       if (patch === null || typeof patch !== "object") {
         throw new TypeError(`setStyles: patch for '${ref}' must be a StylePatch object`);
       }
-      this.handle.setStyle(qualify(this.name, ref), patch);
+      this.handle.setStyle(this.name, ref, patch);
     }
     return this;
   }
