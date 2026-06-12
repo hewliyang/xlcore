@@ -12,6 +12,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- `Range.setValues`/`setFormulas` matrix-shape validation now lives only in the Rust facade (`validate_matrix_shape`); the duplicate TS `validateMatrixShape`/`rangeDims` (which had divergent error messages) are removed, so shape errors come from a single source.
 - `Workbook.recalculate({ errorsOnly })` filtering moved into the Rust/wasm facade (`recalculate(errors_only)`); the TS no longer post-filters the report. `search` likewise forwards options verbatim now that its defaults live in the serde `Default` impls.
 - `conditionalFormats.set` dataBar `min`/`max` are now optional and default to `min`/`max` cfvo in the Rust facade (was defaulted in the TS collection); the returned info reflects the resolved values.
 - `scripts/schema_diff.py` resolves DTOs across all `xlcore-types/src/*.rs` modules (was `lib.rs`-only, broken since the module split).

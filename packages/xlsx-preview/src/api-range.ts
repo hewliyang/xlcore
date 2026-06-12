@@ -19,7 +19,6 @@ import {
   qualify,
   resolveCell,
   resolveRange,
-  validateMatrixShape,
 } from "./api-refs.js";
 
 export type CellInput = string | number | boolean | null | ApiCellValue;
@@ -52,13 +51,11 @@ export class Range {
   }
 
   setValues(values: CellInput[][]): this {
-    validateMatrixShape("setValues", this.reference, values);
     this.handle.setRangeValues(this.qualifiedReference, values);
     return this;
   }
 
   setFormulas(formulas: Array<Array<string | null>>): this {
-    validateMatrixShape("setFormulas", this.reference, formulas);
     this.handle.setRangeFormulas(this.qualifiedReference, formulas);
     return this;
   }

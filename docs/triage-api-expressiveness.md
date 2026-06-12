@@ -243,7 +243,9 @@ Today no — semantics have leaked into the TS frontend:
 - ~~`recalculate({errorsOnly})` filtering, `search` defaults~~ *(done: `recalculate`
   takes an `errors_only` flag in Rust/wasm and filters there; `search` defaults
   already lived in serde `Default` impls, so the TS now forwards options verbatim)*
-- matrix-shape validation duplicated in both layers (two error behaviors)
+- ~~matrix-shape validation duplicated in both layers (two error behaviors)~~ *(done:
+  the TS `validateMatrixShape`/`rangeDims` are deleted; `setValues`/`setFormulas`
+  rely on Rust `validate_matrix_shape` as the single source of shape errors)*
 
 Each is a re-implement-and-drift liability per future binding.
 

@@ -166,6 +166,26 @@ fn range_shape_mismatch_is_diagnosed() {
 }
 
 #[test]
+fn range_jagged_rows_are_diagnosed() {
+    let mut workbook = Workbook::new().unwrap();
+    let err = workbook
+        .set_range_values(
+            "Sheet1!A1:C2",
+            vec![
+                vec![
+                    CellValue::Number(1.0),
+                    CellValue::Number(2.0),
+                    CellValue::Number(3.0),
+                ],
+                vec![CellValue::Number(4.0), CellValue::Number(5.0)],
+            ],
+        )
+        .unwrap_err();
+    assert_eq!(err.code, ApiErrorCode::ShapeMismatch);
+    assert!(err.message.contains("row 1"));
+}
+
+#[test]
 fn set_style_applies_font_fill_border_align_and_numfmt() {
     let mut workbook = Workbook::new().unwrap();
     workbook.set_value("Sheet1!A1", "Hello").unwrap();
