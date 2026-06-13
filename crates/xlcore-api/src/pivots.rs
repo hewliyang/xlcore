@@ -601,7 +601,69 @@ impl Workbook {
         ws_part
             .delete_part_by_id(&mut self.doc, &id)
             .map_err(sdk_err_to_api)?;
+        self.gc_pivot_caches()?;
         Ok(Some(info))
+    }
+
+    fn pivot_cache_ids_in_use(&mut self) -> Result<std::collections::HashSet<u32>> {
+        let sheet_names: Vec<String> = self
+            .workbook_sheets()?
+            .iter()
+            .map(|s| s.name.as_str().to_string())
+            .collect();
+        let mut ids = std::collections::HashSet::new();
+        for name in &sheet_names {
+            let ws_part = self.worksheet_part_for_sheet(name)?;
+            let pivot_parts: Vec<PivotTablePart> = ws_part.pivot_table_parts(&self.doc).collect();
+            for pp in &pivot_parts {
+                let cache_id = pp
+                    .root_element(&mut self.doc)
+                    .map_err(sdk_err_to_api)?
+                    .cache_id;
+                ids.insert(cache_id);
+            }
+        }
+        Ok(ids)
+    }
+
+    fn gc_pivot_caches(&mut self) -> Result<()> {
+        let in_use = self.pivot_cache_ids_in_use()?;
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let orphans: Vec<(u32, String)> = {
+            let wb = wb_part
+                .root_element(&mut self.doc)
+                .map_err(sdk_err_to_api)?;
+            wb.pivot_caches
+                .as_ref()
+                .map(|pc| {
+                    pc.pivot_cache
+                        .iter()
+                        .filter(|c| !in_use.contains(&c.cache_id))
+                        .map(|c| (c.cache_id, c.id.clone()))
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        if orphans.is_empty() {
+            return Ok(());
+        }
+        {
+            let wb = wb_part
+                .root_element_mut(&mut self.doc)
+                .map_err(sdk_err_to_api)?;
+            if let Some(caches) = wb.pivot_caches.as_mut() {
+                caches.pivot_cache.retain(|c| in_use.contains(&c.cache_id));
+                if caches.pivot_cache.is_empty() {
+                    wb.pivot_caches = None;
+                }
+            }
+        }
+        for (_cache_id, rid) in orphans {
+            wb_part
+                .delete_part_by_id(&mut self.doc, &rid)
+                .map_err(sdk_err_to_api)?;
+        }
+        Ok(())
     }
 
     fn next_pivot_cache_id(&mut self) -> Result<u32> {

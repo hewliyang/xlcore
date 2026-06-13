@@ -317,3 +317,98 @@ fn pivot_hidden_items_filter_and_roundtrip() {
         }])
     );
 }
+
+fn cache_def_part_count(wb: &Workbook) -> usize {
+    wb.part_names()
+        .unwrap()
+        .iter()
+        .filter(|n| n.contains("pivotCacheDefinition") && n.ends_with(".xml"))
+        .count()
+}
+
+fn make_pivot_workbook() -> (Workbook, PivotPatch) {
+    let mut wb = Workbook::new().unwrap();
+    let rows = [
+        ("North", "Widget", 100.0),
+        ("South", "Widget", 75.0),
+        ("North", "Gadget", 50.0),
+        ("South", "Gadget", 25.0),
+    ];
+    wb.set_value("Sheet1!A1", "Region").unwrap();
+    wb.set_value("Sheet1!B1", "Product").unwrap();
+    wb.set_value("Sheet1!C1", "Amount").unwrap();
+    for (i, (region, product, amount)) in rows.iter().enumerate() {
+        let r = i as u32 + 2;
+        wb.set_value(format!("Sheet1!A{r}"), *region).unwrap();
+        wb.set_value(format!("Sheet1!B{r}"), *product).unwrap();
+        wb.set_value(format!("Sheet1!C{r}"), *amount).unwrap();
+    }
+    wb.create_sheet("Pivot").unwrap();
+    let patch = PivotPatch {
+        anchor_cell: "Pivot!A1".to_string(),
+        source_ref: "Sheet1!A1:C5".to_string(),
+        name: Some("P".to_string()),
+        row_fields: vec!["Region".to_string()],
+        column_fields: vec!["Product".to_string()],
+        filter_fields: vec![],
+        data_fields: vec![PivotDataField {
+            field: "Amount".to_string(),
+            aggregation: PivotAggregation::Sum,
+            name: None,
+            number_format: None,
+        }],
+        hidden_items: None,
+    };
+    (wb, patch)
+}
+
+#[test]
+fn remove_pivot_drops_orphaned_cache() {
+    let (mut wb, patch) = make_pivot_workbook();
+    let info = wb.set_pivot("Pivot", patch).unwrap();
+    assert_eq!(cache_def_part_count(&wb), 1);
+    wb.remove_pivot("Pivot", &info.id).unwrap();
+    assert_eq!(
+        cache_def_part_count(&wb),
+        0,
+        "removing the only pivot must drop its cache"
+    );
+    let bytes = wb.save_bytes().unwrap();
+    let names = Workbook::open_bytes(bytes).unwrap().part_names().unwrap();
+    assert!(!names.iter().any(|n| n.contains("pivotCache")));
+}
+
+#[test]
+fn update_pivot_does_not_leak_caches() {
+    let (mut wb, patch) = make_pivot_workbook();
+    let info = wb.set_pivot("Pivot", patch).unwrap();
+    for _ in 0..5 {
+        let cur = wb.pivots(Some("Pivot")).unwrap().pop().unwrap();
+        wb.update_pivot(
+            "Pivot",
+            &cur.id,
+            PivotUpdate {
+                row_fields: Some(vec!["Product".to_string()]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let cur = wb.pivots(Some("Pivot")).unwrap().pop().unwrap();
+        wb.update_pivot(
+            "Pivot",
+            &cur.id,
+            PivotUpdate {
+                row_fields: Some(vec!["Region".to_string()]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    }
+    let _ = info;
+    assert_eq!(wb.pivots(Some("Pivot")).unwrap().len(), 1);
+    assert_eq!(
+        cache_def_part_count(&wb),
+        1,
+        "each update reuses a single cache slot, not leak one per edit"
+    );
+}

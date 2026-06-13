@@ -40,6 +40,9 @@ def norm(s):
 
 FIELD_RE = re.compile(r"\n[ \t]*pub (?:r#)?(\w+):\s*([^\n]+),")
 EXTLST = "extlst"
+# ooxmlsdk serialization plumbing carried on every part/struct, never OOXML
+# schema content; ignored globally so per-pair manifests stay schema-only.
+PLUMBING = {"xmlns", "xmlheader", "xmlotherattrs"}
 
 
 def base_type(ftype):
@@ -186,7 +189,10 @@ def child_keys(child):
 def classify(field, root, prefer_path, dto_norms, alias_norms, excl_norms, deriv_norms):
     if in_set(field, deriv_norms):
         return "derived", False
-    if in_set(field, excl_norms) or any(norm(k) == EXTLST for k in keys_of(field)):
+    keynorms = [norm(k) for k in keys_of(field)]
+    if any(k == EXTLST or k in PLUMBING for k in keynorms):
+        return "excluded", False
+    if in_set(field, excl_norms):
         return "excluded", False
     children = flatten_children(field, root, prefer_path)
     choice_vec = field["choice"] and field["vec"]

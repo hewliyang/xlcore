@@ -280,3 +280,43 @@ sdk = "CellStyle"
 dto = "NamedStylePatch"
 ns = "x"
 derived = ["xfId"]
+
+# --- non-chart writers (cell-level CRUD parity) -----------------------------
+[[pair]]
+sdk = "Hyperlink"
+dto = "HyperlinkPatch"
+ns = "x"
+derived = ["reference"]
+aliases = { id = "target" }
+
+[[pair]]
+sdk = "DataValidation"
+dto = "DataValidationPatch"
+ns = "x"
+derived = ["sequenceOfReferences"]
+excluded = ["imeMode", "list"]
+aliases = { type = "ruleType" }
+
+[[pair]]
+sdk = "ConditionalFormattingRule"
+dto = "ConditionalFormatRulePatch"
+ns = "x"
+derived = ["formatId"]
+excluded = ["timePeriod"]
+aliases = { type = "kind", formula = "formula1" }
+
+[[pair]]
+sdk = "DefinedName"
+dto = "DefinedNamePatch"
+ns = "x"
+derived = ["localSheetId"]
+excluded = ["customMenu", "description", "help", "statusBar", "function", "vbProcedure", "xlm", "functionGroupId", "shortcutKey", "publishToServer", "workbookParameter"]
+aliases = { xml_content = "reference" }
+
+[[pair]]
+sdk = "Table"
+dto = "TablePatch"
+ns = "x"
+derived = ["id", "totalsRowShown"]
+excluded = ["comment", "tableType", "insertRow", "insertRowShift", "published", "connectionId", "headerRowDxfId", "dataDxfId", "totalsRowDxfId", "headerRowBorderDxfId", "tableBorderDxfId", "totalsRowBorderDxfId", "headerRowCellStyle", "dataCellStyle", "totalsRowCellStyle"]
+aliases = { tableColumns = "columns" }
