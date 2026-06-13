@@ -6,6 +6,7 @@ import type { ChartDataLabels } from "./ChartDataLabels.js";
 import type { ChartDataTable } from "./ChartDataTable.js";
 import type { ChartLegendPosition } from "./ChartLegendPosition.js";
 import type { ChartSeriesPatch } from "./ChartSeriesPatch.js";
+import type { ChartSplitType } from "./ChartSplitType.js";
 import type { ChartStacking } from "./ChartStacking.js";
 import type { ChartView3D } from "./ChartView3D.js";
 import type { DispBlanksAs } from "./DispBlanksAs.js";
@@ -85,4 +86,22 @@ export type ChartUpdate = {
    * filled bands. Surface/Surface3D charts only.
    */
   wireframe?: boolean;
+  /**
+   * `c:splitType`; how the second plot's points are split out. ofPie charts only.
+   */
+  splitType?: ChartSplitType;
+  /**
+   * `c:splitPos`; split threshold (meaning depends on `split_type`). ofPie charts only.
+   */
+  splitPos?: number;
+  /**
+   * `c:secondPieSize/@val` (5..=200); second plot size as a percent of the
+   * first. ofPie charts only.
+   */
+  secondPieSize?: number;
+  /**
+   * `c:serLines`; connector lines between the primary pie and the second plot.
+   * ofPie charts only.
+   */
+  seriesLines?: boolean;
 };

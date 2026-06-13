@@ -38,6 +38,32 @@ pub enum ChartKind {
     Surface3D,
     /// 2D surface contour (`c:surfaceChart`); top-down view, needs `c:serAx`.
     Surface,
+    /// Pie-of-pie (`c:ofPieChart` with `ofPieType=pie`); single series, no axes.
+    #[serde(rename = "pieofpie")]
+    PieOfPie,
+    /// Bar-of-pie (`c:ofPieChart` with `ofPieType=bar`); single series, no axes.
+    #[serde(rename = "barofpie")]
+    BarOfPie,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+/// How the second plot's slices are split out (`c:splitType/@val`, OOXML
+/// `ST_SplitType`), transliterated from ooxmlsdk `SplitValues`. ofPie charts
+/// only. The SDK omits the schema's `auto` default, so it is not modeled.
+pub enum ChartSplitType {
+    #[serde(rename = "cust")]
+    Custom,
+    #[serde(rename = "percent")]
+    Percent,
+    #[serde(rename = "pos")]
+    Position,
+    #[serde(rename = "val")]
+    Value,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1160,6 +1186,24 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wireframe: Option<bool>,
+    /// `c:splitType`; how the second plot's points are split out. ofPie charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub split_type: Option<ChartSplitType>,
+    /// `c:splitPos`; split threshold (meaning depends on `split_type`). ofPie charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub split_pos: Option<f64>,
+    /// `c:secondPieSize/@val` (5..=200); second plot size as a percent of the
+    /// first. ofPie charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub second_pie_size: Option<u16>,
+    /// `c:serLines`; connector lines between the primary pie and the second plot.
+    /// ofPie charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub series_lines: Option<bool>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1264,6 +1308,24 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wireframe: Option<bool>,
+    /// `c:splitType`; how the second plot's points are split out. ofPie charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub split_type: Option<ChartSplitType>,
+    /// `c:splitPos`; split threshold (meaning depends on `split_type`). ofPie charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub split_pos: Option<f64>,
+    /// `c:secondPieSize/@val` (5..=200); second plot size as a percent of the
+    /// first. ofPie charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub second_pie_size: Option<u16>,
+    /// `c:serLines`; connector lines between the primary pie and the second plot.
+    /// ofPie charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub series_lines: Option<bool>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1372,4 +1434,22 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wireframe: Option<bool>,
+    /// `c:splitType`; how the second plot's points are split out. ofPie charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub split_type: Option<ChartSplitType>,
+    /// `c:splitPos`; split threshold (meaning depends on `split_type`). ofPie charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub split_pos: Option<f64>,
+    /// `c:secondPieSize/@val` (5..=200); second plot size as a percent of the
+    /// first. ofPie charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub second_pie_size: Option<u16>,
+    /// `c:serLines`; connector lines between the primary pie and the second plot.
+    /// ofPie charts only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub series_lines: Option<bool>,
 }

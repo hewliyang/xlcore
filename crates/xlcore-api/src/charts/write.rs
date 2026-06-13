@@ -253,6 +253,54 @@ pub(super) fn validate_wireframe(
     Ok(())
 }
 
+pub(super) fn is_of_pie(kind: ChartKind) -> bool {
+    matches!(kind, ChartKind::PieOfPie | ChartKind::BarOfPie)
+}
+
+pub(super) fn validate_of_pie(
+    sheet: &str,
+    kind: ChartKind,
+    series_count: usize,
+    second_pie_size: Option<u16>,
+    split_type: Option<ChartSplitType>,
+    split_pos: Option<f64>,
+    series_lines: Option<bool>,
+) -> Result<()> {
+    if !is_of_pie(kind) {
+        if second_pie_size.is_some()
+            || split_type.is_some()
+            || split_pos.is_some()
+            || series_lines.is_some()
+        {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                format!(
+                    "ofPie options are only supported on pieOfPie/barOfPie charts, not {kind:?}"
+                ),
+            )
+            .with_sheet(sheet));
+        }
+        return Ok(());
+    }
+    if series_count > 1 {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidChart,
+            format!("{kind:?} charts support a single series, got {series_count}"),
+        )
+        .with_sheet(sheet));
+    }
+    if let Some(v) = second_pie_size {
+        if !(5..=200).contains(&v) {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                "second_pie_size must be 5..=200",
+            )
+            .with_sheet(sheet));
+        }
+    }
+    Ok(())
+}
+
 pub(super) fn is_cartesian(kind: ChartKind) -> bool {
     matches!(
         kind,
@@ -262,7 +310,12 @@ pub(super) fn is_cartesian(kind: ChartKind) -> bool {
 
 pub(super) fn gap_width_for_kind(kind: ChartKind, value: Option<u16>) -> Option<u16> {
     match kind {
-        ChartKind::Column | ChartKind::Bar | ChartKind::Column3D | ChartKind::Bar3D => value,
+        ChartKind::Column
+        | ChartKind::Bar
+        | ChartKind::Column3D
+        | ChartKind::Bar3D
+        | ChartKind::PieOfPie
+        | ChartKind::BarOfPie => value,
         _ => None,
     }
 }
@@ -420,7 +473,11 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
     };
 
     match patch.kind {
-        ChartKind::Pie | ChartKind::Doughnut | ChartKind::Pie3D => {}
+        ChartKind::Pie
+        | ChartKind::Doughnut
+        | ChartKind::Pie3D
+        | ChartKind::PieOfPie
+        | ChartKind::BarOfPie => {}
         k if is_3d_cartesian(k) || is_surface(k) => {
             let mut cat = build_cat_axis();
             if let Some(p) = &cat_axis {
@@ -553,6 +610,7 @@ pub(super) fn build_plot_charts(patch: &ChartPatch) -> Vec<c::PlotAreaChoice> {
             vec![build_3d_cartesian_chart(patch)]
         }
         ChartKind::Surface | ChartKind::Surface3D => vec![build_surface_chart(patch)],
+        ChartKind::PieOfPie | ChartKind::BarOfPie => vec![build_of_pie_chart(patch)],
         _ => build_cartesian_plot_charts(patch),
     }
 }
@@ -708,6 +766,49 @@ pub(super) fn build_pie_3d_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
             .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref()))
             .collect(),
         data_labels: build_data_labels(patch.data_labels.as_ref()),
+        ..Default::default()
+    }))
+}
+
+pub(super) fn split_type_to(t: ChartSplitType) -> c::SplitValues {
+    match t {
+        ChartSplitType::Custom => c::SplitValues::Custom,
+        ChartSplitType::Percent => c::SplitValues::Percent,
+        ChartSplitType::Position => c::SplitValues::Position,
+        ChartSplitType::Value => c::SplitValues::Value,
+    }
+}
+
+pub(super) fn build_of_pie_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
+    c::PlotAreaChoice::OfPieChart(Box::new(c::OfPieChart {
+        of_pie_type: Box::new(c::OfPieType {
+            val: if matches!(patch.kind, ChartKind::BarOfPie) {
+                c::OfPieValues::Bar
+            } else {
+                c::OfPieValues::Pie
+            },
+        }),
+        vary_colors: vary_colors_el(patch.vary_colors, true),
+        pie_chart_series: patch
+            .series
+            .iter()
+            .enumerate()
+            .map(|(i, s)| build_pie_series(i, s, patch.categories_ref.as_deref()))
+            .collect(),
+        data_labels: build_data_labels(patch.data_labels.as_ref()),
+        gap_width: patch.gap_width.map(|g| c::GapWidth { val: Some(g) }),
+        split_type: patch.split_type.map(|t| c::SplitType {
+            val: split_type_to(t),
+        }),
+        split_position: patch.split_pos.map(|v| c::SplitPosition { val: v }),
+        second_pie_size: patch
+            .second_pie_size
+            .map(|v| c::SecondPieSize { val: Some(v) }),
+        series_lines: if patch.series_lines == Some(true) {
+            vec![c::SeriesLines::default()]
+        } else {
+            Vec::new()
+        },
         ..Default::default()
     }))
 }
@@ -977,6 +1078,9 @@ pub(super) fn build_single_plot_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
         ChartKind::Surface | ChartKind::Surface3D => {
             unreachable!("surface kinds are built via build_surface_chart")
         }
+        ChartKind::PieOfPie | ChartKind::BarOfPie => {
+            unreachable!("ofPie kinds are built via build_of_pie_chart")
+        }
     }
 }
 
@@ -1193,7 +1297,11 @@ pub(super) fn vary_colors_el(opt: Option<bool>, default: bool) -> Option<c::Vary
 pub(super) fn vary_colors_effective(kind: ChartKind, opt: Option<bool>) -> bool {
     opt.unwrap_or(matches!(
         kind,
-        ChartKind::Pie | ChartKind::Doughnut | ChartKind::Bubble
+        ChartKind::Pie
+            | ChartKind::Doughnut
+            | ChartKind::Bubble
+            | ChartKind::PieOfPie
+            | ChartKind::BarOfPie
     ))
 }
 

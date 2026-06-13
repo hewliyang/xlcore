@@ -17,9 +17,9 @@ use xlcore_types::{
     ChartAxisGroup, ChartAxisPatch, ChartDataLabel, ChartDataLabelPosition, ChartDataLabels,
     ChartDataPoint, ChartDataTable, ChartErrorBarType, ChartErrorBars, ChartErrorDirection,
     ChartErrorValueType, ChartInfo, ChartKind, ChartLegendPosition, ChartLine, ChartMarker,
-    ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartStacking, ChartTrendline, ChartUpdate,
-    ChartView3D, CrossBetween, DispBlanksAs, DisplayUnits, LineDash, MarkerStyle, RadarStyle,
-    TickLabelPosition, TickMark, TrendlineKind,
+    ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartSplitType, ChartStacking, ChartTrendline,
+    ChartUpdate, ChartView3D, CrossBetween, DispBlanksAs, DisplayUnits, LineDash, MarkerStyle,
+    RadarStyle, TickLabelPosition, TickMark, TrendlineKind,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -117,6 +117,10 @@ impl Workbook {
                     view_3d: parsed.view_3d,
                     bar_shape: parsed.bar_shape,
                     wireframe: parsed.wireframe,
+                    split_type: parsed.split_type,
+                    split_pos: parsed.split_pos,
+                    second_pie_size: parsed.second_pie_size,
+                    series_lines: parsed.series_lines,
                 });
             }
         }
@@ -134,6 +138,15 @@ impl Workbook {
         validate_view_3d(sheet, patch.kind, patch.view_3d.as_ref())?;
         validate_bar_shape(sheet, patch.kind, patch.bar_shape.as_ref())?;
         validate_wireframe(sheet, patch.kind, patch.wireframe)?;
+        validate_of_pie(
+            sheet,
+            patch.kind,
+            patch.series.len(),
+            patch.second_pie_size,
+            patch.split_type,
+            patch.split_pos,
+            patch.series_lines,
+        )?;
         let anchor = crate::refs::resolve_anchor(&patch.anchor)?;
 
         if !self.sheet_exists(sheet)? {
@@ -277,6 +290,10 @@ impl Workbook {
             view_3d: patch.view_3d.filter(|_| is_3d(patch.kind)),
             bar_shape: patch.bar_shape.filter(|_| is_bar_3d(patch.kind)),
             wireframe: patch.wireframe.filter(|_| is_surface(patch.kind)),
+            split_type: patch.split_type.filter(|_| is_of_pie(patch.kind)),
+            split_pos: patch.split_pos.filter(|_| is_of_pie(patch.kind)),
+            second_pie_size: patch.second_pie_size.filter(|_| is_of_pie(patch.kind)),
+            series_lines: patch.series_lines.filter(|_| is_of_pie(patch.kind)),
         })
     }
 
@@ -374,6 +391,20 @@ impl Workbook {
         validate_view_3d(&sheet, kind, update.view_3d.as_ref())?;
         validate_bar_shape(&sheet, kind, update.bar_shape.as_ref())?;
         validate_wireframe(&sheet, kind, update.wireframe)?;
+        let of_pie_series_count = update
+            .series
+            .as_ref()
+            .map(|s| s.len())
+            .unwrap_or(existing.series.len());
+        validate_of_pie(
+            &sheet,
+            kind,
+            of_pie_series_count,
+            update.second_pie_size,
+            update.split_type,
+            update.split_pos,
+            update.series_lines,
+        )?;
 
         let plot_dirty = update.series.is_some()
             || update.stacking.is_some()
@@ -389,6 +420,10 @@ impl Workbook {
             || update.drop_lines.is_some()
             || update.bar_shape.is_some()
             || update.wireframe.is_some()
+            || update.split_type.is_some()
+            || update.split_pos.is_some()
+            || update.second_pie_size.is_some()
+            || update.series_lines.is_some()
             || update.vary_colors.is_some();
 
         let series: Vec<ChartSeriesPatch> = match &update.series {
@@ -435,6 +470,10 @@ impl Workbook {
         let drop_lines = update.drop_lines.or(existing.drop_lines);
         let bar_shape = update.bar_shape.or(existing.bar_shape);
         let wireframe = update.wireframe.or(existing.wireframe);
+        let split_type = update.split_type.or(existing.split_type);
+        let split_pos = update.split_pos.or(existing.split_pos);
+        let second_pie_size = update.second_pie_size.or(existing.second_pie_size);
+        let series_lines = update.series_lines.or(existing.series_lines);
         let vary_colors = update.vary_colors.or(existing.vary_colors);
         let data_labels = update
             .data_labels
@@ -518,6 +557,10 @@ impl Workbook {
                 view_3d: None,
                 bar_shape,
                 wireframe,
+                split_type,
+                split_pos,
+                second_pie_size,
+                series_lines,
             };
             space.chart.plot_area.plot_area_choice1 = build_plot_charts(&synth);
             space

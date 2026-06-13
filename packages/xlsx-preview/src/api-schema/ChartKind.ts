@@ -17,4 +17,6 @@ export type ChartKind =
   | "pie3d"
   | "area3d"
   | "surface3d"
-  | "surface";
+  | "surface"
+  | "pieofpie"
+  | "barofpie";

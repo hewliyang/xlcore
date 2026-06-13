@@ -72,6 +72,10 @@ pub(super) struct ParsedChart {
     pub(super) view_3d: Option<ChartView3D>,
     pub(super) bar_shape: Option<Bar3DShape>,
     pub(super) wireframe: Option<bool>,
+    pub(super) split_type: Option<ChartSplitType>,
+    pub(super) split_pos: Option<f64>,
+    pub(super) second_pie_size: Option<u16>,
+    pub(super) series_lines: Option<bool>,
 }
 
 pub(super) fn group_is_secondary(axis_ids: &[c::AxisId], sec: &[u32]) -> bool {
@@ -111,6 +115,10 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     let mut data_labels: Option<ChartDataLabels> = None;
     let mut bar_shape: Option<Bar3DShape> = None;
     let mut wireframe: Option<bool> = None;
+    let mut split_type: Option<ChartSplitType> = None;
+    let mut split_pos: Option<f64> = None;
+    let mut second_pie_size: Option<u16> = None;
+    let mut series_lines: Option<bool> = None;
 
     for ch in &plot.plot_area_choice1 {
         match ch {
@@ -529,6 +537,41 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     series.push(info);
                 }
             }
+            c::PlotAreaChoice::OfPieChart(oc) => {
+                if !kind_set {
+                    kind = match oc.of_pie_type.val {
+                        c::OfPieValues::Bar => ChartKind::BarOfPie,
+                        c::OfPieValues::Pie => ChartKind::PieOfPie,
+                    };
+                    kind_set = true;
+                }
+                if vary_colors.is_none() {
+                    vary_colors = read_vary_colors(oc.vary_colors.as_ref());
+                }
+                gap_width = oc.gap_width.as_ref().and_then(|g| g.val);
+                split_type = oc.split_type.as_ref().map(|t| split_type_from(&t.val));
+                split_pos = oc.split_position.as_ref().map(|p| p.val);
+                second_pie_size = oc.second_pie_size.as_ref().and_then(|s| s.val);
+                if !oc.series_lines.is_empty() {
+                    series_lines = Some(true);
+                }
+                for s in &oc.pie_chart_series {
+                    let mut info = read_series(
+                        s.series_text.as_deref(),
+                        s.category_axis_data.as_deref(),
+                        s.values.as_deref(),
+                        &mut categories_ref,
+                        s.data_labels.as_deref(),
+                    );
+                    info.color = read_series_color(s.chart_shape_properties.as_deref());
+                    info.line = read_line(s.chart_shape_properties.as_deref());
+                    info.data_points = read_data_points(&s.data_point);
+                    series.push(info);
+                }
+                if data_labels.is_none() {
+                    data_labels = read_data_labels(oc.data_labels.as_deref());
+                }
+            }
             c::PlotAreaChoice::StockChart(sc) => {
                 if !kind_set {
                     kind = ChartKind::Stock;
@@ -555,7 +598,6 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     data_labels = read_data_labels(sc.data_labels.as_deref());
                 }
             }
-            _ => {}
         }
     }
 
@@ -660,6 +702,19 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         view_3d,
         bar_shape,
         wireframe,
+        split_type,
+        split_pos,
+        second_pie_size,
+        series_lines,
+    }
+}
+
+pub(super) fn split_type_from(v: &c::SplitValues) -> ChartSplitType {
+    match v {
+        c::SplitValues::Custom => ChartSplitType::Custom,
+        c::SplitValues::Percent => ChartSplitType::Percent,
+        c::SplitValues::Position => ChartSplitType::Position,
+        c::SplitValues::Value => ChartSplitType::Value,
     }
 }
 

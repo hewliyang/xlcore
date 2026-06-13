@@ -162,6 +162,15 @@ derived = ["axId"]
 excluded = ["bandFmts"]
 aliases = { ser = "series" }
 
+# --- ofPie chart kinds ------------------------------------------------------
+[[pair]]
+sdk = "OfPieChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["ofPieType"]
+excluded = ["custSplit"]
+aliases = { ser = "series" }
+
 # --- styles -----------------------------------------------------------------
 [[pair]]
 sdk = "Protection"

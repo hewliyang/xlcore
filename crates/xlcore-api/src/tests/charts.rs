@@ -54,6 +54,10 @@ fn charts_create_list_remove_roundtrip() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -175,6 +179,10 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -263,6 +271,10 @@ fn update_chart_replaces_series_and_stacking() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -355,6 +367,10 @@ fn chart_axis_patch_authors_and_round_trips() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -444,6 +460,10 @@ fn chart_value_axis_display_units_round_trip() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -527,6 +547,10 @@ fn chart_axis_label_rotation_round_trip() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -656,6 +680,10 @@ fn charts_supports_multiple_kinds() {
         view_3d: None,
         bar_shape: None,
         wireframe: None,
+        split_type: None,
+        split_pos: None,
+        second_pie_size: None,
+        series_lines: None,
     };
     for kind in [
         ChartKind::Column,
@@ -750,6 +778,10 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             view_3d: None,
             bar_shape: None,
             wireframe: None,
+            split_type: None,
+            split_pos: None,
+            second_pie_size: None,
+            series_lines: None,
         },
     )
     .unwrap();
@@ -796,6 +828,10 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             view_3d: None,
             bar_shape: None,
             wireframe: None,
+            split_type: None,
+            split_pos: None,
+            second_pie_size: None,
+            series_lines: None,
         },
     )
     .unwrap();
@@ -840,6 +876,10 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             view_3d: None,
             bar_shape: None,
             wireframe: None,
+            split_type: None,
+            split_pos: None,
+            second_pie_size: None,
+            series_lines: None,
         },
     )
     .unwrap();
@@ -929,6 +969,10 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
             view_3d: None,
             bar_shape: None,
             wireframe: None,
+            split_type: None,
+            split_pos: None,
+            second_pie_size: None,
+            series_lines: None,
         },
     )
     .unwrap();
@@ -984,6 +1028,10 @@ fn chart_series_color_rejects_malformed_hex() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap_err();
@@ -1077,6 +1125,10 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
             view_3d: None,
             bar_shape: None,
             wireframe: None,
+            split_type: None,
+            split_pos: None,
+            second_pie_size: None,
+            series_lines: None,
         },
     )
     .unwrap();
@@ -1169,6 +1221,10 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
         view_3d: None,
         bar_shape: None,
         wireframe: None,
+        split_type: None,
+        split_pos: None,
+        second_pie_size: None,
+        series_lines: None,
     };
 
     let col_stacked = wb
@@ -1286,6 +1342,10 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -1332,6 +1392,10 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             view_3d: None,
             bar_shape: None,
             wireframe: None,
+            split_type: None,
+            split_pos: None,
+            second_pie_size: None,
+            series_lines: None,
         },
     );
     assert!(missing_x.is_err());
@@ -1370,6 +1434,10 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             view_3d: None,
             bar_shape: None,
             wireframe: None,
+            split_type: None,
+            split_pos: None,
+            second_pie_size: None,
+            series_lines: None,
         },
     );
     assert!(bad_color.is_err());
@@ -1430,6 +1498,10 @@ fn charts_data_labels_roundtrip() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -1500,6 +1572,10 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
             view_3d: None,
             bar_shape: None,
             wireframe: None,
+            split_type: None,
+            split_pos: None,
+            second_pie_size: None,
+            series_lines: None,
         },
     )
     .unwrap();
@@ -1572,6 +1648,10 @@ fn charts_per_series_data_labels_override_chart_level() {
             view_3d: None,
             bar_shape: None,
             wireframe: None,
+            split_type: None,
+            split_pos: None,
+            second_pie_size: None,
+            series_lines: None,
         },
     )
     .unwrap();
@@ -1664,6 +1744,10 @@ fn charts_per_point_data_labels_roundtrip_and_update() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -1771,6 +1855,10 @@ fn chart_gap_width_overlap_roundtrip_and_update() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -1866,6 +1954,10 @@ fn chart_series_marker_roundtrip_and_validation() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -1930,6 +2022,10 @@ fn chart_series_marker_roundtrip_and_validation() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap_err();
@@ -1988,6 +2084,10 @@ fn chart_series_smooth_roundtrips_and_sets_scatter_style() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -2058,6 +2158,10 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -2118,6 +2222,10 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap_err();
@@ -2173,6 +2281,10 @@ fn chart_data_point_explosion_roundtrip() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -2257,6 +2369,10 @@ fn combo_chart_secondary_axis_roundtrip() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -2311,6 +2427,10 @@ fn combo_chart_secondary_axis_roundtrip() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap_err();
@@ -2378,6 +2498,10 @@ fn radar_chart_build_roundtrip_and_update() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -2456,6 +2580,10 @@ fn doughnut_hole_size_and_first_slice_angle_roundtrip_and_update() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -2525,6 +2653,10 @@ fn doughnut_hole_size_out_of_range_rejected() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap_err();
@@ -2604,6 +2736,10 @@ fn stock_chart_build_roundtrip_and_update() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -2688,6 +2824,10 @@ fn stock_chart_requires_three_to_six_series() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap_err();
@@ -2743,6 +2883,10 @@ fn chart_series_line_roundtrips_and_updates() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -2832,6 +2976,10 @@ fn disp_blanks_as_builds_reads_updates() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -2910,6 +3058,10 @@ fn vary_colors_and_invert_if_negative_roundtrip_and_update() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -3005,6 +3157,10 @@ fn chart_trendline_roundtrips_and_updates() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -3114,6 +3270,10 @@ fn chart_trendline_moving_average_on_scatter_roundtrips() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -3169,6 +3329,10 @@ fn chart_trendline_rejected_on_pie_and_bad_params() {
         view_3d: None,
         bar_shape: None,
         wireframe: None,
+        split_type: None,
+        split_pos: None,
+        second_pie_size: None,
+        series_lines: None,
     };
 
     let linear = ChartTrendline {
@@ -3260,6 +3424,10 @@ fn chart_error_bars_fixed_roundtrips_and_updates() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -3375,6 +3543,10 @@ fn chart_error_bars_custom_on_scatter_roundtrips() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -3434,6 +3606,10 @@ fn chart_error_bars_rejected_on_pie_and_bad_params() {
         view_3d: None,
         bar_shape: None,
         wireframe: None,
+        split_type: None,
+        split_pos: None,
+        second_pie_size: None,
+        series_lines: None,
     };
 
     let fixed = ChartErrorBars {
@@ -3518,6 +3694,10 @@ fn chart_data_table_roundtrips_and_updates() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .unwrap();
@@ -3609,6 +3789,10 @@ fn chart_data_table_rejected_on_pie() {
                 view_3d: None,
                 bar_shape: None,
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
             },
         )
         .is_err());
@@ -3647,6 +3831,10 @@ fn base_3d_patch(kind: ChartKind) -> ChartPatch {
         view_3d: None,
         bar_shape: None,
         wireframe: None,
+        split_type: None,
+        split_pos: None,
+        second_pie_size: None,
+        series_lines: None,
     }
 }
 
@@ -3754,6 +3942,10 @@ fn chart_3d_column_view3d_and_shape_roundtrip_and_update() {
                 view_3d: Some(view2.clone()),
                 bar_shape: Some(Bar3DShape::Pyramid),
                 wireframe: None,
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
                 ..Default::default()
             },
         )
@@ -3870,6 +4062,10 @@ fn chart_surface_wireframe_and_view3d_roundtrip_and_update() {
             &id,
             ChartUpdate {
                 wireframe: Some(false),
+                split_type: None,
+                split_pos: None,
+                second_pie_size: None,
+                series_lines: None,
                 ..Default::default()
             },
         )
@@ -3890,4 +4086,120 @@ fn chart_surface_wireframe_rejected_on_non_surface() {
     let mut bad = base_3d_patch(ChartKind::Column);
     bad.wireframe = Some(true);
     assert!(wb.set_chart("Sheet1", bad).is_err());
+}
+
+#[test]
+fn chart_of_pie_kinds_build_and_read() {
+    let cases = [
+        (ChartKind::PieOfPie, "c:ofPieType val=\"pie\""),
+        (ChartKind::BarOfPie, "c:ofPieType val=\"bar\""),
+    ];
+    for (kind, marker) in cases {
+        let mut wb = Workbook::new().unwrap();
+        seed_3d(&mut wb);
+        let info = wb.set_chart("Sheet1", base_3d_patch(kind)).unwrap();
+        assert_eq!(info.kind, kind);
+        let bytes = wb.save_bytes().unwrap();
+        let xml = chart_xml(&bytes);
+        assert!(xml.contains("c:ofPieChart"), "{kind:?} missing ofPieChart");
+        assert!(xml.contains(marker), "{kind:?} missing {marker}");
+        assert!(!xml.contains("c:catAx"), "ofPie must not emit catAx");
+        assert!(!xml.contains("c:valAx"), "ofPie must not emit valAx");
+        let mut reopened = Workbook::open_bytes(bytes).unwrap();
+        let read = reopened.charts(Some("Sheet1")).unwrap();
+        assert_eq!(read[0].kind, kind, "round-trip kind for {kind:?}");
+    }
+}
+
+#[test]
+fn chart_of_pie_options_roundtrip_and_update() {
+    use xlcore_types::ChartSplitType;
+
+    let mut wb = Workbook::new().unwrap();
+    seed_3d(&mut wb);
+
+    let mut patch = base_3d_patch(ChartKind::PieOfPie);
+    patch.split_type = Some(ChartSplitType::Percent);
+    patch.split_pos = Some(25.0);
+    patch.second_pie_size = Some(80);
+    patch.gap_width = Some(120);
+    patch.series_lines = Some(true);
+
+    let info = wb.set_chart("Sheet1", patch).unwrap();
+    assert_eq!(info.split_type, Some(ChartSplitType::Percent));
+    assert_eq!(info.split_pos, Some(25.0));
+    assert_eq!(info.second_pie_size, Some(80));
+    assert_eq!(info.gap_width, Some(120));
+    assert_eq!(info.series_lines, Some(true));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("c:splitType val=\"percent\""));
+    assert!(xml.contains("c:splitPos val=\"25\""));
+    assert!(xml.contains("c:secondPieSize val=\"80\""));
+    assert!(xml.contains("c:gapWidth val=\"120\""));
+    assert!(xml.contains("c:serLines"));
+
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let read = reopened.charts(Some("Sheet1")).unwrap();
+    assert_eq!(read[0].split_type, Some(ChartSplitType::Percent));
+    assert_eq!(read[0].split_pos, Some(25.0));
+    assert_eq!(read[0].second_pie_size, Some(80));
+    assert_eq!(read[0].series_lines, Some(true));
+
+    let id = read[0].id.clone();
+    let updated = reopened
+        .update_chart(
+            "Sheet1",
+            &id,
+            ChartUpdate {
+                split_type: Some(ChartSplitType::Value),
+                second_pie_size: Some(150),
+                series_lines: Some(false),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(updated.split_type, Some(ChartSplitType::Value));
+    assert_eq!(updated.second_pie_size, Some(150));
+    assert_eq!(
+        updated.series_lines, None,
+        "serLines off persists as absent"
+    );
+    assert_eq!(
+        updated.split_pos,
+        Some(25.0),
+        "unspecified split_pos preserved"
+    );
+    let xml2 = chart_xml(&reopened.save_bytes().unwrap());
+    assert!(xml2.contains("c:splitType val=\"val\""));
+    assert!(xml2.contains("c:secondPieSize val=\"150\""));
+    assert!(!xml2.contains("c:serLines"), "serLines cleared");
+}
+
+#[test]
+fn chart_of_pie_validation() {
+    use xlcore_types::ChartSplitType;
+
+    let mut wb = Workbook::new().unwrap();
+    seed_3d(&mut wb);
+
+    // single series only.
+    let mut multi = base_3d_patch(ChartKind::PieOfPie);
+    multi.series.push(ChartSeriesPatch {
+        name_ref: Some("Sheet1!$C$1".to_string()),
+        values_ref: "Sheet1!$B$2:$B$4".to_string(),
+        ..Default::default()
+    });
+    assert!(wb.set_chart("Sheet1", multi).is_err());
+
+    // ofPie options rejected on non-ofPie kinds.
+    let mut bad = base_3d_patch(ChartKind::Column);
+    bad.split_type = Some(ChartSplitType::Percent);
+    assert!(wb.set_chart("Sheet1", bad).is_err());
+
+    // second_pie_size out of range.
+    let mut bad_size = base_3d_patch(ChartKind::BarOfPie);
+    bad_size.second_pie_size = Some(400);
+    assert!(wb.set_chart("Sheet1", bad_size).is_err());
 }
