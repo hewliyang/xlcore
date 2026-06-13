@@ -618,6 +618,28 @@ pub struct Chart {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub val_axis_label_rotation: Option<i32>,
+
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data_table: Option<ChartDataTable>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct ChartDataTable {
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub show_horz_border: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub show_vert_border: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub show_outline: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub show_keys: bool,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

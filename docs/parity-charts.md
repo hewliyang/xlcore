@@ -32,6 +32,7 @@ charts — side with Excel desktop/spec where they disagree.
 | Series trendlines (`c:trendline`) | ✅ | ✅ | tie |
 | Series error bars (`c:errBars`) | ✅ | ✅ | tie |
 | Axis tick-label rotation (`txPr bodyPr rot`) | ✅ | ✅ | tie |
+| Data table (`c:dTable`) | ❌ | ✅ grid below plot | xlsx-preview |
 
 ## Chart-type coverage
 
@@ -71,7 +72,6 @@ charts — side with Excel desktop/spec where they disagree.
 
 - `ofPieChart` satellite split + secondary pie (`splitType`/`splitPos`/
   `secondPieSize`/`seriesLines`).
-- Data table (`c:dTable`).
 - Plot-area / legend `spPr` fills + borders + fonts.
 - Manual layout (`c:layout/c:manualLayout`).
 - Per-point gradient / pattern fills (only solid `c:dPt` fills drawn).

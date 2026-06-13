@@ -340,6 +340,7 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
         cx_region_map_max_color: rm_max,
         cat_axis_label_rotation: None,
         val_axis_label_rotation: None,
+        data_table: None,
     })
 }
 

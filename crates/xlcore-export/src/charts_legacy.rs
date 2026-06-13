@@ -34,6 +34,29 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
     let mut cat_axis_label_rotation: Option<i32> = None;
     let mut val_axis_label_rotation: Option<i32> = None;
 
+    let data_table = plot_area.data_table.as_deref().map(|dt| ChartDataTable {
+        show_horz_border: dt
+            .show_horizontal_border
+            .as_ref()
+            .map(|s| s.val.map(bool::from).unwrap_or(true))
+            .unwrap_or(false),
+        show_vert_border: dt
+            .show_vertical_border
+            .as_ref()
+            .map(|s| s.val.map(bool::from).unwrap_or(true))
+            .unwrap_or(false),
+        show_outline: dt
+            .show_outline_border
+            .as_ref()
+            .map(|s| s.val.map(bool::from).unwrap_or(true))
+            .unwrap_or(false),
+        show_keys: dt
+            .show_keys
+            .as_ref()
+            .map(|s| s.val.map(bool::from).unwrap_or(true))
+            .unwrap_or(false),
+    });
+
     let axis_label_rotation = |tp: Option<&c::TextProperties>| -> Option<i32> {
         tp.and_then(|t| t.body_properties.rotation)
             .map(|r| r / 60000)
@@ -707,5 +730,6 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         cx_region_map_max_color: None,
         cat_axis_label_rotation,
         val_axis_label_rotation,
+        data_table,
     })
 }

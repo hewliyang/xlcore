@@ -214,6 +214,28 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     plotRect.h -= DISP_UNITS_BAND;
   }
 
+  const dataTableEligible =
+    chart.dataTable != null &&
+    chart.series.length > 0 &&
+    chart.type !== "combo" &&
+    !chart.secondaryAxis &&
+    (chart.type === "column" || chart.type === "line" || chart.type === "area") &&
+    chart.grouping !== "stacked" &&
+    chart.grouping !== "percentstacked";
+  let dataTableRect: Rect | null = null;
+  if (dataTableEligible) {
+    const bandH = dataTableBandHeight(chart);
+    if (plotRect.h - bandH > 40) {
+      dataTableRect = {
+        x: plotRect.x,
+        y: plotRect.y + plotRect.h - bandH,
+        w: plotRect.w,
+        h: bandH,
+      };
+      plotRect.h -= bandH;
+    }
+  }
+
   if (plotRect.w <= 20 || plotRect.h <= 20) return;
 
   if (chart.type === "combo" || chart.secondaryAxis) {
@@ -252,6 +274,10 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       default:
         drawPlaceholderPlot(ctx, chart, plotRect);
     }
+  }
+
+  if (dataTableRect) {
+    drawDataTable(ctx, chart, dataTableRect);
   }
 
   if (legendPos !== null) {
@@ -303,6 +329,105 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       ctx.fillText(duLabel2, duBandRect.x + duBandRect.w - 2, duBandRect.y + duBandRect.h / 2);
     }
     ctx.restore();
+  }
+}
+
+const DATA_TABLE_ROW_H = AXIS_FONT_SIZE + 8;
+
+function dataTableBandHeight(chart: Chart): number {
+  const rows = chart.series.length + 1;
+  return rows * DATA_TABLE_ROW_H;
+}
+
+function drawDataTable(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
+  const dt = chart.dataTable;
+  if (!dt) return;
+  const series = chart.series;
+  const categoryCount = Math.max(
+    ...series.map((s) => s.values.length),
+    (chart.categories ?? []).length,
+  );
+  if (categoryCount === 0) return;
+
+  ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  const swatchW = dt.showKeys ? 12 : 0;
+  const swatchPad = dt.showKeys ? 4 : 0;
+  const namePad = 6;
+  const nameW = Math.max(
+    0,
+    ...series.map((s) => ctx.measureText(s.name || "").width),
+    ...(chart.categories ?? []).map(() => 0),
+  );
+  const headerW = Math.min(
+    rect.w * 0.4,
+    Math.max(48, swatchW + swatchPad + nameW + namePad * 2 + 4),
+  );
+  const gridX = rect.x + headerW;
+  const colW = (rect.w - headerW) / categoryCount;
+  const rowH = rect.h / (series.length + 1);
+
+  ctx.textBaseline = "middle";
+
+  ctx.fillStyle = AXIS_LABEL_COLOR;
+  ctx.textAlign = "center";
+  for (let c = 0; c < categoryCount; c++) {
+    const label = (chart.categories ?? [])[c] ?? `${c + 1}`;
+    ctx.fillText(label, gridX + colW * (c + 0.5), rect.y + rowH * 0.5, colW - 4);
+  }
+
+  for (let r = 0; r < series.length; r++) {
+    const s = series[r]!;
+    const cy = rect.y + rowH * (r + 1.5);
+    let tx = rect.x + namePad;
+    if (dt.showKeys) {
+      ctx.fillStyle = s.color ?? "#4472C4";
+      ctx.fillRect(tx, cy - swatchW / 2, swatchW, swatchW);
+      tx += swatchW + swatchPad;
+    }
+    ctx.fillStyle = AXIS_LABEL_COLOR;
+    ctx.textAlign = "left";
+    ctx.fillText(s.name || `Series ${r + 1}`, tx, cy, headerW - (tx - rect.x) - namePad);
+    ctx.textAlign = "center";
+    for (let c = 0; c < categoryCount; c++) {
+      const v = s.values[c];
+      if (v == null || !Number.isFinite(v)) continue;
+      const text = formatAxisValue(v, chart.valueFormat, chart.dispUnits);
+      ctx.fillText(text, gridX + colW * (c + 0.5), cy, colW - 4);
+    }
+  }
+
+  ctx.strokeStyle = "#bfbfbf";
+  ctx.lineWidth = 1;
+  if (dt.showHorzBorder) {
+    for (let r = 1; r <= series.length; r++) {
+      const y = Math.round(rect.y + rowH * r) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(rect.x, y);
+      ctx.lineTo(rect.x + rect.w, y);
+      ctx.stroke();
+    }
+  }
+  if (dt.showVertBorder) {
+    for (let c = 0; c <= categoryCount; c++) {
+      const x = Math.round(gridX + colW * c) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x, rect.y);
+      ctx.lineTo(x, rect.y + rect.h);
+      ctx.stroke();
+    }
+    const hx = Math.round(rect.x) + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(hx, rect.y);
+    ctx.lineTo(hx, rect.y + rect.h);
+    ctx.stroke();
+  }
+  if (dt.showOutline) {
+    ctx.strokeRect(
+      Math.round(rect.x) + 0.5,
+      Math.round(rect.y) + 0.5,
+      Math.round(rect.w) - 1,
+      Math.round(rect.h) - 1,
+    );
   }
 }
 
