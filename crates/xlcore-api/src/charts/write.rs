@@ -238,7 +238,11 @@ pub(super) fn validate_bar_shape(
     Ok(())
 }
 
-pub(super) fn validate_wireframe(sheet: &str, kind: ChartKind, wireframe: Option<bool>) -> Result<()> {
+pub(super) fn validate_wireframe(
+    sheet: &str,
+    kind: ChartKind,
+    wireframe: Option<bool>,
+) -> Result<()> {
     if wireframe.is_some() && !is_surface(kind) {
         return Err(ApiError::new(
             ApiErrorCode::InvalidChart,
@@ -714,7 +718,11 @@ pub(super) fn build_wireframe_el(wireframe: Option<bool>) -> Option<c::Wireframe
     })
 }
 
-pub(super) fn build_surface_series(idx: usize, s: &ChartSeriesPatch, cat_ref: Option<&str>) -> c::SurfaceChartSeries {
+pub(super) fn build_surface_series(
+    idx: usize,
+    s: &ChartSeriesPatch,
+    cat_ref: Option<&str>,
+) -> c::SurfaceChartSeries {
     c::SurfaceChartSeries {
         index: Box::new(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),

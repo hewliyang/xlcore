@@ -3876,7 +3876,10 @@ fn chart_surface_wireframe_and_view3d_roundtrip_and_update() {
         .unwrap();
     assert_eq!(updated.wireframe, Some(false));
     let xml2 = chart_xml(&reopened.save_bytes().unwrap());
-    assert!(xml2.contains("c:wireframe val=\"0\""), "updated wireframe val");
+    assert!(
+        xml2.contains("c:wireframe val=\"0\""),
+        "updated wireframe val"
+    );
     assert!(xml2.contains("c:serAx"), "serAx preserved after update");
 }
 
