@@ -1,6 +1,7 @@
 import type { Chart, ChartSeries } from "./types.js";
 import type { ChartManualLayout } from "./schema/ChartManualLayout.js";
 import { drawAreaChart } from "./chartArea.js";
+import { drawBar3DChart } from "./chart3d.js";
 import { drawTrendlines } from "./chartTrendline.js";
 import { drawErrorBars } from "./chartErrorBars.js";
 import {
@@ -294,7 +295,9 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
 
   drawStyleBox(ctx, plotRect, chart.plotAreaFill, chart.plotAreaBorder);
 
-  if (chart.type === "combo" || chart.secondaryAxis) {
+  if (chart.is3d && (chart.type === "column" || chart.type === "bar")) {
+    drawBar3DChart(ctx, chart, plotRect);
+  } else if (chart.type === "combo" || chart.secondaryAxis) {
     drawComboChart(ctx, chart, plotRect);
   } else {
     switch (chart.type) {

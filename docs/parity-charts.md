@@ -50,7 +50,8 @@ charts — side with Excel desktop/spec where they disagree.
 | `c:` | `bubbleChart` | ✅ | `bubbleScale`, `sizeRepresents` |
 | `c:` | `radarChart` | ✅ | `radarStyle` standard/marker/filled |
 | `c:` | `stockChart` | ✅ | HLC/OHLC; hi-low marks, up/down bars |
-| `c:` | `bar3D`/`line3D`/`area3D`/`pie3D` | 🟡 | drawn flat via 2D painters; perspective/depth dropped |
+| `c:` | `bar3D`/`column3D` | ✅ | pseudo-3D (oblique) boxes + floor/back/side walls; `view3D` rotX/rotY + `depthPercent`/`gapDepth` size the depth |
+| `c:` | `line3D`/`area3D`/`pie3D` | 🟡 | drawn flat via 2D painters; perspective/depth dropped |
 | `c:` | `ofPieChart` | ✅ | pieOfPie/barOfPie satellite split; `splitType`/`splitPos`/`secondPieSize`/`serLines` |
 | `c:` | `surfaceChart`/`surface3DChart` | ❌ | not wired |
 | `cx:` | `waterfall` | ✅ | `drawChartEx` waterfall painter |
@@ -62,14 +63,15 @@ charts — side with Excel desktop/spec where they disagree.
 
 ### 3D rendering (write path ships these, renderer ignores)
 
-1. **True 3D geometry** for `bar3D`/`line3D`/`area3D`/`pie3D` — currently
-   flattened to the 2D painter. Consume `c:view3D`
-   (rotX/rotY/perspective/rightAngleAxes/depthPercent/heightPercent).
-2. **Floor / side wall / back wall** fills (`c:floor`/`c:sideWall`/`c:backWall`
-   spPr).
-3. **`gapDepth`** spacing between series rows in 3D.
-4. **bar3D `c:shape`** (box/cone/cylinder/pyramid).
-5. **`surfaceChart` / `surface3DChart`** painter (+ `c:wireframe` lines vs
+1. **bar3D/column3D** now drawn as pseudo-3D (oblique-projection) boxes
+   (front + lighter top + darker side faces, painter-sorted) with a floor +
+   back wall + side wall, consuming `c:view3D` (rotX/rotY, `depthPercent`) +
+   `gapDepth` to size the depth and `c:floor`/`c:sideWall`/`c:backWall` spPr
+   fills (`chart3d.ts`). Approximation only — no true perspective.
+2. **True 3D geometry** for `line3D`/`area3D`/`pie3D` — still flattened to the
+   2D painter; `view3D`/walls dropped for those kinds.
+3. **bar3D `c:shape`** (box/cone/cylinder/pyramid) — only box rendered.
+4. **`surfaceChart` / `surface3DChart`** painter (+ `c:wireframe` lines vs
    filled bands).
 
 ### Open rendering nits

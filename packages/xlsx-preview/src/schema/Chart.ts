@@ -4,6 +4,7 @@ import type { ChartManualLayout } from "./ChartManualLayout.js";
 import type { ChartSeries } from "./ChartSeries.js";
 import type { ChartStyleBorder } from "./ChartStyleBorder.js";
 import type { ChartStyleFont } from "./ChartStyleFont.js";
+import type { ChartView3D } from "./ChartView3D.js";
 import type { DataLabels } from "./DataLabels.js";
 
 export type Chart = {
@@ -71,4 +72,10 @@ export type Chart = {
   plotAreaLayout?: ChartManualLayout;
   legendLayout?: ChartManualLayout;
   titleLayout?: ChartManualLayout;
+  is3d: boolean;
+  view3d?: ChartView3D;
+  gapDepth?: number;
+  floorFill?: string;
+  sideWallFill?: string;
+  backWallFill?: string;
 };

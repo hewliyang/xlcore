@@ -93,8 +93,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         match choice {
             c::PlotAreaChoice2::CategoryAxis(ca) => {
                 if cat_axis_label_rotation.is_none() {
-                    cat_axis_label_rotation =
-                        axis_label_rotation(ca.text_properties.as_deref());
+                    cat_axis_label_rotation = axis_label_rotation(ca.text_properties.as_deref());
                 }
                 route_title(
                     Some(&ca.axis_position.val),
@@ -192,8 +191,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                     major_unit = axis_major_unit;
                 }
                 if val_axis_label_rotation.is_none() {
-                    val_axis_label_rotation =
-                        axis_label_rotation(va.text_properties.as_deref());
+                    val_axis_label_rotation = axis_label_rotation(va.text_properties.as_deref());
                 }
             }
             route_title(
@@ -229,6 +227,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
 
     let mut bar_gap_width: Option<u16> = None;
     let mut bar_overlap: Option<i8> = None;
+    let mut is_3d = false;
+    let mut gap_depth: Option<f64> = None;
     let mut hole_size: Option<u8> = None;
     let mut first_slice_angle: Option<u16> = None;
     let mut of_pie_type: Option<String> = None;
@@ -464,6 +464,10 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 }
                 if bar_gap_width.is_none() {
                     bar_gap_width = bc.gap_width.as_ref().and_then(|g| g.val);
+                }
+                is_3d = true;
+                if gap_depth.is_none() {
+                    gap_depth = bc.gap_depth.as_ref().and_then(|g| g.val).map(f64::from);
                 }
                 let ag = axis_group_for(&bc.axis_id, &secondary_ax_ids);
                 let is_primary = !matches!(ag.as_deref(), Some("secondary"));
@@ -717,6 +721,40 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         .and_then(|sp| extract_style_border(sp.outline.as_deref(), &format!("{:?}", sp), theme));
     let legend_font = legend.and_then(|l| extract_style_font(l.text_properties.as_deref(), theme));
 
+    let view_3d = chart.view3_d.as_deref().map(|v| ChartView3D {
+        rot_x: v.rotate_x.as_ref().and_then(|r| r.val).map(f64::from),
+        rot_y: v.rotate_y.as_ref().and_then(|r| r.val).map(f64::from),
+        perspective: v.perspective.as_ref().and_then(|p| p.val).map(f64::from),
+        right_angle_axes: v
+            .right_angle_axes
+            .as_ref()
+            .and_then(|r| r.val)
+            .map(bool::from),
+        depth_percent: v.depth_percent.as_ref().and_then(|d| d.val).map(f64::from),
+        height_percent: v.height_percent.as_ref().and_then(|h| h.val).map(f64::from),
+    });
+    let surface_fill = |sp: Option<&c::ShapeProperties>| {
+        sp.and_then(|s| fill_color_outside_outline(&format!("{:?}", s), theme))
+    };
+    let floor_fill = surface_fill(
+        chart
+            .floor
+            .as_deref()
+            .and_then(|f| f.shape_properties.as_deref()),
+    );
+    let side_wall_fill = surface_fill(
+        chart
+            .side_wall
+            .as_deref()
+            .and_then(|w| w.shape_properties.as_deref()),
+    );
+    let back_wall_fill = surface_fill(
+        chart
+            .back_wall
+            .as_deref()
+            .and_then(|w| w.shape_properties.as_deref()),
+    );
+
     let plot_area_layout = extract_manual_layout(plot_area.layout.as_deref());
     let legend_layout = legend.and_then(|l| extract_manual_layout(l.layout.as_deref()));
     let title_layout = chart
@@ -789,5 +827,11 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         plot_area_layout,
         legend_layout,
         title_layout,
+        is_3d,
+        view_3d,
+        gap_depth,
+        floor_fill,
+        side_wall_fill,
+        back_wall_fill,
     })
 }
