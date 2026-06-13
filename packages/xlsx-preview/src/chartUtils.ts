@@ -134,6 +134,61 @@ export function categoryAxisExtraHeight(chart: Chart): number {
   return categoryAxisExtraRows(chart).length * (AXIS_FONT_SIZE + 4);
 }
 
+export function catAxisRotation(chart: Chart): number {
+  const r = chart.catAxisLabelRotation ?? 0;
+  return Number.isFinite(r) && r !== 0 ? r : 0;
+}
+
+export function valAxisRotation(chart: Chart): number {
+  const r = chart.valAxisLabelRotation ?? 0;
+  return Number.isFinite(r) && r !== 0 ? r : 0;
+}
+
+export function rotatedLabelBandHeight(
+  ctx: CanvasRenderingContext2D,
+  labels: string[],
+  rotationDeg: number,
+): number {
+  if (rotationDeg === 0) return 0;
+  const rad = (Math.abs(rotationDeg) * Math.PI) / 180;
+  const maxW = Math.max(0, ...labels.map((s) => ctx.measureText(s).width));
+  return maxW * Math.sin(rad) + AXIS_FONT_SIZE * Math.cos(rad);
+}
+
+export function rotatedLabelBandWidth(
+  ctx: CanvasRenderingContext2D,
+  labels: string[],
+  rotationDeg: number,
+): number {
+  if (rotationDeg === 0) return 0;
+  const rad = (Math.abs(rotationDeg) * Math.PI) / 180;
+  const maxW = Math.max(0, ...labels.map((s) => ctx.measureText(s).width));
+  return maxW * Math.cos(rad) + AXIS_FONT_SIZE * Math.sin(rad);
+}
+
+export function drawRotatedLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  anchorX: number,
+  anchorY: number,
+  rotationDeg: number,
+  kind: "category" | "value",
+): void {
+  const rad = (rotationDeg * Math.PI) / 180;
+  ctx.save();
+  ctx.translate(anchorX, anchorY);
+  ctx.rotate(rad);
+  if (kind === "category") {
+    ctx.textAlign = rotationDeg < 0 ? "right" : "left";
+    ctx.textBaseline = "middle";
+  } else {
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+  }
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+}
+
 export function drawAxisFrame(
   ctx: CanvasRenderingContext2D,
   chart: Chart,
@@ -148,8 +203,25 @@ export function drawAxisFrame(
   const labelStrings = ticks.map((t) =>
     percent ? `${Math.round(t)}%` : formatAxisValue(t, chart.valueFormat, chart.dispUnits),
   );
-  const yAxisW = Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
-  const xAxisH = AXIS_FONT_SIZE + 8 + (horizontal ? 0 : categoryAxisExtraHeight(chart));
+  const valRot = valAxisRotation(chart);
+  const yAxisW = horizontal
+    ? Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8
+    : valRot !== 0
+      ? rotatedLabelBandWidth(ctx, labelStrings, valRot) + 8
+      : Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
+  const catRot = catAxisRotation(chart);
+  const catBand =
+    !horizontal && catRot !== 0
+      ? rotatedLabelBandHeight(ctx, chart.categories ?? [], catRot)
+      : 0;
+  const xAxisH =
+    AXIS_FONT_SIZE +
+    8 +
+    (horizontal
+      ? valRot !== 0
+        ? rotatedLabelBandHeight(ctx, labelStrings, valRot)
+        : 0
+      : categoryAxisExtraHeight(chart) + catBand);
   const inner: Rect = horizontal
     ? { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH }
     : { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH };
@@ -173,7 +245,11 @@ export function drawAxisFrame(
         ctx.lineTo(Math.round(x) + 0.5, inner.y + inner.h);
         ctx.stroke();
       }
-      ctx.fillText(labelStrings[ti]!, x, inner.y + inner.h + xAxisH / 2);
+      if (valRot !== 0) {
+        drawRotatedLabel(ctx, labelStrings[ti]!, x, inner.y + inner.h + 6, valRot, "value");
+      } else {
+        ctx.fillText(labelStrings[ti]!, x, inner.y + inner.h + xAxisH / 2);
+      }
     } else {
       const y = inner.y + (1 - frac) * inner.h;
       if (showGridlines && !isZeroLine) {
@@ -182,7 +258,11 @@ export function drawAxisFrame(
         ctx.lineTo(inner.x + inner.w, Math.round(y) + 0.5);
         ctx.stroke();
       }
-      ctx.fillText(labelStrings[ti]!, inner.x - 4, y);
+      if (valRot !== 0) {
+        drawRotatedLabel(ctx, labelStrings[ti]!, inner.x - 4, y, valRot, "value");
+      } else {
+        ctx.fillText(labelStrings[ti]!, inner.x - 4, y);
+      }
     }
   }
 
@@ -219,6 +299,7 @@ export function drawCategoryAxis(
     if (!Number.isFinite(n)) return raw;
     return formatValue(n, fmt).text;
   });
+  const catRot = catAxisRotation(chart);
   const minGapPx = 8;
   let lastRight = -Infinity;
   for (let i = 0; i < categoryCount; i++) {
@@ -229,6 +310,10 @@ export function drawCategoryAxis(
       continue;
     }
     const cx = inner.x + (i / denom) * inner.w;
+    if (catRot !== 0) {
+      drawRotatedLabel(ctx, label, cx, inner.y + inner.h + 4, catRot, "category");
+      continue;
+    }
     const left = cx - w / 2;
     if (left < lastRight + minGapPx) continue;
     ctx.fillText(label, cx, inner.y + inner.h + 4);

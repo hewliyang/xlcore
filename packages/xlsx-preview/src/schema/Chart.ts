@@ -51,4 +51,6 @@ export type Chart = {
   cxRegionMapMinColor?: string;
   cxRegionMapMidColor?: string;
   cxRegionMapMaxColor?: string;
+  catAxisLabelRotation?: number;
+  valAxisLabelRotation?: number;
 };

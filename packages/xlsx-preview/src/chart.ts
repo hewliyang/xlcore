@@ -5,6 +5,11 @@ import { drawErrorBars } from "./chartErrorBars.js";
 import {
   buildLabelText,
   buildStackedRows,
+  catAxisRotation,
+  valAxisRotation,
+  rotatedLabelBandHeight,
+  rotatedLabelBandWidth,
+  drawRotatedLabel,
   categoryAxisExtraHeight,
   computeBarSlotMetrics,
   drawAxisFrame,
@@ -366,8 +371,25 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   const labelStrings = ticks.map((t) =>
     percent ? `${Math.round(t)}%` : formatAxisValue(t, chart.valueFormat, chart.dispUnits),
   );
-  const yAxisW = Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
-  const xAxisH = AXIS_FONT_SIZE + 8 + (horizontal ? 0 : categoryAxisExtraHeight(chart));
+  const catRot = catAxisRotation(chart);
+  const valRot = valAxisRotation(chart);
+  const catLabels = Array.from(
+    { length: categoryCount },
+    (_, i) => (chart.categories ?? [])[i] ?? `${i + 1}`,
+  );
+  const yAxisW =
+    !horizontal && valRot !== 0
+      ? rotatedLabelBandWidth(ctx, labelStrings, valRot) + 8
+      : Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
+  const xAxisH =
+    AXIS_FONT_SIZE +
+    8 +
+    (horizontal
+      ? valRot !== 0
+        ? rotatedLabelBandHeight(ctx, labelStrings, valRot)
+        : 0
+      : categoryAxisExtraHeight(chart) +
+        (catRot !== 0 ? rotatedLabelBandHeight(ctx, catLabels, catRot) : 0));
 
   const innerRect: Rect = horizontal
     ? { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH }
@@ -392,7 +414,11 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
         ctx.lineTo(Math.round(x) + 0.5, innerRect.y + innerRect.h);
         ctx.stroke();
       }
-      ctx.fillText(labelStrings[ti]!, x, innerRect.y + innerRect.h + xAxisH / 2);
+      if (valRot !== 0) {
+        drawRotatedLabel(ctx, labelStrings[ti]!, x, innerRect.y + innerRect.h + 6, valRot, "value");
+      } else {
+        ctx.fillText(labelStrings[ti]!, x, innerRect.y + innerRect.h + xAxisH / 2);
+      }
     } else {
       const y = innerRect.y + (1 - frac) * innerRect.h;
       if (showGridlines && !isZeroLine) {
@@ -401,7 +427,11 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
         ctx.lineTo(innerRect.x + innerRect.w, Math.round(y) + 0.5);
         ctx.stroke();
       }
-      ctx.fillText(labelStrings[ti]!, innerRect.x - 4, y);
+      if (valRot !== 0) {
+        drawRotatedLabel(ctx, labelStrings[ti]!, innerRect.x - 4, y, valRot, "value");
+      } else {
+        ctx.fillText(labelStrings[ti]!, innerRect.x - 4, y);
+      }
     }
   }
 
@@ -430,6 +460,8 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     if (horizontal) {
       ctx.textAlign = "right";
       ctx.fillText(label, innerRect.x - 4, center);
+    } else if (catRot !== 0) {
+      drawRotatedLabel(ctx, label, center, innerRect.y + innerRect.h + 4, catRot, "category");
     } else {
       ctx.fillText(label, center, innerRect.y + innerRect.h + 4);
     }

@@ -31,6 +31,14 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
     let mut major_unit: Option<f64> = None;
     let mut major_unit_secondary: Option<f64> = None;
 
+    let mut cat_axis_label_rotation: Option<i32> = None;
+    let mut val_axis_label_rotation: Option<i32> = None;
+
+    let axis_label_rotation = |tp: Option<&c::TextProperties>| -> Option<i32> {
+        tp.and_then(|t| t.body_properties.rotation)
+            .map(|r| r / 60000)
+    };
+
     let route_title = |pos: Option<&c::AxisPositionValues>,
                        title: Option<&c::Title>,
                        x: &mut Option<String>,
@@ -60,13 +68,19 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
     };
     for choice in &plot_area.plot_area_choice2 {
         match choice {
-            c::PlotAreaChoice2::CategoryAxis(ca) => route_title(
-                Some(&ca.axis_position.val),
-                ca.title.as_deref(),
-                &mut x_axis_title,
-                &mut y_axis_title,
-                &mut y_axis_title_secondary,
-            ),
+            c::PlotAreaChoice2::CategoryAxis(ca) => {
+                if cat_axis_label_rotation.is_none() {
+                    cat_axis_label_rotation =
+                        axis_label_rotation(ca.text_properties.as_deref());
+                }
+                route_title(
+                    Some(&ca.axis_position.val),
+                    ca.title.as_deref(),
+                    &mut x_axis_title,
+                    &mut y_axis_title,
+                    &mut y_axis_title_secondary,
+                )
+            }
             c::PlotAreaChoice2::DateAxis(da) => route_title(
                 Some(&da.axis_position.val),
                 da.title.as_deref(),
@@ -153,6 +167,10 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 }
                 if major_unit.is_none() {
                     major_unit = axis_major_unit;
+                }
+                if val_axis_label_rotation.is_none() {
+                    val_axis_label_rotation =
+                        axis_label_rotation(va.text_properties.as_deref());
                 }
             }
             route_title(
@@ -687,5 +705,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         cx_region_map_min_color: None,
         cx_region_map_mid_color: None,
         cx_region_map_max_color: None,
+        cat_axis_label_rotation,
+        val_axis_label_rotation,
     })
 }

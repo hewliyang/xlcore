@@ -23,6 +23,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Renderer draws rotated axis tick-labels (`txPr bodyPr rot`): category/value-axis labels drawn at the authored angle (`Chart.catAxisLabelRotation`/`valAxisLabelRotation`, decoded from `bodyPr/@rot` 60000ths→degrees) with the axis band auto-resized to avoid clipping.
 - Renderer draws series error bars (`c:errBars`): vertical I-beams (errDir=y) with fixedVal/percentage/stdDev/stdErr/cust magnitudes, both/plus/minus sides + noEndCap; line, column and scatter charts. Decoded into the wire `ChartSeries.errorBars`.
 - Renderer draws series trendlines (`c:trendline`): linear/poly/exp/log/power fits + moving average, with forward/backward projection; line, column and scatter/bubble charts. Decoded into the wire `ChartSeries.trendlines`.
 - Per-point `c:dPt` extras on `ChartDataPoint`: `invertIfNegative` (bar/bubble), `marker` (reuses `ChartMarker`; line/scatter/radar), and structured `gradientFill` (`a:gradFill` linear, `ChartGradientFill`/`ChartGradientStop`) / `patternFill` (`a:pattFill`, `ChartPatternFill` + `ChartPatternPreset` = `ST_PresetPatternVal`) additive fields alongside the existing solid `fill` string (gradient > pattern > solid precedence). Round-trips + in-place update; renderer still draws only solid per-point fills. `bubble3D`/`pictureOptions`/`extLst` excluded.
