@@ -968,6 +968,58 @@
     "ret": "json"
   },
   {
+    "name": "chart_exs",
+    "jsName": "chartExs",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "os",
+        "type": "Option<String>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_chart_ex",
+    "jsName": "setChartEx",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::ChartExPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_chart_ex",
+    "jsName": "removeChartEx",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "id",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
     "name": "pivots",
     "jsName": "pivots",
     "source": "table",

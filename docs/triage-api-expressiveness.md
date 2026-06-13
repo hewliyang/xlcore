@@ -126,6 +126,25 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   must be a schema-valid part (e.g. copied from an Excel-authored file);
   renderer ignores them, round-trip-only). In-place `update_chart`
   (atomic, preserves unmodeled XML).
+- **chartEx authoring** (modern `cx:` charts, separate `chartEx{N}.xml` part +
+  `.../2014/relationships/chartEx` rel, referenced from the drawing via a
+  graphicFrame whose `a:graphicData uri=.../2014/chartex` wraps `<cx:chart
+  r:id>` as `GraphicDataChoice::XmlAny`): `ChartExPatch`/`ChartExInfo` +
+  `chart_exs`/`set_chart_ex`/`remove_chart_ex` (TS `Worksheet.chartsEx`)
+  authoring all 8 renderer-visible `ChartExKind` layouts — waterfall, funnel,
+  treemap, sunburst, histogram, pareto, boxWhisker, regionMap. Patch carries
+  kind, title, anchor, `categoriesRef` (`cx:strDim type=cat`; multi-column range
+  → hierarchy levels for treemap/sunburst), `series` (`cx:numDim`; dim type
+  derived val/size/colorVal), per-kind knobs (`subtotals` waterfall,
+  `binCount`/`binSize` histogram, `quartileMethod` boxWhisker), legendPosition.
+  Histogram/pareto emit `clusteredColumn`/`paretoLine` under the hood (collapsed
+  back on read); cartesian kinds emit two `cx:axis`. No cached `cx:lvl` values —
+  the renderer resolves the formula refs against sheet cells (same path as
+  legacy charts). Build + list + remove + reopen round-trip; the SDK can't
+  parse cx's `office2016, qname` attr form so these pairs aren't in
+  `schema_coverage.toml` (deferrals live in the DTO `schema-excluded:` lines).
+  Per-point fills, valueColors, data labels, axis styling, in-place update
+  excluded for now (follow-up).
 - **Rich text in cells**: `setRichText`/`richText` (inline-string `CT_RElt`
   runs with per-run `FontPatch`); `CellInfo.richText`, renderer-visible.
 - **Styles P1**: cell protection, pattern + gradient fills, font
@@ -144,8 +163,9 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 ### P2 — backlog
 
 remaining 3D extras (floor/sideWall/backWall thickness/pictureOptions,
-per-series 3D invertIfNegative/marker),
-chartEx authoring, named
+per-series 3D invertIfNegative/marker), chartEx follow-ups (in-place
+`update_chart_ex`, per-point `cx:dataPt` fills, `cx:valueColors` authoring,
+data labels, region-map geo cache, axis/title styling), named
 styles / `cellStyles` authoring, remaining `c:dPt` fields (per-point
 invertIfNegative/marker, gradient/pattern fills).
 

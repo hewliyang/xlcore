@@ -1,6 +1,7 @@
 mod annotations;
 mod cells;
 mod charts;
+mod charts_ex;
 mod drawings;
 mod engine;
 mod errors;
@@ -18,6 +19,7 @@ mod worksheet;
 pub use annotations::*;
 pub use cells::*;
 pub use charts::*;
+pub use charts_ex::*;
 pub use drawings::*;
 pub use engine::*;
 pub use errors::*;

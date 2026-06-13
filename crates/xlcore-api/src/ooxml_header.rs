@@ -43,6 +43,16 @@ pub(crate) fn chart_space() -> Vec<XmlNamespaceDecl> {
     ]
 }
 
+const CHARTEX: &str = "http://schemas.microsoft.com/office/drawing/2014/chartex";
+
+pub(crate) fn chart_ex_space() -> Vec<XmlNamespaceDecl> {
+    vec![
+        ns("a", DRAWINGML_MAIN),
+        ns("r", RELATIONSHIPS),
+        ns("cx", CHARTEX),
+    ]
+}
+
 pub(crate) fn threaded_comments() -> Vec<XmlNamespaceDecl> {
     vec![ns("xltc", THREADED_COMMENTS)]
 }

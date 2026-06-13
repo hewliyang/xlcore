@@ -15,6 +15,7 @@ import type {
 import {
   AutoFilterAccessor,
   ChartCollection,
+  ChartExCollection,
   CommentCollection,
   ConditionalFormatCollection,
   DataValidationCollection,
@@ -93,6 +94,7 @@ export class Worksheet {
   readonly autoFilter: AutoFilterAccessor;
   readonly tables: TableCollection;
   readonly charts: ChartCollection;
+  readonly chartsEx: ChartExCollection;
   readonly images: ImageCollection;
   readonly shapes: ShapeCollection;
   readonly sparklineGroups: SparklineGroupCollection;
@@ -116,6 +118,7 @@ export class Worksheet {
     this.autoFilter = new AutoFilterAccessor(handle, this.sheetRef);
     this.tables = new TableCollection(handle, this.sheetRef);
     this.charts = new ChartCollection(handle, this.sheetRef);
+    this.chartsEx = new ChartExCollection(handle, this.sheetRef);
     this.images = new ImageCollection(handle, this.sheetRef);
     this.shapes = new ShapeCollection(handle, this.sheetRef);
     this.sparklineGroups = new SparklineGroupCollection(handle, this.sheetRef);

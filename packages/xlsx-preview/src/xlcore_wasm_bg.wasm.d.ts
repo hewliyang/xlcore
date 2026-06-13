@@ -11,6 +11,7 @@ export const workbookhandle_addThreadedNote: (a: number, b: number, c: number, d
 export const workbookhandle_appendRows: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_autoFilter: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_calcProperties: (a: number, b: number) => void;
+export const workbookhandle_chartExs: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_charts: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_clear: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_clearConditionalFormats: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
@@ -56,6 +57,7 @@ export const workbookhandle_recalculate: (a: number, b: number, c: number) => vo
 export const workbookhandle_removeAutoFilter: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeAutoFilterColumn: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_removeChart: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+export const workbookhandle_removeChartEx: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removeComment: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removeDataValidation: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removeDefinedName: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
@@ -80,6 +82,7 @@ export const workbookhandle_setAutoFilter: (a: number, b: number, c: number, d: 
 export const workbookhandle_setAutoFilterColumn: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setCalcProperties: (a: number, b: number, c: number) => void;
 export const workbookhandle_setChart: (a: number, b: number, c: number, d: number, e: number) => void;
+export const workbookhandle_setChartEx: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setColumnVisible: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setColumnWidth: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setComment: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;

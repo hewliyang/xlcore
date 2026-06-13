@@ -353,6 +353,9 @@ api_methods! {
     { set_chart as "setChart" (s sheet, de patch: xlcore_api::ChartPatch) -> json }
     { remove_chart as "removeChart" (s sheet, s id) -> json }
     { update_chart as "updateChart" (s sheet, s id, de update: xlcore_api::ChartUpdate) -> json }
+    { chart_exs as "chartExs" (os sheet) -> json }
+    { set_chart_ex as "setChartEx" (s sheet, de patch: xlcore_api::ChartExPatch) -> json }
+    { remove_chart_ex as "removeChartEx" (s sheet, s id) -> json }
     { pivots (os sheet) -> json }
     { set_pivot as "setPivot" (s sheet, de patch: xlcore_api::PivotPatch) -> json }
     { pivot_preview as "pivotPreview" (s sheet, de patch: xlcore_api::PivotPatch) -> json }

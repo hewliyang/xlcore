@@ -6,6 +6,8 @@ import type {
   AutoFilterInfo,
   CalcProperties,
   CalcPropertiesPatch,
+  ChartExInfo,
+  ChartExPatch,
   ChartInfo,
   ChartPatch,
   ChartUpdate,
@@ -209,6 +211,18 @@ export class ChartCollection extends SheetScopedCollection {
   }
   remove(id: string): ChartInfo | null {
     return (this.handle.removeChart(this.sheet, id) as ChartInfo | null) ?? null;
+  }
+}
+
+export class ChartExCollection extends SheetScopedCollection {
+  list(): ChartExInfo[] {
+    return this.handle.chartExs(this.sheet) as ChartExInfo[];
+  }
+  set(patch: ChartExPatch): ChartExInfo {
+    return this.handle.setChartEx(this.sheet, patch) as ChartExInfo;
+  }
+  remove(id: string): ChartExInfo | null {
+    return (this.handle.removeChartEx(this.sheet, id) as ChartExInfo | null) ?? null;
   }
 }
 

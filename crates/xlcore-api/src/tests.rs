@@ -1,6 +1,7 @@
 mod auto_filter;
 mod batch;
 mod charts;
+mod charts_ex;
 mod comments;
 mod conditional_format;
 mod data_validation;

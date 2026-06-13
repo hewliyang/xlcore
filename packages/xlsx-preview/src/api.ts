@@ -27,6 +27,7 @@ export {
   AutoFilterAccessor,
   CalcPropertiesAccessor,
   ChartCollection,
+  ChartExCollection,
   CommentCollection,
   ConditionalFormatCollection,
   DataValidationCollection,
