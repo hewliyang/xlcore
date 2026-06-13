@@ -186,8 +186,17 @@ fields (per-point bubble3D, blip/picture fills).
 
 ### Follow-up
 
-TS forwarding-layer codegen from `api_methods.json` — drift already caught by
-`check:api`, so only worth doing when a second binding (pyo3/napi) lands.
+- **Renderer parity for the write-only chart features.** Much of the P2 chart
+  work above round-trips for Excel but the xlsx-preview renderer doesn't draw it
+  yet — confirmed valid by opening authored files in real Excel. Teach the
+  renderer to consume: trendlines, error bars, axis label rotation, data table,
+  3D geometry (currently flattened to 2D) + view3D + floor/walls, surface
+  (currently a v0 stub), ofPie split/secondary pie (currently drawn as a plain
+  pie), plot-area/legend spPr fills + fonts, manual layout, per-point
+  marker/gradient/pattern fills, and named-style xfId resolution edge cases. The
+  read-side schema already models most of these; the gap is the draw path.
+- **TS forwarding-layer codegen** from `api_methods.json` — drift already caught
+  by `check:api`, so only worth doing when a second binding (pyo3/napi) lands.
 
 ### Already adequate
 
