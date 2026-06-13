@@ -717,6 +717,13 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         .and_then(|sp| extract_style_border(sp.outline.as_deref(), &format!("{:?}", sp), theme));
     let legend_font = legend.and_then(|l| extract_style_font(l.text_properties.as_deref(), theme));
 
+    let plot_area_layout = extract_manual_layout(plot_area.layout.as_deref());
+    let legend_layout = legend.and_then(|l| extract_manual_layout(l.layout.as_deref()));
+    let title_layout = chart
+        .title
+        .as_deref()
+        .and_then(|t| extract_manual_layout(t.layout.as_deref()));
+
     Some(Chart {
         chart_type,
         title,
@@ -779,5 +786,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         legend_fill,
         legend_border,
         legend_font,
+        plot_area_layout,
+        legend_layout,
+        title_layout,
     })
 }

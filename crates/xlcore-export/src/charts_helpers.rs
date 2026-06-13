@@ -425,6 +425,34 @@ pub(crate) fn extract_trendlines(
         .collect()
 }
 
+pub(crate) fn extract_manual_layout(layout: Option<&c::Layout>) -> Option<ChartManualLayout> {
+    let ml = layout?.manual_layout.as_deref()?;
+    let layout_target = ml
+        .layout_target
+        .as_ref()
+        .and_then(|t| t.val.as_ref())
+        .map(|v| format!("{:?}", v).to_ascii_lowercase());
+    let mode = |m: Option<&c::LayoutModeValues>| {
+        m.map(|v| format!("{:?}", v).to_ascii_lowercase())
+    };
+    let out = ChartManualLayout {
+        x: ml.left.as_ref().map(|v| v.val),
+        y: ml.top.as_ref().map(|v| v.val),
+        w: ml.width.as_ref().map(|v| v.val),
+        h: ml.height.as_ref().map(|v| v.val),
+        x_mode: mode(ml.left_mode.as_ref().and_then(|m| m.val.as_ref())),
+        y_mode: mode(ml.top_mode.as_ref().and_then(|m| m.val.as_ref())),
+        w_mode: mode(ml.width_mode.as_ref().and_then(|m| m.val.as_ref())),
+        h_mode: mode(ml.height_mode.as_ref().and_then(|m| m.val.as_ref())),
+        layout_target,
+    };
+    if out.x.is_none() && out.y.is_none() && out.w.is_none() && out.h.is_none() {
+        None
+    } else {
+        Some(out)
+    }
+}
+
 fn num_data_source_values(
     nr: Option<&c::NumberReference>,
     lit: Option<&c::NumberLiteral>,

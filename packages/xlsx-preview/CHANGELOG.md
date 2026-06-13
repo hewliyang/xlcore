@@ -23,6 +23,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Renderer consumes manual layout (`c:layout/c:manualLayout`) for the plot area (inner/outer `layoutTarget`), legend, and title, positioning them at the explicit fractional rectangle (edge/factor `*Mode`) of the chart area. Decoded into the wire `Chart.plotAreaLayout`/`legendLayout`/`titleLayout` (`ChartManualLayout`).
 - Renderer draws ofPie satellite split (`c:ofPieChart` pieOfPie/barOfPie): main pie with an aggregated "Other" slice plus a secondary pie or vertical stacked bar of the split-off points, connector series-lines, honoring `splitType`/`splitPos`/`secondPieSize`/`serLines`. Decoded into the wire `Chart.ofPieType`/`splitType`/`splitPos`/`secondPieSize`/`seriesLines`.
 - Renderer draws plot-area + legend styling: plot-area `c:plotArea/c:spPr` background fill + border, legend `c:legend/c:spPr` fill + border, and `c:legend/c:txPr` font (size/bold/italic/color/typeface). Decoded into the wire `Chart.plotAreaFill`/`plotAreaBorder`/`legendFill`/`legendBorder`/`legendFont` (`ChartStyleBorder`/`ChartStyleFont`).
 - Renderer draws per-point gradient + pattern fills (`c:dPt` `a:gradFill`/`a:pattFill`): linear-gradient and preset-pattern (`ST_PresetPatternVal`) fills for bar/column and pie/doughnut points, precedence gradient > pattern > solid. Decoded into the wire `ChartSeries.pointFills`.

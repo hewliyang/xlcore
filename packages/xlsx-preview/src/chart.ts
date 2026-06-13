@@ -1,4 +1,5 @@
 import type { Chart, ChartSeries } from "./types.js";
+import type { ChartManualLayout } from "./schema/ChartManualLayout.js";
 import { drawAreaChart } from "./chartArea.js";
 import { drawTrendlines } from "./chartTrendline.js";
 import { drawErrorBars } from "./chartErrorBars.js";
@@ -65,6 +66,25 @@ export interface Rect {
   h: number;
 }
 
+function resolveManualRect(chartRect: Rect, auto: Rect, ml: ChartManualLayout): Rect {
+  const r: Rect = { ...auto };
+  if (ml.x != null) {
+    const off = ml.x * chartRect.w;
+    r.x = ml.xMode === "factor" ? auto.x + off : chartRect.x + off;
+  }
+  if (ml.y != null) {
+    const off = ml.y * chartRect.h;
+    r.y = ml.yMode === "factor" ? auto.y + off : chartRect.y + off;
+  }
+  if (ml.w != null) r.w = ml.w * chartRect.w;
+  if (ml.h != null) r.h = ml.h * chartRect.h;
+  r.w = Math.max(8, Math.min(r.w, chartRect.x + chartRect.w - r.x));
+  r.h = Math.max(8, Math.min(r.h, chartRect.y + chartRect.h - r.y));
+  r.x = Math.max(chartRect.x, Math.min(r.x, chartRect.x + chartRect.w - r.w));
+  r.y = Math.max(chartRect.y, Math.min(r.y, chartRect.y + chartRect.h - r.h));
+  return r;
+}
+
 export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
@@ -76,10 +96,30 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
   if (chart.title) {
     ctx.fillStyle = TITLE_COLOR;
     ctx.font = `${TITLE_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
-    ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    ctx.fillText(chart.title, rect.x + rect.w / 2, cursorY);
-    cursorY += TITLE_FONT_SIZE + TITLE_PAD;
+    if (chart.titleLayout) {
+      const tl = chart.titleLayout;
+      let tx = rect.x + rect.w / 2;
+      let ty = rect.y + TITLE_PAD;
+      if (tl.x != null) {
+        const off = tl.x * rect.w;
+        tx = tl.xMode === "factor" ? rect.x + rect.w / 2 + off : rect.x + off;
+        ctx.textAlign = "left";
+      } else {
+        ctx.textAlign = "center";
+      }
+      if (tl.y != null) {
+        const off = tl.y * rect.h;
+        ty = tl.yMode === "factor" ? rect.y + TITLE_PAD + off : rect.y + off;
+      }
+      tx = Math.max(rect.x + 2, Math.min(tx, rect.x + rect.w - 2));
+      ty = Math.max(rect.y + 2, Math.min(ty, rect.y + rect.h - TITLE_FONT_SIZE));
+      ctx.fillText(chart.title, tx, ty);
+    } else {
+      ctx.textAlign = "center";
+      ctx.fillText(chart.title, rect.x + rect.w / 2, cursorY);
+      cursorY += TITLE_FONT_SIZE + TITLE_PAD;
+    }
   }
 
   const cats = chart.categories ?? [];
@@ -161,6 +201,16 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       break;
   }
 
+  if (legendPos !== null && chart.legendLayout) {
+    legendRect = resolveManualRect(rect, legendRect, chart.legendLayout);
+  }
+
+  let plotInner = true;
+  if (chart.plotAreaLayout) {
+    Object.assign(plotRect, resolveManualRect(rect, plotRect, chart.plotAreaLayout));
+    plotInner = (chart.plotAreaLayout.layoutTarget ?? "inner") === "inner";
+  }
+
   const AXIS_TITLE_FONT_SIZE = 11;
   const AXIS_TITLE_PAD = 6;
   const AXIS_TITLE_BAND = AXIS_TITLE_FONT_SIZE + AXIS_TITLE_PAD;
@@ -170,7 +220,7 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
   let xTitleRect: Rect | null = null;
   let yTitleRect: Rect | null = null;
   let yTitle2Rect: Rect | null = null;
-  if (xTitle) {
+  if (xTitle && plotInner) {
     xTitleRect = {
       x: plotRect.x,
       y: plotRect.y + plotRect.h - AXIS_TITLE_BAND,
@@ -179,7 +229,7 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     };
     plotRect.h -= AXIS_TITLE_BAND;
   }
-  if (yTitle) {
+  if (yTitle && plotInner) {
     yTitleRect = {
       x: plotRect.x,
       y: plotRect.y,
@@ -189,7 +239,7 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     plotRect.x += AXIS_TITLE_BAND;
     plotRect.w -= AXIS_TITLE_BAND;
   }
-  if (yTitle2 && (chart.secondaryAxis || chart.type === "combo")) {
+  if (yTitle2 && plotInner && (chart.secondaryAxis || chart.type === "combo")) {
     yTitle2Rect = {
       x: plotRect.x + plotRect.w - AXIS_TITLE_BAND,
       y: plotRect.y,
@@ -207,7 +257,7 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       ? chart.dispUnitsLabelSecondary
       : undefined;
   let duBandRect: Rect | null = null;
-  if (duLabel || duLabel2) {
+  if ((duLabel || duLabel2) && plotInner) {
     duBandRect = {
       x: plotRect.x,
       y: plotRect.y,

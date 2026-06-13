@@ -36,6 +36,7 @@ charts — side with Excel desktop/spec where they disagree.
 | Per-point gradient / pattern fills (`c:dPt` `a:gradFill`/`a:pattFill`) | ✅ | 🟡 gradient→solid, pattern→gray | xlsx-preview |
 | Plot-area / legend `spPr` fills + borders + `txPr` font | ✅ | ✅ | tie |
 | ofPie satellite split (`pieOfPie`/`barOfPie`) | ✅ | ❌ plain pie | xlsx-preview |
+| Manual layout (`c:layout/c:manualLayout`) plot area/legend/title | ✅ | ✅ | tie |
 
 ## Chart-type coverage
 
@@ -70,10 +71,6 @@ charts — side with Excel desktop/spec where they disagree.
 4. **bar3D `c:shape`** (box/cone/cylinder/pyramid).
 5. **`surfaceChart` / `surface3DChart`** painter (+ `c:wireframe` lines vs
    filled bands).
-
-### Other write-ahead-of-draw gaps
-
-- Manual layout (`c:layout/c:manualLayout`).
 
 ### Open rendering nits
 

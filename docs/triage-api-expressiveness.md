@@ -110,7 +110,7 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   fractions; on `ChartPlotArea.layout`, `ChartLegend.layout`, `ChartPatch.
   titleLayout`; built in schema order — plot-area layout before the plot charts,
   legend layout after legendPos; CT_Layout/CT_ManualLayout, extLst excluded;
-  round-trip-only, renderer ignores manual layout). 3D extras (`ChartPatch/
+  rendered for plot area/legend/title). 3D extras (`ChartPatch/
   Update/Info.gapDepth` → `c:gapDepth` bar3D/column3D only, per-series 3D shape
   `ChartSeriesPatch/Info.shape` → `c:ser/c:shape`, floor/wall formatting
   `.floor`/`.sideWall`/`.backWall` → `c:floor`/`c:sideWall`/`c:backWall`/`c:spPr`
@@ -191,7 +191,7 @@ fields (per-point bubble3D, blip/picture fills).
   yet — confirmed valid by opening authored files in real Excel. Teach the
   renderer to consume: trendlines, error bars, axis label rotation, data table,
   3D geometry (currently flattened to 2D) + view3D + floor/walls, surface
-  (currently a v0 stub), plot-area/legend spPr fills + fonts, manual layout, per-point
+  (currently a v0 stub), plot-area/legend spPr fills + fonts, per-point
   marker/gradient/pattern fills, and named-style xfId resolution edge cases. The
   read-side schema already models most of these; the gap is the draw path.
 - **TS forwarding-layer codegen** from `api_methods.json` — drift already caught
