@@ -4,6 +4,7 @@ import {
   WorkbookCharts,
   WorkbookDefinedNames,
   WorkbookImages,
+  WorkbookNamedStyles,
   WorkbookPivots,
   WorkbookPropertiesAccessor,
   WorkbookProtectionAccessor,
@@ -41,6 +42,7 @@ export {
   WorkbookCharts,
   WorkbookDefinedNames,
   WorkbookImages,
+  WorkbookNamedStyles,
   WorkbookPivots,
   WorkbookPropertiesAccessor,
   WorkbookProtectionAccessor,
@@ -222,6 +224,7 @@ export class Workbook {
   }
 
   readonly definedNames: WorkbookDefinedNames;
+  readonly namedStyles: WorkbookNamedStyles;
   readonly allTables: WorkbookTables;
   readonly allCharts: WorkbookCharts;
   readonly allImages: WorkbookImages;
@@ -235,6 +238,7 @@ export class Workbook {
 
   private constructor(private handle: WasmWorkbookHandle) {
     this.definedNames = new WorkbookDefinedNames(handle);
+    this.namedStyles = new WorkbookNamedStyles(handle);
     this.allTables = new WorkbookTables(handle);
     this.allCharts = new WorkbookCharts(handle);
     this.allImages = new WorkbookImages(handle);

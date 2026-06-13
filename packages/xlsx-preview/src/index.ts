@@ -24,6 +24,7 @@ export {
   WorkbookCharts,
   WorkbookDefinedNames,
   WorkbookImages,
+  WorkbookNamedStyles,
   WorkbookPivots,
   WorkbookSparklineGroups,
   WorkbookTables,

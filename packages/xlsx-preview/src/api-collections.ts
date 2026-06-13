@@ -24,6 +24,8 @@ import type {
   ImageInfo,
   ImagePatch,
   MergeInfo,
+  NamedStyleInfo,
+  NamedStylePatch,
   ShapeInfo,
   ShapePatch,
   PivotGrid,
@@ -297,6 +299,19 @@ export class WorkbookDefinedNames {
   }
   remove(name: string, scope?: string | null): DefinedNameInfo | null {
     return (this.handle.removeDefinedName(name, scope ?? null) as DefinedNameInfo | null) ?? null;
+  }
+}
+
+export class WorkbookNamedStyles {
+  constructor(private readonly handle: WasmWorkbookHandle) {}
+  list(): NamedStyleInfo[] {
+    return this.handle.namedStyles() as NamedStyleInfo[];
+  }
+  set(patch: NamedStylePatch): NamedStyleInfo {
+    return this.handle.setNamedStyle(patch) as NamedStyleInfo;
+  }
+  remove(name: string): NamedStyleInfo | null {
+    return (this.handle.removeNamedStyle(name) as NamedStyleInfo | null) ?? null;
   }
 }
 

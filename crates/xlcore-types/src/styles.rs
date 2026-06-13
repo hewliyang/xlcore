@@ -26,6 +26,44 @@ pub struct StylePatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub protection: Option<ProtectionPatch>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub named_style: Option<String>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// A workbook-scoped named cell style (a cellStyles entry + its master xf in
+/// cellStyleXfs). `style` is the formatting baked into the master xf; apply it
+/// to cells with `StylePatch.namedStyle`.
+///
+/// schema-excluded: outline_level, hidden, custom_builtin, extLst, xml_other_attrs
+pub struct NamedStylePatch {
+    pub name: String,
+    #[serde(default)]
+    pub style: StylePatch,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub builtin_id: Option<u32>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct NamedStyleInfo {
+    pub name: String,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub builtin_id: Option<u32>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

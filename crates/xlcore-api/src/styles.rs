@@ -3,13 +3,14 @@ use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 pub use xlcore_types::{
     AlignmentPatch, BorderLinePatch, BorderLineStyle, BorderPatch, FillPatch, FontPatch,
-    FontScheme, GradientFillPatch, GradientType, HorizontalAlign, PatternType, ProtectionPatch,
-    ReadingOrder, StylePatch, UnderlinePatch, VertAlign, VerticalAlign,
+    FontScheme, GradientFillPatch, GradientType, HorizontalAlign, NamedStyleInfo, NamedStylePatch,
+    PatternType, ProtectionPatch, ReadingOrder, StylePatch, UnderlinePatch, VertAlign,
+    VerticalAlign,
 };
 
 use crate::errors::sdk_err_to_api;
 use crate::ooxml_header;
-use crate::{ApiError, ApiErrorCode, Result};
+use crate::{ApiError, ApiErrorCode, Result, Workbook};
 
 pub(crate) fn ensure_styles_part(
     doc: &mut xlcore_io::SpreadsheetDocument,
@@ -147,41 +148,89 @@ pub(crate) fn resolve_style_index(
         .and_then(|cf| cf.cell_format.get(base).cloned())
         .unwrap_or_default();
 
-    let mut new_xf = base_xf;
-    new_xf.format_id = Some(0);
+    let mut new_xf = if let Some(name) = patch.named_style.as_deref() {
+        let master_id = find_named_style_master(sheet, name).ok_or_else(|| {
+            ApiError::new(
+                ApiErrorCode::UnsupportedStyle,
+                format!("named style not found: {name}"),
+            )
+        })?;
+        let mut xf = sheet
+            .cell_style_formats
+            .as_ref()
+            .and_then(|cf| cf.cell_format.get(master_id as usize).cloned())
+            .unwrap_or_default();
+        xf.format_id = Some(master_id);
+        xf.apply_number_format = Some(BooleanValue::from_bool(true));
+        xf.apply_font = Some(BooleanValue::from_bool(true));
+        xf.apply_fill = Some(BooleanValue::from_bool(true));
+        xf.apply_border = Some(BooleanValue::from_bool(true));
+        if xf.alignment.is_some() {
+            xf.apply_alignment = Some(BooleanValue::from_bool(true));
+        }
+        if xf.protection.is_some() {
+            xf.apply_protection = Some(BooleanValue::from_bool(true));
+        }
+        xf
+    } else {
+        let mut xf = base_xf;
+        if xf.format_id.is_none() {
+            xf.format_id = Some(0);
+        }
+        xf
+    };
 
+    apply_patch_to_xf(sheet, &mut new_xf, patch)?;
+
+    Ok(intern_cell_format(sheet, new_xf))
+}
+
+fn apply_patch_to_xf(
+    sheet: &mut x::Stylesheet,
+    xf: &mut x::CellFormat,
+    patch: &StylePatch,
+) -> Result<()> {
     if let Some(font_patch) = patch.font.as_ref() {
-        let current = new_xf.font_id.unwrap_or(0) as usize;
+        let current = xf.font_id.unwrap_or(0) as usize;
         let new_font = build_font(sheet, current, font_patch)?;
-        new_xf.font_id = Some(intern_font(sheet, new_font));
-        new_xf.apply_font = Some(BooleanValue::from_bool(true));
+        xf.font_id = Some(intern_font(sheet, new_font));
+        xf.apply_font = Some(BooleanValue::from_bool(true));
     }
     if let Some(fill_patch) = patch.fill.as_ref() {
         let new_fill = build_fill(fill_patch)?;
-        new_xf.fill_id = Some(intern_fill(sheet, new_fill));
-        new_xf.apply_fill = Some(BooleanValue::from_bool(true));
+        xf.fill_id = Some(intern_fill(sheet, new_fill));
+        xf.apply_fill = Some(BooleanValue::from_bool(true));
     }
     if let Some(border_patch) = patch.border.as_ref() {
-        let current = new_xf.border_id.unwrap_or(0) as usize;
+        let current = xf.border_id.unwrap_or(0) as usize;
         let new_border = build_border(sheet, current, border_patch)?;
-        new_xf.border_id = Some(intern_border(sheet, new_border));
-        new_xf.apply_border = Some(BooleanValue::from_bool(true));
+        xf.border_id = Some(intern_border(sheet, new_border));
+        xf.apply_border = Some(BooleanValue::from_bool(true));
     }
     if let Some(num_fmt) = patch.number_format.as_deref() {
         let new_num_fmt_id = intern_num_fmt(sheet, num_fmt);
-        new_xf.number_format_id = Some(new_num_fmt_id);
-        new_xf.apply_number_format = Some(BooleanValue::from_bool(true));
+        xf.number_format_id = Some(new_num_fmt_id);
+        xf.apply_number_format = Some(BooleanValue::from_bool(true));
     }
     if let Some(align_patch) = patch.alignment.as_ref() {
-        apply_alignment(&mut new_xf, align_patch);
-        new_xf.apply_alignment = Some(BooleanValue::from_bool(true));
+        apply_alignment(xf, align_patch);
+        xf.apply_alignment = Some(BooleanValue::from_bool(true));
     }
     if let Some(prot_patch) = patch.protection.as_ref() {
-        apply_protection(&mut new_xf.protection, prot_patch);
-        new_xf.apply_protection = Some(BooleanValue::from_bool(true));
+        apply_protection(&mut xf.protection, prot_patch);
+        xf.apply_protection = Some(BooleanValue::from_bool(true));
     }
+    Ok(())
+}
 
-    Ok(intern_cell_format(sheet, new_xf))
+fn find_named_style_master(sheet: &x::Stylesheet, name: &str) -> Option<u32> {
+    sheet.cell_styles.as_ref().and_then(|styles| {
+        styles
+            .cell_style
+            .iter()
+            .find(|cs| cs.name.as_deref() == Some(name))
+            .map(|cs| cs.format_id)
+    })
 }
 
 pub(crate) fn resolve_num_fmt_id(
@@ -272,6 +321,29 @@ fn ensure_default_collections(sheet: &mut x::Stylesheet) {
                 fill_id: Some(0),
                 border_id: Some(0),
                 format_id: Some(0),
+                ..Default::default()
+            }],
+        });
+    }
+    if sheet.cell_style_formats.is_none() {
+        sheet.cell_style_formats = Some(x::CellStyleFormats {
+            count: Some(1),
+            cell_format: vec![x::CellFormat {
+                number_format_id: Some(0),
+                font_id: Some(0),
+                fill_id: Some(0),
+                border_id: Some(0),
+                ..Default::default()
+            }],
+        });
+    }
+    if sheet.cell_styles.is_none() {
+        sheet.cell_styles = Some(x::CellStyles {
+            count: Some(1),
+            cell_style: vec![x::CellStyle {
+                name: Some("Normal".to_string()),
+                format_id: 0,
+                builtin_id: Some(0),
                 ..Default::default()
             }],
         });
@@ -1018,4 +1090,125 @@ fn alignment_equal(a: &Option<x::Alignment>, b: &Option<x::Alignment>) -> bool {
         }
         _ => false,
     }
+}
+
+impl Workbook {
+    pub fn named_styles(&mut self) -> Result<Vec<NamedStyleInfo>> {
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let Some(part) = wb_part.workbook_styles_part(&mut self.doc) else {
+            return Ok(Vec::new());
+        };
+        let sheet = part.root_element(&mut self.doc).map_err(sdk_err_to_api)?;
+        Ok(sheet
+            .cell_styles
+            .as_ref()
+            .map(|styles| {
+                styles
+                    .cell_style
+                    .iter()
+                    .filter_map(named_style_info)
+                    .collect()
+            })
+            .unwrap_or_default())
+    }
+
+    pub fn set_named_style(&mut self, patch: NamedStylePatch) -> Result<NamedStyleInfo> {
+        if patch.name.trim().is_empty() {
+            return Err(ApiError::new(
+                ApiErrorCode::UnsupportedStyle,
+                "named style name is empty",
+            ));
+        }
+        let part = ensure_styles_part(&mut self.doc)?;
+        let sheet = part.root_element_mut(&mut self.doc).map_err(sdk_err_to_api)?;
+        ensure_default_collections(sheet);
+
+        let existing_master =
+            find_named_style_master(sheet, &patch.name).filter(|id| *id != 0);
+        let mut master = sheet
+            .cell_style_formats
+            .as_ref()
+            .and_then(|cf| cf.cell_format.first().cloned())
+            .unwrap_or_default();
+        master.format_id = None;
+        apply_patch_to_xf(sheet, &mut master, &patch.style)?;
+
+        let xfs = sheet
+            .cell_style_formats
+            .as_mut()
+            .expect("cellStyleXfs ensured");
+        let master_id = match existing_master {
+            Some(id) => {
+                xfs.cell_format[id as usize] = master;
+                id
+            }
+            None => {
+                xfs.cell_format.push(master);
+                let id = xfs.cell_format.len() - 1;
+                xfs.count = Some(xfs.cell_format.len() as u32);
+                id as u32
+            }
+        };
+
+        let styles = sheet.cell_styles.as_mut().expect("cellStyles ensured");
+        let builtin = patch.builtin_id;
+        if let Some(cs) = styles
+            .cell_style
+            .iter_mut()
+            .find(|cs| cs.name.as_deref() == Some(patch.name.as_str()))
+        {
+            cs.format_id = master_id;
+            cs.builtin_id = builtin;
+        } else {
+            styles.cell_style.push(x::CellStyle {
+                name: Some(patch.name.clone()),
+                format_id: master_id,
+                builtin_id: builtin,
+                ..Default::default()
+            });
+            styles.count = Some(styles.cell_style.len() as u32);
+        }
+        Ok(NamedStyleInfo {
+            name: patch.name,
+            builtin_id: builtin,
+        })
+    }
+
+    pub fn remove_named_style(
+        &mut self,
+        name: impl AsRef<str>,
+    ) -> Result<Option<NamedStyleInfo>> {
+        let name = name.as_ref();
+        if name == "Normal" {
+            return Err(ApiError::new(
+                ApiErrorCode::UnsupportedStyle,
+                "cannot remove the built-in Normal style",
+            ));
+        }
+        let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
+        let Some(part) = wb_part.workbook_styles_part(&mut self.doc) else {
+            return Ok(None);
+        };
+        let sheet = part.root_element_mut(&mut self.doc).map_err(sdk_err_to_api)?;
+        let Some(styles) = sheet.cell_styles.as_mut() else {
+            return Ok(None);
+        };
+        let Some(pos) = styles
+            .cell_style
+            .iter()
+            .position(|cs| cs.name.as_deref() == Some(name))
+        else {
+            return Ok(None);
+        };
+        let removed = styles.cell_style.remove(pos);
+        styles.count = Some(styles.cell_style.len() as u32);
+        Ok(named_style_info(&removed))
+    }
+}
+
+fn named_style_info(cs: &x::CellStyle) -> Option<NamedStyleInfo> {
+    cs.name.as_ref().map(|name| NamedStyleInfo {
+        name: name.to_string(),
+        builtin_id: cs.builtin_id,
+    })
 }

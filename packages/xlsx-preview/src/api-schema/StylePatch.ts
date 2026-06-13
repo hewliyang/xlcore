@@ -12,4 +12,5 @@ export type StylePatch = {
   alignment?: AlignmentPatch;
   numberFormat?: string;
   protection?: ProtectionPatch;
+  namedStyle?: string;
 };

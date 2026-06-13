@@ -43,6 +43,7 @@ export class WorkbookHandle {
     layout(options: any): any;
     merges(sheet: string): any;
     moveSheet(name: string, to_index: number): any;
+    namedStyles(): any;
     constructor();
     static open(bytes: Uint8Array): WorkbookHandle;
     pageSetup(sheet: string): any;
@@ -62,6 +63,7 @@ export class WorkbookHandle {
     removeHyperlink(sheet: string, reference: string): any;
     removeImage(sheet: string, id: string): any;
     removeMerge(sheet: string, reference: string): any;
+    removeNamedStyle(name: string): any;
     removePageSetup(sheet: string): any;
     removePartXml(name: string): any;
     removePivot(sheet: string, id: string): any;
@@ -91,6 +93,7 @@ export class WorkbookHandle {
     setFreeze(sheet: string, frozen_rows: number, frozen_columns: number): any;
     setHyperlink(sheet: string, reference: string, patch: any): any;
     setImage(sheet: string, patch: any): any;
+    setNamedStyle(patch: any): any;
     setPageSetup(sheet: string, patch: any): any;
     setPartXml(name: string, xml: string): void;
     setPivot(sheet: string, patch: any): any;
@@ -180,6 +183,7 @@ export interface InitOutput {
     readonly workbookhandle_layout: (a: number, b: number, c: number) => void;
     readonly workbookhandle_merges: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_moveSheet: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly workbookhandle_namedStyles: (a: number, b: number) => void;
     readonly workbookhandle_new: (a: number) => void;
     readonly workbookhandle_open: (a: number, b: number, c: number) => void;
     readonly workbookhandle_pageSetup: (a: number, b: number, c: number, d: number) => void;
@@ -199,6 +203,7 @@ export interface InitOutput {
     readonly workbookhandle_removeHyperlink: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_removeImage: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_removeMerge: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+    readonly workbookhandle_removeNamedStyle: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removePageSetup: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removePartXml: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_removePivot: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
@@ -228,6 +233,7 @@ export interface InitOutput {
     readonly workbookhandle_setFreeze: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setHyperlink: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly workbookhandle_setImage: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly workbookhandle_setNamedStyle: (a: number, b: number, c: number) => void;
     readonly workbookhandle_setPageSetup: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_setPartXml: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_setPivot: (a: number, b: number, c: number, d: number, e: number) => void;

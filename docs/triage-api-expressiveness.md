@@ -150,6 +150,14 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 - **Styles P1**: cell protection, pattern + gradient fills, font
   vertAlign/family/scheme, diagonal borders, alignment
   shrinkToFit/justifyLastLine/readingOrder.
+- **Named cell styles** (workbook-scoped `wb.namedStyles`): define
+  (`NamedStylePatch`: name + `StylePatch` → a `cellStyleXfs` master xf + a
+  `cellStyles` entry, optional `builtinId`) and apply (`StylePatch.namedStyle`
+  sets the cellXf `@xfId` to the named master + copies its format so the cell is
+  renderer-visible and can still layer direct formatting on top). `setNamedStyle`
+  is an in-place upsert; `Normal` is protected. CT_CellStyle outline_level/hidden/
+  custom_builtin/extLst excluded; the master xf maps via `StylePatch` (same path
+  as cellXfs). Renderer resolves named styles through `@xfId`.
 - **Worksheet P1**: row/col outline grouping, sheet properties (tab color, zoom,
   showZeros, rightToLeft, default row height/col width), print area/titles +
   manual page breaks, `appendRows` bulk idiom.
@@ -165,9 +173,8 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 remaining 3D extras (floor/sideWall/backWall thickness/pictureOptions,
 per-series 3D invertIfNegative/marker), chartEx follow-ups (in-place
 `update_chart_ex`, per-point `cx:dataPt` fills, `cx:valueColors` authoring,
-data labels, region-map geo cache, axis/title styling), named
-styles / `cellStyles` authoring, remaining `c:dPt` fields (per-point
-invertIfNegative/marker, gradient/pattern fills).
+data labels, region-map geo cache, axis/title styling), remaining `c:dPt`
+fields (per-point invertIfNegative/marker, gradient/pattern fills).
 
 ### Follow-up
 

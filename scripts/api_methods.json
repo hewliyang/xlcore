@@ -845,6 +845,42 @@
     "ret": "json"
   },
   {
+    "name": "named_styles",
+    "jsName": "namedStyles",
+    "source": "table",
+    "kind": "method",
+    "args": [],
+    "ret": "json"
+  },
+  {
+    "name": "set_named_style",
+    "jsName": "setNamedStyle",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::NamedStylePatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_named_style",
+    "jsName": "removeNamedStyle",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "name",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
     "name": "tables",
     "jsName": "tables",
     "source": "table",

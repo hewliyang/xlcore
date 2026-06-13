@@ -271,6 +271,7 @@ fn set_style_applies_font_fill_border_align_and_numfmt() {
         }),
         number_format: Some("#,##0.00".to_string()),
         protection: None,
+        named_style: None,
     };
     workbook.set_style("Sheet1!A1:B1", patch).unwrap();
     let a1 = workbook.get_cell("Sheet1!A1").unwrap();

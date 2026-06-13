@@ -8,6 +8,7 @@ mod data_validation;
 mod defined_names;
 mod hyperlinks;
 mod images;
+mod named_styles;
 mod page_setup;
 mod pivots;
 mod properties;

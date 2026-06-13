@@ -45,6 +45,7 @@ export const workbookhandle_insertRows: (a: number, b: number, c: number, d: num
 export const workbookhandle_layout: (a: number, b: number, c: number) => void;
 export const workbookhandle_merges: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_moveSheet: (a: number, b: number, c: number, d: number, e: number) => void;
+export const workbookhandle_namedStyles: (a: number, b: number) => void;
 export const workbookhandle_new: (a: number) => void;
 export const workbookhandle_open: (a: number, b: number, c: number) => void;
 export const workbookhandle_pageSetup: (a: number, b: number, c: number, d: number) => void;
@@ -64,6 +65,7 @@ export const workbookhandle_removeDefinedName: (a: number, b: number, c: number,
 export const workbookhandle_removeHyperlink: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removeImage: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removeMerge: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+export const workbookhandle_removeNamedStyle: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removePageSetup: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removePartXml: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removePivot: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
@@ -93,6 +95,7 @@ export const workbookhandle_setFormula: (a: number, b: number, c: number, d: num
 export const workbookhandle_setFreeze: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setHyperlink: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
 export const workbookhandle_setImage: (a: number, b: number, c: number, d: number, e: number) => void;
+export const workbookhandle_setNamedStyle: (a: number, b: number, c: number) => void;
 export const workbookhandle_setPageSetup: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setPartXml: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setPivot: (a: number, b: number, c: number, d: number, e: number) => void;

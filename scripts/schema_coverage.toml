@@ -260,3 +260,10 @@ sdk = "InlineString"
 dto = "RichText"
 ns = "x"
 aliases = { r = "runs" }
+
+# --- named cell styles -------------------------------------------------------
+[[pair]]
+sdk = "CellStyle"
+dto = "NamedStylePatch"
+ns = "x"
+derived = ["xfId"]

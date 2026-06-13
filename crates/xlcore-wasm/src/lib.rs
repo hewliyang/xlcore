@@ -346,6 +346,9 @@ api_methods! {
     { defined_names as "definedNames" () -> json }
     { set_defined_name as "setDefinedName" (de patch: xlcore_api::DefinedNamePatch) -> json }
     { remove_defined_name as "removeDefinedName" (s name, os scope) -> json }
+    { named_styles as "namedStyles" () -> json }
+    { set_named_style as "setNamedStyle" (de patch: xlcore_api::NamedStylePatch) -> json }
+    { remove_named_style as "removeNamedStyle" (s name) -> json }
     { tables (os sheet) -> json }
     { set_table as "setTable" (s sheet, de patch: xlcore_api::TablePatch) -> json }
     { remove_table as "removeTable" (s name) -> json }
