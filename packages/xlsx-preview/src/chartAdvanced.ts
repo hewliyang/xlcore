@@ -2,6 +2,7 @@ import type { Chart, ChartSeries } from "./types.js";
 import type { Rect } from "./chart.js";
 import { activeThemeColor } from "./color.js";
 import { drawTrendlines } from "./chartTrendline.js";
+import { drawErrorBars } from "./chartErrorBars.js";
 import {
   buildLabelText,
   drawAxisFrame,
@@ -266,6 +267,22 @@ export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, re
       ctx.rect(inner.x, inner.y, inner.w, inner.h);
       ctx.clip();
       drawTrendlines(
+        ctx,
+        s,
+        xs.slice(0, n),
+        ys.slice(0, n),
+        (x) => inner.x + ((x - xMin) / (xMax - xMin)) * inner.w,
+        (y) => inner.y + (1 - (y - yMin) / (yMax - yMin)) * inner.h,
+      );
+      ctx.restore();
+    }
+
+    if (s.errorBars) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(inner.x, inner.y, inner.w, inner.h);
+      ctx.clip();
+      drawErrorBars(
         ctx,
         s,
         xs.slice(0, n),

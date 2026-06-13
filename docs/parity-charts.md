@@ -30,6 +30,7 @@ charts — side with Excel desktop/spec where they disagree.
 | chartEx histogram/pareto/boxWhisker | ✅ | ❌ degenerate | xlsx-preview |
 | chartEx regionMap | ✅ choropleth | ❌ column fallback | xlsx-preview |
 | Series trendlines (`c:trendline`) | ✅ | ✅ | tie |
+| Series error bars (`c:errBars`) | ✅ | ✅ | tie |
 
 ## Chart-type coverage
 
@@ -69,7 +70,6 @@ charts — side with Excel desktop/spec where they disagree.
 
 - `ofPieChart` satellite split + secondary pie (`splitType`/`splitPos`/
   `secondPieSize`/`seriesLines`).
-- Series error bars (`c:errBars`).
 - Axis label rotation (`txPr bodyPr rot`).
 - Data table (`c:dTable`).
 - Plot-area / legend `spPr` fills + borders + fonts.

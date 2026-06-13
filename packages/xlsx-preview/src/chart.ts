@@ -1,6 +1,7 @@
 import type { Chart, ChartSeries } from "./types.js";
 import { drawAreaChart } from "./chartArea.js";
 import { drawTrendlines } from "./chartTrendline.js";
+import { drawErrorBars } from "./chartErrorBars.js";
 import {
   buildLabelText,
   buildStackedRows,
@@ -626,6 +627,24 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     ctx.restore();
   }
 
+  if (!horizontal && series.some((s) => s.errorBars)) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(innerRect.x, innerRect.y, innerRect.w, innerRect.h);
+    ctx.clip();
+    const yPix = (v: number) => innerRect.y + (1 - (v - minV) / (maxV - minV)) * innerRect.h;
+    for (let si = 0; si < series.length; si++) {
+      const s = series[si]!;
+      if (!s.errorBars) continue;
+      const xsIdx = Array.from({ length: categoryCount }, (_, i) => i);
+      const ys = Array.from({ length: categoryCount }, (_, i) => s.values[i] ?? 0);
+      const xCenter = (i: number) =>
+        innerRect.x + i * groupGap + slot.firstBarLeftOffset + si * slot.barShift + barSize / 2;
+      drawErrorBars(ctx, s, xsIdx, ys, xCenter, yPix);
+    }
+    ctx.restore();
+  }
+
   if (zMetrics.straddlesZero) {
     paintZeroBaseline(ctx, innerRect, minV, maxV);
   } else {
@@ -774,6 +793,11 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     if ((s.trendlines?.length ?? 0) > 0) {
       const xsIdx = Array.from({ length: categoryCount }, (_, i) => i);
       drawTrendlines(ctx, s, xsIdx, data, (x) => inner.x + x * xStep, yFor);
+    }
+
+    if (s.errorBars) {
+      const xsIdx = Array.from({ length: categoryCount }, (_, i) => i);
+      drawErrorBars(ctx, s, xsIdx, data, (x) => inner.x + x * xStep, yFor);
     }
   }
   ctx.restore();

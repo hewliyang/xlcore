@@ -266,6 +266,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 for (offset, ser) in bc.bar_chart_series.iter().enumerate() {
                     if let Some(row) = series.get_mut(series_before + offset) {
                         row.trendlines = extract_trendlines(&ser.trendline, theme);
+                        row.error_bars = extract_error_bars(ser.error_bars.as_deref(), theme);
                     }
                 }
                 group_types.push(kind);
@@ -295,6 +296,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                     if let Some(row) = series.get_mut(series_before + offset) {
                         row.marker_symbol = sym;
                         row.trendlines = extract_trendlines(&ser.trendline, theme);
+                        row.error_bars = extract_error_bars(ser.error_bars.as_deref(), theme);
                     }
                 }
                 group_types.push("line");
@@ -312,7 +314,13 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 }
                 let ag = axis_group_for(&ac.axis_id, &secondary_ax_ids);
                 let is_primary = !matches!(ag.as_deref(), Some("secondary"));
+                let series_before = series.len();
                 extract_chartlike!(&ac.area_chart_series, "area", &ac.axis_id, is_primary);
+                for (offset, ser) in ac.area_chart_series.iter().enumerate() {
+                    if let Some(row) = series.get_mut(series_before + offset) {
+                        row.error_bars = extract_error_bars(ser.error_bars.first(), theme);
+                    }
+                }
                 group_types.push("area");
             }
             c::PlotAreaChoice::PieChart(pc) => {
@@ -364,6 +372,17 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                         .and_then(|m| m.symbol.as_ref())
                         .map(|s| marker_symbol_str(&s.val));
                     row.trendlines = extract_trendlines(&ser.trendline, theme);
+                    let eb = ser
+                        .error_bars
+                        .iter()
+                        .find(|e| {
+                            e.error_direction
+                                .as_ref()
+                                .map(|d| matches!(d.val, c::ErrorBarDirectionValues::Y))
+                                .unwrap_or(true)
+                        })
+                        .or_else(|| ser.error_bars.first());
+                    row.error_bars = extract_error_bars(eb, theme);
                     series.push(row);
                     if categories.is_empty() {
                         let (cs, r, fmt) = x_axis_values(ser.x_values.as_deref());

@@ -333,6 +333,7 @@ pub(crate) fn common_series(
         line_width_emu: lw,
         line_dash: ld,
         trendlines: Vec::new(),
+        error_bars: None,
     }
 }
 
@@ -359,6 +360,94 @@ pub(crate) fn extract_trendlines(
             }
         })
         .collect()
+}
+
+fn num_data_source_values(
+    nr: Option<&c::NumberReference>,
+    lit: Option<&c::NumberLiteral>,
+) -> Vec<f64> {
+    if let Some(nr) = nr {
+        let vals = nr.numbering_cache.as_ref().map(|nc| {
+            let mut indexed: Vec<(u32, f64)> = nc
+                .numeric_point
+                .iter()
+                .filter_map(|p| p.numeric_value.as_str().parse::<f64>().ok().map(|v| (p.index, v)))
+                .collect();
+            indexed.sort_by_key(|(i, _)| *i);
+            indexed.into_iter().map(|(_, v)| v).collect::<Vec<f64>>()
+        });
+        return vals.unwrap_or_default();
+    }
+    if let Some(lit) = lit {
+        let mut indexed: Vec<(u32, f64)> = lit
+            .numeric_point
+            .iter()
+            .filter_map(|p| p.numeric_value.as_str().parse::<f64>().ok().map(|v| (p.index, v)))
+            .collect();
+        indexed.sort_by_key(|(i, _)| *i);
+        return indexed.into_iter().map(|(_, v)| v).collect();
+    }
+    Vec::new()
+}
+
+pub(crate) fn extract_error_bars(
+    eb: Option<&c::ErrorBars>,
+    theme: Option<&Theme>,
+) -> Option<ChartErrorBars> {
+    let eb = eb?;
+    let sp = eb.chart_shape_properties.as_deref();
+    let (lw, ld) = extract_line_style(sp);
+    let color = sp.and_then(|s| line_color_via_debug(Some(s), theme));
+    let plus_values = eb
+        .plus
+        .as_deref()
+        .and_then(|p| p.plus_choice.as_ref())
+        .map(|c| match c {
+            c::PlusChoice::NumberReference(nr) => num_data_source_values(Some(nr), None),
+            c::PlusChoice::NumberLiteral(lit) => num_data_source_values(None, Some(lit)),
+        })
+        .unwrap_or_default();
+    let minus_values = eb
+        .minus
+        .as_deref()
+        .and_then(|m| m.minus_choice.as_ref())
+        .map(|c| match c {
+            c::MinusChoice::NumberReference(nr) => num_data_source_values(Some(nr), None),
+            c::MinusChoice::NumberLiteral(lit) => num_data_source_values(None, Some(lit)),
+        })
+        .unwrap_or_default();
+    Some(ChartErrorBars {
+        err_dir: eb
+            .error_direction
+            .as_ref()
+            .map(|d| match d.val {
+                c::ErrorBarDirectionValues::X => "x",
+                c::ErrorBarDirectionValues::Y => "y",
+            })
+            .unwrap_or("y")
+            .to_string(),
+        err_bar_type: match eb.error_bar_type.val {
+            c::ErrorBarValues::Both => "both",
+            c::ErrorBarValues::Minus => "minus",
+            c::ErrorBarValues::Plus => "plus",
+        }
+        .to_string(),
+        err_val_type: match eb.error_bar_value_type.val {
+            c::ErrorValues::Custom => "cust",
+            c::ErrorValues::FixedValue => "fixedval",
+            c::ErrorValues::Percentage => "percentage",
+            c::ErrorValues::StandardDeviation => "stddev",
+            c::ErrorValues::StandardError => "stderr",
+        }
+        .to_string(),
+        value: eb.error_bar_value.as_ref().map(|v| v.val),
+        no_end_cap: eb.no_end_cap.as_ref().and_then(|n| n.val.map(bool::from)),
+        plus_values,
+        minus_values,
+        color,
+        line_width_emu: lw,
+        line_dash: ld,
+    })
 }
 
 pub(crate) fn common_series_scatter(
@@ -399,6 +488,7 @@ pub(crate) fn common_series_scatter(
         line_width_emu: lw,
         line_dash: ld,
         trendlines: Vec::new(),
+        error_bars: None,
     }
 }
 
