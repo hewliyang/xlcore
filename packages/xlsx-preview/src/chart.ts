@@ -36,6 +36,7 @@ import {
   drawBubbleChart,
   drawChartEx,
   drawComboChart,
+  drawOfPieChart,
   drawPieChart,
   drawRadarChart,
   drawStockChart,
@@ -83,7 +84,8 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
 
   const cats = chart.categories ?? [];
   const legendEntries: ChartSeries[] =
-    (chart.type === "pie" || chart.type === "doughnut") && chart.series.length > 0
+    (chart.type === "pie" || chart.type === "doughnut" || chart.type === "ofpie") &&
+    chart.series.length > 0
       ? (() => {
           const s = chart.series[0]!;
           const pointColors = s.pointColors ?? [];
@@ -259,6 +261,9 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       case "pie":
       case "doughnut":
         drawPieChart(ctx, chart, plotRect);
+        break;
+      case "ofpie":
+        drawOfPieChart(ctx, chart, plotRect);
         break;
       case "scatter":
         drawScatterChart(ctx, chart, plotRect);

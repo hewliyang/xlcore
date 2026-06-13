@@ -231,6 +231,11 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
     let mut bar_overlap: Option<i8> = None;
     let mut hole_size: Option<u8> = None;
     let mut first_slice_angle: Option<u16> = None;
+    let mut of_pie_type: Option<String> = None;
+    let mut split_type: Option<String> = None;
+    let mut split_pos: Option<f64> = None;
+    let mut second_pie_size: Option<u16> = None;
+    let mut series_lines = false;
 
     let mut stock_hi_low_lines = false;
     let mut stock_up_down_bars = false;
@@ -569,8 +574,27 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
             }
             c::PlotAreaChoice::OfPieChart(pc) => {
                 chart_data_labels = extract_data_labels(pc.data_labels.as_deref());
-                extract_chartlike!(&pc.pie_chart_series, "pie", &[] as &[c::AxisId], true);
-                group_types.push("pie");
+                of_pie_type = Some(
+                    match pc.of_pie_type.val {
+                        c::OfPieValues::Pie => "pie",
+                        c::OfPieValues::Bar => "bar",
+                    }
+                    .to_string(),
+                );
+                split_type = pc.split_type.as_ref().map(|s| {
+                    match s.val {
+                        c::SplitValues::Custom => "cust",
+                        c::SplitValues::Percent => "percent",
+                        c::SplitValues::Position => "pos",
+                        c::SplitValues::Value => "val",
+                    }
+                    .to_string()
+                });
+                split_pos = pc.split_position.as_ref().map(|s| s.val);
+                second_pie_size = pc.second_pie_size.as_ref().and_then(|s| s.val);
+                series_lines = !pc.series_lines.is_empty();
+                extract_chartlike!(&pc.pie_chart_series, "ofpie", &[] as &[c::AxisId], true);
+                group_types.push("ofpie");
                 break;
             }
             c::PlotAreaChoice::BubbleChart(bc) => {
@@ -719,6 +743,11 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         bar_overlap,
         hole_size,
         first_slice_angle,
+        of_pie_type,
+        split_type,
+        split_pos,
+        second_pie_size,
+        series_lines,
         x_axis_title,
         y_axis_title,
         y_axis_title_secondary,

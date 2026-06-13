@@ -31,6 +31,11 @@ export type Chart = {
   barOverlap?: number;
   holeSize?: number;
   firstSliceAngle?: number;
+  ofPieType?: string;
+  splitType?: string;
+  splitPos?: number;
+  secondPieSize?: number;
+  seriesLines: boolean;
   xAxisTitle?: string;
   yAxisTitle?: string;
   yAxisTitleSecondary?: string;

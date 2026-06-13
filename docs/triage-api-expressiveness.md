@@ -97,8 +97,8 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   rejected on multi-series) + `ChartPatch.splitType` (`ChartSplitType`,
   ST_SplitType transliterated — SDK omits the schema's `auto`)/splitPos/
   secondPieSize/seriesLines (`c:serLines` toggle) + reuse gapWidth; renderer
-  draws ofPie as a plain pie, ofPie-specific knobs round-trip-only (custSplit
-  excluded). Plot-area + legend styling (`ChartPatch/Update/Info.plotArea`:
+  draws the satellite split (main pie + "Other" slice + secondary pie/bar +
+  connector lines), custSplit excluded. Plot-area + legend styling (`ChartPatch/Update/Info.plotArea`:
   `ChartPlotArea` fill + border → `c:plotArea/c:spPr`; `.legend`: `ChartLegend`
   fill + border → `c:legend/c:spPr` + font `ChartTextStyle` →
   `c:legend/c:txPr/a:p/a:pPr/a:defRPr` size/bold/italic/color/typeface; reuses
@@ -191,8 +191,7 @@ fields (per-point bubble3D, blip/picture fills).
   yet — confirmed valid by opening authored files in real Excel. Teach the
   renderer to consume: trendlines, error bars, axis label rotation, data table,
   3D geometry (currently flattened to 2D) + view3D + floor/walls, surface
-  (currently a v0 stub), ofPie split/secondary pie (currently drawn as a plain
-  pie), plot-area/legend spPr fills + fonts, manual layout, per-point
+  (currently a v0 stub), plot-area/legend spPr fills + fonts, manual layout, per-point
   marker/gradient/pattern fills, and named-style xfId resolution edge cases. The
   read-side schema already models most of these; the gap is the draw path.
 - **TS forwarding-layer codegen** from `api_methods.json` — drift already caught

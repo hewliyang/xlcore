@@ -35,6 +35,7 @@ charts — side with Excel desktop/spec where they disagree.
 | Data table (`c:dTable`) | ❌ | ✅ grid below plot | xlsx-preview |
 | Per-point gradient / pattern fills (`c:dPt` `a:gradFill`/`a:pattFill`) | ✅ | 🟡 gradient→solid, pattern→gray | xlsx-preview |
 | Plot-area / legend `spPr` fills + borders + `txPr` font | ✅ | ✅ | tie |
+| ofPie satellite split (`pieOfPie`/`barOfPie`) | ✅ | ❌ plain pie | xlsx-preview |
 
 ## Chart-type coverage
 
@@ -49,7 +50,7 @@ charts — side with Excel desktop/spec where they disagree.
 | `c:` | `radarChart` | ✅ | `radarStyle` standard/marker/filled |
 | `c:` | `stockChart` | ✅ | HLC/OHLC; hi-low marks, up/down bars |
 | `c:` | `bar3D`/`line3D`/`area3D`/`pie3D` | 🟡 | drawn flat via 2D painters; perspective/depth dropped |
-| `c:` | `ofPieChart` | 🟡 | drawn as plain pie; no satellite split |
+| `c:` | `ofPieChart` | ✅ | pieOfPie/barOfPie satellite split; `splitType`/`splitPos`/`secondPieSize`/`serLines` |
 | `c:` | `surfaceChart`/`surface3DChart` | ❌ | not wired |
 | `cx:` | `waterfall` | ✅ | `drawChartEx` waterfall painter |
 | `cx:` | `funnel`/`treemap`/`sunburst` | ✅ | `chartEx.ts` painters |
@@ -72,8 +73,6 @@ charts — side with Excel desktop/spec where they disagree.
 
 ### Other write-ahead-of-draw gaps
 
-- `ofPieChart` satellite split + secondary pie (`splitType`/`splitPos`/
-  `secondPieSize`/`seriesLines`).
 - Manual layout (`c:layout/c:manualLayout`).
 
 ### Open rendering nits
