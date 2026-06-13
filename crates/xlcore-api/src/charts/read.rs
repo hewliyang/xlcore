@@ -1189,16 +1189,154 @@ pub(super) fn read_data_points(dps: &[c::DataPoint]) -> Option<Vec<ChartDataPoin
     for dp in dps {
         let sp = dp.chart_shape_properties.as_deref();
         let fill = read_shape_fill(sp);
+        let gradient_fill = read_gradient_fill(sp);
+        let pattern_fill = read_pattern_fill(sp);
+        let invert_if_negative = read_invert_if_negative(dp.invert_if_negative.as_ref());
+        let marker = read_marker(dp.marker.as_deref());
         let explosion = dp.explosion.as_ref().map(|e| e.val);
-        if fill.is_some() || explosion.is_some() {
+        if fill.is_some()
+            || gradient_fill.is_some()
+            || pattern_fill.is_some()
+            || invert_if_negative.is_some()
+            || marker.is_some()
+            || explosion.is_some()
+        {
             out.push(ChartDataPoint {
                 index: dp.index.val,
                 fill,
+                gradient_fill,
+                pattern_fill,
+                invert_if_negative,
+                marker,
                 explosion,
             });
         }
     }
     (!out.is_empty()).then_some(out)
+}
+
+pub(super) fn read_srgb(rgb: &a::RgbColorModelHex) -> String {
+    rgb.val.to_string().to_uppercase()
+}
+
+pub(super) fn read_gradient_fill(
+    sp: Option<&c::ChartShapeProperties>,
+) -> Option<ChartGradientFill> {
+    let c::ChartShapePropertiesChoice2::GradientFill(g) =
+        sp?.chart_shape_properties_choice2.as_ref()?
+    else {
+        return None;
+    };
+    let stops = g
+        .gradient_stop_list
+        .as_ref()
+        .map(|l| {
+            l.gradient_stop
+                .iter()
+                .filter_map(|s| match s.gradient_stop_choice.as_ref()? {
+                    a::GradientStopChoice::RgbColorModelHex(rgb) => Some(ChartGradientStop {
+                        position: s.position.as_drawingml_percent() as f64 / 1000.0,
+                        color: read_srgb(rgb),
+                    }),
+                    _ => None,
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let angle = match g.gradient_fill_choice.as_ref() {
+        Some(a::GradientFillChoice::LinearGradientFill(lin)) => {
+            lin.angle.map(|a| a as f64 / 60000.0)
+        }
+        _ => None,
+    };
+    Some(ChartGradientFill { stops, angle })
+}
+
+pub(super) fn read_pattern_fill(sp: Option<&c::ChartShapeProperties>) -> Option<ChartPatternFill> {
+    let c::ChartShapePropertiesChoice2::PatternFill(p) =
+        sp?.chart_shape_properties_choice2.as_ref()?
+    else {
+        return None;
+    };
+    let foreground =
+        p.foreground_color
+            .as_ref()
+            .and_then(|fg| match fg.foreground_color_choice.as_ref()? {
+                a::ForegroundColorChoice::RgbColorModelHex(rgb) => Some(read_srgb(rgb)),
+                _ => None,
+            });
+    let background =
+        p.background_color
+            .as_ref()
+            .and_then(|bg| match bg.background_color_choice.as_ref()? {
+                a::BackgroundColorChoice::RgbColorModelHex(rgb) => Some(read_srgb(rgb)),
+                _ => None,
+            });
+    Some(ChartPatternFill {
+        preset: pattern_preset_from(p.preset.unwrap_or_default()),
+        foreground,
+        background,
+    })
+}
+
+pub(super) fn pattern_preset_from(p: a::PresetPatternValues) -> ChartPatternPreset {
+    use a::PresetPatternValues as P;
+    match p {
+        P::Percent5 => ChartPatternPreset::Percent5,
+        P::Percent10 => ChartPatternPreset::Percent10,
+        P::Percent20 => ChartPatternPreset::Percent20,
+        P::Percent25 => ChartPatternPreset::Percent25,
+        P::Percent30 => ChartPatternPreset::Percent30,
+        P::Percent40 => ChartPatternPreset::Percent40,
+        P::Percent50 => ChartPatternPreset::Percent50,
+        P::Percent60 => ChartPatternPreset::Percent60,
+        P::Percent70 => ChartPatternPreset::Percent70,
+        P::Percent75 => ChartPatternPreset::Percent75,
+        P::Percent80 => ChartPatternPreset::Percent80,
+        P::Percent90 => ChartPatternPreset::Percent90,
+        P::Horizontal => ChartPatternPreset::Horizontal,
+        P::Vertical => ChartPatternPreset::Vertical,
+        P::LightHorizontal => ChartPatternPreset::LightHorizontal,
+        P::LightVertical => ChartPatternPreset::LightVertical,
+        P::DarkHorizontal => ChartPatternPreset::DarkHorizontal,
+        P::DarkVertical => ChartPatternPreset::DarkVertical,
+        P::NarrowHorizontal => ChartPatternPreset::NarrowHorizontal,
+        P::NarrowVertical => ChartPatternPreset::NarrowVertical,
+        P::DashedHorizontal => ChartPatternPreset::DashedHorizontal,
+        P::DashedVertical => ChartPatternPreset::DashedVertical,
+        P::Cross => ChartPatternPreset::Cross,
+        P::DownwardDiagonal => ChartPatternPreset::DownwardDiagonal,
+        P::UpwardDiagonal => ChartPatternPreset::UpwardDiagonal,
+        P::LightDownwardDiagonal => ChartPatternPreset::LightDownwardDiagonal,
+        P::LightUpwardDiagonal => ChartPatternPreset::LightUpwardDiagonal,
+        P::DarkDownwardDiagonal => ChartPatternPreset::DarkDownwardDiagonal,
+        P::DarkUpwardDiagonal => ChartPatternPreset::DarkUpwardDiagonal,
+        P::WideDownwardDiagonal => ChartPatternPreset::WideDownwardDiagonal,
+        P::WideUpwardDiagonal => ChartPatternPreset::WideUpwardDiagonal,
+        P::DashedDownwardDiagonal => ChartPatternPreset::DashedDownwardDiagonal,
+        P::DashedUpwardDiagonal => ChartPatternPreset::DashedUpwardDiagonal,
+        P::DiagonalCross => ChartPatternPreset::DiagonalCross,
+        P::SmallCheck => ChartPatternPreset::SmallCheck,
+        P::LargeCheck => ChartPatternPreset::LargeCheck,
+        P::SmallGrid => ChartPatternPreset::SmallGrid,
+        P::LargeGrid => ChartPatternPreset::LargeGrid,
+        P::DotGrid => ChartPatternPreset::DotGrid,
+        P::SmallConfetti => ChartPatternPreset::SmallConfetti,
+        P::LargeConfetti => ChartPatternPreset::LargeConfetti,
+        P::HorizontalBrick => ChartPatternPreset::HorizontalBrick,
+        P::DiagonalBrick => ChartPatternPreset::DiagonalBrick,
+        P::SolidDiamond => ChartPatternPreset::SolidDiamond,
+        P::OpenDiamond => ChartPatternPreset::OpenDiamond,
+        P::DottedDiamond => ChartPatternPreset::DottedDiamond,
+        P::Plaid => ChartPatternPreset::Plaid,
+        P::Sphere => ChartPatternPreset::Sphere,
+        P::Weave => ChartPatternPreset::Weave,
+        P::Divot => ChartPatternPreset::Divot,
+        P::Shingle => ChartPatternPreset::Shingle,
+        P::Wave => ChartPatternPreset::Wave,
+        P::Trellis => ChartPatternPreset::Trellis,
+        P::ZigZag => ChartPatternPreset::ZigZag,
+    }
 }
 
 pub(super) fn read_shape_fill(sp: Option<&c::ChartShapeProperties>) -> Option<String> {

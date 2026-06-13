@@ -393,7 +393,7 @@ pub struct ChartLine {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
@@ -402,26 +402,228 @@ pub struct ChartLine {
 /// A single data point override (`c:dPt`), distilled from ooxmlsdk `DataPoint`.
 ///
 /// Per-point `fill` and `explosion` are modeled. The xlsx-preview renderer
-/// reads `fill` for bar/column/pie/doughnut series (e.g. the waterfall-via-noFill
-/// idiom) and `explosion` for pie/doughnut slice offset.
+/// reads solid `fill` for bar/column/pie/doughnut series (e.g. the
+/// waterfall-via-noFill idiom) and `explosion` for pie/doughnut slice offset.
+/// `invertIfNegative` (bar/bubble), per-point `marker` (line/scatter/radar) and
+/// the structured `gradientFill`/`patternFill` overrides round-trip for Excel
+/// but the renderer doesn't draw them.
 /// Intentionally not modeled (preserved on update, author via raw XML):
-/// `invertIfNegative`, per-point `marker`, `bubble3D`,
-/// non-solid `spPr` styling, `pictureOptions`, `extLst`.
+/// `bubble3D`, non-solid `spPr` effects, `pictureOptions`, `extLst`.
 ///
-/// schema-excluded: invertIfNegative, marker, bubble3D, pictureOptions
+/// schema-excluded: bubble3D, pictureOptions
 pub struct ChartDataPoint {
     /// `c:idx/@val`; 0-based data-point index within the series.
     pub index: u32,
     /// `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
-    /// `"none"` for an explicit no-fill (`a:noFill`).
+    /// `"none"` for an explicit no-fill (`a:noFill`). For gradient/pattern fills
+    /// use `gradientFill`/`patternFill` instead.
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fill: Option<String>,
+    /// `c:spPr/a:gradFill` gradient fill. Takes precedence over `fill`/
+    /// `patternFill`. Round-trip-only (renderer draws the series color).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gradient_fill: Option<ChartGradientFill>,
+    /// `c:spPr/a:pattFill` preset-pattern fill. Takes precedence over `fill`;
+    /// ignored when `gradientFill` is set. Round-trip-only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pattern_fill: Option<ChartPatternFill>,
+    /// `c:invertIfNegative/@val`; invert the fill for negative bar/bubble
+    /// values. Round-trip-only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub invert_if_negative: Option<bool>,
+    /// `c:marker`; per-point marker override for line/scatter/radar series.
+    /// Round-trip-only (renderer uses the series-level marker).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub marker: Option<ChartMarker>,
     /// `c:explosion/@val`; pie/doughnut slice offset as a percent of radius
     /// (0..=400). Renderer-visible for pie/doughnut charts.
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub explosion: Option<u32>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// A DrawingML gradient fill (`a:gradFill`) for a chart data point, distilled
+/// from ooxmlsdk `GradientFill`. Linear gradients only.
+///
+/// schema-excluded: flip, rotWithShape, tileRect, path
+pub struct ChartGradientFill {
+    /// `a:gsLst/a:gs` stops (in document order). At least two are expected.
+    #[serde(default)]
+    pub stops: Vec<ChartGradientStop>,
+    /// `a:lin/@ang` linear-gradient angle in degrees (clockwise). Defaults to 0
+    /// (left-to-right) when omitted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub angle: Option<f64>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// A single gradient stop (`a:gs`), distilled from ooxmlsdk `GradientStop`.
+pub struct ChartGradientStop {
+    /// `a:gs/@pos` as a percent (0..=100), emitted in 1000ths of a percent.
+    pub position: f64,
+    /// `a:srgbClr/@val`: 6-hex `RRGGBB` / 8-hex `AARRGGBB`.
+    pub color: String,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// A DrawingML preset-pattern fill (`a:pattFill`) for a chart data point,
+/// distilled from ooxmlsdk `PatternFill`.
+pub struct ChartPatternFill {
+    /// `a:pattFill/@prst`.
+    pub preset: ChartPatternPreset,
+    /// `a:fgClr/a:srgbClr/@val`: 6-hex `RRGGBB` / 8-hex `AARRGGBB`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub foreground: Option<String>,
+    /// `a:bgClr/a:srgbClr/@val`: 6-hex `RRGGBB` / 8-hex `AARRGGBB`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub background: Option<String>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+/// Preset fill pattern (`a:pattFill/@prst`, OOXML `ST_PresetPatternVal`),
+/// transliterated from ooxmlsdk `PresetPatternValues`.
+pub enum ChartPatternPreset {
+    #[default]
+    #[serde(rename = "pct5")]
+    Percent5,
+    #[serde(rename = "pct10")]
+    Percent10,
+    #[serde(rename = "pct20")]
+    Percent20,
+    #[serde(rename = "pct25")]
+    Percent25,
+    #[serde(rename = "pct30")]
+    Percent30,
+    #[serde(rename = "pct40")]
+    Percent40,
+    #[serde(rename = "pct50")]
+    Percent50,
+    #[serde(rename = "pct60")]
+    Percent60,
+    #[serde(rename = "pct70")]
+    Percent70,
+    #[serde(rename = "pct75")]
+    Percent75,
+    #[serde(rename = "pct80")]
+    Percent80,
+    #[serde(rename = "pct90")]
+    Percent90,
+    #[serde(rename = "horz")]
+    Horizontal,
+    #[serde(rename = "vert")]
+    Vertical,
+    #[serde(rename = "ltHorz")]
+    LightHorizontal,
+    #[serde(rename = "ltVert")]
+    LightVertical,
+    #[serde(rename = "dkHorz")]
+    DarkHorizontal,
+    #[serde(rename = "dkVert")]
+    DarkVertical,
+    #[serde(rename = "narHorz")]
+    NarrowHorizontal,
+    #[serde(rename = "narVert")]
+    NarrowVertical,
+    #[serde(rename = "dashHorz")]
+    DashedHorizontal,
+    #[serde(rename = "dashVert")]
+    DashedVertical,
+    #[serde(rename = "cross")]
+    Cross,
+    #[serde(rename = "dnDiag")]
+    DownwardDiagonal,
+    #[serde(rename = "upDiag")]
+    UpwardDiagonal,
+    #[serde(rename = "ltDnDiag")]
+    LightDownwardDiagonal,
+    #[serde(rename = "ltUpDiag")]
+    LightUpwardDiagonal,
+    #[serde(rename = "dkDnDiag")]
+    DarkDownwardDiagonal,
+    #[serde(rename = "dkUpDiag")]
+    DarkUpwardDiagonal,
+    #[serde(rename = "wdDnDiag")]
+    WideDownwardDiagonal,
+    #[serde(rename = "wdUpDiag")]
+    WideUpwardDiagonal,
+    #[serde(rename = "dashDnDiag")]
+    DashedDownwardDiagonal,
+    #[serde(rename = "dashUpDiag")]
+    DashedUpwardDiagonal,
+    #[serde(rename = "diagCross")]
+    DiagonalCross,
+    #[serde(rename = "smCheck")]
+    SmallCheck,
+    #[serde(rename = "lgCheck")]
+    LargeCheck,
+    #[serde(rename = "smGrid")]
+    SmallGrid,
+    #[serde(rename = "lgGrid")]
+    LargeGrid,
+    #[serde(rename = "dotGrid")]
+    DotGrid,
+    #[serde(rename = "smConfetti")]
+    SmallConfetti,
+    #[serde(rename = "lgConfetti")]
+    LargeConfetti,
+    #[serde(rename = "horzBrick")]
+    HorizontalBrick,
+    #[serde(rename = "diagBrick")]
+    DiagonalBrick,
+    #[serde(rename = "solidDmnd")]
+    SolidDiamond,
+    #[serde(rename = "openDmnd")]
+    OpenDiamond,
+    #[serde(rename = "dotDmnd")]
+    DottedDiamond,
+    #[serde(rename = "plaid")]
+    Plaid,
+    #[serde(rename = "sphere")]
+    Sphere,
+    #[serde(rename = "weave")]
+    Weave,
+    #[serde(rename = "divot")]
+    Divot,
+    #[serde(rename = "shingle")]
+    Shingle,
+    #[serde(rename = "wave")]
+    Wave,
+    #[serde(rename = "trellis")]
+    Trellis,
+    #[serde(rename = "zigZag")]
+    ZigZag,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

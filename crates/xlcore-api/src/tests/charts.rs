@@ -2342,12 +2342,12 @@ fn chart_data_point_fills_roundtrip_and_validation() {
         ChartDataPoint {
             index: 0,
             fill: Some("FF0000".to_string()),
-            explosion: None,
+            ..Default::default()
         },
         ChartDataPoint {
             index: 1,
             fill: Some("none".to_string()),
-            explosion: None,
+            ..Default::default()
         },
     ];
     let info = wb
@@ -2433,7 +2433,7 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                     data_points: Some(vec![ChartDataPoint {
                         index: 0,
                         fill: Some("nope".to_string()),
-                        explosion: None,
+                        ..Default::default()
                     }]),
                     ..Default::default()
                 }],
@@ -2488,8 +2488,8 @@ fn chart_data_point_explosion_roundtrip() {
 
     let points = vec![ChartDataPoint {
         index: 0,
-        fill: None,
         explosion: Some(25),
+        ..Default::default()
     }];
     let info = wb
         .set_chart(
@@ -2557,6 +2557,165 @@ fn chart_data_point_explosion_roundtrip() {
     assert_eq!(
         read[0].series[0].data_points.as_deref(),
         Some(points.as_slice())
+    );
+}
+
+#[test]
+fn chart_data_point_gradient_pattern_invert_marker_roundtrip_and_update() {
+    use xlcore_types::{
+        ChartDataPoint, ChartGradientFill, ChartGradientStop, ChartMarker, ChartPatternFill,
+        ChartPatternPreset, MarkerStyle,
+    };
+
+    let base = |points: Vec<ChartDataPoint>, kind: ChartKind, vref: &str| ChartPatch {
+        name: None,
+        kind,
+        title: None,
+        legend_position: None,
+        categories_ref: None,
+        series: vec![ChartSeriesPatch {
+            values_ref: vref.to_string(),
+            data_points: Some(points),
+            ..Default::default()
+        }],
+        style_xml: None,
+        color_style_xml: None,
+        anchor: AnchorSpec::default(),
+        category_axis_title: None,
+        value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
+        stacking: None,
+        gap_width: None,
+        overlap: None,
+        radar_style: None,
+        hole_size: None,
+        first_slice_angle: None,
+        hi_low_lines: None,
+        up_down_bars: None,
+        drop_lines: None,
+        disp_blanks_as: None,
+        vary_colors: None,
+        data_labels: None,
+        data_table: None,
+        view_3d: None,
+        bar_shape: None,
+        gap_depth: None,
+        floor: None,
+        side_wall: None,
+        back_wall: None,
+        wireframe: None,
+        split_type: None,
+        split_pos: None,
+        second_pie_size: None,
+        series_lines: None,
+        plot_area: None,
+        legend: None,
+        title_layout: None,
+    };
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", -5.0).unwrap();
+    wb.set_value("Sheet1!B4", 15.0).unwrap();
+
+    let points = vec![
+        ChartDataPoint {
+            index: 0,
+            gradient_fill: Some(ChartGradientFill {
+                stops: vec![
+                    ChartGradientStop {
+                        position: 0.0,
+                        color: "FF0000".to_string(),
+                    },
+                    ChartGradientStop {
+                        position: 100.0,
+                        color: "0000FF".to_string(),
+                    },
+                ],
+                angle: Some(90.0),
+            }),
+            invert_if_negative: Some(true),
+            ..Default::default()
+        },
+        ChartDataPoint {
+            index: 1,
+            pattern_fill: Some(ChartPatternFill {
+                preset: ChartPatternPreset::DiagonalCross,
+                foreground: Some("00FF00".to_string()),
+                background: Some("FFFFFF".to_string()),
+            }),
+            ..Default::default()
+        },
+    ];
+
+    let info = wb
+        .set_chart(
+            "Sheet1",
+            base(points.clone(), ChartKind::Column, "Sheet1!$B$2:$B$4"),
+        )
+        .unwrap();
+    assert_eq!(
+        info.series[0].data_points.as_deref(),
+        Some(points.as_slice())
+    );
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("a:gradFill"));
+    assert!(xml.contains("a:gs"));
+    assert!(xml.contains("a:lin"));
+    assert!(xml.contains("a:pattFill"));
+    assert!(xml.contains("prst=\"diagCross\""));
+    assert!(xml.contains("a:fgClr"));
+    assert!(xml.contains("a:bgClr"));
+    assert!(xml.contains("c:invertIfNegative"));
+
+    let mut wb = Workbook::open_bytes(bytes).unwrap();
+    let read = wb.charts(Some("Sheet1")).unwrap();
+    assert_eq!(
+        read[0].series[0].data_points.as_deref(),
+        Some(points.as_slice())
+    );
+
+    let marker_points = vec![ChartDataPoint {
+        index: 0,
+        marker: Some(ChartMarker {
+            style: Some(MarkerStyle::Diamond),
+            size: Some(10),
+        }),
+        ..Default::default()
+    }];
+    let chart_id = read[0].id.clone();
+    let updated = wb
+        .update_chart(
+            "Sheet1",
+            &chart_id,
+            ChartUpdate {
+                series: Some(vec![ChartSeriesPatch {
+                    values_ref: "Sheet1!$B$2:$B$4".to_string(),
+                    data_points: Some(marker_points.clone()),
+                    ..Default::default()
+                }]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        updated.series[0].data_points.as_deref(),
+        Some(marker_points.as_slice())
+    );
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("c:marker"));
+    assert!(xml.contains("diamond"));
+
+    let mut wb = Workbook::open_bytes(bytes).unwrap();
+    let read = wb.charts(Some("Sheet1")).unwrap();
+    assert_eq!(
+        read[0].series[0].data_points.as_deref(),
+        Some(marker_points.as_slice())
     );
 }
 

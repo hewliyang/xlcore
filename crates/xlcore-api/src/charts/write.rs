@@ -1764,29 +1764,173 @@ pub(super) fn build_data_points(points: &Option<Vec<ChartDataPoint>>) -> Vec<c::
         .iter()
         .map(|p| c::DataPoint {
             index: Box::new(c::Index { val: p.index }),
+            invert_if_negative: build_invert_if_negative(p.invert_if_negative),
+            marker: build_marker(p.marker.as_ref()),
             explosion: p.explosion.map(|val| c::Explosion { val: val.min(400) }),
-            chart_shape_properties: p.fill.as_deref().and_then(build_point_shape),
+            chart_shape_properties: build_point_shape(p),
             ..Default::default()
         })
         .collect()
 }
 
-pub(super) fn build_point_shape(fill: &str) -> Option<Box<c::ChartShapeProperties>> {
-    if fill.trim().eq_ignore_ascii_case("none") {
-        return Some(Box::new(c::ChartShapeProperties {
-            chart_shape_properties_choice2: Some(c::ChartShapePropertiesChoice2::NoFill(Box::new(
-                a::NoFill {
+pub(super) fn build_point_shape(p: &ChartDataPoint) -> Option<Box<c::ChartShapeProperties>> {
+    let choice = if let Some(g) = p.gradient_fill.as_ref() {
+        Some(c::ChartShapePropertiesChoice2::GradientFill(
+            build_gradient_fill(g),
+        ))
+    } else if let Some(pat) = p.pattern_fill.as_ref() {
+        Some(c::ChartShapePropertiesChoice2::PatternFill(
+            build_pattern_fill(pat),
+        ))
+    } else {
+        match p.fill.as_deref() {
+            Some(f) if f.trim().eq_ignore_ascii_case("none") => Some(
+                c::ChartShapePropertiesChoice2::NoFill(Box::new(a::NoFill::default())),
+            ),
+            Some(f) => normalize_chart_hex(f).map(|val| {
+                c::ChartShapePropertiesChoice2::SolidFill(Box::new(a::SolidFill {
+                    solid_fill_choice: Some(a::SolidFillChoice::RgbColorModelHex(Box::new(
+                        a::RgbColorModelHex {
+                            val,
+                            ..Default::default()
+                        },
+                    ))),
                     ..Default::default()
-                },
-            ))),
+                }))
+            }),
+            None => None,
+        }
+    };
+    choice.map(|c| {
+        Box::new(c::ChartShapeProperties {
+            chart_shape_properties_choice2: Some(c),
             ..Default::default()
-        }));
-    }
-    build_series_shape(Some(fill))
+        })
+    })
 }
 
-pub(super) fn build_series_shape(color: Option<&str>) -> Option<Box<c::ChartShapeProperties>> {
-    build_series_shape_with_line(color, None)
+pub(super) fn pattern_preset_to(p: ChartPatternPreset) -> a::PresetPatternValues {
+    use a::PresetPatternValues as P;
+    match p {
+        ChartPatternPreset::Percent5 => P::Percent5,
+        ChartPatternPreset::Percent10 => P::Percent10,
+        ChartPatternPreset::Percent20 => P::Percent20,
+        ChartPatternPreset::Percent25 => P::Percent25,
+        ChartPatternPreset::Percent30 => P::Percent30,
+        ChartPatternPreset::Percent40 => P::Percent40,
+        ChartPatternPreset::Percent50 => P::Percent50,
+        ChartPatternPreset::Percent60 => P::Percent60,
+        ChartPatternPreset::Percent70 => P::Percent70,
+        ChartPatternPreset::Percent75 => P::Percent75,
+        ChartPatternPreset::Percent80 => P::Percent80,
+        ChartPatternPreset::Percent90 => P::Percent90,
+        ChartPatternPreset::Horizontal => P::Horizontal,
+        ChartPatternPreset::Vertical => P::Vertical,
+        ChartPatternPreset::LightHorizontal => P::LightHorizontal,
+        ChartPatternPreset::LightVertical => P::LightVertical,
+        ChartPatternPreset::DarkHorizontal => P::DarkHorizontal,
+        ChartPatternPreset::DarkVertical => P::DarkVertical,
+        ChartPatternPreset::NarrowHorizontal => P::NarrowHorizontal,
+        ChartPatternPreset::NarrowVertical => P::NarrowVertical,
+        ChartPatternPreset::DashedHorizontal => P::DashedHorizontal,
+        ChartPatternPreset::DashedVertical => P::DashedVertical,
+        ChartPatternPreset::Cross => P::Cross,
+        ChartPatternPreset::DownwardDiagonal => P::DownwardDiagonal,
+        ChartPatternPreset::UpwardDiagonal => P::UpwardDiagonal,
+        ChartPatternPreset::LightDownwardDiagonal => P::LightDownwardDiagonal,
+        ChartPatternPreset::LightUpwardDiagonal => P::LightUpwardDiagonal,
+        ChartPatternPreset::DarkDownwardDiagonal => P::DarkDownwardDiagonal,
+        ChartPatternPreset::DarkUpwardDiagonal => P::DarkUpwardDiagonal,
+        ChartPatternPreset::WideDownwardDiagonal => P::WideDownwardDiagonal,
+        ChartPatternPreset::WideUpwardDiagonal => P::WideUpwardDiagonal,
+        ChartPatternPreset::DashedDownwardDiagonal => P::DashedDownwardDiagonal,
+        ChartPatternPreset::DashedUpwardDiagonal => P::DashedUpwardDiagonal,
+        ChartPatternPreset::DiagonalCross => P::DiagonalCross,
+        ChartPatternPreset::SmallCheck => P::SmallCheck,
+        ChartPatternPreset::LargeCheck => P::LargeCheck,
+        ChartPatternPreset::SmallGrid => P::SmallGrid,
+        ChartPatternPreset::LargeGrid => P::LargeGrid,
+        ChartPatternPreset::DotGrid => P::DotGrid,
+        ChartPatternPreset::SmallConfetti => P::SmallConfetti,
+        ChartPatternPreset::LargeConfetti => P::LargeConfetti,
+        ChartPatternPreset::HorizontalBrick => P::HorizontalBrick,
+        ChartPatternPreset::DiagonalBrick => P::DiagonalBrick,
+        ChartPatternPreset::SolidDiamond => P::SolidDiamond,
+        ChartPatternPreset::OpenDiamond => P::OpenDiamond,
+        ChartPatternPreset::DottedDiamond => P::DottedDiamond,
+        ChartPatternPreset::Plaid => P::Plaid,
+        ChartPatternPreset::Sphere => P::Sphere,
+        ChartPatternPreset::Weave => P::Weave,
+        ChartPatternPreset::Divot => P::Divot,
+        ChartPatternPreset::Shingle => P::Shingle,
+        ChartPatternPreset::Wave => P::Wave,
+        ChartPatternPreset::Trellis => P::Trellis,
+        ChartPatternPreset::ZigZag => P::ZigZag,
+    }
+}
+
+pub(super) fn build_srgb_color(color: &str) -> Option<Box<a::RgbColorModelHex>> {
+    normalize_chart_hex(color).map(|val| {
+        Box::new(a::RgbColorModelHex {
+            val,
+            ..Default::default()
+        })
+    })
+}
+
+pub(super) fn build_gradient_fill(g: &ChartGradientFill) -> Box<a::GradientFill> {
+    let gradient_stop = g
+        .stops
+        .iter()
+        .filter_map(|s| {
+            build_srgb_color(&s.color).map(|rgb| a::GradientStop {
+                position: ooxmlsdk::simple_type::PositiveFixedPercentageValue::Decimal(
+                    (s.position.clamp(0.0, 100.0) * 1000.0).round() as i32,
+                ),
+                gradient_stop_choice: Some(a::GradientStopChoice::RgbColorModelHex(rgb)),
+                ..Default::default()
+            })
+        })
+        .collect::<Vec<_>>();
+    let gradient_stop_list =
+        (!gradient_stop.is_empty()).then(|| a::GradientStopList { gradient_stop });
+    let gradient_fill_choice = Some(a::GradientFillChoice::LinearGradientFill(Box::new(
+        a::LinearGradientFill {
+            angle: Some(((g.angle.unwrap_or(0.0).rem_euclid(360.0)) * 60000.0).round() as i32),
+            scaled: Some(true.into()),
+        },
+    )));
+    Box::new(a::GradientFill {
+        gradient_stop_list,
+        gradient_fill_choice,
+        ..Default::default()
+    })
+}
+
+pub(super) fn build_pattern_fill(p: &ChartPatternFill) -> Box<a::PatternFill> {
+    Box::new(a::PatternFill {
+        preset: Some(pattern_preset_to(p.preset)),
+        foreground_color: p
+            .foreground
+            .as_deref()
+            .and_then(build_srgb_color)
+            .map(|rgb| {
+                Box::new(a::ForegroundColor {
+                    foreground_color_choice: Some(a::ForegroundColorChoice::RgbColorModelHex(rgb)),
+                    ..Default::default()
+                })
+            }),
+        background_color: p
+            .background
+            .as_deref()
+            .and_then(build_srgb_color)
+            .map(|rgb| {
+                Box::new(a::BackgroundColor {
+                    background_color_choice: Some(a::BackgroundColorChoice::RgbColorModelHex(rgb)),
+                    ..Default::default()
+                })
+            }),
+    })
 }
 
 pub(super) fn line_dash_to(d: LineDash) -> a::PresetLineDashValues {

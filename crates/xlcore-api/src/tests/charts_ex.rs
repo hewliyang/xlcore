@@ -5,11 +5,14 @@ fn seed(wb: &mut Workbook) {
     let vals = [120.0, -30.0, 50.0, -20.0, 80.0, 100.0];
     let parents = ["EU", "EU", "EU", "Asia", "Asia", "Asia"];
     for i in 0..6 {
-        wb.set_value(&format!("Sheet1!A{}", i + 1), cats[i]).unwrap();
-        wb.set_value(&format!("Sheet1!B{}", i + 1), vals[i]).unwrap();
+        wb.set_value(&format!("Sheet1!A{}", i + 1), cats[i])
+            .unwrap();
+        wb.set_value(&format!("Sheet1!B{}", i + 1), vals[i])
+            .unwrap();
         wb.set_value(&format!("Sheet1!C{}", i + 1), parents[i])
             .unwrap();
-        wb.set_value(&format!("Sheet1!D{}", i + 1), cats[i]).unwrap();
+        wb.set_value(&format!("Sheet1!D{}", i + 1), cats[i])
+            .unwrap();
         wb.set_value(&format!("Sheet1!E{}", i + 1), vals[i].abs())
             .unwrap();
     }
@@ -71,7 +74,10 @@ fn chart_ex_create_list_remove_roundtrip() {
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].kind, ChartExKind::Waterfall);
     assert_eq!(listed[0].title.as_deref(), Some("Waterfall"));
-    assert_eq!(listed[0].categories_ref.as_deref(), Some("Sheet1!$A$1:$A$6"));
+    assert_eq!(
+        listed[0].categories_ref.as_deref(),
+        Some("Sheet1!$A$1:$A$6")
+    );
     assert_eq!(listed[0].series[0].values_ref, "Sheet1!$B$1:$B$6");
     assert_eq!(listed[0].subtotals, vec![5]);
     assert_eq!(listed[0].legend_position, Some(ChartLegendPosition::Bottom));

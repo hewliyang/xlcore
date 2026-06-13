@@ -70,6 +70,19 @@ ns = "c"
 aliases = { symbol = "style" }
 
 [[pair]]
+sdk = "GradientFill"
+dto = "ChartGradientFill"
+ns = "a"
+excluded = ["flip", "rotWithShape", "tileRect"]
+aliases = { gsLst = "stops", lin = "angle" }
+
+[[pair]]
+sdk = "PatternFill"
+dto = "ChartPatternFill"
+ns = "a"
+aliases = { prst = "preset", fgClr = "foreground", bgClr = "background" }
+
+[[pair]]
 sdk = "DataLabel"
 dto = "ChartDataLabel"
 ns = "c"

@@ -16,7 +16,8 @@ use crate::{Result, Workbook};
 
 const CHARTEX_GRAPHIC_DATA_URI: &str = "http://schemas.microsoft.com/office/drawing/2014/chartex";
 const CHARTEX_NS: &str = "http://schemas.microsoft.com/office/drawing/2014/chartex";
-const RELATIONSHIPS_NS: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+const RELATIONSHIPS_NS: &str =
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
 fn layout_for(kind: ChartExKind) -> cx::SeriesLayout {
     match kind {
@@ -224,7 +225,11 @@ fn build_chart_ex_space(patch: &ChartExPatch) -> cx::ChartSpace {
 
     let chart = cx::Chart {
         xmlns: Vec::new(),
-        chart_title: patch.title.as_deref().filter(|t| !t.is_empty()).map(chart_title),
+        chart_title: patch
+            .title
+            .as_deref()
+            .filter(|t| !t.is_empty())
+            .map(chart_title),
         plot_area: Box::new(plot_area),
         legend,
         extension_list: None,
@@ -239,7 +244,10 @@ fn build_chart_ex_space(patch: &ChartExPatch) -> cx::ChartSpace {
     }
 }
 
-fn build_layout_pr(patch: &ChartExPatch, series_idx: usize) -> Option<Box<cx::SeriesLayoutProperties>> {
+fn build_layout_pr(
+    patch: &ChartExPatch,
+    series_idx: usize,
+) -> Option<Box<cx::SeriesLayoutProperties>> {
     let kind = patch.kind;
     match kind {
         ChartExKind::Waterfall => Some(Box::new(cx::SeriesLayoutProperties {
@@ -570,8 +578,12 @@ impl Workbook {
             } else {
                 Vec::new()
             },
-            bin_count: patch.bin_count.filter(|_| patch.kind == ChartExKind::Histogram),
-            bin_size: patch.bin_size.filter(|_| patch.kind == ChartExKind::Histogram),
+            bin_count: patch
+                .bin_count
+                .filter(|_| patch.kind == ChartExKind::Histogram),
+            bin_size: patch
+                .bin_size
+                .filter(|_| patch.kind == ChartExKind::Histogram),
             quartile_method: patch
                 .quartile_method
                 .filter(|_| patch.kind == ChartExKind::BoxWhisker),
@@ -680,7 +692,8 @@ fn read_chart_ex_space(
                 match choice {
                     cx::DataChoice::StringDimension(sd) => {
                         if categories_ref.is_none() {
-                            categories_ref = dim_formula_string(sd.string_dimension_choice.as_ref());
+                            categories_ref =
+                                dim_formula_string(sd.string_dimension_choice.as_ref());
                         }
                     }
                     cx::DataChoice::NumericDimension(nd) => {

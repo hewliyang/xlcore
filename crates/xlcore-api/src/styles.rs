@@ -1120,11 +1120,12 @@ impl Workbook {
             ));
         }
         let part = ensure_styles_part(&mut self.doc)?;
-        let sheet = part.root_element_mut(&mut self.doc).map_err(sdk_err_to_api)?;
+        let sheet = part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
         ensure_default_collections(sheet);
 
-        let existing_master =
-            find_named_style_master(sheet, &patch.name).filter(|id| *id != 0);
+        let existing_master = find_named_style_master(sheet, &patch.name).filter(|id| *id != 0);
         let mut master = sheet
             .cell_style_formats
             .as_ref()
@@ -1174,10 +1175,7 @@ impl Workbook {
         })
     }
 
-    pub fn remove_named_style(
-        &mut self,
-        name: impl AsRef<str>,
-    ) -> Result<Option<NamedStyleInfo>> {
+    pub fn remove_named_style(&mut self, name: impl AsRef<str>) -> Result<Option<NamedStyleInfo>> {
         let name = name.as_ref();
         if name == "Normal" {
             return Err(ApiError::new(
@@ -1189,7 +1187,9 @@ impl Workbook {
         let Some(part) = wb_part.workbook_styles_part(&mut self.doc) else {
             return Ok(None);
         };
-        let sheet = part.root_element_mut(&mut self.doc).map_err(sdk_err_to_api)?;
+        let sheet = part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
         let Some(styles) = sheet.cell_styles.as_mut() else {
             return Ok(None);
         };

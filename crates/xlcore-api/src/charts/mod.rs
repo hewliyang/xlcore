@@ -19,11 +19,13 @@ use xlcore_types::{
     AnchorSpec, ApiError, ApiErrorCode, ApiWarning, Bar3DShape, BuiltInUnit, ChartAnchor,
     ChartAxisGroup, ChartAxisPatch, ChartDataLabel, ChartDataLabelPosition, ChartDataLabels,
     ChartDataPoint, ChartDataTable, ChartErrorBarType, ChartErrorBars, ChartErrorDirection,
-    ChartErrorValueType, ChartInfo, ChartKind, ChartLayoutMode, ChartLayoutTarget, ChartLegend,
-    ChartLegendPosition, ChartLine, ChartManualLayout, ChartMarker, ChartPatch, ChartPlotArea,
-    ChartSeriesInfo, ChartSeriesPatch, ChartSplitType, ChartStacking, ChartSurfaceWall,
-    ChartTextStyle, ChartTrendline, ChartUpdate, ChartView3D, CrossBetween, DispBlanksAs,
-    DisplayUnits, LineDash, MarkerStyle, RadarStyle, TickLabelPosition, TickMark, TrendlineKind,
+    ChartErrorValueType, ChartGradientFill, ChartGradientStop, ChartInfo, ChartKind,
+    ChartLayoutMode, ChartLayoutTarget, ChartLegend, ChartLegendPosition, ChartLine,
+    ChartManualLayout, ChartMarker, ChartPatch, ChartPatternFill, ChartPatternPreset,
+    ChartPlotArea, ChartSeriesInfo, ChartSeriesPatch, ChartSplitType, ChartStacking,
+    ChartSurfaceWall, ChartTextStyle, ChartTrendline, ChartUpdate, ChartView3D, CrossBetween,
+    DispBlanksAs, DisplayUnits, LineDash, MarkerStyle, RadarStyle, TickLabelPosition, TickMark,
+    TrendlineKind,
 };
 
 use crate::errors::sdk_err_to_api;

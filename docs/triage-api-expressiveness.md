@@ -124,7 +124,15 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   styleEntry / colorStyle schemas are not modeled; empty string on update
   removes the part. The SDK eager-parses these parts on open, so supplied XML
   must be a schema-valid part (e.g. copied from an Excel-authored file);
-  renderer ignores them, round-trip-only). In-place `update_chart`
+  renderer ignores them, round-trip-only). Per-point `c:dPt` extras
+  (`ChartDataPoint`: `invertIfNegative` bar/bubble, `marker` reusing
+  `ChartMarker` line/scatter/radar, structured `gradientFill` (`a:gradFill`
+  linear via `ChartGradientFill`/`ChartGradientStop`) / `patternFill`
+  (`a:pattFill` via `ChartPatternFill` + `ChartPatternPreset` =
+  ST_PresetPatternVal transliterated) additive fields beside the existing solid
+  `fill` string, precedence gradient > pattern > solid; CT_DPt bubble3D/
+  pictureOptions/extLst excluded; renderer draws only solid per-point fills, the
+  rest round-trip-only). In-place `update_chart`
   (atomic, preserves unmodeled XML).
 - **chartEx authoring** (modern `cx:` charts, separate `chartEx{N}.xml` part +
   `.../2014/relationships/chartEx` rel, referenced from the drawing via a
@@ -174,7 +182,7 @@ remaining 3D extras (floor/sideWall/backWall thickness/pictureOptions,
 per-series 3D invertIfNegative/marker), chartEx follow-ups (in-place
 `update_chart_ex`, per-point `cx:dataPt` fills, `cx:valueColors` authoring,
 data labels, region-map geo cache, axis/title styling), remaining `c:dPt`
-fields (per-point invertIfNegative/marker, gradient/pattern fills).
+fields (per-point bubble3D, blip/picture fills).
 
 ### Follow-up
 
