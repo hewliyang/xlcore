@@ -1,5 +1,6 @@
 import type { Chart, ChartSeries } from "./types.js";
 import { drawAreaChart } from "./chartArea.js";
+import { drawTrendlines } from "./chartTrendline.js";
 import {
   buildLabelText,
   buildStackedRows,
@@ -609,6 +610,22 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     }
   }
 
+  if (!horizontal && series.some((s) => (s.trendlines?.length ?? 0) > 0)) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(innerRect.x, innerRect.y, innerRect.w, innerRect.h);
+    ctx.clip();
+    const yPix = (v: number) => innerRect.y + (1 - (v - minV) / (maxV - minV)) * innerRect.h;
+    const xPix = (x: number) => innerRect.x + (x + 0.5) * groupGap;
+    for (const s of series) {
+      if ((s.trendlines?.length ?? 0) === 0) continue;
+      const xsIdx = Array.from({ length: categoryCount }, (_, i) => i);
+      const ys = Array.from({ length: categoryCount }, (_, i) => s.values[i] ?? 0);
+      drawTrendlines(ctx, s, xsIdx, ys, xPix, yPix);
+    }
+    ctx.restore();
+  }
+
   if (zMetrics.straddlesZero) {
     paintZeroBaseline(ctx, innerRect, minV, maxV);
   } else {
@@ -752,6 +769,11 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
         const align: CanvasTextAlign = pos === "l" ? "right" : pos === "r" ? "left" : "center";
         drawLabel(ctx, text, lx, ly, align, baseline);
       }
+    }
+
+    if ((s.trendlines?.length ?? 0) > 0) {
+      const xsIdx = Array.from({ length: categoryCount }, (_, i) => i);
+      drawTrendlines(ctx, s, xsIdx, data, (x) => inner.x + x * xStep, yFor);
     }
   }
   ctx.restore();

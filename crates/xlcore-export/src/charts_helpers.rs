@@ -332,7 +332,33 @@ pub(crate) fn common_series(
         marker_symbol: None,
         line_width_emu: lw,
         line_dash: ld,
+        trendlines: Vec::new(),
     }
+}
+
+pub(crate) fn extract_trendlines(
+    trendlines: &[c::Trendline],
+    theme: Option<&Theme>,
+) -> Vec<ChartTrendline> {
+    trendlines
+        .iter()
+        .map(|t| {
+            let sp = t.chart_shape_properties.as_deref();
+            let (lw, ld) = extract_line_style(sp);
+            let color = sp.and_then(|s| line_color_via_debug(Some(s), theme));
+            ChartTrendline {
+                trendline_type: format!("{:?}", t.trendline_type.val).to_ascii_lowercase(),
+                polynomial_order: t.polynomial_order.as_ref().map(|o| u32::from(o.val)),
+                period: t.period.as_ref().map(|p| p.val),
+                intercept: t.intercept.as_ref().map(|i| i.val),
+                forward: t.forward.as_ref().map(|f| f.val),
+                backward: t.backward.as_ref().map(|b| b.val),
+                color,
+                line_width_emu: lw,
+                line_dash: ld,
+            }
+        })
+        .collect()
 }
 
 pub(crate) fn common_series_scatter(
@@ -372,6 +398,7 @@ pub(crate) fn common_series_scatter(
         marker_symbol: None,
         line_width_emu: lw,
         line_dash: ld,
+        trendlines: Vec::new(),
     }
 }
 

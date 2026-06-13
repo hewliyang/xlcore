@@ -72,6 +72,7 @@ export function waterfallLegendEntries(chart: Chart): ChartSeries[] {
     bubbleSizes: [],
     pointColors: [],
     pointExplosions: [],
+    trendlines: [],
   });
   return [mk("Increase", inc), mk("Decrease", dec), mk("Total", sub)];
 }
