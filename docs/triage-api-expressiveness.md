@@ -104,7 +104,14 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   `c:legend/c:txPr/a:p/a:pPr/a:defRPr` size/bold/italic/color/typeface; reuses
   `ChartLine` for borders, fill is `RRGGBB`/`AARRGGBB`/`none`; round-trip-only,
   renderer draws its own styling; CT_PlotArea spPr only + CT_Legend with
-  declared deferrals). In-place `update_chart` (atomic, preserves unmodeled XML).
+  declared deferrals). Manual layout (`ChartManualLayout` → `c:layout/
+  c:manualLayout`: layoutTarget inner/outer (plot area only), xMode/yMode/wMode/
+  hMode edge/factor (ST_LayoutMode/ST_LayoutTarget transliterated), x/y/w/h
+  fractions; on `ChartPlotArea.layout`, `ChartLegend.layout`, `ChartPatch.
+  titleLayout`; built in schema order — plot-area layout before the plot charts,
+  legend layout after legendPos; CT_Layout/CT_ManualLayout, extLst excluded;
+  round-trip-only, renderer ignores manual layout). In-place `update_chart`
+  (atomic, preserves unmodeled XML).
 - **Rich text in cells**: `setRichText`/`richText` (inline-string `CT_RElt`
   runs with per-run `FontPatch`); `CellInfo.richText`, renderer-visible.
 - **Styles P1**: cell protection, pattern + gradient fills, font
@@ -123,7 +130,7 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 ### P2 — backlog
 
 remaining 3D extras (floor/sideWall/backWall
-formatting, gapDepth, per-series shape), manual layout,
+formatting, gapDepth, per-series shape),
 chartStyle/colorStyle companion parts, chartEx authoring, named
 styles / `cellStyles` authoring, remaining `c:dPt` fields (per-point
 invertIfNegative/marker, gradient/pattern fills).

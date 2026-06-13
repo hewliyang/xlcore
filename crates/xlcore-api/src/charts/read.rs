@@ -78,6 +78,7 @@ pub(super) struct ParsedChart {
     pub(super) series_lines: Option<bool>,
     pub(super) plot_area: Option<ChartPlotArea>,
     pub(super) legend_style: Option<ChartLegend>,
+    pub(super) title_layout: Option<ChartManualLayout>,
 }
 
 pub(super) fn group_is_secondary(axis_ids: &[c::AxisId], sec: &[u32]) -> bool {
@@ -666,8 +667,13 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
             .and_then(|p| p.val.as_ref())
             .map(legend_pos_from)
     });
-    let plot_area = read_plot_area_shape(plot.shape_properties.as_deref());
+    let plot_area = read_plot_area_shape(plot.shape_properties.as_deref(), plot.layout.as_deref());
     let legend_style = space.chart.legend.as_deref().and_then(read_legend_style);
+    let title_layout = space
+        .chart
+        .title
+        .as_ref()
+        .and_then(|t| read_manual_layout(t.layout.as_deref()));
 
     let disp_blanks_as = space
         .chart
@@ -712,6 +718,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         series_lines,
         plot_area,
         legend_style,
+        title_layout,
     }
 }
 
@@ -1029,10 +1036,68 @@ pub(super) fn read_plot_area_fill(sp: Option<&c::ShapeProperties>) -> Option<Str
     }
 }
 
-pub(super) fn read_plot_area_shape(sp: Option<&c::ShapeProperties>) -> Option<ChartPlotArea> {
+pub(super) fn read_plot_area_shape(
+    sp: Option<&c::ShapeProperties>,
+    layout: Option<&c::Layout>,
+) -> Option<ChartPlotArea> {
     let fill = read_plot_area_fill(sp);
     let border = read_outline(sp.and_then(|s| s.outline.as_deref()));
-    (fill.is_some() || border.is_some()).then_some(ChartPlotArea { fill, border })
+    let layout = read_manual_layout(layout);
+    (fill.is_some() || border.is_some() || layout.is_some()).then_some(ChartPlotArea {
+        fill,
+        border,
+        layout,
+    })
+}
+
+pub(super) fn read_manual_layout(layout: Option<&c::Layout>) -> Option<ChartManualLayout> {
+    let ml = layout?.manual_layout.as_deref()?;
+    let out = ChartManualLayout {
+        layout_target: ml
+            .layout_target
+            .as_ref()
+            .and_then(|t| t.val.as_ref())
+            .map(layout_target_from),
+        x_mode: ml
+            .left_mode
+            .as_ref()
+            .and_then(|m| m.val.as_ref())
+            .map(layout_mode_from),
+        y_mode: ml
+            .top_mode
+            .as_ref()
+            .and_then(|m| m.val.as_ref())
+            .map(layout_mode_from),
+        w_mode: ml
+            .width_mode
+            .as_ref()
+            .and_then(|m| m.val.as_ref())
+            .map(layout_mode_from),
+        h_mode: ml
+            .height_mode
+            .as_ref()
+            .and_then(|m| m.val.as_ref())
+            .map(layout_mode_from),
+        x: ml.left.as_ref().map(|d| d.val),
+        y: ml.top.as_ref().map(|d| d.val),
+        w: ml.width.as_ref().map(|d| d.val),
+        h: ml.height.as_ref().map(|d| d.val),
+    };
+    (out != ChartManualLayout::default()).then_some(out)
+}
+
+pub(super) fn layout_target_from(v: &c::LayoutTargetValues) -> ChartLayoutTarget {
+    match v {
+        c::LayoutTargetValues::Inner => ChartLayoutTarget::Inner,
+        c::LayoutTargetValues::Outer => ChartLayoutTarget::Outer,
+    }
+}
+
+pub(super) fn layout_mode_from(v: &c::LayoutModeValues) -> ChartLayoutMode {
+    match v {
+        c::LayoutModeValues::Edge => ChartLayoutMode::Edge,
+        c::LayoutModeValues::Factor => ChartLayoutMode::Factor,
+    }
 }
 
 pub(super) fn read_text_style(tp: Option<&c::TextProperties>) -> Option<ChartTextStyle> {
@@ -1071,11 +1136,15 @@ pub(super) fn read_legend_style(legend: &c::Legend) -> Option<ChartLegend> {
             .and_then(|s| s.outline.as_deref()),
     );
     let font = read_text_style(legend.text_properties.as_deref());
-    (fill.is_some() || border.is_some() || font.is_some()).then_some(ChartLegend {
-        fill,
-        border,
-        font,
-    })
+    let layout = read_manual_layout(legend.layout.as_deref());
+    (fill.is_some() || border.is_some() || font.is_some() || layout.is_some()).then_some(
+        ChartLegend {
+            fill,
+            border,
+            font,
+            layout,
+        },
+    )
 }
 
 pub(super) fn read_data_points(dps: &[c::DataPoint]) -> Option<Vec<ChartDataPoint>> {

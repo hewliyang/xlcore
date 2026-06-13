@@ -7,6 +7,7 @@ import type { ChartDataTable } from "./ChartDataTable.js";
 import type { ChartKind } from "./ChartKind.js";
 import type { ChartLegend } from "./ChartLegend.js";
 import type { ChartLegendPosition } from "./ChartLegendPosition.js";
+import type { ChartManualLayout } from "./ChartManualLayout.js";
 import type { ChartPlotArea } from "./ChartPlotArea.js";
 import type { ChartSeriesPatch } from "./ChartSeriesPatch.js";
 import type { ChartSplitType } from "./ChartSplitType.js";
@@ -31,6 +32,11 @@ export type ChartPatch = {
    * Position is set via {@link ChartPatch.legendPosition}.
    */
   legend?: ChartLegend;
+  /**
+   * `c:title/c:layout/c:manualLayout` manual chart-title placement.
+   * {@link ChartManualLayout.layoutTarget} is ignored (plot area only).
+   */
+  titleLayout?: ChartManualLayout;
   anchor: AnchorSpec;
   categoryAxisTitle?: string;
   valueAxisTitle?: string;

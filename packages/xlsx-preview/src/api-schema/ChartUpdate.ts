@@ -6,6 +6,7 @@ import type { ChartDataLabels } from "./ChartDataLabels.js";
 import type { ChartDataTable } from "./ChartDataTable.js";
 import type { ChartLegend } from "./ChartLegend.js";
 import type { ChartLegendPosition } from "./ChartLegendPosition.js";
+import type { ChartManualLayout } from "./ChartManualLayout.js";
 import type { ChartPlotArea } from "./ChartPlotArea.js";
 import type { ChartSeriesPatch } from "./ChartSeriesPatch.js";
 import type { ChartSplitType } from "./ChartSplitType.js";
@@ -28,6 +29,11 @@ export type ChartUpdate = {
    * `c:legend/c:spPr` + `c:legend/c:txPr`; legend background, border + font.
    */
   legend?: ChartLegend;
+  /**
+   * `c:title/c:layout/c:manualLayout` manual chart-title placement.
+   * {@link ChartManualLayout.layoutTarget} is ignored (plot area only).
+   */
+  titleLayout?: ChartManualLayout;
   anchor?: AnchorSpec;
   categoryAxisTitle?: string;
   valueAxisTitle?: string;

@@ -176,7 +176,7 @@ aliases = { ser = "series" }
 sdk = "PlotArea"
 dto = "ChartPlotArea"
 ns = "c"
-derived = ["layout", "areaChart", "area3DChart", "lineChart", "line3DChart", "stockChart", "radarChart", "scatterChart", "pieChart", "pie3DChart", "doughnutChart", "barChart", "bar3DChart", "ofPieChart", "surfaceChart", "surface3DChart", "bubbleChart", "valAx", "catAx", "dateAx", "serAx", "dTable"]
+derived = ["areaChart", "area3DChart", "lineChart", "line3DChart", "stockChart", "radarChart", "scatterChart", "pieChart", "pie3DChart", "doughnutChart", "barChart", "bar3DChart", "ofPieChart", "surfaceChart", "surface3DChart", "bubbleChart", "valAx", "catAx", "dateAx", "serAx", "dTable"]
 aliases = { spPr = "fill" }
 
 [[pair]]
@@ -184,8 +184,13 @@ sdk = "Legend"
 dto = "ChartLegend"
 ns = "c"
 derived = ["legendPos", "overlay"]
-excluded = ["legendEntry", "layout"]
+excluded = ["legendEntry"]
 aliases = { spPr = "fill", txPr = "font" }
+
+[[pair]]
+sdk = "ManualLayout"
+dto = "ChartManualLayout"
+ns = "c"
 
 # --- styles -----------------------------------------------------------------
 [[pair]]

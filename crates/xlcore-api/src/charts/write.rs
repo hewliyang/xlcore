@@ -548,7 +548,11 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
         .title
         .as_deref()
         .filter(|t| !t.is_empty())
-        .map(build_title);
+        .map(build_title)
+        .map(|mut t| {
+            t.layout = build_layout(patch.title_layout.as_ref());
+            t
+        });
 
     let auto_title_deleted = if title.is_none() {
         Some(c::AutoTitleDeleted {
@@ -562,6 +566,7 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
 
     if let Some(pa) = &patch.plot_area {
         plot_area.shape_properties = build_plot_area_shape(pa);
+        plot_area.layout = build_layout(pa.layout.as_ref());
     }
 
     let legend = match patch.legend_position {
@@ -1917,6 +1922,56 @@ pub(super) fn apply_legend_style(legend: &mut c::Legend, style: &ChartLegend) {
     }
     if let Some(font) = &style.font {
         legend.text_properties = Some(Box::new(build_text_style(font)));
+    }
+    if let Some(layout) = build_layout(style.layout.as_ref()) {
+        legend.layout = Some(layout);
+    }
+}
+
+pub(super) fn build_layout(ml: Option<&ChartManualLayout>) -> Option<Box<c::Layout>> {
+    let ml = ml?;
+    if *ml == ChartManualLayout::default() {
+        return None;
+    }
+    let manual = c::ManualLayout {
+        layout_target: ml.layout_target.map(|t| c::LayoutTarget {
+            val: Some(layout_target_to(t)),
+        }),
+        left_mode: ml.x_mode.map(|m| c::LeftMode {
+            val: Some(layout_mode_to(m)),
+        }),
+        top_mode: ml.y_mode.map(|m| c::TopMode {
+            val: Some(layout_mode_to(m)),
+        }),
+        width_mode: ml.w_mode.map(|m| c::WidthMode {
+            val: Some(layout_mode_to(m)),
+        }),
+        height_mode: ml.h_mode.map(|m| c::HeightMode {
+            val: Some(layout_mode_to(m)),
+        }),
+        left: ml.x.map(|v| c::Left { val: v }),
+        top: ml.y.map(|v| c::Top { val: v }),
+        width: ml.w.map(|v| c::Width { val: v }),
+        height: ml.h.map(|v| c::Height { val: v }),
+        ..Default::default()
+    };
+    Some(Box::new(c::Layout {
+        manual_layout: Some(Box::new(manual)),
+        ..Default::default()
+    }))
+}
+
+pub(super) fn layout_target_to(t: ChartLayoutTarget) -> c::LayoutTargetValues {
+    match t {
+        ChartLayoutTarget::Inner => c::LayoutTargetValues::Inner,
+        ChartLayoutTarget::Outer => c::LayoutTargetValues::Outer,
+    }
+}
+
+pub(super) fn layout_mode_to(m: ChartLayoutMode) -> c::LayoutModeValues {
+    match m {
+        ChartLayoutMode::Edge => c::LayoutModeValues::Edge,
+        ChartLayoutMode::Factor => c::LayoutModeValues::Factor,
     }
 }
 

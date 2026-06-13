@@ -579,19 +579,20 @@ pub struct ChartTextStyle {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
     ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
 )]
 #[serde(rename_all = "camelCase")]
+#[allow(clippy::derive_partial_eq_without_eq)]
 /// Plot-area background styling (`c:plotArea/c:spPr`), distilled from ooxmlsdk
 /// `PlotArea`.
 ///
 /// Round-trips for Excel; the xlsx-preview renderer draws the plot area with a
 /// white background regardless.
 ///
-/// schema-excluded: layout, plot charts, axes, dTable, extLst
+/// schema-excluded: plot charts, axes, dTable, extLst
 pub struct ChartPlotArea {
     /// `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
     /// `"none"` for an explicit no-fill (`a:noFill`).
@@ -602,6 +603,11 @@ pub struct ChartPlotArea {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub border: Option<ChartLine>,
+    /// `c:plotArea/c:layout/c:manualLayout` manual plot-area placement. Supports
+    /// {@link ChartManualLayout.layoutTarget} (inner/outer).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout: Option<ChartManualLayout>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -619,7 +625,7 @@ pub struct ChartPlotArea {
 /// Round-trips for Excel; the xlsx-preview renderer draws the legend with its
 /// own built-in styling.
 ///
-/// schema-excluded: legendPos, legendEntry, layout, overlay, extLst
+/// schema-excluded: legendPos, legendEntry, overlay, extLst
 pub struct ChartLegend {
     /// `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
     /// `"none"` for an explicit no-fill (`a:noFill`).
@@ -634,6 +640,100 @@ pub struct ChartLegend {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub font: Option<ChartTextStyle>,
+    /// `c:legend/c:layout/c:manualLayout` manual legend placement.
+    /// {@link ChartManualLayout.layoutTarget} is ignored (plot area only).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout: Option<ChartManualLayout>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+/// Manual-layout anchor target (`c:layoutTarget/@val`, OOXML `ST_LayoutTarget`),
+/// transliterated from ooxmlsdk `LayoutTargetValues`. Plot area only: `inner`
+/// excludes axis labels, `outer` includes them.
+pub enum ChartLayoutTarget {
+    #[serde(rename = "inner")]
+    Inner,
+    #[serde(rename = "outer")]
+    Outer,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+/// How a manual-layout coordinate is interpreted (`c:xMode`/`yMode`/`wMode`/
+/// `hMode` `@val`, OOXML `ST_LayoutMode`), transliterated from ooxmlsdk
+/// `LayoutModeValues`. `edge` = absolute position from the chart edge; `factor`
+/// = offset relative to the default position.
+pub enum ChartLayoutMode {
+    #[serde(rename = "edge")]
+    Edge,
+    #[serde(rename = "factor")]
+    Factor,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+#[allow(clippy::derive_partial_eq_without_eq)]
+/// Manual placement of a chart element (`c:layout/c:manualLayout`), distilled
+/// from ooxmlsdk `ManualLayout`. `x`/`y`/`w`/`h` are fractions (0..=1) of the
+/// chart area; the corresponding `*Mode` decides whether each is an absolute
+/// edge position or a factor offset from the default.
+///
+/// Round-trips for Excel; the xlsx-preview renderer ignores manual layout and
+/// auto-places every element.
+///
+/// schema-excluded: extLst
+pub struct ChartManualLayout {
+    /// `c:layoutTarget`; plot area only (ignored for legend/title).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub layout_target: Option<ChartLayoutTarget>,
+    /// `c:xMode`; how {@link ChartManualLayout.x} is interpreted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x_mode: Option<ChartLayoutMode>,
+    /// `c:yMode`; how {@link ChartManualLayout.y} is interpreted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub y_mode: Option<ChartLayoutMode>,
+    /// `c:wMode`; how {@link ChartManualLayout.w} is interpreted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub w_mode: Option<ChartLayoutMode>,
+    /// `c:hMode`; how {@link ChartManualLayout.h} is interpreted.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub h_mode: Option<ChartLayoutMode>,
+    /// `c:x`; left position as a fraction of the chart area.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x: Option<f64>,
+    /// `c:y`; top position as a fraction of the chart area.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub y: Option<f64>,
+    /// `c:w`; width as a fraction of the chart area.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub w: Option<f64>,
+    /// `c:h`; height as a fraction of the chart area.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub h: Option<f64>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1214,6 +1314,11 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub legend: Option<ChartLegend>,
+    /// `c:title/c:layout/c:manualLayout` manual chart-title placement.
+    /// {@link ChartManualLayout.layoutTarget} is ignored (plot area only).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_layout: Option<ChartManualLayout>,
     pub anchor: AnchorSpec,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1347,6 +1452,11 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub legend: Option<ChartLegend>,
+    /// `c:title/c:layout/c:manualLayout` manual chart-title placement.
+    /// {@link ChartManualLayout.layoutTarget} is ignored (plot area only).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_layout: Option<ChartManualLayout>,
     pub anchor: ChartAnchor,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1479,6 +1589,11 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub legend: Option<ChartLegend>,
+    /// `c:title/c:layout/c:manualLayout` manual chart-title placement.
+    /// {@link ChartManualLayout.layoutTarget} is ignored (plot area only).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_layout: Option<ChartManualLayout>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub anchor: Option<AnchorSpec>,
