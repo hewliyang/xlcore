@@ -110,7 +110,13 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   fractions; on `ChartPlotArea.layout`, `ChartLegend.layout`, `ChartPatch.
   titleLayout`; built in schema order — plot-area layout before the plot charts,
   legend layout after legendPos; CT_Layout/CT_ManualLayout, extLst excluded;
-  round-trip-only, renderer ignores manual layout). In-place `update_chart`
+  round-trip-only, renderer ignores manual layout). 3D extras (`ChartPatch/
+  Update/Info.gapDepth` → `c:gapDepth` bar3D/column3D only, per-series 3D shape
+  `ChartSeriesPatch/Info.shape` → `c:ser/c:shape`, floor/wall formatting
+  `.floor`/`.sideWall`/`.backWall` → `c:floor`/`c:sideWall`/`c:backWall`/`c:spPr`
+  via `ChartSurfaceWall` fill+border reusing the plot-area spPr builders, built
+  after view3D before plotArea; 3D charts only; thickness/pictureOptions/extLst
+  excluded; round-trip-only). In-place `update_chart`
   (atomic, preserves unmodeled XML).
 - **Rich text in cells**: `setRichText`/`richText` (inline-string `CT_RElt`
   runs with per-run `FontPatch`); `CellInfo.richText`, renderer-visible.
@@ -129,8 +135,8 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 
 ### P2 — backlog
 
-remaining 3D extras (floor/sideWall/backWall
-formatting, gapDepth, per-series shape),
+remaining 3D extras (floor/sideWall/backWall thickness/pictureOptions,
+per-series 3D invertIfNegative/marker),
 chartStyle/colorStyle companion parts, chartEx authoring, named
 styles / `cellStyles` authoring, remaining `c:dPt` fields (per-point
 invertIfNegative/marker, gradient/pattern fills).

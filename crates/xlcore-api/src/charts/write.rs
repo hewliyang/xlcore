@@ -238,6 +238,69 @@ pub(super) fn validate_bar_shape(
     Ok(())
 }
 
+pub(super) fn validate_series_shape(
+    sheet: &str,
+    kind: ChartKind,
+    series: &[ChartSeriesPatch],
+) -> Result<()> {
+    if !is_bar_3d(kind) && series.iter().any(|s| s.shape.is_some()) {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidChart,
+            format!("series shape is only supported on bar3D/column3D charts, not {kind:?}"),
+        )
+        .with_sheet(sheet));
+    }
+    Ok(())
+}
+
+pub(super) fn validate_gap_depth(
+    sheet: &str,
+    kind: ChartKind,
+    gap_depth: Option<u16>,
+) -> Result<()> {
+    let Some(g) = gap_depth else { return Ok(()) };
+    if !is_bar_3d(kind) {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidChart,
+            format!("gap_depth is only supported on bar3D/column3D charts, not {kind:?}"),
+        )
+        .with_sheet(sheet));
+    }
+    if g > 500 {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidChart,
+            "gap_depth must be 0..=500".to_string(),
+        )
+        .with_sheet(sheet));
+    }
+    Ok(())
+}
+
+pub(super) fn validate_surface_walls(
+    sheet: &str,
+    kind: ChartKind,
+    floor: Option<&ChartSurfaceWall>,
+    side_wall: Option<&ChartSurfaceWall>,
+    back_wall: Option<&ChartSurfaceWall>,
+) -> Result<()> {
+    if (floor.is_some() || side_wall.is_some() || back_wall.is_some()) && !is_3d(kind) {
+        return Err(ApiError::new(
+            ApiErrorCode::InvalidChart,
+            format!("floor/sideWall/backWall are only supported on 3D charts, not {kind:?}"),
+        )
+        .with_sheet(sheet));
+    }
+    Ok(())
+}
+
+pub(super) fn gap_depth_for_kind(kind: ChartKind, value: Option<u16>) -> Option<u16> {
+    if is_bar_3d(kind) {
+        value
+    } else {
+        None
+    }
+}
+
 pub(super) fn validate_wireframe(
     sheet: &str,
     kind: ChartKind,
@@ -589,6 +652,32 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
             .as_ref()
             .filter(|_| is_3d(patch.kind))
             .map(|v| Box::new(build_view_3d(v))),
+        floor: patch.floor.as_ref().filter(|_| is_3d(patch.kind)).map(|w| {
+            Box::new(c::Floor {
+                shape_properties: build_surface_wall_shape(w),
+                ..Default::default()
+            })
+        }),
+        side_wall: patch
+            .side_wall
+            .as_ref()
+            .filter(|_| is_3d(patch.kind))
+            .map(|w| {
+                Box::new(c::SideWall {
+                    shape_properties: build_surface_wall_shape(w),
+                    ..Default::default()
+                })
+            }),
+        back_wall: patch
+            .back_wall
+            .as_ref()
+            .filter(|_| is_3d(patch.kind))
+            .map(|w| {
+                Box::new(c::BackWall {
+                    shape_properties: build_surface_wall_shape(w),
+                    ..Default::default()
+                })
+            }),
         plot_area: Box::new(plot_area),
         legend,
         plot_visible_only: Some(c::PlotVisibleOnly {
@@ -761,6 +850,7 @@ pub(super) fn build_3d_cartesian_chart(patch: &ChartPatch) -> c::PlotAreaChoice 
                 .collect(),
             data_labels: dl,
             gap_width: patch.gap_width.map(|g| c::GapWidth { val: Some(g) }),
+            gap_depth: patch.gap_depth.map(|g| c::GapDepth { val: Some(g) }),
             shape: patch.bar_shape.map(|s| c::Shape {
                 val: Some(shape_to(s)),
                 ..Default::default()
@@ -769,6 +859,14 @@ pub(super) fn build_3d_cartesian_chart(patch: &ChartPatch) -> c::PlotAreaChoice 
             ..Default::default()
         })),
     }
+}
+
+pub(super) fn build_surface_wall_shape(wall: &ChartSurfaceWall) -> Option<Box<c::ShapeProperties>> {
+    build_plot_area_shape(&ChartPlotArea {
+        fill: wall.fill.clone(),
+        border: wall.border.clone(),
+        layout: None,
+    })
 }
 
 pub(super) fn build_pie_3d_chart(patch: &ChartPatch) -> c::PlotAreaChoice {
@@ -1481,6 +1579,10 @@ pub(super) fn build_bar_series(
         error_bars: build_error_bars(s.error_bars.as_ref()).map(Box::new),
         category_axis_data: build_categories(cat_ref),
         values: Some(build_values(&s.values_ref)),
+        shape: s.shape.map(|sh| c::Shape {
+            val: Some(shape_to(sh)),
+            ..Default::default()
+        }),
         ..Default::default()
     }
 }

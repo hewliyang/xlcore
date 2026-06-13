@@ -12,6 +12,7 @@ import type { ChartPlotArea } from "./ChartPlotArea.js";
 import type { ChartSeriesInfo } from "./ChartSeriesInfo.js";
 import type { ChartSplitType } from "./ChartSplitType.js";
 import type { ChartStacking } from "./ChartStacking.js";
+import type { ChartSurfaceWall } from "./ChartSurfaceWall.js";
 import type { ChartView3D } from "./ChartView3D.js";
 import type { DispBlanksAs } from "./DispBlanksAs.js";
 import type { RadarStyle } from "./RadarStyle.js";
@@ -124,4 +125,21 @@ export type ChartInfo = {
    * ofPie charts only.
    */
   seriesLines?: boolean;
+  /**
+   * `c:gapDepth` (0..=500); 3D bar/column charts only. Depth of gap between
+   * series rows as a percentage of bar depth.
+   */
+  gapDepth?: number;
+  /**
+   * `c:floor/c:spPr`; 3D floor fill + border. 3D chart kinds only.
+   */
+  floor?: ChartSurfaceWall;
+  /**
+   * `c:sideWall/c:spPr`; 3D side wall fill + border. 3D chart kinds only.
+   */
+  sideWall?: ChartSurfaceWall;
+  /**
+   * `c:backWall/c:spPr`; 3D back wall fill + border. 3D chart kinds only.
+   */
+  backWall?: ChartSurfaceWall;
 };

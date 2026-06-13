@@ -618,6 +618,34 @@ pub struct ChartPlotArea {
 )]
 #[serde(rename_all = "camelCase")]
 #[allow(clippy::derive_partial_eq_without_eq)]
+/// 3D wall/floor surface styling (`c:floor`/`c:sideWall`/`c:backWall` →
+/// `c:spPr`), distilled from ooxmlsdk `Floor`/`SideWall`/`BackWall` (all
+/// `CT_Surface`). 3D chart kinds only.
+///
+/// Round-trips for Excel; the xlsx-preview renderer draws 3D charts flat (no
+/// walls/floor).
+///
+/// schema-excluded: thickness, pictureOptions, extLst
+pub struct ChartSurfaceWall {
+    /// `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
+    /// `"none"` for an explicit no-fill (`a:noFill`).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<String>,
+    /// `c:spPr/a:ln` border styling (width, dash, hidden).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border: Option<ChartLine>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+#[allow(clippy::derive_partial_eq_without_eq)]
 /// Legend background/border (`c:legend/c:spPr`) and font (`c:legend/c:txPr`),
 /// distilled from ooxmlsdk `Legend`. The legend position is set separately via
 /// {@link ChartPatch.legendPosition}.
@@ -1147,7 +1175,7 @@ pub struct ChartDataTable {
 /// the series text, refs (cat/val/xVal/yVal), idx and order are derived from the
 /// patch fields and the series' position.
 ///
-/// schema-excluded: spPr, pictureOptions, shape, explosion
+/// schema-excluded: spPr, pictureOptions, explosion
 pub struct ChartSeriesPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1214,6 +1242,12 @@ pub struct ChartSeriesPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error_bars: Option<ChartErrorBars>,
+    /// Per-series 3D bar/column shape override (`c:ser/c:shape`); Bar3D/Column3D
+    /// series only. Overrides the chart-level {@link ChartPatch.barShape}.
+    /// Round-trips for Excel.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<Bar3DShape>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1280,6 +1314,10 @@ pub struct ChartSeriesInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error_bars: Option<ChartErrorBars>,
+    /// Per-series 3D shape override; see {@link ChartSeriesPatch.shape}.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shape: Option<Bar3DShape>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1420,6 +1458,23 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub series_lines: Option<bool>,
+    /// `c:gapDepth` (0..=500); 3D bar/column charts only. Depth of gap between
+    /// series rows as a percentage of bar depth.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gap_depth: Option<u16>,
+    /// `c:floor/c:spPr`; 3D floor fill + border. 3D chart kinds only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub floor: Option<ChartSurfaceWall>,
+    /// `c:sideWall/c:spPr`; 3D side wall fill + border. 3D chart kinds only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub side_wall: Option<ChartSurfaceWall>,
+    /// `c:backWall/c:spPr`; 3D back wall fill + border. 3D chart kinds only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub back_wall: Option<ChartSurfaceWall>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1555,6 +1610,23 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub series_lines: Option<bool>,
+    /// `c:gapDepth` (0..=500); 3D bar/column charts only. Depth of gap between
+    /// series rows as a percentage of bar depth.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gap_depth: Option<u16>,
+    /// `c:floor/c:spPr`; 3D floor fill + border. 3D chart kinds only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub floor: Option<ChartSurfaceWall>,
+    /// `c:sideWall/c:spPr`; 3D side wall fill + border. 3D chart kinds only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub side_wall: Option<ChartSurfaceWall>,
+    /// `c:backWall/c:spPr`; 3D back wall fill + border. 3D chart kinds only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub back_wall: Option<ChartSurfaceWall>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
@@ -1694,4 +1766,21 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub series_lines: Option<bool>,
+    /// `c:gapDepth` (0..=500); 3D bar/column charts only. Depth of gap between
+    /// series rows as a percentage of bar depth.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gap_depth: Option<u16>,
+    /// `c:floor/c:spPr`; 3D floor fill + border. 3D chart kinds only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub floor: Option<ChartSurfaceWall>,
+    /// `c:sideWall/c:spPr`; 3D side wall fill + border. 3D chart kinds only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub side_wall: Option<ChartSurfaceWall>,
+    /// `c:backWall/c:spPr`; 3D back wall fill + border. 3D chart kinds only.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub back_wall: Option<ChartSurfaceWall>,
 }

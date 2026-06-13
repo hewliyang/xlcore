@@ -71,6 +71,10 @@ pub(super) struct ParsedChart {
     pub(super) data_table: Option<ChartDataTable>,
     pub(super) view_3d: Option<ChartView3D>,
     pub(super) bar_shape: Option<Bar3DShape>,
+    pub(super) gap_depth: Option<u16>,
+    pub(super) floor: Option<ChartSurfaceWall>,
+    pub(super) side_wall: Option<ChartSurfaceWall>,
+    pub(super) back_wall: Option<ChartSurfaceWall>,
     pub(super) wireframe: Option<bool>,
     pub(super) split_type: Option<ChartSplitType>,
     pub(super) split_pos: Option<f64>,
@@ -117,6 +121,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     let mut vary_colors: Option<bool> = None;
     let mut data_labels: Option<ChartDataLabels> = None;
     let mut bar_shape: Option<Bar3DShape> = None;
+    let mut gap_depth: Option<u16> = None;
     let mut wireframe: Option<bool> = None;
     let mut split_type: Option<ChartSplitType> = None;
     let mut split_pos: Option<f64> = None;
@@ -395,6 +400,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                         c::BarGroupingValues::Standard => ChartStacking::Clustered,
                     });
                 gap_width = bc.gap_width.as_ref().and_then(|g| g.val);
+                gap_depth = bc.gap_depth.as_ref().and_then(|g| g.val);
                 bar_shape = bc
                     .shape
                     .as_ref()
@@ -416,6 +422,11 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     info.invert_if_negative =
                         read_invert_if_negative(s.invert_if_negative.as_ref());
                     info.data_points = read_data_points(&s.data_point);
+                    info.shape = s
+                        .shape
+                        .as_ref()
+                        .and_then(|sh| sh.val.as_ref())
+                        .map(shape_from);
                     series.push(info);
                 }
                 if data_labels.is_none() {
@@ -654,6 +665,21 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
 
     let data_table = read_data_table(plot.data_table.as_deref());
     let view_3d = read_view_3d(space.chart.view3_d.as_deref());
+    let floor = space
+        .chart
+        .floor
+        .as_deref()
+        .and_then(|f| read_surface_wall(f.shape_properties.as_deref()));
+    let side_wall = space
+        .chart
+        .side_wall
+        .as_deref()
+        .and_then(|w| read_surface_wall(w.shape_properties.as_deref()));
+    let back_wall = space
+        .chart
+        .back_wall
+        .as_deref()
+        .and_then(|w| read_surface_wall(w.shape_properties.as_deref()));
 
     let title = space
         .chart
@@ -711,6 +737,10 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         data_table,
         view_3d,
         bar_shape,
+        gap_depth,
+        floor,
+        side_wall,
+        back_wall,
         wireframe,
         split_type,
         split_pos,
@@ -836,6 +866,7 @@ pub(super) fn read_xy_series(
         invert_if_negative: None,
         trendline: None,
         error_bars: None,
+        shape: None,
     }
 }
 
@@ -1050,6 +1081,12 @@ pub(super) fn read_plot_area_shape(
     })
 }
 
+pub(super) fn read_surface_wall(sp: Option<&c::ShapeProperties>) -> Option<ChartSurfaceWall> {
+    let fill = read_plot_area_fill(sp);
+    let border = read_outline(sp.and_then(|s| s.outline.as_deref()));
+    (fill.is_some() || border.is_some()).then_some(ChartSurfaceWall { fill, border })
+}
+
 pub(super) fn read_manual_layout(layout: Option<&c::Layout>) -> Option<ChartManualLayout> {
     let ml = layout?.manual_layout.as_deref()?;
     let out = ChartManualLayout {
@@ -1240,6 +1277,7 @@ pub(super) fn read_series(
         invert_if_negative: None,
         trendline: None,
         error_bars: None,
+        shape: None,
     }
 }
 

@@ -120,8 +120,7 @@ sdk = "Bar3DChart"
 dto = "ChartPatch"
 ns = "c"
 derived = ["barDir", "axId"]
-excluded = ["gapDepth"]
-aliases = { ser = "series", grouping = "stacking", shape = "bar_shape" }
+aliases = { ser = "series", grouping = "stacking", shape = "bar_shape", gapDepth = "gap_depth" }
 
 [[pair]]
 sdk = "Line3DChart"
@@ -161,6 +160,28 @@ ns = "c"
 derived = ["axId"]
 excluded = ["bandFmts"]
 aliases = { ser = "series" }
+
+# --- 3D floor / walls -------------------------------------------------------
+[[pair]]
+sdk = "Floor"
+dto = "ChartSurfaceWall"
+ns = "c"
+excluded = ["thickness", "pictureOptions"]
+aliases = { spPr = "fill" }
+
+[[pair]]
+sdk = "SideWall"
+dto = "ChartSurfaceWall"
+ns = "c"
+excluded = ["thickness", "pictureOptions"]
+aliases = { spPr = "fill" }
+
+[[pair]]
+sdk = "BackWall"
+dto = "ChartSurfaceWall"
+ns = "c"
+excluded = ["thickness", "pictureOptions"]
+aliases = { spPr = "fill" }
 
 # --- ofPie chart kinds ------------------------------------------------------
 [[pair]]

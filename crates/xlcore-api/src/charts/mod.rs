@@ -18,9 +18,9 @@ use xlcore_types::{
     ChartDataPoint, ChartDataTable, ChartErrorBarType, ChartErrorBars, ChartErrorDirection,
     ChartErrorValueType, ChartInfo, ChartKind, ChartLayoutMode, ChartLayoutTarget, ChartLegend,
     ChartLegendPosition, ChartLine, ChartManualLayout, ChartMarker, ChartPatch, ChartPlotArea,
-    ChartSeriesInfo, ChartSeriesPatch, ChartSplitType, ChartStacking, ChartTextStyle,
-    ChartTrendline, ChartUpdate, ChartView3D, CrossBetween, DispBlanksAs, DisplayUnits, LineDash,
-    MarkerStyle, RadarStyle, TickLabelPosition, TickMark, TrendlineKind,
+    ChartSeriesInfo, ChartSeriesPatch, ChartSplitType, ChartStacking, ChartSurfaceWall,
+    ChartTextStyle, ChartTrendline, ChartUpdate, ChartView3D, CrossBetween, DispBlanksAs,
+    DisplayUnits, LineDash, MarkerStyle, RadarStyle, TickLabelPosition, TickMark, TrendlineKind,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -117,6 +117,10 @@ impl Workbook {
                     data_table: parsed.data_table,
                     view_3d: parsed.view_3d,
                     bar_shape: parsed.bar_shape,
+                    gap_depth: parsed.gap_depth,
+                    floor: parsed.floor,
+                    side_wall: parsed.side_wall,
+                    back_wall: parsed.back_wall,
                     wireframe: parsed.wireframe,
                     split_type: parsed.split_type,
                     split_pos: parsed.split_pos,
@@ -141,6 +145,15 @@ impl Workbook {
         validate_data_table(sheet, patch.kind, patch.data_table.as_ref())?;
         validate_view_3d(sheet, patch.kind, patch.view_3d.as_ref())?;
         validate_bar_shape(sheet, patch.kind, patch.bar_shape.as_ref())?;
+        validate_series_shape(sheet, patch.kind, &patch.series)?;
+        validate_gap_depth(sheet, patch.kind, patch.gap_depth)?;
+        validate_surface_walls(
+            sheet,
+            patch.kind,
+            patch.floor.as_ref(),
+            patch.side_wall.as_ref(),
+            patch.back_wall.as_ref(),
+        )?;
         validate_wireframe(sheet, patch.kind, patch.wireframe)?;
         validate_of_pie(
             sheet,
@@ -270,6 +283,7 @@ impl Workbook {
                     invert_if_negative: s.invert_if_negative,
                     trendline: s.trendline.clone(),
                     error_bars: s.error_bars.clone(),
+                    shape: s.shape,
                 })
                 .collect(),
             anchor,
@@ -293,6 +307,10 @@ impl Workbook {
             data_table: patch.data_table.filter(|_| is_cartesian(patch.kind)),
             view_3d: patch.view_3d.filter(|_| is_3d(patch.kind)),
             bar_shape: patch.bar_shape.filter(|_| is_bar_3d(patch.kind)),
+            gap_depth: gap_depth_for_kind(patch.kind, patch.gap_depth),
+            floor: patch.floor.clone().filter(|_| is_3d(patch.kind)),
+            side_wall: patch.side_wall.clone().filter(|_| is_3d(patch.kind)),
+            back_wall: patch.back_wall.clone().filter(|_| is_3d(patch.kind)),
             wireframe: patch.wireframe.filter(|_| is_surface(patch.kind)),
             split_type: patch.split_type.filter(|_| is_of_pie(patch.kind)),
             split_pos: patch.split_pos.filter(|_| is_of_pie(patch.kind)),
@@ -397,6 +415,17 @@ impl Workbook {
         validate_data_table(&sheet, kind, update.data_table.as_ref())?;
         validate_view_3d(&sheet, kind, update.view_3d.as_ref())?;
         validate_bar_shape(&sheet, kind, update.bar_shape.as_ref())?;
+        if let Some(s) = &update.series {
+            validate_series_shape(&sheet, kind, s)?;
+        }
+        validate_gap_depth(&sheet, kind, update.gap_depth)?;
+        validate_surface_walls(
+            &sheet,
+            kind,
+            update.floor.as_ref(),
+            update.side_wall.as_ref(),
+            update.back_wall.as_ref(),
+        )?;
         validate_wireframe(&sheet, kind, update.wireframe)?;
         let of_pie_series_count = update
             .series
@@ -426,6 +455,7 @@ impl Workbook {
             || update.up_down_bars.is_some()
             || update.drop_lines.is_some()
             || update.bar_shape.is_some()
+            || update.gap_depth.is_some()
             || update.wireframe.is_some()
             || update.split_type.is_some()
             || update.split_pos.is_some()
@@ -455,6 +485,7 @@ impl Workbook {
                     invert_if_negative: s.invert_if_negative,
                     trendline: s.trendline.clone(),
                     error_bars: s.error_bars.clone(),
+                    shape: s.shape,
                 })
                 .collect(),
         };
@@ -476,6 +507,7 @@ impl Workbook {
         let up_down_bars = update.up_down_bars.or(existing.up_down_bars);
         let drop_lines = update.drop_lines.or(existing.drop_lines);
         let bar_shape = update.bar_shape.or(existing.bar_shape);
+        let gap_depth = update.gap_depth.or(existing.gap_depth);
         let wireframe = update.wireframe.or(existing.wireframe);
         let split_type = update.split_type.or(existing.split_type);
         let split_pos = update.split_pos.or(existing.split_pos);
@@ -563,6 +595,10 @@ impl Workbook {
                 data_table: None,
                 view_3d: None,
                 bar_shape,
+                gap_depth,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe,
                 split_type,
                 split_pos,
@@ -652,6 +688,25 @@ impl Workbook {
 
         if let Some(v) = &update.view_3d {
             space.chart.view3_d = Some(Box::new(build_view_3d(v)));
+        }
+
+        if let Some(w) = &update.floor {
+            space.chart.floor = Some(Box::new(c::Floor {
+                shape_properties: build_surface_wall_shape(w),
+                ..Default::default()
+            }));
+        }
+        if let Some(w) = &update.side_wall {
+            space.chart.side_wall = Some(Box::new(c::SideWall {
+                shape_properties: build_surface_wall_shape(w),
+                ..Default::default()
+            }));
+        }
+        if let Some(w) = &update.back_wall {
+            space.chart.back_wall = Some(Box::new(c::BackWall {
+                shape_properties: build_surface_wall_shape(w),
+                ..Default::default()
+            }));
         }
 
         let cat_axis_patch =

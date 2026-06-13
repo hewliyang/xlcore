@@ -53,6 +53,10 @@ fn charts_create_list_remove_roundtrip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -181,6 +185,10 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -276,6 +284,10 @@ fn update_chart_replaces_series_and_stacking() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -375,6 +387,10 @@ fn chart_axis_patch_authors_and_round_trips() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -471,6 +487,10 @@ fn chart_value_axis_display_units_round_trip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -561,6 +581,10 @@ fn chart_axis_label_rotation_round_trip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -670,6 +694,7 @@ fn charts_supports_multiple_kinds() {
             invert_if_negative: None,
             trendline: None,
             error_bars: None,
+            shape: None,
         }],
         anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
@@ -697,6 +722,10 @@ fn charts_supports_multiple_kinds() {
         data_table: None,
         view_3d: None,
         bar_shape: None,
+        gap_depth: None,
+        floor: None,
+        side_wall: None,
+        back_wall: None,
         wireframe: None,
         split_type: None,
         split_pos: None,
@@ -771,6 +800,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
                 invert_if_negative: None,
                 trendline: None,
                 error_bars: None,
+                shape: None,
             }],
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 4,
@@ -798,6 +828,10 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            gap_depth: None,
+            floor: None,
+            side_wall: None,
+            back_wall: None,
             wireframe: None,
             split_type: None,
             split_pos: None,
@@ -851,6 +885,10 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            gap_depth: None,
+            floor: None,
+            side_wall: None,
+            back_wall: None,
             wireframe: None,
             split_type: None,
             split_pos: None,
@@ -902,6 +940,10 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            gap_depth: None,
+            floor: None,
+            side_wall: None,
+            back_wall: None,
             wireframe: None,
             split_type: None,
             split_pos: None,
@@ -998,6 +1040,10 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            gap_depth: None,
+            floor: None,
+            side_wall: None,
+            back_wall: None,
             wireframe: None,
             split_type: None,
             split_pos: None,
@@ -1060,6 +1106,10 @@ fn chart_series_color_rejects_malformed_hex() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -1160,6 +1210,10 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            gap_depth: None,
+            floor: None,
+            side_wall: None,
+            back_wall: None,
             wireframe: None,
             split_type: None,
             split_pos: None,
@@ -1259,6 +1313,10 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
         data_table: None,
         view_3d: None,
         bar_shape: None,
+        gap_depth: None,
+        floor: None,
+        side_wall: None,
+        back_wall: None,
         wireframe: None,
         split_type: None,
         split_pos: None,
@@ -1383,6 +1441,10 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -1436,6 +1498,10 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            gap_depth: None,
+            floor: None,
+            side_wall: None,
+            back_wall: None,
             wireframe: None,
             split_type: None,
             split_pos: None,
@@ -1481,6 +1547,10 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            gap_depth: None,
+            floor: None,
+            side_wall: None,
+            back_wall: None,
             wireframe: None,
             split_type: None,
             split_pos: None,
@@ -1548,6 +1618,10 @@ fn charts_data_labels_roundtrip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -1625,6 +1699,10 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            gap_depth: None,
+            floor: None,
+            side_wall: None,
+            back_wall: None,
             wireframe: None,
             split_type: None,
             split_pos: None,
@@ -1704,6 +1782,10 @@ fn charts_per_series_data_labels_override_chart_level() {
             data_table: None,
             view_3d: None,
             bar_shape: None,
+            gap_depth: None,
+            floor: None,
+            side_wall: None,
+            back_wall: None,
             wireframe: None,
             split_type: None,
             split_pos: None,
@@ -1803,6 +1885,10 @@ fn charts_per_point_data_labels_roundtrip_and_update() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -1917,6 +2003,10 @@ fn chart_gap_width_overlap_roundtrip_and_update() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2019,6 +2109,10 @@ fn chart_series_marker_roundtrip_and_validation() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2090,6 +2184,10 @@ fn chart_series_marker_roundtrip_and_validation() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2155,6 +2253,10 @@ fn chart_series_smooth_roundtrips_and_sets_scatter_style() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2232,6 +2334,10 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2299,6 +2405,10 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2361,6 +2471,10 @@ fn chart_data_point_explosion_roundtrip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2452,6 +2566,10 @@ fn combo_chart_secondary_axis_roundtrip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2513,6 +2631,10 @@ fn combo_chart_secondary_axis_roundtrip() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2587,6 +2709,10 @@ fn radar_chart_build_roundtrip_and_update() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2672,6 +2798,10 @@ fn doughnut_hole_size_and_first_slice_angle_roundtrip_and_update() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2748,6 +2878,10 @@ fn doughnut_hole_size_out_of_range_rejected() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2834,6 +2968,10 @@ fn stock_chart_build_roundtrip_and_update() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2925,6 +3063,10 @@ fn stock_chart_requires_three_to_six_series() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -2987,6 +3129,10 @@ fn chart_series_line_roundtrips_and_updates() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -3083,6 +3229,10 @@ fn disp_blanks_as_builds_reads_updates() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -3168,6 +3318,10 @@ fn vary_colors_and_invert_if_negative_roundtrip_and_update() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -3270,6 +3424,10 @@ fn chart_trendline_roundtrips_and_updates() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -3386,6 +3544,10 @@ fn chart_trendline_moving_average_on_scatter_roundtrips() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -3448,6 +3610,10 @@ fn chart_trendline_rejected_on_pie_and_bad_params() {
         data_table: None,
         view_3d: None,
         bar_shape: None,
+        gap_depth: None,
+        floor: None,
+        side_wall: None,
+        back_wall: None,
         wireframe: None,
         split_type: None,
         split_pos: None,
@@ -3546,6 +3712,10 @@ fn chart_error_bars_fixed_roundtrips_and_updates() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -3668,6 +3838,10 @@ fn chart_error_bars_custom_on_scatter_roundtrips() {
                 data_table: None,
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -3734,6 +3908,10 @@ fn chart_error_bars_rejected_on_pie_and_bad_params() {
         data_table: None,
         view_3d: None,
         bar_shape: None,
+        gap_depth: None,
+        floor: None,
+        side_wall: None,
+        back_wall: None,
         wireframe: None,
         split_type: None,
         split_pos: None,
@@ -3825,6 +4003,10 @@ fn chart_data_table_roundtrips_and_updates() {
                 data_table: Some(dt.clone()),
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -3923,6 +4105,10 @@ fn chart_data_table_rejected_on_pie() {
                 data_table: Some(dt),
                 view_3d: None,
                 bar_shape: None,
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -3968,6 +4154,10 @@ fn base_3d_patch(kind: ChartKind) -> ChartPatch {
         data_table: None,
         view_3d: None,
         bar_shape: None,
+        gap_depth: None,
+        floor: None,
+        side_wall: None,
+        back_wall: None,
         wireframe: None,
         split_type: None,
         split_pos: None,
@@ -4082,6 +4272,10 @@ fn chart_3d_column_view3d_and_shape_roundtrip_and_update() {
             ChartUpdate {
                 view_3d: Some(view2.clone()),
                 bar_shape: Some(Bar3DShape::Pyramid),
+                gap_depth: None,
+                floor: None,
+                side_wall: None,
+                back_wall: None,
                 wireframe: None,
                 split_type: None,
                 split_pos: None,
@@ -4232,6 +4426,168 @@ fn chart_surface_wireframe_rejected_on_non_surface() {
     seed_3d(&mut wb);
     let mut bad = base_3d_patch(ChartKind::Column);
     bad.wireframe = Some(true);
+    assert!(wb.set_chart("Sheet1", bad).is_err());
+}
+
+#[test]
+fn chart_3d_gap_depth_and_series_shape_roundtrip() {
+    use xlcore_types::Bar3DShape;
+
+    let mut wb = Workbook::new().unwrap();
+    seed_3d(&mut wb);
+
+    let mut patch = base_3d_patch(ChartKind::Column3D);
+    patch.gap_depth = Some(150);
+    patch.series[0].shape = Some(Bar3DShape::Cone);
+
+    let info = wb.set_chart("Sheet1", patch).unwrap();
+    assert_eq!(info.gap_depth, Some(150));
+    assert_eq!(info.series[0].shape, Some(Bar3DShape::Cone));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("c:gapDepth val=\"150\""), "gapDepth");
+    assert!(xml.contains("c:shape val=\"cone\""), "series shape");
+
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let read = reopened.charts(Some("Sheet1")).unwrap();
+    assert_eq!(read[0].gap_depth, Some(150));
+    assert_eq!(read[0].series[0].shape, Some(Bar3DShape::Cone));
+
+    // update gap_depth in place; serAx preserved.
+    let id = read[0].id.clone();
+    let updated = reopened
+        .update_chart(
+            "Sheet1",
+            &id,
+            ChartUpdate {
+                gap_depth: Some(60),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(updated.gap_depth, Some(60));
+    let xml2 = chart_xml(&reopened.save_bytes().unwrap());
+    assert!(xml2.contains("c:gapDepth val=\"60\""), "updated gapDepth");
+    assert!(xml2.contains("c:serAx"), "serAx preserved");
+}
+
+#[test]
+fn chart_3d_gap_depth_and_series_shape_rejected_on_non_bar3d() {
+    use xlcore_types::Bar3DShape;
+
+    let mut wb = Workbook::new().unwrap();
+    seed_3d(&mut wb);
+
+    let mut bad_depth = base_3d_patch(ChartKind::Line3D);
+    bad_depth.gap_depth = Some(100);
+    assert!(wb.set_chart("Sheet1", bad_depth).is_err());
+
+    let mut bad_depth_2d = base_3d_patch(ChartKind::Column);
+    bad_depth_2d.gap_depth = Some(100);
+    assert!(wb.set_chart("Sheet1", bad_depth_2d).is_err());
+
+    let mut bad_shape = base_3d_patch(ChartKind::Area3D);
+    bad_shape.series[0].shape = Some(Bar3DShape::Box);
+    assert!(wb.set_chart("Sheet1", bad_shape).is_err());
+
+    let mut bad_range = base_3d_patch(ChartKind::Bar3D);
+    bad_range.gap_depth = Some(600);
+    assert!(wb.set_chart("Sheet1", bad_range).is_err());
+}
+
+#[test]
+fn chart_3d_walls_floor_sidewall_backwall_roundtrip_and_update() {
+    use xlcore_types::{ChartLine, ChartSurfaceWall};
+
+    let mut wb = Workbook::new().unwrap();
+    seed_3d(&mut wb);
+
+    let floor = ChartSurfaceWall {
+        fill: Some("FFEEDD".to_string()),
+        border: None,
+    };
+    let side_wall = ChartSurfaceWall {
+        fill: Some("none".to_string()),
+        border: Some(ChartLine {
+            width_emu: Some(19050),
+            ..Default::default()
+        }),
+    };
+    let back_wall = ChartSurfaceWall {
+        fill: Some("AABBCC".to_string()),
+        border: None,
+    };
+
+    let mut patch = base_3d_patch(ChartKind::Column3D);
+    patch.floor = Some(floor.clone());
+    patch.side_wall = Some(side_wall.clone());
+    patch.back_wall = Some(back_wall.clone());
+
+    let info = wb.set_chart("Sheet1", patch).unwrap();
+    assert_eq!(info.floor.as_ref(), Some(&floor));
+    assert_eq!(info.side_wall.as_ref(), Some(&side_wall));
+    assert_eq!(info.back_wall.as_ref(), Some(&back_wall));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("c:floor"), "floor");
+    assert!(xml.contains("c:sideWall"), "sideWall");
+    assert!(xml.contains("c:backWall"), "backWall");
+    assert!(xml.contains("FFEEDD"), "floor fill");
+    assert!(xml.contains("AABBCC"), "backWall fill");
+    // schema order: floor < sideWall < backWall < plotArea, all after view3D position.
+    let floor_at = xml.find("c:floor").unwrap();
+    let side_at = xml.find("c:sideWall").unwrap();
+    let back_at = xml.find("c:backWall").unwrap();
+    let plot_at = xml.find("c:plotArea").unwrap();
+    assert!(floor_at < side_at, "floor before sideWall");
+    assert!(side_at < back_at, "sideWall before backWall");
+    assert!(back_at < plot_at, "backWall before plotArea");
+
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let read = reopened.charts(Some("Sheet1")).unwrap();
+    assert_eq!(read[0].floor.as_ref(), Some(&floor));
+    assert_eq!(read[0].side_wall.as_ref(), Some(&side_wall));
+    assert_eq!(read[0].back_wall.as_ref(), Some(&back_wall));
+
+    // update a wall in place; chart still opens with serAx preserved.
+    let id = read[0].id.clone();
+    let new_floor = ChartSurfaceWall {
+        fill: Some("001122".to_string()),
+        border: None,
+    };
+    let updated = reopened
+        .update_chart(
+            "Sheet1",
+            &id,
+            ChartUpdate {
+                floor: Some(new_floor.clone()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(updated.floor.as_ref(), Some(&new_floor));
+    let bytes2 = reopened.save_bytes().unwrap();
+    let xml2 = chart_xml(&bytes2);
+    assert!(xml2.contains("001122"), "updated floor fill");
+    assert!(xml2.contains("c:serAx"), "serAx preserved");
+    // structural: saved workbook with walls reopens cleanly.
+    let mut reopened2 = Workbook::open_bytes(bytes2).unwrap();
+    assert_eq!(reopened2.charts(Some("Sheet1")).unwrap().len(), 1);
+}
+
+#[test]
+fn chart_3d_walls_rejected_on_non_3d() {
+    use xlcore_types::ChartSurfaceWall;
+
+    let mut wb = Workbook::new().unwrap();
+    seed_3d(&mut wb);
+    let mut bad = base_3d_patch(ChartKind::Column);
+    bad.floor = Some(ChartSurfaceWall {
+        fill: Some("FFEEDD".to_string()),
+        border: None,
+    });
     assert!(wb.set_chart("Sheet1", bad).is_err());
 }
 
