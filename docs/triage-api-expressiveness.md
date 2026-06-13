@@ -131,8 +131,8 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   (`a:pattFill` via `ChartPatternFill` + `ChartPatternPreset` =
   ST_PresetPatternVal transliterated) additive fields beside the existing solid
   `fill` string, precedence gradient > pattern > solid; CT_DPt bubble3D/
-  pictureOptions/extLst excluded; renderer draws only solid per-point fills, the
-  rest round-trip-only). In-place `update_chart`
+  pictureOptions/extLst excluded; renderer draws solid + gradient + pattern
+  per-point fills, the rest round-trip-only). In-place `update_chart`
   (atomic, preserves unmodeled XML).
 - **chartEx authoring** (modern `cx:` charts, separate `chartEx{N}.xml` part +
   `.../2014/relationships/chartEx` rel, referenced from the drawing via a

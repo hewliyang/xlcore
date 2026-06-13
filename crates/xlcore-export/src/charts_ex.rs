@@ -165,6 +165,7 @@ fn make_chart_series(name: String, values: Vec<f64>, values_ref: Option<String>)
         bubble_sizes: Vec::new(),
         bubble_sizes_ref: None,
         point_colors: Vec::new(),
+        point_fills: Vec::new(),
         point_explosions: Vec::new(),
         data_labels: None,
         axis_group: None,

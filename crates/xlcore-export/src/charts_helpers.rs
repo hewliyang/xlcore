@@ -313,6 +313,7 @@ pub(crate) fn common_series(
         });
     let point_colors = extract_point_colors(d_pts, values.len(), theme);
     let point_explosions = extract_point_explosions(d_pts, values.len());
+    let point_fills = extract_point_fills(d_pts, theme);
     let (lw, ld) = extract_line_style(sp_pr);
     ChartSeries {
         name: name.unwrap_or_default(),
@@ -326,6 +327,7 @@ pub(crate) fn common_series(
         bubble_sizes_ref: None,
         point_colors,
         point_explosions,
+        point_fills,
         data_labels: None,
         axis_group: None,
         chart_type: None,
@@ -468,6 +470,7 @@ pub(crate) fn common_series_scatter(
         });
     let point_colors = extract_point_colors(d_pts, values.len(), theme);
     let point_explosions = extract_point_explosions(d_pts, values.len());
+    let point_fills = extract_point_fills(d_pts, theme);
     let (lw, ld) = extract_line_style(sp_pr);
     ChartSeries {
         name: name.unwrap_or_default(),
@@ -481,6 +484,7 @@ pub(crate) fn common_series_scatter(
         bubble_sizes_ref: None,
         point_colors,
         point_explosions,
+        point_fills,
         data_labels: None,
         axis_group: None,
         chart_type: None,
@@ -518,6 +522,119 @@ pub(crate) fn extract_point_explosions(d_pts: &[c::DataPoint], values_len: usize
         out
     } else {
         Vec::new()
+    }
+}
+
+pub(crate) fn extract_point_fills(
+    d_pts: &[c::DataPoint],
+    theme: Option<&Theme>,
+) -> Vec<ChartPointFill> {
+    let mut out = Vec::new();
+    for dp in d_pts {
+        let Some(sp) = dp.chart_shape_properties.as_deref() else {
+            continue;
+        };
+        let Some(choice) = sp.chart_shape_properties_choice2.as_ref() else {
+            continue;
+        };
+        match choice {
+            c::ChartShapePropertiesChoice2::GradientFill(g) => {
+                let stops = g
+                    .gradient_stop_list
+                    .as_ref()
+                    .map(|l| {
+                        l.gradient_stop
+                            .iter()
+                            .filter_map(|s| {
+                                gradient_stop_color(s.gradient_stop_choice.as_ref()?, theme).map(
+                                    |color| ChartFillGradientStop {
+                                        position: s.position.as_drawingml_percent() as f64 / 1000.0,
+                                        color,
+                                    },
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
+                if stops.is_empty() {
+                    continue;
+                }
+                let gradient_angle = match g.gradient_fill_choice.as_ref() {
+                    Some(a::GradientFillChoice::LinearGradientFill(lin)) => {
+                        lin.angle.map(|a| a as f64 / 60000.0)
+                    }
+                    _ => None,
+                };
+                out.push(ChartPointFill {
+                    index: dp.index.val,
+                    kind: "gradient".to_string(),
+                    gradient_stops: stops,
+                    gradient_angle,
+                    ..Default::default()
+                });
+            }
+            c::ChartShapePropertiesChoice2::PatternFill(p) => {
+                let pattern_foreground = p.foreground_color.as_ref().and_then(|fg| {
+                    fg.foreground_color_choice
+                        .as_ref()
+                        .and_then(|ch| foreground_color(ch, theme))
+                });
+                let pattern_background = p.background_color.as_ref().and_then(|bg| {
+                    bg.background_color_choice
+                        .as_ref()
+                        .and_then(|ch| background_color(ch, theme))
+                });
+                out.push(ChartPointFill {
+                    index: dp.index.val,
+                    kind: "pattern".to_string(),
+                    pattern_preset: Some(p.preset.unwrap_or_default().as_xml_str().to_string()),
+                    pattern_foreground,
+                    pattern_background,
+                    ..Default::default()
+                });
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+fn srgb_hex(rgb: &a::RgbColorModelHex) -> Option<String> {
+    let h = rgb.val.to_string();
+    if h.len() != 6 {
+        return None;
+    }
+    let dbg = format!("{:?}", rgb);
+    Some(apply_color_modifiers(&format!("#{}", h.to_uppercase()), &dbg))
+}
+
+fn scheme_hex(sc: &a::SchemeColor, theme: Option<&Theme>) -> Option<String> {
+    let dbg = format!("{:?}", sc);
+    let base = theme_scheme_color(&dbg, theme)?;
+    Some(apply_color_modifiers(&base, &dbg))
+}
+
+fn gradient_stop_color(ch: &a::GradientStopChoice, theme: Option<&Theme>) -> Option<String> {
+    match ch {
+        a::GradientStopChoice::RgbColorModelHex(rgb) => srgb_hex(rgb),
+        a::GradientStopChoice::SchemeColor(sc) => scheme_hex(sc, theme),
+        _ => None,
+    }
+}
+
+fn foreground_color(ch: &a::ForegroundColorChoice, theme: Option<&Theme>) -> Option<String> {
+    match ch {
+        a::ForegroundColorChoice::RgbColorModelHex(rgb) => srgb_hex(rgb),
+        a::ForegroundColorChoice::SchemeColor(sc) => scheme_hex(sc, theme),
+        _ => None,
+    }
+}
+
+fn background_color(ch: &a::BackgroundColorChoice, theme: Option<&Theme>) -> Option<String> {
+    match ch {
+        a::BackgroundColorChoice::RgbColorModelHex(rgb) => srgb_hex(rgb),
+        a::BackgroundColorChoice::SchemeColor(sc) => scheme_hex(sc, theme),
+        _ => None,
     }
 }
 

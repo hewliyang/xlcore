@@ -3,6 +3,7 @@ import type { Rect } from "./chart.js";
 import { activeThemeColor } from "./color.js";
 import { drawTrendlines } from "./chartTrendline.js";
 import { drawErrorBars } from "./chartErrorBars.js";
+import { advancedPointFill } from "./chartFills.js";
 import {
   buildLabelText,
   drawAxisFrame,
@@ -85,7 +86,13 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
     const offset = (Math.min(400, Math.max(0, pointExplosions[i] ?? 0)) / 100) * r;
     const ox = Math.cos(mid) * offset;
     const oy = Math.sin(mid) * offset;
-    ctx.fillStyle = pieSliceColor(i, pointColors);
+    const adv = advancedPointFill(ctx, ser, i, {
+      x: cx + ox - r,
+      y: cy + oy - r,
+      w: r * 2,
+      h: r * 2,
+    });
+    ctx.fillStyle = adv ?? pieSliceColor(i, pointColors);
     ctx.beginPath();
     ctx.moveTo(cx + ox, cy + oy);
     ctx.arc(cx + ox, cy + oy, r, start, end);

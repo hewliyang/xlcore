@@ -23,6 +23,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Renderer draws per-point gradient + pattern fills (`c:dPt` `a:gradFill`/`a:pattFill`): linear-gradient and preset-pattern (`ST_PresetPatternVal`) fills for bar/column and pie/doughnut points, precedence gradient > pattern > solid. Decoded into the wire `ChartSeries.pointFills`.
 - Renderer draws the chart data table (`c:dTable`): a grid below the plot with one row per series and one column per category showing the formatted values, optional legend-key swatches (`showKeys`), and horizontal/vertical/outline border toggles. Decoded into the wire `Chart.dataTable`; non-stacked column/line/area only.
 - Renderer draws rotated axis tick-labels (`txPr bodyPr rot`): category/value-axis labels drawn at the authored angle (`Chart.catAxisLabelRotation`/`valAxisLabelRotation`, decoded from `bodyPr/@rot` 60000ths→degrees) with the axis band auto-resized to avoid clipping.
 - Renderer draws series error bars (`c:errBars`): vertical I-beams (errDir=y) with fixedVal/percentage/stdDev/stdErr/cust magnitudes, both/plus/minus sides + noEndCap; line, column and scatter charts. Decoded into the wire `ChartSeries.errorBars`.

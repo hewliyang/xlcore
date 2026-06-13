@@ -33,6 +33,7 @@ charts — side with Excel desktop/spec where they disagree.
 | Series error bars (`c:errBars`) | ✅ | ✅ | tie |
 | Axis tick-label rotation (`txPr bodyPr rot`) | ✅ | ✅ | tie |
 | Data table (`c:dTable`) | ❌ | ✅ grid below plot | xlsx-preview |
+| Per-point gradient / pattern fills (`c:dPt` `a:gradFill`/`a:pattFill`) | ✅ | 🟡 gradient→solid, pattern→gray | xlsx-preview |
 
 ## Chart-type coverage
 
@@ -74,7 +75,6 @@ charts — side with Excel desktop/spec where they disagree.
   `secondPieSize`/`seriesLines`).
 - Plot-area / legend `spPr` fills + borders + fonts.
 - Manual layout (`c:layout/c:manualLayout`).
-- Per-point gradient / pattern fills (only solid `c:dPt` fills drawn).
 
 ### Open rendering nits
 

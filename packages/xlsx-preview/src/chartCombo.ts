@@ -1,6 +1,7 @@
 import type { Chart, ChartSeries } from "./types.js";
 import type { Rect } from "./chart.js";
 import { resolveBarFill } from "./chartAdvanced.js";
+import { advancedPointFill } from "./chartFills.js";
 import {
   buildLabelText,
   categoryAxisExtraHeight,
@@ -282,8 +283,9 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
           const by = Math.min(yA, yB);
           const bh = Math.abs(yB - yA);
           if (fill.skip) continue;
-          ctx.fillStyle = fill.color;
           const c = clampFill(bx, by, barW, bh);
+          const adv = advancedPointFill(ctx, s, i, { x: c.x, y: c.y, w: c.w, h: c.h });
+          ctx.fillStyle = adv ?? fill.color;
           if (c.w > 0 && c.h > 0) ctx.fillRect(c.x, c.y, c.w, c.h);
           if (effectiveLabels(chart, s)) {
             pending.push({ s, i, v, catTotal, bx, by, bw: barW, bh, stacked: true });
@@ -303,8 +305,9 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
           const by = Math.min(y0, y1);
           const bh = Math.abs(y1 - y0);
           if (fill.skip) continue;
-          ctx.fillStyle = fill.color;
           const c = clampFill(bx, by, barW, bh);
+          const adv = advancedPointFill(ctx, s, i, { x: c.x, y: c.y, w: c.w, h: c.h });
+          ctx.fillStyle = adv ?? fill.color;
           if (c.w > 0 && c.h > 0) ctx.fillRect(c.x, c.y, c.w, c.h);
           if (effectiveLabels(chart, s)) {
             pending.push({ s, i, v, catTotal: 0, bx, by, bw: barW, bh, stacked: false });

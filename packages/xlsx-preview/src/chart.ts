@@ -43,6 +43,7 @@ import {
   resolveBarFill,
   waterfallLegendEntries,
 } from "./chartAdvanced.js";
+import { advancedPointFill } from "./chartFills.js";
 
 const TITLE_PAD = 8;
 const TITLE_FONT_SIZE = 14;
@@ -656,8 +657,9 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
           bh = Math.abs(yb - ya);
         }
         if (fill.skip) continue;
-        ctx.fillStyle = fill.color;
         const c = clampFill(bx, by, bw, bh);
+        const adv = advancedPointFill(ctx, s, i, { x: c.x, y: c.y, w: c.w, h: c.h });
+        ctx.fillStyle = adv ?? fill.color;
         if (c.w > 0 && c.h > 0) ctx.fillRect(c.x, c.y, c.w, c.h);
 
         const dl = effectiveLabels(chart, s);
@@ -702,8 +704,9 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
           bh = Math.abs(yBot - yTop);
         }
         if (fill.skip) continue;
-        ctx.fillStyle = fill.color;
         const c = clampFill(bx, by, bw, bh);
+        const adv = advancedPointFill(ctx, s, i, { x: c.x, y: c.y, w: c.w, h: c.h });
+        ctx.fillStyle = adv ?? fill.color;
         if (c.w > 0 && c.h > 0) ctx.fillRect(c.x, c.y, c.w, c.h);
         const dl = effectiveLabels(chart, s);
         if (dl) {
