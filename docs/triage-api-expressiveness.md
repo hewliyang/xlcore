@@ -116,7 +116,15 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   `.floor`/`.sideWall`/`.backWall` → `c:floor`/`c:sideWall`/`c:backWall`/`c:spPr`
   via `ChartSurfaceWall` fill+border reusing the plot-area spPr builders, built
   after view3D before plotArea; 3D charts only; thickness/pictureOptions/extLst
-  excluded; round-trip-only). In-place `update_chart`
+  excluded; round-trip-only). chartStyle/colorStyle companion parts
+  (`ChartPatch/Update/Info.styleXml`/`colorStyleXml`: raw `style{N}.xml`
+  (`cs:chartStyle`) + `colors{N}.xml` (`cs:colorStyle`) written verbatim as
+  `chartStyle`/`chartColorStyle` companion parts + rels via
+  `add_new_part_auto_id` + `set_data`; opaque escape hatch, the ~40-entry
+  styleEntry / colorStyle schemas are not modeled; empty string on update
+  removes the part. The SDK eager-parses these parts on open, so supplied XML
+  must be a schema-valid part (e.g. copied from an Excel-authored file);
+  renderer ignores them, round-trip-only). In-place `update_chart`
   (atomic, preserves unmodeled XML).
 - **Rich text in cells**: `setRichText`/`richText` (inline-string `CT_RElt`
   runs with per-run `FontPatch`); `CellInfo.richText`, renderer-visible.
@@ -137,7 +145,7 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 
 remaining 3D extras (floor/sideWall/backWall thickness/pictureOptions,
 per-series 3D invertIfNegative/marker),
-chartStyle/colorStyle companion parts, chartEx authoring, named
+chartEx authoring, named
 styles / `cellStyles` authoring, remaining `c:dPt` fields (per-point
 invertIfNegative/marker, gradient/pattern fills).
 

@@ -25,6 +25,19 @@ export type ChartPatch = {
   categoriesRef?: string;
   series: Array<ChartSeriesPatch>;
   /**
+   * Raw `style{N}.xml` (`cs:chartStyle`, the Chart Styles gallery) written
+   * verbatim as a `chartStyle` companion part + relationship. Opaque
+   * escape hatch: the ~40-entry styleEntry schema is not modeled. Set empty
+   * string on update to remove the part.
+   */
+  styleXml?: string;
+  /**
+   * Raw `colors{N}.xml` (`cs:colorStyle`, the color-variation palette)
+   * written verbatim as a `chartColorStyle` companion part + relationship.
+   * Opaque escape hatch. Set empty string on update to remove the part.
+   */
+  colorStyleXml?: string;
+  /**
    * `c:plotArea/c:spPr`; plot-area background fill + border.
    */
   plotArea?: ChartPlotArea;

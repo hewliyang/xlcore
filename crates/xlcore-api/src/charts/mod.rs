@@ -4,7 +4,9 @@ mod write;
 use read::*;
 use write::*;
 
+use ooxmlsdk::parts::chart_color_style_part::ChartColorStylePart;
 use ooxmlsdk::parts::chart_part::ChartPart;
+use ooxmlsdk::parts::chart_style_part::ChartStylePart;
 use ooxmlsdk::parts::drawings_part::DrawingsPart;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_chart as c;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
@@ -27,6 +29,44 @@ use crate::errors::sdk_err_to_api;
 use crate::{Result, Workbook};
 
 const CHART_GRAPHIC_DATA_URI: &str = "http://schemas.openxmlformats.org/drawingml/2006/chart";
+
+fn non_empty(value: Option<String>) -> Option<String> {
+    value.filter(|s| !s.is_empty())
+}
+
+fn read_companion_xml<P: SdkPart>(
+    doc: &xlcore_io::SpreadsheetDocument,
+    part: Option<P>,
+) -> Option<String> {
+    part.and_then(|p| p.data_to_vec(doc))
+        .and_then(|b| String::from_utf8(b).ok())
+}
+
+fn add_chart_style_part(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    chart_part: &ChartPart,
+    xml: &str,
+) -> Result<()> {
+    let part: ChartStylePart = chart_part
+        .add_new_part_auto_id(doc)
+        .map_err(sdk_err_to_api)?;
+    part.set_data(doc, xml.as_bytes().to_vec())
+        .map_err(sdk_err_to_api)?;
+    Ok(())
+}
+
+fn add_chart_color_style_part(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    chart_part: &ChartPart,
+    xml: &str,
+) -> Result<()> {
+    let part: ChartColorStylePart = chart_part
+        .add_new_part_auto_id(doc)
+        .map_err(sdk_err_to_api)?;
+    part.set_data(doc, xml.as_bytes().to_vec())
+        .map_err(sdk_err_to_api)?;
+    Ok(())
+}
 const CAT_AX_ID: u32 = 111_111_111;
 const VAL_AX_ID: u32 = 222_222_222;
 const SEC_CAT_AX_ID: u32 = 333_333_333;
@@ -88,6 +128,10 @@ impl Workbook {
                     .map_err(sdk_err_to_api)?
                     .clone();
                 let parsed = read_chart_space(&space);
+                let style_part = chart_part.chart_style_parts(&self.doc).next();
+                let style_xml = read_companion_xml(&self.doc, style_part);
+                let color_part = chart_part.chart_color_style_parts(&self.doc).next();
+                let color_style_xml = read_companion_xml(&self.doc, color_part);
                 out.push(ChartInfo {
                     sheet: sheet_name.clone(),
                     id: rid,
@@ -97,6 +141,8 @@ impl Workbook {
                     legend_position: parsed.legend,
                     categories_ref: parsed.categories_ref,
                     series: parsed.series,
+                    style_xml,
+                    color_style_xml,
                     anchor: anchor_to_chart_anchor(anchor),
                     category_axis_title: parsed.category_axis_title,
                     value_axis_title: parsed.value_axis_title,
@@ -233,6 +279,15 @@ impl Workbook {
             .set_root_element(&mut self.doc, chart_space)
             .map_err(sdk_err_to_api)?;
 
+        let style_xml = non_empty(patch.style_xml.clone());
+        let color_style_xml = non_empty(patch.color_style_xml.clone());
+        if let Some(xml) = &style_xml {
+            add_chart_style_part(&mut self.doc, &chart_part, xml)?;
+        }
+        if let Some(xml) = &color_style_xml {
+            add_chart_color_style_part(&mut self.doc, &chart_part, xml)?;
+        }
+
         let chart_index = drawings_part
             .root_element(&mut self.doc)
             .map_err(sdk_err_to_api)?
@@ -286,6 +341,8 @@ impl Workbook {
                     shape: s.shape,
                 })
                 .collect(),
+            style_xml,
+            color_style_xml,
             anchor,
             category_axis_title: patch.category_axis_title.clone(),
             value_axis_title: patch.value_axis_title.clone(),
@@ -575,6 +632,8 @@ impl Workbook {
                 legend_position: None,
                 categories_ref: categories_ref.clone(),
                 series: series.clone(),
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor::default()),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -742,6 +801,33 @@ impl Workbook {
                 )
                 .with_sheet(&sheet),
             );
+        }
+
+        if let Some(xml) = &update.style_xml {
+            let existing: Vec<_> = chart_part.chart_style_parts(&self.doc).collect();
+            for p in existing {
+                if let Some(rid) = p.relationship_id().map(str::to_string) {
+                    chart_part
+                        .delete_part_by_id(&mut self.doc, &rid)
+                        .map_err(sdk_err_to_api)?;
+                }
+            }
+            if let Some(xml) = non_empty(Some(xml.clone())) {
+                add_chart_style_part(&mut self.doc, &chart_part, &xml)?;
+            }
+        }
+        if let Some(xml) = &update.color_style_xml {
+            let existing: Vec<_> = chart_part.chart_color_style_parts(&self.doc).collect();
+            for p in existing {
+                if let Some(rid) = p.relationship_id().map(str::to_string) {
+                    chart_part
+                        .delete_part_by_id(&mut self.doc, &rid)
+                        .map_err(sdk_err_to_api)?;
+                }
+            }
+            if let Some(xml) = non_empty(Some(xml.clone())) {
+                add_chart_color_style_part(&mut self.doc, &chart_part, &xml)?;
+            }
         }
 
         self.charts(Some(&sheet))?

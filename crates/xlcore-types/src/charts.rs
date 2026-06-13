@@ -1343,6 +1343,19 @@ pub struct ChartPatch {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub categories_ref: Option<String>,
     pub series: Vec<ChartSeriesPatch>,
+    /// Raw `style{N}.xml` (`cs:chartStyle`, the Chart Styles gallery) written
+    /// verbatim as a `chartStyle` companion part + relationship. Opaque
+    /// escape hatch: the ~40-entry styleEntry schema is not modeled. Set empty
+    /// string on update to remove the part.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style_xml: Option<String>,
+    /// Raw `colors{N}.xml` (`cs:colorStyle`, the color-variation palette)
+    /// written verbatim as a `chartColorStyle` companion part + relationship.
+    /// Opaque escape hatch. Set empty string on update to remove the part.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_style_xml: Option<String>,
     /// `c:plotArea/c:spPr`; plot-area background fill + border.
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1499,6 +1512,14 @@ pub struct ChartInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub categories_ref: Option<String>,
     pub series: Vec<ChartSeriesInfo>,
+    /// Raw `style{N}.xml` (`cs:chartStyle`) companion part, verbatim.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style_xml: Option<String>,
+    /// Raw `colors{N}.xml` (`cs:colorStyle`) companion part, verbatim.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_style_xml: Option<String>,
     /// `c:plotArea/c:spPr`; plot-area background fill + border.
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1653,6 +1674,16 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub series: Option<Vec<ChartSeriesPatch>>,
+    /// Raw `style{N}.xml` (`cs:chartStyle`) companion part, verbatim. Set an
+    /// empty string to remove the part.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style_xml: Option<String>,
+    /// Raw `colors{N}.xml` (`cs:colorStyle`) companion part, verbatim. Set an
+    /// empty string to remove the part.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color_style_xml: Option<String>,
     /// `c:plotArea/c:spPr`; plot-area background fill + border.
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]

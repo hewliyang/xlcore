@@ -23,6 +23,16 @@ export type ChartUpdate = {
   categoriesRef?: string;
   series?: Array<ChartSeriesPatch>;
   /**
+   * Raw `style{N}.xml` (`cs:chartStyle`) companion part, verbatim. Set an
+   * empty string to remove the part.
+   */
+  styleXml?: string;
+  /**
+   * Raw `colors{N}.xml` (`cs:colorStyle`) companion part, verbatim. Set an
+   * empty string to remove the part.
+   */
+  colorStyleXml?: string;
+  /**
    * `c:plotArea/c:spPr`; plot-area background fill + border.
    */
   plotArea?: ChartPlotArea;

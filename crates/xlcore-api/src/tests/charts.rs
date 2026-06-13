@@ -27,6 +27,8 @@ fn charts_create_list_remove_roundtrip() {
                     values_ref: "Sheet1!$B$2:$B$4".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor {
                     from_column: 3,
                     from_row: 1,
@@ -159,6 +161,8 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
                     values_ref: "Sheet1!$B$2:$B$3".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor {
                     from_column: 3,
                     from_row: 1,
@@ -258,6 +262,8 @@ fn update_chart_replaces_series_and_stacking() {
                     values_ref: "Sheet1!$B$2:$B$3".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor {
                     from_column: 3,
                     from_row: 1,
@@ -349,6 +355,8 @@ fn chart_axis_patch_authors_and_round_trips() {
                     values_ref: "Sheet1!$B$2:$B$3".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor {
                     from_column: 3,
                     from_row: 1,
@@ -464,6 +472,8 @@ fn chart_value_axis_display_units_round_trip() {
                     values_ref: "Sheet1!$B$2:$B$3".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::A1("D2:K17".to_string()),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -555,6 +565,8 @@ fn chart_axis_label_rotation_round_trip() {
                     values_ref: "Sheet1!$B$2:$B$3".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::A1("D2:K17".to_string()),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -696,6 +708,8 @@ fn charts_supports_multiple_kinds() {
             error_bars: None,
             shape: None,
         }],
+        style_xml: None,
+        color_style_xml: None,
         anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
             from_row: 1,
@@ -802,6 +816,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
                 error_bars: None,
                 shape: None,
             }],
+            style_xml: None,
+            color_style_xml: None,
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 4,
                 from_row: 1,
@@ -859,6 +875,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
                 bubble_sizes_ref: Some("Sheet1!$C$2:$C$4".to_string()),
                 ..Default::default()
             }],
+            style_xml: None,
+            color_style_xml: None,
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 1,
                 from_row: 18,
@@ -914,6 +932,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
                 color: Some("#00aacc".to_string()),
                 ..Default::default()
             }],
+            style_xml: None,
+            color_style_xml: None,
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 9,
                 from_row: 18,
@@ -1014,6 +1034,8 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
                 color: Some("FF1D4ED8".to_string()),
                 ..Default::default()
             }],
+            style_xml: None,
+            color_style_xml: None,
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 4,
                 from_row: 1,
@@ -1080,6 +1102,8 @@ fn chart_series_color_rejects_malformed_hex() {
                     color: Some("nothex".to_string()),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor {
                     from_column: 4,
                     from_row: 1,
@@ -1184,6 +1208,8 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
                 values_ref: "Sheet1!$A$1:$A$2".into(),
                 ..Default::default()
             }],
+            style_xml: None,
+            color_style_xml: None,
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 3,
                 from_row: 1,
@@ -1287,6 +1313,8 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
                 ..Default::default()
             },
         ],
+        style_xml: None,
+        color_style_xml: None,
         anchor: AnchorSpec::Cells(ChartAnchor {
             from_column: 1,
             from_row: row,
@@ -1415,6 +1443,8 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
                     values_ref: "Sheet1!$B$2:$B$4".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor {
                     from_column: 1,
                     from_row: 1,
@@ -1478,6 +1508,8 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
                 values_ref: "Sheet1!$B$2:$B$4".to_string(),
                 ..Default::default()
             }],
+            style_xml: None,
+            color_style_xml: None,
             anchor: AnchorSpec::Cells(ChartAnchor::default()),
             category_axis_title: None,
             value_axis_title: None,
@@ -1527,6 +1559,8 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
                 color: Some("nope".to_string()),
                 ..Default::default()
             }],
+            style_xml: None,
+            color_style_xml: None,
             anchor: AnchorSpec::Cells(ChartAnchor::default()),
             category_axis_title: None,
             value_axis_title: None,
@@ -1582,6 +1616,8 @@ fn charts_data_labels_roundtrip() {
                     values_ref: "Sheet1!$B$2:$B$4".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor {
                     from_column: 1,
                     from_row: 1,
@@ -1668,6 +1704,8 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
                 values_ref: "Sheet1!$B$2:$B$4".to_string(),
                 ..Default::default()
             }],
+            style_xml: None,
+            color_style_xml: None,
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 1,
                 from_row: 1,
@@ -1752,6 +1790,8 @@ fn charts_per_series_data_labels_override_chart_level() {
                     ..Default::default()
                 },
             ],
+            style_xml: None,
+            color_style_xml: None,
             anchor: AnchorSpec::Cells(ChartAnchor {
                 from_column: 1,
                 from_row: 1,
@@ -1859,6 +1899,8 @@ fn charts_per_point_data_labels_roundtrip_and_update() {
                     }),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor {
                     from_column: 1,
                     from_row: 1,
@@ -1977,6 +2019,8 @@ fn chart_gap_width_overlap_roundtrip_and_update() {
                     values_ref: "Sheet1!$B$2:$B$3".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor {
                     from_column: 3,
                     from_row: 1,
@@ -2083,6 +2127,8 @@ fn chart_series_marker_roundtrip_and_validation() {
                     }),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor {
                     from_column: 3,
                     from_row: 1,
@@ -2164,6 +2210,8 @@ fn chart_series_marker_roundtrip_and_validation() {
                     }),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::default(),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -2227,6 +2275,8 @@ fn chart_series_smooth_roundtrips_and_sets_scatter_style() {
                     smooth: Some(true),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor {
                     from_column: 3,
                     from_row: 1,
@@ -2314,6 +2364,8 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                     data_points: Some(points.clone()),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::default(),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -2385,6 +2437,8 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                     }]),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::default(),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -2451,6 +2505,8 @@ fn chart_data_point_explosion_roundtrip() {
                     data_points: Some(points.clone()),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::default(),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -2546,6 +2602,8 @@ fn combo_chart_secondary_axis_roundtrip() {
                         ..Default::default()
                     },
                 ],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::default(),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -2611,6 +2669,8 @@ fn combo_chart_secondary_axis_roundtrip() {
                     axis: Some(ChartAxisGroup::Secondary),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::default(),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -2689,6 +2749,8 @@ fn radar_chart_build_roundtrip_and_update() {
                         ..Default::default()
                     },
                 ],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::A1("Sheet1!E1:M16".to_string()),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -2778,6 +2840,8 @@ fn doughnut_hole_size_and_first_slice_angle_roundtrip_and_update() {
                     values_ref: "Sheet1!$B$2:$B$4".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::A1("Sheet1!D1:K16".to_string()),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -2858,6 +2922,8 @@ fn doughnut_hole_size_out_of_range_rejected() {
                     values_ref: "Sheet1!$B$2".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::A1("Sheet1!D1:K16".to_string()),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -2948,6 +3014,8 @@ fn stock_chart_build_roundtrip_and_update() {
                         ..Default::default()
                     },
                 ],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::A1("Sheet1!G1:O16".to_string()),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -3043,6 +3111,8 @@ fn stock_chart_requires_three_to_six_series() {
                 title: None,
                 legend_position: None,
                 categories_ref: None,
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::A1("Sheet1!E1:K16".to_string()),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -3109,6 +3179,8 @@ fn chart_series_line_roundtrips_and_updates() {
                     line: Some(line.clone()),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::default(),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -3203,6 +3275,8 @@ fn disp_blanks_as_builds_reads_updates() {
                     values_ref: "Sheet1!$B$2:$B$3".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor {
                     from_column: 3,
                     from_row: 1,
@@ -3292,6 +3366,8 @@ fn vary_colors_and_invert_if_negative_roundtrip_and_update() {
                     invert_if_negative: Some(true),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::Cells(ChartAnchor {
                     from_column: 3,
                     from_row: 1,
@@ -3404,6 +3480,8 @@ fn chart_trendline_roundtrips_and_updates() {
                     trendline: Some(trend.clone()),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::default(),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -3524,6 +3602,8 @@ fn chart_trendline_moving_average_on_scatter_roundtrips() {
                     trendline: Some(trend.clone()),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::default(),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -3590,6 +3670,8 @@ fn chart_trendline_rejected_on_pie_and_bad_params() {
             trendline: Some(trend),
             ..Default::default()
         }],
+        style_xml: None,
+        color_style_xml: None,
         anchor: AnchorSpec::default(),
         category_axis_title: None,
         value_axis_title: None,
@@ -3692,6 +3774,8 @@ fn chart_error_bars_fixed_roundtrips_and_updates() {
                     error_bars: Some(eb.clone()),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::default(),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -3818,6 +3902,8 @@ fn chart_error_bars_custom_on_scatter_roundtrips() {
                     error_bars: Some(eb.clone()),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::default(),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -3888,6 +3974,8 @@ fn chart_error_bars_rejected_on_pie_and_bad_params() {
             error_bars: Some(eb),
             ..Default::default()
         }],
+        style_xml: None,
+        color_style_xml: None,
         anchor: AnchorSpec::default(),
         category_axis_title: None,
         value_axis_title: None,
@@ -3983,6 +4071,8 @@ fn chart_data_table_roundtrips_and_updates() {
                     values_ref: "Sheet1!$B$2:$B$4".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::default(),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -4085,6 +4175,8 @@ fn chart_data_table_rejected_on_pie() {
                     values_ref: "Sheet1!$B$2:$B$3".to_string(),
                     ..Default::default()
                 }],
+                style_xml: None,
+                color_style_xml: None,
                 anchor: AnchorSpec::default(),
                 category_axis_title: None,
                 value_axis_title: None,
@@ -4134,6 +4226,8 @@ fn base_3d_patch(kind: ChartKind) -> ChartPatch {
             values_ref: "Sheet1!$B$2:$B$4".to_string(),
             ..Default::default()
         }],
+        style_xml: None,
+        color_style_xml: None,
         anchor: AnchorSpec::default(),
         category_axis_title: None,
         value_axis_title: None,
@@ -4914,4 +5008,142 @@ fn chart_manual_layout_roundtrips_and_updates() {
         Some(0.25)
     );
     assert_eq!(chart.title_layout.as_ref().unwrap().x, Some(0.5));
+}
+
+fn bubble_fixture() -> Workbook {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../tests/fixtures/charts/bubble.xlsx"
+    );
+    Workbook::open_path(path).unwrap()
+}
+
+#[test]
+fn charts_companion_style_parts_read_and_roundtrip() {
+    let mut wb = bubble_fixture();
+    let charts = wb.charts(None).unwrap();
+    assert_eq!(charts.len(), 1);
+    let style = charts[0].style_xml.clone().unwrap();
+    let colors = charts[0].color_style_xml.clone().unwrap();
+    assert!(style.contains("chartStyle"));
+    assert!(colors.contains("colorStyle"));
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    let style2 = charts[0].style_xml.clone().unwrap();
+    let colors2 = charts[0].color_style_xml.clone().unwrap();
+    assert!(style2.contains("chartStyle") && style2.contains("id=\"381\""));
+    assert!(style2.contains("cs:valueAxis") && style2.contains("cs:wall"));
+    assert!(colors2.contains("colorStyle"));
+}
+
+#[test]
+fn charts_companion_style_parts_set_update_remove() {
+    let style = bubble_fixture().charts(None).unwrap()[0]
+        .style_xml
+        .clone()
+        .unwrap();
+    let colors = bubble_fixture().charts(None).unwrap()[0]
+        .color_style_xml
+        .clone()
+        .unwrap();
+
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!B2", 10.0).unwrap();
+    wb.set_value("Sheet1!B3", 20.0).unwrap();
+
+    let mk = |style: Option<&str>, color: Option<&str>| ChartPatch {
+        name: None,
+        kind: ChartKind::Column,
+        title: None,
+        legend_position: None,
+        categories_ref: None,
+        series: vec![ChartSeriesPatch {
+            values_ref: "Sheet1!$B$2:$B$3".to_string(),
+            ..Default::default()
+        }],
+        style_xml: style.map(str::to_string),
+        color_style_xml: color.map(str::to_string),
+        anchor: AnchorSpec::Cells(ChartAnchor {
+            from_column: 1,
+            from_row: 1,
+            to_column: 5,
+            to_row: 10,
+            ..Default::default()
+        }),
+        category_axis_title: None,
+        value_axis_title: None,
+        category_axis: None,
+        value_axis: None,
+        stacking: None,
+        gap_width: None,
+        overlap: None,
+        radar_style: None,
+        hole_size: None,
+        first_slice_angle: None,
+        hi_low_lines: None,
+        up_down_bars: None,
+        drop_lines: None,
+        disp_blanks_as: None,
+        vary_colors: None,
+        data_labels: None,
+        data_table: None,
+        view_3d: None,
+        bar_shape: None,
+        gap_depth: None,
+        floor: None,
+        side_wall: None,
+        back_wall: None,
+        wireframe: None,
+        split_type: None,
+        split_pos: None,
+        second_pie_size: None,
+        series_lines: None,
+        plot_area: None,
+        legend: None,
+        title_layout: None,
+    };
+
+    let info = wb
+        .set_chart("Sheet1", mk(Some(&style), Some(&colors)))
+        .unwrap();
+    assert_eq!(info.style_xml.as_deref(), Some(style.as_str()));
+    assert_eq!(info.color_style_xml.as_deref(), Some(colors.as_str()));
+
+    let bytes = wb.save_bytes().unwrap();
+    let names = wb.part_names().unwrap();
+    assert!(names.iter().any(|n| n.contains("charts/style")));
+    assert!(names.iter().any(|n| n.contains("charts/colors")));
+
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    assert_eq!(charts.len(), 1);
+    let chart = &charts[0];
+    assert!(chart.style_xml.as_deref().unwrap().contains("chartStyle"));
+    assert!(chart
+        .color_style_xml
+        .as_deref()
+        .unwrap()
+        .contains("colorStyle"));
+
+    let id = chart.id.clone();
+    let updated = reopened
+        .update_chart(
+            "Sheet1",
+            &id,
+            ChartUpdate {
+                color_style_xml: Some(String::new()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert!(updated.style_xml.is_some());
+    assert!(updated.color_style_xml.is_none());
+
+    let bytes2 = reopened.save_bytes().unwrap();
+    let mut reopened2 = Workbook::open_bytes(bytes2).unwrap();
+    let chart2 = &reopened2.charts(None).unwrap()[0];
+    assert!(chart2.style_xml.is_some());
+    assert!(chart2.color_style_xml.is_none());
 }

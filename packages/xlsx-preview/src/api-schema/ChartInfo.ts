@@ -27,6 +27,14 @@ export type ChartInfo = {
   categoriesRef?: string;
   series: Array<ChartSeriesInfo>;
   /**
+   * Raw `style{N}.xml` (`cs:chartStyle`) companion part, verbatim.
+   */
+  styleXml?: string;
+  /**
+   * Raw `colors{N}.xml` (`cs:colorStyle`) companion part, verbatim.
+   */
+  colorStyleXml?: string;
+  /**
    * `c:plotArea/c:spPr`; plot-area background fill + border.
    */
   plotArea?: ChartPlotArea;

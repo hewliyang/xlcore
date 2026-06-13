@@ -14,7 +14,7 @@ import type { ChartTrendline } from "./ChartTrendline.js";
  * the series text, refs (cat/val/xVal/yVal), idx and order are derived from the
  * patch fields and the series' position.
  *
- * schema-excluded: spPr, pictureOptions, shape, explosion
+ * schema-excluded: spPr, pictureOptions, explosion
  */
 export type ChartSeriesPatch = {
   name?: string;
