@@ -98,7 +98,13 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
   ST_SplitType transliterated — SDK omits the schema's `auto`)/splitPos/
   secondPieSize/seriesLines (`c:serLines` toggle) + reuse gapWidth; renderer
   draws ofPie as a plain pie, ofPie-specific knobs round-trip-only (custSplit
-  excluded). In-place `update_chart` (atomic, preserves unmodeled XML).
+  excluded). Plot-area + legend styling (`ChartPatch/Update/Info.plotArea`:
+  `ChartPlotArea` fill + border → `c:plotArea/c:spPr`; `.legend`: `ChartLegend`
+  fill + border → `c:legend/c:spPr` + font `ChartTextStyle` →
+  `c:legend/c:txPr/a:p/a:pPr/a:defRPr` size/bold/italic/color/typeface; reuses
+  `ChartLine` for borders, fill is `RRGGBB`/`AARRGGBB`/`none`; round-trip-only,
+  renderer draws its own styling; CT_PlotArea spPr only + CT_Legend with
+  declared deferrals). In-place `update_chart` (atomic, preserves unmodeled XML).
 - **Rich text in cells**: `setRichText`/`richText` (inline-string `CT_RElt`
   runs with per-run `FontPatch`); `CellInfo.richText`, renderer-visible.
 - **Styles P1**: cell protection, pattern + gradient fills, font
@@ -117,8 +123,8 @@ API surface conventions live in `docs/api-conventions.md` (canonical verbs
 ### P2 — backlog
 
 remaining 3D extras (floor/sideWall/backWall
-formatting, gapDepth, per-series shape), manual layout, plot-area/legend
-spPr+fonts, chartStyle/colorStyle companion parts, chartEx authoring, named
+formatting, gapDepth, per-series shape), manual layout,
+chartStyle/colorStyle companion parts, chartEx authoring, named
 styles / `cellStyles` authoring, remaining `c:dPt` fields (per-point
 invertIfNegative/marker, gradient/pattern fills).
 

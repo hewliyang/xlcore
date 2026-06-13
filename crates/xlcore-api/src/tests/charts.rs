@@ -58,6 +58,8 @@ fn charts_create_list_remove_roundtrip() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -183,6 +185,8 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -275,6 +279,8 @@ fn update_chart_replaces_series_and_stacking() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -371,6 +377,8 @@ fn chart_axis_patch_authors_and_round_trips() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -464,6 +472,8 @@ fn chart_value_axis_display_units_round_trip() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -551,6 +561,8 @@ fn chart_axis_label_rotation_round_trip() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -684,6 +696,8 @@ fn charts_supports_multiple_kinds() {
         split_pos: None,
         second_pie_size: None,
         series_lines: None,
+        plot_area: None,
+        legend: None,
     };
     for kind in [
         ChartKind::Column,
@@ -782,6 +796,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             split_pos: None,
             second_pie_size: None,
             series_lines: None,
+            plot_area: None,
+            legend: None,
         },
     )
     .unwrap();
@@ -832,6 +848,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             split_pos: None,
             second_pie_size: None,
             series_lines: None,
+            plot_area: None,
+            legend: None,
         },
     )
     .unwrap();
@@ -880,6 +898,8 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             split_pos: None,
             second_pie_size: None,
             series_lines: None,
+            plot_area: None,
+            legend: None,
         },
     )
     .unwrap();
@@ -973,6 +993,8 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
             split_pos: None,
             second_pie_size: None,
             series_lines: None,
+            plot_area: None,
+            legend: None,
         },
     )
     .unwrap();
@@ -1032,6 +1054,8 @@ fn chart_series_color_rejects_malformed_hex() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap_err();
@@ -1129,6 +1153,8 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
             split_pos: None,
             second_pie_size: None,
             series_lines: None,
+            plot_area: None,
+            legend: None,
         },
     )
     .unwrap();
@@ -1225,6 +1251,8 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
         split_pos: None,
         second_pie_size: None,
         series_lines: None,
+        plot_area: None,
+        legend: None,
     };
 
     let col_stacked = wb
@@ -1346,6 +1374,8 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -1396,6 +1426,8 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             split_pos: None,
             second_pie_size: None,
             series_lines: None,
+            plot_area: None,
+            legend: None,
         },
     );
     assert!(missing_x.is_err());
@@ -1438,6 +1470,8 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             split_pos: None,
             second_pie_size: None,
             series_lines: None,
+            plot_area: None,
+            legend: None,
         },
     );
     assert!(bad_color.is_err());
@@ -1502,6 +1536,8 @@ fn charts_data_labels_roundtrip() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -1576,6 +1612,8 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
             split_pos: None,
             second_pie_size: None,
             series_lines: None,
+            plot_area: None,
+            legend: None,
         },
     )
     .unwrap();
@@ -1652,6 +1690,8 @@ fn charts_per_series_data_labels_override_chart_level() {
             split_pos: None,
             second_pie_size: None,
             series_lines: None,
+            plot_area: None,
+            legend: None,
         },
     )
     .unwrap();
@@ -1748,6 +1788,8 @@ fn charts_per_point_data_labels_roundtrip_and_update() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -1859,6 +1901,8 @@ fn chart_gap_width_overlap_roundtrip_and_update() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -1958,6 +2002,8 @@ fn chart_series_marker_roundtrip_and_validation() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -2026,6 +2072,8 @@ fn chart_series_marker_roundtrip_and_validation() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap_err();
@@ -2088,6 +2136,8 @@ fn chart_series_smooth_roundtrips_and_sets_scatter_style() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -2162,6 +2212,8 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -2226,6 +2278,8 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap_err();
@@ -2285,6 +2339,8 @@ fn chart_data_point_explosion_roundtrip() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -2373,6 +2429,8 @@ fn combo_chart_secondary_axis_roundtrip() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -2431,6 +2489,8 @@ fn combo_chart_secondary_axis_roundtrip() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap_err();
@@ -2502,6 +2562,8 @@ fn radar_chart_build_roundtrip_and_update() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -2584,6 +2646,8 @@ fn doughnut_hole_size_and_first_slice_angle_roundtrip_and_update() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -2657,6 +2721,8 @@ fn doughnut_hole_size_out_of_range_rejected() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap_err();
@@ -2740,6 +2806,8 @@ fn stock_chart_build_roundtrip_and_update() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -2828,6 +2896,8 @@ fn stock_chart_requires_three_to_six_series() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap_err();
@@ -2887,6 +2957,8 @@ fn chart_series_line_roundtrips_and_updates() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -2980,6 +3052,8 @@ fn disp_blanks_as_builds_reads_updates() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -3062,6 +3136,8 @@ fn vary_colors_and_invert_if_negative_roundtrip_and_update() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -3161,6 +3237,8 @@ fn chart_trendline_roundtrips_and_updates() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -3274,6 +3352,8 @@ fn chart_trendline_moving_average_on_scatter_roundtrips() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -3333,6 +3413,8 @@ fn chart_trendline_rejected_on_pie_and_bad_params() {
         split_pos: None,
         second_pie_size: None,
         series_lines: None,
+        plot_area: None,
+        legend: None,
     };
 
     let linear = ChartTrendline {
@@ -3428,6 +3510,8 @@ fn chart_error_bars_fixed_roundtrips_and_updates() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -3547,6 +3631,8 @@ fn chart_error_bars_custom_on_scatter_roundtrips() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -3610,6 +3696,8 @@ fn chart_error_bars_rejected_on_pie_and_bad_params() {
         split_pos: None,
         second_pie_size: None,
         series_lines: None,
+        plot_area: None,
+        legend: None,
     };
 
     let fixed = ChartErrorBars {
@@ -3698,6 +3786,8 @@ fn chart_data_table_roundtrips_and_updates() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .unwrap();
@@ -3793,6 +3883,8 @@ fn chart_data_table_rejected_on_pie() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
             },
         )
         .is_err());
@@ -3835,6 +3927,8 @@ fn base_3d_patch(kind: ChartKind) -> ChartPatch {
         split_pos: None,
         second_pie_size: None,
         series_lines: None,
+        plot_area: None,
+        legend: None,
     }
 }
 
@@ -3946,6 +4040,8 @@ fn chart_3d_column_view3d_and_shape_roundtrip_and_update() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
                 ..Default::default()
             },
         )
@@ -4066,6 +4162,8 @@ fn chart_surface_wireframe_and_view3d_roundtrip_and_update() {
                 split_pos: None,
                 second_pie_size: None,
                 series_lines: None,
+                plot_area: None,
+                legend: None,
                 ..Default::default()
             },
         )
@@ -4156,6 +4254,8 @@ fn chart_of_pie_options_roundtrip_and_update() {
                 split_type: Some(ChartSplitType::Value),
                 second_pie_size: Some(150),
                 series_lines: Some(false),
+                plot_area: None,
+                legend: None,
                 ..Default::default()
             },
         )
@@ -4202,4 +4302,100 @@ fn chart_of_pie_validation() {
     let mut bad_size = base_3d_patch(ChartKind::BarOfPie);
     bad_size.second_pie_size = Some(400);
     assert!(wb.set_chart("Sheet1", bad_size).is_err());
+}
+
+#[test]
+fn chart_plot_area_and_legend_styling_roundtrips_and_updates() {
+    use xlcore_types::{ChartLegend, ChartLine, ChartPlotArea, ChartTextStyle, ChartUpdate};
+
+    let mut wb = Workbook::new().unwrap();
+    seed_3d(&mut wb);
+
+    let mut patch = base_3d_patch(ChartKind::Column);
+    patch.legend_position = Some(ChartLegendPosition::Bottom);
+    patch.plot_area = Some(ChartPlotArea {
+        fill: Some("FFEEDD".to_string()),
+        border: Some(ChartLine {
+            width_emu: Some(19050),
+            ..Default::default()
+        }),
+    });
+    patch.legend = Some(ChartLegend {
+        fill: Some("none".to_string()),
+        border: Some(ChartLine {
+            none: Some(true),
+            ..Default::default()
+        }),
+        font: Some(ChartTextStyle {
+            size: Some(11.0),
+            bold: Some(true),
+            italic: Some(false),
+            color: Some("FF0000".to_string()),
+            typeface: Some("Calibri".to_string()),
+        }),
+    });
+
+    let info = wb.set_chart("Sheet1", patch).unwrap();
+    assert_eq!(
+        info.plot_area.as_ref().unwrap().fill.as_deref(),
+        Some("FFEEDD")
+    );
+    assert_eq!(info.legend.as_ref().unwrap().fill.as_deref(), Some("none"));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("<c:plotArea>"));
+    assert!(xml.contains("c:spPr"));
+    assert!(xml.contains("FFEEDD"));
+    assert!(xml.contains("c:txPr"));
+    assert!(xml.contains("a:defRPr"));
+    assert!(xml.contains("sz=\"1100\""));
+    assert!(xml.contains("typeface=\"Calibri\""));
+
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    let chart = &charts[0];
+    let pa = chart.plot_area.as_ref().unwrap();
+    assert_eq!(pa.fill.as_deref(), Some("FFEEDD"));
+    assert_eq!(pa.border.as_ref().unwrap().width_emu, Some(19050));
+    let lg = chart.legend.as_ref().unwrap();
+    assert_eq!(lg.fill.as_deref(), Some("none"));
+    assert_eq!(lg.border.as_ref().unwrap().none, Some(true));
+    let font = lg.font.as_ref().unwrap();
+    assert_eq!(font.size, Some(11.0));
+    assert_eq!(font.bold, Some(true));
+    assert_eq!(font.color.as_deref(), Some("FF0000"));
+    assert_eq!(font.typeface.as_deref(), Some("Calibri"));
+
+    let id = chart.id.clone();
+    reopened
+        .update_chart(
+            "Sheet1",
+            &id,
+            ChartUpdate {
+                plot_area: Some(ChartPlotArea {
+                    fill: Some("00FF00".to_string()),
+                    border: None,
+                }),
+                legend: Some(ChartLegend {
+                    font: Some(ChartTextStyle {
+                        size: Some(8.0),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let charts = reopened.charts(None).unwrap();
+    let chart = &charts[0];
+    assert_eq!(
+        chart.plot_area.as_ref().unwrap().fill.as_deref(),
+        Some("00FF00")
+    );
+    assert_eq!(
+        chart.legend.as_ref().unwrap().font.as_ref().unwrap().size,
+        Some(8.0)
+    );
 }

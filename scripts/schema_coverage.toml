@@ -171,6 +171,22 @@ derived = ["ofPieType"]
 excluded = ["custSplit"]
 aliases = { ser = "series" }
 
+# --- plot-area / legend styling ---------------------------------------------
+[[pair]]
+sdk = "PlotArea"
+dto = "ChartPlotArea"
+ns = "c"
+derived = ["layout", "areaChart", "area3DChart", "lineChart", "line3DChart", "stockChart", "radarChart", "scatterChart", "pieChart", "pie3DChart", "doughnutChart", "barChart", "bar3DChart", "ofPieChart", "surfaceChart", "surface3DChart", "bubbleChart", "valAx", "catAx", "dateAx", "serAx", "dTable"]
+aliases = { spPr = "fill" }
+
+[[pair]]
+sdk = "Legend"
+dto = "ChartLegend"
+ns = "c"
+derived = ["legendPos", "overlay"]
+excluded = ["legendEntry", "layout"]
+aliases = { spPr = "fill", txPr = "font" }
+
 # --- styles -----------------------------------------------------------------
 [[pair]]
 sdk = "Protection"

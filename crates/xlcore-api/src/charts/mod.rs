@@ -16,10 +16,11 @@ use xlcore_types::{
     AnchorSpec, ApiError, ApiErrorCode, ApiWarning, Bar3DShape, BuiltInUnit, ChartAnchor,
     ChartAxisGroup, ChartAxisPatch, ChartDataLabel, ChartDataLabelPosition, ChartDataLabels,
     ChartDataPoint, ChartDataTable, ChartErrorBarType, ChartErrorBars, ChartErrorDirection,
-    ChartErrorValueType, ChartInfo, ChartKind, ChartLegendPosition, ChartLine, ChartMarker,
-    ChartPatch, ChartSeriesInfo, ChartSeriesPatch, ChartSplitType, ChartStacking, ChartTrendline,
-    ChartUpdate, ChartView3D, CrossBetween, DispBlanksAs, DisplayUnits, LineDash, MarkerStyle,
-    RadarStyle, TickLabelPosition, TickMark, TrendlineKind,
+    ChartErrorValueType, ChartInfo, ChartKind, ChartLegend, ChartLegendPosition, ChartLine,
+    ChartMarker, ChartPatch, ChartPlotArea, ChartSeriesInfo, ChartSeriesPatch, ChartSplitType,
+    ChartStacking, ChartTextStyle, ChartTrendline, ChartUpdate, ChartView3D, CrossBetween,
+    DispBlanksAs, DisplayUnits, LineDash, MarkerStyle, RadarStyle, TickLabelPosition, TickMark,
+    TrendlineKind,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -121,6 +122,8 @@ impl Workbook {
                     split_pos: parsed.split_pos,
                     second_pie_size: parsed.second_pie_size,
                     series_lines: parsed.series_lines,
+                    plot_area: parsed.plot_area,
+                    legend: parsed.legend_style,
                 });
             }
         }
@@ -294,6 +297,8 @@ impl Workbook {
             split_pos: patch.split_pos.filter(|_| is_of_pie(patch.kind)),
             second_pie_size: patch.second_pie_size.filter(|_| is_of_pie(patch.kind)),
             series_lines: patch.series_lines.filter(|_| is_of_pie(patch.kind)),
+            plot_area: patch.plot_area.clone(),
+            legend: patch.legend.clone(),
         })
     }
 
@@ -561,6 +566,8 @@ impl Workbook {
                 split_pos,
                 second_pie_size,
                 series_lines,
+                plot_area: None,
+                legend: None,
             };
             space.chart.plot_area.plot_area_choice1 = build_plot_charts(&synth);
             space
@@ -609,6 +616,18 @@ impl Workbook {
                 ChartLegendPosition::None => None,
                 pos => Some(Box::new(build_legend(legend_pos_to(pos)))),
             };
+        }
+
+        if let Some(pa) = &update.plot_area {
+            space.chart.plot_area.shape_properties = build_plot_area_shape(pa);
+        }
+
+        if let Some(style) = &update.legend {
+            let legend = space
+                .chart
+                .legend
+                .get_or_insert_with(|| Box::new(build_legend(c::LegendPositionValues::Right)));
+            apply_legend_style(legend, style);
         }
 
         if let Some(blanks) = update.disp_blanks_as {

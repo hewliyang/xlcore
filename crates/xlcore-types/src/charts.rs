@@ -535,6 +535,108 @@ pub enum ChartLegendPosition {
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// Text run styling (`c:txPr/a:p/a:pPr/a:defRPr`), distilled from ooxmlsdk
+/// `DefaultRunProperties`. Used for the legend font.
+///
+/// Round-trips for Excel; the xlsx-preview renderer draws chart text with its
+/// own built-in fonts.
+///
+/// Intentionally not modeled (preserved on update, author via raw XML):
+/// underline, strike, kerning, caps, baseline, east-asian/complex/symbol fonts,
+/// outline, hyperlinks, `extLst`.
+///
+/// schema-excluded: kumimoji, lang, altLang, u, strike, kern, cap, spc,
+/// normalizeH, baseline, noProof, dirty, err, smtClean, smtId, bmk, ln,
+/// effectLst, highlight, uLnTx, uFillTx, ea, cs, sym, hlinkClick,
+/// hlinkMouseOver, rtl
+pub struct ChartTextStyle {
+    /// `a:defRPr/@sz` in whole points (1..=4000); stored as 100ths of a point.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<f64>,
+    /// `a:defRPr/@b`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bold: Option<bool>,
+    /// `a:defRPr/@i`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub italic: Option<bool>,
+    /// `a:defRPr/a:solidFill` color: 6-hex `RRGGBB` / 8-hex `AARRGGBB`.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// `a:defRPr/a:latin/@typeface`; font family name.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub typeface: Option<String>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+/// Plot-area background styling (`c:plotArea/c:spPr`), distilled from ooxmlsdk
+/// `PlotArea`.
+///
+/// Round-trips for Excel; the xlsx-preview renderer draws the plot area with a
+/// white background regardless.
+///
+/// schema-excluded: layout, plot charts, axes, dTable, extLst
+pub struct ChartPlotArea {
+    /// `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
+    /// `"none"` for an explicit no-fill (`a:noFill`).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<String>,
+    /// `c:spPr/a:ln` border styling (width, dash, hidden).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border: Option<ChartLine>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+#[allow(clippy::derive_partial_eq_without_eq)]
+/// Legend background/border (`c:legend/c:spPr`) and font (`c:legend/c:txPr`),
+/// distilled from ooxmlsdk `Legend`. The legend position is set separately via
+/// {@link ChartPatch.legendPosition}.
+///
+/// Round-trips for Excel; the xlsx-preview renderer draws the legend with its
+/// own built-in styling.
+///
+/// schema-excluded: legendPos, legendEntry, layout, overlay, extLst
+pub struct ChartLegend {
+    /// `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
+    /// `"none"` for an explicit no-fill (`a:noFill`).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<String>,
+    /// `c:spPr/a:ln` border styling (width, dash, hidden).
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub border: Option<ChartLine>,
+    /// `c:txPr/a:p/a:pPr/a:defRPr` legend text font.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font: Option<ChartTextStyle>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "typescript",
@@ -1103,6 +1205,15 @@ pub struct ChartPatch {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub categories_ref: Option<String>,
     pub series: Vec<ChartSeriesPatch>,
+    /// `c:plotArea/c:spPr`; plot-area background fill + border.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plot_area: Option<ChartPlotArea>,
+    /// `c:legend/c:spPr` + `c:legend/c:txPr`; legend background, border + font.
+    /// Position is set via {@link ChartPatch.legendPosition}.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legend: Option<ChartLegend>,
     pub anchor: AnchorSpec,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1228,6 +1339,14 @@ pub struct ChartInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub categories_ref: Option<String>,
     pub series: Vec<ChartSeriesInfo>,
+    /// `c:plotArea/c:spPr`; plot-area background fill + border.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plot_area: Option<ChartPlotArea>,
+    /// `c:legend/c:spPr` + `c:legend/c:txPr`; legend background, border + font.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legend: Option<ChartLegend>,
     pub anchor: ChartAnchor,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1352,6 +1471,14 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub series: Option<Vec<ChartSeriesPatch>>,
+    /// `c:plotArea/c:spPr`; plot-area background fill + border.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plot_area: Option<ChartPlotArea>,
+    /// `c:legend/c:spPr` + `c:legend/c:txPr`; legend background, border + font.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legend: Option<ChartLegend>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub anchor: Option<AnchorSpec>,

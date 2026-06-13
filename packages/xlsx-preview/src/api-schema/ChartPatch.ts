@@ -5,7 +5,9 @@ import type { ChartAxisPatch } from "./ChartAxisPatch.js";
 import type { ChartDataLabels } from "./ChartDataLabels.js";
 import type { ChartDataTable } from "./ChartDataTable.js";
 import type { ChartKind } from "./ChartKind.js";
+import type { ChartLegend } from "./ChartLegend.js";
 import type { ChartLegendPosition } from "./ChartLegendPosition.js";
+import type { ChartPlotArea } from "./ChartPlotArea.js";
 import type { ChartSeriesPatch } from "./ChartSeriesPatch.js";
 import type { ChartSplitType } from "./ChartSplitType.js";
 import type { ChartStacking } from "./ChartStacking.js";
@@ -20,6 +22,15 @@ export type ChartPatch = {
   legendPosition?: ChartLegendPosition;
   categoriesRef?: string;
   series: Array<ChartSeriesPatch>;
+  /**
+   * `c:plotArea/c:spPr`; plot-area background fill + border.
+   */
+  plotArea?: ChartPlotArea;
+  /**
+   * `c:legend/c:spPr` + `c:legend/c:txPr`; legend background, border + font.
+   * Position is set via {@link ChartPatch.legendPosition}.
+   */
+  legend?: ChartLegend;
   anchor: AnchorSpec;
   categoryAxisTitle?: string;
   valueAxisTitle?: string;

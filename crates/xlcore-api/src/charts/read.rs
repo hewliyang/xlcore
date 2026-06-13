@@ -76,6 +76,8 @@ pub(super) struct ParsedChart {
     pub(super) split_pos: Option<f64>,
     pub(super) second_pie_size: Option<u16>,
     pub(super) series_lines: Option<bool>,
+    pub(super) plot_area: Option<ChartPlotArea>,
+    pub(super) legend_style: Option<ChartLegend>,
 }
 
 pub(super) fn group_is_secondary(axis_ids: &[c::AxisId], sec: &[u32]) -> bool {
@@ -664,6 +666,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
             .and_then(|p| p.val.as_ref())
             .map(legend_pos_from)
     });
+    let plot_area = read_plot_area_shape(plot.shape_properties.as_deref());
+    let legend_style = space.chart.legend.as_deref().and_then(read_legend_style);
 
     let disp_blanks_as = space
         .chart
@@ -706,6 +710,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         split_pos,
         second_pie_size,
         series_lines,
+        plot_area,
+        legend_style,
     }
 }
 
@@ -992,7 +998,11 @@ pub(super) fn line_dash_from(v: &a::PresetLineDashValues) -> LineDash {
 }
 
 pub(super) fn read_line(sp: Option<&c::ChartShapeProperties>) -> Option<ChartLine> {
-    let outline = sp?.outline.as_deref()?;
+    read_outline(sp?.outline.as_deref())
+}
+
+pub(super) fn read_outline(outline: Option<&a::Outline>) -> Option<ChartLine> {
+    let outline = outline?;
     let none = matches!(outline.outline_choice1, Some(a::OutlineChoice::NoFill(_))).then_some(true);
     let dash = match outline.outline_choice2.as_ref() {
         Some(a::OutlineChoice2::PresetDash(d)) => d.val.as_ref().map(line_dash_from),
@@ -1004,6 +1014,68 @@ pub(super) fn read_line(sp: Option<&c::ChartShapeProperties>) -> Option<ChartLin
         none,
     };
     (out != ChartLine::default()).then_some(out)
+}
+
+pub(super) fn read_plot_area_fill(sp: Option<&c::ShapeProperties>) -> Option<String> {
+    match sp?.shape_properties_choice2.as_ref()? {
+        c::ShapePropertiesChoice2::NoFill(_) => Some("none".to_string()),
+        c::ShapePropertiesChoice2::SolidFill(sf) => {
+            let a::SolidFillChoice::RgbColorModelHex(rgb) = sf.solid_fill_choice.as_ref()? else {
+                return None;
+            };
+            Some(rgb.val.to_string().to_uppercase())
+        }
+        _ => None,
+    }
+}
+
+pub(super) fn read_plot_area_shape(sp: Option<&c::ShapeProperties>) -> Option<ChartPlotArea> {
+    let fill = read_plot_area_fill(sp);
+    let border = read_outline(sp.and_then(|s| s.outline.as_deref()));
+    (fill.is_some() || border.is_some()).then_some(ChartPlotArea { fill, border })
+}
+
+pub(super) fn read_text_style(tp: Option<&c::TextProperties>) -> Option<ChartTextStyle> {
+    let def = tp?
+        .paragraph
+        .first()?
+        .paragraph_properties
+        .as_ref()?
+        .default_run_properties
+        .as_deref()?;
+    let color = match def.default_run_properties_choice1.as_ref() {
+        Some(a::DefaultRunPropertiesChoice::SolidFill(sf)) => match sf.solid_fill_choice.as_ref() {
+            Some(a::SolidFillChoice::RgbColorModelHex(rgb)) => {
+                Some(rgb.val.to_string().to_uppercase())
+            }
+            _ => None,
+        },
+        _ => None,
+    };
+    let style = ChartTextStyle {
+        size: def.font_size.map(|sz| sz as f64 / 100.0),
+        bold: def.bold.as_ref().map(|b| b.as_bool()),
+        italic: def.italic.as_ref().map(|b| b.as_bool()),
+        color,
+        typeface: def.latin_font.as_ref().and_then(|f| f.typeface.clone()),
+    };
+    (style != ChartTextStyle::default()).then_some(style)
+}
+
+pub(super) fn read_legend_style(legend: &c::Legend) -> Option<ChartLegend> {
+    let fill = read_shape_fill(legend.chart_shape_properties.as_deref());
+    let border = read_outline(
+        legend
+            .chart_shape_properties
+            .as_deref()
+            .and_then(|s| s.outline.as_deref()),
+    );
+    let font = read_text_style(legend.text_properties.as_deref());
+    (fill.is_some() || border.is_some() || font.is_some()).then_some(ChartLegend {
+        fill,
+        border,
+        font,
+    })
 }
 
 pub(super) fn read_data_points(dps: &[c::DataPoint]) -> Option<Vec<ChartDataPoint>> {

@@ -560,11 +560,21 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
         })
     };
 
+    if let Some(pa) = &patch.plot_area {
+        plot_area.shape_properties = build_plot_area_shape(pa);
+    }
+
     let legend = match patch.legend_position {
         Some(ChartLegendPosition::None) => None,
         Some(pos) => Some(Box::new(build_legend(legend_pos_to(pos)))),
         None => Some(Box::new(build_legend(c::LegendPositionValues::Right))),
     };
+    let legend = legend.map(|mut l| {
+        if let Some(style) = &patch.legend {
+            apply_legend_style(&mut l, style);
+        }
+        l
+    });
 
     let chart = c::Chart {
         title: title.map(Box::new),
@@ -1810,6 +1820,103 @@ pub(super) fn build_legend(pos: c::LegendPositionValues) -> c::Legend {
             val: Some(BooleanValue::from_bool(false)),
         }),
         ..Default::default()
+    }
+}
+
+pub(super) fn build_solid_fill(color: &str) -> Option<a::SolidFill> {
+    normalize_chart_hex(color).map(|val| a::SolidFill {
+        solid_fill_choice: Some(a::SolidFillChoice::RgbColorModelHex(Box::new(
+            a::RgbColorModelHex {
+                val,
+                ..Default::default()
+            },
+        ))),
+        ..Default::default()
+    })
+}
+
+pub(super) fn build_plot_area_shape(pa: &ChartPlotArea) -> Option<Box<c::ShapeProperties>> {
+    let fill = pa.fill.as_deref().and_then(|f| {
+        if f.eq_ignore_ascii_case("none") {
+            Some(c::ShapePropertiesChoice2::NoFill(Box::new(
+                a::NoFill::default(),
+            )))
+        } else {
+            build_solid_fill(f).map(|sf| c::ShapePropertiesChoice2::SolidFill(Box::new(sf)))
+        }
+    });
+    let outline = pa.border.as_ref().map(|l| build_outline(l, None));
+    if fill.is_none() && outline.is_none() {
+        return None;
+    }
+    Some(Box::new(c::ShapeProperties {
+        shape_properties_choice2: fill,
+        outline,
+        ..Default::default()
+    }))
+}
+
+pub(super) fn build_legend_shape(
+    fill: Option<&str>,
+    border: Option<&ChartLine>,
+) -> Option<Box<c::ChartShapeProperties>> {
+    let fill = fill.and_then(|f| {
+        if f.eq_ignore_ascii_case("none") {
+            Some(c::ChartShapePropertiesChoice2::NoFill(Box::new(
+                a::NoFill::default(),
+            )))
+        } else {
+            build_solid_fill(f).map(|sf| c::ChartShapePropertiesChoice2::SolidFill(Box::new(sf)))
+        }
+    });
+    let outline = border.map(|l| build_outline(l, None));
+    if fill.is_none() && outline.is_none() {
+        return None;
+    }
+    Some(Box::new(c::ChartShapeProperties {
+        chart_shape_properties_choice2: fill,
+        outline,
+        ..Default::default()
+    }))
+}
+
+pub(super) fn build_text_style(style: &ChartTextStyle) -> c::TextProperties {
+    let mut def_rpr = a::DefaultRunProperties {
+        font_size: style.size.map(|pt| (pt * 100.0).round() as i32),
+        bold: style.bold.map(BooleanValue::from_bool),
+        italic: style.italic.map(BooleanValue::from_bool),
+        ..Default::default()
+    };
+    if let Some(color) = style.color.as_deref() {
+        def_rpr.default_run_properties_choice1 = build_solid_fill(color)
+            .map(|sf| a::DefaultRunPropertiesChoice::SolidFill(Box::new(sf)));
+    }
+    if let Some(face) = style.typeface.as_deref() {
+        def_rpr.latin_font = Some(a::LatinFont {
+            typeface: Some(face.to_string()),
+            ..Default::default()
+        });
+    }
+    c::TextProperties {
+        body_properties: Box::new(a::BodyProperties::default()),
+        list_style: Some(Box::new(a::ListStyle::default())),
+        paragraph: vec![a::Paragraph {
+            paragraph_properties: Some(Box::new(a::ParagraphProperties {
+                default_run_properties: Some(Box::new(def_rpr)),
+                ..Default::default()
+            })),
+            ..Default::default()
+        }],
+        ..Default::default()
+    }
+}
+
+pub(super) fn apply_legend_style(legend: &mut c::Legend, style: &ChartLegend) {
+    if let Some(sp) = build_legend_shape(style.fill.as_deref(), style.border.as_ref()) {
+        legend.chart_shape_properties = Some(sp);
+    }
+    if let Some(font) = &style.font {
+        legend.text_properties = Some(Box::new(build_text_style(font)));
     }
 }
 
