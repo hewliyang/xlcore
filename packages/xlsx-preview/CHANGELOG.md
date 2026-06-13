@@ -23,6 +23,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Renderer draws pseudo-3D surface charts (`c:surfaceChart`/`c:surface3DChart`): a mesh over the (category × series) z-grid via the bar3D oblique projection + floor/back/side walls, painter-sorted quads filled by a height-band color ramp, or `c:wireframe` grid lines. Decoded into wire `Chart.type` `"surface"` + `Chart.wireframe`.
 - Renderer draws pseudo-3D bar3D/column3D geometry: oblique-projection boxes (front + lighter top + darker side faces) over a floor + back wall + side wall, sizing depth from `c:view3D` (rotX/rotY/depthPercent) + `c:gapDepth` and filling walls from `c:floor`/`c:sideWall`/`c:backWall` spPr. Decoded into the wire `Chart.is3d`/`view3d`/`gapDepth`/`floorFill`/`sideWallFill`/`backWallFill` (`ChartView3D`); line3D/area3D/pie3D/surface still flat.
 - Renderer consumes manual layout (`c:layout/c:manualLayout`) for the plot area (inner/outer `layoutTarget`), legend, and title, positioning them at the explicit fractional rectangle (edge/factor `*Mode`) of the chart area. Decoded into the wire `Chart.plotAreaLayout`/`legendLayout`/`titleLayout` (`ChartManualLayout`).
 - Renderer draws ofPie satellite split (`c:ofPieChart` pieOfPie/barOfPie): main pie with an aggregated "Other" slice plus a secondary pie or vertical stacked bar of the split-off points, connector series-lines, honoring `splitType`/`splitPos`/`secondPieSize`/`serLines`. Decoded into the wire `Chart.ofPieType`/`splitType`/`splitPos`/`secondPieSize`/`seriesLines`.

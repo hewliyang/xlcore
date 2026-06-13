@@ -356,6 +356,7 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
         legend_layout: None,
         title_layout: None,
         is_3d: false,
+        wireframe: false,
         view_3d: None,
         gap_depth: None,
         floor_fill: None,

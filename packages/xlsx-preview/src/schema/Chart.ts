@@ -73,6 +73,7 @@ export type Chart = {
   legendLayout?: ChartManualLayout;
   titleLayout?: ChartManualLayout;
   is3d: boolean;
+  wireframe: boolean;
   view3d?: ChartView3D;
   gapDepth?: number;
   floorFill?: string;

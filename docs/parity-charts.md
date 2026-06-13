@@ -53,7 +53,7 @@ charts — side with Excel desktop/spec where they disagree.
 | `c:` | `bar3D`/`column3D` | ✅ | pseudo-3D (oblique) boxes + floor/back/side walls; `view3D` rotX/rotY + `depthPercent`/`gapDepth` size the depth |
 | `c:` | `line3D`/`area3D`/`pie3D` | 🟡 | drawn flat via 2D painters; perspective/depth dropped |
 | `c:` | `ofPieChart` | ✅ | pieOfPie/barOfPie satellite split; `splitType`/`splitPos`/`secondPieSize`/`serLines` |
-| `c:` | `surfaceChart`/`surface3DChart` | ❌ | not wired |
+| `c:` | `surfaceChart`/`surface3DChart` | ✅ | pseudo-3D mesh over (category × series) grid; oblique projection + floor/back/side walls; filled height-band color ramp or `c:wireframe` grid lines |
 | `cx:` | `waterfall` | ✅ | `drawChartEx` waterfall painter |
 | `cx:` | `funnel`/`treemap`/`sunburst` | ✅ | `chartEx.ts` painters |
 | `cx:` | `histogram`/`pareto`/`boxWhisker` | ✅ | `chartExStats.ts` painters |
@@ -71,8 +71,13 @@ charts — side with Excel desktop/spec where they disagree.
 2. **True 3D geometry** for `line3D`/`area3D`/`pie3D` — still flattened to the
    2D painter; `view3D`/walls dropped for those kinds.
 3. **bar3D `c:shape`** (box/cone/cylinder/pyramid) — only box rendered.
-4. **`surfaceChart` / `surface3DChart`** painter (+ `c:wireframe` lines vs
-   filled bands).
+4. **`surfaceChart` / `surface3DChart`** — done: `drawSurfaceChart`
+   (`chart3d.ts`) builds a z-grid (rows = series, cols = categories,
+   z = value), reuses the bar3D oblique projection + floor/back/side walls,
+   then painter-sorts grid quads back-to-front. Filled mode colors each quad
+   by a height band (blue→red HSL ramp across N bands); `c:wireframe` strokes
+   the grid lines instead. Value (z) axis with ticks + gridlines on the back
+   wall.
 
 ### Open rendering nits
 

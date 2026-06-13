@@ -228,6 +228,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
     let mut bar_gap_width: Option<u16> = None;
     let mut bar_overlap: Option<i8> = None;
     let mut is_3d = false;
+    let mut wireframe = false;
     let mut gap_depth: Option<f64> = None;
     let mut hole_size: Option<u8> = None;
     let mut first_slice_angle: Option<u16> = None;
@@ -272,6 +273,34 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                     categories_format = fmt;
                 }
                 if $is_primary_group && value_format.is_none() {
+                    value_format = values_format(ser.values.as_deref());
+                }
+            }
+        }};
+    }
+
+    macro_rules! extract_surface {
+        ($coll:expr, $ax_ids:expr) => {{
+            let ag = axis_group_for($ax_ids, &secondary_ax_ids);
+            for ser in $coll {
+                let mut row = common_series(
+                    &ser.order,
+                    ser.series_text.as_deref(),
+                    ser.chart_shape_properties.as_deref(),
+                    ser.values.as_deref(),
+                    &[],
+                    theme,
+                );
+                row.axis_group = ag.clone();
+                row.chart_type = Some("surface".to_string());
+                series.push(row);
+                if categories.is_empty() {
+                    let (cs, r, fmt) = ax_data_values(ser.category_axis_data.as_deref());
+                    categories = cs;
+                    _categories_ref = r;
+                    categories_format = fmt;
+                }
+                if value_format.is_none() {
                     value_format = values_format(ser.values.as_deref());
                 }
             }
@@ -522,6 +551,22 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 extract_chartlike!(&pc.pie_chart_series, "pie", &[] as &[c::AxisId], true);
                 group_types.push("pie");
                 break;
+            }
+            c::PlotAreaChoice::SurfaceChart(sc) => {
+                is_3d = true;
+                if sc.wireframe.as_ref().and_then(|w| w.val).map(bool::from) == Some(true) {
+                    wireframe = true;
+                }
+                extract_surface!(&sc.surface_chart_series, &sc.axis_id);
+                group_types.push("surface");
+            }
+            c::PlotAreaChoice::Surface3DChart(sc) => {
+                is_3d = true;
+                if sc.wireframe.as_ref().and_then(|w| w.val).map(bool::from) == Some(true) {
+                    wireframe = true;
+                }
+                extract_surface!(&sc.surface_chart_series, &sc.axis_id);
+                group_types.push("surface");
             }
             c::PlotAreaChoice::RadarChart(rc) => {
                 if radar_style.is_none() {
@@ -828,6 +873,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         legend_layout,
         title_layout,
         is_3d,
+        wireframe,
         view_3d,
         gap_depth,
         floor_fill,

@@ -665,6 +665,8 @@ pub struct Chart {
 
     #[serde(default, skip_serializing_if = "is_false")]
     pub is_3d: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub wireframe: bool,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub view_3d: Option<ChartView3D>,
