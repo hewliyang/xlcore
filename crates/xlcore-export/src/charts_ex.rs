@@ -342,6 +342,11 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
         cat_axis_label_rotation: None,
         val_axis_label_rotation: None,
         data_table: None,
+        plot_area_fill: None,
+        plot_area_border: None,
+        legend_fill: None,
+        legend_border: None,
+        legend_font: None,
     })
 }
 

@@ -17,6 +17,7 @@ import {
   drawCategoryAxisExtraRowsCentered,
   drawLabel,
   drawLegend,
+  drawStyleBox,
   drawPlaceholderPlot,
   measureVerticalLegendWidth,
   effectiveLabels,
@@ -238,6 +239,8 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
   }
 
   if (plotRect.w <= 20 || plotRect.h <= 20) return;
+
+  drawStyleBox(ctx, plotRect, chart.plotAreaFill, chart.plotAreaBorder);
 
   if (chart.type === "combo" || chart.secondaryAxis) {
     drawComboChart(ctx, chart, plotRect);

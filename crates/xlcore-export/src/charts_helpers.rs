@@ -6,7 +6,13 @@ use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
 pub(crate) fn extract_line_style(
     sp_pr: Option<&c::ChartShapeProperties>,
 ) -> (Option<i32>, Option<String>) {
-    let Some(outline) = sp_pr.and_then(|p| p.outline.as_deref()) else {
+    extract_outline_style(sp_pr.and_then(|p| p.outline.as_deref()))
+}
+
+pub(crate) fn extract_outline_style(
+    outline: Option<&a::Outline>,
+) -> (Option<i32>, Option<String>) {
+    let Some(outline) = outline else {
         return (None, None);
     };
     let dash = match outline.outline_choice2.as_ref() {
@@ -29,6 +35,61 @@ pub(crate) fn extract_line_style(
         _ => None,
     };
     (outline.width, dash)
+}
+
+pub(crate) fn extract_style_border(
+    outline: Option<&a::Outline>,
+    sp_dbg: &str,
+    theme: Option<&Theme>,
+) -> Option<ChartStyleBorder> {
+    let outline = outline?;
+    let (width_emu, dash) = extract_outline_style(Some(outline));
+    let color = outline_fill_color(sp_dbg, theme);
+    if color.is_none() && width_emu.is_none() && dash.is_none() {
+        return None;
+    }
+    Some(ChartStyleBorder {
+        color,
+        width_emu,
+        dash,
+    })
+}
+
+pub(crate) fn extract_style_font(
+    tx_pr: Option<&c::TextProperties>,
+    theme: Option<&Theme>,
+) -> Option<ChartStyleFont> {
+    let dr = tx_pr?
+        .paragraph
+        .first()?
+        .paragraph_properties
+        .as_deref()?
+        .default_run_properties
+        .as_deref()?;
+    let size_pt = dr.font_size.map(|s| s as f64 / 100.0);
+    let bold = dr.bold.map(bool::from);
+    let italic = dr.italic.map(bool::from);
+    let typeface = dr
+        .latin_font
+        .as_ref()
+        .and_then(|l| l.typeface.clone())
+        .filter(|s| !s.is_empty());
+    let color = fill_color_outside_outline(&format!("{:?}", dr), theme);
+    if size_pt.is_none()
+        && bold.is_none()
+        && italic.is_none()
+        && typeface.is_none()
+        && color.is_none()
+    {
+        return None;
+    }
+    Some(ChartStyleFont {
+        size_pt,
+        bold,
+        italic,
+        color,
+        typeface,
+    })
 }
 
 pub(crate) fn built_in_unit_factor(b: &c::BuiltInUnitValues) -> f64 {

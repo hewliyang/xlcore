@@ -679,6 +679,20 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
             .unwrap_or_else(|| "r".to_string())
     });
 
+    let plot_area_sp = plot_area.shape_properties.as_deref();
+    let plot_area_fill =
+        plot_area_sp.and_then(|sp| fill_color_outside_outline(&format!("{:?}", sp), theme));
+    let plot_area_border = plot_area_sp
+        .and_then(|sp| extract_style_border(sp.outline.as_deref(), &format!("{:?}", sp), theme));
+
+    let legend = chart.legend.as_deref();
+    let legend_sp = legend.and_then(|l| l.chart_shape_properties.as_deref());
+    let legend_fill =
+        legend_sp.and_then(|sp| fill_color_outside_outline(&format!("{:?}", sp), theme));
+    let legend_border = legend_sp
+        .and_then(|sp| extract_style_border(sp.outline.as_deref(), &format!("{:?}", sp), theme));
+    let legend_font = legend.and_then(|l| extract_style_font(l.text_properties.as_deref(), theme));
+
     Some(Chart {
         chart_type,
         title,
@@ -731,5 +745,10 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         cat_axis_label_rotation,
         val_axis_label_rotation,
         data_table,
+        plot_area_fill,
+        plot_area_border,
+        legend_fill,
+        legend_border,
+        legend_font,
     })
 }

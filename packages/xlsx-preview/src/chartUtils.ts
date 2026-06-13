@@ -1,10 +1,61 @@
 import type { Chart, ChartSeries, DataLabels } from "./types.js";
 import type { Rect } from "./chart.js";
+import type { ChartStyleBorder } from "./schema/ChartStyleBorder.js";
+import type { ChartStyleFont } from "./schema/ChartStyleFont.js";
 
 const AXIS_FONT_SIZE = 10;
 const LEGEND_FONT_SIZE = 11;
 const GRIDLINE_COLOR = "#e5e7eb";
 const AXIS_LABEL_COLOR = "#52525b";
+const LEGEND_FONT_FAMILY = `-apple-system, "Helvetica Neue", Arial, sans-serif`;
+
+function styleDashFor(dash: string | undefined): number[] {
+  switch (dash) {
+    case "dot":
+    case "sysDot":
+      return [1, 3];
+    case "dash":
+      return [4, 3];
+    case "lgDash":
+      return [8, 3];
+    case "dashDot":
+      return [4, 3, 1, 3];
+    case "lgDashDot":
+      return [8, 3, 1, 3];
+    case "sysDash":
+      return [3, 1];
+    default:
+      return [];
+  }
+}
+
+export function drawStyleBox(
+  ctx: CanvasRenderingContext2D,
+  rect: Rect,
+  fill?: string,
+  border?: ChartStyleBorder,
+): void {
+  if (fill && fill !== "none") {
+    ctx.fillStyle = fill;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+  if (border && (border.color || border.widthEmu != null || border.dash)) {
+    ctx.save();
+    ctx.strokeStyle = border.color ?? "#000000";
+    ctx.lineWidth = border.widthEmu != null ? Math.max(0.5, border.widthEmu / 12700) : 1;
+    ctx.setLineDash(styleDashFor(border.dash));
+    ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+    ctx.restore();
+  }
+}
+
+export function chartFontCss(font: ChartStyleFont | undefined, fallbackSize: number): string {
+  const size = font?.sizePt ?? fallbackSize;
+  const family = font?.typeface ? `"${font.typeface}", ${LEGEND_FONT_FAMILY}` : LEGEND_FONT_FAMILY;
+  const style = font?.italic ? "italic " : "";
+  const weight = font?.bold ? "bold " : "";
+  return `${style}${weight}${size}px ${family}`;
+}
 
 const ZERO_BASELINE_COLOR = "#7a7a7a";
 const ZERO_BASELINE_WIDTH = 1.5;
@@ -497,18 +548,21 @@ export function drawLegend(
   orientation: "horizontal" | "vertical" = "horizontal",
   chart?: Chart,
 ): void {
-  ctx.font = `${LEGEND_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  drawStyleBox(ctx, rect, chart?.legendFill, chart?.legendBorder);
+  const font = chart?.legendFont;
+  const labelColor = font?.color ?? AXIS_LABEL_COLOR;
+  ctx.font = chartFontCss(font, LEGEND_FONT_SIZE);
   ctx.textBaseline = "middle";
   const swatchW = 10;
   if (orientation === "vertical") {
-    const lineH = LEGEND_FONT_SIZE + 6;
+    const lineH = (font?.sizePt ?? LEGEND_FONT_SIZE) + 6;
     const totalH = series.length * lineH;
     let y = rect.y + Math.max(0, (rect.h - totalH) / 2) + lineH / 2;
     const x = rect.x;
     for (let i = 0; i < series.length; i++) {
       const s = series[i]!;
       paintLegendSwatch(ctx, x, y, swatchW, s.color ?? "#4472C4", legendKindFor(chart, s));
-      ctx.fillStyle = AXIS_LABEL_COLOR;
+      ctx.fillStyle = labelColor;
       ctx.textAlign = "left";
       ctx.fillText(s.name || `Series ${i + 1}`, x + swatchW + 4, y);
       y += lineH;
@@ -524,7 +578,7 @@ export function drawLegend(
   for (let i = 0; i < series.length; i++) {
     const s = series[i]!;
     paintLegendSwatch(ctx, x, y, swatchW, s.color ?? "#4472C4", legendKindFor(chart, s));
-    ctx.fillStyle = AXIS_LABEL_COLOR;
+    ctx.fillStyle = labelColor;
     ctx.textAlign = "left";
     ctx.fillText(s.name || `Series ${i + 1}`, x + swatchW + 4, y);
     x += widths[i]! + itemPad;

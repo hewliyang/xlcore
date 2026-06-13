@@ -54,6 +54,60 @@ pub(crate) fn series_color_via_debug(
     None
 }
 
+pub(crate) fn color_from_solid_fill_block(fill_block: &str, theme: Option<&Theme>) -> Option<String> {
+    let end = fill_block
+        .find("})),")
+        .or_else(|| fill_block.find("}))"))
+        .unwrap_or(fill_block.len());
+    let fill_block = &fill_block[..end];
+
+    if let Some(p) = fill_block.find("RgbColorModelHex {") {
+        let rgb_scope = scope_from_open_brace(&fill_block[p..]);
+        if let Some(v) = rgb_scope.find("val: \"") {
+            let body = &rgb_scope[v + 6..];
+            if let Some(e) = body.find('"') {
+                let hex = &body[..e];
+                if hex.len() == 6 {
+                    return Some(apply_color_modifiers(&format!("#{}", hex), rgb_scope));
+                }
+            }
+        }
+    }
+    if let Some(p) = fill_block.find("SchemeColor {") {
+        let scheme_scope = scope_from_open_brace(&fill_block[p..]);
+        if let Some(base) = theme_scheme_color(scheme_scope, theme) {
+            return Some(apply_color_modifiers(&base, scheme_scope));
+        }
+    }
+    None
+}
+
+pub(crate) fn fill_color_outside_outline(dbg: &str, theme: Option<&Theme>) -> Option<String> {
+    let (o_start, o_end) = match dbg.find("outline: Some(Outline {") {
+        Some(p) => {
+            let block = scope_from_open_brace(&dbg[p..]);
+            (p, p + block.len())
+        }
+        None => (usize::MAX, usize::MAX),
+    };
+    let mut search = 0usize;
+    while let Some(rel) = dbg[search..].find("SolidFill(SolidFill {") {
+        let abs = search + rel;
+        if abs < o_start || abs >= o_end {
+            return color_from_solid_fill_block(&dbg[abs..], theme);
+        }
+        search = abs + 1;
+    }
+    None
+}
+
+pub(crate) fn outline_fill_color(dbg: &str, theme: Option<&Theme>) -> Option<String> {
+    let ln_pos = dbg.find("outline: Some(Outline {")?;
+    let ln_block = scope_from_open_brace(&dbg[ln_pos..]);
+    let fill_pos = ln_block.find("SolidFill(SolidFill {")?;
+    color_from_solid_fill_block(&ln_block[fill_pos..], theme)
+}
+
 pub(crate) fn theme_scheme_color(scheme_scope: &str, theme: Option<&Theme>) -> Option<String> {
     for n in 1..=6u32 {
         let needle = format!("Accent{n}");
