@@ -5,6 +5,7 @@ import {
   ExcelPreviewer,
   distinctValuesFor,
   type PivotFilterController,
+  type TableFilterController,
 } from "@hewliyang/xlsx-preview/react";
 import type { WorkbookPreviewer } from "@hewliyang/xlsx-preview/previewer";
 
@@ -28,6 +29,7 @@ export function App() {
   const pivotIdRef = useRef<string | null>(null);
   const sourceRefRef = useRef("");
   const hiddenRef = useRef<Record<string, string[]>>({});
+  const keptRef = useRef<Record<number, string[]>>({});
 
   async function onFile(f: File | null) {
     setFileBlob(null);
@@ -57,6 +59,7 @@ export function App() {
 
     pivotIdRef.current = info.id;
     sourceRefRef.current = ref;
+    keptRef.current = {};
     wbRef.current = wb;
     setFileBlob(new Blob([wb.save() as BlobPart]));
   }
@@ -72,6 +75,46 @@ export function App() {
         .filter(([, hide]) => hide.length > 0)
         .map(([f, hide]) => ({ field: f, hide }));
       wb.sheet(OUTPUT_SHEET).pivots.update(pivotIdRef.current, { hiddenItems });
+      return wb.layout();
+    },
+  };
+
+  function refSheet(ref: string): string | null {
+    const bang = ref.lastIndexOf("!");
+    if (bang < 0) return null;
+    let s = ref.slice(0, bang);
+    if (s.startsWith("'") && s.endsWith("'")) s = s.slice(1, -1).replace(/''/g, "'");
+    return s;
+  }
+
+  const tableController: TableFilterController = {
+    items: ({ rangeRef, field }) => distinctValuesFor(wbRef.current!, rangeRef, field),
+    activeValues: ({ columnOffset, rangeRef, field }) =>
+      keptRef.current[columnOffset] ?? distinctValuesFor(wbRef.current!, rangeRef, field),
+    setFilter: ({ columnOffset, rangeRef, field, values }) => {
+      const wb = wbRef.current;
+      if (!wb) return;
+      const sheetName = refSheet(rangeRef);
+      const ws = sheetName ? wb.sheet(sheetName) : wb.activeSheet();
+      if (!ws.autoFilter.get()) ws.autoFilter.set(rangeRef);
+      const all = distinctValuesFor(wb, rangeRef, field);
+      if (values.length === 0 || values.length >= all.length) {
+        ws.autoFilter.removeColumn(columnOffset);
+        delete keptRef.current[columnOffset];
+      } else {
+        ws.autoFilter.setColumnValues(columnOffset, values);
+        keptRef.current[columnOffset] = values;
+      }
+      return wb.layout();
+    },
+    setSort: ({ columnOffset, rangeRef, descending }) => {
+      const wb = wbRef.current;
+      if (!wb) return;
+      const sheetName = refSheet(rangeRef);
+      const ws = sheetName ? wb.sheet(sheetName) : wb.activeSheet();
+      if (!ws.autoFilter.get()) ws.autoFilter.set(rangeRef);
+      if (descending === null) ws.autoFilter.clearSort();
+      else ws.autoFilter.setSort(columnOffset, { descending });
       return wb.layout();
     },
   };
@@ -97,6 +140,7 @@ export function App() {
           initialSheet={OUTPUT_SHEET}
           previewerRef={previewerRef}
           pivotController={pivotController}
+          tableController={tableController}
           style={{ width: "100%", height: "100%" }}
         />
       </div>

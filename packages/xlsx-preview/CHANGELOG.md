@@ -13,6 +13,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Export emits sheet-level `TableFilterArrow { r, c, columnOffset, columnName, rangeRef }` carrying column identity for autofilter/table-autofilter headers.
 - `interact.ts` hit-tests table filter arrows (`onTableFilter` → `{ field, columnOffset, rangeRef, rect }`, pointer cursor on hover).
 - `tableFilterPopover.ts` interactive table-header dropdown (Sort A→Z/Z→A + value checklist + clear) wired via `tableController` option and `tablefilter` event.
+- Examples (react-vite + xlsx-app.html) wire a `TableFilterController` (distinct values + autoFilter set/setColumnValues/removeColumn/setSort/clearSort).
 - xlcore-api color resolver (`resolve_color_hex`): rgb/indexed/theme+tint → `RRGGBB`.
 - `CellInfo.style` read-back: `get_cell` resolves a cell's xf to a flat `StylePatch`.
 - Style read-back round-trip corpus test enforcing `resolve(get(cell)) ⊇ set(cell, patch)`.

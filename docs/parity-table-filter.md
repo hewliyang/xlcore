@@ -104,7 +104,7 @@ autoFilter { filterColumn[], sortState }  (definition)
       {descending|null}) }` each returning `WorkbookLayout | void`. Wire into
       `previewer.ts` (mirror `pivotController`/`onPivotFilter`): swap returned
       layout via `replaceLayout()`, also emit a low-level `tablefilter` event.
-- [ ] **Example wiring** in `examples/react-vite/src/App.tsx` +
+- [x] **Example wiring** in `examples/react-vite/src/App.tsx` +
       `examples/xlsx-app.html`: build a `TableFilterController` from
       `distinctValuesFor` (reuse `pivotSource.ts`) +
       `wb.autoFilter.setColumnValues` / new `setSort` + `wb.layout()`.
