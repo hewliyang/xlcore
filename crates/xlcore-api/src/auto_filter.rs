@@ -1,11 +1,14 @@
+use ooxmlsdk::simple_type::BooleanValue;
+use xlcore_export::table_engine::compute_hidden_rows;
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
-    ApiError, ApiErrorCode, AutoFilterColumnInfo, AutoFilterColumnPatch, AutoFilterCriteria,
-    AutoFilterCustomCriterion, AutoFilterInfo, AutoFilterOperator,
+    ApiCellValue, ApiError, ApiErrorCode, AutoFilterColumnInfo, AutoFilterColumnPatch,
+    AutoFilterCriteria, AutoFilterCustomCriterion, AutoFilterInfo, AutoFilterOperator,
 };
 
 use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_range_a1, qualify_ref};
+use crate::rowcols::ensure_row;
 use crate::{Result, Workbook};
 
 impl Workbook {
@@ -102,13 +105,15 @@ impl Workbook {
         let info = read_filter_column(&fc);
         af.filter_column.push(fc);
         af.filter_column.sort_by_key(|fc| u32::from(fc.column_id));
-        info.ok_or_else(|| {
+        let info = info.ok_or_else(|| {
             ApiError::new(
                 ApiErrorCode::InvalidAutoFilter,
                 "failed to materialize filter column",
             )
             .with_sheet(&sheet)
-        })
+        })?;
+        self.apply_filter_hidden(&sheet)?;
+        Ok(info)
     }
 
     pub fn remove_auto_filter_column(
@@ -133,7 +138,77 @@ impl Workbook {
                 true
             }
         });
+        self.apply_filter_hidden(&sheet)?;
         Ok(removed)
+    }
+
+    fn apply_filter_hidden(&mut self, sheet: &str) -> Result<()> {
+        let ws_part = self.worksheet_part_for_sheet(sheet)?;
+        let ws = ws_part
+            .root_element(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let Some(af) = ws.auto_filter.as_deref() else {
+            return Ok(());
+        };
+        let Some(reference) = af.reference.as_ref() else {
+            return Ok(());
+        };
+        let Some((r1, c1, r2, c2)) = parse_range_a1(reference.as_str()) else {
+            return Ok(());
+        };
+        let mut criteria_cols: Vec<(u32, AutoFilterCriteria)> = Vec::new();
+        for fc in &af.filter_column {
+            if let Some(info) = read_filter_column(fc) {
+                if is_active_criteria(&info.criteria) {
+                    criteria_cols.push((info.column_offset, info.criteria));
+                }
+            }
+        }
+
+        if r2 <= r1 {
+            return Ok(());
+        }
+        let first_data_row = r1 + 1;
+
+        let local_ref = format!(
+            "{}{}:{}{}",
+            xlcore_io::col_label(c1),
+            first_data_row,
+            xlcore_io::col_label(c2),
+            r2,
+        );
+        let reference = qualify_ref(sheet, &local_ref)?;
+        let range_ref = self.resolve_range_ref(&reference)?;
+        let info = self.read_range(&range_ref)?;
+        let rows: Vec<Vec<String>> = info
+            .values
+            .iter()
+            .map(|row| row.iter().map(cell_display).collect())
+            .collect();
+
+        let cols: Vec<(u32, &AutoFilterCriteria)> = criteria_cols
+            .iter()
+            .map(|(off, crit)| (*off, crit))
+            .collect();
+        let hidden = compute_hidden_rows(first_data_row, &rows, &cols);
+
+        let ws_part = self.worksheet_part_for_sheet(sheet)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        for r in first_data_row..=r2 {
+            if hidden.contains(&r) {
+                ensure_row(ws, r).hidden = Some(BooleanValue::from_bool(true));
+            } else if let Some(row) = ws
+                .sheet_data
+                .row
+                .iter_mut()
+                .find(|row| row.row_index == Some(r))
+            {
+                row.hidden = None;
+            }
+        }
+        Ok(())
     }
 
     fn auto_filter_span(&mut self, sheet: &str) -> Result<(u32, u32)> {
@@ -163,6 +238,45 @@ impl Workbook {
             .with_sheet(sheet)
         })?;
         Ok((c1, c2))
+    }
+}
+
+fn is_active_criteria(criteria: &AutoFilterCriteria) -> bool {
+    match criteria {
+        AutoFilterCriteria::Values { values, blank } => {
+            !values.is_empty() || blank.unwrap_or(false)
+        }
+        AutoFilterCriteria::Custom { criteria, .. } => !criteria.is_empty(),
+        AutoFilterCriteria::Top10 { .. } => true,
+        AutoFilterCriteria::Unsupported { .. } => false,
+    }
+}
+
+fn cell_display(value: &ApiCellValue) -> String {
+    match value {
+        ApiCellValue::Blank => String::new(),
+        ApiCellValue::String(s) => s.clone(),
+        ApiCellValue::Number(n) => format_number(*n),
+        ApiCellValue::Boolean(b) => {
+            if *b {
+                "TRUE".to_string()
+            } else {
+                "FALSE".to_string()
+            }
+        }
+        ApiCellValue::Error(e) => e.clone(),
+    }
+}
+
+fn format_number(n: f64) -> String {
+    if n == n.trunc() && n.abs() < 1e15 {
+        format!("{}", n as i64)
+    } else {
+        let mut s = format!("{n}");
+        if s.contains('e') || s.contains('E') {
+            s = format!("{n:.10}");
+        }
+        s
     }
 }
 

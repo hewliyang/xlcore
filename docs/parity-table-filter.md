@@ -71,7 +71,7 @@ autoFilter { filterColumn[], sortState }  (definition)
       -> BTreeSet<u32>` (1-based) — Values+blank, Custom 1–2 (`=,<>,>,>=,<,<=`,
       numeric-or-string compare, `*`/`?` wildcards on `=`/`<>`), Top10
       (top/bottom, count/percent), multi-column AND. Unit tests per kind + AND.
-- [ ] **Authored filter application** in `xlcore-api/src/auto_filter.rs`:
+- [x] **Authored filter application** in `xlcore-api/src/auto_filter.rs`:
       after `set_auto_filter_column` / `remove_auto_filter_column`, recompute
       the union of hidden rows across all `filterColumn`s and write
       `row.hidden` (set for filtered-out data rows, clear for visible ones;

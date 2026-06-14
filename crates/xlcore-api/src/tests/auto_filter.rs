@@ -206,6 +206,82 @@ fn auto_filter_column_values_multi_value_round_trip() {
 }
 
 #[test]
+fn auto_filter_values_applies_hidden_rows() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A1", "Region").unwrap();
+    wb.set_value("Sheet1!A2", "North").unwrap();
+    wb.set_value("Sheet1!A3", "South").unwrap();
+    wb.set_value("Sheet1!A4", "East").unwrap();
+    wb.set_value("Sheet1!A5", "West").unwrap();
+    wb.set_auto_filter("Sheet1", "A1:A5").unwrap();
+
+    wb.set_auto_filter_column(
+        "Sheet1",
+        AutoFilterColumnPatch {
+            column_offset: 0,
+            hidden_button: None,
+            show_button: None,
+            criteria: AutoFilterCriteria::Values {
+                values: vec!["North".into(), "West".into()],
+                blank: None,
+            },
+        },
+    )
+    .unwrap();
+
+    let hidden = collect_hidden(&mut wb);
+    assert_eq!(hidden, vec![3, 4]);
+    assert!(!row_hidden(&mut wb, 1));
+
+    wb.remove_auto_filter_column("Sheet1", 0).unwrap();
+    let hidden = collect_hidden(&mut wb);
+    assert!(hidden.is_empty());
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    reopened
+        .set_auto_filter_column(
+            "Sheet1",
+            AutoFilterColumnPatch {
+                column_offset: 0,
+                hidden_button: None,
+                show_button: None,
+                criteria: AutoFilterCriteria::Values {
+                    values: vec!["North".into(), "West".into()],
+                    blank: None,
+                },
+            },
+        )
+        .unwrap();
+    assert_eq!(collect_hidden(&mut reopened), vec![3, 4]);
+}
+
+fn row_hidden(wb: &mut Workbook, row: u32) -> bool {
+    let ws_part = wb.worksheet_part_for_sheet("Sheet1").unwrap();
+    let ws = ws_part.root_element(&mut wb.doc).unwrap();
+    ws.sheet_data
+        .row
+        .iter()
+        .find(|r| r.row_index == Some(row))
+        .and_then(|r| r.hidden.as_ref().map(|b| bool::from(*b)))
+        .unwrap_or(false)
+}
+
+fn collect_hidden(wb: &mut Workbook) -> Vec<u32> {
+    let ws_part = wb.worksheet_part_for_sheet("Sheet1").unwrap();
+    let ws = ws_part.root_element(&mut wb.doc).unwrap();
+    let mut out: Vec<u32> = ws
+        .sheet_data
+        .row
+        .iter()
+        .filter(|r| r.hidden.as_ref().map(|b| bool::from(*b)).unwrap_or(false))
+        .filter_map(|r| r.row_index)
+        .collect();
+    out.sort_unstable();
+    out
+}
+
+#[test]
 fn auto_filter_column_validation_errors() {
     let mut wb = Workbook::new().unwrap();
     wb.set_value("Sheet1!A1", "H").unwrap();

@@ -413,7 +413,7 @@ fn validate_size(value: f64, label: &str) -> Result<()> {
     Ok(())
 }
 
-fn ensure_row(ws: &mut x::Worksheet, row: u32) -> &mut x::Row {
+pub(crate) fn ensure_row(ws: &mut x::Worksheet, row: u32) -> &mut x::Row {
     let pos = match ws
         .sheet_data
         .row
