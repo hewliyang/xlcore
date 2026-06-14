@@ -5,6 +5,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- xlcore-api color resolver (`resolve_color_hex`): rgb/indexed/theme+tint → `RRGGBB`.
+
 ### Fixed
 
 - `pageSetup.set` no longer corrupts a sheet-qualified `printArea`/`printTitleRows`/`printTitleColumns` (`"Sheet1!A1:C5"` was fused into `MAINA1:C5`); the existing qualifier is now stripped before re-prefixing.

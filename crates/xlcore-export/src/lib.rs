@@ -24,6 +24,7 @@ mod tables;
 mod theme;
 
 pub use columnar::compactify;
+pub use theme::extract as extract_theme;
 pub use pivot_engine::{compute_cells, PivotStyleIndices};
 pub use schema::*;
 pub(crate) use shared_strings::{

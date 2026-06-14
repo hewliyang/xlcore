@@ -1,6 +1,7 @@
 mod auto_filter;
 mod cells;
 mod charts;
+mod color_resolve;
 mod comments;
 mod conditional_format;
 mod copyfill;

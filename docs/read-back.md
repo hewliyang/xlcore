@@ -56,3 +56,28 @@ A round-trip corpus is both the guarantee and the resolver's spec:
 
 Symmetry enforced, not hoped for. Styles is ~90% of the work (xfId + color
 mess); charts/tables/pivots already return near-symmetric `Info`.
+
+## Backlog
+
+Sequenced; each item is one ralph-agent task. Verify: `cargo test -p xlcore-api`
++ `cargo build --workspace`.
+
+1. **Inverse converters + expose `CellInfo.style`.** Mirror the write path:
+   `xf_to_style_patch(doc, xf) -> StylePatch` with `font_to_patch` / `fill_to_patch`
+   / `border_to_patch` / alignment / protection / number_format, walking an interned
+   `x::CellFormat` back to a flat `StylePatch`. Resolve the `xfId`/`format_id`
+   named-style master from `cellStyleXfs` first, then layer the cell's own xf on top.
+   Colors via item 1; numFmt via existing `num_fmt_code`. Add `style: Option<StylePatch>`
+   to `CellInfo` (xlcore-types) and populate it in `get_cell` (style resolution needs
+   `doc`, so resolve in `cells.rs::get_cell`, not the doc-less `cell_info_from_cell`).
+   Regen TS schema (`scripts/regen-api-schema.sh`). Unit test: a styled cell returns a
+   `StylePatch` matching what was set.
+
+2. **Round-trip corpus test.** `tests/` corpus enforcing `resolve(get(cell)) ⊇
+   set(cell, patch)` across the StylePatch surface (font fields, fill solid/pattern,
+   border sides, alignment, number_format, named_style). Where exotica can't round-trip
+   semantically, document + assert the raw-ref fallback. This is the resolver's spec.
+
+## Shipped
+
+- Color resolver: `resolve_color_hex` (rgb/indexed/theme+tint → `RRGGBB`) in xlcore-api.
