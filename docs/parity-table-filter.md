@@ -97,7 +97,7 @@ autoFilter { filterColumn[], sortState }  (definition)
       → `tableArrowAt` / `fireTableFilter`, emit `onTableFilter({ field,
       columnOffset, rangeRef, rect })`. Cursor pointer on hover. Unit:
       `sheetChrome.test.ts` arrow geometry/lookup for table arrows.
-- [ ] **`tableFilterPopover.ts`** (mirror `pivotFilterPopover.ts`, vanilla DOM):
+- [x] **`tableFilterPopover.ts`** (mirror `pivotFilterPopover.ts`, vanilla DOM):
       header (column name) + **Sort A→Z / Sort Z→A** buttons + **value
       checklist** + "Clear filter". `TableFilterController { items(ctx),
       activeValues(ctx), sort(ctx), setFilter(ctx & {values}), setSort(ctx &
