@@ -185,6 +185,27 @@ pub fn extract_doc_with_options(
         }
     }
 
+    let real_sheet_count = sheets.len();
+    if selected_original_sheet_index.is_some() {
+        for (idx, wb_sheet) in workbook_sheets.iter().enumerate() {
+            if Some(idx as u32) == selected_original_sheet_index {
+                continue;
+            }
+            let Some(ws_part) = ws_parts_by_rel_id
+                .get(wb_sheet.id.as_str())
+                .or_else(|| ws_parts.get(idx))
+                .cloned()
+            else {
+                continue;
+            };
+            let Ok(ws) = ws_part.root_element(doc) else {
+                continue;
+            };
+            let name = wb_sheet.name.as_str().to_string();
+            sheets.push(sheet::extract(ws, idx, name, &shared_strings.0, &styles));
+        }
+    }
+
     let mut defined_names_vec: Vec<DefinedName> = workbook
         .defined_names
         .as_ref()
@@ -224,6 +245,8 @@ pub fn extract_doc_with_options(
         defined_name_lookup(&defined_names_vec, selected_original_sheet_index.is_some());
     refs::resolve_chart_refs(&mut layout, &defined_names);
     refs::resolve_sparkline_refs(&mut layout);
+
+    layout.sheets.truncate(real_sheet_count);
 
     columnar::compactify(&mut layout);
     Ok(layout)
