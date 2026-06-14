@@ -164,12 +164,24 @@ impl Workbook {
                 let row_fields = def
                     .row_fields
                     .as_ref()
-                    .map(|rf| rf.field.iter().map(|f| name_of(f.index)).collect())
+                    .map(|rf| {
+                        rf.field
+                            .iter()
+                            .filter(|f| f.index >= 0)
+                            .map(|f| name_of(f.index))
+                            .collect()
+                    })
                     .unwrap_or_default();
                 let column_fields = def
                     .column_fields
                     .as_ref()
-                    .map(|cf| cf.field.iter().map(|f| name_of(f.index)).collect())
+                    .map(|cf| {
+                        cf.field
+                            .iter()
+                            .filter(|f| f.index >= 0)
+                            .map(|f| name_of(f.index))
+                            .collect()
+                    })
                     .unwrap_or_default();
                 let filter_fields = def
                     .page_fields

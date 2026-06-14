@@ -136,6 +136,85 @@ fn pivot_update_merges_partial_and_keeps_unset_fields() {
 }
 
 #[test]
+fn pivot_update_roundtrips_multi_data_field_with_column() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A1", "Region").unwrap();
+    wb.set_value("Sheet1!B1", "Channel").unwrap();
+    wb.set_value("Sheet1!C1", "Units").unwrap();
+    wb.set_value("Sheet1!D1", "Revenue").unwrap();
+    let rows = [
+        ("North", "Online", 3.0, 100.0),
+        ("North", "Retail", 5.0, 250.0),
+        ("South", "Online", 2.0, 75.0),
+        ("South", "Retail", 4.0, 180.0),
+    ];
+    for (i, (region, channel, units, revenue)) in rows.iter().enumerate() {
+        let r = i as u32 + 2;
+        wb.set_value(format!("Sheet1!A{r}"), *region).unwrap();
+        wb.set_value(format!("Sheet1!B{r}"), *channel).unwrap();
+        wb.set_value(format!("Sheet1!C{r}"), *units).unwrap();
+        wb.set_value(format!("Sheet1!D{r}"), *revenue).unwrap();
+    }
+    wb.create_sheet("Pivot").unwrap();
+
+    let info = wb
+        .set_pivot(
+            "Pivot",
+            PivotPatch {
+                anchor_cell: "Pivot!A1".to_string(),
+                source_ref: "Sheet1!A1:D5".to_string(),
+                name: Some("SalesPivot".to_string()),
+                row_fields: vec!["Region".to_string()],
+                column_fields: vec!["Channel".to_string()],
+                filter_fields: vec![],
+                data_fields: vec![
+                    PivotDataField {
+                        field: "Revenue".to_string(),
+                        aggregation: PivotAggregation::Sum,
+                        name: Some("Total Revenue".to_string()),
+                        number_format: None,
+                    },
+                    PivotDataField {
+                        field: "Units".to_string(),
+                        aggregation: PivotAggregation::Sum,
+                        name: Some("Total Units".to_string()),
+                        number_format: None,
+                    },
+                ],
+                hidden_items: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(info.column_fields, vec!["Channel".to_string()]);
+
+    let updated = wb
+        .update_pivot(
+            "Pivot",
+            &info.id,
+            PivotUpdate {
+                hidden_items: Some(vec![PivotFieldFilter {
+                    field: "Channel".to_string(),
+                    hide: vec!["Retail".to_string()],
+                }]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    assert_eq!(updated.column_fields, vec!["Channel".to_string()]);
+    assert_eq!(updated.data_fields.len(), 2);
+    assert_eq!(
+        updated.hidden_items,
+        Some(vec![PivotFieldFilter {
+            field: "Channel".to_string(),
+            hide: vec!["Retail".to_string()],
+        }])
+    );
+    assert_eq!(wb.pivots(Some("Pivot")).unwrap().len(), 1);
+}
+
+#[test]
 fn pivot_requires_data_field_and_axis() {
     let mut wb = Workbook::new().unwrap();
     wb.set_value("Sheet1!A1", "Region").unwrap();
