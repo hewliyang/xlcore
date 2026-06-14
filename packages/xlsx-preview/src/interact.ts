@@ -1,8 +1,9 @@
 import type { Sheet, WorkbookLayout } from "./types.js";
 import { drawingHyperlinkAt } from "./drawingHits.js";
 import { cellRect } from "./geometry.js";
-import { filterArrowRect, pivotFilterArrows } from "./sheetChrome.js";
+import { filterArrowRect, pivotFilterArrows, tableFilterArrows } from "./sheetChrome.js";
 import type { PivotArrowHit } from "./sheetChrome.js";
+import type { TableFilterArrow } from "./schema/TableFilterArrow.js";
 import { buildGrid, frozenDims } from "./render.js";
 import { createAnnotationLayer } from "./interactAnnotations.js";
 import {
@@ -46,6 +47,8 @@ export interface InteractOptions {
 
   onPivotFilter?: (info: PivotFilterEvent) => void;
 
+  onTableFilter?: (info: TableFilterEvent) => void;
+
   redraw(): void;
 }
 
@@ -53,6 +56,13 @@ export interface PivotFilterEvent {
   pivot: string;
   field: string;
   axis: "row" | "column";
+  rect: { left: number; top: number; right: number; bottom: number };
+}
+
+export interface TableFilterEvent {
+  field: string;
+  columnOffset: number;
+  rangeRef: string;
   rect: { left: number; top: number; right: number; bottom: number };
 }
 
@@ -223,6 +233,41 @@ export function attachInteractivity(
     });
   }
 
+  function tableArrowAt(lp: { x: number; y: number }): TableFilterArrow | null {
+    const sheet = opts.getSheet();
+    const arrows = tableFilterArrows(sheet);
+    if (arrows.length === 0) return null;
+    const grid = getGrid();
+    for (const a of arrows) {
+      const box = filterArrowRect(cellRect(grid, a.r, a.c));
+      if (lp.x >= box.x && lp.x <= box.x + box.w && lp.y >= box.y && lp.y <= box.y + box.h) {
+        return a;
+      }
+    }
+    return null;
+  }
+
+  function fireTableFilter(a: TableFilterArrow) {
+    if (!opts.onTableFilter) return;
+    const grid = getGrid();
+    const sheet = opts.getSheet();
+    const box = filterArrowRect(cellRect(grid, a.r, a.c));
+    const z = opts.zoom.get();
+    const r = canvas.getBoundingClientRect();
+    const vp = opts.getViewport?.() ?? null;
+    const { splitX, splitY } = frozenDims(sheet, grid);
+    const sx = vp && a.c >= splitX ? vp.x : 0;
+    const sy = vp && a.r >= splitY ? vp.y : 0;
+    const left = r.left + (box.x - sx) * z;
+    const top = r.top + (box.y - sy) * z;
+    opts.onTableFilter({
+      field: a.columnName,
+      columnOffset: a.columnOffset,
+      rangeRef: a.rangeRef,
+      rect: { left, top, right: left + box.w * z, bottom: top + box.h * z },
+    });
+  }
+
   function maybeOutlineCursor(cp: { x: number; y: number }): boolean {
     if (outlineButtonAt(cp) || outlineCornerAt(cp)) {
       canvas.style.cursor = "pointer";
@@ -279,6 +324,14 @@ export function attachInteractivity(
     if (opts.onPivotFilter) {
       const lp = toLogical(ev);
       if (pivotArrowAt(lp)) {
+        canvas.style.cursor = "pointer";
+        annotations.hidePopover();
+        return;
+      }
+    }
+    if (opts.onTableFilter) {
+      const lp = toLogical(ev);
+      if (tableArrowAt(lp)) {
         canvas.style.cursor = "pointer";
         annotations.hidePopover();
         return;
@@ -470,6 +523,16 @@ export function attachInteractivity(
       if (arrow) {
         ev.preventDefault();
         firePivotFilter(arrow);
+        canvas.focus({ preventScroll: true });
+        return;
+      }
+    }
+
+    if (opts.onTableFilter) {
+      const arrow = tableArrowAt(p);
+      if (arrow) {
+        ev.preventDefault();
+        fireTableFilter(arrow);
         canvas.focus({ preventScroll: true });
         return;
       }

@@ -1,5 +1,6 @@
 import type { Color, CustomTableStyle, Dxf, Sheet, WorkbookLayout } from "./types.js";
 import type { PivotFilterArrow } from "./schema/PivotFilterArrow.js";
+import type { TableFilterArrow } from "./schema/TableFilterArrow.js";
 import { activeThemeColor } from "./color.js";
 import type { CellRect } from "./geometry.js";
 import { findCell } from "./geometry.js";
@@ -200,6 +201,10 @@ export function pivotFilterArrows(sheet: Sheet): PivotArrowHit[] {
     for (const a of p.filterArrowCells) out.push({ ...a, pivot: p.name });
   }
   return out;
+}
+
+export function tableFilterArrows(sheet: Sheet): TableFilterArrow[] {
+  return sheet.tableFilterArrows ?? [];
 }
 
 export function drawFilterArrows(

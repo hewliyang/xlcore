@@ -93,7 +93,7 @@ autoFilter { filterColumn[], sortState }  (definition)
       + table autofilter). Regenerate TS schema
       (`cargo test --release -p xlcore-export export_bindings`). Keep the
       existing `drawFilterArrows`; this just adds the hit-test payload.
-- [ ] **Hit-test in `interact.ts`**: mirror `pivotArrowAt` / `firePivotFilter`
+- [x] **Hit-test in `interact.ts`**: mirror `pivotArrowAt` / `firePivotFilter`
       → `tableArrowAt` / `fireTableFilter`, emit `onTableFilter({ field,
       columnOffset, rangeRef, rect })`. Cursor pointer on hover. Unit:
       `sheetChrome.test.ts` arrow geometry/lookup for table arrows.

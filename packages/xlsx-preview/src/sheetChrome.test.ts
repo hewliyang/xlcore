@@ -5,6 +5,7 @@ import {
   FILTER_ARROW_INSET_X,
   filterArrowRect,
   pivotFilterArrows,
+  tableFilterArrows,
 } from "./sheetChrome.js";
 import type { Sheet } from "./types.js";
 
@@ -41,5 +42,20 @@ describe("pivotFilterArrows", () => {
 
   it("returns empty for sheets without pivots", () => {
     expect(pivotFilterArrows({} as Sheet)).toEqual([]);
+  });
+});
+
+describe("tableFilterArrows", () => {
+  it("returns the sheet table filter arrow payloads", () => {
+    const arrows = [
+      { r: 1, c: 1, columnOffset: 0, columnName: "Region", rangeRef: "A1:C9" },
+      { r: 1, c: 3, columnOffset: 2, columnName: "Amount", rangeRef: "A1:C9" },
+    ];
+    const sheet = { tableFilterArrows: arrows } as unknown as Sheet;
+    expect(tableFilterArrows(sheet)).toEqual(arrows);
+  });
+
+  it("returns empty for sheets without table filter arrows", () => {
+    expect(tableFilterArrows({} as Sheet)).toEqual([]);
   });
 });
