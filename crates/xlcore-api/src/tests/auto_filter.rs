@@ -256,6 +256,67 @@ fn auto_filter_values_applies_hidden_rows() {
     assert_eq!(collect_hidden(&mut reopened), vec![3, 4]);
 }
 
+#[test]
+fn auto_filter_sort_reorders_rows_and_authors_state() {
+    let mut wb = Workbook::new().unwrap();
+    wb.set_value("Sheet1!A1", "Region").unwrap();
+    wb.set_value("Sheet1!B1", "Units").unwrap();
+    wb.set_value("Sheet1!A2", "North").unwrap();
+    wb.set_value("Sheet1!B2", 30.0).unwrap();
+    wb.set_value("Sheet1!A3", "South").unwrap();
+    wb.set_value("Sheet1!B3", 10.0).unwrap();
+    wb.set_value("Sheet1!A4", "East").unwrap();
+    wb.set_value("Sheet1!B4", 20.0).unwrap();
+    wb.set_auto_filter("Sheet1", "A1:B4").unwrap();
+
+    wb.set_auto_filter_sort("Sheet1", 1, true).unwrap();
+
+    assert_eq!(cell_text(&mut wb, "B2"), "30");
+    assert_eq!(cell_text(&mut wb, "B3"), "20");
+    assert_eq!(cell_text(&mut wb, "B4"), "10");
+    assert_eq!(cell_text(&mut wb, "A2"), "North");
+    assert_eq!(cell_text(&mut wb, "A3"), "East");
+    assert_eq!(cell_text(&mut wb, "A4"), "South");
+    assert_eq!(cell_text(&mut wb, "A1"), "Region");
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    assert!(sort_state_present(&mut reopened));
+    assert_eq!(cell_text(&mut reopened, "B2"), "30");
+
+    reopened.set_auto_filter_sort("Sheet1", 1, false).unwrap();
+    assert_eq!(cell_text(&mut reopened, "B2"), "10");
+    assert_eq!(cell_text(&mut reopened, "B4"), "30");
+
+    reopened.remove_auto_filter_sort("Sheet1").unwrap();
+    assert!(!sort_state_present(&mut reopened));
+    assert_eq!(cell_text(&mut reopened, "B2"), "10");
+}
+
+fn cell_text(wb: &mut Workbook, reference: &str) -> String {
+    match wb.get_cell(format!("Sheet1!{reference}")).unwrap().value {
+        CellValue::String(s) => s,
+        CellValue::Number(n) => {
+            if n == n.trunc() {
+                format!("{}", n as i64)
+            } else {
+                format!("{n}")
+            }
+        }
+        CellValue::Blank => String::new(),
+        other => format!("{other:?}"),
+    }
+}
+
+fn sort_state_present(wb: &mut Workbook) -> bool {
+    let ws_part = wb.worksheet_part_for_sheet("Sheet1").unwrap();
+    let ws = ws_part.root_element(&mut wb.doc).unwrap();
+    ws.auto_filter
+        .as_ref()
+        .map(|af| af.sort_state.is_some())
+        .unwrap_or(false)
+}
+
 fn row_hidden(wb: &mut Workbook, row: u32) -> bool {
     let ws_part = wb.worksheet_part_for_sheet("Sheet1").unwrap();
     let ws = ws_part.root_element(&mut wb.doc).unwrap();

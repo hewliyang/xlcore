@@ -142,6 +142,139 @@ impl Workbook {
         Ok(removed)
     }
 
+    pub fn set_auto_filter_sort(
+        &mut self,
+        sheet: impl AsRef<str>,
+        column_offset: u32,
+        descending: bool,
+    ) -> Result<()> {
+        let sheet = sheet.as_ref().to_string();
+        let (c1, c2) = self.auto_filter_span(&sheet)?;
+        let max_offset = c2.saturating_sub(c1);
+        if column_offset > max_offset {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidAutoFilter,
+                format!(
+                    "column_offset {} exceeds filter width {}",
+                    column_offset,
+                    max_offset + 1
+                ),
+            )
+            .with_sheet(sheet));
+        }
+
+        let (r1, r2) = {
+            let ws_part = self.worksheet_part_for_sheet(&sheet)?;
+            let ws = ws_part
+                .root_element(&mut self.doc)
+                .map_err(sdk_err_to_api)?;
+            let reference = ws
+                .auto_filter
+                .as_deref()
+                .and_then(|af| af.reference.as_ref())
+                .map(|r| r.as_str().to_string());
+            let (r1, _c1, r2, _c2) = reference
+                .as_deref()
+                .and_then(parse_range_a1)
+                .ok_or_else(|| {
+                    ApiError::new(
+                        ApiErrorCode::InvalidAutoFilter,
+                        "auto filter is missing a valid range reference",
+                    )
+                    .with_sheet(&sheet)
+                })?;
+            (r1, r2)
+        };
+
+        let sort_col = c1 + column_offset;
+        let first_data_row = r1 + 1;
+        let sort_ref = format!(
+            "{}{}:{}{}",
+            xlcore_io::col_label(c1),
+            first_data_row,
+            xlcore_io::col_label(c2),
+            r2,
+        );
+        let cond_ref = format!(
+            "{}{}:{}{}",
+            xlcore_io::col_label(sort_col),
+            first_data_row,
+            xlcore_io::col_label(sort_col),
+            r2,
+        );
+
+        let order: Option<Vec<usize>> = if r2 > r1 {
+            let local_ref = format!(
+                "{}{}:{}{}",
+                xlcore_io::col_label(sort_col),
+                first_data_row,
+                xlcore_io::col_label(sort_col),
+                r2,
+            );
+            let reference = qualify_ref(&sheet, &local_ref)?;
+            let range_ref = self.resolve_range_ref(&reference)?;
+            let info = self.read_range(&range_ref)?;
+            let keys: Vec<SortKey> = info
+                .values
+                .iter()
+                .map(|row| sort_key(&row.first().map(cell_display).unwrap_or_default()))
+                .collect();
+            let mut order: Vec<usize> = (0..keys.len()).collect();
+            order.sort_by(|&a, &b| cmp_keys(&keys[a], &keys[b], descending));
+            Some(order)
+        } else {
+            None
+        };
+
+        let ws_part = self.worksheet_part_for_sheet(&sheet)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        {
+            let af = ws.auto_filter.as_mut().ok_or_else(|| {
+                ApiError::new(
+                    ApiErrorCode::InvalidAutoFilter,
+                    "sheet has no auto filter range",
+                )
+                .with_sheet(&sheet)
+            })?;
+            af.sort_state = Some(Box::new(x::SortState {
+                reference: sort_ref.into(),
+                sort_state_choice: vec![x::SortStateChoice::XSortCondition(Box::new(
+                    x::SortCondition {
+                        descending: if descending {
+                            Some(BooleanValue::from_bool(true))
+                        } else {
+                            None
+                        },
+                        reference: cond_ref.into(),
+                        ..Default::default()
+                    },
+                ))],
+                ..Default::default()
+            }));
+        }
+
+        if let Some(order) = order {
+            reorder_data_rows(ws, first_data_row, r2, &order);
+        }
+
+        self.apply_filter_hidden(&sheet)?;
+        Ok(())
+    }
+
+    pub fn remove_auto_filter_sort(&mut self, sheet: impl AsRef<str>) -> Result<()> {
+        let sheet = sheet.as_ref().to_string();
+        let ws_part = self.worksheet_part_for_sheet(&sheet)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        if let Some(af) = ws.auto_filter.as_mut() {
+            af.sort_state = None;
+        }
+        Ok(())
+    }
+
     fn apply_filter_hidden(&mut self, sheet: &str) -> Result<()> {
         let ws_part = self.worksheet_part_for_sheet(sheet)?;
         let ws = ws_part
@@ -239,6 +372,85 @@ impl Workbook {
         })?;
         Ok((c1, c2))
     }
+}
+
+enum SortKey {
+    Num(f64),
+    Text(String),
+    Blank,
+}
+
+fn sort_key(display: &str) -> SortKey {
+    if display.is_empty() {
+        SortKey::Blank
+    } else if let Ok(n) = display.parse::<f64>() {
+        SortKey::Num(n)
+    } else {
+        SortKey::Text(display.to_lowercase())
+    }
+}
+
+fn cmp_keys(a: &SortKey, b: &SortKey, descending: bool) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    match (a, b) {
+        (SortKey::Blank, SortKey::Blank) => Ordering::Equal,
+        (SortKey::Blank, _) => Ordering::Greater,
+        (_, SortKey::Blank) => Ordering::Less,
+        _ => {
+            let ord = match (a, b) {
+                (SortKey::Num(x), SortKey::Num(y)) => {
+                    x.partial_cmp(y).unwrap_or(Ordering::Equal)
+                }
+                (SortKey::Num(_), SortKey::Text(_)) => Ordering::Less,
+                (SortKey::Text(_), SortKey::Num(_)) => Ordering::Greater,
+                (SortKey::Text(x), SortKey::Text(y)) => x.cmp(y),
+                _ => Ordering::Equal,
+            };
+            if descending {
+                ord.reverse()
+            } else {
+                ord
+            }
+        }
+    }
+}
+
+fn reorder_data_rows(ws: &mut x::Worksheet, first_data_row: u32, last_row: u32, order: &[usize]) {
+    use std::collections::HashMap;
+    let mut kept: Vec<x::Row> = Vec::new();
+    let mut moved: HashMap<u32, x::Row> = HashMap::new();
+    for row in std::mem::take(&mut ws.sheet_data.row) {
+        match row.row_index {
+            Some(r) if r >= first_data_row && r <= last_row => {
+                moved.insert(r, row);
+            }
+            _ => kept.push(row),
+        }
+    }
+    for (j, &src) in order.iter().enumerate() {
+        let target = first_data_row + j as u32;
+        let src_row = first_data_row + src as u32;
+        if let Some(mut row) = moved.remove(&src_row) {
+            row.row_index = Some(target);
+            for cell in &mut row.cell {
+                if let Some(reference) = cell.cell_reference.as_ref() {
+                    let new = rewrite_cell_row(reference.as_str(), target);
+                    cell.cell_reference = Some(new.into());
+                }
+            }
+            kept.push(row);
+        }
+    }
+    kept.sort_by_key(|r| r.row_index.unwrap_or(u32::MAX));
+    ws.sheet_data.row = kept;
+}
+
+fn rewrite_cell_row(cell_ref: &str, new_row: u32) -> String {
+    let col: String = cell_ref
+        .chars()
+        .take_while(|c| c.is_ascii_alphabetic())
+        .collect();
+    format!("{col}{new_row}")
 }
 
 fn is_active_criteria(criteria: &AutoFilterCriteria) -> bool {

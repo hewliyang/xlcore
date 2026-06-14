@@ -330,6 +330,8 @@ api_methods! {
     { remove_auto_filter as "removeAutoFilter" (s sheet) -> json }
     { set_auto_filter_column as "setAutoFilterColumn" (s sheet, de patch: xlcore_api::AutoFilterColumnPatch) -> json }
     { remove_auto_filter_column as "removeAutoFilterColumn" (s sheet, u32 column_offset) -> json }
+    { set_auto_filter_sort as "setAutoFilterSort" (s sheet, u32 column_offset, bool descending) -> unit }
+    { remove_auto_filter_sort as "removeAutoFilterSort" (s sheet) -> unit }
     { comments (s sheet) -> json }
     { set_comment as "setComment" (s sheet, s reference, de patch: xlcore_api::CommentPatch) -> json }
     { remove_comment as "removeComment" (s sheet, s reference) -> json }

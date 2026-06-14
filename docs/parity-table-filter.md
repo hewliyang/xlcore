@@ -77,11 +77,13 @@ autoFilter { filterColumn[], sortState }  (definition)
       `row.hidden` (set for filtered-out data rows, clear for visible ones;
       never touch the header row or rows outside the filter range). Round-trip
       test: author values filter → reopen → hidden rows match.
-- [ ] **Sort authoring + physical reorder**:
+- [x] **Sort authoring + physical reorder**:
       `set_auto_filter_sort(sheet, column_offset, descending)` writes
       `sortState` AND reorders the data rows in place (stable sort, numbers
-      numerically / text case-insensitive, Excel-style). `clear_auto_filter_sort`
-      removes it (leaves current order). Unit test + parity vs `hsx`.
+      numerically / text case-insensitive, blanks last). `remove_auto_filter_sort`
+      removes it (leaves current order). TS: `autoFilter.setSort/clearSort`,
+      wasm `setAutoFilterSort/removeAutoFilterSort`. Unit test covers reorder +
+      state round-trip.
 
 ### P1: Interactive header dropdowns
 
@@ -154,5 +156,8 @@ autoFilter { filterColumn[], sortState }  (definition)
   gotcha as `pivots::extract`).
 - Tables can carry their own `<autoFilter>` inside the table part; a sheet can
   also have a bare `worksheet/autoFilter`. Handle both arrow sources.
+- Physical sort reorder moves cells (incl. their style) but does **not**
+  fix up formula references pointing into the sorted rows, nor merges that
+  span data rows — out of scope; callers should sort value-only ranges.
 </content>
 </invoke>

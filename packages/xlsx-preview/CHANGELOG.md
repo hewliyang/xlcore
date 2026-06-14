@@ -9,6 +9,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `table_engine::compute_hidden_rows`: pure Excel autofilter view engine (Values/Custom/Top10 + multi-column AND).
 - Authored autofilter now applies `row.hidden` from criteria after `set/remove_auto_filter_column`.
+- AutoFilter sort authoring: `autoFilter.setSort/clearSort` (wasm `setAutoFilterSort/removeAutoFilterSort`) writes `sortState` + physically reorders data rows (numbers numerically, text case-insensitive, blanks last); formula/merge refs not fixed up.
 - xlcore-api color resolver (`resolve_color_hex`): rgb/indexed/theme+tint → `RRGGBB`.
 - `CellInfo.style` read-back: `get_cell` resolves a cell's xf to a flat `StylePatch`.
 - Style read-back round-trip corpus test enforcing `resolve(get(cell)) ⊇ set(cell, patch)`.

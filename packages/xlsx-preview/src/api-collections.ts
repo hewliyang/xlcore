@@ -187,6 +187,12 @@ export class AutoFilterAccessor extends SheetScopedCollection {
       ) as AutoFilterColumnInfo | null) ?? null
     );
   }
+  setSort(columnOffset: number, opts: { descending?: boolean } = {}): void {
+    this.handle.setAutoFilterSort(this.sheet, columnOffset, opts.descending ?? false);
+  }
+  clearSort(): void {
+    this.handle.removeAutoFilterSort(this.sheet);
+  }
 }
 
 export class TableCollection extends SheetScopedCollection {

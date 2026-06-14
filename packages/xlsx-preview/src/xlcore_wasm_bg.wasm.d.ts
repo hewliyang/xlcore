@@ -57,6 +57,7 @@ export const workbookhandle_properties: (a: number, b: number) => void;
 export const workbookhandle_recalculate: (a: number, b: number, c: number) => void;
 export const workbookhandle_removeAutoFilter: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeAutoFilterColumn: (a: number, b: number, c: number, d: number, e: number) => void;
+export const workbookhandle_removeAutoFilterSort: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_removeChart: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removeChartEx: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_removeComment: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
@@ -82,6 +83,7 @@ export const workbookhandle_search: (a: number, b: number, c: number, d: number,
 export const workbookhandle_setActiveSheet: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_setAutoFilter: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setAutoFilterColumn: (a: number, b: number, c: number, d: number, e: number) => void;
+export const workbookhandle_setAutoFilterSort: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_setCalcProperties: (a: number, b: number, c: number) => void;
 export const workbookhandle_setChart: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_setChartEx: (a: number, b: number, c: number, d: number, e: number) => void;
