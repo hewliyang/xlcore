@@ -5,36 +5,67 @@ use xlcore_io::{col_label, parse_a1};
 
 pub fn extract(
     ws: &x::Worksheet,
+    sheet_name: &str,
     auto_filter_range: &Option<Merge>,
     tables: &[Table],
     shared_strings: &[String],
 ) -> Vec<TableFilterArrow> {
     let mut out = Vec::new();
     let mut seen: HashSet<(u32, u32)> = HashSet::new();
+    let prefix = sheet_ref_prefix(sheet_name);
 
     if let Some(range) = auto_filter_range {
-        push_range(&mut out, &mut seen, ws, range, shared_strings, None);
+        push_range(&mut out, &mut seen, ws, &prefix, range, shared_strings, None);
     }
 
     for table in tables {
         if table.has_auto_filter {
-            push_range(&mut out, &mut seen, ws, &table.range, shared_strings, Some(table));
+            push_range(
+                &mut out,
+                &mut seen,
+                ws,
+                &prefix,
+                &table.range,
+                shared_strings,
+                Some(table),
+            );
         }
     }
 
     out
 }
 
+fn sheet_ref_prefix(name: &str) -> String {
+    if name.is_empty() {
+        return String::new();
+    }
+    let simple = !name.is_empty()
+        && name
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.');
+    if simple {
+        format!("{name}!")
+    } else {
+        format!("'{}'!", name.replace('\'', "''"))
+    }
+}
+
 fn push_range(
     out: &mut Vec<TableFilterArrow>,
     seen: &mut HashSet<(u32, u32)>,
     ws: &x::Worksheet,
+    prefix: &str,
     range: &Merge,
     shared_strings: &[String],
     table: Option<&Table>,
 ) {
     let range_ref = format!(
-        "{}{}:{}{}",
+        "{}{}{}:{}{}",
+        prefix,
         col_label(range.c1),
         range.r1,
         col_label(range.c2),

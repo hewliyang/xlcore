@@ -20,6 +20,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Table-header filter/sort dropdowns now act on the table's own sheet: `TableFilterArrow.rangeRef` is sheet-qualified (`TableSheet!A1:C5`), so controllers no longer fall back to `activeSheet()` and sort/filter the wrong sheet.
 - `pivots.update()` no longer fails (`pivot field not found in source header: Values`) for multi-data-field pivots with a column field; the synthetic `-2` "Values" marker is stripped from the `PivotInfo` field read-back so the remove+reset round-trip is clean.
 - `pageSetup.set` no longer corrupts a sheet-qualified `printArea`/`printTitleRows`/`printTitleColumns` (`"Sheet1!A1:C5"` was fused into `MAINA1:C5`); the existing qualifier is now stripped before re-prefixing.
 - Single-sheet render (`--sheet`/`--sheet-index`) now resolves cross-sheet chart/sparkline refs by extracting cells-only grids of referenced sheets; previously such charts rendered as placeholders.

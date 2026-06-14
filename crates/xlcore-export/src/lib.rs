@@ -170,6 +170,7 @@ pub fn extract_doc_with_options(
         sheet.drawings = drawings;
         sheet.table_filter_arrows = table_filter::extract(
             &ws_clone,
+            &sheet.name,
             &sheet.auto_filter_range,
             &tables,
             &shared_strings.0,

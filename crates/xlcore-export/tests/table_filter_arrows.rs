@@ -17,6 +17,6 @@ fn autofilter_arrows_carry_column_identity() {
         assert_eq!(a.r, 1);
         assert_eq!(a.column_offset, i as u32);
         assert_eq!(a.c, 1 + i as u32);
-        assert_eq!(a.range_ref, "A1:C7");
+        assert_eq!(a.range_ref, "Filtered!A1:C7");
     }
 }
