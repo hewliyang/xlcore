@@ -13,6 +13,7 @@ import type { Pivot } from "./Pivot.js";
 import type { RowMetaBlob } from "./RowMetaBlob.js";
 import type { SparklineGroup } from "./SparklineGroup.js";
 import type { Table } from "./Table.js";
+import type { TableFilterArrow } from "./TableFilterArrow.js";
 import type { TextRun } from "./TextRun.js";
 
 export type Sheet = {
@@ -40,6 +41,7 @@ export type Sheet = {
   hyperlinks: Array<Hyperlink>;
   comments: Array<Comment>;
   pivots: Array<Pivot>;
+  tableFilterArrows: Array<TableFilterArrow>;
   outlinePr?: OutlinePr;
   sparklineGroups: Array<SparklineGroup>;
 };

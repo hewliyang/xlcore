@@ -87,7 +87,7 @@ autoFilter { filterColumn[], sortState }  (definition)
 
 ### P1: Interactive header dropdowns
 
-- [ ] **Arrow column identity** in export: emit sheet-level
+- [x] **Arrow column identity** in export: emit sheet-level
       `TableFilterArrow { r, c, column_offset, column_name, range_ref }`
       (`schema.rs`, derived in `sheet.rs`/`tables.rs` from `auto_filter_range`
       + table autofilter). Regenerate TS schema
