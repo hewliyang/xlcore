@@ -68,7 +68,7 @@ pub use xlcore_types::{
 };
 
 use crate::errors::{anyhow_err_to_api, load_err_to_api};
-use crate::xml::blank_workbook_bytes;
+use crate::xml::blank_workbook;
 
 pub type Result<T> = std::result::Result<T, ApiError>;
 
@@ -104,11 +104,9 @@ impl<T> BatchOutcome<T> {
 
 impl Workbook {
     pub fn new() -> Result<Self> {
-        let (doc, report) =
-            xlcore_io::open_bytes_with_report(blank_workbook_bytes()?).map_err(load_err_to_api)?;
         Ok(Self {
-            doc,
-            report,
+            doc: blank_workbook()?,
+            report: Default::default(),
             warnings: Vec::new(),
         })
     }

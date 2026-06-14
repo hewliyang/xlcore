@@ -1,13 +1,15 @@
-use ooxmlsdk::simple_type::BooleanValue;
-use std::io::{Cursor, Write};
-
+use ooxmlsdk::parts::theme_part::ThemePart;
 use ooxmlsdk::parts::worksheet_part::WorksheetPart;
+use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
+use ooxmlsdk::sdk::{SdkPart, SpreadsheetDocumentType};
+use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
+use xlcore_io::SpreadsheetDocument;
 use xlcore_types::{ApiCellValue as CellValue, CellInfo, ClearMode};
 
-use crate::errors::{sdk_err_to_api, zip_err};
+use crate::errors::sdk_err_to_api;
 use crate::ooxml_header;
-use crate::Result;
+use crate::{ApiError, ApiErrorCode, Result};
 
 pub(crate) fn empty_worksheet() -> x::Worksheet {
     x::Worksheet {
@@ -296,84 +298,69 @@ pub(crate) fn mark_formulas_stale(doc: &mut xlcore_io::SpreadsheetDocument) -> R
     Ok(())
 }
 
-pub(crate) fn blank_workbook_bytes() -> Result<Vec<u8>> {
-    let mut buffer = Cursor::new(Vec::new());
-    {
-        let mut zip = zip::ZipWriter::new(&mut buffer);
-        let options = zip::write::SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Deflated)
-            .unix_permissions(0o644);
+pub(crate) fn blank_workbook() -> Result<SpreadsheetDocument> {
+    let mut doc = SpreadsheetDocument::create(SpreadsheetDocumentType::Workbook);
 
-        zip.start_file("[Content_Types].xml", options)
-            .map_err(zip_err)?;
-        zip.write_all(
-            br#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-  <Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
-</Types>"#,
-        )
-        .map_err(zip_err)?;
+    let wb_part = doc.add_workbook_part().map_err(sdk_err_to_api)?;
 
-        zip.add_directory("_rels", options).map_err(zip_err)?;
-        zip.start_file("_rels/.rels", options).map_err(zip_err)?;
-        zip.write_all(
-            br#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-</Relationships>"#,
-        )
-        .map_err(zip_err)?;
+    let ws_part: WorksheetPart = wb_part
+        .add_new_part_auto_id(&mut doc)
+        .map_err(sdk_err_to_api)?;
+    ws_part
+        .set_root_element(&mut doc, empty_worksheet())
+        .map_err(sdk_err_to_api)?;
+    let sheet_rid = ws_part
+        .relationship_id()
+        .ok_or_else(|| ApiError::new(ApiErrorCode::Other, "new worksheet is missing relationship id"))?
+        .to_string();
 
-        zip.add_directory("xl", options).map_err(zip_err)?;
-        zip.start_file("xl/workbook.xml", options)
-            .map_err(zip_err)?;
-        zip.write_all(
-            br#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <bookViews><workbookView activeTab="0"/></bookViews>
-  <sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets>
-  <calcPr calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/>
-</workbook>"#,
-        )
-        .map_err(zip_err)?;
+    let theme_part: ThemePart = wb_part
+        .add_new_part_auto_id(&mut doc)
+        .map_err(sdk_err_to_api)?;
+    theme_part
+        .set_root_element(&mut doc, default_theme()?)
+        .map_err(sdk_err_to_api)?;
 
-        zip.add_directory("xl/_rels", options).map_err(zip_err)?;
-        zip.start_file("xl/_rels/workbook.xml.rels", options)
-            .map_err(zip_err)?;
-        zip.write_all(
-            br#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/>
-</Relationships>"#,
-        )
-        .map_err(zip_err)?;
+    wb_part
+        .set_root_element(&mut doc, empty_workbook(sheet_rid))
+        .map_err(sdk_err_to_api)?;
 
-        zip.add_directory("xl/worksheets", options)
-            .map_err(zip_err)?;
-        zip.start_file("xl/worksheets/sheet1.xml", options)
-            .map_err(zip_err)?;
-        zip.write_all(
-            br#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheetData/>
-</worksheet>"#,
-        )
-        .map_err(zip_err)?;
-
-        zip.add_directory("xl/theme", options).map_err(zip_err)?;
-        zip.start_file("xl/theme/theme1.xml", options)
-            .map_err(zip_err)?;
-        zip.write_all(THEME1_XML).map_err(zip_err)?;
-
-        zip.finish().map_err(zip_err)?;
-    }
-    Ok(buffer.into_inner())
+    Ok(doc)
 }
 
-const THEME1_XML: &[u8] = br#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+fn empty_workbook(sheet_rid: String) -> x::Workbook {
+    x::Workbook {
+        xmlns: ooxml_header::spreadsheetml_default(),
+        xml_header: ooxml_header::STANDALONE,
+        book_views: Some(x::BookViews {
+            workbook_view: vec![x::WorkbookView {
+                active_tab: Some(0),
+                ..Default::default()
+            }],
+        }),
+        sheets: Box::new(x::Sheets {
+            sheet: vec![x::Sheet {
+                name: "Sheet1".to_string(),
+                sheet_id: 1,
+                id: sheet_rid,
+                ..Default::default()
+            }],
+        }),
+        calculation_properties: Some(x::CalculationProperties {
+            calculation_mode: Some(x::CalculateModeValues::Auto),
+            full_calculation_on_load: Some(BooleanValue::from_bool(true)),
+            force_full_calculation: Some(BooleanValue::from_bool(true)),
+            ..Default::default()
+        }),
+        ..Default::default()
+    }
+}
+
+fn default_theme() -> Result<a::Theme> {
+    THEME1_XML
+        .parse::<a::Theme>()
+        .map_err(sdk_err_to_api)
+}
+
+const THEME1_XML: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme"><a:themeElements><a:clrScheme name="Office"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="0F1011"/></a:dk2><a:lt2><a:srgbClr val="EAEAEA"/></a:lt2><a:accent1><a:srgbClr val="156082"/></a:accent1><a:accent2><a:srgbClr val="E97132"/></a:accent2><a:accent3><a:srgbClr val="196B24"/></a:accent3><a:accent4><a:srgbClr val="0F9ED5"/></a:accent4><a:accent5><a:srgbClr val="A02B93"/></a:accent5><a:accent6><a:srgbClr val="4EA72E"/></a:accent6><a:hlink><a:srgbClr val="467886"/></a:hlink><a:folHlink><a:srgbClr val="96607D"/></a:folHlink></a:clrScheme><a:fontScheme name="Office"><a:majorFont><a:latin typeface="Aptos Display" panose="02110004020202020204"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Aptos" panose="02110004020202020204"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme><a:fmtScheme name="Office"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:lumMod val="110000"/><a:satMod val="105000"/><a:tint val="67000"/></a:schemeClr></a:gs><a:gs pos="50000"><a:schemeClr val="phClr"><a:lumMod val="105000"/><a:satMod val="103000"/><a:tint val="73000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:lumMod val="105000"/><a:satMod val="109000"/><a:tint val="81000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0"/></a:gradFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:satMod val="103000"/><a:lumMod val="102000"/><a:tint val="94000"/></a:schemeClr></a:gs><a:gs pos="50000"><a:schemeClr val="phClr"><a:satMod val="110000"/><a:lumMod val="100000"/><a:shade val="100000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:lumMod val="99000"/><a:satMod val="120000"/><a:shade val="78000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0"/></a:gradFill></a:fillStyleLst><a:lnStyleLst><a:ln w="12700" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/><a:miter lim="800000"/></a:ln><a:ln w="19050" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/><a:miter lim="800000"/></a:ln><a:ln w="25400" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/><a:miter lim="800000"/></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad="57150" dist="19050" dir="5400000" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="63000"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"><a:tint val="95000"/><a:satMod val="170000"/></a:schemeClr></a:solidFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="93000"/><a:satMod val="150000"/><a:shade val="98000"/><a:lumMod val="102000"/></a:schemeClr></a:gs><a:gs pos="50000"><a:schemeClr val="phClr"><a:tint val="98000"/><a:satMod val="130000"/><a:shade val="90000"/><a:lumMod val="103000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="63000"/><a:satMod val="120000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000" scaled="0"/></a:gradFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements><a:objectDefaults/><a:extraClrSchemeLst/></a:theme>"#;
