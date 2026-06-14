@@ -81,3 +81,5 @@ Sequenced; each item is one ralph-agent task. Verify: `cargo test -p xlcore-api`
 ## Shipped
 
 - Color resolver: `resolve_color_hex` (rgb/indexed/theme+tint → `RRGGBB`) in xlcore-api.
+- Inverse converters (`xf_to_style_patch` + font/fill/border/alignment/protection) and
+  `CellInfo.style: Option<StylePatch>` populated in `get_cell`.

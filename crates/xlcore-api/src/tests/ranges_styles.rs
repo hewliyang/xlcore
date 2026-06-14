@@ -681,3 +681,62 @@ fn row_and_column_invalid_indices_diagnosed() {
         ApiErrorCode::MissingSheet,
     );
 }
+
+#[test]
+fn get_cell_reads_back_style_patch() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value("Sheet1!A1", 1234.5).unwrap();
+
+    let patch = StylePatch {
+        font: Some(FontPatch {
+            bold: Some(true),
+            color: Some("#FF0000".to_string()),
+            size: Some(14.0),
+            ..Default::default()
+        }),
+        fill: Some(FillPatch {
+            color: Some("E2F0D9".to_string()),
+            ..Default::default()
+        }),
+        border: Some(BorderPatch {
+            all: Some(BorderLinePatch {
+                style: BorderLineStyle::Thin,
+                color: Some("000000".to_string()),
+            }),
+            ..Default::default()
+        }),
+        alignment: Some(AlignmentPatch {
+            horizontal: Some(HorizontalAlign::Center),
+            wrap: Some(true),
+            ..Default::default()
+        }),
+        number_format: Some("#,##0.00".to_string()),
+        protection: None,
+        named_style: None,
+    };
+    workbook.set_style("Sheet1!A1", patch).unwrap();
+
+    let style = workbook.get_cell("Sheet1!A1").unwrap().style.unwrap();
+
+    let font = style.font.unwrap();
+    assert_eq!(font.bold, Some(true));
+    assert_eq!(font.size, Some(14.0));
+    assert_eq!(font.color.as_deref(), Some("FF0000"));
+
+    let fill = style.fill.unwrap();
+    assert_eq!(fill.pattern, Some(PatternType::Solid));
+    assert_eq!(fill.foreground.as_deref(), Some("E2F0D9"));
+
+    let border = style.border.unwrap();
+    let left = border.left.unwrap();
+    assert_eq!(left.style, BorderLineStyle::Thin);
+    assert_eq!(left.color.as_deref(), Some("000000"));
+
+    let alignment = style.alignment.unwrap();
+    assert_eq!(alignment.horizontal, Some(HorizontalAlign::Center));
+    assert_eq!(alignment.wrap, Some(true));
+
+    assert_eq!(style.number_format.as_deref(), Some("#,##0.00"));
+
+    assert!(workbook.get_cell("Sheet1!B1").unwrap().style.is_none());
+}

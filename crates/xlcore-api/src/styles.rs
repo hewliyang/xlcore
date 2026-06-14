@@ -3,10 +3,12 @@ use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 pub use xlcore_types::{
     AlignmentPatch, BorderLinePatch, BorderLineStyle, BorderPatch, FillPatch, FontPatch,
-    FontScheme, GradientFillPatch, GradientType, HorizontalAlign, NamedStyleInfo, NamedStylePatch,
-    PatternType, ProtectionPatch, ReadingOrder, StylePatch, UnderlinePatch, VertAlign,
-    VerticalAlign,
+    FontScheme, GradientFillPatch, GradientStopPatch, GradientType, HorizontalAlign, NamedStyleInfo,
+    NamedStylePatch, PatternType, ProtectionPatch, ReadingOrder, StylePatch, UnderlinePatch,
+    VertAlign, VerticalAlign,
 };
+
+use crate::color_resolve::resolve_color_hex;
 
 use crate::errors::sdk_err_to_api;
 use crate::ooxml_header;
@@ -1089,6 +1091,356 @@ fn alignment_equal(a: &Option<x::Alignment>, b: &Option<x::Alignment>) -> bool {
                 && a.reading_order == b.reading_order
         }
         _ => false,
+    }
+}
+
+pub(crate) fn xf_to_style_patch(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    style_index: u32,
+) -> Option<StylePatch> {
+    let wb_part = doc.workbook_part().ok()?.clone();
+    let part = wb_part.workbook_styles_part(doc)?;
+    let sheet = part.root_element(doc).ok()?.clone();
+
+    let xf = sheet
+        .cell_formats
+        .as_ref()?
+        .cell_format
+        .get(style_index as usize)?
+        .clone();
+
+    let master = xf.format_id.and_then(|fid| {
+        sheet
+            .cell_style_formats
+            .as_ref()
+            .and_then(|cf| cf.cell_format.get(fid as usize))
+            .cloned()
+    });
+
+    let font_id = xf
+        .font_id
+        .or(master.as_ref().and_then(|m| m.font_id))
+        .unwrap_or(0);
+    let fill_id = xf
+        .fill_id
+        .or(master.as_ref().and_then(|m| m.fill_id))
+        .unwrap_or(0);
+    let border_id = xf
+        .border_id
+        .or(master.as_ref().and_then(|m| m.border_id))
+        .unwrap_or(0);
+    let num_fmt_id = xf
+        .number_format_id
+        .or(master.as_ref().and_then(|m| m.number_format_id))
+        .unwrap_or(0);
+    let alignment = xf
+        .alignment
+        .clone()
+        .or_else(|| master.as_ref().and_then(|m| m.alignment.clone()));
+    let protection = xf
+        .protection
+        .clone()
+        .or_else(|| master.as_ref().and_then(|m| m.protection.clone()));
+
+    let mut patch = StylePatch::default();
+
+    if font_id != 0 {
+        if let Some(font) = sheet
+            .fonts
+            .as_ref()
+            .and_then(|f| f.font.get(font_id as usize))
+        {
+            patch.font = Some(font_to_patch(doc, font));
+        }
+    }
+    if fill_id != 0 {
+        if let Some(fill) = sheet
+            .fills
+            .as_ref()
+            .and_then(|f| f.fill.get(fill_id as usize))
+        {
+            patch.fill = fill_to_patch(doc, fill);
+        }
+    }
+    if border_id != 0 {
+        if let Some(border) = sheet
+            .borders
+            .as_ref()
+            .and_then(|b| b.border.get(border_id as usize))
+        {
+            patch.border = border_to_patch(doc, border);
+        }
+    }
+    if num_fmt_id != 0 {
+        if let Some(code) = num_fmt_code(doc, num_fmt_id) {
+            if code != "General" {
+                patch.number_format = Some(code);
+            }
+        }
+    }
+    if let Some(a) = alignment.as_ref() {
+        let ap = alignment_to_patch(a);
+        if ap != AlignmentPatch::default() {
+            patch.alignment = Some(ap);
+        }
+    }
+    if let Some(p) = protection.as_ref() {
+        let pp = protection_to_patch(p);
+        if pp != ProtectionPatch::default() {
+            patch.protection = Some(pp);
+        }
+    }
+
+    if patch == StylePatch::default() {
+        return None;
+    }
+    Some(patch)
+}
+
+fn font_to_patch(doc: &mut xlcore_io::SpreadsheetDocument, font: &x::Font) -> FontPatch {
+    let mut p = FontPatch::default();
+    for c in &font.font_choice {
+        match c {
+            x::FontChoice::FontName(n) => p.name = Some(n.val.clone()),
+            x::FontChoice::FontSize(s) => p.size = Some(s.val),
+            x::FontChoice::Bold(b) => p.bold = Some(b.val.clone().map(bool::from).unwrap_or(true)),
+            x::FontChoice::Italic(b) => {
+                p.italic = Some(b.val.clone().map(bool::from).unwrap_or(true))
+            }
+            x::FontChoice::Strike(b) => {
+                p.strike = Some(b.val.clone().map(bool::from).unwrap_or(true))
+            }
+            x::FontChoice::Underline(u) => {
+                p.underline = Some(match u.val {
+                    Some(x::UnderlineValues::None) => UnderlinePatch::None,
+                    Some(x::UnderlineValues::Double)
+                    | Some(x::UnderlineValues::DoubleAccounting) => UnderlinePatch::Double,
+                    _ => UnderlinePatch::Single,
+                })
+            }
+            x::FontChoice::Color(col) => p.color = resolve_color_hex(doc, col),
+            x::FontChoice::VerticalTextAlignment(v) => {
+                p.vert_align = Some(match v.val {
+                    x::VerticalAlignmentRunValues::Superscript => VertAlign::Superscript,
+                    x::VerticalAlignmentRunValues::Subscript => VertAlign::Subscript,
+                    x::VerticalAlignmentRunValues::Baseline => VertAlign::Baseline,
+                })
+            }
+            x::FontChoice::FontFamilyNumbering(f) => p.family = Some(f.val as u32),
+            x::FontChoice::FontScheme(s) => {
+                p.scheme = Some(match s.val {
+                    x::FontSchemeValues::Major => FontScheme::Major,
+                    x::FontSchemeValues::Minor => FontScheme::Minor,
+                    x::FontSchemeValues::None => FontScheme::None,
+                })
+            }
+            _ => {}
+        }
+    }
+    p
+}
+
+fn x_to_pattern_type(p: x::PatternValues) -> PatternType {
+    match p {
+        x::PatternValues::None => PatternType::None,
+        x::PatternValues::Solid => PatternType::Solid,
+        x::PatternValues::MediumGray => PatternType::MediumGray,
+        x::PatternValues::DarkGray => PatternType::DarkGray,
+        x::PatternValues::LightGray => PatternType::LightGray,
+        x::PatternValues::DarkHorizontal => PatternType::DarkHorizontal,
+        x::PatternValues::DarkVertical => PatternType::DarkVertical,
+        x::PatternValues::DarkDown => PatternType::DarkDown,
+        x::PatternValues::DarkUp => PatternType::DarkUp,
+        x::PatternValues::DarkGrid => PatternType::DarkGrid,
+        x::PatternValues::DarkTrellis => PatternType::DarkTrellis,
+        x::PatternValues::LightHorizontal => PatternType::LightHorizontal,
+        x::PatternValues::LightVertical => PatternType::LightVertical,
+        x::PatternValues::LightDown => PatternType::LightDown,
+        x::PatternValues::LightUp => PatternType::LightUp,
+        x::PatternValues::LightGrid => PatternType::LightGrid,
+        x::PatternValues::LightTrellis => PatternType::LightTrellis,
+        x::PatternValues::Gray125 => PatternType::Gray125,
+        x::PatternValues::Gray0625 => PatternType::Gray0625,
+    }
+}
+
+fn fg_to_color(c: &x::ForegroundColor) -> x::Color {
+    x::Color {
+        auto: c.auto.clone(),
+        indexed: c.indexed,
+        rgb: c.rgb.clone(),
+        theme: c.theme,
+        tint: c.tint,
+        ..Default::default()
+    }
+}
+
+fn bg_to_color(c: &x::BackgroundColor) -> x::Color {
+    x::Color {
+        auto: c.auto.clone(),
+        indexed: c.indexed,
+        rgb: c.rgb.clone(),
+        theme: c.theme,
+        tint: c.tint,
+        ..Default::default()
+    }
+}
+
+fn fill_to_patch(doc: &mut xlcore_io::SpreadsheetDocument, fill: &x::Fill) -> Option<FillPatch> {
+    match &fill.fill_choice {
+        Some(x::FillChoice::PatternFill(pf)) => {
+            let pattern = pf.pattern_type.map(x_to_pattern_type).unwrap_or(PatternType::None);
+            if matches!(pattern, PatternType::None)
+                && pf.foreground_color.is_none()
+                && pf.background_color.is_none()
+            {
+                return None;
+            }
+            let foreground = pf
+                .foreground_color
+                .as_ref()
+                .and_then(|fg| resolve_color_hex(doc, &fg_to_color(fg)));
+            let background = pf
+                .background_color
+                .as_ref()
+                .and_then(|bg| resolve_color_hex(doc, &bg_to_color(bg)));
+            Some(FillPatch {
+                pattern: Some(pattern),
+                foreground,
+                background,
+                ..Default::default()
+            })
+        }
+        Some(x::FillChoice::GradientFill(gf)) => {
+            let kind = match gf.r#type {
+                Some(x::GradientValues::Path) => GradientType::Path,
+                _ => GradientType::Linear,
+            };
+            let stops = gf
+                .gradient_stop
+                .iter()
+                .map(|s| GradientStopPatch {
+                    position: s.position,
+                    color: resolve_color_hex(doc, &s.color).unwrap_or_default(),
+                })
+                .collect();
+            Some(FillPatch {
+                gradient: Some(GradientFillPatch {
+                    kind: Some(kind),
+                    degree: gf.degree,
+                    left: gf.left,
+                    right: gf.right,
+                    top: gf.top,
+                    bottom: gf.bottom,
+                    stops,
+                }),
+                ..Default::default()
+            })
+        }
+        None => None,
+    }
+}
+
+fn x_to_border_style(style: x::BorderStyleValues) -> BorderLineStyle {
+    match style {
+        x::BorderStyleValues::None => BorderLineStyle::None,
+        x::BorderStyleValues::Thin => BorderLineStyle::Thin,
+        x::BorderStyleValues::Medium | x::BorderStyleValues::MediumDashed => BorderLineStyle::Medium,
+        x::BorderStyleValues::Thick => BorderLineStyle::Thick,
+        x::BorderStyleValues::Dashed => BorderLineStyle::Dashed,
+        x::BorderStyleValues::Dotted => BorderLineStyle::Dotted,
+        x::BorderStyleValues::Double => BorderLineStyle::Double,
+        x::BorderStyleValues::Hair => BorderLineStyle::Hair,
+        _ => BorderLineStyle::Thin,
+    }
+}
+
+fn side_to_patch<T: BorderSideRead>(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    slot: &Option<Box<T>>,
+) -> Option<BorderLinePatch> {
+    let side = slot.as_ref()?;
+    let style = x_to_border_style(side.style()?);
+    let color = side.color().and_then(|c| resolve_color_hex(doc, c));
+    Some(BorderLinePatch { style, color })
+}
+
+fn border_to_patch(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    border: &x::Border,
+) -> Option<BorderPatch> {
+    let patch = BorderPatch {
+        left: side_to_patch(doc, &border.left_border),
+        right: side_to_patch(doc, &border.right_border),
+        top: side_to_patch(doc, &border.top_border),
+        bottom: side_to_patch(doc, &border.bottom_border),
+        diagonal: side_to_patch(doc, &border.diagonal_border),
+        diagonal_up: border.diagonal_up.clone().map(bool::from),
+        diagonal_down: border.diagonal_down.clone().map(bool::from),
+        ..Default::default()
+    };
+    if patch == BorderPatch::default() {
+        return None;
+    }
+    Some(patch)
+}
+
+fn alignment_to_patch(a: &x::Alignment) -> AlignmentPatch {
+    let mut p = AlignmentPatch::default();
+    if let Some(h) = a.horizontal {
+        p.horizontal = Some(match h {
+            x::HorizontalAlignmentValues::General => HorizontalAlign::General,
+            x::HorizontalAlignmentValues::Left => HorizontalAlign::Left,
+            x::HorizontalAlignmentValues::Center => HorizontalAlign::Center,
+            x::HorizontalAlignmentValues::Right => HorizontalAlign::Right,
+            x::HorizontalAlignmentValues::Fill => HorizontalAlign::Fill,
+            x::HorizontalAlignmentValues::Justify => HorizontalAlign::Justify,
+            x::HorizontalAlignmentValues::CenterContinuous => HorizontalAlign::CenterContinuous,
+            x::HorizontalAlignmentValues::Distributed => HorizontalAlign::Distributed,
+        });
+    }
+    if let Some(v) = a.vertical {
+        p.vertical = Some(match v {
+            x::VerticalAlignmentValues::Top => VerticalAlign::Top,
+            x::VerticalAlignmentValues::Center => VerticalAlign::Center,
+            x::VerticalAlignmentValues::Bottom => VerticalAlign::Bottom,
+            x::VerticalAlignmentValues::Justify => VerticalAlign::Justify,
+            x::VerticalAlignmentValues::Distributed => VerticalAlign::Distributed,
+        });
+    }
+    if let Some(wrap) = a.wrap_text.clone() {
+        p.wrap = Some(bool::from(wrap));
+    }
+    if let Some(indent) = a.indent {
+        p.indent = Some(indent);
+    }
+    if let Some(rot) = a.text_rotation {
+        p.text_rotation = Some(if (91..=180).contains(&rot) {
+            90 - rot as i32
+        } else {
+            rot as i32
+        });
+    }
+    if let Some(shrink) = a.shrink_to_fit.clone() {
+        p.shrink_to_fit = Some(bool::from(shrink));
+    }
+    if let Some(justify) = a.justify_last_line.clone() {
+        p.justify_last_line = Some(bool::from(justify));
+    }
+    if let Some(order) = a.reading_order {
+        p.reading_order = Some(match order {
+            1 => ReadingOrder::LeftToRight,
+            2 => ReadingOrder::RightToLeft,
+            _ => ReadingOrder::Context,
+        });
+    }
+    p
+}
+
+fn protection_to_patch(prot: &x::Protection) -> ProtectionPatch {
+    ProtectionPatch {
+        locked: prot.locked.clone().map(bool::from),
+        hidden: prot.hidden.clone().map(bool::from),
     }
 }
 

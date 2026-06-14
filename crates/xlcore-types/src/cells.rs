@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::styles::FontPatch;
+use crate::styles::{FontPatch, StylePatch};
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
@@ -188,6 +188,9 @@ pub struct CellInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub style_index: Option<u32>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<StylePatch>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rich_text: Option<RichText>,

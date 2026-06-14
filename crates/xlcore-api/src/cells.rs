@@ -70,13 +70,17 @@ impl Workbook {
                         == Some((cell_ref.row, cell_ref.column))
                 })
             });
-        Ok(cell_info_from_cell(
+        let mut info = cell_info_from_cell(
             &cell_ref.sheet,
             cell_ref.row,
             cell_ref.column,
             cell,
             &shared_strings,
-        ))
+        );
+        if let Some(idx) = info.style_index {
+            info.style = crate::styles::xf_to_style_patch(&mut self.doc, idx);
+        }
+        Ok(info)
     }
 
     pub fn set_value(

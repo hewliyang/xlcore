@@ -145,6 +145,7 @@ pub(crate) fn cell_info_from_cell(
             value: CellValue::Blank,
             formula: None,
             style_index: None,
+            style: None,
             rich_text: None,
         };
     };
@@ -163,6 +164,7 @@ pub(crate) fn cell_info_from_cell(
             .as_ref()
             .and_then(|formula| formula.xml_content.as_deref().map(str::to_string)),
         style_index: cell.style_index,
+        style: None,
         rich_text: crate::rich_text::rich_text_from_cell(cell),
     }
 }
