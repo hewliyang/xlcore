@@ -20,6 +20,8 @@ mod shared_strings;
 mod sheet;
 mod sparklines;
 mod styles;
+#[allow(dead_code)]
+mod table_engine;
 mod tables;
 mod theme;
 

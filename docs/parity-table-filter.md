@@ -66,17 +66,11 @@ autoFilter { filterColumn[], sortState }  (definition)
 
 ### P0: Engine + authored filtering
 
-- [ ] **`table_engine` module** (`crates/xlcore-export/src/table_engine/mod.rs`):
-      pure `compute_hidden_rows(range, rows_values, &[(col_offset, &Criteria)])
-      -> BTreeSet<u32>` implementing Excel filter semantics:
-      - `Values { values, blank }` — keep row iff its cell display-string is in
-        the set (or blank and `blank=true`).
-      - `Custom { logical_and, criteria[1..2] }` — operators
-        `=,<>,>,>=,<,<=`, numeric compare when both sides parse as numbers else
-        string compare; `=`/`<>` support `*`/`?` wildcards.
-      - `Top10 { top, percent, val }` — rank numeric cells.
-      - Multiple filter columns AND together.
-      Rust unit tests for each criteria kind + multi-column AND.
+- [x] **`table_engine` module** (`crates/xlcore-export/src/table_engine/mod.rs`):
+      pure `compute_hidden_rows(first_data_row, rows, &[(col_offset, &AutoFilterCriteria)])
+      -> BTreeSet<u32>` (1-based) — Values+blank, Custom 1–2 (`=,<>,>,>=,<,<=`,
+      numeric-or-string compare, `*`/`?` wildcards on `=`/`<>`), Top10
+      (top/bottom, count/percent), multi-column AND. Unit tests per kind + AND.
 - [ ] **Authored filter application** in `xlcore-api/src/auto_filter.rs`:
       after `set_auto_filter_column` / `remove_auto_filter_column`, recompute
       the union of hidden rows across all `filterColumn`s and write
