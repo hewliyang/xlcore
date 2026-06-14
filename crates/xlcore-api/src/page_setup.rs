@@ -333,19 +333,23 @@ fn build_area_value(sheet: &str, area: &str) -> String {
     area.split(',')
         .map(|a| a.trim())
         .filter(|a| !a.is_empty())
-        .map(|a| format!("{prefix}!{}", absolutize_range(a)))
+        .map(|a| format!("{prefix}!{}", absolutize_range(strip_sheet_qualifier(a))))
         .collect::<Vec<_>>()
         .join(",")
+}
+
+fn strip_sheet_qualifier(part: &str) -> &str {
+    part.rsplit_once('!').map(|(_, r)| r).unwrap_or(part)
 }
 
 fn build_titles_value(sheet: &str, cols: Option<&str>, rows: Option<&str>) -> Option<String> {
     let prefix = quote_sheet_name(sheet);
     let mut parts = Vec::new();
     if let Some(c) = cols.map(str::trim).filter(|s| !s.is_empty()) {
-        parts.push(format!("{prefix}!{}", absolutize_range(c)));
+        parts.push(format!("{prefix}!{}", absolutize_range(strip_sheet_qualifier(c))));
     }
     if let Some(r) = rows.map(str::trim).filter(|s| !s.is_empty()) {
-        parts.push(format!("{prefix}!{}", absolutize_range(r)));
+        parts.push(format!("{prefix}!{}", absolutize_range(strip_sheet_qualifier(r))));
     }
     if parts.is_empty() {
         None

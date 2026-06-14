@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `pageSetup.set` no longer corrupts a sheet-qualified `printArea`/`printTitleRows`/`printTitleColumns` (`"Sheet1!A1:C5"` was fused into `MAINA1:C5`); the existing qualifier is now stripped before re-prefixing.
 - Single-sheet render (`--sheet`/`--sheet-index`) now resolves cross-sheet chart/sparkline refs by extracting cells-only grids of referenced sheets; previously such charts rendered as placeholders.
 - Sparkline `dataRef`s are now sheet-qualified on write (`Sheet!B2:E2`); bare refs caused Excel to drop the whole sparkline group on open ("Removed Feature: Sparklines").
 

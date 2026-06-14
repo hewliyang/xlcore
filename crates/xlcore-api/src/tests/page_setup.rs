@@ -135,6 +135,27 @@ fn page_setup_set_read_remove_and_round_trip() {
 }
 
 #[test]
+fn sheet_qualified_print_area_input_is_not_corrupted() {
+    let mut wb = Workbook::new().unwrap();
+    let info = wb
+        .set_page_setup(
+            "Sheet1",
+            SheetPageSetupPatch {
+                print_area: Some("Sheet1!A1:C5".to_string()),
+                print_title_rows: Some("Sheet1!1:2".to_string()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(info.print_area.as_deref(), Some("A1:C5"));
+    assert_eq!(info.print_title_rows.as_deref(), Some("1:2"));
+
+    let dns = wb.defined_names().unwrap();
+    let area = dns.iter().find(|d| d.name == "_xlnm.Print_Area").unwrap();
+    assert_eq!(area.reference, "Sheet1!$A$1:$C$5");
+}
+
+#[test]
 fn print_area_titles_and_breaks_round_trip() {
     let mut wb = Workbook::new().unwrap();
     let info = wb
