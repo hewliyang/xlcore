@@ -23,5 +23,6 @@ mod search;
 mod shapes;
 mod sparklines;
 mod structural;
+mod style_roundtrip;
 mod tables;
 mod worksheet_props;

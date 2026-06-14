@@ -73,13 +73,15 @@ Sequenced; each item is one ralph-agent task. Verify: `cargo test -p xlcore-api`
    Regen TS schema (`scripts/regen-api-schema.sh`). Unit test: a styled cell returns a
    `StylePatch` matching what was set.
 
-2. **Round-trip corpus test.** `tests/` corpus enforcing `resolve(get(cell)) ⊇
-   set(cell, patch)` across the StylePatch surface (font fields, fill solid/pattern,
-   border sides, alignment, number_format, named_style). Where exotica can't round-trip
-   semantically, document + assert the raw-ref fallback. This is the resolver's spec.
-
 ## Shipped
 
 - Color resolver: `resolve_color_hex` (rgb/indexed/theme+tint → `RRGGBB`) in xlcore-api.
 - Inverse converters (`xf_to_style_patch` + font/fill/border/alignment/protection) and
   `CellInfo.style: Option<StylePatch>` populated in `get_cell`.
+- Round-trip corpus test (`tests/style_roundtrip.rs`) enforcing `resolve(get(cell)) ⊇
+  set(cell, patch)` across font/fill/border/alignment/number_format/protection +
+  named-style master. Colors normalized (`#`/`FF` alpha stripped, uppercased); solid
+  `fill.color` read back as `pattern=Solid` + `foreground`; `border.all` read back as
+  the four sides. Excluded as non-round-tripping (separate explicit tests instead):
+  a `None` border side clears to no border (not a `None`-styled side), and
+  `font.underline=None` / `vertAlign=Baseline` emit nothing.
