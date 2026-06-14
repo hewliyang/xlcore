@@ -9,6 +9,7 @@ use xlcore_types::{
 };
 
 use crate::errors::sdk_err_to_api;
+use crate::refs::qualify_ref;
 use crate::{Result, Workbook};
 
 const SPARKLINE_EXT_URI: &str = "{05C60535-1F16-4fd2-B633-F4F36F0B64E0}";
@@ -75,7 +76,7 @@ impl Workbook {
             .with_sheet(sheet));
         }
 
-        let group = build_group(&patch);
+        let group = build_group(sheet, &patch)?;
         let ws_part = self.worksheet_part_for_sheet(sheet)?;
         let ws = ws_part
             .root_element_mut(&mut self.doc)
@@ -344,7 +345,7 @@ fn low_marker_color(hex: Option<&String>) -> Option<x14::LowMarkerColor> {
     })
 }
 
-fn build_group(patch: &SparklineGroupPatch) -> x14::SparklineGroup {
+fn build_group(sheet: &str, patch: &SparklineGroupPatch) -> Result<x14::SparklineGroup> {
     let kind = match patch.kind {
         SparklineKind::Line => Some(x14::SparklineTypeValues::Line),
         SparklineKind::Column => Some(x14::SparklineTypeValues::Column),
@@ -367,12 +368,12 @@ fn build_group(patch: &SparklineGroupPatch) -> x14::SparklineGroup {
     let mut sparklines = x14::Sparklines::default();
     for entry in &patch.sparklines {
         sparklines.sparkline.push(x14::Sparkline {
-            formula: Some(entry.data_ref.clone()),
+            formula: Some(qualify_ref(sheet, &entry.data_ref)?),
             reference_sequence: vec![entry.location.clone()],
         });
     }
 
-    x14::SparklineGroup {
+    Ok(x14::SparklineGroup {
         manual_max: patch.manual_max,
         manual_min: patch.manual_min,
         line_weight: patch.line_weight,
@@ -400,7 +401,7 @@ fn build_group(patch: &SparklineGroupPatch) -> x14::SparklineGroup {
         low_marker_color: low_marker_color(patch.low_color.as_ref()),
         formula: None,
         sparklines: Box::new(sparklines),
-    }
+    })
 }
 
 fn group_to_info(sheet: &str, index: usize, g: &x14::SparklineGroup) -> SparklineGroupInfo {
