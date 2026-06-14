@@ -401,6 +401,8 @@ api_methods! {
     { set_row_height as "setRowHeight" (s sheet, u32 row, f64 height) -> unit }
     { set_row_visible as "setRowVisible" (s sheet, u32 row, bool visible) -> unit }
     { set_column_width as "setColumnWidth" (s sheet, u32 column, f64 width) -> unit }
+    { auto_fit_column as "autoFitColumn" (s sheet, u32 column, deopt min_width: Option<f64>, deopt max_width: Option<f64>) -> json }
+    { auto_fit_columns as "autoFitColumns" (s sheet, u32 start, u32 end, deopt min_width: Option<f64>, deopt max_width: Option<f64>) -> json }
     { set_column_visible as "setColumnVisible" (s sheet, u32 column, bool visible) -> unit }
     { insert_rows as "insertRows" (s sheet, u32 before, u32 count) -> unit }
     { delete_rows as "deleteRows" (s sheet, u32 start, u32 count) -> unit }

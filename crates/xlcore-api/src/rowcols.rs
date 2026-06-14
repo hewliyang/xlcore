@@ -343,7 +343,7 @@ fn validate_row(row: u32, sheet: &str) -> Result<()> {
     Ok(())
 }
 
-fn validate_column(column: u32, sheet: &str) -> Result<()> {
+pub(crate) fn validate_column(column: u32, sheet: &str) -> Result<()> {
     if column == 0 || column > MAX_COLUMN {
         return Err(ApiError::new(
             ApiErrorCode::InvalidRef,
@@ -434,7 +434,7 @@ pub(crate) fn ensure_row(ws: &mut x::Worksheet, row: u32) -> &mut x::Row {
     &mut ws.sheet_data.row[pos]
 }
 
-fn ensure_single_column(ws: &mut x::Worksheet, column: u32) -> &mut x::Column {
+pub(crate) fn ensure_single_column(ws: &mut x::Worksheet, column: u32) -> &mut x::Column {
     if ws.columns.is_empty() {
         ws.columns.push(x::Columns::default());
     }

@@ -173,7 +173,7 @@ Status key:
 | Clear modes | `clear`, `ClearPendingChangeType` | Clear values, formulas, styles, comments, or all | Done (values/formulas/styles/all; comments later) | Rust API + TS smoke |
 | Style subset | `Style`, `Range.backColor/font/border/formatter` | Number format, font, fill, alignment, wrap, simple borders | Done | Rust API + layout |
 | Full styles | Themes, named styles, table styles | Preserve existing styles; author broader style model later | P2 | OOXML diff + preview |
-| Row/column size | `setRowHeight/setColumnWidth`, auto fit | Resize rows/columns; optional auto-fit later | Done | Rust API + save/reopen |
+| Row/column size | `setRowHeight/setColumnWidth`, `autoFitColumn(s)` | Resize rows/columns; autofit measures text via Calibri metrics + number format | Done | Rust API + save/reopen + preview |
 | Row/column visibility | `setRowVisible/setColumnVisible` | Hide/show rows and columns | Done | Rust API + save/reopen |
 | Insert/delete rows/cols | `addRows/deleteRows/addColumns/deleteColumns` | Structural edits with cell/formula/reference movement | Done | Rust API + save/reopen |
 | Freeze panes | `frozenRowCount/frozenColumnCount` | Freeze/unfreeze panes | Done | Rust API + save/reopen |

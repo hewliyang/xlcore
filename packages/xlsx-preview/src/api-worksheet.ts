@@ -231,6 +231,38 @@ export class Worksheet {
     this.handle.setColumnVisible(this.name, column, visible);
     return this;
   }
+  /**
+   * Resize a column to fit its contents. Returns the resulting width in
+   * character units.
+   * @param column 1-based column index (column 1 = A).
+   */
+  autoFitColumn(column: number, minWidth?: number, maxWidth?: number): number {
+    return this.handle.autoFitColumn(
+      this.name,
+      column,
+      minWidth ?? null,
+      maxWidth ?? null,
+    ) as number;
+  }
+  /**
+   * Resize a range of columns to fit their contents. Returns the resulting
+   * widths in character units.
+   * @param start 1-based first column; @param end 1-based last column.
+   */
+  autoFitColumns(
+    start: number,
+    end: number,
+    minWidth?: number,
+    maxWidth?: number,
+  ): number[] {
+    return this.handle.autoFitColumns(
+      this.name,
+      start,
+      end,
+      minWidth ?? null,
+      maxWidth ?? null,
+    ) as number[];
+  }
   /** @param start 1-based first row of the group; level 1-7 (0 ungroups). */
   groupRows(start: number, end: number, level = 1, collapsed = false): this {
     this.handle.groupRows(this.name, start, end, level, collapsed);

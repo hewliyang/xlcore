@@ -1,4 +1,5 @@
 mod auto_filter;
+mod autofit;
 mod cells;
 mod charts;
 mod color_resolve;

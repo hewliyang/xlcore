@@ -557,6 +557,44 @@
     "ret": "json"
   },
   {
+    "name": "set_auto_filter_sort",
+    "jsName": "setAutoFilterSort",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "column_offset",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "descending",
+        "kind": "bool",
+        "type": "bool"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "remove_auto_filter_sort",
+    "jsName": "removeAutoFilterSort",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
     "name": "comments",
     "jsName": "comments",
     "source": "table",
@@ -1745,6 +1783,69 @@
       }
     ],
     "ret": "unit"
+  },
+  {
+    "name": "auto_fit_column",
+    "jsName": "autoFitColumn",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "column",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "min_width",
+        "kind": "deopt",
+        "type": "Option<f64>"
+      },
+      {
+        "name": "max_width",
+        "kind": "deopt",
+        "type": "Option<f64>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "auto_fit_columns",
+    "jsName": "autoFitColumns",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "start",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "end",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "min_width",
+        "kind": "deopt",
+        "type": "Option<f64>"
+      },
+      {
+        "name": "max_width",
+        "kind": "deopt",
+        "type": "Option<f64>"
+      }
+    ],
+    "ret": "json"
   },
   {
     "name": "set_column_visible",

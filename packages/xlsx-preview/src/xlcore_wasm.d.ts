@@ -8,6 +8,8 @@ export class WorkbookHandle {
     addThreadedNote(sheet: string, reference: string, patch: any): any;
     appendRows(sheet: string, rows: any): any;
     autoFilter(sheet: string): any;
+    autoFitColumn(sheet: string, column: number, min_width: any, max_width: any): any;
+    autoFitColumns(sheet: string, start: number, end: number, min_width: any, max_width: any): any;
     calcProperties(): any;
     chartExs(sheet?: string | null): any;
     charts(sheet?: string | null): any;
@@ -150,6 +152,8 @@ export interface InitOutput {
     readonly workbookhandle_addThreadedNote: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly workbookhandle_appendRows: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_autoFilter: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_autoFitColumn: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+    readonly workbookhandle_autoFitColumns: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
     readonly workbookhandle_calcProperties: (a: number, b: number) => void;
     readonly workbookhandle_chartExs: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_charts: (a: number, b: number, c: number, d: number) => void;

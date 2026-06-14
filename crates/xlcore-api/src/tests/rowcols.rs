@@ -126,3 +126,83 @@ fn group_rows_rejects_bad_range() {
     assert!(workbook.group_rows("Sheet1", 4, 2, 1, false).is_err());
     assert!(workbook.group_rows("Sheet1", 2, 4, 8, false).is_err());
 }
+
+fn col_width(workbook: &mut Workbook, sheet: &str, column: u32) -> Option<f64> {
+    let part = workbook.worksheet_part_for_sheet(sheet).unwrap();
+    let ws = part
+        .root_element(&mut workbook.doc)
+        .map_err(sdk_err_to_api)
+        .unwrap();
+    ws.columns.first().and_then(|cols| {
+        cols.column
+            .iter()
+            .find(|c| c.min <= column && column <= c.max)
+            .and_then(|c| c.width)
+    })
+}
+
+#[test]
+fn auto_fit_column_widens_for_long_text() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value_in("Sheet1", "A1", "Hi").unwrap();
+    workbook.set_value_in("Sheet1", "A2", "A").unwrap();
+    let narrow = workbook.auto_fit_column("Sheet1", 1, None, None).unwrap();
+
+    let mut workbook2 = Workbook::new().unwrap();
+    workbook2
+        .set_value_in("Sheet1", "A1", "A considerably longer label here")
+        .unwrap();
+    let wide = workbook2.auto_fit_column("Sheet1", 1, None, None).unwrap();
+
+    assert!(wide > narrow, "wide={wide} narrow={narrow}");
+    assert!(narrow > 0.0);
+}
+
+#[test]
+fn auto_fit_column_sets_best_fit_and_roundtrips() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value_in("Sheet1", "B3", "Hello World").unwrap();
+    let width = workbook.auto_fit_column("Sheet1", 2, None, None).unwrap();
+    assert!(col_width(&mut workbook, "Sheet1", 2).is_some());
+
+    let bytes = workbook.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let rt = col_width(&mut reopened, "Sheet1", 2).unwrap();
+    assert!((rt - width).abs() < 1e-9);
+}
+
+#[test]
+fn auto_fit_column_respects_min_and_max() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value_in("Sheet1", "A1", "x").unwrap();
+    let w = workbook.auto_fit_column("Sheet1", 1, Some(20.0), None).unwrap();
+    assert!(w >= 20.0);
+
+    let mut workbook2 = Workbook::new().unwrap();
+    workbook2
+        .set_value_in("Sheet1", "A1", "this is a very very long string value")
+        .unwrap();
+    let w2 = workbook2.auto_fit_column("Sheet1", 1, None, Some(8.0)).unwrap();
+    assert!(w2 <= 8.0);
+}
+
+#[test]
+fn auto_fit_column_uses_number_format() {
+    let mut plain = Workbook::new().unwrap();
+    plain.set_value_in("Sheet1", "A1", 1234.5).unwrap();
+    let plain_w = plain.auto_fit_column("Sheet1", 1, None, None).unwrap();
+
+    let mut fmt = Workbook::new().unwrap();
+    fmt.set_value_in("Sheet1", "A1", 1234.5).unwrap();
+    fmt.set_style_in(
+        "Sheet1",
+        "A1",
+        StylePatch {
+            number_format: Some("$#,##0.00".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let fmt_w = fmt.auto_fit_column("Sheet1", 1, None, None).unwrap();
+    assert!(fmt_w > plain_w, "fmt={fmt_w} plain={plain_w}");
+}
