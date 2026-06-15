@@ -577,6 +577,7 @@
           <button id="reset-view">Reset view</button>
         </div>
         <button id="recalc" disabled>Recalc formulas</button>
+        <button id="download" disabled>Download .xlsx</button>
         <label class="row"><input id="auto-recalc" type="checkbox" checked> Auto recalc</label>
         <label class="row"><input id="show-hidden" type="checkbox"> Show hidden sheets</label>
       </div>
@@ -640,6 +641,7 @@ const loadingStage = document.getElementById("loading-stage");
 const loadingElapsed = document.getElementById("loading-elapsed");
 const showHiddenToggle = document.getElementById("show-hidden");
 const recalcButton = document.getElementById("recalc");
+const downloadButton = document.getElementById("download");
 const autoRecalcToggle = document.getElementById("auto-recalc");
 
 const selActive = document.getElementById("sel-active");
@@ -647,6 +649,7 @@ const selRange = document.getElementById("sel-range");
 const selSize = document.getElementById("sel-size");
 
 let previewer = null;
+let loadedFileName = "workbook.xlsx";
 let elapsedTimer = null;
 let showHiddenSheets = new URLSearchParams(location.search).get("showHidden") === "1";
 showHiddenToggle.checked = showHiddenSheets;
@@ -1183,6 +1186,8 @@ async function loadWorkbookFile(file) {
     });
     recalcWorkbook = await openWorkbookForFile(file);
     recalcButton.disabled = recalcWorkbook == null;
+    downloadButton.disabled = recalcWorkbook == null;
+    loadedFileName = file.name;
     const pivotController = buildPivotController(recalcWorkbook);
     const tableController = buildTableController(recalcWorkbook);
     previewer = await createWorkbookPreviewerFromFile(previewRoot, file, {
@@ -1333,6 +1338,22 @@ function runRecalc() {
 }
 
 recalcButton.addEventListener("click", runRecalc);
+
+function downloadWorkbook() {
+  if (!recalcWorkbook) return;
+  const bytes = recalcWorkbook.save();
+  const blob = new Blob([bytes], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = loadedFileName.replace(/\.[^.]+$/, "") + "-edited.xlsx";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+downloadButton.addEventListener("click", downloadWorkbook);
 
 window.addEventListener("keydown", (e) => {
   if (e.key === "F9") {

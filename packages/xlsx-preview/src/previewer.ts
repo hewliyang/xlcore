@@ -39,6 +39,7 @@ export interface PreviewerOptions {
   report?: LoadReport;
   showHidden?: boolean;
   editable?: boolean;
+  onDownload?: () => void | Promise<void>;
 
   pivotController?: PivotFilterController;
   tableController?: TableFilterController;
@@ -147,6 +148,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private readonly sheetTabs: HTMLDivElement;
   private readonly formulaBar: HTMLDivElement;
   private readonly zoomBox: HTMLDivElement;
+  private readonly downloadButton: HTMLButtonElement | null;
   private readonly nameBox: HTMLDivElement;
   private readonly formulaBox: HTMLInputElement;
   private readonly zoomLabel: HTMLSpanElement;
@@ -164,6 +166,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private readonly tabButtons: Array<HTMLButtonElement | null> = [];
   private readonly showHidden: boolean;
   private readonly editable: boolean;
+  private readonly onDownload?: () => void | Promise<void>;
   private readonly engine?: PreviewerEngine;
   private highlights: HighlightRange[] = [];
   private pointHighlight: HighlightRange | null = null;
@@ -190,6 +193,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.zoom = clamp(options.initialZoom ?? 1, 0.25, 4);
     this.showHidden = options.showHidden === true;
     this.editable = options.editable === true;
+    this.onDownload = options.onDownload;
     this.engine = options.engine;
     this.sheetStates = this.layout.sheets.map(() => ({
       colOverrides: new Map(),
@@ -246,6 +250,16 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.zoomLabel.style.cssText = "font-size:12px;min-width:42px;text-align:center;color:#374151;";
     this.zoomIn = makeButton("+");
     this.zoomBox.append(this.zoomOut, this.zoomLabel, this.zoomIn);
+    if (this.onDownload) {
+      this.downloadButton = makeButton("Download");
+      this.downloadButton.setAttribute("aria-label", "Download workbook");
+      this.downloadButton.onclick = () => {
+        void this.onDownload?.();
+      };
+      this.zoomBox.insertBefore(this.downloadButton, this.zoomOut);
+    } else {
+      this.downloadButton = null;
+    }
     this.tabs.append(this.sheetTabs, this.zoomBox);
 
     this.stage = document.createElement("div");
@@ -839,7 +853,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
             sheetIndex: this.activeSheetIndex,
             r: active.r,
             c: active.c,
-            input: this.formulaBox.value,
+            input: balanceFormula(this.formulaBox.value),
             commitMove: "down",
           },
         }),
@@ -958,7 +972,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private commitEdit(commitMove: "down" | "right" | "up" | "left" | null): void {
     const cell = this.editCell;
     if (!cell) return;
-    const input = this.editInput.value;
+    const input = balanceFormula(this.editInput.value);
     this.hideEditOverlay();
     this.dispatchEvent(
       new CustomEvent("celledit", {
@@ -1075,6 +1089,35 @@ function formatFormulaBar(sheet: Sheet, active: { r: number; c: number }): strin
   if (cell.value !== undefined) return String(cell.value);
   if (cell.runs && cell.runs.length > 0) return cell.runs.map((run) => run.text).join("");
   return "";
+}
+
+function balanceFormula(text: string): string {
+  if (!text.startsWith("=")) return text;
+  let depth = 0;
+  let inString = false;
+  let inQuote = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') i++;
+        else inString = false;
+      }
+      continue;
+    }
+    if (inQuote) {
+      if (ch === "'") {
+        if (text[i + 1] === "'") i++;
+        else inQuote = false;
+      }
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "'") inQuote = true;
+    else if (ch === "(") depth++;
+    else if (ch === ")" && depth > 0) depth--;
+  }
+  return depth > 0 ? text + ")".repeat(depth) : text;
 }
 
 function colLabel(n: number): string {

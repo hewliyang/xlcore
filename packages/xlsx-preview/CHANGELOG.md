@@ -5,7 +5,13 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Previewer: optional `onDownload` callback renders a Download button in the toolbar.
+
 ### Fixed
+
+- Editor: auto-close unbalanced `(` on commit (e.g. point-mode `=SUM(A1:A3`), avoiding corrupt formulas Excel rejects on open.
 
 - Point mode: arrow keys (Shift to extend) pick/move a reference while editing a formula at a ref-accepting caret.
 - Point mode: draw the in-progress candidate range box while dragging a reference (before the formula parses).
