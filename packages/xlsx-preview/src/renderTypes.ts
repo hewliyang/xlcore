@@ -5,6 +5,14 @@ export interface Viewport {
   h: number;
 }
 
+export interface HighlightRange {
+  r1: number;
+  c1: number;
+  r2: number;
+  c2: number;
+  color: string;
+}
+
 export interface RenderOptions {
   scale?: number;
   zoom?: number;
@@ -15,6 +23,7 @@ export interface RenderOptions {
   rowOverrides?: Map<number, number>;
   activeCell?: { r: number; c: number } | null;
   selection?: { r1: number; c1: number; r2: number; c2: number } | null;
+  highlights?: HighlightRange[];
   viewport?: Viewport;
 }
 

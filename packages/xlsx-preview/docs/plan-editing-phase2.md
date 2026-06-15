@@ -48,22 +48,6 @@ needs from the host is injected through a small `PreviewerEngine` adapter.
 
 ## Backlog
 
-### P2.2 feat(previewer): highlight overlay in the renderer
-
-Library. `src/render.ts` (+ `src/selection.ts` or a new `src/highlights.ts`),
-`src/renderTypes.ts`.
-
-- Add `highlights?: HighlightRange[]` to `RenderOptions` where
-  `HighlightRange = { r1; c1; r2; c2; color: string }`.
-- Pure builder: given grid + highlights → list of `{x,y,w,h,color}` rects (mirror
-  `drawSelection` geometry using `colX/rowY`). Draw a 2px stroke in `color` + a
-  faint fill (color at ~10% alpha) inside the existing pane clip loop, beneath
-  `drawSelection` so the active selection stays on top.
-- Unit-test the pure rect builder (geometry + clamping). Visual check: render a
-  fixture layout to PNG with injected highlights via the CLI/`node.ts` path and
-  eyeball.
-- Verify: `pnpm --filter @hewliyang/xlsx-preview test` green; PNG shows boxes.
-
 ### P2.3 feat(previewer): live precedent highlighting wired to the engine
 
 Library + examples. `src/previewer.ts`, `src/interact.ts` (read-only), examples.
@@ -151,4 +135,5 @@ checks use a CLI PNG render + eyeball. Interactive items use the browser harness
 
 ## Shipped
 
+- P2.2 highlight overlay in the renderer (`HighlightRange[]` on `RenderOptions`, pure `buildHighlightRects` builder in `src/highlights.ts`, drawn beneath `drawSelection`).
 - P2.1 `Workbook.parseFormulaReferences` (refs from an uncommitted formula via shared `references_for_formula` core) + `Workbook.functionNames` (English catalog from `ironcalc_base::english_function_names`, enum-synced via `Function::into_iter`).
