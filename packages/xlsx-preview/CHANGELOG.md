@@ -5,6 +5,11 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Inline edit overlay now positions in content coordinates inside the scroll spacer, fixing a scroll jump to the bottom-right of the sheet when focusing/typing.
+- Example app: use `cell(addr).setValue/setFormula` instead of the nonexistent `range(addr)` single-cell setters.
+
 ### Added
 
 - Example app: wire cell editing via `celledit` + recalc modes (Auto recalc checkbox, F9 manual recalc).

@@ -129,7 +129,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private readonly zoomIn: HTMLButtonElement;
   private readonly stage: HTMLDivElement;
   private readonly spacer: HTMLDivElement;
-  private readonly editOverlay: HTMLDivElement;
+
   private readonly editInput: HTMLInputElement;
   private editCell: { r: number; c: number } | null = null;
   private readonly sheetStates: SheetState[];
@@ -213,15 +213,11 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.canvas = document.createElement("canvas");
     this.canvas.style.cssText =
       "position:sticky;top:0;left:0;background:#fff;display:block;box-shadow:0 1px 3px rgba(0,0,0,0.1);";
-    this.spacer.append(this.canvas);
-    this.editOverlay = document.createElement("div");
-    this.editOverlay.style.cssText =
-      "position:sticky;top:0;left:0;width:0;height:0;z-index:5;overflow:visible;";
     this.editInput = document.createElement("input");
     this.editInput.style.cssText =
-      "position:absolute;top:0;left:0;display:none;box-sizing:border-box;margin:0;padding:0 3px;border:2px solid #2563eb;outline:none;background:#fff;color:#111827;font:13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
-    this.editOverlay.append(this.editInput);
-    this.stage.append(this.spacer, this.editOverlay);
+      "position:absolute;top:0;left:0;display:none;z-index:5;box-sizing:border-box;margin:0;padding:0 3px;border:2px solid #2563eb;outline:none;background:#fff;color:#111827;font:13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
+    this.spacer.append(this.canvas, this.editInput);
+    this.stage.append(this.spacer);
     this.editInput.addEventListener("keydown", (ev) => this.onEditInputKeyDown(ev));
     this.editInput.addEventListener("blur", () => this.commitEdit(null));
     this.root.append(this.formulaBar, this.tabs, this.stage);
@@ -231,7 +227,6 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.zoomOut.onclick = () => this.setZoom(this.zoom - 0.25);
     this.zoomIn.onclick = () => this.setZoom(this.zoom + 0.25);
     this.stage.addEventListener("scroll", this.scheduleDraw, { passive: true });
-    this.stage.addEventListener("scroll", this.hideEditOnScroll, { passive: true });
     this.canvas.addEventListener(
       "xlcore-hyperlink-jump",
       this.handleHyperlinkJump as EventListener,
@@ -287,7 +282,6 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.interactHandle = null;
     this.resizeObserver.disconnect();
     this.stage.removeEventListener("scroll", this.scheduleDraw);
-    this.stage.removeEventListener("scroll", this.hideEditOnScroll);
     this.canvas.removeEventListener(
       "xlcore-hyperlink-jump",
       this.handleHyperlinkJump as EventListener,
@@ -652,28 +646,22 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     }
   }
 
-  private readonly hideEditOnScroll = () => {
-    if (this.editCell) this.hideEditOverlay();
-  };
-
   private openEditOverlay(cell: { r: number; c: number }, initialText: string | null): void {
     if (!this.editable) return;
     const sheet = this.getActiveSheet();
     const state = this.currentState();
     this.scrollToCell(cell.r, cell.c);
-    this.recomputeViewport();
     const grid = buildGrid(sheet, state.colOverrides, state.rowOverrides);
     const rect = cellRect(grid, cell.r, cell.c);
     const z = this.zoom;
-    const screenX = (rect.x - this.viewport.x) * z;
-    const screenY = (rect.y - this.viewport.y) * z;
     this.editCell = { r: cell.r, c: cell.c };
+    this.editInput.style.left = `${rect.x * z}px`;
+    this.editInput.style.top = `${rect.y * z}px`;
     this.editInput.style.width = `${Math.max(rect.w * z, 24)}px`;
     this.editInput.style.height = `${Math.max(rect.h * z, 16)}px`;
-    this.editInput.style.transform = `translate(${screenX}px, ${screenY}px)`;
     this.editInput.style.display = "block";
     this.editInput.value = initialText ?? formatFormulaBar(sheet, cell);
-    this.editInput.focus();
+    this.editInput.focus({ preventScroll: true });
     const end = this.editInput.value.length;
     this.editInput.setSelectionRange(end, end);
   }

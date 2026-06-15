@@ -671,8 +671,8 @@ function applyEdit({ sheetIndex, r, c, input, commitMove }) {
   try {
     const name = previewer.layout.sheets[sheetIndex].name;
     const ws = recalcWorkbook.sheet(name);
-    if (input.startsWith("=")) ws.range(addr).setFormula(input);
-    else ws.range(addr).setValue(coerceInput(input));
+    if (input.startsWith("=")) ws.cell(addr).setFormula(input);
+    else ws.cell(addr).setValue(coerceInput(input));
     if (autoRecalc) recalcWorkbook.recalculate();
     previewer.replaceLayout(recalcWorkbook.layout());
     if (commitMove) {
