@@ -18,34 +18,27 @@ import type { ChartLegendPosition } from "./ChartLegendPosition.js";
  * schema-excluded: spPr, txPr, clrMapOvr, fmtOvrs, printSettings, externalData,
  * plotSurface, dataLabels, valueColors, dataPt, axis styling, extLst
  */
-export type ChartExPatch = {
-  name?: string;
-  kind: ChartExKind;
-  title?: string;
-  anchor: AnchorSpec;
-  /**
-   * `cx:strDim type="cat"` formula (e.g. `Sheet1!$A$2:$A$7`). Optional for
-   * `histogram` (raw observations need no categories).
-   */
-  categoriesRef?: string;
-  series: Array<ChartExSeriesPatch>;
-  legendPosition?: ChartLegendPosition;
-  /**
-   * `cx:subtotals`; 0-based indices of points drawn as totals from zero.
-   * Waterfall only.
-   */
-  subtotals: Array<number>;
-  /**
-   * `cx:binning/cx:binCount`; number of histogram bins. Histogram only.
-   */
-  binCount?: number;
-  /**
-   * `cx:binning/cx:binSize`; histogram bin width. Histogram only. Ignored when
-   * `bin_count` is set.
-   */
-  binSize?: number;
-  /**
-   * `cx:statistics/@quartileMethod`. Box-and-whisker only.
-   */
-  quartileMethod?: ChartExQuartileMethod;
-};
+export type ChartExPatch = { name?: string, kind: ChartExKind, title?: string, anchor: AnchorSpec, 
+/**
+ * `cx:strDim type="cat"` formula (e.g. `Sheet1!$A$2:$A$7`). Optional for
+ * `histogram` (raw observations need no categories).
+ */
+categoriesRef?: string, series: Array<ChartExSeriesPatch>, legendPosition?: ChartLegendPosition, 
+/**
+ * `cx:subtotals`; 0-based indices of points drawn as totals from zero.
+ * Waterfall only.
+ */
+subtotals: Array<number>, 
+/**
+ * `cx:binning/cx:binCount`; number of histogram bins. Histogram only.
+ */
+binCount?: number, 
+/**
+ * `cx:binning/cx:binSize`; histogram bin width. Histogram only. Ignored when
+ * `bin_count` is set.
+ */
+binSize?: number, 
+/**
+ * `cx:statistics/@quartileMethod`. Box-and-whisker only.
+ */
+quartileMethod?: ChartExQuartileMethod, };

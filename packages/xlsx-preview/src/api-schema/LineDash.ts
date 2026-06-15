@@ -4,15 +4,4 @@
  * Preset line dash pattern (`a:prstDash/@val`, OOXML `ST_PresetLineDashVal`),
  * transliterated from ooxmlsdk `PresetLineDashValues`.
  */
-export type LineDash =
-  | "solid"
-  | "dot"
-  | "dash"
-  | "lgDash"
-  | "dashDot"
-  | "lgDashDot"
-  | "lgDashDotDot"
-  | "sysDash"
-  | "sysDot"
-  | "sysDashDot"
-  | "sysDashDotDot";
+export type LineDash = "solid" | "dot" | "dash" | "lgDash" | "dashDot" | "lgDashDot" | "lgDashDotDot" | "sysDash" | "sysDot" | "sysDashDot" | "sysDashDotDot";

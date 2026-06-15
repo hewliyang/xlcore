@@ -9,52 +9,44 @@ import type { ChartLine } from "./ChartLine.js";
 import type { ChartMarker } from "./ChartMarker.js";
 import type { ChartTrendline } from "./ChartTrendline.js";
 
-export type ChartSeriesInfo = {
-  name?: string;
-  nameRef?: string;
-  valuesRef: string;
-  xValuesRef?: string;
-  bubbleSizesRef?: string;
-  color?: string;
-  dataLabels?: ChartDataLabels;
-  /**
-   * `c:marker`; line/scatter series only.
-   */
-  marker?: ChartMarker;
-  /**
-   * Connecting-line / outline styling; see {@link ChartSeriesPatch.line}.
-   */
-  line?: ChartLine;
-  /**
-   * Spline-smoothed line (`c:smooth`); see {@link ChartSeriesPatch.smooth}.
-   */
-  smooth?: boolean;
-  /**
-   * Per-data-point fill overrides (`c:dPt`); see {@link ChartSeriesPatch.dataPoints}.
-   */
-  dataPoints?: Array<ChartDataPoint>;
-  /**
-   * Per-series chart type for combo charts; see {@link ChartSeriesPatch.kind}.
-   */
-  kind?: ChartKind;
-  /**
-   * Primary/secondary value-axis group; see {@link ChartSeriesPatch.axis}.
-   */
-  axis?: ChartAxisGroup;
-  /**
-   * Negative-value fill flip; see {@link ChartSeriesPatch.invertIfNegative}.
-   */
-  invertIfNegative?: boolean;
-  /**
-   * Series regression trendline; see {@link ChartSeriesPatch.trendline}.
-   */
-  trendline?: ChartTrendline;
-  /**
-   * Series error bars; see {@link ChartSeriesPatch.errorBars}.
-   */
-  errorBars?: ChartErrorBars;
-  /**
-   * Per-series 3D shape override; see {@link ChartSeriesPatch.shape}.
-   */
-  shape?: Bar3DShape;
-};
+export type ChartSeriesInfo = { name?: string, nameRef?: string, valuesRef: string, xValuesRef?: string, bubbleSizesRef?: string, color?: string, dataLabels?: ChartDataLabels, 
+/**
+ * `c:marker`; line/scatter series only.
+ */
+marker?: ChartMarker, 
+/**
+ * Connecting-line / outline styling; see {@link ChartSeriesPatch.line}.
+ */
+line?: ChartLine, 
+/**
+ * Spline-smoothed line (`c:smooth`); see {@link ChartSeriesPatch.smooth}.
+ */
+smooth?: boolean, 
+/**
+ * Per-data-point fill overrides (`c:dPt`); see {@link ChartSeriesPatch.dataPoints}.
+ */
+dataPoints?: Array<ChartDataPoint>, 
+/**
+ * Per-series chart type for combo charts; see {@link ChartSeriesPatch.kind}.
+ */
+kind?: ChartKind, 
+/**
+ * Primary/secondary value-axis group; see {@link ChartSeriesPatch.axis}.
+ */
+axis?: ChartAxisGroup, 
+/**
+ * Negative-value fill flip; see {@link ChartSeriesPatch.invertIfNegative}.
+ */
+invertIfNegative?: boolean, 
+/**
+ * Series regression trendline; see {@link ChartSeriesPatch.trendline}.
+ */
+trendline?: ChartTrendline, 
+/**
+ * Series error bars; see {@link ChartSeriesPatch.errorBars}.
+ */
+errorBars?: ChartErrorBars, 
+/**
+ * Per-series 3D shape override; see {@link ChartSeriesPatch.shape}.
+ */
+shape?: Bar3DShape, };

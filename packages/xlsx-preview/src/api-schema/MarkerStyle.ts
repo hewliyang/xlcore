@@ -4,16 +4,4 @@
  * Data-point marker symbol (`c:marker/c:symbol`, OOXML `ST_MarkerStyle`).
  * Applies to line and scatter series; ignored for other chart kinds.
  */
-export type MarkerStyle =
-  | "auto"
-  | "circle"
-  | "dash"
-  | "diamond"
-  | "dot"
-  | "none"
-  | "picture"
-  | "plus"
-  | "square"
-  | "star"
-  | "triangle"
-  | "x";
+export type MarkerStyle = "auto" | "circle" | "dash" | "diamond" | "dot" | "none" | "picture" | "plus" | "square" | "star" | "triangle" | "x";

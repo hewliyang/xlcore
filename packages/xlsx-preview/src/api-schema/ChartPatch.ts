@@ -17,144 +17,130 @@ import type { ChartView3D } from "./ChartView3D.js";
 import type { DispBlanksAs } from "./DispBlanksAs.js";
 import type { RadarStyle } from "./RadarStyle.js";
 
-export type ChartPatch = {
-  name?: string;
-  kind: ChartKind;
-  title?: string;
-  legendPosition?: ChartLegendPosition;
-  categoriesRef?: string;
-  series: Array<ChartSeriesPatch>;
-  /**
-   * Raw `style{N}.xml` (`cs:chartStyle`, the Chart Styles gallery) written
-   * verbatim as a `chartStyle` companion part + relationship. Opaque
-   * escape hatch: the ~40-entry styleEntry schema is not modeled. Set empty
-   * string on update to remove the part.
-   */
-  styleXml?: string;
-  /**
-   * Raw `colors{N}.xml` (`cs:colorStyle`, the color-variation palette)
-   * written verbatim as a `chartColorStyle` companion part + relationship.
-   * Opaque escape hatch. Set empty string on update to remove the part.
-   */
-  colorStyleXml?: string;
-  /**
-   * `c:plotArea/c:spPr`; plot-area background fill + border.
-   */
-  plotArea?: ChartPlotArea;
-  /**
-   * `c:legend/c:spPr` + `c:legend/c:txPr`; legend background, border + font.
-   * Position is set via {@link ChartPatch.legendPosition}.
-   */
-  legend?: ChartLegend;
-  /**
-   * `c:title/c:layout/c:manualLayout` manual chart-title placement.
-   * {@link ChartManualLayout.layoutTarget} is ignored (plot area only).
-   */
-  titleLayout?: ChartManualLayout;
-  anchor: AnchorSpec;
-  categoryAxisTitle?: string;
-  valueAxisTitle?: string;
-  categoryAxis?: ChartAxisPatch;
-  valueAxis?: ChartAxisPatch;
-  stacking?: ChartStacking;
-  /**
-   * `c:gapWidth` (0..=500); bar/column charts only. Space between bar clusters
-   * as a percentage of bar width.
-   */
-  gapWidth?: number;
-  /**
-   * `c:overlap` (-100..=100); bar/column charts only. Stacked charts force 100.
-   */
-  overlap?: number;
-  /**
-   * `c:radarStyle`; radar charts only. Defaults to `Standard` when omitted.
-   */
-  radarStyle?: RadarStyle;
-  /**
-   * `c:holeSize` (10..=90); doughnut charts only. Inner-hole diameter as a
-   * percentage of the chart radius. Defaults to 50 when omitted.
-   */
-  holeSize?: number;
-  /**
-   * `c:firstSliceAng` (0..=360); pie/doughnut charts only. Clockwise rotation
-   * of the first slice from the top (12 o'clock), in degrees.
-   */
-  firstSliceAngle?: number;
-  /**
-   * `c:hiLowLines`; stock charts only. Vertical line spanning each category's
-   * high/low values. Defaults to `true` when omitted.
-   */
-  hiLowLines?: boolean;
-  /**
-   * `c:upDownBars`; stock charts only. Open/close bars (white up, black down).
-   * Defaults to `true` for open-high-low-close (4+ series).
-   */
-  upDownBars?: boolean;
-  /**
-   * `c:dropLines`; stock charts only. Vertical line from each point to the
-   * category axis. Defaults to `false` when omitted.
-   */
-  dropLines?: boolean;
-  /**
-   * `c:dispBlanksAs`; how blank source cells are plotted. Defaults to `Gap`.
-   */
-  dispBlanksAs?: DispBlanksAs;
-  /**
-   * `c:varyColors`; color each data point (or each series) differently. Excel
-   * defaults pie/doughnut/bubble charts to `true` and others to `false`.
-   */
-  varyColors?: boolean;
-  dataLabels?: ChartDataLabels;
-  /**
-   * `c:dTable`; data table beneath the plot. Cartesian charts only.
-   */
-  dataTable?: ChartDataTable;
-  /**
-   * `c:view3D`; 3D view settings. 3D chart kinds only.
-   */
-  view3d?: ChartView3D;
-  /**
-   * `c:shape`; bar/column 3D shape. Bar3D/Column3D charts only.
-   */
-  barShape?: Bar3DShape;
-  /**
-   * `c:wireframe`; draw the surface as a wireframe (lines only) instead of
-   * filled bands. Surface/Surface3D charts only.
-   */
-  wireframe?: boolean;
-  /**
-   * `c:splitType`; how the second plot's points are split out. ofPie charts only.
-   */
-  splitType?: ChartSplitType;
-  /**
-   * `c:splitPos`; split threshold (meaning depends on `split_type`). ofPie charts only.
-   */
-  splitPos?: number;
-  /**
-   * `c:secondPieSize/@val` (5..=200); second plot size as a percent of the
-   * first. ofPie charts only.
-   */
-  secondPieSize?: number;
-  /**
-   * `c:serLines`; connector lines between the primary pie and the second plot.
-   * ofPie charts only.
-   */
-  seriesLines?: boolean;
-  /**
-   * `c:gapDepth` (0..=500); 3D bar/column charts only. Depth of gap between
-   * series rows as a percentage of bar depth.
-   */
-  gapDepth?: number;
-  /**
-   * `c:floor/c:spPr`; 3D floor fill + border. 3D chart kinds only.
-   */
-  floor?: ChartSurfaceWall;
-  /**
-   * `c:sideWall/c:spPr`; 3D side wall fill + border. 3D chart kinds only.
-   */
-  sideWall?: ChartSurfaceWall;
-  /**
-   * `c:backWall/c:spPr`; 3D back wall fill + border. 3D chart kinds only.
-   */
-  backWall?: ChartSurfaceWall;
-};
+export type ChartPatch = { name?: string, kind: ChartKind, title?: string, legendPosition?: ChartLegendPosition, categoriesRef?: string, series: Array<ChartSeriesPatch>, 
+/**
+ * Raw `style{N}.xml` (`cs:chartStyle`, the Chart Styles gallery) written
+ * verbatim as a `chartStyle` companion part + relationship. Opaque
+ * escape hatch: the ~40-entry styleEntry schema is not modeled. Set empty
+ * string on update to remove the part.
+ */
+styleXml?: string, 
+/**
+ * Raw `colors{N}.xml` (`cs:colorStyle`, the color-variation palette)
+ * written verbatim as a `chartColorStyle` companion part + relationship.
+ * Opaque escape hatch. Set empty string on update to remove the part.
+ */
+colorStyleXml?: string, 
+/**
+ * `c:plotArea/c:spPr`; plot-area background fill + border.
+ */
+plotArea?: ChartPlotArea, 
+/**
+ * `c:legend/c:spPr` + `c:legend/c:txPr`; legend background, border + font.
+ * Position is set via {@link ChartPatch.legendPosition}.
+ */
+legend?: ChartLegend, 
+/**
+ * `c:title/c:layout/c:manualLayout` manual chart-title placement.
+ * {@link ChartManualLayout.layoutTarget} is ignored (plot area only).
+ */
+titleLayout?: ChartManualLayout, anchor: AnchorSpec, categoryAxisTitle?: string, valueAxisTitle?: string, categoryAxis?: ChartAxisPatch, valueAxis?: ChartAxisPatch, stacking?: ChartStacking, 
+/**
+ * `c:gapWidth` (0..=500); bar/column charts only. Space between bar clusters
+ * as a percentage of bar width.
+ */
+gapWidth?: number, 
+/**
+ * `c:overlap` (-100..=100); bar/column charts only. Stacked charts force 100.
+ */
+overlap?: number, 
+/**
+ * `c:radarStyle`; radar charts only. Defaults to `Standard` when omitted.
+ */
+radarStyle?: RadarStyle, 
+/**
+ * `c:holeSize` (10..=90); doughnut charts only. Inner-hole diameter as a
+ * percentage of the chart radius. Defaults to 50 when omitted.
+ */
+holeSize?: number, 
+/**
+ * `c:firstSliceAng` (0..=360); pie/doughnut charts only. Clockwise rotation
+ * of the first slice from the top (12 o'clock), in degrees.
+ */
+firstSliceAngle?: number, 
+/**
+ * `c:hiLowLines`; stock charts only. Vertical line spanning each category's
+ * high/low values. Defaults to `true` when omitted.
+ */
+hiLowLines?: boolean, 
+/**
+ * `c:upDownBars`; stock charts only. Open/close bars (white up, black down).
+ * Defaults to `true` for open-high-low-close (4+ series).
+ */
+upDownBars?: boolean, 
+/**
+ * `c:dropLines`; stock charts only. Vertical line from each point to the
+ * category axis. Defaults to `false` when omitted.
+ */
+dropLines?: boolean, 
+/**
+ * `c:dispBlanksAs`; how blank source cells are plotted. Defaults to `Gap`.
+ */
+dispBlanksAs?: DispBlanksAs, 
+/**
+ * `c:varyColors`; color each data point (or each series) differently. Excel
+ * defaults pie/doughnut/bubble charts to `true` and others to `false`.
+ */
+varyColors?: boolean, dataLabels?: ChartDataLabels, 
+/**
+ * `c:dTable`; data table beneath the plot. Cartesian charts only.
+ */
+dataTable?: ChartDataTable, 
+/**
+ * `c:view3D`; 3D view settings. 3D chart kinds only.
+ */
+view3d?: ChartView3D, 
+/**
+ * `c:shape`; bar/column 3D shape. Bar3D/Column3D charts only.
+ */
+barShape?: Bar3DShape, 
+/**
+ * `c:wireframe`; draw the surface as a wireframe (lines only) instead of
+ * filled bands. Surface/Surface3D charts only.
+ */
+wireframe?: boolean, 
+/**
+ * `c:splitType`; how the second plot's points are split out. ofPie charts only.
+ */
+splitType?: ChartSplitType, 
+/**
+ * `c:splitPos`; split threshold (meaning depends on `split_type`). ofPie charts only.
+ */
+splitPos?: number, 
+/**
+ * `c:secondPieSize/@val` (5..=200); second plot size as a percent of the
+ * first. ofPie charts only.
+ */
+secondPieSize?: number, 
+/**
+ * `c:serLines`; connector lines between the primary pie and the second plot.
+ * ofPie charts only.
+ */
+seriesLines?: boolean, 
+/**
+ * `c:gapDepth` (0..=500); 3D bar/column charts only. Depth of gap between
+ * series rows as a percentage of bar depth.
+ */
+gapDepth?: number, 
+/**
+ * `c:floor/c:spPr`; 3D floor fill + border. 3D chart kinds only.
+ */
+floor?: ChartSurfaceWall, 
+/**
+ * `c:sideWall/c:spPr`; 3D side wall fill + border. 3D chart kinds only.
+ */
+sideWall?: ChartSurfaceWall, 
+/**
+ * `c:backWall/c:spPr`; 3D back wall fill + border. 3D chart kinds only.
+ */
+backWall?: ChartSurfaceWall, };

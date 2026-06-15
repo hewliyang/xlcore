@@ -11,14 +11,13 @@ import type { ChartLine } from "./ChartLine.js";
  *
  * schema-excluded: thickness, pictureOptions, extLst
  */
-export type ChartSurfaceWall = {
-  /**
-   * `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
-   * `"none"` for an explicit no-fill (`a:noFill`).
-   */
-  fill?: string;
-  /**
-   * `c:spPr/a:ln` border styling (width, dash, hidden).
-   */
-  border?: ChartLine;
-};
+export type ChartSurfaceWall = { 
+/**
+ * `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
+ * `"none"` for an explicit no-fill (`a:noFill`).
+ */
+fill?: string, 
+/**
+ * `c:spPr/a:ln` border styling (width, dash, hidden).
+ */
+border?: ChartLine, };

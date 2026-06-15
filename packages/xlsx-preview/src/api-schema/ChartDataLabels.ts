@@ -2,23 +2,15 @@
 import type { ChartDataLabel } from "./ChartDataLabel.js";
 import type { ChartDataLabelPosition } from "./ChartDataLabelPosition.js";
 
-export type ChartDataLabels = {
-  showValue?: boolean;
-  showCategoryName?: boolean;
-  showSeriesName?: boolean;
-  showPercent?: boolean;
-  showLegendKey?: boolean;
-  position?: ChartDataLabelPosition;
-  separator?: string;
-  /**
-   * `c:numFmt/@formatCode`; number format applied to the displayed value.
-   */
-  numberFormat?: string;
-  /**
-   * Per-point label overrides (`c:dLbl`), keyed by 0-based data-point `index`.
-   * Each entry either deletes that point's label or overrides individual
-   * show flags / position / number format; unset fields inherit the
-   * series-level settings above.
-   */
-  perPoint: Array<ChartDataLabel>;
-};
+export type ChartDataLabels = { showValue?: boolean, showCategoryName?: boolean, showSeriesName?: boolean, showPercent?: boolean, showLegendKey?: boolean, position?: ChartDataLabelPosition, separator?: string, 
+/**
+ * `c:numFmt/@formatCode`; number format applied to the displayed value.
+ */
+numberFormat?: string, 
+/**
+ * Per-point label overrides (`c:dLbl`), keyed by 0-based data-point `index`.
+ * Each entry either deletes that point's label or overrides individual
+ * show flags / position / number format; unset fields inherit the
+ * series-level settings above.
+ */
+perPoint: Array<ChartDataLabel>, };

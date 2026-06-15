@@ -9,13 +9,12 @@ import type { MarkerStyle } from "./MarkerStyle.js";
  *
  * schema-excluded: xmlns, spPr
  */
-export type ChartMarker = {
-  /**
-   * `c:symbol/@val`.
-   */
-  style?: MarkerStyle;
-  /**
-   * `c:size/@val` (2..=72).
-   */
-  size?: number;
-};
+export type ChartMarker = { 
+/**
+ * `c:symbol/@val`.
+ */
+style?: MarkerStyle, 
+/**
+ * `c:size/@val` (2..=72).
+ */
+size?: number, };

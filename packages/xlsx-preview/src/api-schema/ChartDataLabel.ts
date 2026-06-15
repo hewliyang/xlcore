@@ -11,25 +11,17 @@ import type { ChartDataLabelPosition } from "./ChartDataLabelPosition.js";
  * schema-excluded: layout (manual position), tx (rich-text override), spPr
  * (label shape/fill), txPr (label font), showBubbleSize, extLst.
  */
-export type ChartDataLabel = {
-  /**
-   * 0-based data-point index this override applies to (`c:idx/@val`).
-   */
-  index: number;
-  /**
-   * Suppress this point's label (`c:delete`). When `true`, all other fields
-   * are ignored.
-   */
-  delete: boolean;
-  showValue?: boolean;
-  showCategoryName?: boolean;
-  showSeriesName?: boolean;
-  showPercent?: boolean;
-  showLegendKey?: boolean;
-  position?: ChartDataLabelPosition;
-  separator?: string;
-  /**
-   * `c:numFmt/@formatCode`; number format applied to this point's value.
-   */
-  numberFormat?: string;
-};
+export type ChartDataLabel = { 
+/**
+ * 0-based data-point index this override applies to (`c:idx/@val`).
+ */
+index: number, 
+/**
+ * Suppress this point's label (`c:delete`). When `true`, all other fields
+ * are ignored.
+ */
+delete: boolean, showValue?: boolean, showCategoryName?: boolean, showSeriesName?: boolean, showPercent?: boolean, showLegendKey?: boolean, position?: ChartDataLabelPosition, separator?: string, 
+/**
+ * `c:numFmt/@formatCode`; number format applied to this point's value.
+ */
+numberFormat?: string, };

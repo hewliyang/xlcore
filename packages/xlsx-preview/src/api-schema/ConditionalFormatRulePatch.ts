@@ -6,22 +6,4 @@ import type { DataBarPatch } from "./DataBarPatch.js";
 import type { IconSetPatch } from "./IconSetPatch.js";
 import type { StylePatch } from "./StylePatch.js";
 
-export type ConditionalFormatRulePatch = {
-  kind: CfRuleKind;
-  operator?: CfOperator;
-  formula1?: string;
-  formula2?: string;
-  text?: string;
-  rank?: number;
-  percent?: boolean;
-  bottom?: boolean;
-  aboveAverage?: boolean;
-  equalAverage?: boolean;
-  stdDev?: number;
-  priority?: number;
-  stopIfTrue?: boolean;
-  dxf?: StylePatch;
-  colorScale?: ColorScalePatch;
-  dataBar?: DataBarPatch;
-  iconSet?: IconSetPatch;
-};
+export type ConditionalFormatRulePatch = { kind: CfRuleKind, operator?: CfOperator, formula1?: string, formula2?: string, text?: string, rank?: number, percent?: boolean, bottom?: boolean, aboveAverage?: boolean, equalAverage?: boolean, stdDev?: number, priority?: number, stopIfTrue?: boolean, dxf?: StylePatch, colorScale?: ColorScalePatch, dataBar?: DataBarPatch, iconSet?: IconSetPatch, };

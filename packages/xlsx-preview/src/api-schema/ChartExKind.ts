@@ -10,12 +10,4 @@
  * series under the hood; this enum collapses those to the user-facing layout.
  * All eight are renderer-visible in xlsx-preview.
  */
-export type ChartExKind =
-  | "waterfall"
-  | "funnel"
-  | "treemap"
-  | "sunburst"
-  | "histogram"
-  | "pareto"
-  | "boxWhisker"
-  | "regionMap";
+export type ChartExKind = "waterfall" | "funnel" | "treemap" | "sunburst" | "histogram" | "pareto" | "boxWhisker" | "regionMap";

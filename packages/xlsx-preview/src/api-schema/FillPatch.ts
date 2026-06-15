@@ -2,10 +2,4 @@
 import type { GradientFillPatch } from "./GradientFillPatch.js";
 import type { PatternType } from "./PatternType.js";
 
-export type FillPatch = {
-  color?: string;
-  pattern?: PatternType;
-  foreground?: string;
-  background?: string;
-  gradient?: GradientFillPatch;
-};
+export type FillPatch = { color?: string, pattern?: PatternType, foreground?: string, background?: string, gradient?: GradientFillPatch, };

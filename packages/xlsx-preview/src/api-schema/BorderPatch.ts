@@ -6,13 +6,4 @@ import type { BorderLinePatch } from "./BorderLinePatch.js";
  *
  * schema-excluded: xmlns, xmlOtherAttrs, outline, start, end, vertical, horizontal
  */
-export type BorderPatch = {
-  all?: BorderLinePatch;
-  left?: BorderLinePatch;
-  right?: BorderLinePatch;
-  top?: BorderLinePatch;
-  bottom?: BorderLinePatch;
-  diagonal?: BorderLinePatch;
-  diagonalUp?: boolean;
-  diagonalDown?: boolean;
-};
+export type BorderPatch = { all?: BorderLinePatch, left?: BorderLinePatch, right?: BorderLinePatch, top?: BorderLinePatch, bottom?: BorderLinePatch, diagonal?: BorderLinePatch, diagonalUp?: boolean, diagonalDown?: boolean, };

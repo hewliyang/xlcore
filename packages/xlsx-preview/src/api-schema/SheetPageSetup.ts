@@ -4,15 +4,4 @@ import type { PageMarginsInfo } from "./PageMarginsInfo.js";
 import type { PageSetupSettings } from "./PageSetupSettings.js";
 import type { PrintOptionsInfo } from "./PrintOptionsInfo.js";
 
-export type SheetPageSetup = {
-  sheet: string;
-  page?: PageSetupSettings;
-  margins?: PageMarginsInfo;
-  printOptions?: PrintOptionsInfo;
-  headerFooter?: HeaderFooterInfo;
-  printArea?: string;
-  printTitleRows?: string;
-  printTitleColumns?: string;
-  rowBreaks: Array<number>;
-  columnBreaks: Array<number>;
-};
+export type SheetPageSetup = { sheet: string, page?: PageSetupSettings, margins?: PageMarginsInfo, printOptions?: PrintOptionsInfo, headerFooter?: HeaderFooterInfo, printArea?: string, printTitleRows?: string, printTitleColumns?: string, rowBreaks: Array<number>, columnBreaks: Array<number>, };

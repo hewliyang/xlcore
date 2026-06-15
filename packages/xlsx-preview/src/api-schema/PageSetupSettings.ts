@@ -4,21 +4,4 @@ import type { PageOrientation } from "./PageOrientation.js";
 import type { PrintCellComments } from "./PrintCellComments.js";
 import type { PrintErrors } from "./PrintErrors.js";
 
-export type PageSetupSettings = {
-  paperSize?: number;
-  scale?: number;
-  firstPageNumber?: number;
-  fitToWidth?: number;
-  fitToHeight?: number;
-  pageOrder?: PageOrder;
-  orientation?: PageOrientation;
-  usePrinterDefaults?: boolean;
-  blackAndWhite?: boolean;
-  draft?: boolean;
-  cellComments?: PrintCellComments;
-  useFirstPageNumber?: boolean;
-  errors?: PrintErrors;
-  horizontalDpi?: number;
-  verticalDpi?: number;
-  copies?: number;
-};
+export type PageSetupSettings = { paperSize?: number, scale?: number, firstPageNumber?: number, fitToWidth?: number, fitToHeight?: number, pageOrder?: PageOrder, orientation?: PageOrientation, usePrinterDefaults?: boolean, blackAndWhite?: boolean, draft?: boolean, cellComments?: PrintCellComments, useFirstPageNumber?: boolean, errors?: PrintErrors, horizontalDpi?: number, verticalDpi?: number, copies?: number, };

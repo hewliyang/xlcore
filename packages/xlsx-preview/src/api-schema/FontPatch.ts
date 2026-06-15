@@ -3,15 +3,4 @@ import type { FontScheme } from "./FontScheme.js";
 import type { UnderlinePatch } from "./UnderlinePatch.js";
 import type { VertAlign } from "./VertAlign.js";
 
-export type FontPatch = {
-  name?: string;
-  size?: number;
-  bold?: boolean;
-  italic?: boolean;
-  underline?: UnderlinePatch;
-  strike?: boolean;
-  color?: string;
-  vertAlign?: VertAlign;
-  family?: number;
-  scheme?: FontScheme;
-};
+export type FontPatch = { name?: string, size?: number, bold?: boolean, italic?: boolean, underline?: UnderlinePatch, strike?: boolean, color?: string, vertAlign?: VertAlign, family?: number, scheme?: FontScheme, };

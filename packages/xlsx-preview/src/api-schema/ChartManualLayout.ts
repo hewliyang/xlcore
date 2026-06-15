@@ -13,41 +13,40 @@ import type { ChartLayoutTarget } from "./ChartLayoutTarget.js";
  *
  * schema-excluded: extLst
  */
-export type ChartManualLayout = {
-  /**
-   * `c:layoutTarget`; plot area only (ignored for legend/title).
-   */
-  layoutTarget?: ChartLayoutTarget;
-  /**
-   * `c:xMode`; how {@link ChartManualLayout.x} is interpreted.
-   */
-  xMode?: ChartLayoutMode;
-  /**
-   * `c:yMode`; how {@link ChartManualLayout.y} is interpreted.
-   */
-  yMode?: ChartLayoutMode;
-  /**
-   * `c:wMode`; how {@link ChartManualLayout.w} is interpreted.
-   */
-  wMode?: ChartLayoutMode;
-  /**
-   * `c:hMode`; how {@link ChartManualLayout.h} is interpreted.
-   */
-  hMode?: ChartLayoutMode;
-  /**
-   * `c:x`; left position as a fraction of the chart area.
-   */
-  x?: number;
-  /**
-   * `c:y`; top position as a fraction of the chart area.
-   */
-  y?: number;
-  /**
-   * `c:w`; width as a fraction of the chart area.
-   */
-  w?: number;
-  /**
-   * `c:h`; height as a fraction of the chart area.
-   */
-  h?: number;
-};
+export type ChartManualLayout = { 
+/**
+ * `c:layoutTarget`; plot area only (ignored for legend/title).
+ */
+layoutTarget?: ChartLayoutTarget, 
+/**
+ * `c:xMode`; how {@link ChartManualLayout.x} is interpreted.
+ */
+xMode?: ChartLayoutMode, 
+/**
+ * `c:yMode`; how {@link ChartManualLayout.y} is interpreted.
+ */
+yMode?: ChartLayoutMode, 
+/**
+ * `c:wMode`; how {@link ChartManualLayout.w} is interpreted.
+ */
+wMode?: ChartLayoutMode, 
+/**
+ * `c:hMode`; how {@link ChartManualLayout.h} is interpreted.
+ */
+hMode?: ChartLayoutMode, 
+/**
+ * `c:x`; left position as a fraction of the chart area.
+ */
+x?: number, 
+/**
+ * `c:y`; top position as a fraction of the chart area.
+ */
+y?: number, 
+/**
+ * `c:w`; width as a fraction of the chart area.
+ */
+w?: number, 
+/**
+ * `c:h`; height as a fraction of the chart area.
+ */
+h?: number, };

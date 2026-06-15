@@ -3,14 +3,4 @@ import type { ApiCellValue } from "./ApiCellValue.js";
 import type { RichText } from "./RichText.js";
 import type { StylePatch } from "./StylePatch.js";
 
-export type CellInfo = {
-  sheet: string;
-  reference: string;
-  row: number;
-  column: number;
-  value: ApiCellValue;
-  formula?: string;
-  styleIndex?: number;
-  style?: StylePatch;
-  richText?: RichText;
-};
+export type CellInfo = { sheet: string, reference: string, row: number, column: number, value: ApiCellValue, formula?: string, styleIndex?: number, style?: StylePatch, richText?: RichText, };

@@ -4,7 +4,7 @@ use std::path::Path;
 use anyhow::Result;
 use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::simple_type::BooleanValue;
-use xlcore_engine::{CellValue, FormulaError, WorkbookEngine};
+use xlcore_engine::{CellValue, WorkbookEngine};
 use xlcore_io::spreadsheetml as x;
 
 pub use xlcore_types::{FormulaFallback, RecalcCell, RecalcSheet, RecalcWorkbook};
@@ -214,6 +214,13 @@ fn load_engine(
     Ok(fallbacks)
 }
 
+fn is_genuine_error(kind: &str) -> bool {
+    matches!(
+        kind,
+        "#NULL!" | "#DIV/0!" | "#VALUE!" | "#REF!" | "#NAME?" | "#NUM!" | "#N/A" | "#SPILL!" | "#CALC!" | "#CIRC!"
+    )
+}
+
 fn evaluated_formula_value(
     engine: &WorkbookEngine<'_>,
     key: CellKey,
@@ -222,11 +229,14 @@ fn evaluated_formula_value(
 ) -> CellValue {
     match engine.formula_error(key.sheet, key.r as i32, key.c as i32) {
         Ok(Some(error)) => {
-            if let Some(formula_fallback) = fallback_for_formula_error(error.clone()) {
-                *fallback = Some(formula_fallback);
-                cached_value.cloned().unwrap_or(CellValue::Blank)
+            if is_genuine_error(&error.kind) {
+                CellValue::Error(error.kind)
             } else {
-                CellValue::String(error.kind)
+                *fallback = Some(FormulaFallback {
+                    kind: error.kind,
+                    message: error.message,
+                });
+                cached_value.cloned().unwrap_or(CellValue::Blank)
             }
         }
         Ok(None) => match engine.cell_value(key.sheet, key.r as i32, key.c as i32) {
@@ -249,13 +259,6 @@ fn evaluated_formula_value(
     }
 }
 
-fn fallback_for_formula_error(error: FormulaError) -> Option<FormulaFallback> {
-    Some(FormulaFallback {
-        kind: error.kind,
-        message: error.message,
-    })
-}
-
 fn set_literal(
     engine: &mut WorkbookEngine<'_>,
     sheet: u32,
@@ -268,6 +271,7 @@ fn set_literal(
         CellValue::String(value) => engine.set_input(sheet, row, column, format!("'{value}"))?,
         CellValue::Number(value) => engine.set_input(sheet, row, column, value.to_string())?,
         CellValue::Boolean(value) => engine.set_input(sheet, row, column, value.to_string())?,
+        CellValue::Error(_) => {}
     }
     Ok(())
 }
@@ -373,6 +377,13 @@ fn set_cached_formula_value(cell: &mut x::Cell, value: &CellValue) {
             cell.data_type = Some(x::CellValues::String);
             cell.cell_value = Some(x::CellValue(x::XstringType {
                 xml_content: Some(value.clone()),
+                ..Default::default()
+            }));
+        }
+        CellValue::Error(kind) => {
+            cell.data_type = Some(x::CellValues::Error);
+            cell.cell_value = Some(x::CellValue(x::XstringType {
+                xml_content: Some(kind.clone()),
                 ..Default::default()
             }));
         }
@@ -700,7 +711,7 @@ fn cell_value(cell: &x::Cell, raw_v: Option<&str>, shared_strings: &[String]) ->
             return Some(CellValue::Boolean(matches!(raw_v, Some("1"))));
         }
         if dt.contains("error") {
-            return Some(CellValue::String(raw_v.unwrap_or("#ERROR!").to_string()));
+            return Some(CellValue::Error(raw_v.unwrap_or("#ERROR!").to_string()));
         }
         if dt.contains("str") {
             return Some(CellValue::String(raw_v.unwrap_or("").to_string()));
@@ -877,19 +888,9 @@ mod tests {
             .context("recalculate unsupported formula fixture")
             .unwrap();
         let unsupported = wb.cell("Sheet1", "B1").expect("B1");
-        assert_eq!(unsupported.value, CellValue::Number(123.0));
+        assert_eq!(unsupported.value, CellValue::Error("#NAME?".to_string()));
         assert_eq!(unsupported.cached_value, Some(CellValue::Number(123.0)));
-        assert_eq!(
-            unsupported
-                .fallback
-                .as_ref()
-                .map(|fallback| fallback.kind.as_str()),
-            Some("#NAME?")
-        );
-        assert!(unsupported
-            .fallback
-            .as_ref()
-            .is_some_and(|fallback| fallback.message.contains("Invalid function")));
+        assert_eq!(unsupported.fallback, None);
 
         let supported = wb.cell("Sheet1", "C1").expect("C1");
         assert_eq!(supported.value, CellValue::Number(15.0));
@@ -902,7 +903,7 @@ mod tests {
             saved
                 .cell("Sheet1", "B1")
                 .and_then(|cell| cell.cached_value.as_ref()),
-            Some(&CellValue::Number(123.0))
+            Some(&CellValue::Error("#NAME?".to_string()))
         );
         assert_eq!(
             saved

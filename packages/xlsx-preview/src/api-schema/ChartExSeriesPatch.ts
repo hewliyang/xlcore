@@ -12,4 +12,4 @@
  * schema-excluded: spPr, valueColors, valueColorPositions, dataPt, dataLabels,
  * hidden, ownerIdx, uniqueId, formatIdx, axisId, extLst
  */
-export type ChartExSeriesPatch = { name?: string; nameRef?: string; valuesRef: string };
+export type ChartExSeriesPatch = { name?: string, nameRef?: string, valuesRef: string, };

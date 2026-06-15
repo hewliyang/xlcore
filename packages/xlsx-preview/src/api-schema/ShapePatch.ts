@@ -2,24 +2,4 @@
 import type { AnchorSpec } from "./AnchorSpec.js";
 import type { ShapeLineEnd } from "./ShapeLineEnd.js";
 
-export type ShapePatch = {
-  name?: string;
-  anchor: AnchorSpec;
-  preset: string;
-  fillColor?: string;
-  lineColor?: string;
-  lineWidthEmu?: bigint;
-  text?: string;
-  textColor?: string;
-  fontSizePt?: number;
-  bold?: boolean;
-  italic?: boolean;
-  rotationDegrees?: number;
-  flipHorizontal?: boolean;
-  flipVertical?: boolean;
-  align?: string;
-  verticalAlign?: string;
-  underline?: boolean;
-  headEnd?: ShapeLineEnd;
-  tailEnd?: ShapeLineEnd;
-};
+export type ShapePatch = { name?: string, anchor: AnchorSpec, preset: string, fillColor?: string, lineColor?: string, lineWidthEmu?: bigint, text?: string, textColor?: string, fontSizePt?: number, bold?: boolean, italic?: boolean, rotationDegrees?: number, flipHorizontal?: boolean, flipVertical?: boolean, align?: string, verticalAlign?: string, underline?: boolean, headEnd?: ShapeLineEnd, tailEnd?: ShapeLineEnd, };

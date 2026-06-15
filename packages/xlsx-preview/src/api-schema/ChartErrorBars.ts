@@ -19,42 +19,41 @@ import type { ChartErrorValueType } from "./ChartErrorValueType.js";
  *
  * schema-excluded: spPr
  */
-export type ChartErrorBars = {
-  /**
-   * `c:errDir/@val`; the axis the bars run along. Omitted (Excel default) for
-   * bar/column/line/area; set `Y` (and a second `X` set) for scatter/bubble.
-   */
-  direction?: ChartErrorDirection;
-  /**
-   * `c:errBarType/@val`; which sides the bars extend.
-   */
-  barType: ChartErrorBarType;
-  /**
-   * `c:errValType/@val`; how magnitudes are computed.
-   */
-  valueType: ChartErrorValueType;
-  /**
-   * `c:val/@val`; magnitude (fixed/percentage) or multiplier (stdDev/stdErr).
-   */
-  value?: number;
-  /**
-   * `c:noEndCap/@val`; draw the bars without end caps (T-less).
-   */
-  noEndCap?: boolean;
-  /**
-   * `c:plus` as a range formula (`numRef`); custom positive magnitudes.
-   */
-  plusRef?: string;
-  /**
-   * `c:minus` as a range formula (`numRef`); custom negative magnitudes.
-   */
-  minusRef?: string;
-  /**
-   * `c:plus` as inline literals (`numLit`); custom positive magnitudes.
-   */
-  plusValues?: Array<number>;
-  /**
-   * `c:minus` as inline literals (`numLit`); custom negative magnitudes.
-   */
-  minusValues?: Array<number>;
-};
+export type ChartErrorBars = { 
+/**
+ * `c:errDir/@val`; the axis the bars run along. Omitted (Excel default) for
+ * bar/column/line/area; set `Y` (and a second `X` set) for scatter/bubble.
+ */
+direction?: ChartErrorDirection, 
+/**
+ * `c:errBarType/@val`; which sides the bars extend.
+ */
+barType: ChartErrorBarType, 
+/**
+ * `c:errValType/@val`; how magnitudes are computed.
+ */
+valueType: ChartErrorValueType, 
+/**
+ * `c:val/@val`; magnitude (fixed/percentage) or multiplier (stdDev/stdErr).
+ */
+value?: number, 
+/**
+ * `c:noEndCap/@val`; draw the bars without end caps (T-less).
+ */
+noEndCap?: boolean, 
+/**
+ * `c:plus` as a range formula (`numRef`); custom positive magnitudes.
+ */
+plusRef?: string, 
+/**
+ * `c:minus` as a range formula (`numRef`); custom negative magnitudes.
+ */
+minusRef?: string, 
+/**
+ * `c:plus` as inline literals (`numLit`); custom positive magnitudes.
+ */
+plusValues?: Array<number>, 
+/**
+ * `c:minus` as inline literals (`numLit`); custom negative magnitudes.
+ */
+minusValues?: Array<number>, };

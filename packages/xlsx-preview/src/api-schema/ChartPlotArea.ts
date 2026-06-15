@@ -11,19 +11,18 @@ import type { ChartManualLayout } from "./ChartManualLayout.js";
  *
  * schema-excluded: plot charts, axes, dTable, extLst
  */
-export type ChartPlotArea = {
-  /**
-   * `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
-   * `"none"` for an explicit no-fill (`a:noFill`).
-   */
-  fill?: string;
-  /**
-   * `c:spPr/a:ln` border styling (width, dash, hidden).
-   */
-  border?: ChartLine;
-  /**
-   * `c:plotArea/c:layout/c:manualLayout` manual plot-area placement. Supports
-   * {@link ChartManualLayout.layoutTarget} (inner/outer).
-   */
-  layout?: ChartManualLayout;
-};
+export type ChartPlotArea = { 
+/**
+ * `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
+ * `"none"` for an explicit no-fill (`a:noFill`).
+ */
+fill?: string, 
+/**
+ * `c:spPr/a:ln` border styling (width, dash, hidden).
+ */
+border?: ChartLine, 
+/**
+ * `c:plotArea/c:layout/c:manualLayout` manual plot-area placement. Supports
+ * {@link ChartManualLayout.layoutTarget} (inner/outer).
+ */
+layout?: ChartManualLayout, };

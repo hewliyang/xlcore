@@ -11,6 +11,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Recalc: genuine formula errors (#DIV/0!, #REF!, #NAME?, etc.) now surface as `{type:"error"}` cell values and are written as `t="e"` in the doc XML; engine-limitation kinds (#N/IMPL, #ERROR!) still fall back to cached values.
+
 - Saving: inject missing `Default Extension="rels"`/`"xml"` content types (ooxmlsdk 0.7.0 omits them), fixing Excel repair-on-open for created workbooks.
 - Styles: emit `<font>` children in CT_Font schema order.
 - Editor: auto-close unbalanced `(` on commit (e.g. point-mode `=SUM(A1:A3`), avoiding corrupt formulas Excel rejects on open.

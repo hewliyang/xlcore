@@ -17,40 +17,39 @@ import type { ChartPatternFill } from "./ChartPatternFill.js";
  *
  * schema-excluded: bubble3D, pictureOptions
  */
-export type ChartDataPoint = {
-  /**
-   * `c:idx/@val`; 0-based data-point index within the series.
-   */
-  index: number;
-  /**
-   * `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
-   * `"none"` for an explicit no-fill (`a:noFill`). For gradient/pattern fills
-   * use `gradientFill`/`patternFill` instead.
-   */
-  fill?: string;
-  /**
-   * `c:spPr/a:gradFill` gradient fill. Takes precedence over `fill`/
-   * `patternFill`. Round-trip-only (renderer draws the series color).
-   */
-  gradientFill?: ChartGradientFill;
-  /**
-   * `c:spPr/a:pattFill` preset-pattern fill. Takes precedence over `fill`;
-   * ignored when `gradientFill` is set. Round-trip-only.
-   */
-  patternFill?: ChartPatternFill;
-  /**
-   * `c:invertIfNegative/@val`; invert the fill for negative bar/bubble
-   * values. Round-trip-only.
-   */
-  invertIfNegative?: boolean;
-  /**
-   * `c:marker`; per-point marker override for line/scatter/radar series.
-   * Round-trip-only (renderer uses the series-level marker).
-   */
-  marker?: ChartMarker;
-  /**
-   * `c:explosion/@val`; pie/doughnut slice offset as a percent of radius
-   * (0..=400). Renderer-visible for pie/doughnut charts.
-   */
-  explosion?: number;
-};
+export type ChartDataPoint = { 
+/**
+ * `c:idx/@val`; 0-based data-point index within the series.
+ */
+index: number, 
+/**
+ * `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
+ * `"none"` for an explicit no-fill (`a:noFill`). For gradient/pattern fills
+ * use `gradientFill`/`patternFill` instead.
+ */
+fill?: string, 
+/**
+ * `c:spPr/a:gradFill` gradient fill. Takes precedence over `fill`/
+ * `patternFill`. Round-trip-only (renderer draws the series color).
+ */
+gradientFill?: ChartGradientFill, 
+/**
+ * `c:spPr/a:pattFill` preset-pattern fill. Takes precedence over `fill`;
+ * ignored when `gradientFill` is set. Round-trip-only.
+ */
+patternFill?: ChartPatternFill, 
+/**
+ * `c:invertIfNegative/@val`; invert the fill for negative bar/bubble
+ * values. Round-trip-only.
+ */
+invertIfNegative?: boolean, 
+/**
+ * `c:marker`; per-point marker override for line/scatter/radar series.
+ * Round-trip-only (renderer uses the series-level marker).
+ */
+marker?: ChartMarker, 
+/**
+ * `c:explosion/@val`; pie/doughnut slice offset as a percent of radius
+ * (0..=400). Renderer-visible for pie/doughnut charts.
+ */
+explosion?: number, };

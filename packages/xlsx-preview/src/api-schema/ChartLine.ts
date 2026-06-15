@@ -14,17 +14,16 @@ import type { LineDash } from "./LineDash.js";
  * `cmpd`, `algn`, `custDash`, line joins, head/tail ends, gradient/pattern
  * line fills, `extLst`.
  */
-export type ChartLine = {
-  /**
-   * `a:ln/@w` in EMU (1 pt = 12700 EMU, 0..=20116800).
-   */
-  widthEmu?: number;
-  /**
-   * `a:ln/a:prstDash/@val`.
-   */
-  dash?: LineDash;
-  /**
-   * Hide the line (`a:ln/a:noFill`); markers-only. Overrides `width`/`dash`.
-   */
-  none?: boolean;
-};
+export type ChartLine = { 
+/**
+ * `a:ln/@w` in EMU (1 pt = 12700 EMU, 0..=20116800).
+ */
+widthEmu?: number, 
+/**
+ * `a:ln/a:prstDash/@val`.
+ */
+dash?: LineDash, 
+/**
+ * Hide the line (`a:ln/a:noFill`); markers-only. Overrides `width`/`dash`.
+ */
+none?: boolean, };

@@ -5,17 +5,16 @@ import type { ChartPatternPreset } from "./ChartPatternPreset.js";
  * A DrawingML preset-pattern fill (`a:pattFill`) for a chart data point,
  * distilled from ooxmlsdk `PatternFill`.
  */
-export type ChartPatternFill = {
-  /**
-   * `a:pattFill/@prst`.
-   */
-  preset: ChartPatternPreset;
-  /**
-   * `a:fgClr/a:srgbClr/@val`: 6-hex `RRGGBB` / 8-hex `AARRGGBB`.
-   */
-  foreground?: string;
-  /**
-   * `a:bgClr/a:srgbClr/@val`: 6-hex `RRGGBB` / 8-hex `AARRGGBB`.
-   */
-  background?: string;
-};
+export type ChartPatternFill = { 
+/**
+ * `a:pattFill/@prst`.
+ */
+preset: ChartPatternPreset, 
+/**
+ * `a:fgClr/a:srgbClr/@val`: 6-hex `RRGGBB` / 8-hex `AARRGGBB`.
+ */
+foreground?: string, 
+/**
+ * `a:bgClr/a:srgbClr/@val`: 6-hex `RRGGBB` / 8-hex `AARRGGBB`.
+ */
+background?: string, };

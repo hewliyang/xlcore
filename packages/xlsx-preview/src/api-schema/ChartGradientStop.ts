@@ -3,13 +3,12 @@
 /**
  * A single gradient stop (`a:gs`), distilled from ooxmlsdk `GradientStop`.
  */
-export type ChartGradientStop = {
-  /**
-   * `a:gs/@pos` as a percent (0..=100), emitted in 1000ths of a percent.
-   */
-  position: number;
-  /**
-   * `a:srgbClr/@val`: 6-hex `RRGGBB` / 8-hex `AARRGGBB`.
-   */
-  color: string;
-};
+export type ChartGradientStop = { 
+/**
+ * `a:gs/@pos` as a percent (0..=100), emitted in 1000ths of a percent.
+ */
+position: number, 
+/**
+ * `a:srgbClr/@val`: 6-hex `RRGGBB` / 8-hex `AARRGGBB`.
+ */
+color: string, };

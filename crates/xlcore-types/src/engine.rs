@@ -16,6 +16,7 @@ pub enum EngineCellValue {
     String(String),
     Number(f64),
     Boolean(bool),
+    Error(String),
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

@@ -5,4 +5,4 @@ import type { FontPatch } from "./FontPatch.js";
  * A single formatted run of a rich-text cell (`CT_RElt`). `text` is the run's
  * literal text; `font` carries its per-run formatting (`CT_RPrElt`).
  */
-export type RichTextRun = { text: string; font?: FontPatch };
+export type RichTextRun = { text: string, font?: FontPatch, };

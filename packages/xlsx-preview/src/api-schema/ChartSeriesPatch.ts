@@ -16,64 +16,56 @@ import type { ChartTrendline } from "./ChartTrendline.js";
  *
  * schema-excluded: spPr, pictureOptions, explosion
  */
-export type ChartSeriesPatch = {
-  name?: string;
-  nameRef?: string;
-  valuesRef: string;
-  xValuesRef?: string;
-  bubbleSizesRef?: string;
-  color?: string;
-  dataLabels?: ChartDataLabels;
-  /**
-   * `c:marker`; line/scatter series only.
-   */
-  marker?: ChartMarker;
-  /**
-   * Connecting-line / outline styling (`spPr/a:ln`): width, dash, hidden.
-   */
-  line?: ChartLine;
-  /**
-   * Smooth the connecting line with a spline (`c:smooth`); line/scatter series
-   * only. On a scatter chart any smoothed series sets the chart's
-   * `c:scatterStyle` to `smoothMarker`, which the xlsx-preview renderer draws
-   * as curved.
-   */
-  smooth?: boolean;
-  /**
-   * Per-data-point fill overrides (`c:dPt`). Each entry recolors one point by
-   * index; use `fill: "none"` for the waterfall-via-noFill idiom.
-   */
-  dataPoints?: Array<ChartDataPoint>;
-  /**
-   * Per-series chart type, overriding the chart's `kind` to build a combo
-   * chart. Only `Column`/`Bar`/`Line`/`Area` are valid here; mixing those on
-   * one chart emits multiple `c:barChart`/`c:lineChart`/`c:areaChart` groups.
-   */
-  kind?: ChartKind;
-  /**
-   * Plot this series on the primary or secondary value axis. `Secondary`
-   * synthesizes a right-hand `c:valAx`. Combo/cartesian charts only.
-   */
-  axis?: ChartAxisGroup;
-  /**
-   * Flip the fill color for negative values (`c:invertIfNegative`); bar/column
-   * and bubble series only. Round-trips for Excel.
-   */
-  invertIfNegative?: boolean;
-  /**
-   * Series regression trendline (`c:trendline`). Bar/column, line, area,
-   * scatter and bubble series only. Round-trips for Excel.
-   */
-  trendline?: ChartTrendline;
-  /**
-   * Series error bars (`c:errBars`). Bar/column, line, area, scatter and
-   * bubble series only. Round-trips for Excel.
-   */
-  errorBars?: ChartErrorBars;
-  /**
-   * Per-series 3D bar/column shape override (`c:ser/c:shape`); Bar3D/Column3D
-   * series only. Overrides the chart-level {@link ChartPatch.barShape}.
-   * Round-trips for Excel.
-   */
-  shape?: Bar3DShape;
-};
+export type ChartSeriesPatch = { name?: string, nameRef?: string, valuesRef: string, xValuesRef?: string, bubbleSizesRef?: string, color?: string, dataLabels?: ChartDataLabels, 
+/**
+ * `c:marker`; line/scatter series only.
+ */
+marker?: ChartMarker, 
+/**
+ * Connecting-line / outline styling (`spPr/a:ln`): width, dash, hidden.
+ */
+line?: ChartLine, 
+/**
+ * Smooth the connecting line with a spline (`c:smooth`); line/scatter series
+ * only. On a scatter chart any smoothed series sets the chart's
+ * `c:scatterStyle` to `smoothMarker`, which the xlsx-preview renderer draws
+ * as curved.
+ */
+smooth?: boolean, 
+/**
+ * Per-data-point fill overrides (`c:dPt`). Each entry recolors one point by
+ * index; use `fill: "none"` for the waterfall-via-noFill idiom.
+ */
+dataPoints?: Array<ChartDataPoint>, 
+/**
+ * Per-series chart type, overriding the chart's `kind` to build a combo
+ * chart. Only `Column`/`Bar`/`Line`/`Area` are valid here; mixing those on
+ * one chart emits multiple `c:barChart`/`c:lineChart`/`c:areaChart` groups.
+ */
+kind?: ChartKind, 
+/**
+ * Plot this series on the primary or secondary value axis. `Secondary`
+ * synthesizes a right-hand `c:valAx`. Combo/cartesian charts only.
+ */
+axis?: ChartAxisGroup, 
+/**
+ * Flip the fill color for negative values (`c:invertIfNegative`); bar/column
+ * and bubble series only. Round-trips for Excel.
+ */
+invertIfNegative?: boolean, 
+/**
+ * Series regression trendline (`c:trendline`). Bar/column, line, area,
+ * scatter and bubble series only. Round-trips for Excel.
+ */
+trendline?: ChartTrendline, 
+/**
+ * Series error bars (`c:errBars`). Bar/column, line, area, scatter and
+ * bubble series only. Round-trips for Excel.
+ */
+errorBars?: ChartErrorBars, 
+/**
+ * Per-series 3D bar/column shape override (`c:ser/c:shape`); Bar3D/Column3D
+ * series only. Overrides the chart-level {@link ChartPatch.barShape}.
+ * Round-trips for Excel.
+ */
+shape?: Bar3DShape, };
