@@ -1,8 +1,16 @@
+use ooxmlsdk::common::XmlNamespaceDecl;
 use ooxmlsdk::parts::spreadsheet_document::SpreadsheetDocument;
-use ooxmlsdk::parts::worksheet_part::WorksheetPart;
 use ooxmlsdk::parts::workbook_styles_part::WorkbookStylesPart;
+use ooxmlsdk::parts::worksheet_part::WorksheetPart;
 use ooxmlsdk::sdk::{SdkPart, SpreadsheetDocumentType};
 use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as x;
+
+fn ns() -> Vec<XmlNamespaceDecl> {
+    vec![XmlNamespaceDecl::new(
+        "",
+        "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+    )]
+}
 
 fn main() {
     let mut doc = SpreadsheetDocument::create(SpreadsheetDocumentType::Workbook);
@@ -13,10 +21,7 @@ fn main() {
         .set_root_element(
             &mut doc,
             x::Worksheet {
-                xmlns: vec![ooxmlsdk::common::XmlNamespaceDecl::new(
-                    "",
-                    "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
-                )],
+                xmlns: ns(),
                 sheet_data: Box::new(x::SheetData::default()),
                 ..Default::default()
             },
@@ -26,26 +31,14 @@ fn main() {
 
     let styles_part: WorkbookStylesPart = wb_part.add_new_part_auto_id(&mut doc).unwrap();
     styles_part
-        .set_root_element(
-            &mut doc,
-            x::Stylesheet {
-                xmlns: vec![ooxmlsdk::common::XmlNamespaceDecl::new(
-                    "",
-                    "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
-                )],
-                ..Default::default()
-            },
-        )
+        .set_root_element(&mut doc, x::Stylesheet { xmlns: ns(), ..Default::default() })
         .unwrap();
 
     wb_part
         .set_root_element(
             &mut doc,
             x::Workbook {
-                xmlns: vec![ooxmlsdk::common::XmlNamespaceDecl::new(
-                    "",
-                    "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
-                )],
+                xmlns: ns(),
                 sheets: Box::new(x::Sheets {
                     sheet: vec![x::Sheet {
                         name: "Sheet1".to_string(),
