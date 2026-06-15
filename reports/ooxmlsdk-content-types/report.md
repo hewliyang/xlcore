@@ -149,16 +149,46 @@ reference SDK always emits `<Default Extension="rels" ContentType="application/v
 | Per-part registration| `AddContentType` decides Default vs Override      | `push_part` → `add_content_type_override()` (`L1666`) — **always** Override, never Default |
 | `.rels` parts        | registered via `AddContentType` ⇒ `<Default rels>`| `save_package` (`src/parts.rs` `L2258`) writes `_rels/.rels` and per-part `.rels` **directly, with no content-type registration** |
 
-### This is not a caller error
+### This is not a caller error — the documented "minimal file" recipe is also broken
 
-Every call in the repro is the only/canonical path: `SpreadsheetDocument::create`,
-`add_workbook_part`, and `to_package_bytes`/`save`. The SDK writes `_rels/.rels`
-**itself** inside `save_package`; the caller never creates it. There is also **no
-public API to register a content-type default** — the only public `content_type`
-functions are read-only (`default_main_part_content_type`, `from_content_type`),
-and `add_content_type_override` is private. The Default/Override model is entirely
-internal, so a caller cannot influence it. The SDK emits the invalid package on
-its own.
+The ooxmlsdk docs' own recommended minimal-file snippet produces the same invalid
+package (`out/docs-example-Content_Types.xml`):
+
+```rust
+let mut document = SpreadsheetDocument::create(SpreadsheetDocumentType::Workbook);
+let workbook_part = document.add_new_part_auto_id::<WorkbookPart>()?;
+let worksheet_part = workbook_part.add_new_part_auto_id::<_, WorksheetPart>(&mut document)?;
+let worksheet_relationship_id = workbook_part
+    .get_id_of_part(&document, &worksheet_part)
+    .expect("worksheet relationship id")
+    .to_string();
+workbook_part.set_data(&mut document, /* <workbook> with the sheet rel */ ...)?;
+worksheet_part.set_data(&mut document, /* <worksheet><sheetData/></worksheet> */ ...)?;
+let mut buffer = Cursor::new(Vec::new());
+document.save(&mut buffer)?;
+```
+
+Result:
+
+```xml
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml" PartName="/xl/workbook1.xml"/>
+  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"  PartName="/xl/worksheets/sheet1.xml"/>
+</Types>
+```
+
+`_rels/.rels` and `xl/_rels/workbook1.xml.rels` are written, neither `<Default>`
+appears, and `OpenXmlValidator` reports `Pkg_RequiredPartDoNotExist` (1 error).
+(It also names the main part `xl/workbook1.xml` rather than the conventional
+`xl/workbook.xml`.)
+
+Every call here is the canonical, documented path. The SDK writes the `.rels`
+parts **itself** inside `save_package`; the caller never creates them. There is
+also **no public API to register a content-type default** — the only public
+`content_type` functions are read-only (`default_main_part_content_type`,
+`from_content_type`), and `add_content_type_override` is private. The
+Default/Override model is entirely internal, so a caller cannot influence it. The
+SDK emits the invalid package on its own.
 
 ### Suggested fix
 
