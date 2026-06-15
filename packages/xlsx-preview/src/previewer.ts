@@ -164,6 +164,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private readonly editable: boolean;
   private readonly engine?: PreviewerEngine;
   private highlights: HighlightRange[] = [];
+  private pointHighlight: HighlightRange | null = null;
   private functionNamesCache: string[] | null = null;
   private readonly autocompleteMenu: HTMLDivElement;
   private autocompleteFor: HTMLInputElement | null = null;
@@ -516,7 +517,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private draw(): void {
     const state = this.currentState();
     this.recomputeViewport();
-    this.highlights = this.computeHighlights();
+    const baseHighlights = this.computeHighlights();
+    this.highlights = this.pointHighlight ? [...baseHighlights, this.pointHighlight] : baseHighlights;
     render(this.canvas, this.getActiveSheet(), this.layout, {
       scale: window.devicePixelRatio || 1,
       zoom: this.zoom,
@@ -875,6 +877,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     const res = applyReferenceAtCaret(input.value, caret, ref, this.activeRefSpan);
     input.value = res.text;
     this.activeRefSpan = res.span;
+    this.pointHighlight = parsePointHighlight(ref);
     input.focus({ preventScroll: true });
     input.setSelectionRange(res.caret, res.caret);
     this.closeAutocomplete();
@@ -884,6 +887,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private resetPointSpanOnType(ev: KeyboardEvent): void {
     if (ev.key.length === 1 || ev.key === "Backspace" || ev.key === "Delete") {
       this.activeRefSpan = null;
+      this.pointHighlight = null;
     }
   }
 
@@ -912,6 +916,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private hideEditOverlay(): void {
     this.closeAutocomplete();
     this.activeRefSpan = null;
+    this.pointHighlight = null;
     if (!this.editCell) return;
     this.editCell = null;
     this.editInput.style.display = "none";
@@ -1132,6 +1137,35 @@ function colNameToIndex(s: string): number {
   let n = 0;
   for (const ch of s.toUpperCase()) n = n * 26 + (ch.charCodeAt(0) - 64);
   return n;
+}
+
+function parsePointHighlight(ref: string): HighlightRange | null {
+  const cellRe = /^\$?([A-Za-z]+)\$?(\d+)$/;
+  const parts = ref.split(":");
+  if (parts.length === 1) {
+    const m = cellRe.exec(parts[0]!.trim());
+    if (!m) return null;
+    const c = colNameToIndex(m[1]!);
+    const r = Number(m[2]);
+    return { r1: r, c1: c, r2: r, c2: c, color: HIGHLIGHT_PALETTE[0]! };
+  }
+  if (parts.length === 2) {
+    const a = cellRe.exec(parts[0]!.trim());
+    const b = cellRe.exec(parts[1]!.trim());
+    if (!a || !b) return null;
+    const ca = colNameToIndex(a[1]!);
+    const ra = Number(a[2]);
+    const cb = colNameToIndex(b[1]!);
+    const rb = Number(b[2]);
+    return {
+      r1: Math.min(ra, rb),
+      c1: Math.min(ca, cb),
+      r2: Math.max(ra, rb),
+      c2: Math.max(ca, cb),
+      color: HIGHLIGHT_PALETTE[0]!,
+    };
+  }
+  return null;
 }
 
 function clamp(v: number, lo: number, hi: number): number {

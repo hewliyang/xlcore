@@ -22,18 +22,6 @@ Shared facts (from triage):
 
 ## TODO
 
-### 2. Highlight the candidate range during point-mode selection
-During point-mode drag/keyboard the formula is incomplete so `parseReferences`
-fails and no candidate box is drawn. Draw the in-progress reference directly.
-- Add `pointHighlight: HighlightRange | null`. In `applyPointModeRef(ref,...)`,
-  parse `ref` (A1 cell or `A1:B2` range; same sheet) into a HighlightRange using
-  `HIGHLIGHT_PALETTE[0]` and store it.
-- In `draw()`/`computeHighlights()`, include `pointHighlight` in the highlights
-  passed to `render` (in addition to parsed ones).
-- Clear `pointHighlight` in `hideEditOverlay()` and `resetPointSpanOnType()`.
-- Verify: edit a cell, type `=SUM(`, drag over A4:A10 — A4:A10 must show the
-  colored candidate box WHILE dragging (before typing `)`).
-
 ### 3. Keyboard-driven point-mode selection
 While editing a formula at a ref-accepting caret, arrows should pick/move a
 reference (and Shift+arrow extends), like the mouse point drag.
@@ -47,3 +35,4 @@ reference (and Shift+arrow extends), like the mouse point drag.
 
 ## Shipped
 - Arrow keys commit + navigate the selection when typing a value in enter mode.
+- Candidate range box drawn during point-mode selection (before the formula parses).

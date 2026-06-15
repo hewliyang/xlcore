@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Point mode: draw the in-progress candidate range box while dragging a reference (before the formula parses).
 - Inline edit overlay: arrow keys commit and move the selection when typing a plain value (enter mode); F2/double-click keep arrows as caret movement.
 - Inline edit overlay now positions in content coordinates inside the scroll spacer, fixing a scroll jump to the bottom-right of the sheet when focusing/typing.
 - Example app: use `cell(addr).setValue/setFormula` instead of the nonexistent `range(addr)` single-cell setters.
