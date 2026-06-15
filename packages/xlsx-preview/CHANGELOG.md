@@ -8,6 +8,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Previewer `editable` option: writable formula bar emitting a `celledit` event on Enter (Escape restores).
+- Inline cell editing overlay (F2/double-click/typing) over the active cell, emitting `celledit` with `commitMove`.
 - `table_engine::compute_hidden_rows`: pure Excel autofilter view engine (Values/Custom/Top10 + multi-column AND).
 - Authored autofilter now applies `row.hidden` from criteria after `set/remove_auto_filter_column`.
 - AutoFilter sort authoring: `autoFilter.setSort/clearSort` (wasm `setAutoFilterSort/removeAutoFilterSort`) writes `sortState` + physically reorders data rows (numbers numerically, text case-insensitive, blanks last); formula/merge refs not fixed up.

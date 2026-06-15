@@ -49,6 +49,8 @@ export interface InteractOptions {
 
   onTableFilter?: (info: TableFilterEvent) => void;
 
+  onEditStart?: (cell: { r: number; c: number }, initialText: string | null) => void;
+
   redraw(): void;
 }
 
@@ -776,7 +778,15 @@ export function attachInteractivity(
       case "Enter":
         dr = ev.shiftKey ? -1 : 1;
         break;
+      case "F2":
+        ev.preventDefault();
+        opts.onEditStart?.(cur, null);
+        return;
       default:
+        if (opts.onEditStart && ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey) {
+          ev.preventDefault();
+          opts.onEditStart(cur, ev.key);
+        }
         return;
     }
     ev.preventDefault();
@@ -810,6 +820,18 @@ export function attachInteractivity(
     setSelection(next, { r1: next.r, c1: next.c, r2: next.r, c2: next.c });
     ensureVisible(next);
     opts.redraw();
+  }
+
+  function onDoubleClick(ev: MouseEvent) {
+    if (!opts.onEditStart) return;
+    const cp = toCanvasLocal(ev);
+    const p = toLogical(ev);
+    const grid = getGrid();
+    if (cp.x < grid.originX || cp.y < grid.originY) return;
+    const cell = cellAt(grid, p.x, p.y);
+    if (!cell) return;
+    ev.preventDefault();
+    opts.onEditStart(resolveAnchor(cell.r, cell.c), null);
   }
 
   function onPointerUp(ev: PointerEvent) {
@@ -877,6 +899,7 @@ export function attachInteractivity(
   canvas.addEventListener("pointerup", onPointerUp);
   canvas.addEventListener("pointercancel", onPointerUp);
   canvas.addEventListener("pointerleave", onPointerLeave);
+  canvas.addEventListener("dblclick", onDoubleClick);
   canvas.addEventListener("keydown", onKeyDown);
 
   canvas.addEventListener("wheel", onWheel, { passive: false });
@@ -888,6 +911,7 @@ export function attachInteractivity(
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerUp);
       canvas.removeEventListener("pointerleave", onPointerLeave);
+      canvas.removeEventListener("dblclick", onDoubleClick);
       canvas.removeEventListener("keydown", onKeyDown);
       canvas.removeEventListener("wheel", onWheel);
       canvas.style.cursor = savedCursor;
