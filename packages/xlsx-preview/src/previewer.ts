@@ -158,6 +158,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private readonly editInput: HTMLInputElement;
   private editCell: { r: number; c: number } | null = null;
   private editEnterMode = false;
+  private pointKeyAnchor: { r: number; c: number } | null = null;
+  private pointKeyCursor: { r: number; c: number } | null = null;
   private readonly sheetStates: SheetState[];
   private readonly tabButtons: Array<HTMLButtonElement | null> = [];
   private readonly showHidden: boolean;
@@ -826,6 +828,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
 
   private onFormulaBoxKeyDown(ev: KeyboardEvent): void {
     if (this.handleAutocompleteKey(ev)) return;
+    if (this.handlePointKeyboardKey(ev)) return;
     this.resetPointSpanOnType(ev);
     if (ev.key === "Enter") {
       ev.preventDefault();
@@ -888,7 +891,32 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     if (ev.key.length === 1 || ev.key === "Backspace" || ev.key === "Delete") {
       this.activeRefSpan = null;
       this.pointHighlight = null;
+      this.pointKeyAnchor = null;
+      this.pointKeyCursor = null;
     }
+  }
+
+  private movePointKeyboard(dr: number, dc: number, extend: boolean): void {
+    const state = this.currentState();
+    const grid = buildGrid(this.getActiveSheet(), state.colOverrides, state.rowOverrides);
+    const base = this.pointKeyCursor ?? this.editCell ?? state.activeCell;
+    const cursor = {
+      r: clamp(base.r + dr, 1, grid.maxRow),
+      c: clamp(base.c + dc, 1, grid.maxCol),
+    };
+    const anchor = extend && this.pointKeyAnchor ? this.pointKeyAnchor : cursor;
+    this.pointKeyCursor = cursor;
+    this.pointKeyAnchor = anchor;
+    const minR = Math.min(anchor.r, cursor.r);
+    const maxR = Math.max(anchor.r, cursor.r);
+    const minC = Math.min(anchor.c, cursor.c);
+    const maxC = Math.max(anchor.c, cursor.c);
+    const ref =
+      minR === maxR && minC === maxC
+        ? `${colLabel(minC)}${minR}`
+        : `${colLabel(minC)}${minR}:${colLabel(maxC)}${maxR}`;
+    this.applyPointModeRef(ref, { extend });
+    this.scrollToCell(cursor.r, cursor.c);
   }
 
   private openEditOverlay(cell: { r: number; c: number }, initialText: string | null): void {
@@ -902,6 +930,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.editCell = { r: cell.r, c: cell.c };
     this.editEnterMode = initialText !== null;
     this.activeRefSpan = null;
+    this.pointKeyAnchor = null;
+    this.pointKeyCursor = null;
     this.editInput.style.left = `${rect.x * z}px`;
     this.editInput.style.top = `${rect.y * z}px`;
     this.editInput.style.width = `${Math.max(rect.w * z, 24)}px`;
@@ -917,6 +947,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.closeAutocomplete();
     this.activeRefSpan = null;
     this.pointHighlight = null;
+    this.pointKeyAnchor = null;
+    this.pointKeyCursor = null;
     if (!this.editCell) return;
     this.editCell = null;
     this.editInput.style.display = "none";
@@ -941,8 +973,26 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     );
   }
 
+  private handlePointKeyboardKey(ev: KeyboardEvent): boolean {
+    if (
+      ev.key !== "ArrowUp" &&
+      ev.key !== "ArrowDown" &&
+      ev.key !== "ArrowLeft" &&
+      ev.key !== "ArrowRight"
+    ) {
+      return false;
+    }
+    if (!this.isPointModeActive()) return false;
+    ev.preventDefault();
+    const dr = ev.key === "ArrowUp" ? -1 : ev.key === "ArrowDown" ? 1 : 0;
+    const dc = ev.key === "ArrowLeft" ? -1 : ev.key === "ArrowRight" ? 1 : 0;
+    this.movePointKeyboard(dr, dc, ev.shiftKey);
+    return true;
+  }
+
   private onEditInputKeyDown(ev: KeyboardEvent): void {
     if (this.handleAutocompleteKey(ev)) return;
+    if (this.handlePointKeyboardKey(ev)) return;
     this.resetPointSpanOnType(ev);
     if (ev.key === "Enter") {
       ev.preventDefault();

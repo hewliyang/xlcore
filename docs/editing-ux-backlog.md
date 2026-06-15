@@ -22,17 +22,7 @@ Shared facts (from triage):
 
 ## TODO
 
-### 3. Keyboard-driven point-mode selection
-While editing a formula at a ref-accepting caret, arrows should pick/move a
-reference (and Shift+arrow extends), like the mouse point drag.
-- Add `pointKeyAnchor`/`pointKeyCursor` state. On arrow in `onEditInputKeyDown`
-  (and `onFormulaBoxKeyDown`) when `isPointModeActive()`: move a cursor from
-  `editCell ?? activeCell` (clamped to grid bounds), Shift keeps the anchor to
-  extend, otherwise collapse; build the A1 ref and call `applyPointModeRef`.
-  `scrollToCell` to follow. Reset the anchor/cursor on type/commit/edit-start.
-- Verify: edit a cell, type `=SUM(`, press Down a few times then Shift+Down —
-  the ref text grows (e.g. `=SUM(E5:E8`) and the candidate box (item 2) tracks it.
-
 ## Shipped
+- Keyboard-driven point-mode selection: arrows pick/move a ref, Shift+arrow extends.
 - Arrow keys commit + navigate the selection when typing a value in enter mode.
 - Candidate range box drawn during point-mode selection (before the formula parses).
