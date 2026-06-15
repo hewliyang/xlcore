@@ -46,12 +46,41 @@ Error kind strings come from `crates/ironcalc-base/src/expressions/token.rs`
 
 ### Item 1 — plumb error literals through recalc + writeback
 
-Added `Error(String)` to `EngineCellValue`; `is_genuine_error` splits genuine
-Excel errors from engine limitations; genuine errors surface as `value:
+Added `Error(String)` to `EngineCellValue`; genuine errors surface as `value:
 Error(kind)` with no fallback and are written as `t="e" v=kind` in the doc XML;
 `t="e"` cells are now harvested as `Error` (not `String`); TS schema updated.
 
+### Item 1b — key fallback off cached value, not error kind
+
+Replaced `is_genuine_error` kind-list with a cached-value signal: if the file
+holds a non-blank, non-error cached value trust it (set fallback, return `cv`)
+otherwise surface the error literal as `CellValue::Error(kind)`. Restores
+`preserves_cached_values_for_unsupported_formulas` to pre-Item-1 assertions.
+
 ## Backlog
+
+~~Item 1b~~ (shipped above)
+
+The `is_genuine_error` kind-list is wrong: ironcalc emits `#NAME?` for
+*unimplemented-but-valid* functions, so the kind split clobbers the file's
+cached value for unsupported formulas (regressed
+`preserves_cached_values_for_unsupported_formulas`, whose whole point is to
+preserve them). Replace the kind-based split with a cached-value signal in
+`evaluated_formula_value`:
+
+- If the file has an authoritative cached value that is neither blank nor an
+  error (`Some(cv)` where `cv` is Number/String/Boolean), trust it: set
+  `*fallback` and return `cv.clone()` (our engine is likely incomplete).
+- Otherwise (no cache, blank cache, or cached error) surface the error literal:
+  `CellValue::Error(error.kind)`.
+
+Delete `is_genuine_error`. Restore
+`preserves_cached_values_for_unsupported_formulas` to assert B1 keeps
+`value == Number(123.0)`, `fallback.kind == "#NAME?"`, and the saved
+`cached_value` stays `Number(123.0)`. Keep
+`engine_produced_errors_populate_fallback` asserting genuine errors (no cache)
+are `value == Error(kind)`. Verify with
+`cargo test -p xlcore-bridge -p xlcore-api` and the pnpm `check`.
 
 ### Item 2 — e2e dogfood (supervisor-verified)
 

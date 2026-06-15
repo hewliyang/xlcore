@@ -214,13 +214,6 @@ fn load_engine(
     Ok(fallbacks)
 }
 
-fn is_genuine_error(kind: &str) -> bool {
-    matches!(
-        kind,
-        "#NULL!" | "#DIV/0!" | "#VALUE!" | "#REF!" | "#NAME?" | "#NUM!" | "#N/A" | "#SPILL!" | "#CALC!" | "#CIRC!"
-    )
-}
-
 fn evaluated_formula_value(
     engine: &WorkbookEngine<'_>,
     key: CellKey,
@@ -229,14 +222,15 @@ fn evaluated_formula_value(
 ) -> CellValue {
     match engine.formula_error(key.sheet, key.r as i32, key.c as i32) {
         Ok(Some(error)) => {
-            if is_genuine_error(&error.kind) {
-                CellValue::Error(error.kind)
-            } else {
-                *fallback = Some(FormulaFallback {
-                    kind: error.kind,
-                    message: error.message,
-                });
-                cached_value.cloned().unwrap_or(CellValue::Blank)
+            match cached_value {
+                Some(cv) if !matches!(cv, CellValue::Blank | CellValue::Error(_)) => {
+                    *fallback = Some(FormulaFallback {
+                        kind: error.kind,
+                        message: error.message,
+                    });
+                    cv.clone()
+                }
+                _ => CellValue::Error(error.kind),
             }
         }
         Ok(None) => match engine.cell_value(key.sheet, key.r as i32, key.c as i32) {
@@ -888,9 +882,19 @@ mod tests {
             .context("recalculate unsupported formula fixture")
             .unwrap();
         let unsupported = wb.cell("Sheet1", "B1").expect("B1");
-        assert_eq!(unsupported.value, CellValue::Error("#NAME?".to_string()));
+        assert_eq!(unsupported.value, CellValue::Number(123.0));
         assert_eq!(unsupported.cached_value, Some(CellValue::Number(123.0)));
-        assert_eq!(unsupported.fallback, None);
+        assert_eq!(
+            unsupported
+                .fallback
+                .as_ref()
+                .map(|fallback| fallback.kind.as_str()),
+            Some("#NAME?")
+        );
+        assert!(unsupported
+            .fallback
+            .as_ref()
+            .is_some_and(|fallback| fallback.message.contains("Invalid function")));
 
         let supported = wb.cell("Sheet1", "C1").expect("C1");
         assert_eq!(supported.value, CellValue::Number(15.0));
@@ -903,7 +907,7 @@ mod tests {
             saved
                 .cell("Sheet1", "B1")
                 .and_then(|cell| cell.cached_value.as_ref()),
-            Some(&CellValue::Error("#NAME?".to_string()))
+            Some(&CellValue::Number(123.0))
         );
         assert_eq!(
             saved
