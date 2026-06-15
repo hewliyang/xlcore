@@ -57,6 +57,7 @@ mod test;
 #[cfg(test)]
 pub mod mock_time;
 
+pub use functions::english_function_names;
 pub use locale::get_supported_locales;
 pub use model::get_milliseconds_since_epoch;
 pub use model::FmtSettings;

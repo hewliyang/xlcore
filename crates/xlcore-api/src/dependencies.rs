@@ -5,7 +5,7 @@ use ironcalc_base::expressions::types::CellReferenceRC;
 use xlcore_types::{ApiError, ApiErrorCode, DependencyInfo, DependencyReference};
 
 use crate::errors::sdk_err_to_api;
-use crate::refs::{qualify_ref, ranges_overlap, ResolvedRangeRef};
+use crate::refs::{qualify_ref, ranges_overlap, ResolvedCellRef, ResolvedRangeRef};
 use crate::{Result, Workbook};
 
 impl Workbook {
@@ -21,6 +21,20 @@ impl Workbook {
     ) -> Result<Vec<DependencyReference>> {
         let reference = qualify_ref(sheet, reference)?;
         self.precedents(reference)
+    }
+
+    pub fn parse_formula_references_in(
+        &mut self,
+        sheet: &str,
+        anchor: &str,
+        formula: &str,
+    ) -> Result<Vec<DependencyReference>> {
+        let cell_ref = self.resolve_cell_ref(&qualify_ref(sheet, anchor)?)?;
+        self.references_for_formula(&cell_ref, formula)
+    }
+
+    pub fn function_names(&mut self) -> Result<Vec<String>> {
+        Ok(ironcalc_base::english_function_names())
     }
 
     pub fn dependents_in(
@@ -53,10 +67,18 @@ impl Workbook {
         let Some(formula) = info.formula else {
             return Ok(Vec::new());
         };
+        self.references_for_formula(&cell_ref, &formula)
+    }
+
+    fn references_for_formula(
+        &mut self,
+        cell_ref: &ResolvedCellRef,
+        formula: &str,
+    ) -> Result<Vec<DependencyReference>> {
         let context = self.dependency_context()?;
         let sheet_index = sheet_index_for(&context, &cell_ref.sheet)?;
         Ok(parse_formula_references(
-            &formula,
+            formula,
             FormulaContext {
                 sheet_index,
                 row: cell_ref.row as i32,

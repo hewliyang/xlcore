@@ -12,6 +12,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `Workbook.parseFormulaReferences(sheet, anchor, formula)` and `Workbook.functionNames()` (uncommitted-formula refs + English function catalog).
 - Example app: wire cell editing via `celledit` + recalc modes (Auto recalc checkbox, F9 manual recalc).
 - Previewer `editable` option: writable formula bar emitting a `celledit` event on Enter (Escape restores).
 - Inline cell editing overlay (F2/double-click/typing) over the active cell, emitting `celledit` with `commitMove`.

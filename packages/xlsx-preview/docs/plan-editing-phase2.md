@@ -48,28 +48,6 @@ needs from the host is injected through a small `PreviewerEngine` adapter.
 
 ## Backlog
 
-### P2.1 feat(api): uncommitted-formula reference parse + function catalog
-
-Backend. `crates/xlcore-api`, `crates/xlcore-wasm`, TS `Workbook`, schema/api.
-
-- `Workbook::parse_formula_references_in(sheet, anchor_ref, formula) ->
-  Vec<DependencyReference>`: reuse `collect_formula_references` machinery in
-  `dependencies.rs` but on an arbitrary `formula` string anchored at `anchor_ref`
-  (no cell read). Refactor the existing `precedents` to share the same core.
-- Function catalog: `Workbook::function_names() -> Vec<String>` (sorted, unique,
-  English canonical names). Source from ironcalc. Cleanest is to add the list in
-  `ironcalc-base` (e.g. a `pub fn english_function_names()` derived from the
-  `impl_function_lookup!` table or the localized-name arms) with a coverage test
-  vs the `Function` enum — pick whichever keeps it in sync without a hand list.
-- Expose both via the `api_methods!` table in `crates/xlcore-wasm/src/lib.rs`
-  (`parse_formula_references_in as "parseFormulaReferences"`, `function_names as
-  "functionNames"`), add TS wrappers (`Workbook.parseFormulaReferences(...)`,
-  `Workbook.functionNames()`), regen schema/api manifest, rebuild wasm.
-- Verify (vitest, real wasm): `parseFormulaReferences("Sheet1","A1","=B1+SUM(C1:C3)")`
-  → refs for `B1` and `C1:C3`; `functionNames()` includes `SUM`,`IF`,`XLOOKUP`,
-  is uppercase + sorted, length > 300. Gotcha: must run `build:wasm` first or the
-  freshness gate fails.
-
 ### P2.2 feat(previewer): highlight overlay in the renderer
 
 Library. `src/render.ts` (+ `src/selection.ts` or a new `src/highlights.ts`),
@@ -173,4 +151,4 @@ checks use a CLI PNG render + eyeball. Interactive items use the browser harness
 
 ## Shipped
 
-_(move items here as they land, terse)_
+- P2.1 `Workbook.parseFormulaReferences` (refs from an uncommitted formula via shared `references_for_formula` core) + `Workbook.functionNames` (English catalog from `ironcalc_base::english_function_names`, enum-synced via `Function::into_iter`).

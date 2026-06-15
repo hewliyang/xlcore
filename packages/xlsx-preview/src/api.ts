@@ -14,6 +14,7 @@ import {
 import { Worksheet } from "./api-worksheet.js";
 import type {
   ApiWarning,
+  DependencyReference,
   LayoutOptions as WorkbookLayoutOptions,
   RecalcWorkbook,
   SearchMatch,
@@ -333,6 +334,14 @@ export class Workbook {
 
   layout(options: WorkbookLayoutOptions = {}): WorkbookLayout {
     return this.handle.layout(options) as WorkbookLayout;
+  }
+
+  parseFormulaReferences(sheet: string, anchor: string, formula: string): DependencyReference[] {
+    return this.handle.parseFormulaReferences(sheet, anchor, formula) as DependencyReference[];
+  }
+
+  functionNames(): string[] {
+    return this.handle.functionNames() as string[];
   }
 
   save(): Uint8Array {

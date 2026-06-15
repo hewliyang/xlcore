@@ -10,6 +10,8 @@ export const workbookhandle_addMerge: (a: number, b: number, c: number, d: numbe
 export const workbookhandle_addThreadedNote: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
 export const workbookhandle_appendRows: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_autoFilter: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_autoFitColumn: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+export const workbookhandle_autoFitColumns: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
 export const workbookhandle_calcProperties: (a: number, b: number) => void;
 export const workbookhandle_chartExs: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_charts: (a: number, b: number, c: number, d: number) => void;
@@ -31,6 +33,7 @@ export const workbookhandle_dependencies: (a: number, b: number, c: number, d: n
 export const workbookhandle_dependents: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_dispose: (a: number) => void;
 export const workbookhandle_fillRange: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => void;
+export const workbookhandle_functionNames: (a: number, b: number) => void;
 export const workbookhandle_getCell: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
 export const workbookhandle_getFreeze: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_getPartXml: (a: number, b: number, c: number, d: number) => void;
@@ -49,6 +52,7 @@ export const workbookhandle_namedStyles: (a: number, b: number) => void;
 export const workbookhandle_new: (a: number) => void;
 export const workbookhandle_open: (a: number, b: number, c: number) => void;
 export const workbookhandle_pageSetup: (a: number, b: number, c: number, d: number) => void;
+export const workbookhandle_parseFormulaReferences: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
 export const workbookhandle_partNames: (a: number, b: number) => void;
 export const workbookhandle_pivotPreview: (a: number, b: number, c: number, d: number, e: number) => void;
 export const workbookhandle_pivots: (a: number, b: number, c: number, d: number) => void;

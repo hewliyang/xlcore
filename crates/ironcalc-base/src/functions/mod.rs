@@ -821,6 +821,16 @@ impl_function_lookup! {
     steyx     => Steyx,
 }
 
+pub fn english_function_names() -> Vec<String> {
+    let language = crate::language::get_default_language();
+    let mut names: Vec<String> = Function::into_iter()
+        .map(|function| function.to_localized_name(language).to_uppercase())
+        .collect();
+    names.sort();
+    names.dedup();
+    names
+}
+
 impl Function {
     pub fn to_localized_name(&self, language: &Language) -> String {
         let functions = &language.functions;
@@ -2024,6 +2034,24 @@ mod tests {
         fs::File,
         io::{BufRead, BufReader},
     };
+
+    #[test]
+    fn english_function_names_are_sorted_unique_uppercase() {
+        let names = super::english_function_names();
+        assert!(names.len() > 300);
+        assert!(names.contains(&"SUM".to_string()));
+        assert!(names.contains(&"IF".to_string()));
+        assert!(names.contains(&"XLOOKUP".to_string()));
+        let mut sorted = names.clone();
+        sorted.sort();
+        assert_eq!(names, sorted);
+        for name in &names {
+            assert_eq!(name, &name.to_uppercase());
+        }
+        let mut deduped = names.clone();
+        deduped.dedup();
+        assert_eq!(names, deduped);
+    }
 
     #[test]
     fn function_iterator() {

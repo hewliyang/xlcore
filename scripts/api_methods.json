@@ -315,6 +315,38 @@
     "ret": "json"
   },
   {
+    "name": "parse_formula_references_in",
+    "jsName": "parseFormulaReferences",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "anchor",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "formula",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "function_names",
+    "jsName": "functionNames",
+    "source": "table",
+    "kind": "method",
+    "args": [],
+    "ret": "json"
+  },
+  {
     "name": "set_style_in",
     "jsName": "setStyle",
     "source": "table",

@@ -317,6 +317,8 @@ api_methods! {
     { dependencies_in as "dependencies" (s sheet, s reference) -> json }
     { precedents_in as "precedents" (s sheet, s reference) -> json }
     { dependents_in as "dependents" (s sheet, s reference) -> json }
+    { parse_formula_references_in as "parseFormulaReferences" (s sheet, s anchor, s formula) -> json }
+    { function_names as "functionNames" () -> json }
     { set_style_in as "setStyle" (s sheet, s reference, deopt patch: xlcore_api::StylePatch) -> json }
     { set_rich_text_in as "setRichText" (s sheet, s reference, de runs: Vec<xlcore_api::RichTextRun>) -> json }
     { merges (s sheet) -> json }

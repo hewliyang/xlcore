@@ -31,6 +31,7 @@ export class WorkbookHandle {
     dependents(sheet: string, reference: string): any;
     dispose(): void;
     fillRange(src_sheet: string, src_reference: string, dst_sheet: string, dst_reference: string): any;
+    functionNames(): any;
     getCell(sheet: string, reference: string): any;
     getFreeze(sheet: string): any;
     getPartXml(name: string): any;
@@ -49,6 +50,7 @@ export class WorkbookHandle {
     constructor();
     static open(bytes: Uint8Array): WorkbookHandle;
     pageSetup(sheet: string): any;
+    parseFormulaReferences(sheet: string, anchor: string, formula: string): any;
     partNames(): any;
     pivotPreview(sheet: string, patch: any): any;
     pivots(sheet?: string | null): any;
@@ -175,6 +177,7 @@ export interface InitOutput {
     readonly workbookhandle_dependents: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_dispose: (a: number) => void;
     readonly workbookhandle_fillRange: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => void;
+    readonly workbookhandle_functionNames: (a: number, b: number) => void;
     readonly workbookhandle_getCell: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly workbookhandle_getFreeze: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_getPartXml: (a: number, b: number, c: number, d: number) => void;
@@ -193,6 +196,7 @@ export interface InitOutput {
     readonly workbookhandle_new: (a: number) => void;
     readonly workbookhandle_open: (a: number, b: number, c: number) => void;
     readonly workbookhandle_pageSetup: (a: number, b: number, c: number, d: number) => void;
+    readonly workbookhandle_parseFormulaReferences: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
     readonly workbookhandle_partNames: (a: number, b: number) => void;
     readonly workbookhandle_pivotPreview: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly workbookhandle_pivots: (a: number, b: number, c: number, d: number) => void;
