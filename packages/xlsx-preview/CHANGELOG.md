@@ -253,6 +253,11 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Workbook API: `merges(sheet)` / `addMerge(range)` / `removeMerge(ref)` with `MergeInfo` DTO, overlap diagnostic (`merge_overlap` `ApiError`), and OOXML `<mergeCells>` round-trip.
 - Workbook API: `setStyle(range, patch)` with font/fill/border/alignment/number-format sub-patches, interned styles, and `unsupported_style` diagnostic for invalid colors.
 - Workbook API: `getRange` / `setRangeValues` / `setRangeFormulas` / `clearRange` with A1 range refs (`A1:B3`, sheet-qualified, absolute, reversed corners), shape validation (new `shape_mismatch` `ApiError`), and a `RangeInfo` DTO (row-major `values` + `formulas`).
+## [0.0.10] - 2026-06-05
+
+### Fixed
+
+- Rows whose `<row>` element omits the `r` (row index) attribute — emitted by some producers such as SpreadJS — are no longer dropped. The extractor now infers the missing index sequentially from the last seen row, so all cells survive with correct row coordinates. Covered by the `producer-quirks/spreadjs-implicit-row-index.xlsx` fixture.
 
 ## [0.0.9] - 2026-05-28
 

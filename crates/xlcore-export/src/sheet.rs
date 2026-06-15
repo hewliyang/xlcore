@@ -85,11 +85,13 @@ pub fn extract(
     }
 
     let mut rows: Vec<Row> = Vec::with_capacity(ws.sheet_data.row.len());
+    let mut last_row_index = 0u32;
     for r in &ws.sheet_data.row {
-        let row_index = r.row_index.unwrap_or(0);
-        if row_index == 0 {
-            continue;
-        }
+        let row_index = match r.row_index {
+            Some(n) if n > 0 => n,
+            _ => last_row_index + 1,
+        };
+        last_row_index = row_index;
         let mut cells = Vec::with_capacity(r.cell.len());
         for cell in &r.cell {
             if let Some(c) = extract_cell(cell) {
