@@ -10,9 +10,11 @@ fn normalize(name: &str) -> String {
 
 impl Workbook {
     fn package_bytes(&self) -> Result<Vec<u8>> {
-        self.doc
+        let bytes = self
+            .doc
             .to_package_bytes()
-            .map_err(|err| ApiError::new(ApiErrorCode::OoxmlWriteError, err.to_string()))
+            .map_err(|err| ApiError::new(ApiErrorCode::OoxmlWriteError, err.to_string()))?;
+        crate::package_fix::ensure_content_type_defaults(bytes)
     }
 
     pub fn part_names(&self) -> Result<Vec<String>> {

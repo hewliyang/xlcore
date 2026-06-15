@@ -475,7 +475,28 @@ fn build_font(sheet: &x::Stylesheet, current: usize, patch: &FontPatch) -> Resul
                 },
             })));
     }
+    font.font_choice.sort_by_key(font_choice_order);
     Ok(font)
+}
+
+fn font_choice_order(c: &x::FontChoice) -> u8 {
+    match c {
+        x::FontChoice::Bold(_) => 0,
+        x::FontChoice::Italic(_) => 1,
+        x::FontChoice::Strike(_) => 2,
+        x::FontChoice::Condense(_) => 3,
+        x::FontChoice::Extend(_) => 4,
+        x::FontChoice::Outline(_) => 5,
+        x::FontChoice::Shadow(_) => 6,
+        x::FontChoice::Underline(_) => 7,
+        x::FontChoice::VerticalTextAlignment(_) => 8,
+        x::FontChoice::FontSize(_) => 9,
+        x::FontChoice::Color(_) => 10,
+        x::FontChoice::FontName(_) => 11,
+        x::FontChoice::FontFamilyNumbering(_) => 12,
+        x::FontChoice::FontCharSet(_) => 13,
+        x::FontChoice::FontScheme(_) => 14,
+    }
 }
 
 fn pattern_type_to_x(p: PatternType) -> x::PatternValues {
