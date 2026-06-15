@@ -1192,6 +1192,14 @@ async function loadWorkbookFile(file) {
       editable: true,
       pivotController,
       tableController,
+      engine:
+        recalcWorkbook != null
+          ? {
+              parseReferences: (sheet, anchor, formula) =>
+                recalcWorkbook.parseFormulaReferences(sheet, anchor, formula),
+              functionNames: () => recalcWorkbook.functionNames(),
+            }
+          : undefined,
       onProgress: ({ label }) => setLoadingStage(label),
     });
     window.xlcorePreviewer = previewer;

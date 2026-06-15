@@ -12,6 +12,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Previewer `engine?: PreviewerEngine` option drives live precedent highlighting from the editor/active formula (same-sheet refs only, boxes only).
 - Render `highlights?: HighlightRange[]` option draws colored precedent boxes beneath the selection.
 - `Workbook.parseFormulaReferences(sheet, anchor, formula)` and `Workbook.functionNames()` (uncommitted-formula refs + English function catalog).
 - Example app: wire cell editing via `celledit` + recalc modes (Auto recalc checkbox, F9 manual recalc).

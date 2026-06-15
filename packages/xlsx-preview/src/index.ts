@@ -81,6 +81,7 @@ export type {
   WorkbookLayoutOptions,
 } from "./api.js";
 export type {
+  PreviewerEngine,
   PreviewerEventName,
   PreviewerOptions,
   PreviewerState,

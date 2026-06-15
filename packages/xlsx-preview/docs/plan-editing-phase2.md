@@ -48,26 +48,6 @@ needs from the host is injected through a small `PreviewerEngine` adapter.
 
 ## Backlog
 
-### P2.3 feat(previewer): live precedent highlighting wired to the engine
-
-Library + examples. `src/previewer.ts`, `src/interact.ts` (read-only), examples.
-
-- Add `PreviewerEngine` interface + `PreviewerOptions.engine?`. Methods used here:
-  `parseReferences(sheetName, anchorRef, formula): DependencyReference[]`.
-- Maintain a rotating palette (Excel-like ~7 colors). When a formula cell is the
-  active cell, or while the inline/formula-bar editor holds a `=`-formula, compute
-  references from the **current editor text** (or the committed `cell.formula` when
-  not editing) via `engine.parseReferences`, map same-sheet refs → `highlights`
-  with cycled colors, and redraw. Recompute on each keystroke in the editor
-  (debounce a frame). Clear highlights when leaving edit / non-formula cell.
-- Tint the matching ref tokens inside the editor with the same colors — only
-  feasible in a styled overlay, not a bare `<input>`. MVP: skip token coloring
-  (boxes only); note as a limitation / follow-up (needs contenteditable editor).
-- Examples host: implement `engine` over `recalcWorkbook`
-  (`parseReferences` → `wb.parseFormulaReferences(sheet, anchor, formula)`).
-- Verify (browser-harness, see E2E): click a formula cell → boxes appear; type a
-  formula referencing cells → boxes update live; commit/Esc → boxes clear.
-
 ### P2.4 feat(previewer): function autocomplete dropdown
 
 Library + examples. new `src/formulaAutocomplete.ts`, `src/previewer.ts`.
@@ -134,6 +114,8 @@ checks use a CLI PNG render + eyeball. Interactive items use the browser harness
   returns as plain areas.
 
 ## Shipped
+
+- P2.3 live precedent highlighting wired to a `PreviewerEngine` (`PreviewerOptions.engine?`, rotating 7-color palette, pure `referencesToHighlights` mapping same-sheet refs in `src/highlights.ts`, recompute on edit/formula-bar/selection draw; examples host implements `engine` over `recalcWorkbook`). Boxes only; token coloring deferred.
 
 - P2.2 highlight overlay in the renderer (`HighlightRange[]` on `RenderOptions`, pure `buildHighlightRects` builder in `src/highlights.ts`, drawn beneath `drawSelection`).
 - P2.1 `Workbook.parseFormulaReferences` (refs from an uncommitted formula via shared `references_for_formula` core) + `Workbook.functionNames` (English catalog from `ironcalc_base::english_function_names`, enum-synced via `Function::into_iter`).

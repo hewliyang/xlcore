@@ -1,5 +1,26 @@
+import type { DependencyReference } from "./api-schema/DependencyReference.js";
 import type { Grid } from "./grid.js";
 import type { HighlightRange } from "./renderTypes.js";
+
+export function referencesToHighlights(
+  refs: DependencyReference[],
+  activeSheetName: string,
+  palette: string[],
+): HighlightRange[] {
+  if (palette.length === 0) return [];
+  const out: HighlightRange[] = [];
+  for (const ref of refs) {
+    if (ref.sheet !== activeSheetName) continue;
+    out.push({
+      r1: ref.startRow,
+      c1: ref.startColumn,
+      r2: ref.endRow,
+      c2: ref.endColumn,
+      color: palette[out.length % palette.length]!,
+    });
+  }
+  return out;
+}
 
 export interface HighlightRect {
   x: number;

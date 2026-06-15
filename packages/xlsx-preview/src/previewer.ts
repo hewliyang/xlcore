@@ -9,6 +9,9 @@ import {
   type Selection,
 } from "./interact.js";
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
+import { referencesToHighlights } from "./highlights.js";
+import type { HighlightRange } from "./renderTypes.js";
+import type { DependencyReference } from "./api-schema/DependencyReference.js";
 import { cellRect } from "./geometry.js";
 import {
   createPivotFilterPopover,
@@ -33,7 +36,23 @@ export interface PreviewerOptions {
 
   pivotController?: PivotFilterController;
   tableController?: TableFilterController;
+  engine?: PreviewerEngine;
 }
+
+export interface PreviewerEngine {
+  parseReferences(sheetName: string, anchorRef: string, formula: string): DependencyReference[];
+  functionNames(): string[];
+}
+
+const HIGHLIGHT_PALETTE = [
+  "#2563eb",
+  "#16a34a",
+  "#db2777",
+  "#ea580c",
+  "#0891b2",
+  "#9333ea",
+  "#ca8a04",
+];
 
 export type { PivotFilterController, PivotFilterContext } from "./pivotFilterPopover.js";
 export type { TableFilterController, TableFilterContext } from "./tableFilterPopover.js";
@@ -136,6 +155,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private readonly tabButtons: Array<HTMLButtonElement | null> = [];
   private readonly showHidden: boolean;
   private readonly editable: boolean;
+  private readonly engine?: PreviewerEngine;
+  private highlights: HighlightRange[] = [];
   private readonly resizeObserver: ResizeObserver;
   private interactHandle: InteractHandle | null = null;
   private activeSheetIndex = 0;
@@ -152,6 +173,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.zoom = clamp(options.initialZoom ?? 1, 0.25, 4);
     this.showHidden = options.showHidden === true;
     this.editable = options.editable === true;
+    this.engine = options.engine;
     this.sheetStates = this.layout.sheets.map(() => ({
       colOverrides: new Map(),
       rowOverrides: new Map(),
@@ -183,6 +205,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.formulaBar.append(this.nameBox, fxLabel, this.formulaBox);
     if (this.editable) {
       this.formulaBox.addEventListener("keydown", (ev) => this.onFormulaBoxKeyDown(ev));
+      this.formulaBox.addEventListener("focus", this.scheduleDraw);
+      this.formulaBox.addEventListener("blur", this.scheduleDraw);
     }
 
     this.tabs = document.createElement("div");
@@ -219,7 +243,9 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.spacer.append(this.canvas, this.editInput);
     this.stage.append(this.spacer);
     this.editInput.addEventListener("keydown", (ev) => this.onEditInputKeyDown(ev));
+    this.editInput.addEventListener("input", this.scheduleDraw);
     this.editInput.addEventListener("blur", () => this.commitEdit(null));
+    if (this.editable) this.formulaBox.addEventListener("input", this.scheduleDraw);
     this.root.append(this.formulaBar, this.tabs, this.stage);
     container.append(this.root);
 
@@ -433,9 +459,29 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     return this.sheetStates[this.activeSheetIndex] ?? this.sheetStates[0]!;
   }
 
+  private computeHighlights(): HighlightRange[] {
+    if (!this.engine) return [];
+    const sheet = this.getActiveSheet();
+    const active = this.editCell ?? this.currentState().activeCell;
+    let text: string;
+    if (this.editCell) text = this.editInput.value;
+    else if (document.activeElement === this.formulaBox) text = this.formulaBox.value;
+    else text = formatFormulaBar(sheet, active);
+    if (!text.startsWith("=")) return [];
+    const anchor = colLabel(active.c) + active.r;
+    let refs: DependencyReference[];
+    try {
+      refs = this.engine.parseReferences(sheet.name, anchor, text);
+    } catch {
+      return [];
+    }
+    return referencesToHighlights(refs, sheet.name, HIGHLIGHT_PALETTE);
+  }
+
   private draw(): void {
     const state = this.currentState();
     this.recomputeViewport();
+    this.highlights = this.computeHighlights();
     render(this.canvas, this.getActiveSheet(), this.layout, {
       scale: window.devicePixelRatio || 1,
       zoom: this.zoom,
@@ -443,6 +489,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       rowOverrides: state.rowOverrides,
       activeCell: state.activeCell,
       selection: state.selection,
+      highlights: this.highlights,
       viewport: this.viewport,
     });
     this.nameBox.textContent = formatNameBox(state.activeCell, state.selection);
