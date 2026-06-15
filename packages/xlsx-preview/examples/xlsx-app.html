@@ -227,7 +227,6 @@
   #leniency-chip .close { color: #cbd5e1; text-decoration: none; font-size: 16px; line-height: 1; padding: 0 4px; }
 
   #preview .xlcore-tabs { display: none !important; }
-  #preview .xlcore-formula-bar { display: none !important; }
 
   aside {
     min-height: 0;
@@ -578,6 +577,7 @@
           <button id="reset-view">Reset view</button>
         </div>
         <button id="recalc" disabled>Recalc formulas</button>
+        <label class="row"><input id="auto-recalc" type="checkbox" checked> Auto recalc</label>
         <label class="row"><input id="show-hidden" type="checkbox"> Show hidden sheets</label>
       </div>
     </details>
@@ -640,6 +640,7 @@ const loadingStage = document.getElementById("loading-stage");
 const loadingElapsed = document.getElementById("loading-elapsed");
 const showHiddenToggle = document.getElementById("show-hidden");
 const recalcButton = document.getElementById("recalc");
+const autoRecalcToggle = document.getElementById("auto-recalc");
 
 const selActive = document.getElementById("sel-active");
 const selRange = document.getElementById("sel-range");
@@ -650,6 +651,45 @@ let elapsedTimer = null;
 let showHiddenSheets = new URLSearchParams(location.search).get("showHidden") === "1";
 showHiddenToggle.checked = showHiddenSheets;
 let recalcWorkbook = null;
+let autoRecalc = autoRecalcToggle.checked;
+
+autoRecalcToggle.addEventListener("change", () => {
+  autoRecalc = autoRecalcToggle.checked;
+});
+
+function coerceInput(input) {
+  if (input === "") return null;
+  if (/^-?\d+(\.\d+)?$/.test(input)) return Number(input);
+  if (input === "true") return true;
+  if (input === "false") return false;
+  return input;
+}
+
+function applyEdit({ sheetIndex, r, c, input, commitMove }) {
+  if (recalcWorkbook == null || !previewer) return;
+  const addr = formatCell(r, c);
+  try {
+    const name = previewer.layout.sheets[sheetIndex].name;
+    const ws = recalcWorkbook.sheet(name);
+    if (input.startsWith("=")) ws.range(addr).setFormula(input);
+    else ws.range(addr).setValue(coerceInput(input));
+    if (autoRecalc) recalcWorkbook.recalculate();
+    previewer.replaceLayout(recalcWorkbook.layout());
+    if (commitMove) {
+      let nr = r;
+      let nc = c;
+      if (commitMove === "down") nr = r + 1;
+      else if (commitMove === "up") nr = Math.max(1, r - 1);
+      else if (commitMove === "right") nc = c + 1;
+      else if (commitMove === "left") nc = Math.max(1, c - 1);
+      previewer.selectCell(nr, nc, { scroll: true });
+    }
+    renderState();
+    setStatus("edited " + addr);
+  } catch (error) {
+    setStatus(error && error.message ? error.message : String(error));
+  }
+}
 
 panelToggle.addEventListener("click", () => {
   const collapsed = document.body.classList.toggle("panel-collapsed");
@@ -1149,6 +1189,7 @@ async function loadWorkbookFile(file) {
       wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
       workerUrl: `${ASSET_BASE}xlsxWorker.js`,
       showHidden: showHiddenSheets,
+      editable: true,
       pivotController,
       tableController,
       onProgress: ({ label }) => setLoadingStage(label),
@@ -1157,6 +1198,7 @@ async function loadWorkbookFile(file) {
     previewer.on("selectionchange", renderState);
     previewer.on("sheetchange", renderState);
     previewer.on("zoomchange", renderState);
+    previewer.on("celledit", (e) => applyEdit(e.detail));
     populateSheets();
     renderState();
     requestAnimationFrame(finishLoading);
@@ -1265,7 +1307,7 @@ document.getElementById("scroll-active").addEventListener("click", () => {
   renderState();
 });
 
-recalcButton.addEventListener("click", () => {
+function runRecalc() {
   if (!recalcWorkbook || !previewer) return;
   recalcButton.disabled = true;
   try {
@@ -1279,6 +1321,15 @@ recalcButton.addEventListener("click", () => {
     setStatus(error && error.message ? error.message : String(error));
   } finally {
     recalcButton.disabled = false;
+  }
+}
+
+recalcButton.addEventListener("click", runRecalc);
+
+window.addEventListener("keydown", (e) => {
+  if (e.key === "F9") {
+    e.preventDefault();
+    runRecalc();
   }
 });
 
