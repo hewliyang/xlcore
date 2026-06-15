@@ -23,8 +23,11 @@ existing `[Content_Types].xml` verbatim (Defaults included).
 
 ## Reproduction
 
-Two minimal programs build the *same* logical workbook (workbook + 1 worksheet +
-an empty stylesheet) and dump `[Content_Types].xml`.
+Two **minimal** programs create the smallest possible SpreadsheetML package — a
+single workbook part, nothing else — using each library's canonical API, then
+dump `[Content_Types].xml`. No worksheet/styles parts are needed: simply having a
+package at all forces the SDK to write the `_rels/.rels` relationship part, which
+is the part whose content type goes undeclared.
 
 - `rust-repro/`   — `ooxmlsdk` 0.7.0, `SpreadsheetDocument::create(...)` → `to_package_bytes()`
 - `dotnet-repro/` — `DocumentFormat.OpenXml` 3.1.0, `SpreadsheetDocument.Create(...)` (the reference implementation)
@@ -34,31 +37,31 @@ cd rust-repro   && cargo run         # writes rust.xlsx
 cd dotnet-repro && dotnet run        # writes dotnet.xlsx
 ```
 
+Both produce the same two package members:
+
+```
+[Content_Types].xml
+_rels/.rels
+xl/workbook.xml
+```
+
 ### Output: ooxmlsdk (`out/rust-Content_Types.xml`) — INVALID
 
 ```xml
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml" PartName="/xl/workbook.xml"/>
-  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"  PartName="/xl/worksheets/sheet1.xml"/>
-  <Override ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"      PartName="/xl/styles1.xml"/>
 </Types>
 ```
 
-Package members written but **not covered** by any entry above:
-
-```
-_rels/.rels
-xl/_rels/workbook.xml.rels
-```
+The `_rels/.rels` part is written but has **no** matching `<Default>` or
+`<Override>` — its content type is undeclared.
 
 ### Output: Open-XML-SDK (`out/dotnet-Content_Types.xml`) — VALID
 
 ```xml
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default  Extension="xml"  ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-  <Default  Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-  <Override PartName="/xl/styles.xml"            ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  <Default Extension="xml"  ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
 </Types>
 ```
 
@@ -69,16 +72,24 @@ xl/_rels/workbook.xml.rels
 | `rust.xlsx`   (ooxmlsdk)| `Pkg_RequiredPartDoNotExist` — **1 error** |
 | `dotnet.xlsx` (.NET SDK)| **0 errors**                             |
 
+> Note on fairness: this is **not** a code-ergonomics comparison (the two APIs
+> live at different abstraction levels). The `DocumentFormat.OpenXml` output is
+> used purely as the known-good *expected artifact*. The actual reference
+> behaviour comes from `System.IO.Packaging` (see below), which both `dotnet.xlsx`
+> and Excel rely on.
+
 ## What the diff tells us
 
 The `.NET` output is the executable spec for the `Default`/`Override` decision:
 
-| Part                  | Ext    | Decision in `dotnet.xlsx`                                  |
-| --------------------- | ------ | --------------------------------------------------------- |
-| `xl/workbook.xml`     | `xml`  | **first** `xml` part ⇒ becomes the `<Default Extension="xml">` (no Override needed) |
-| `_rels/.rels` etc.    | `rels` | **first** `rels` part ⇒ becomes `<Default Extension="rels">` |
-| `xl/worksheets/sheet1.xml` | `xml` | same ext, **different** content type ⇒ `<Override>`   |
-| `xl/styles.xml`       | `xml`  | same ext, **different** content type ⇒ `<Override>`       |
+| Part              | Ext    | Decision in `dotnet.xlsx`                                  |
+| ----------------- | ------ | --------------------------------------------------------- |
+| `xl/workbook.xml` | `xml`  | **first** `xml` part ⇒ becomes the `<Default Extension="xml">` (no Override needed) |
+| `_rels/.rels`     | `rels` | **first** `rels` part ⇒ becomes `<Default Extension="rels">` |
+
+With more parts present (e.g. a worksheet + styles), the reference SDK keeps the
+single `xml`/`rels` Defaults and adds an `<Override>` only for each part whose
+content type differs from the Default — Defaults first, Overrides after.
 
 Two behaviours ooxmlsdk is missing:
 
@@ -87,8 +98,8 @@ Two behaviours ooxmlsdk is missing:
    required `<Default Extension="rels">` is absent. This is the part that makes
    the package invalid.
 
-(A secondary, non-fatal divergence: ooxmlsdk names the styles part `styles1.xml`
-while the reference SDK uses `styles.xml`.)
+(A secondary, non-fatal divergence: with a styles part present, ooxmlsdk names it
+`styles1.xml` while the reference SDK uses `styles.xml`.)
 
 ## Source of truth
 
@@ -137,6 +148,17 @@ reference SDK always emits `<Default Extension="rels" ContentType="application/v
 | Content-type model   | `_defaultDictionary` (ext→CT) + `_overrideDictionary` (uri→CT) | `Types` holding **only** `Override`s — `empty_content_types()` (`L1937`), `content_types_from_raw_parts()` (`L1922`) |
 | Per-part registration| `AddContentType` decides Default vs Override      | `push_part` → `add_content_type_override()` (`L1666`) — **always** Override, never Default |
 | `.rels` parts        | registered via `AddContentType` ⇒ `<Default rels>`| `save_package` (`src/parts.rs` `L2258`) writes `_rels/.rels` and per-part `.rels` **directly, with no content-type registration** |
+
+### This is not a caller error
+
+Every call in the repro is the only/canonical path: `SpreadsheetDocument::create`,
+`add_workbook_part`, and `to_package_bytes`/`save`. The SDK writes `_rels/.rels`
+**itself** inside `save_package`; the caller never creates it. There is also **no
+public API to register a content-type default** — the only public `content_type`
+functions are read-only (`default_main_part_content_type`, `from_content_type`),
+and `add_content_type_override` is private. The Default/Override model is entirely
+internal, so a caller cannot influence it. The SDK emits the invalid package on
+its own.
 
 ### Suggested fix
 
