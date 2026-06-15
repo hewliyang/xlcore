@@ -28,6 +28,7 @@ export interface PreviewerOptions {
   className?: string;
   report?: LoadReport;
   showHidden?: boolean;
+  editable?: boolean;
 
   pivotController?: PivotFilterController;
   tableController?: TableFilterController;
@@ -56,7 +57,8 @@ export type PreviewerEventName =
   | "zoomchange"
   | "layoutchange"
   | "pivotfilter"
-  | "tablefilter";
+  | "tablefilter"
+  | "celledit";
 
 export type { PivotFilterEvent, TableFilterEvent } from "./interact.js";
 
@@ -129,6 +131,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private readonly sheetStates: SheetState[];
   private readonly tabButtons: Array<HTMLButtonElement | null> = [];
   private readonly showHidden: boolean;
+  private readonly editable: boolean;
   private readonly resizeObserver: ResizeObserver;
   private interactHandle: InteractHandle | null = null;
   private activeSheetIndex = 0;
@@ -144,6 +147,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.tableController = options.tableController;
     this.zoom = clamp(options.initialZoom ?? 1, 0.25, 4);
     this.showHidden = options.showHidden === true;
+    this.editable = options.editable === true;
     this.sheetStates = this.layout.sheets.map(() => ({
       colOverrides: new Map(),
       rowOverrides: new Map(),
@@ -168,11 +172,14 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     fxLabel.style.cssText =
       "font:600 12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#4b5563;padding:0 2px;";
     this.formulaBox = document.createElement("input");
-    this.formulaBox.readOnly = true;
+    this.formulaBox.readOnly = !this.editable;
     this.formulaBox.setAttribute("aria-label", "Formula or value");
     this.formulaBox.style.cssText =
       "min-width:0;flex:1;height:28px;padding:0 9px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#111827;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;";
     this.formulaBar.append(this.nameBox, fxLabel, this.formulaBox);
+    if (this.editable) {
+      this.formulaBox.addEventListener("keydown", (ev) => this.onFormulaBoxKeyDown(ev));
+    }
 
     this.tabs = document.createElement("div");
     this.tabs.className = "xlcore-tabs";
@@ -427,7 +434,9 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       viewport: this.viewport,
     });
     this.nameBox.textContent = formatNameBox(state.activeCell, state.selection);
-    this.formulaBox.value = formatFormulaBar(this.getActiveSheet(), state.activeCell);
+    if (document.activeElement !== this.formulaBox) {
+      this.formulaBox.value = formatFormulaBar(this.getActiveSheet(), state.activeCell);
+    }
   }
 
   private attachInteractivity(): void {
@@ -595,6 +604,29 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
 
   private emit(name: PreviewerEventName): void {
     this.dispatchEvent(new CustomEvent(name, { detail: this.getState() }));
+  }
+
+  private onFormulaBoxKeyDown(ev: KeyboardEvent): void {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      const active = this.getActiveCell();
+      this.dispatchEvent(
+        new CustomEvent("celledit", {
+          detail: {
+            sheetIndex: this.activeSheetIndex,
+            r: active.r,
+            c: active.c,
+            input: this.formulaBox.value,
+            commitMove: "down",
+          },
+        }),
+      );
+      this.formulaBox.blur();
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      this.formulaBox.value = formatFormulaBar(this.getActiveSheet(), this.getActiveCell());
+      this.formulaBox.blur();
+    }
   }
 }
 
