@@ -48,25 +48,6 @@ needs from the host is injected through a small `PreviewerEngine` adapter.
 
 ## Backlog
 
-### P2.4 feat(previewer): function autocomplete dropdown
-
-Library + examples. new `src/formulaAutocomplete.ts`, `src/previewer.ts`.
-
-- Pure model: `autocompleteState(text, caretIndex, names) -> { token, start, end,
-  matches } | null` — find the function-name token under the caret (alpha run
-  bounded by `=`,(`,`,`,operators,space), prefix-match (case-insensitive) against
-  `names`, cap matches. Unit-test thoroughly (caret at start/end, after `(`, after
-  `,`, no match, inside a string literal → null).
-- UI: a positioned dropdown anchored to the active editor (reuse the popover
-  anchoring style from `pivotFilterPopover.ts`/`tableFilterPopover.ts`). Keyboard:
-  ArrowUp/Down move, Tab/Enter accept (insert `NAME(` replacing the token), Esc
-  closes (and does not also cancel the edit on first press). Mouse click accepts.
-  Hide when no matches / not a function position.
-- `engine.functionNames()` feeds the list (fetched once, cached). No-op without
-  engine.
-- Verify (browser-harness): type `=SU` → dropdown with SUM/SUMIF/...; Down+Enter
-  inserts `SUM(`; Esc closes.
-
 ### P2.5 feat(previewer): point mode (click/shift-select to insert refs)
 
 Library + examples. new `src/formulaPointMode.ts`, `src/previewer.ts`,
@@ -114,6 +95,8 @@ checks use a CLI PNG render + eyeball. Interactive items use the browser harness
   returns as plain areas.
 
 ## Shipped
+
+- P2.4 function autocomplete dropdown (pure `autocompleteState` in `src/formulaAutocomplete.ts`; positioned listbox in `src/previewer.ts` anchored under the active editor, keyboard nav, Enter/Tab insert `NAME(`, Esc closes dropdown only; `engine.functionNames()` cached). No-op without engine.
 
 - P2.3 live precedent highlighting wired to a `PreviewerEngine` (`PreviewerOptions.engine?`, rotating 7-color palette, pure `referencesToHighlights` mapping same-sheet refs in `src/highlights.ts`, recompute on edit/formula-bar/selection draw; examples host implements `engine` over `recalcWorkbook`). Boxes only; token coloring deferred.
 

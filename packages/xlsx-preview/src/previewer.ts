@@ -10,6 +10,7 @@ import {
 } from "./interact.js";
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
 import { referencesToHighlights } from "./highlights.js";
+import { autocompleteState, type AutocompleteState } from "./formulaAutocomplete.js";
 import type { HighlightRange } from "./renderTypes.js";
 import type { DependencyReference } from "./api-schema/DependencyReference.js";
 import { cellRect } from "./geometry.js";
@@ -157,6 +158,12 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private readonly editable: boolean;
   private readonly engine?: PreviewerEngine;
   private highlights: HighlightRange[] = [];
+  private functionNamesCache: string[] | null = null;
+  private readonly autocompleteMenu: HTMLDivElement;
+  private autocompleteFor: HTMLInputElement | null = null;
+  private autocompleteData: AutocompleteState | null = null;
+  private autocompleteActive = 0;
+  private autocompleteBlurTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly resizeObserver: ResizeObserver;
   private interactHandle: InteractHandle | null = null;
   private activeSheetIndex = 0;
@@ -206,7 +213,10 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     if (this.editable) {
       this.formulaBox.addEventListener("keydown", (ev) => this.onFormulaBoxKeyDown(ev));
       this.formulaBox.addEventListener("focus", this.scheduleDraw);
-      this.formulaBox.addEventListener("blur", this.scheduleDraw);
+      this.formulaBox.addEventListener("blur", () => {
+        this.scheduleAutocompleteClose();
+        this.scheduleDraw();
+      });
     }
 
     this.tabs = document.createElement("div");
@@ -242,10 +252,26 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       "position:absolute;top:0;left:0;display:none;z-index:5;box-sizing:border-box;margin:0;padding:0 3px;border:2px solid #2563eb;outline:none;background:#fff;color:#111827;font:13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
     this.spacer.append(this.canvas, this.editInput);
     this.stage.append(this.spacer);
+    this.autocompleteMenu = document.createElement("div");
+    this.autocompleteMenu.style.cssText =
+      "position:fixed;z-index:1100;display:none;background:#fff;border:1px solid #d4d4d8;border-radius:6px;" +
+      "box-shadow:0 8px 24px rgba(15,23,42,0.18);padding:4px;min-width:140px;max-height:240px;overflow:auto;" +
+      "font:12px ui-monospace,SFMono-Regular,Menlo,monospace;";
+    document.body.append(this.autocompleteMenu);
     this.editInput.addEventListener("keydown", (ev) => this.onEditInputKeyDown(ev));
-    this.editInput.addEventListener("input", this.scheduleDraw);
-    this.editInput.addEventListener("blur", () => this.commitEdit(null));
-    if (this.editable) this.formulaBox.addEventListener("input", this.scheduleDraw);
+    this.editInput.addEventListener("input", () => {
+      this.updateAutocomplete(this.editInput);
+      this.scheduleDraw();
+    });
+    this.editInput.addEventListener("blur", () => {
+      this.scheduleAutocompleteClose();
+      this.commitEdit(null);
+    });
+    if (this.editable)
+      this.formulaBox.addEventListener("input", () => {
+        this.updateAutocomplete(this.formulaBox);
+        this.scheduleDraw();
+      });
     this.root.append(this.formulaBar, this.tabs, this.stage);
     container.append(this.root);
 
@@ -306,6 +332,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.tablePopover = null;
     this.interactHandle?.destroy();
     this.interactHandle = null;
+    this.closeAutocomplete();
+    this.autocompleteMenu.remove();
     this.resizeObserver.disconnect();
     this.stage.removeEventListener("scroll", this.scheduleDraw);
     this.canvas.removeEventListener(
@@ -670,7 +698,121 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.dispatchEvent(new CustomEvent(name, { detail: this.getState() }));
   }
 
+  private getFunctionNames(): string[] {
+    if (!this.engine) return [];
+    if (this.functionNamesCache === null) {
+      try {
+        this.functionNamesCache = this.engine.functionNames();
+      } catch {
+        this.functionNamesCache = [];
+      }
+    }
+    return this.functionNamesCache;
+  }
+
+  private updateAutocomplete(input: HTMLInputElement): void {
+    if (!this.engine) return this.closeAutocomplete();
+    const caret = input.selectionStart;
+    if (caret === null) return this.closeAutocomplete();
+    const state = autocompleteState(input.value, caret, this.getFunctionNames());
+    if (!state) return this.closeAutocomplete();
+    this.autocompleteFor = input;
+    this.autocompleteData = state;
+    if (this.autocompleteActive >= state.matches.length) this.autocompleteActive = 0;
+    this.renderAutocomplete(input);
+  }
+
+  private renderAutocomplete(input: HTMLInputElement): void {
+    const state = this.autocompleteData;
+    if (!state) return;
+    const menu = this.autocompleteMenu;
+    menu.replaceChildren();
+    state.matches.forEach((name, i) => {
+      const item = document.createElement("div");
+      item.textContent = name;
+      const active = i === this.autocompleteActive;
+      item.style.cssText = `padding:3px 8px;cursor:pointer;border-radius:4px;${
+        active ? "background:#2563eb;color:#fff;" : "color:#111827;"
+      }`;
+      item.onmousedown = (ev) => {
+        ev.preventDefault();
+        this.acceptAutocomplete(i);
+      };
+      item.onmouseenter = () => {
+        this.autocompleteActive = i;
+        this.renderAutocomplete(input);
+      };
+      menu.append(item);
+    });
+    const rect = input.getBoundingClientRect();
+    menu.style.left = `${rect.left}px`;
+    menu.style.top = `${rect.bottom + 2}px`;
+    menu.style.display = "block";
+  }
+
+  private closeAutocomplete(): void {
+    this.autocompleteFor = null;
+    this.autocompleteData = null;
+    this.autocompleteActive = 0;
+    this.autocompleteMenu.style.display = "none";
+  }
+
+  private scheduleAutocompleteClose(): void {
+    if (this.autocompleteBlurTimer !== null) clearTimeout(this.autocompleteBlurTimer);
+    this.autocompleteBlurTimer = setTimeout(() => this.closeAutocomplete(), 120);
+  }
+
+  private isAutocompleteOpen(): boolean {
+    return this.autocompleteData !== null && this.autocompleteMenu.style.display !== "none";
+  }
+
+  private acceptAutocomplete(index: number): void {
+    const state = this.autocompleteData;
+    const input = this.autocompleteFor;
+    if (!state || !input) return;
+    const name = state.matches[index];
+    if (!name) return;
+    const insert = `${name}(`;
+    const value = input.value.slice(0, state.start) + insert + input.value.slice(state.end);
+    input.value = value;
+    const caret = state.start + insert.length;
+    input.setSelectionRange(caret, caret);
+    this.closeAutocomplete();
+    input.dispatchEvent(new Event("input"));
+  }
+
+  private handleAutocompleteKey(ev: KeyboardEvent): boolean {
+    if (!this.isAutocompleteOpen()) return false;
+    const state = this.autocompleteData!;
+    const input = this.autocompleteFor;
+    if (ev.key === "ArrowDown") {
+      ev.preventDefault();
+      this.autocompleteActive = (this.autocompleteActive + 1) % state.matches.length;
+      if (input) this.renderAutocomplete(input);
+      return true;
+    }
+    if (ev.key === "ArrowUp") {
+      ev.preventDefault();
+      this.autocompleteActive =
+        (this.autocompleteActive - 1 + state.matches.length) % state.matches.length;
+      if (input) this.renderAutocomplete(input);
+      return true;
+    }
+    if (ev.key === "Enter" || ev.key === "Tab") {
+      ev.preventDefault();
+      this.acceptAutocomplete(this.autocompleteActive);
+      return true;
+    }
+    if (ev.key === "Escape") {
+      ev.preventDefault();
+      this.closeAutocomplete();
+      return true;
+    }
+    return false;
+  }
+
   private onFormulaBoxKeyDown(ev: KeyboardEvent): void {
+    if (this.handleAutocompleteKey(ev)) return;
     if (ev.key === "Enter") {
       ev.preventDefault();
       const active = this.getActiveCell();
@@ -714,6 +856,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   }
 
   private hideEditOverlay(): void {
+    this.closeAutocomplete();
     if (!this.editCell) return;
     this.editCell = null;
     this.editInput.style.display = "none";
@@ -739,6 +882,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   }
 
   private onEditInputKeyDown(ev: KeyboardEvent): void {
+    if (this.handleAutocompleteKey(ev)) return;
     if (ev.key === "Enter") {
       ev.preventDefault();
       this.commitEdit(ev.shiftKey ? "up" : "down");
