@@ -9,7 +9,7 @@ pub(crate) fn solid_fill_color(
 ) -> Option<String> {
     use xdr::ShapePropertiesChoice2;
     match choice.as_ref()? {
-        ShapePropertiesChoice2::ASolidFill(sf) => resolve_solid_fill(sf, theme),
+        ShapePropertiesChoice2::SolidFill(sf) => resolve_solid_fill(sf, theme),
 
         _ => None,
     }
@@ -18,7 +18,7 @@ pub(crate) fn solid_fill_color(
 fn resolve_gradient_stop_color(c: &a::GradientStopChoice, theme: Option<&Theme>) -> Option<String> {
     use a::GradientStopChoice as G;
     match c {
-        G::ASrgbClr(c) => {
+        G::RgbColorModelHex(c) => {
             let dbg = format!("{:?}", c);
             let v: &str = &c.val;
             if v.len() == 6 {
@@ -30,16 +30,16 @@ fn resolve_gradient_stop_color(c: &a::GradientStopChoice, theme: Option<&Theme>)
                 None
             }
         }
-        G::ASchemeClr(c) => {
+        G::SchemeColor(c) => {
             let dbg = format!("{:?}", c);
             crate::chart_colors::theme_scheme_color(&dbg, theme)
                 .map(|base| crate::chart_colors::apply_color_modifiers(&base, &dbg))
         }
-        G::APrstClr(c) => {
+        G::PresetColor(c) => {
             let dbg = format!("{:?}", c.val);
             preset_color_hex(&dbg).map(|s| s.to_string())
         }
-        G::ASysClr(c) => c.last_color.as_deref().map(|s| format!("#{}", s)),
+        G::SystemColor(c) => c.last_color.as_deref().map(|s| format!("#{}", s)),
         _ => None,
     }
 }
@@ -54,13 +54,13 @@ pub(crate) fn gradient_fill(
 ) -> Option<ShapeGradient> {
     use xdr::ShapePropertiesChoice2;
     let gf = match choice.as_ref()? {
-        ShapePropertiesChoice2::AGradFill(g) => g,
+        ShapePropertiesChoice2::GradientFill(g) => g,
         _ => return None,
     };
     let mut stops: Vec<ShapeGradientStop> = Vec::new();
     if let Some(gs_lst) = gf.gradient_stop_list.as_ref() {
-        for gs in &gs_lst.a_gs {
-            let pos = (gs.position as f32) / 100_000.0;
+        for gs in &gs_lst.gradient_stop {
+            let pos = (gs.position.as_drawingml_percent() as f32) / 100_000.0;
             let color = match gs.gradient_stop_choice.as_ref() {
                 Some(c) => resolve_gradient_stop_color(c, theme),
                 None => None,
@@ -76,7 +76,7 @@ pub(crate) fn gradient_fill(
 
     use a::GradientFillChoice as GC;
     match gf.gradient_fill_choice.as_ref() {
-        Some(GC::ALin(lin)) => {
+        Some(GC::LinearGradientFill(lin)) => {
             let ang = lin.angle.unwrap_or(0);
 
             let angle_deg = (ang as f64) / 60_000.0;
@@ -88,17 +88,17 @@ pub(crate) fn gradient_fill(
                 fill_to_rect: None,
             })
         }
-        Some(GC::APath(p)) => {
+        Some(GC::PathGradientFill(p)) => {
             let path = p
                 .path
                 .as_ref()
                 .map(|v| format!("{:?}", v).to_ascii_lowercase());
             let ftr = p.fill_to_rectangle.as_ref().map(|r| {
                 vec![
-                    rect_pct(r.left),
-                    rect_pct(r.top),
-                    rect_pct(r.right),
-                    rect_pct(r.bottom),
+                    rect_pct(r.left.map(|v| v.as_drawingml_percent())),
+                    rect_pct(r.top.map(|v| v.as_drawingml_percent())),
+                    rect_pct(r.right.map(|v| v.as_drawingml_percent())),
+                    rect_pct(r.bottom.map(|v| v.as_drawingml_percent())),
                 ]
             });
             Some(ShapeGradient {
@@ -125,7 +125,7 @@ fn outer_shadow_color(
 ) -> Option<(String, f32)> {
     use a::OuterShadowChoice as C;
     let (hex, scope) = match choice {
-        C::ASrgbClr(c) => {
+        C::RgbColorModelHex(c) => {
             let dbg = format!("{:?}", c);
             let v: &str = &c.val;
             if v.len() != 6 {
@@ -134,18 +134,18 @@ fn outer_shadow_color(
             let base = format!("#{}", v);
             (crate::chart_colors::apply_color_modifiers(&base, &dbg), dbg)
         }
-        C::ASchemeClr(c) => {
+        C::SchemeColor(c) => {
             let dbg = format!("{:?}", c);
             let base = crate::chart_colors::theme_scheme_color(&dbg, theme)?;
             (crate::chart_colors::apply_color_modifiers(&base, &dbg), dbg)
         }
-        C::APrstClr(c) => {
+        C::PresetColor(c) => {
             let dbg = format!("{:?}", c);
             let val_dbg = format!("{:?}", c.val);
             let hex = preset_color_hex(&val_dbg)?.to_string();
             (hex, dbg)
         }
-        C::ASysClr(c) => {
+        C::SystemColor(c) => {
             let dbg = format!("{:?}", c);
             let hex = c.last_color.as_deref().map(|s| format!("#{}", s))?;
             (hex, dbg)
@@ -172,16 +172,16 @@ pub(crate) fn outer_shadow(
 ) -> Option<ShapeOuterShadow> {
     use xdr::ShapePropertiesChoice3;
     let lst = match choice.as_ref()? {
-        ShapePropertiesChoice3::AEffectLst(l) => l,
-        ShapePropertiesChoice3::AEffectDag(_) => return None,
+        ShapePropertiesChoice3::EffectList(l) => l,
+        ShapePropertiesChoice3::EffectDag(_) => return None,
     };
     let sh = lst.outer_shadow.as_ref()?;
     let (color, alpha) = match sh.outer_shadow_choice.as_ref() {
         Some(c) => outer_shadow_color(c, theme)?,
         None => ("#000000".to_string(), 1.0),
     };
-    let blur_emu = sh.blur_radius.unwrap_or(0);
-    let dist_emu = sh.distance.unwrap_or(0);
+    let blur_emu = sh.blur_radius.map(|v| v.to_emu()).unwrap_or(0);
+    let dist_emu = sh.distance.map(|v| v.to_emu()).unwrap_or(0);
     let dir_raw = sh.direction.unwrap_or(0);
     let dir_deg = (dir_raw as f32) / 60_000.0;
     if blur_emu == 0 && dist_emu == 0 {
@@ -206,8 +206,8 @@ pub(crate) fn outline_info(
     let width = ln.width;
     use a::OutlineChoice;
     let color = match ln.outline_choice1.as_ref() {
-        Some(OutlineChoice::ASolidFill(sf)) => resolve_solid_fill(sf, theme),
-        Some(OutlineChoice::ANoFill(_)) => None,
+        Some(OutlineChoice::SolidFill(sf)) => resolve_solid_fill(sf, theme),
+        Some(OutlineChoice::NoFill(_)) => None,
         _ => None,
     };
     (color, width)
@@ -217,7 +217,7 @@ pub(crate) fn line_dash_token(ln: Option<&a::Outline>) -> Option<String> {
     let ln = ln?;
     use a::OutlineChoice2;
     match ln.outline_choice2.as_ref()? {
-        OutlineChoice2::APrstDash(d) => d.val.as_ref().map(|v| prst_dash_token(v).to_string()),
+        OutlineChoice2::PresetDash(d) => d.val.as_ref().map(|v| prst_dash_token(v).to_string()),
         _ => None,
     }
 }
@@ -231,9 +231,9 @@ pub(crate) fn line_join_token(ln: Option<&a::Outline>) -> Option<String> {
     let c = ln?.outline_choice3.as_ref()?;
     Some(
         match c {
-            a::OutlineChoice3::ARound => "round",
-            a::OutlineChoice3::ABevel => "bevel",
-            a::OutlineChoice3::AMiter(_) => "miter",
+            a::OutlineChoice3::Round => "round",
+            a::OutlineChoice3::LineJoinBevel => "bevel",
+            a::OutlineChoice3::Miter(_) => "miter",
         }
         .to_string(),
     )

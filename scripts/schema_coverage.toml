@@ -1,0 +1,322 @@
+# Schema-coverage manifest for scripts/schema_diff.py --check.
+#
+# Each [[pair]] is an (ooxmlsdk CT_* struct, xlcore-types DTO) we have opened up.
+# Per field the diff assigns: covered | flattened (n/m) | derived | excluded |
+# MISSING. Only MISSING counts as a gap; --check fails (non-zero) on any MISSING
+# field that is not declared here or via a DTO `schema-excluded:` doc annotation.
+#
+#   ns       namespace prefix to disambiguate same-named structs (c/x/a)
+#   derived  fields the API computes internally (axis ids, refs, order, index)
+#   excluded fields intentionally deferred for this pair (extLst is intrinsic)
+#   aliases  sdk leaf-tag/field -> dto field, for semantic renames
+#
+# Deferrals shared by a DTO live in its doc comment (`schema-excluded:`); per-pair
+# specifics live below. Every entry is a deliberate decision.
+
+# --- chart axes -------------------------------------------------------------
+[[pair]]
+sdk = "ValueAxis"
+dto = "ChartAxisPatch"
+ns = "c"
+derived = ["axId", "axPos", "crossAx"]
+aliases = { delete = "hidden", numFmt = "number_format", orientation = "reversed", txPr = "label_rotation" }
+
+[[pair]]
+sdk = "CategoryAxis"
+dto = "ChartAxisPatch"
+ns = "c"
+derived = ["axId", "axPos", "crossAx"]
+aliases = { delete = "hidden", numFmt = "number_format", orientation = "reversed", txPr = "label_rotation" }
+
+# --- chart series -----------------------------------------------------------
+[[pair]]
+sdk = "BarChartSeries"
+dto = "ChartSeriesPatch"
+ns = "c"
+derived = ["idx", "order", "tx", "cat", "val"]
+aliases = { dPt = "data_points" }
+
+[[pair]]
+sdk = "LineChartSeries"
+dto = "ChartSeriesPatch"
+ns = "c"
+derived = ["idx", "order", "tx", "cat", "val"]
+aliases = { dPt = "data_points" }
+
+[[pair]]
+sdk = "PieChartSeries"
+dto = "ChartSeriesPatch"
+ns = "c"
+derived = ["idx", "order", "tx", "cat", "val"]
+aliases = { dPt = "data_points" }
+
+[[pair]]
+sdk = "ScatterChartSeries"
+dto = "ChartSeriesPatch"
+ns = "c"
+derived = ["idx", "order", "tx", "xVal", "yVal"]
+aliases = { dPt = "data_points" }
+
+[[pair]]
+sdk = "DataPoint"
+dto = "ChartDataPoint"
+ns = "c"
+aliases = { spPr = "fill" }
+
+[[pair]]
+sdk = "Marker"
+dto = "ChartMarker"
+ns = "c"
+aliases = { symbol = "style" }
+
+[[pair]]
+sdk = "GradientFill"
+dto = "ChartGradientFill"
+ns = "a"
+excluded = ["flip", "rotWithShape", "tileRect"]
+aliases = { gsLst = "stops", lin = "angle" }
+
+[[pair]]
+sdk = "PatternFill"
+dto = "ChartPatternFill"
+ns = "a"
+aliases = { prst = "preset", fgClr = "foreground", bgClr = "background" }
+
+[[pair]]
+sdk = "DataLabel"
+dto = "ChartDataLabel"
+ns = "c"
+derived = ["index"]
+aliases = { dLblPos = "position", numFmt = "number_format" }
+
+[[pair]]
+sdk = "Trendline"
+dto = "ChartTrendline"
+ns = "c"
+aliases = { trendlineType = "kind", dispRSqr = "display_r_squared" }
+
+[[pair]]
+sdk = "ErrorBars"
+dto = "ChartErrorBars"
+ns = "c"
+aliases = { errDir = "direction", errBarType = "bar_type", errValType = "value_type", val = "value", plus = "plus_ref", minus = "minus_ref" }
+
+[[pair]]
+sdk = "DataTable"
+dto = "ChartDataTable"
+ns = "c"
+aliases = { showHorzBorder = "show_horizontal_border", showVertBorder = "show_vertical_border", showOutline = "show_outline" }
+
+# --- chart kinds (plot-group containers) ------------------------------------
+[[pair]]
+sdk = "DoughnutChart"
+dto = "ChartPatch"
+ns = "c"
+aliases = { ser = "series" }
+
+[[pair]]
+sdk = "StockChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["axId"]
+aliases = { ser = "series" }
+
+# --- 3D chart kinds ---------------------------------------------------------
+[[pair]]
+sdk = "View3D"
+dto = "ChartView3D"
+ns = "c"
+aliases = { rotX = "rot_x", rotY = "rot_y", hPercent = "height_percent" }
+
+[[pair]]
+sdk = "Bar3DChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["barDir", "axId"]
+aliases = { ser = "series", grouping = "stacking", shape = "bar_shape", gapDepth = "gap_depth" }
+
+[[pair]]
+sdk = "Line3DChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["axId"]
+excluded = ["gapDepth"]
+aliases = { ser = "series", grouping = "stacking" }
+
+[[pair]]
+sdk = "Area3DChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["axId"]
+excluded = ["gapDepth"]
+aliases = { ser = "series", grouping = "stacking" }
+
+[[pair]]
+sdk = "Pie3DChart"
+dto = "ChartPatch"
+ns = "c"
+aliases = { ser = "series" }
+
+# --- surface chart kinds ----------------------------------------------------
+[[pair]]
+sdk = "SurfaceChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["axId"]
+excluded = ["bandFmts"]
+aliases = { ser = "series" }
+
+[[pair]]
+sdk = "Surface3DChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["axId"]
+excluded = ["bandFmts"]
+aliases = { ser = "series" }
+
+# --- 3D floor / walls -------------------------------------------------------
+[[pair]]
+sdk = "Floor"
+dto = "ChartSurfaceWall"
+ns = "c"
+excluded = ["thickness", "pictureOptions"]
+aliases = { spPr = "fill" }
+
+[[pair]]
+sdk = "SideWall"
+dto = "ChartSurfaceWall"
+ns = "c"
+excluded = ["thickness", "pictureOptions"]
+aliases = { spPr = "fill" }
+
+[[pair]]
+sdk = "BackWall"
+dto = "ChartSurfaceWall"
+ns = "c"
+excluded = ["thickness", "pictureOptions"]
+aliases = { spPr = "fill" }
+
+# --- ofPie chart kinds ------------------------------------------------------
+[[pair]]
+sdk = "OfPieChart"
+dto = "ChartPatch"
+ns = "c"
+derived = ["ofPieType"]
+excluded = ["custSplit"]
+aliases = { ser = "series" }
+
+# --- plot-area / legend styling ---------------------------------------------
+[[pair]]
+sdk = "PlotArea"
+dto = "ChartPlotArea"
+ns = "c"
+derived = ["areaChart", "area3DChart", "lineChart", "line3DChart", "stockChart", "radarChart", "scatterChart", "pieChart", "pie3DChart", "doughnutChart", "barChart", "bar3DChart", "ofPieChart", "surfaceChart", "surface3DChart", "bubbleChart", "valAx", "catAx", "dateAx", "serAx", "dTable"]
+aliases = { spPr = "fill" }
+
+[[pair]]
+sdk = "Legend"
+dto = "ChartLegend"
+ns = "c"
+derived = ["legendPos", "overlay"]
+excluded = ["legendEntry"]
+aliases = { spPr = "fill", txPr = "font" }
+
+[[pair]]
+sdk = "ManualLayout"
+dto = "ChartManualLayout"
+ns = "c"
+
+# --- styles -----------------------------------------------------------------
+[[pair]]
+sdk = "Protection"
+dto = "ProtectionPatch"
+ns = "x"
+
+[[pair]]
+sdk = "PatternFill"
+dto = "FillPatch"
+ns = "x"
+aliases = { patternType = "pattern", fgColor = "foreground", bgColor = "background" }
+
+[[pair]]
+sdk = "GradientFill"
+dto = "GradientFillPatch"
+ns = "x"
+aliases = { type = "kind", stop = "stops" }
+
+[[pair]]
+sdk = "Border"
+dto = "BorderPatch"
+ns = "x"
+
+[[pair]]
+sdk = "Alignment"
+dto = "AlignmentPatch"
+ns = "x"
+aliases = { wrapText = "wrap" }
+
+[[pair]]
+sdk = "Font"
+dto = "FontPatch"
+ns = "x"
+aliases = { b = "bold", i = "italic", u = "underline", sz = "size" }
+
+# --- rich text runs in cells -------------------------------------------------
+[[pair]]
+sdk = "Run"
+dto = "RichTextRun"
+ns = "x"
+aliases = { rPr = "font", t = "text" }
+
+[[pair]]
+sdk = "InlineString"
+dto = "RichText"
+ns = "x"
+aliases = { r = "runs" }
+
+# --- named cell styles -------------------------------------------------------
+[[pair]]
+sdk = "CellStyle"
+dto = "NamedStylePatch"
+ns = "x"
+derived = ["xfId"]
+
+# --- non-chart writers (cell-level CRUD parity) -----------------------------
+[[pair]]
+sdk = "Hyperlink"
+dto = "HyperlinkPatch"
+ns = "x"
+derived = ["reference"]
+aliases = { id = "target" }
+
+[[pair]]
+sdk = "DataValidation"
+dto = "DataValidationPatch"
+ns = "x"
+derived = ["sequenceOfReferences"]
+excluded = ["imeMode", "list"]
+aliases = { type = "ruleType" }
+
+[[pair]]
+sdk = "ConditionalFormattingRule"
+dto = "ConditionalFormatRulePatch"
+ns = "x"
+derived = ["formatId"]
+excluded = ["timePeriod"]
+aliases = { type = "kind", formula = "formula1" }
+
+[[pair]]
+sdk = "DefinedName"
+dto = "DefinedNamePatch"
+ns = "x"
+derived = ["localSheetId"]
+excluded = ["customMenu", "description", "help", "statusBar", "function", "vbProcedure", "xlm", "functionGroupId", "shortcutKey", "publishToServer", "workbookParameter"]
+aliases = { xml_content = "reference" }
+
+[[pair]]
+sdk = "Table"
+dto = "TablePatch"
+ns = "x"
+derived = ["id", "totalsRowShown"]
+excluded = ["comment", "tableType", "insertRow", "insertRowShift", "published", "connectionId", "headerRowDxfId", "dataDxfId", "totalsRowDxfId", "headerRowBorderDxfId", "tableBorderDxfId", "totalsRowBorderDxfId", "headerRowCellStyle", "dataCellStyle", "totalsRowCellStyle"]
+aliases = { tableColumns = "columns" }

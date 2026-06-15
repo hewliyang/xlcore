@@ -1,0 +1,33 @@
+export const NumberFormat = {
+  General: "general",
+  Integer: "0",
+  Number2: "0.00",
+  NumberThousands: "#,##0",
+  NumberThousands2: "#,##0.00",
+  Percent: "0%",
+  Percent2: "0.00%",
+  Scientific2: "0.00E+00",
+  Fraction: "# ?/?",
+  Fraction2: "# ??/??",
+  DateMonthDayYear: "mm-dd-yy",
+  DateDayMonthYear: "d-mmm-yy",
+  DateDayMonth: "d-mmm",
+  DateMonthYear: "mmm-yy",
+  TimeHourMinuteAmPm: "h:mm AM/PM",
+  TimeHourMinuteSecondAmPm: "h:mm:ss AM/PM",
+  TimeHourMinute: "h:mm",
+  TimeHourMinuteSecond: "h:mm:ss",
+  DateTime: "m/d/yy h:mm",
+  Accounting: "#,##0 ;(#,##0)",
+  AccountingRed: "#,##0 ;[Red](#,##0)",
+  Accounting2: "#,##0.00;(#,##0.00)",
+  Accounting2Red: "#,##0.00;[Red](#,##0.00)",
+  TimeMinuteSecond: "mm:ss",
+  TimeElapsedHourMinuteSecond: "[h]:mm:ss",
+  TimeMinuteSecondTenths: "mmss.0",
+  Scientific1: "##0.0E+0",
+  Text: "@",
+} as const;
+
+export type NumberFormatKey = keyof typeof NumberFormat;
+export type NumberFormatCode = (typeof NumberFormat)[NumberFormatKey];

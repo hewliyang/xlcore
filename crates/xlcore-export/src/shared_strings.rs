@@ -16,9 +16,9 @@ pub(crate) fn preload(
         Ok(s) => s,
         Err(_) => return (Vec::new(), Vec::new()),
     };
-    let mut texts = Vec::with_capacity(sst.x_si.len());
-    let mut runs = Vec::with_capacity(sst.x_si.len());
-    for item in &sst.x_si {
+    let mut texts = Vec::with_capacity(sst.shared_string_item.len());
+    let mut runs = Vec::with_capacity(sst.shared_string_item.len());
+    for item in &sst.shared_string_item {
         if let Some(t) = &item.text {
             texts.push(t.xml_content.as_deref().unwrap_or("").to_string());
             runs.push(Vec::new());
@@ -26,8 +26,8 @@ pub(crate) fn preload(
         }
 
         let mut s = String::new();
-        let mut rs: Vec<TextRun> = Vec::with_capacity(item.x_r.len());
-        for r in &item.x_r {
+        let mut rs: Vec<TextRun> = Vec::with_capacity(item.run.len());
+        for r in &item.run {
             let txt = r.text.xml_content.as_deref().unwrap_or("").to_string();
             s.push_str(&txt);
             rs.push(text_run_from(r, txt));
@@ -50,14 +50,15 @@ pub(crate) fn text_run_from(r: &xspread::Run, text: String) -> TextRun {
     let Some(rpr) = &r.run_properties else {
         return tr;
     };
+    let fr = crate::font_flat::flatten_run_properties(rpr);
 
-    if let Some(b) = rpr.x_b.first() {
-        tr.bold = b.val.unwrap_or(true);
+    if let Some(b) = fr.bold {
+        tr.bold = b.val.map(bool::from).unwrap_or(true);
     }
-    if let Some(i) = rpr.x_i.first() {
-        tr.italic = i.val.unwrap_or(true);
+    if let Some(i) = fr.italic {
+        tr.italic = i.val.map(bool::from).unwrap_or(true);
     }
-    if let Some(u) = rpr.x_u.first() {
+    if let Some(u) = fr.underline {
         let variant = underline_variant(u.val);
         match variant {
             Some("none") => {}
@@ -72,16 +73,16 @@ pub(crate) fn text_run_from(r: &xspread::Run, text: String) -> TextRun {
             }
         }
     }
-    if let Some(s) = rpr.x_strike.first() {
-        tr.strike = s.val.unwrap_or(true);
+    if let Some(s) = fr.strike {
+        tr.strike = s.val.map(bool::from).unwrap_or(true);
     }
-    if let Some(sz) = rpr.x_sz.first() {
+    if let Some(sz) = fr.font_size {
         tr.size = Some(sz.val as f32);
     }
-    if let Some(rf) = rpr.x_r_font.first() {
+    if let Some(rf) = fr.run_font {
         tr.font_name = Some(rf.val.as_str().to_string());
     }
-    if let Some(c) = rpr.x_color.first() {
+    if let Some(c) = fr.color {
         let any = c.rgb.is_some() || c.theme.is_some() || c.indexed.is_some();
         if any {
             tr.color = Some(Color {
@@ -93,18 +94,18 @@ pub(crate) fn text_run_from(r: &xspread::Run, text: String) -> TextRun {
         }
     }
 
-    if let Some(v) = rpr.x_vert_align.first() {
+    if let Some(v) = fr.vertical_text_alignment {
         tr.vert_align = vert_align_variant(v.val);
     }
 
-    if let Some(fm) = rpr.x_family.first() {
+    if let Some(fm) = fr.font_family {
         let v = fm.val;
         if (0..=5).contains(&v) {
             tr.family = Some(v as u8);
         }
     }
 
-    if let Some(s) = rpr.x_scheme.first() {
+    if let Some(s) = fr.font_scheme {
         tr.scheme = font_scheme_variant(s.val);
     }
     tr

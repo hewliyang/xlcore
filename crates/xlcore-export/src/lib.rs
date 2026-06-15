@@ -6,6 +6,8 @@ mod charts_helpers;
 mod charts_legacy;
 mod columnar;
 mod fmt_scheme;
+mod font_flat;
+mod pivot_engine;
 mod pivots;
 mod refs;
 mod schema;
@@ -18,10 +20,15 @@ mod shared_strings;
 mod sheet;
 mod sparklines;
 mod styles;
+#[allow(dead_code)]
+pub mod table_engine;
+mod table_filter;
 mod tables;
 mod theme;
 
 pub use columnar::compactify;
+pub use theme::extract as extract_theme;
+pub use pivot_engine::{compute_cells, PivotStyleIndices};
 pub use schema::*;
 pub(crate) use shared_strings::{
     font_scheme_variant, text_run_from, underline_variant, vert_align_variant,
@@ -53,7 +60,7 @@ pub fn extract_doc_with_options(
 ) -> Result<WorkbookLayout> {
     let shared_strings = shared_strings::preload(doc);
 
-    let (styles, dxfs, table_styles) = {
+    let (mut styles, dxfs, table_styles) = {
         let wb_part = doc.workbook_part()?;
         if let Some(sp) = wb_part.workbook_styles_part(doc) {
             let sp = sp.clone();
@@ -62,7 +69,7 @@ pub fn extract_doc_with_options(
             let table_styles = styles::extract_table_styles(s);
             (styles::extract(s), dxfs, table_styles)
         } else {
-            (Styles::default(), Vec::new(), Vec::new())
+            (styles::empty_styles(), Vec::new(), Vec::new())
         }
     };
 
@@ -79,12 +86,12 @@ pub fn extract_doc_with_options(
 
     let wb_part = doc.workbook_part()?;
     let workbook = wb_part.root_element(doc)?.clone();
-    let workbook_sheets = workbook.sheets.x_sheet.clone();
+    let workbook_sheets = workbook.sheets.sheet.clone();
 
     let active_sheet_index = workbook
         .book_views
         .as_ref()
-        .and_then(|bv| bv.x_workbook_view.first())
+        .and_then(|bv| bv.workbook_view.first())
         .and_then(|wv| wv.active_tab);
 
     let wb_part = doc.workbook_part()?;
@@ -99,8 +106,18 @@ pub fn extract_doc_with_options(
     } else {
         workbook_sheets.len()
     };
+    let sheet_parts_by_name: HashMap<String, _> = workbook_sheets
+        .iter()
+        .filter_map(|s| {
+            ws_parts_by_rel_id
+                .get(s.id.as_str())
+                .map(|p| (s.name.as_str().to_string(), p.clone()))
+        })
+        .collect();
+
     let mut sheets = Vec::with_capacity(sheet_capacity);
     let mut selected_original_sheet_index: Option<u32> = None;
+    let mut pivot_style_memo: Option<pivot_engine::PivotStyleIndices> = None;
     for (idx, wb_sheet) in workbook_sheets.iter().enumerate() {
         if let Some(wanted_idx) = options.sheet_index {
             if idx != wanted_idx {
@@ -122,7 +139,14 @@ pub fn extract_doc_with_options(
 
         let drawings = charts::extract(doc, &ws_part, theme.as_ref());
         let tables = tables::extract(doc, &ws_part);
-        let pivots = pivots::extract(doc, &ws_part);
+        let (pivots, pivot_cells) = pivots::extract(
+            doc,
+            &ws_part,
+            &mut styles,
+            &mut pivot_style_memo,
+            &shared_strings.0,
+            &sheet_parts_by_name,
+        );
         let comments = annotations::extract_comments(doc, &ws_part);
         let ws_for_sparks = ws_part.root_element(doc)?.clone();
         let sparkline_groups = sparklines::extract(&ws_for_sparks);
@@ -144,8 +168,16 @@ pub fn extract_doc_with_options(
             }
         });
         sheet.drawings = drawings;
+        sheet.table_filter_arrows = table_filter::extract(
+            &ws_clone,
+            &sheet.name,
+            &sheet.auto_filter_range,
+            &tables,
+            &shared_strings.0,
+        );
         sheet.tables = tables;
         sheet.pivots = pivots;
+        merge_pivot_cells(&mut sheet, pivot_cells);
         sheet.hyperlinks = hyperlinks;
         sheet.comments = comments;
         sheet.sparkline_groups = sparkline_groups;
@@ -164,11 +196,32 @@ pub fn extract_doc_with_options(
         }
     }
 
+    let real_sheet_count = sheets.len();
+    if selected_original_sheet_index.is_some() {
+        for (idx, wb_sheet) in workbook_sheets.iter().enumerate() {
+            if Some(idx as u32) == selected_original_sheet_index {
+                continue;
+            }
+            let Some(ws_part) = ws_parts_by_rel_id
+                .get(wb_sheet.id.as_str())
+                .or_else(|| ws_parts.get(idx))
+                .cloned()
+            else {
+                continue;
+            };
+            let Ok(ws) = ws_part.root_element(doc) else {
+                continue;
+            };
+            let name = wb_sheet.name.as_str().to_string();
+            sheets.push(sheet::extract(ws, idx, name, &shared_strings.0, &styles));
+        }
+    }
+
     let mut defined_names_vec: Vec<DefinedName> = workbook
         .defined_names
         .as_ref()
         .map(|dn| {
-            dn.x_defined_name
+            dn.defined_name
                 .iter()
                 .filter_map(|d| {
                     let formula = d.xml_content.as_ref()?.clone();
@@ -204,8 +257,52 @@ pub fn extract_doc_with_options(
     refs::resolve_chart_refs(&mut layout, &defined_names);
     refs::resolve_sparkline_refs(&mut layout);
 
+    layout.sheets.truncate(real_sheet_count);
+
     columnar::compactify(&mut layout);
     Ok(layout)
+}
+
+fn merge_pivot_cells(sheet: &mut Sheet, cells: Vec<Cell>) {
+    if cells.is_empty() {
+        return;
+    }
+    let ranges: Vec<(u32, u32, u32, u32)> = sheet
+        .pivots
+        .iter()
+        .map(|p| (p.range.r1, p.range.c1, p.range.r2, p.range.c2))
+        .collect();
+    if !ranges.is_empty() {
+        for row in sheet.rows.iter_mut() {
+            row.cells.retain(|c| {
+                !ranges
+                    .iter()
+                    .any(|&(r1, c1, r2, c2)| c.r >= r1 && c.r <= r2 && c.c >= c1 && c.c <= c2)
+            });
+        }
+    }
+    let mut by_row: HashMap<u32, usize> = HashMap::new();
+    for (i, row) in sheet.rows.iter().enumerate() {
+        by_row.insert(row.index, i);
+    }
+    for cell in cells {
+        sheet.max_row = sheet.max_row.max(cell.r);
+        sheet.max_col = sheet.max_col.max(cell.c);
+        match by_row.get(&cell.r) {
+            Some(&i) => sheet.rows[i].cells.push(cell),
+            None => {
+                by_row.insert(cell.r, sheet.rows.len());
+                sheet.rows.push(Row {
+                    index: cell.r,
+                    height_px: None,
+                    cells: vec![cell],
+                    style_index: None,
+                    hidden: false,
+                    outline_level: 0,
+                });
+            }
+        }
+    }
 }
 
 fn defined_name_lookup(

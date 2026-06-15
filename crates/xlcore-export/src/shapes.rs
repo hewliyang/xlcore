@@ -3,8 +3,8 @@ use crate::shapes_connector::{
     connector_world, preset_adj1, preset_adj2, preset_adj3, visit_connector,
 };
 use crate::shapes_fill::{
-    gradient_fill, line_cap_token, line_dash_token, line_join_token, outer_shadow, outline_info,
-    solid_fill_color,
+    gradient_fill, line_cap_token, line_dash_token, line_end_to_schema, line_join_token,
+    outer_shadow, outline_info, solid_fill_color,
 };
 use crate::shapes_style::{apply_font_ref_to_runs, resolve_style_refs};
 use crate::shapes_text::text_body_to_paragraphs;
@@ -129,23 +129,19 @@ pub(crate) fn merge_rotation(parent_rad: f64, own: Option<i32>) -> Option<i32> {
 }
 
 fn group_frame(g: &xdr::GroupShape, parent: Option<Frame>) -> Option<(WorldBox, Frame)> {
-    let xfrm = g
-        .group_shape_properties
-        .as_ref()?
-        .transform_group
-        .as_ref()?;
+    let xfrm = g.group_shape_properties.transform_group.as_ref()?;
     let off = xfrm.offset.as_ref()?;
     let ext = xfrm.extents.as_ref()?;
     let ch_off = xfrm.child_offset.as_ref()?;
     let ch_ext = xfrm.child_extents.as_ref()?;
-    let own_off_x = off.x as f64;
-    let own_off_y = off.y as f64;
-    let own_ext_cx = ext.cx as f64;
-    let own_ext_cy = ext.cy as f64;
-    let ch_off_x = ch_off.x as f64;
-    let ch_off_y = ch_off.y as f64;
-    let ch_ext_cx = ch_ext.cx as f64;
-    let ch_ext_cy = ch_ext.cy as f64;
+    let own_off_x = off.x.to_emu() as f64;
+    let own_off_y = off.y.to_emu() as f64;
+    let own_ext_cx = ext.cx.to_emu() as f64;
+    let own_ext_cy = ext.cy.to_emu() as f64;
+    let ch_off_x = ch_off.x.to_emu() as f64;
+    let ch_off_y = ch_off.y.to_emu() as f64;
+    let ch_ext_cx = ch_ext.cx.to_emu() as f64;
+    let ch_ext_cy = ch_ext.cy.to_emu() as f64;
     let sx = if ch_ext_cx > 0.0 {
         own_ext_cx / ch_ext_cx
     } else {
@@ -218,10 +214,10 @@ fn shape_world(s: &xdr::Shape, parent: Option<Frame>) -> Option<(WorldBox, f64)>
     };
     Some(transform_local_box(
         parent,
-        off.x as f64,
-        off.y as f64,
-        ext.cx as f64,
-        ext.cy as f64,
+        off.x.to_emu() as f64,
+        off.y.to_emu() as f64,
+        ext.cx.to_emu() as f64,
+        ext.cy.to_emu() as f64,
     ))
 }
 
@@ -300,8 +296,8 @@ fn collect_from_group(
     };
     for choice in &g.group_shape_choice {
         match choice {
-            xdr::GroupShapeChoice::XdrSp(s) => collect_from_shape(s, Some(frame), out),
-            xdr::GroupShapeChoice::XdrGrpSp(inner) => collect_from_group(inner, Some(frame), out),
+            xdr::GroupShapeChoice::Shape(s) => collect_from_shape(s, Some(frame), out),
+            xdr::GroupShapeChoice::GroupShape(inner) => collect_from_group(inner, Some(frame), out),
             _ => {}
         }
     }
@@ -366,16 +362,16 @@ fn visit_group(
     };
     for choice in &g.group_shape_choice {
         match choice {
-            xdr::GroupShapeChoice::XdrSp(s) => {
+            xdr::GroupShapeChoice::Shape(s) => {
                 visit_shape(s, Some(frame), outer, nodes, theme, images);
             }
-            xdr::GroupShapeChoice::XdrGrpSp(inner) => {
+            xdr::GroupShapeChoice::GroupShape(inner) => {
                 visit_group(inner, Some(frame), outer, nodes, theme, images, anchors);
             }
-            xdr::GroupShapeChoice::XdrPic(pic) => {
+            xdr::GroupShapeChoice::Picture(pic) => {
                 visit_picture(pic, Some(frame), outer, nodes, images);
             }
-            xdr::GroupShapeChoice::XdrCxnSp(c) => {
+            xdr::GroupShapeChoice::ConnectionShape(c) => {
                 visit_connector(c, Some(frame), outer, nodes, theme, anchors);
             }
 
@@ -401,10 +397,10 @@ fn visit_picture(
     };
     let (world, parent_rot_rad) = transform_local_box(
         parent,
-        off.x as f64,
-        off.y as f64,
-        ext.cx as f64,
-        ext.cy as f64,
+        off.x.to_emu() as f64,
+        off.y.to_emu() as f64,
+        ext.cx.to_emu() as f64,
+        ext.cy.to_emu() as f64,
     );
     if world.cx <= 0.0 || world.cy <= 0.0 {
         return;
@@ -422,12 +418,15 @@ fn visit_picture(
         None => return,
     };
     let src = pic.blip_fill.source_rectangle.as_ref();
+    let pct_i32 = |v: Option<ooxmlsdk::simple_type::DrawingmlPercentageValue>| -> i32 {
+        v.map(|p| p.as_drawingml_percent()).unwrap_or(0)
+    };
     let crop = src.map(|r| {
         vec![
-            r.left.unwrap_or(0),
-            r.top.unwrap_or(0),
-            r.right.unwrap_or(0),
-            r.bottom.unwrap_or(0),
+            pct_i32(r.left),
+            pct_i32(r.top),
+            pct_i32(r.right),
+            pct_i32(r.bottom),
         ]
     });
 
@@ -537,10 +536,20 @@ fn visit_shape(
     let mut fill_gradient = gradient_fill(&sp.shape_properties_choice2, theme);
     let fill_blip = blip_fill(&sp.shape_properties_choice2, images);
     let mut outer_shadow = outer_shadow(&sp.shape_properties_choice3, theme);
-    let (mut outline_color, mut outline_width_emu) = outline_info(sp.a_ln.as_deref(), theme);
-    let mut line_dash: Option<String> = line_dash_token(sp.a_ln.as_deref());
-    let mut line_cap: Option<String> = line_cap_token(sp.a_ln.as_deref());
-    let mut line_join: Option<String> = line_join_token(sp.a_ln.as_deref());
+    let (mut outline_color, mut outline_width_emu) = outline_info(sp.outline.as_deref(), theme);
+    let mut line_dash: Option<String> = line_dash_token(sp.outline.as_deref());
+    let mut line_cap: Option<String> = line_cap_token(sp.outline.as_deref());
+    let mut line_join: Option<String> = line_join_token(sp.outline.as_deref());
+    let head_end = sp
+        .outline
+        .as_deref()
+        .and_then(|ln| ln.head_end.as_ref())
+        .and_then(|e| line_end_to_schema(e.r#type.as_ref(), e.width.as_ref(), e.length.as_ref()));
+    let tail_end = sp
+        .outline
+        .as_deref()
+        .and_then(|ln| ln.tail_end.as_ref())
+        .and_then(|e| line_end_to_schema(e.r#type.as_ref(), e.width.as_ref(), e.length.as_ref()));
     let tb_out = text_body_to_paragraphs(s.text_body.as_deref(), theme);
     let text_anchor = tb_out.anchor;
     let text_wrap = tb_out.wrap;
@@ -561,12 +570,12 @@ fn visit_shape(
         .transform2_d
         .as_ref()
         .and_then(|x| x.horizontal_flip)
-        .unwrap_or(false);
+        .unwrap_or(false.into());
     let flip_v = sp
         .transform2_d
         .as_ref()
         .and_then(|x| x.vertical_flip)
-        .unwrap_or(false);
+        .unwrap_or(false.into());
 
     let preset_is_line = preset
         .as_deref()
@@ -624,14 +633,14 @@ fn visit_shape(
         text_insets_emu,
         image_data_uri: None,
         image_src_rect: None,
-        flip_h: if flip_h { Some(true) } else { None },
-        flip_v: if flip_v { Some(true) } else { None },
+        flip_h: if flip_h.into() { Some(true) } else { None },
+        flip_v: if flip_v.into() { Some(true) } else { None },
         line_dash,
         line_cap,
         line_join,
         is_connector: None,
-        head_end: None,
-        tail_end: None,
+        head_end,
+        tail_end,
         adj1: preset_adj1(sp),
         adj2: preset_adj2(sp),
         adj3: preset_adj3(sp),
@@ -655,17 +664,15 @@ fn blip_fill(
 ) -> Option<ShapeBlipFill> {
     use xdr::ShapePropertiesChoice2;
     let bf = match choice.as_ref()? {
-        ShapePropertiesChoice2::ABlipFill(b) => b,
+        ShapePropertiesChoice2::BlipFill(b) => b,
         _ => return None,
     };
     let blip = bf.blip.as_ref()?;
 
     let mut data_uri: Option<String> = None;
-    if let Some(ext_lst) = blip.a_ext_lst.as_ref() {
-        for ext in &ext_lst.a_ext {
-            if let Some(a::BlipExtensionChoice::AsvgSvgBlip(sv)) =
-                ext.blip_extension_choice.as_ref()
-            {
+    if let Some(ext_lst) = blip.blip_extension_list.as_ref() {
+        for ext in &ext_lst.blip_extension {
+            if let Some(a::BlipExtensionChoice::SvgBlip(sv)) = ext.blip_extension_choice.as_ref() {
                 if let Some(embed) = sv.embed.as_deref() {
                     if let Some(uri) = images(embed) {
                         data_uri = Some(uri);
@@ -682,12 +689,10 @@ fn blip_fill(
     let data_uri = data_uri?;
 
     let src_rect = bf.source_rectangle.as_ref().and_then(|r| {
-        let v = vec![
-            r.left.unwrap_or(0),
-            r.top.unwrap_or(0),
-            r.right.unwrap_or(0),
-            r.bottom.unwrap_or(0),
-        ];
+        let pct = |v: Option<ooxmlsdk::simple_type::DrawingmlPercentageValue>| -> i32 {
+            v.map(|p| p.as_drawingml_percent()).unwrap_or(0)
+        };
+        let v = vec![pct(r.left), pct(r.top), pct(r.right), pct(r.bottom)];
         if v.iter().any(|n| *n != 0) {
             Some(v)
         } else {
@@ -696,8 +701,8 @@ fn blip_fill(
     });
 
     let kind = bf.blip_fill_choice.as_ref().map(|c| match c {
-        a::BlipFillChoice::ATile(_) => "tile".to_string(),
-        a::BlipFillChoice::AStretch(_) => "stretch".to_string(),
+        a::BlipFillChoice::Tile(_) => "tile".to_string(),
+        a::BlipFillChoice::Stretch(_) => "stretch".to_string(),
     });
 
     Some(ShapeBlipFill {
@@ -710,14 +715,14 @@ fn blip_fill(
 pub(crate) fn preset_geom_name(sp: &xdr::ShapeProperties) -> Option<String> {
     use xdr::ShapePropertiesChoice;
     match sp.shape_properties_choice1.as_ref()? {
-        ShapePropertiesChoice::APrstGeom(g) => Some(g.preset.as_xml_str().to_string()),
-        ShapePropertiesChoice::ACustGeom(_) => None,
+        ShapePropertiesChoice::PresetGeometry(g) => Some(g.preset.as_xml_str().to_string()),
+        ShapePropertiesChoice::CustomGeometry(_) => None,
     }
 }
 pub(crate) fn resolve_solid_fill(sf: &a::SolidFill, theme: Option<&Theme>) -> Option<String> {
     use a::SolidFillChoice;
     match sf.solid_fill_choice.as_ref()? {
-        SolidFillChoice::ASrgbClr(c) => {
+        SolidFillChoice::RgbColorModelHex(c) => {
             let v: &str = &c.val;
             if v.len() == 6 {
                 Some(format!("#{}", v))
@@ -725,16 +730,16 @@ pub(crate) fn resolve_solid_fill(sf: &a::SolidFill, theme: Option<&Theme>) -> Op
                 None
             }
         }
-        SolidFillChoice::ASchemeClr(c) => {
+        SolidFillChoice::SchemeColor(c) => {
             let dbg = format!("{:?}", c);
             crate::chart_colors::theme_scheme_color(&dbg, theme)
                 .map(|base| crate::chart_colors::apply_color_modifiers(&base, &dbg))
         }
-        SolidFillChoice::APrstClr(c) => {
+        SolidFillChoice::PresetColor(c) => {
             let dbg = format!("{:?}", c.val);
             preset_color_hex(&dbg).map(|s| s.to_string())
         }
-        SolidFillChoice::ASysClr(c) => {
+        SolidFillChoice::SystemColor(c) => {
             let last: Option<&str> = c.last_color.as_deref();
             last.map(|s| format!("#{}", s))
         }

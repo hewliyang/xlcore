@@ -1,10 +1,61 @@
 import type { Chart, ChartSeries, DataLabels } from "./types.js";
 import type { Rect } from "./chart.js";
+import type { ChartStyleBorder } from "./schema/ChartStyleBorder.js";
+import type { ChartStyleFont } from "./schema/ChartStyleFont.js";
 
 const AXIS_FONT_SIZE = 10;
 const LEGEND_FONT_SIZE = 11;
 const GRIDLINE_COLOR = "#e5e7eb";
 const AXIS_LABEL_COLOR = "#52525b";
+const LEGEND_FONT_FAMILY = `-apple-system, "Helvetica Neue", Arial, sans-serif`;
+
+function styleDashFor(dash: string | undefined): number[] {
+  switch (dash) {
+    case "dot":
+    case "sysDot":
+      return [1, 3];
+    case "dash":
+      return [4, 3];
+    case "lgDash":
+      return [8, 3];
+    case "dashDot":
+      return [4, 3, 1, 3];
+    case "lgDashDot":
+      return [8, 3, 1, 3];
+    case "sysDash":
+      return [3, 1];
+    default:
+      return [];
+  }
+}
+
+export function drawStyleBox(
+  ctx: CanvasRenderingContext2D,
+  rect: Rect,
+  fill?: string,
+  border?: ChartStyleBorder,
+): void {
+  if (fill && fill !== "none") {
+    ctx.fillStyle = fill;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+  if (border && (border.color || border.widthEmu != null || border.dash)) {
+    ctx.save();
+    ctx.strokeStyle = border.color ?? "#000000";
+    ctx.lineWidth = border.widthEmu != null ? Math.max(0.5, border.widthEmu / 12700) : 1;
+    ctx.setLineDash(styleDashFor(border.dash));
+    ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+    ctx.restore();
+  }
+}
+
+export function chartFontCss(font: ChartStyleFont | undefined, fallbackSize: number): string {
+  const size = font?.sizePt ?? fallbackSize;
+  const family = font?.typeface ? `"${font.typeface}", ${LEGEND_FONT_FAMILY}` : LEGEND_FONT_FAMILY;
+  const style = font?.italic ? "italic " : "";
+  const weight = font?.bold ? "bold " : "";
+  return `${style}${weight}${size}px ${family}`;
+}
 
 const ZERO_BASELINE_COLOR = "#7a7a7a";
 const ZERO_BASELINE_WIDTH = 1.5;
@@ -134,6 +185,61 @@ export function categoryAxisExtraHeight(chart: Chart): number {
   return categoryAxisExtraRows(chart).length * (AXIS_FONT_SIZE + 4);
 }
 
+export function catAxisRotation(chart: Chart): number {
+  const r = chart.catAxisLabelRotation ?? 0;
+  return Number.isFinite(r) && r !== 0 ? r : 0;
+}
+
+export function valAxisRotation(chart: Chart): number {
+  const r = chart.valAxisLabelRotation ?? 0;
+  return Number.isFinite(r) && r !== 0 ? r : 0;
+}
+
+export function rotatedLabelBandHeight(
+  ctx: CanvasRenderingContext2D,
+  labels: string[],
+  rotationDeg: number,
+): number {
+  if (rotationDeg === 0) return 0;
+  const rad = (Math.abs(rotationDeg) * Math.PI) / 180;
+  const maxW = Math.max(0, ...labels.map((s) => ctx.measureText(s).width));
+  return maxW * Math.sin(rad) + AXIS_FONT_SIZE * Math.cos(rad);
+}
+
+export function rotatedLabelBandWidth(
+  ctx: CanvasRenderingContext2D,
+  labels: string[],
+  rotationDeg: number,
+): number {
+  if (rotationDeg === 0) return 0;
+  const rad = (Math.abs(rotationDeg) * Math.PI) / 180;
+  const maxW = Math.max(0, ...labels.map((s) => ctx.measureText(s).width));
+  return maxW * Math.cos(rad) + AXIS_FONT_SIZE * Math.sin(rad);
+}
+
+export function drawRotatedLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  anchorX: number,
+  anchorY: number,
+  rotationDeg: number,
+  kind: "category" | "value",
+): void {
+  const rad = (rotationDeg * Math.PI) / 180;
+  ctx.save();
+  ctx.translate(anchorX, anchorY);
+  ctx.rotate(rad);
+  if (kind === "category") {
+    ctx.textAlign = rotationDeg < 0 ? "right" : "left";
+    ctx.textBaseline = "middle";
+  } else {
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+  }
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+}
+
 export function drawAxisFrame(
   ctx: CanvasRenderingContext2D,
   chart: Chart,
@@ -148,8 +254,25 @@ export function drawAxisFrame(
   const labelStrings = ticks.map((t) =>
     percent ? `${Math.round(t)}%` : formatAxisValue(t, chart.valueFormat, chart.dispUnits),
   );
-  const yAxisW = Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
-  const xAxisH = AXIS_FONT_SIZE + 8 + (horizontal ? 0 : categoryAxisExtraHeight(chart));
+  const valRot = valAxisRotation(chart);
+  const yAxisW = horizontal
+    ? Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8
+    : valRot !== 0
+      ? rotatedLabelBandWidth(ctx, labelStrings, valRot) + 8
+      : Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
+  const catRot = catAxisRotation(chart);
+  const catBand =
+    !horizontal && catRot !== 0
+      ? rotatedLabelBandHeight(ctx, chart.categories ?? [], catRot)
+      : 0;
+  const xAxisH =
+    AXIS_FONT_SIZE +
+    8 +
+    (horizontal
+      ? valRot !== 0
+        ? rotatedLabelBandHeight(ctx, labelStrings, valRot)
+        : 0
+      : categoryAxisExtraHeight(chart) + catBand);
   const inner: Rect = horizontal
     ? { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH }
     : { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH };
@@ -173,7 +296,11 @@ export function drawAxisFrame(
         ctx.lineTo(Math.round(x) + 0.5, inner.y + inner.h);
         ctx.stroke();
       }
-      ctx.fillText(labelStrings[ti]!, x, inner.y + inner.h + xAxisH / 2);
+      if (valRot !== 0) {
+        drawRotatedLabel(ctx, labelStrings[ti]!, x, inner.y + inner.h + 6, valRot, "value");
+      } else {
+        ctx.fillText(labelStrings[ti]!, x, inner.y + inner.h + xAxisH / 2);
+      }
     } else {
       const y = inner.y + (1 - frac) * inner.h;
       if (showGridlines && !isZeroLine) {
@@ -182,7 +309,11 @@ export function drawAxisFrame(
         ctx.lineTo(inner.x + inner.w, Math.round(y) + 0.5);
         ctx.stroke();
       }
-      ctx.fillText(labelStrings[ti]!, inner.x - 4, y);
+      if (valRot !== 0) {
+        drawRotatedLabel(ctx, labelStrings[ti]!, inner.x - 4, y, valRot, "value");
+      } else {
+        ctx.fillText(labelStrings[ti]!, inner.x - 4, y);
+      }
     }
   }
 
@@ -219,6 +350,7 @@ export function drawCategoryAxis(
     if (!Number.isFinite(n)) return raw;
     return formatValue(n, fmt).text;
   });
+  const catRot = catAxisRotation(chart);
   const minGapPx = 8;
   let lastRight = -Infinity;
   for (let i = 0; i < categoryCount; i++) {
@@ -229,6 +361,10 @@ export function drawCategoryAxis(
       continue;
     }
     const cx = inner.x + (i / denom) * inner.w;
+    if (catRot !== 0) {
+      drawRotatedLabel(ctx, label, cx, inner.y + inner.h + 4, catRot, "category");
+      continue;
+    }
     const left = cx - w / 2;
     if (left < lastRight + minGapPx) continue;
     ctx.fillText(label, cx, inner.y + inner.h + 4);
@@ -285,6 +421,38 @@ export function drawCategoryAxisExtraRowsCentered(
       ctx.fillText(label, cx, y);
       lastRight = cx + w / 2;
     }
+  }
+}
+
+export function seriesLineWidth(s: ChartSeries, fallback: number): number {
+  if (s.lineWidthEmu == null) return fallback;
+  return Math.max(0.5, s.lineWidthEmu / 12700);
+}
+
+export function seriesLineDash(s: ChartSeries): number[] {
+  switch (s.lineDash) {
+    case "dot":
+      return [1, 3];
+    case "dash":
+      return [4, 3];
+    case "lgDash":
+      return [8, 3];
+    case "dashDot":
+      return [4, 3, 1, 3];
+    case "lgDashDot":
+      return [8, 3, 1, 3];
+    case "lgDashDotDot":
+      return [8, 3, 1, 3, 1, 3];
+    case "sysDash":
+      return [3, 1];
+    case "sysDot":
+      return [1, 1];
+    case "sysDashDot":
+      return [3, 1, 1, 1];
+    case "sysDashDotDot":
+      return [3, 1, 1, 1, 1, 1];
+    default:
+      return [];
   }
 }
 
@@ -380,18 +548,21 @@ export function drawLegend(
   orientation: "horizontal" | "vertical" = "horizontal",
   chart?: Chart,
 ): void {
-  ctx.font = `${LEGEND_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  drawStyleBox(ctx, rect, chart?.legendFill, chart?.legendBorder);
+  const font = chart?.legendFont;
+  const labelColor = font?.color ?? AXIS_LABEL_COLOR;
+  ctx.font = chartFontCss(font, LEGEND_FONT_SIZE);
   ctx.textBaseline = "middle";
   const swatchW = 10;
   if (orientation === "vertical") {
-    const lineH = LEGEND_FONT_SIZE + 6;
+    const lineH = (font?.sizePt ?? LEGEND_FONT_SIZE) + 6;
     const totalH = series.length * lineH;
     let y = rect.y + Math.max(0, (rect.h - totalH) / 2) + lineH / 2;
     const x = rect.x;
     for (let i = 0; i < series.length; i++) {
       const s = series[i]!;
       paintLegendSwatch(ctx, x, y, swatchW, s.color ?? "#4472C4", legendKindFor(chart, s));
-      ctx.fillStyle = AXIS_LABEL_COLOR;
+      ctx.fillStyle = labelColor;
       ctx.textAlign = "left";
       ctx.fillText(s.name || `Series ${i + 1}`, x + swatchW + 4, y);
       y += lineH;
@@ -407,7 +578,7 @@ export function drawLegend(
   for (let i = 0; i < series.length; i++) {
     const s = series[i]!;
     paintLegendSwatch(ctx, x, y, swatchW, s.color ?? "#4472C4", legendKindFor(chart, s));
-    ctx.fillStyle = AXIS_LABEL_COLOR;
+    ctx.fillStyle = labelColor;
     ctx.textAlign = "left";
     ctx.fillText(s.name || `Series ${i + 1}`, x + swatchW + 4, y);
     x += widths[i]! + itemPad;

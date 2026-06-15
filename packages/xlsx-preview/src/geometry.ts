@@ -11,8 +11,9 @@ export function drawGridLines(
   sheet: Sheet,
   g: Grid,
   vis: Visible,
+  override?: boolean,
 ): void {
-  if (!sheet.showGridLines) return;
+  if (!(override ?? sheet.showGridLines)) return;
   const top = g.rowY[vis.firstRow] ?? g.originY;
   const bot = g.rowY[vis.lastRow + 1] ?? g.totalH;
   const left = g.colX[vis.firstCol] ?? g.originX;

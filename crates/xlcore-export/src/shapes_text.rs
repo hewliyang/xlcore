@@ -85,35 +85,35 @@ macro_rules! pp_view {
                 space_before: space_before_from(p.space_before.as_deref()),
                 space_after: space_after_from(p.space_after.as_deref()),
                 bullet_color: match p.$f1.as_ref() {
-                    Some(a::$c1::ABuClr(c)) => Some(c.as_ref()),
+                    Some(a::$c1::BulletColor(c)) => Some(c.as_ref()),
                     _ => None,
                 },
                 bullet_size_pct: match p.$f2.as_ref() {
-                    Some(a::$c2::ABuSzPct(c)) => Some(c.val),
+                    Some(a::$c2::BulletSizePercentage(c)) => Some(c.val.as_drawingml_percent()),
                     _ => None,
                 },
                 bullet_size_pts: match p.$f2.as_ref() {
-                    Some(a::$c2::ABuSzPts(c)) => Some(c.val),
+                    Some(a::$c2::BulletSizePoints(c)) => Some(c.val),
                     _ => None,
                 },
                 bullet_font: match p.$f3.as_ref() {
-                    Some(a::$c3::ABuFont(f)) => Some(f.as_ref()),
+                    Some(a::$c3::BulletFont(f)) => Some(f.as_ref()),
                     _ => None,
                 },
                 bullet_kind: match p.$f4.as_ref() {
-                    Some(a::$c4::ABuNone) => Some(BulletKindResolved {
+                    Some(a::$c4::NoBullet) => Some(BulletKindResolved {
                         kind: "none",
                         char: None,
                         auto_num_type: None,
                         auto_num_start_at: None,
                     }),
-                    Some(a::$c4::ABuChar(c)) => Some(BulletKindResolved {
+                    Some(a::$c4::CharacterBullet(c)) => Some(BulletKindResolved {
                         kind: "char",
                         char: Some(c.char.to_string()),
                         auto_num_type: None,
                         auto_num_start_at: None,
                     }),
-                    Some(a::$c4::ABuAutoNum(c)) => Some(BulletKindResolved {
+                    Some(a::$c4::AutoNumberedBullet(c)) => Some(BulletKindResolved {
                         kind: "autoNum",
                         char: None,
                         auto_num_type: Some(auto_num_token(&c.r#type)),
@@ -121,7 +121,7 @@ macro_rules! pp_view {
                     }),
                     _ => None,
                 },
-                def_r_pr: p.a_def_r_pr.as_deref(),
+                def_r_pr: p.default_run_properties.as_deref(),
             }
         }
     };
@@ -289,7 +289,7 @@ pub(crate) fn text_body_to_paragraphs(
     let list_style = tb.list_style.as_deref();
 
     let mut paragraphs: Vec<ShapeParagraph> = Vec::new();
-    for p in &tb.a_p {
+    for p in &tb.paragraph {
         let p_pr = p.paragraph_properties.as_deref();
         let level = p_pr.and_then(|pp| pp.level).unwrap_or(0).clamp(0, 8) as usize;
 
@@ -310,7 +310,7 @@ pub(crate) fn text_body_to_paragraphs(
         let bake_defaults = |tr: &mut TextRun| {
             if let Some(ls) = list_style {
                 if let Some(def) = ls.default_paragraph_properties.as_deref() {
-                    if let Some(dr) = def.a_def_r_pr.as_deref() {
+                    if let Some(dr) = def.default_run_properties.as_deref() {
                         apply_default_run_properties(dr, tr, theme);
                     }
                 }
@@ -319,7 +319,7 @@ pub(crate) fn text_body_to_paragraphs(
                 }
             }
             if let Some(pp) = p_pr {
-                if let Some(dr) = pp.a_def_r_pr.as_deref() {
+                if let Some(dr) = pp.default_run_properties.as_deref() {
                     apply_default_run_properties(dr, tr, theme);
                 }
             }
@@ -327,7 +327,7 @@ pub(crate) fn text_body_to_paragraphs(
 
         for ch in &p.paragraph_choice {
             match ch {
-                a::ParagraphChoice::AR(run) => {
+                a::ParagraphChoice::Run(run) => {
                     let text: &str = &run.text;
                     if text.is_empty() {
                         continue;
@@ -342,13 +342,13 @@ pub(crate) fn text_body_to_paragraphs(
                     }
                     runs.push(tr);
                 }
-                a::ParagraphChoice::ABr(_) => {
+                a::ParagraphChoice::Break(_) => {
                     runs.push(TextRun {
                         text: "\n".to_string(),
                         ..Default::default()
                     });
                 }
-                a::ParagraphChoice::AFld(field) => {
+                a::ParagraphChoice::Field(field) => {
                     let text = match field.text.as_deref() {
                         Some(s) if !s.is_empty() => s.to_string(),
                         _ => continue,
@@ -421,7 +421,7 @@ fn build_bullet(r: &PpResolved<'_>, theme: Option<&Theme>) -> Option<ShapeBullet
 
 fn bullet_color_to_color(bc: &a::BulletColor, theme: Option<&Theme>) -> Option<Color> {
     let hex = match bc.bullet_color_choice.as_ref()? {
-        a::BulletColorChoice::ASrgbClr(c) => {
+        a::BulletColorChoice::RgbColorModelHex(c) => {
             let v: &str = c.val.as_ref();
             if v.len() == 6 || v.len() == 8 {
                 Some(v[v.len() - 6..].to_string())
@@ -429,11 +429,11 @@ fn bullet_color_to_color(bc: &a::BulletColor, theme: Option<&Theme>) -> Option<C
                 None
             }
         }
-        a::BulletColorChoice::ASchemeClr(c) => resolve_scheme_clr_hex(c, theme),
-        a::BulletColorChoice::APrstClr(c) => {
+        a::BulletColorChoice::SchemeColor(c) => resolve_scheme_clr_hex(c, theme),
+        a::BulletColorChoice::PresetColor(c) => {
             Some(format!("{:?}", c.val)).map(|_| "808080".to_string())
         }
-        a::BulletColorChoice::ASysClr(c) => c
+        a::BulletColorChoice::SystemColor(c) => c
             .last_color
             .as_deref()
             .filter(|s| s.len() == 6)
@@ -510,11 +510,11 @@ fn auto_num_token(t: &a::TextAutoNumberSchemeValues) -> String {
 
 fn line_spacing_from(ls: Option<&a::LineSpacing>) -> LnSp {
     match ls.and_then(|x| x.line_spacing_choice.as_ref()) {
-        Some(a::LineSpacingChoice::ASpcPct(p)) => LnSp {
-            pct: Some(p.val),
+        Some(a::LineSpacingChoice::SpacingPercent(p)) => LnSp {
+            pct: Some(p.val.as_drawingml_percent()),
             pts: None,
         },
-        Some(a::LineSpacingChoice::ASpcPts(p)) => LnSp {
+        Some(a::LineSpacingChoice::SpacingPoints(p)) => LnSp {
             pct: None,
             pts: Some(p.val),
         },
@@ -524,11 +524,11 @@ fn line_spacing_from(ls: Option<&a::LineSpacing>) -> LnSp {
 
 fn space_before_from(s: Option<&a::SpaceBefore>) -> LnSp {
     match s.and_then(|x| x.space_before_choice.as_ref()) {
-        Some(a::SpaceBeforeChoice::ASpcPct(p)) => LnSp {
-            pct: Some(p.val),
+        Some(a::SpaceBeforeChoice::SpacingPercent(p)) => LnSp {
+            pct: Some(p.val.as_drawingml_percent()),
             pts: None,
         },
-        Some(a::SpaceBeforeChoice::ASpcPts(p)) => LnSp {
+        Some(a::SpaceBeforeChoice::SpacingPoints(p)) => LnSp {
             pct: None,
             pts: Some(p.val),
         },
@@ -538,11 +538,11 @@ fn space_before_from(s: Option<&a::SpaceBefore>) -> LnSp {
 
 fn space_after_from(s: Option<&a::SpaceAfter>) -> LnSp {
     match s.and_then(|x| x.space_after_choice.as_ref()) {
-        Some(a::SpaceAfterChoice::ASpcPct(p)) => LnSp {
-            pct: Some(p.val),
+        Some(a::SpaceAfterChoice::SpacingPercent(p)) => LnSp {
+            pct: Some(p.val.as_drawingml_percent()),
             pts: None,
         },
-        Some(a::SpaceAfterChoice::ASpcPts(p)) => LnSp {
+        Some(a::SpaceAfterChoice::SpacingPoints(p)) => LnSp {
             pct: None,
             pts: Some(p.val),
         },
@@ -588,12 +588,12 @@ fn body_vert_token(bp: &a::BodyProperties) -> Option<String> {
 
 fn body_autofit(bp: &a::BodyProperties) -> (Option<String>, Option<i32>, Option<i32>) {
     match bp.body_properties_choice1.as_ref() {
-        Some(a::BodyPropertiesChoice::ANormAutofit(n)) => (
+        Some(a::BodyPropertiesChoice::NormalAutoFit(n)) => (
             Some("norm".to_string()),
-            n.font_scale,
-            n.line_space_reduction,
+            n.font_scale.map(|v| v.as_drawingml_percent()),
+            n.line_space_reduction.map(|v| v.as_drawingml_percent()),
         ),
-        Some(a::BodyPropertiesChoice::ASpAutoFit(_)) => (Some("shape".to_string()), None, None),
+        Some(a::BodyPropertiesChoice::ShapeAutoFit(_)) => (Some("shape".to_string()), None, None),
         _ => (None, None, None),
     }
 }
@@ -603,39 +603,39 @@ fn lvl_paragraph_def_r_pr(ls: &a::ListStyle, level: usize) -> Option<&a::Default
         0 => ls
             .level1_paragraph_properties
             .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
+            .and_then(|p| p.default_run_properties.as_deref()),
         1 => ls
             .level2_paragraph_properties
             .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
+            .and_then(|p| p.default_run_properties.as_deref()),
         2 => ls
             .level3_paragraph_properties
             .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
+            .and_then(|p| p.default_run_properties.as_deref()),
         3 => ls
             .level4_paragraph_properties
             .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
+            .and_then(|p| p.default_run_properties.as_deref()),
         4 => ls
             .level5_paragraph_properties
             .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
+            .and_then(|p| p.default_run_properties.as_deref()),
         5 => ls
             .level6_paragraph_properties
             .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
+            .and_then(|p| p.default_run_properties.as_deref()),
         6 => ls
             .level7_paragraph_properties
             .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
+            .and_then(|p| p.default_run_properties.as_deref()),
         7 => ls
             .level8_paragraph_properties
             .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
+            .and_then(|p| p.default_run_properties.as_deref()),
         8 => ls
             .level9_paragraph_properties
             .as_deref()
-            .and_then(|p| p.a_def_r_pr.as_deref()),
+            .and_then(|p| p.default_run_properties.as_deref()),
         _ => None,
     }
 }
@@ -669,10 +669,10 @@ fn body_insets_emu(bp: &a::BodyProperties) -> Option<Vec<i32>> {
     const DEF_LR: i32 = 91440;
     const DEF_TB: i32 = 45720;
     Some(vec![
-        l.unwrap_or(DEF_LR),
-        t.unwrap_or(DEF_TB),
-        r.unwrap_or(DEF_LR),
-        b.unwrap_or(DEF_TB),
+        l.map(|v| v.to_emu() as i32).unwrap_or(DEF_LR),
+        t.map(|v| v.to_emu() as i32).unwrap_or(DEF_TB),
+        r.map(|v| v.to_emu() as i32).unwrap_or(DEF_LR),
+        b.map(|v| v.to_emu() as i32).unwrap_or(DEF_TB),
     ])
 }
 
@@ -710,21 +710,21 @@ fn strike_state(s: Option<&a::TextStrikeValues>) -> Option<bool> {
 
 fn apply_run_properties(rp: &a::RunProperties, tr: &mut TextRun, theme: Option<&Theme>) {
     let solid_fill = match rp.run_properties_choice1.as_ref() {
-        Some(a::RunPropertiesChoice::ASolidFill(sf)) => Some(sf.as_ref()),
+        Some(a::RunPropertiesChoice::SolidFill(sf)) => Some(sf.as_ref()),
         _ => None,
     };
     apply_run_fields(
         tr,
         theme,
         rp.font_size,
-        rp.bold,
-        rp.italic,
+        rp.bold.map(bool::from),
+        rp.italic.map(bool::from),
         underline_state(rp.underline.as_ref()),
         strike_state(rp.strike.as_ref()),
         solid_fill,
-        rp.a_latin.as_ref(),
+        rp.latin_font.as_ref(),
         rp.kerning,
-        rp.baseline,
+        rp.baseline.map(|v| v.as_drawingml_percent()),
     );
 }
 
@@ -734,21 +734,21 @@ fn apply_default_run_properties(
     theme: Option<&Theme>,
 ) {
     let solid_fill = match rp.default_run_properties_choice1.as_ref() {
-        Some(a::DefaultRunPropertiesChoice::ASolidFill(sf)) => Some(sf.as_ref()),
+        Some(a::DefaultRunPropertiesChoice::SolidFill(sf)) => Some(sf.as_ref()),
         _ => None,
     };
     apply_run_fields(
         tr,
         theme,
         rp.font_size,
-        rp.bold,
-        rp.italic,
+        rp.bold.map(bool::from),
+        rp.italic.map(bool::from),
         underline_state(rp.underline.as_ref()),
         strike_state(rp.strike.as_ref()),
         solid_fill,
-        rp.a_latin.as_ref(),
+        rp.latin_font.as_ref(),
         rp.kerning,
-        rp.baseline,
+        rp.baseline.map(|v| v.as_drawingml_percent()),
     );
 }
 

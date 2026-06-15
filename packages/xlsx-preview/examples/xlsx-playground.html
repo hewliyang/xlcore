@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>xlcore Workbook playground</title>
+<link rel="preconnect" href="https://rsms.me/">
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --surface-muted: #f4f6f8;
+    --border: #e4e7eb;
+    --border-strong: #d4d8de;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+    --accent: #4f46e5;
+    --accent-soft: #eef2ff;
+    --accent-strong: #4338ca;
+    --good: #16a34a;
+    --warn: #d97706;
+    --danger: #dc2626;
+    --code-bg: #0f172a;
+    --code-fg: #e2e8f0;
+    --code-border: #1e293b;
+    --radius: 6px;
+    --radius-sm: 4px;
+    --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 0;
+  }
+  header {
+    padding: 0 10px;
+    height: 38px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  header h1 {
+    margin: 0 8px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  header h1 .sub {
+    color: var(--text-dim);
+    font-weight: 400;
+    margin-left: 6px;
+  }
+  .btn {
+    height: 24px;
+    padding: 0 10px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    font: 500 12px var(--font);
+    cursor: pointer;
+  }
+  .btn:hover { background: var(--surface-muted); }
+  .btn.primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn.primary:hover { background: var(--accent-strong); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status {
+    margin-left: auto;
+    font: 500 11px var(--font-mono);
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .status.err { color: var(--danger); }
+  .status.ok { color: var(--good); }
+
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 420px;
+    min-height: 0;
+    min-width: 0;
+  }
+  #preview {
+    min-width: 0;
+    min-height: 0;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  #preview .empty {
+    height: 100%;
+    display: grid;
+    place-items: center;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  aside {
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
+    min-height: 0;
+    background: var(--surface);
+  }
+  .panel-head {
+    height: 28px;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-muted);
+    font: 600 11px var(--font);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+  .panel-head .right {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+  }
+  .panel-head select {
+    height: 20px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    font: 500 11px var(--font);
+    padding: 0 4px;
+  }
+  #editor {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    outline: 0;
+    resize: none;
+    padding: 10px 12px;
+    background: var(--code-bg);
+    color: var(--code-fg);
+    font: 12px/1.55 var(--font-mono);
+    tab-size: 2;
+  }
+  .actions {
+    display: flex;
+    gap: 6px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-muted);
+  }
+  .actions .spacer { flex: 1; }
+  #log {
+    max-height: 200px;
+    min-height: 84px;
+    overflow: auto;
+    border-top: 1px solid var(--border);
+    background: #0b1220;
+    color: #cbd5e1;
+    font: 11px/1.5 var(--font-mono);
+    padding: 6px 10px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  #log .entry { margin-bottom: 4px; }
+  #log .entry.err { color: #fca5a5; }
+  #log .entry.ok { color: #86efac; }
+  #log .entry .ts { color: #64748b; margin-right: 6px; }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(280px, auto); }
+    #preview { border-right: 0; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>xlcore <span class="sub">workbook playground</span></h1>
+  <button class="btn" id="open-btn" type="button">Open…</button>
+  <input id="picker" type="file" accept=".xlsx" hidden>
+  <button class="btn" id="new-btn" type="button">New blank</button>
+  <button class="btn" id="save-btn" type="button" disabled>Save .xlsx</button>
+  <span class="status" id="status">No workbook</span>
+</header>
+<main>
+  <div id="preview"><div class="empty">Open a workbook or start blank, then run a script →</div></div>
+  <aside>
+    <div class="panel-head">
+      Script
+      <div class="right">
+        <select id="snippet-select" title="Load snippet">
+          <option value="">snippets…</option>
+        </select>
+      </div>
+    </div>
+    <textarea id="editor" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+    <div class="actions">
+      <button class="btn primary" id="run-btn" type="button" disabled>Run (⌘↵)</button>
+      <button class="btn" id="recalc-btn" type="button" disabled>Recalc</button>
+      <button class="btn" id="clear-log-btn" type="button">Clear log</button>
+      <span class="spacer"></span>
+      <label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted)">
+        <input id="auto-render" type="checkbox" checked>auto re-render
+      </label>
+    </div>
+    <div id="log" aria-live="polite"></div>
+  </aside>
+</main>
+
+<script type="module">
+import { loadXlsxPreviewRuntime } from "./shared/loadXlsxPreview.js";
+
+const SNIPPETS = {
+  "hello": `// Build a tiny model from scratch.
+const s = workbook.sheet("Sheet1");
+s.range("A1:D1").setValues([["Region", "Units", "Price", "Total"]]);
+s.range("A2:C4").setValues([
+  ["North", 10, 100],
+  ["South", 25, 250],
+  ["West",  17, 175],
+]);
+s.range("D2:D4").setFormulas([["=B2*C2"],["=B3*C3"],["=B4*C4"]]);
+s.cell("A5").setValue("Total");
+s.cell("D5").setFormula("=SUM(D2:D4)");
+s.range("A1:D1").setStyle({ font: { bold: true }, fill: { color: "#E2F0D9" } });
+s.range("A5:D5").setStyle({ font: { bold: true } });
+`,
+  "merge + style": `const s = workbook.sheet("Sheet1");
+s.cell("A1").setValue("Quarterly report");
+s.range("A1:D1").merge().setStyle({
+  font: { bold: true, size: 14, color: "#FFFFFF" },
+  fill: { color: "#4F46E5" },
+  alignment: { horizontal: "center", vertical: "center" },
+});
+s.setRowHeight(1, 28);
+`,
+  "insert / delete rows": `const s = workbook.sheet("Sheet1");
+s.range("A1:B3").setValues([
+  ["one", 1],
+  ["two", 2],
+  ["three", 3],
+]);
+s.insertRows(2, 1);
+s.range("A2:B2").setValues([["inserted", 99]]);
+s.deleteRows(4, 1);
+`,
+  "copy + freeze": `const s = workbook.sheet("Sheet1");
+s.range("A1:C1").setValues([["a","b","c"]]);
+s.range("A2:C2").setFormulas([["=A1&\\"!\\"","=B1*2","=LEN(C1)"]]);
+s.range("A2:C2").copyTo("A3:C6");
+s.freeze.set(1, 0);
+`,
+  "sheets": `const inputs = workbook.addSheet("Inputs");
+const calc = workbook.addSheet("Calc");
+inputs.cell("A1").setValue(42);
+calc.cell("A1").setFormula("=Inputs!A1 * 2");
+calc.activate();
+`,
+};
+
+let runtime;
+try {
+  runtime = await loadXlsxPreviewRuntime({ modules: ["index.js"] });
+} catch (error) {
+  document.body.innerHTML =
+    `<pre style="margin:24px;padding:16px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font:13px/1.5 ui-monospace,monospace;color:#7f1d1d;white-space:pre-wrap;">` +
+    String(error?.message ?? error).replace(/[&<>]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c])) +
+    `</pre>`;
+  throw error;
+}
+const { Workbook, createWorkbookPreviewer } = runtime;
+
+const $ = (id) => document.getElementById(id);
+const previewRoot = $("preview");
+const statusEl = $("status");
+const openBtn = $("open-btn");
+const picker = $("picker");
+const newBtn = $("new-btn");
+const saveBtn = $("save-btn");
+const runBtn = $("run-btn");
+const recalcBtn = $("recalc-btn");
+const clearLogBtn = $("clear-log-btn");
+const editor = $("editor");
+const logEl = $("log");
+const autoRender = $("auto-render");
+const snippetSelect = $("snippet-select");
+
+for (const name of Object.keys(SNIPPETS)) {
+  const opt = document.createElement("option");
+  opt.value = name;
+  opt.textContent = name;
+  snippetSelect.appendChild(opt);
+}
+editor.value = SNIPPETS["hello"];
+
+let workbook = null;
+let previewer = null;
+let workbookName = "untitled.xlsx";
+let activeSheetMem = null;
+
+function setStatus(text, kind) {
+  statusEl.textContent = text;
+  statusEl.className = "status" + (kind ? " " + kind : "");
+}
+
+function log(msg, kind) {
+  const div = document.createElement("div");
+  div.className = "entry" + (kind ? " " + kind : "");
+  const t = new Date();
+  const ts = `${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}:${String(t.getSeconds()).padStart(2,"0")}`;
+  const tsSpan = document.createElement("span");
+  tsSpan.className = "ts";
+  tsSpan.textContent = ts;
+  div.appendChild(tsSpan);
+  div.appendChild(document.createTextNode(msg));
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function rememberActiveSheet() {
+  if (!previewer) return;
+  try {
+    activeSheetMem = previewer.getActiveSheet()?.name ?? null;
+  } catch { activeSheetMem = null; }
+}
+
+function render() {
+  if (!workbook) return;
+  rememberActiveSheet();
+  previewer?.destroy();
+  previewer = null;
+  previewRoot.innerHTML = "";
+  const layout = workbook.layout();
+  const layoutActiveName =
+    typeof layout.activeSheetIndex === "number" &&
+    layout.activeSheetIndex >= 0 &&
+    layout.activeSheetIndex < layout.sheets.length
+      ? layout.sheets[layout.activeSheetIndex].name
+      : undefined;
+  const initialSheet =
+    layoutActiveName && layoutActiveName !== activeSheetMem
+      ? layoutActiveName
+      : activeSheetMem && layout.sheets.some((s) => s.name === activeSheetMem)
+        ? activeSheetMem
+        : undefined;
+  previewer = createWorkbookPreviewer(previewRoot, layout, { initialSheet });
+  previewRoot.appendChild(previewer.root);
+}
+
+function summarizeRecalc(r) {
+  if (!r) return "";
+  const sheets = r.sheets ?? [];
+  const total = sheets.reduce((n, s) => n + (s.cells?.length ?? 0), 0);
+  const errs = sheets.reduce(
+    (n, s) => n + (s.cells?.filter((c) => c.value?.kind === "error")?.length ?? 0),
+    0,
+  );
+  return `recalc: ${sheets.length} sheet(s), ${total} cell(s)${errs ? `, ${errs} error(s)` : ""}`;
+}
+
+function adoptWorkbook(wb, name) {
+  if (workbook) {
+    try { workbook.dispose(); } catch {}
+  }
+  workbook = wb;
+  workbookName = name || "untitled.xlsx";
+  activeSheetMem = null;
+  saveBtn.disabled = false;
+  runBtn.disabled = false;
+  recalcBtn.disabled = false;
+  setStatus(workbookName, "ok");
+  log(`loaded ${workbookName}`, "ok");
+  try {
+    const r = workbook.recalculate();
+    if (r) log(summarizeRecalc(r));
+  } catch (e) {
+    log(`recalc failed: ${e?.message ?? e}`, "err");
+  }
+  render();
+}
+
+openBtn.addEventListener("click", () => picker.click());
+picker.addEventListener("change", async (ev) => {
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  picker.value = "";
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = await Workbook.open(buf);
+    adoptWorkbook(wb, file.name);
+  } catch (e) {
+    log(`open failed: ${formatError(e)}`, "err");
+    setStatus("open failed", "err");
+  }
+});
+
+newBtn.addEventListener("click", async () => {
+  try {
+    const wb = await Workbook.create();
+    adoptWorkbook(wb, "untitled.xlsx");
+  } catch (e) {
+    log(`create failed: ${formatError(e)}`, "err");
+    setStatus("create failed", "err");
+  }
+});
+
+saveBtn.addEventListener("click", () => {
+  if (!workbook) return;
+  try {
+    const bytes = workbook.save();
+    const blob = new Blob([bytes], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = workbookName.endsWith(".xlsx") ? workbookName : `${workbookName}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    log(`saved ${a.download} (${bytes.byteLength.toLocaleString()} bytes)`, "ok");
+  } catch (e) {
+    log(`save failed: ${formatError(e)}`, "err");
+  }
+});
+
+recalcBtn.addEventListener("click", () => {
+  if (!workbook) return;
+  try {
+    const r = workbook.recalculate();
+    log(summarizeRecalc(r), "ok");
+    render();
+  } catch (e) {
+    log(`recalc failed: ${formatError(e)}`, "err");
+  }
+});
+
+clearLogBtn.addEventListener("click", () => { logEl.innerHTML = ""; });
+
+snippetSelect.addEventListener("change", () => {
+  const v = snippetSelect.value;
+  if (v && SNIPPETS[v]) {
+    editor.value = SNIPPETS[v];
+    snippetSelect.value = "";
+    editor.focus();
+  }
+});
+
+editor.addEventListener("keydown", (ev) => {
+  if ((ev.metaKey || ev.ctrlKey) && ev.key === "Enter") {
+    ev.preventDefault();
+    runBtn.click();
+  }
+});
+
+runBtn.addEventListener("click", async () => {
+  if (!workbook) return;
+  const src = editor.value;
+  const started = performance.now();
+  try {
+    const fn = new Function("workbook", `"use strict";\n${src}`);
+    const result = fn(workbook);
+    if (result && typeof result.then === "function") await result;
+    const dt = (performance.now() - started).toFixed(1);
+    log(`ran script (${dt}ms)`, "ok");
+    try {
+      const r = workbook.recalculate();
+      log(summarizeRecalc(r));
+    } catch (e) {
+      log(`recalc failed: ${formatError(e)}`, "err");
+    }
+    if (autoRender.checked) render();
+  } catch (e) {
+    log(`script failed: ${formatError(e)}`, "err");
+  }
+});
+
+function formatError(e) {
+  if (!e) return String(e);
+  if (typeof e === "object" && e.code) {
+    const detail = e.message ?? e.detail ?? "";
+    return `[${e.code}] ${detail}`;
+  }
+  return e?.message ?? String(e);
+}
+
+window.addEventListener("error", (ev) => {
+  log(`window error: ${formatError(ev.error ?? ev.message)}`, "err");
+});
+window.addEventListener("unhandledrejection", (ev) => {
+  log(`unhandled: ${formatError(ev.reason)}`, "err");
+});
+
+log(`runtime: ${runtime.source} (${runtime.assetBase})`);
+</script>
+</body>
+</html>

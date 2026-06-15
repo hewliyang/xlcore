@@ -1,0 +1,2276 @@
+[
+  {
+    "name": "new",
+    "jsName": null,
+    "source": "handwritten",
+    "kind": "constructor",
+    "args": [],
+    "ret": "Result<WorkbookHandle, JsValue>"
+  },
+  {
+    "name": "open",
+    "jsName": "open",
+    "source": "handwritten",
+    "kind": "static",
+    "args": [
+      {
+        "name": "bytes",
+        "kind": "raw",
+        "type": "Vec<u8>"
+      }
+    ],
+    "ret": "Result<WorkbookHandle, JsValue>"
+  },
+  {
+    "name": "warnings",
+    "jsName": "warnings",
+    "source": "handwritten",
+    "kind": "method",
+    "args": [],
+    "ret": "Result<JsValue, JsValue>"
+  },
+  {
+    "name": "take_warnings",
+    "jsName": "takeWarnings",
+    "source": "handwritten",
+    "kind": "method",
+    "args": [],
+    "ret": "Result<JsValue, JsValue>"
+  },
+  {
+    "name": "set_value",
+    "jsName": "setValue",
+    "source": "handwritten",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "raw",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "raw",
+        "type": "&str"
+      },
+      {
+        "name": "value",
+        "kind": "raw",
+        "type": "JsValue"
+      }
+    ],
+    "ret": "Result<JsValue, JsValue>"
+  },
+  {
+    "name": "set_range_values",
+    "jsName": "setRangeValues",
+    "source": "handwritten",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "raw",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "raw",
+        "type": "&str"
+      },
+      {
+        "name": "values",
+        "kind": "raw",
+        "type": "JsValue"
+      }
+    ],
+    "ret": "Result<JsValue, JsValue>"
+  },
+  {
+    "name": "append_rows",
+    "jsName": "appendRows",
+    "source": "handwritten",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "raw",
+        "type": "&str"
+      },
+      {
+        "name": "rows",
+        "kind": "raw",
+        "type": "JsValue"
+      }
+    ],
+    "ret": "Result<JsValue, JsValue>"
+  },
+  {
+    "name": "set_range_formulas",
+    "jsName": "setRangeFormulas",
+    "source": "handwritten",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "raw",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "raw",
+        "type": "&str"
+      },
+      {
+        "name": "formulas",
+        "kind": "raw",
+        "type": "JsValue"
+      }
+    ],
+    "ret": "Result<JsValue, JsValue>"
+  },
+  {
+    "name": "save",
+    "jsName": "save",
+    "source": "handwritten",
+    "kind": "method",
+    "args": [],
+    "ret": "Result<Vec<u8>, JsValue>"
+  },
+  {
+    "name": "dispose",
+    "jsName": "dispose",
+    "source": "handwritten",
+    "kind": "method",
+    "args": [],
+    "ret": "()"
+  },
+  {
+    "name": "sheets",
+    "jsName": "sheets",
+    "source": "table",
+    "kind": "method",
+    "args": [],
+    "ret": "json"
+  },
+  {
+    "name": "get_cell_in",
+    "jsName": "getCell",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_formula_in",
+    "jsName": "setFormula",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "formula",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "clear_in",
+    "jsName": "clear",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "clear_with_in",
+    "jsName": "clearWith",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "mode",
+        "kind": "de",
+        "type": "xlcore_api::ClearMode"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "get_range_in",
+    "jsName": "getRange",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "dependencies_in",
+    "jsName": "dependencies",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "precedents_in",
+    "jsName": "precedents",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "dependents_in",
+    "jsName": "dependents",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "parse_formula_references_in",
+    "jsName": "parseFormulaReferences",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "anchor",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "formula",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "function_names",
+    "jsName": "functionNames",
+    "source": "table",
+    "kind": "method",
+    "args": [],
+    "ret": "json"
+  },
+  {
+    "name": "set_style_in",
+    "jsName": "setStyle",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "deopt",
+        "type": "xlcore_api::StylePatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_rich_text_in",
+    "jsName": "setRichText",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "runs",
+        "kind": "de",
+        "type": "Vec<xlcore_api::RichTextRun>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "merges",
+    "jsName": "merges",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "add_merge",
+    "jsName": "addMerge",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_merge",
+    "jsName": "removeMerge",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "hyperlinks",
+    "jsName": "hyperlinks",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_hyperlink",
+    "jsName": "setHyperlink",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "deopt",
+        "type": "xlcore_api::HyperlinkPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_hyperlink",
+    "jsName": "removeHyperlink",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "auto_filter",
+    "jsName": "autoFilter",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_auto_filter",
+    "jsName": "setAutoFilter",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_auto_filter",
+    "jsName": "removeAutoFilter",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_auto_filter_column",
+    "jsName": "setAutoFilterColumn",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::AutoFilterColumnPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_auto_filter_column",
+    "jsName": "removeAutoFilterColumn",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "column_offset",
+        "kind": "u32",
+        "type": "u32"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_auto_filter_sort",
+    "jsName": "setAutoFilterSort",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "column_offset",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "descending",
+        "kind": "bool",
+        "type": "bool"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "remove_auto_filter_sort",
+    "jsName": "removeAutoFilterSort",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "comments",
+    "jsName": "comments",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_comment",
+    "jsName": "setComment",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::CommentPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_comment",
+    "jsName": "removeComment",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "threaded_notes",
+    "jsName": "threadedNotes",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "add_threaded_note",
+    "jsName": "addThreadedNote",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::ThreadedNotePatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "reply_threaded_note",
+    "jsName": "replyThreadedNote",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "parent_id",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::ThreadedNotePatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_threaded_thread",
+    "jsName": "removeThreadedThread",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "data_validations",
+    "jsName": "dataValidations",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_data_validation",
+    "jsName": "setDataValidation",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::DataValidationPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_data_validation",
+    "jsName": "removeDataValidation",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "conditional_formats",
+    "jsName": "conditionalFormats",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_conditional_format",
+    "jsName": "setConditionalFormat",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::ConditionalFormatRulePatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "clear_conditional_formats",
+    "jsName": "clearConditionalFormats",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "defined_names",
+    "jsName": "definedNames",
+    "source": "table",
+    "kind": "method",
+    "args": [],
+    "ret": "json"
+  },
+  {
+    "name": "set_defined_name",
+    "jsName": "setDefinedName",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::DefinedNamePatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_defined_name",
+    "jsName": "removeDefinedName",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "name",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "scope",
+        "kind": "os",
+        "type": "Option<String>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "named_styles",
+    "jsName": "namedStyles",
+    "source": "table",
+    "kind": "method",
+    "args": [],
+    "ret": "json"
+  },
+  {
+    "name": "set_named_style",
+    "jsName": "setNamedStyle",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::NamedStylePatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_named_style",
+    "jsName": "removeNamedStyle",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "name",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "tables",
+    "jsName": "tables",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "os",
+        "type": "Option<String>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_table",
+    "jsName": "setTable",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::TablePatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_table",
+    "jsName": "removeTable",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "name",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "charts",
+    "jsName": "charts",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "os",
+        "type": "Option<String>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_chart",
+    "jsName": "setChart",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::ChartPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_chart",
+    "jsName": "removeChart",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "id",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "update_chart",
+    "jsName": "updateChart",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "id",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "update",
+        "kind": "de",
+        "type": "xlcore_api::ChartUpdate"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "chart_exs",
+    "jsName": "chartExs",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "os",
+        "type": "Option<String>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_chart_ex",
+    "jsName": "setChartEx",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::ChartExPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_chart_ex",
+    "jsName": "removeChartEx",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "id",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "pivots",
+    "jsName": "pivots",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "os",
+        "type": "Option<String>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_pivot",
+    "jsName": "setPivot",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::PivotPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "pivot_preview",
+    "jsName": "pivotPreview",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::PivotPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "update_pivot",
+    "jsName": "updatePivot",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "id",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "update",
+        "kind": "de",
+        "type": "xlcore_api::PivotUpdate"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_pivot",
+    "jsName": "removePivot",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "id",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "images",
+    "jsName": "images",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "os",
+        "type": "Option<String>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_image",
+    "jsName": "setImage",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::ImagePatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_image",
+    "jsName": "removeImage",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "id",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "shapes",
+    "jsName": "shapes",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "os",
+        "type": "Option<String>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_shape",
+    "jsName": "setShape",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::ShapePatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_shape",
+    "jsName": "removeShape",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "id",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "sparkline_groups",
+    "jsName": "sparklineGroups",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "os",
+        "type": "Option<String>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_sparkline_group",
+    "jsName": "setSparklineGroup",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::SparklineGroupPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_sparkline_group",
+    "jsName": "removeSparklineGroup",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "id",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "properties",
+    "jsName": "properties",
+    "source": "table",
+    "kind": "method",
+    "args": [],
+    "ret": "json"
+  },
+  {
+    "name": "set_properties",
+    "jsName": "setProperties",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::WorkbookPropertiesPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "calc_properties",
+    "jsName": "calcProperties",
+    "source": "table",
+    "kind": "method",
+    "args": [],
+    "ret": "json"
+  },
+  {
+    "name": "set_calc_properties",
+    "jsName": "setCalcProperties",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::CalcPropertiesPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "sheet_protection",
+    "jsName": "sheetProtection",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_sheet_protection",
+    "jsName": "setSheetProtection",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::SheetProtectionPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_sheet_protection",
+    "jsName": "removeSheetProtection",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "workbook_protection",
+    "jsName": "workbookProtection",
+    "source": "table",
+    "kind": "method",
+    "args": [],
+    "ret": "json"
+  },
+  {
+    "name": "set_workbook_protection",
+    "jsName": "setWorkbookProtection",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::WorkbookProtectionPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_workbook_protection",
+    "jsName": "removeWorkbookProtection",
+    "source": "table",
+    "kind": "method",
+    "args": [],
+    "ret": "json"
+  },
+  {
+    "name": "page_setup",
+    "jsName": "pageSetup",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_page_setup",
+    "jsName": "setPageSetup",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::SheetPageSetupPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "remove_page_setup",
+    "jsName": "removePageSetup",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "sheet_properties",
+    "jsName": "sheetProperties",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_sheet_properties",
+    "jsName": "setSheetProperties",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "patch",
+        "kind": "de",
+        "type": "xlcore_api::SheetPropertiesPatch"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "clear_range_in",
+    "jsName": "clearRange",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "clear_range_with_in",
+    "jsName": "clearRangeWith",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "mode",
+        "kind": "de",
+        "type": "xlcore_api::ClearMode"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "copy_range_in",
+    "jsName": "copyRange",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "src_sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "src_reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "dst_sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "dst_reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "fill_range_in",
+    "jsName": "fillRange",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "src_sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "src_reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "dst_sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "dst_reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "create_sheet",
+    "jsName": "createSheet",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "name",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "rename_sheet",
+    "jsName": "renameSheet",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "old_name",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "new_name",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "delete_sheet",
+    "jsName": "deleteSheet",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "name",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "move_sheet",
+    "jsName": "moveSheet",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "name",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "to_index",
+        "kind": "usize",
+        "type": "usize"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_row_height",
+    "jsName": "setRowHeight",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "row",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "height",
+        "kind": "f64",
+        "type": "f64"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "set_row_visible",
+    "jsName": "setRowVisible",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "row",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "visible",
+        "kind": "bool",
+        "type": "bool"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "set_column_width",
+    "jsName": "setColumnWidth",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "column",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "width",
+        "kind": "f64",
+        "type": "f64"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "auto_fit_column",
+    "jsName": "autoFitColumn",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "column",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "min_width",
+        "kind": "deopt",
+        "type": "Option<f64>"
+      },
+      {
+        "name": "max_width",
+        "kind": "deopt",
+        "type": "Option<f64>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "auto_fit_columns",
+    "jsName": "autoFitColumns",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "start",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "end",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "min_width",
+        "kind": "deopt",
+        "type": "Option<f64>"
+      },
+      {
+        "name": "max_width",
+        "kind": "deopt",
+        "type": "Option<f64>"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_column_visible",
+    "jsName": "setColumnVisible",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "column",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "visible",
+        "kind": "bool",
+        "type": "bool"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "insert_rows",
+    "jsName": "insertRows",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "before",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "count",
+        "kind": "u32",
+        "type": "u32"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "delete_rows",
+    "jsName": "deleteRows",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "start",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "count",
+        "kind": "u32",
+        "type": "u32"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "insert_columns",
+    "jsName": "insertColumns",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "before",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "count",
+        "kind": "u32",
+        "type": "u32"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "delete_columns",
+    "jsName": "deleteColumns",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "start",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "count",
+        "kind": "u32",
+        "type": "u32"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "group_rows",
+    "jsName": "groupRows",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "start",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "end",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "level",
+        "kind": "u8",
+        "type": "u8"
+      },
+      {
+        "name": "collapsed",
+        "kind": "bool",
+        "type": "bool"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "group_columns",
+    "jsName": "groupColumns",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "start",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "end",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "level",
+        "kind": "u8",
+        "type": "u8"
+      },
+      {
+        "name": "collapsed",
+        "kind": "bool",
+        "type": "bool"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "set_show_grid_lines",
+    "jsName": "setShowGridLines",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "visible",
+        "kind": "bool",
+        "type": "bool"
+      }
+    ],
+    "ret": "bool"
+  },
+  {
+    "name": "get_show_grid_lines",
+    "jsName": "getShowGridLines",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "bool"
+  },
+  {
+    "name": "set_freeze",
+    "jsName": "setFreeze",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "frozen_rows",
+        "kind": "u32",
+        "type": "u32"
+      },
+      {
+        "name": "frozen_columns",
+        "kind": "u32",
+        "type": "u32"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "get_freeze",
+    "jsName": "getFreeze",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_active_sheet",
+    "jsName": "setActiveSheet",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "name",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_sheet_visibility",
+    "jsName": "setSheetVisibility",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "name",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "visibility",
+        "kind": "de",
+        "type": "xlcore_api::SheetVisibility"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "search",
+    "jsName": "search",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "query",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "options",
+        "kind": "deopt",
+        "type": "xlcore_api::SearchOptions"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "recalculate",
+    "jsName": "recalculate",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "errors_only",
+        "kind": "bool",
+        "type": "bool"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "layout",
+    "jsName": "layout",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "options",
+        "kind": "deopt",
+        "type": "xlcore_api::LayoutOptions"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "part_names",
+    "jsName": "partNames",
+    "source": "table",
+    "kind": "method",
+    "args": [],
+    "ret": "json"
+  },
+  {
+    "name": "get_part_xml",
+    "jsName": "getPartXml",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "name",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "set_part_xml",
+    "jsName": "setPartXml",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "name",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "xml",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "unit"
+  },
+  {
+    "name": "remove_part_xml",
+    "jsName": "removePartXml",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "name",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  }
+]

@@ -1,5 +1,8 @@
 import type { Color, CustomTableStyle, Dxf, Sheet, WorkbookLayout } from "./types.js";
+import type { PivotFilterArrow } from "./schema/PivotFilterArrow.js";
+import type { TableFilterArrow } from "./schema/TableFilterArrow.js";
 import { activeThemeColor } from "./color.js";
+import type { CellRect } from "./geometry.js";
 import { findCell } from "./geometry.js";
 import { HEADER_H, HEADER_W, colLabel } from "./grid.js";
 import type { Grid } from "./grid.js";
@@ -175,6 +178,35 @@ export function computeTableState(
   return { tableDxfs, filterArrows };
 }
 
+export const FILTER_ARROW_BOX_W = 14;
+export const FILTER_ARROW_BOX_H = 14;
+export const FILTER_ARROW_INSET_X = 4;
+
+export function filterArrowRect(rect: CellRect): CellRect {
+  return {
+    x: rect.x + rect.w - FILTER_ARROW_BOX_W - FILTER_ARROW_INSET_X,
+    y: rect.y + (rect.h - FILTER_ARROW_BOX_H) / 2,
+    w: FILTER_ARROW_BOX_W,
+    h: FILTER_ARROW_BOX_H,
+  };
+}
+
+export interface PivotArrowHit extends PivotFilterArrow {
+  pivot: string;
+}
+
+export function pivotFilterArrows(sheet: Sheet): PivotArrowHit[] {
+  const out: PivotArrowHit[] = [];
+  for (const p of sheet.pivots ?? []) {
+    for (const a of p.filterArrowCells) out.push({ ...a, pivot: p.name });
+  }
+  return out;
+}
+
+export function tableFilterArrows(sheet: Sheet): TableFilterArrow[] {
+  return sheet.tableFilterArrows ?? [];
+}
+
 export function drawFilterArrows(
   ctx: CanvasRenderingContext2D,
   sheet: Sheet,
@@ -183,18 +215,17 @@ export function drawFilterArrows(
   filterArrows: Set<string>,
 ): void {
   if (filterArrows.size === 0) return;
-  const BOX_W = 14,
-    BOX_H = 14,
-    INSET_X = 4;
+  const BOX_W = FILTER_ARROW_BOX_W,
+    BOX_H = FILTER_ARROW_BOX_H;
   for (const k of filterArrows) {
     const [rs, cs] = k.split(":");
     const r = parseInt(rs!, 10),
       c = parseInt(cs!, 10);
     if (r < vis.firstRow || r > vis.lastRow) continue;
     if (c < vis.firstCol || c > vis.lastCol) continue;
-    const rect = cellRect(g, r, c);
-    const x = rect.x + rect.w - BOX_W - INSET_X;
-    const y = rect.y + (rect.h - BOX_H) / 2;
+    const box = filterArrowRect(cellRect(g, r, c));
+    const x = box.x;
+    const y = box.y;
 
     ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
     ctx.fillRect(x, y, BOX_W, BOX_H);

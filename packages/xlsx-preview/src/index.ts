@@ -1,4 +1,37 @@
 export { render, buildGrid, HEADER_H, HEADER_W } from "./render.js";
+export {
+  AutoFilterAccessor,
+  Cell,
+  ChartCollection,
+  ChartExCollection,
+  CommentCollection,
+  ConditionalFormatCollection,
+  DataValidationCollection,
+  HyperlinkCollection,
+  ImageCollection,
+  MergeCollection,
+  NumberFormat,
+  PivotCollection,
+  Range,
+  SheetFreezeAccessor,
+  SheetPageSetupAccessor,
+  SheetPropertiesAccessor,
+  SheetProtectionAccessor,
+  SparklineGroupCollection,
+  TableCollection,
+  ThreadedNotesCollection,
+  Workbook,
+  WorkbookCharts,
+  WorkbookDefinedNames,
+  WorkbookImages,
+  WorkbookNamedStyles,
+  WorkbookPivots,
+  WorkbookSparklineGroups,
+  WorkbookTables,
+  Worksheet,
+} from "./api.js";
+export { cellA1, colLetter, rangeA1 } from "./api.js";
+export type { CellAddress, RangeAddress, NumberFormatCode, NumberFormatKey } from "./api.js";
 export { attachInteractivity } from "./interact.js";
 export { createWorkbookPreviewer } from "./previewer.js";
 export {
@@ -31,6 +64,24 @@ export type {
 } from "./browserLoader.js";
 export type { WorkbookSourceFormat } from "./sourceFormat.js";
 export type {
+  ApiCellValue,
+  ApiError,
+  ApiErrorPayload,
+  ApiErrorCode,
+  CellInfo,
+  CellInput,
+  EngineCellValue,
+  FormulaFallback,
+  RecalcCell,
+  RecalcOptions,
+  RecalcSheet,
+  RecalcWorkbook,
+  SheetInfo,
+  WorkbookApiOptions,
+  WorkbookLayoutOptions,
+} from "./api.js";
+export type {
+  PreviewerEngine,
   PreviewerEventName,
   PreviewerOptions,
   PreviewerState,

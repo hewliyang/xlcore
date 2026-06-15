@@ -26,7 +26,7 @@ pub fn extract(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) -> Vec<Ta
 
         let columns: Vec<TableColumn> = t
             .table_columns
-            .x_table_column
+            .table_column
             .iter()
             .map(|c| TableColumn {
                 name: c.name.as_str().to_string(),
@@ -44,10 +44,10 @@ pub fn extract(doc: &mut SpreadsheetDocument, ws_part: &WorksheetPart) -> Vec<Ta
                 .as_ref()
                 .map(|n| n.as_str().to_string())
                 .unwrap_or_default(),
-            show_first_column: s.show_first_column.unwrap_or(false),
-            show_last_column: s.show_last_column.unwrap_or(false),
-            show_row_stripes: s.show_row_stripes.unwrap_or(false),
-            show_column_stripes: s.show_column_stripes.unwrap_or(false),
+            show_first_column: s.show_first_column.unwrap_or(false.into()).into(),
+            show_last_column: s.show_last_column.unwrap_or(false.into()).into(),
+            show_row_stripes: s.show_row_stripes.unwrap_or(false.into()).into(),
+            show_column_stripes: s.show_column_stripes.unwrap_or(false.into()).into(),
         });
 
         out.push(Table {

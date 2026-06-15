@@ -42,10 +42,11 @@
     "build:wasm": "cd ../.. && wasm-pack build crates/xlcore-wasm --target web --out-dir pkg --profile wasm-size --no-opt",
     "build:release": "pnpm run build:wasm && pnpm run build:ts",
     "prepack": "pnpm run build:release",
-    "check": "pnpm run typecheck && pnpm run lint && pnpm run check:loc && pnpm run knip",
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run check:loc && pnpm run knip && pnpm run check:schema && pnpm run check:api",
     "check:loc": "tsx scripts/check-loc.ts",
     "dev": "esbuild src/browser.ts --outfile=dist/browser.js --target=es2022 --platform=browser --format=iife --bundle --watch",
     "preview": "pnpm run build:ts && node scripts/preview.mjs",
+    "smoke:api": "pnpm run build:ts && node scripts/smoke-api.mjs",
     "smoke:csv": "pnpm run build:ts && node scripts/smoke-csv.mjs",
     "smoke:parquet": "pnpm run build:ts && node scripts/smoke-parquet.mjs",
     "format": "biome format --write .",
@@ -54,7 +55,9 @@
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
     "test": "node scripts/check-wasm-fresh.mjs && pnpm run build:ts && node scripts/check-dist-imports.mjs && vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:schema": "python3 ../../scripts/schema_diff.py --check",
+    "check:api": "python3 ../../scripts/api_manifest.py --check"
   },
   "exports": {
     ".": {
@@ -72,6 +75,10 @@
     "./node": {
       "import": "./dist/node.js",
       "types": "./dist/node.d.ts"
+    },
+    "./api": {
+      "import": "./dist/api.js",
+      "types": "./dist/api.d.ts"
     },
     "./react": {
       "import": "./dist/react.js",

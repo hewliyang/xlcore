@@ -1,6 +1,9 @@
 import type { Chart, ChartSeries } from "./types.js";
 import type { Rect } from "./chart.js";
 import { activeThemeColor } from "./color.js";
+import { drawTrendlines } from "./chartTrendline.js";
+import { drawErrorBars } from "./chartErrorBars.js";
+import { advancedPointFill } from "./chartFills.js";
 import {
   buildLabelText,
   drawAxisFrame,
@@ -64,29 +67,42 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
   const cx = rect.x + rect.w / 2;
   const cy = rect.y + rect.h / 2;
   const r = Math.min(rect.w, rect.h) / 2 - 8;
-  const innerR = chart.type === "doughnut" ? r * 0.55 : 0;
+  const holeFrac =
+    chart.holeSize != null ? Math.max(0, Math.min(90, chart.holeSize)) / 100 : 0.55;
+  const innerR = chart.type === "doughnut" ? r * holeFrac : 0;
 
   const pointColors = ser.pointColors ?? [];
+  const pointExplosions = ser.pointExplosions ?? [];
 
-  type SliceGeom = { mid: number; idx: number; v: number };
+  type SliceGeom = { mid: number; idx: number; v: number; ox: number; oy: number };
   const slices: SliceGeom[] = [];
-  let start = -Math.PI / 2;
+  let start = -Math.PI / 2 + ((chart.firstSliceAngle ?? 0) * Math.PI) / 180;
   for (let i = 0; i < ser.values.length; i++) {
     const v = Math.max(0, ser.values[i] ?? 0);
     if (v <= 0) continue;
     const sweep = (v / total) * Math.PI * 2;
     const end = start + sweep;
-    ctx.fillStyle = pieSliceColor(i, pointColors);
+    const mid = (start + end) / 2;
+    const offset = (Math.min(400, Math.max(0, pointExplosions[i] ?? 0)) / 100) * r;
+    const ox = Math.cos(mid) * offset;
+    const oy = Math.sin(mid) * offset;
+    const adv = advancedPointFill(ctx, ser, i, {
+      x: cx + ox - r,
+      y: cy + oy - r,
+      w: r * 2,
+      h: r * 2,
+    });
+    ctx.fillStyle = adv ?? pieSliceColor(i, pointColors);
     ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, r, start, end);
+    ctx.moveTo(cx + ox, cy + oy);
+    ctx.arc(cx + ox, cy + oy, r, start, end);
     ctx.closePath();
     ctx.fill();
 
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    slices.push({ mid: (start + end) / 2, idx: i, v });
+    slices.push({ mid, idx: i, v, ox, oy });
     start = end;
   }
 
@@ -109,8 +125,8 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
         pos === "outEnd" || pos === "bestFit" ? r + 12 : pos === "ctr" ? (innerR + r) / 2 : r - 12;
       const text = po?.text ?? buildLabelText(edl, chart, ser, sl.idx, sl.v, total);
       if (!text) continue;
-      const lx = cx + Math.cos(sl.mid) * labelR;
-      const ly = cy + Math.sin(sl.mid) * labelR;
+      const lx = cx + sl.ox + Math.cos(sl.mid) * labelR;
+      const ly = cy + sl.oy + Math.sin(sl.mid) * labelR;
       const align: CanvasTextAlign =
         pos === "outEnd" || pos === "bestFit"
           ? Math.cos(sl.mid) >= 0
@@ -120,6 +136,174 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
       drawLabel(ctx, text, lx, ly, align, "middle");
     }
   }
+}
+
+export function drawOfPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
+  const ser = chart.series[0];
+  if (!ser || ser.values.length === 0) {
+    drawPlaceholderPlot(ctx, chart, rect);
+    return;
+  }
+
+  const vals = ser.values.map((v) => Math.max(0, v ?? 0));
+  const grandTotal = vals.reduce((a, b) => a + b, 0);
+  if (grandTotal <= 0) {
+    drawPlaceholderPlot(ctx, chart, rect);
+    return;
+  }
+
+  const n = vals.length;
+  const splitType = chart.splitType ?? "pos";
+  const splitPos = chart.splitPos ?? 2;
+  const secondary = new Set<number>();
+  if (splitType === "val") {
+    for (let i = 0; i < n; i++) if (vals[i]! <= splitPos) secondary.add(i);
+  } else if (splitType === "percent") {
+    for (let i = 0; i < n; i++) if ((vals[i]! / grandTotal) * 100 <= splitPos) secondary.add(i);
+  } else {
+    const count = Math.max(1, Math.min(n - 1, Math.round(splitPos)));
+    for (let i = n - count; i < n; i++) secondary.add(i);
+  }
+  if (secondary.size === 0 || secondary.size >= n) {
+    drawPieChart(ctx, chart, rect);
+    return;
+  }
+
+  const mainIdx: number[] = [];
+  const secIdx: number[] = [];
+  for (let i = 0; i < n; i++) (secondary.has(i) ? secIdx : mainIdx).push(i);
+  const secTotal = secIdx.reduce((a, i) => a + vals[i]!, 0);
+  const mainTotal = mainIdx.reduce((a, i) => a + vals[i]!, 0) + secTotal;
+
+  const pointColors = ser.pointColors ?? [];
+  const otherColor = pieSliceColor(mainIdx.length, []);
+  const dl = effectiveLabels(chart, ser);
+
+  const leftW = rect.w * 0.56;
+  const mainCx = rect.x + leftW / 2;
+  const mainCy = rect.y + rect.h / 2;
+  const mainR = Math.max(10, Math.min(leftW, rect.h) / 2 - 16);
+
+  const secScale = Math.max(0.2, Math.min(2, (chart.secondPieSize ?? 75) / 100));
+  const secCx = rect.x + leftW + (rect.w - leftW) / 2;
+  const secCy = rect.y + rect.h / 2;
+  const ofBar = chart.ofPieType === "bar";
+
+  let otherStart = 0;
+  let otherEnd = 0;
+  let start = -Math.PI / 2 + ((chart.firstSliceAngle ?? 0) * Math.PI) / 180;
+  const drawSlice = (
+    cx: number,
+    cy: number,
+    r: number,
+    a0: number,
+    a1: number,
+    color: string,
+  ) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, a0, a1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  };
+
+  const drawSliceLabel = (
+    cx: number,
+    cy: number,
+    r: number,
+    mid: number,
+    idx: number,
+    v: number,
+    total: number,
+  ) => {
+    if (!dl) return;
+    const po = pointLabel(dl, idx);
+    if (po === null) return;
+    const edl = po?.dl ?? dl;
+    const pos = edl.position ?? "outEnd";
+    const labelR = pos === "outEnd" || pos === "bestFit" ? r + 12 : pos === "ctr" ? r / 2 : r - 12;
+    const text = po?.text ?? buildLabelText(edl, chart, ser, idx, v, total);
+    if (!text) return;
+    const lx = cx + Math.cos(mid) * labelR;
+    const ly = cy + Math.sin(mid) * labelR;
+    const align: CanvasTextAlign =
+      pos === "outEnd" || pos === "bestFit" ? (Math.cos(mid) >= 0 ? "left" : "right") : "center";
+    drawLabel(ctx, text, lx, ly, align, "middle");
+  };
+
+  for (const i of mainIdx) {
+    const sweep = (vals[i]! / mainTotal) * Math.PI * 2;
+    const end = start + sweep;
+    drawSlice(mainCx, mainCy, mainR, start, end, pieSliceColor(i, pointColors));
+    drawSliceLabel(mainCx, mainCy, mainR, (start + end) / 2, i, vals[i]!, mainTotal);
+    start = end;
+  }
+  {
+    const sweep = (secTotal / mainTotal) * Math.PI * 2;
+    otherStart = start;
+    otherEnd = start + sweep;
+    drawSlice(mainCx, mainCy, mainR, otherStart, otherEnd, otherColor);
+    start = otherEnd;
+  }
+
+  if (ofBar) {
+    const barW = Math.max(16, (rect.w - leftW) * 0.34);
+    const barH = mainR * 2 * secScale;
+    const bx = secCx - barW / 2;
+    let by = secCy - barH / 2;
+    for (const i of secIdx) {
+      const h = (vals[i]! / secTotal) * barH;
+      ctx.fillStyle = pieSliceColor(i, pointColors);
+      ctx.fillRect(bx, by, barW, h);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(bx, by, barW, h);
+      if (dl) {
+        const po = pointLabel(dl, i);
+        if (po !== null) {
+          const edl = po?.dl ?? dl;
+          const text = po?.text ?? buildLabelText(edl, chart, ser, i, vals[i]!, secTotal);
+          if (text) drawLabel(ctx, text, bx + barW / 2, by + h / 2, "center", "middle");
+        }
+      }
+      by += h;
+    }
+    if (chart.seriesLines) {
+      ctx.strokeStyle = "#A6A6A6";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(mainCx + Math.cos(otherStart) * mainR, mainCy + Math.sin(otherStart) * mainR);
+      ctx.lineTo(bx, secCy - barH / 2);
+      ctx.moveTo(mainCx + Math.cos(otherEnd) * mainR, mainCy + Math.sin(otherEnd) * mainR);
+      ctx.lineTo(bx, secCy + barH / 2);
+      ctx.stroke();
+    }
+  } else {
+    const secR = Math.max(8, mainR * secScale);
+    let sa = -Math.PI / 2;
+    for (const i of secIdx) {
+      const sweep = (vals[i]! / secTotal) * Math.PI * 2;
+      const end = sa + sweep;
+      drawSlice(secCx, secCy, secR, sa, end, pieSliceColor(i, pointColors));
+      drawSliceLabel(secCx, secCy, secR, (sa + end) / 2, i, vals[i]!, secTotal);
+      sa = end;
+    }
+    if (chart.seriesLines) {
+      ctx.strokeStyle = "#A6A6A6";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(mainCx + Math.cos(otherStart) * mainR, mainCy + Math.sin(otherStart) * mainR);
+      ctx.lineTo(secCx, secCy - secR);
+      ctx.moveTo(mainCx + Math.cos(otherEnd) * mainR, mainCy + Math.sin(otherEnd) * mainR);
+      ctx.lineTo(secCx, secCy + secR);
+      ctx.stroke();
+    }
+  }
+  ctx.lineWidth = 1;
 }
 
 export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
@@ -250,6 +434,38 @@ export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, re
           if (text) drawLabel(ctx, text, p.x, p.y - 6, "center", "bottom");
         }
       }
+    }
+
+    if ((s.trendlines?.length ?? 0) > 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(inner.x, inner.y, inner.w, inner.h);
+      ctx.clip();
+      drawTrendlines(
+        ctx,
+        s,
+        xs.slice(0, n),
+        ys.slice(0, n),
+        (x) => inner.x + ((x - xMin) / (xMax - xMin)) * inner.w,
+        (y) => inner.y + (1 - (y - yMin) / (yMax - yMin)) * inner.h,
+      );
+      ctx.restore();
+    }
+
+    if (s.errorBars) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(inner.x, inner.y, inner.w, inner.h);
+      ctx.clip();
+      drawErrorBars(
+        ctx,
+        s,
+        xs.slice(0, n),
+        ys.slice(0, n),
+        (x) => inner.x + ((x - xMin) / (xMax - xMin)) * inner.w,
+        (y) => inner.y + (1 - (y - yMin) / (yMax - yMin)) * inner.h,
+      );
+      ctx.restore();
     }
   }
 

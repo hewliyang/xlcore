@@ -11,7 +11,6 @@ impl Fixer for CxAxisIdShape {
     }
 
     fn applies_to(&self, part: &str) -> bool {
-
         part.starts_with("xl/charts/") && part.ends_with(".xml") && !part.contains("/_rels/")
     }
 
@@ -98,7 +97,6 @@ mod tests {
 
     #[test]
     fn does_not_touch_legacy_c_axis_id() {
-
         let (out, _) = run(
             r#"<c:plotArea><c:catAx><c:axisId val="1"/></c:catAx></c:plotArea>"#,
             "xl/charts/chart1.xml",

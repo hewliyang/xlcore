@@ -1,6 +1,11 @@
 import type { Sheet, WorkbookLayout } from "./types.js";
 import { drawingHyperlinkAt } from "./drawingHits.js";
+import { cellRect } from "./geometry.js";
+import { filterArrowRect, pivotFilterArrows, tableFilterArrows } from "./sheetChrome.js";
+import type { PivotArrowHit } from "./sheetChrome.js";
+import type { TableFilterArrow } from "./schema/TableFilterArrow.js";
 import { buildGrid, frozenDims } from "./render.js";
+import { cellA1, rangeA1 } from "./api-refs.js";
 import { createAnnotationLayer } from "./interactAnnotations.js";
 import {
   computeOutlineRuns,
@@ -41,7 +46,31 @@ export interface InteractOptions {
 
   getViewport?: () => { x: number; y: number; w: number; h: number } | null;
 
+  onPivotFilter?: (info: PivotFilterEvent) => void;
+
+  onTableFilter?: (info: TableFilterEvent) => void;
+
+  onEditStart?: (cell: { r: number; c: number }, initialText: string | null) => void;
+
+  isPointModeActive?: () => boolean;
+
+  onPointModeRef?: (rangeRef: string, opts: { extend: boolean }) => void;
+
   redraw(): void;
+}
+
+export interface PivotFilterEvent {
+  pivot: string;
+  field: string;
+  axis: "row" | "column";
+  rect: { left: number; top: number; right: number; bottom: number };
+}
+
+export interface TableFilterEvent {
+  field: string;
+  columnOffset: number;
+  rangeRef: string;
+  rect: { left: number; top: number; right: number; bottom: number };
 }
 
 export interface Selection {
@@ -73,6 +102,8 @@ export function attachInteractivity(
     kind: "cell" | "col" | "row";
     anchor: { r: number; c: number };
   } | null = null;
+  let pointDrag: { anchor: { r: number; c: number } } | null = null;
+  let pointAnchor: { r: number; c: number } | null = null;
   const savedCursor = canvas.style.cursor;
   let cachedGrid: {
     sheet: Sheet;
@@ -176,6 +207,76 @@ export function attachInteractivity(
     return null;
   }
 
+  function pivotArrowAt(lp: { x: number; y: number }): PivotArrowHit | null {
+    const sheet = opts.getSheet();
+    const arrows = pivotFilterArrows(sheet);
+    if (arrows.length === 0) return null;
+    const grid = getGrid();
+    for (const a of arrows) {
+      const box = filterArrowRect(cellRect(grid, a.r, a.c));
+      if (lp.x >= box.x && lp.x <= box.x + box.w && lp.y >= box.y && lp.y <= box.y + box.h) {
+        return a;
+      }
+    }
+    return null;
+  }
+
+  function firePivotFilter(a: PivotArrowHit) {
+    if (!opts.onPivotFilter) return;
+    const grid = getGrid();
+    const sheet = opts.getSheet();
+    const box = filterArrowRect(cellRect(grid, a.r, a.c));
+    const z = opts.zoom.get();
+    const r = canvas.getBoundingClientRect();
+    const vp = opts.getViewport?.() ?? null;
+    const { splitX, splitY } = frozenDims(sheet, grid);
+    const sx = vp && a.c >= splitX ? vp.x : 0;
+    const sy = vp && a.r >= splitY ? vp.y : 0;
+    const left = r.left + (box.x - sx) * z;
+    const top = r.top + (box.y - sy) * z;
+    opts.onPivotFilter({
+      pivot: a.pivot,
+      field: a.field,
+      axis: a.axis,
+      rect: { left, top, right: left + box.w * z, bottom: top + box.h * z },
+    });
+  }
+
+  function tableArrowAt(lp: { x: number; y: number }): TableFilterArrow | null {
+    const sheet = opts.getSheet();
+    const arrows = tableFilterArrows(sheet);
+    if (arrows.length === 0) return null;
+    const grid = getGrid();
+    for (const a of arrows) {
+      const box = filterArrowRect(cellRect(grid, a.r, a.c));
+      if (lp.x >= box.x && lp.x <= box.x + box.w && lp.y >= box.y && lp.y <= box.y + box.h) {
+        return a;
+      }
+    }
+    return null;
+  }
+
+  function fireTableFilter(a: TableFilterArrow) {
+    if (!opts.onTableFilter) return;
+    const grid = getGrid();
+    const sheet = opts.getSheet();
+    const box = filterArrowRect(cellRect(grid, a.r, a.c));
+    const z = opts.zoom.get();
+    const r = canvas.getBoundingClientRect();
+    const vp = opts.getViewport?.() ?? null;
+    const { splitX, splitY } = frozenDims(sheet, grid);
+    const sx = vp && a.c >= splitX ? vp.x : 0;
+    const sy = vp && a.r >= splitY ? vp.y : 0;
+    const left = r.left + (box.x - sx) * z;
+    const top = r.top + (box.y - sy) * z;
+    opts.onTableFilter({
+      field: a.columnName,
+      columnOffset: a.columnOffset,
+      rangeRef: a.rangeRef,
+      rect: { left, top, right: left + box.w * z, bottom: top + box.h * z },
+    });
+  }
+
   function maybeOutlineCursor(cp: { x: number; y: number }): boolean {
     if (outlineButtonAt(cp) || outlineCornerAt(cp)) {
       canvas.style.cursor = "pointer";
@@ -199,6 +300,19 @@ export function attachInteractivity(
       }
       invalidateGrid();
       opts.redraw();
+      return;
+    }
+    if (pointDrag) {
+      const grid = getGrid();
+      const lp = toLogical(ev);
+      const cx = Math.max(grid.originX + 0.5, lp.x);
+      const cy = Math.max(grid.originY + 0.5, lp.y);
+      const cell = cellAt(grid, cx, cy);
+      if (!cell) return;
+      const cur = expandThroughMerge(cell.r, cell.c);
+      opts.onPointModeRef?.(pointRef(pointDrag.anchor, { r: cur.r2, c: cur.c2 }), {
+        extend: false,
+      });
       return;
     }
     if (selDrag) {
@@ -229,6 +343,22 @@ export function attachInteractivity(
     }
     const cp = toCanvasLocal(ev);
     if (maybeOutlineCursor(cp)) return;
+    if (opts.onPivotFilter) {
+      const lp = toLogical(ev);
+      if (pivotArrowAt(lp)) {
+        canvas.style.cursor = "pointer";
+        annotations.hidePopover();
+        return;
+      }
+    }
+    if (opts.onTableFilter) {
+      const lp = toLogical(ev);
+      if (tableArrowAt(lp)) {
+        canvas.style.cursor = "pointer";
+        annotations.hidePopover();
+        return;
+      }
+    }
     const hit = hitTest(cp.x, cp.y);
     if (hit) {
       canvas.style.cursor = hit.kind === "col" ? "col-resize" : "row-resize";
@@ -275,6 +405,15 @@ export function attachInteractivity(
     } else {
       annotations.hidePopover();
     }
+  }
+
+  function pointRef(anchor: { r: number; c: number }, cur: { r: number; c: number }): string {
+    const r1 = Math.min(anchor.r, cur.r);
+    const c1 = Math.min(anchor.c, cur.c);
+    const r2 = Math.max(anchor.r, cur.r);
+    const c2 = Math.max(anchor.c, cur.c);
+    if (r1 === r2 && c1 === c2) return cellA1(r1, c1);
+    return rangeA1(r1, c1, r2 - r1 + 1, c2 - c1 + 1);
   }
 
   function setSelection(active: { r: number; c: number }, range: Selection) {
@@ -410,6 +549,26 @@ export function attachInteractivity(
     const p = toLogical(ev);
     const shift = ev.shiftKey;
 
+    if (opts.onPivotFilter) {
+      const arrow = pivotArrowAt(p);
+      if (arrow) {
+        ev.preventDefault();
+        firePivotFilter(arrow);
+        canvas.focus({ preventScroll: true });
+        return;
+      }
+    }
+
+    if (opts.onTableFilter) {
+      const arrow = tableArrowAt(p);
+      if (arrow) {
+        ev.preventDefault();
+        fireTableFilter(arrow);
+        canvas.focus({ preventScroll: true });
+        return;
+      }
+    }
+
     const ob = outlineButtonAt(cp);
     if (ob) {
       ev.preventDefault();
@@ -497,6 +656,16 @@ export function attachInteractivity(
 
     if (cp.x >= grid.originX && cp.y >= grid.originY) {
       const cell = cellAt(grid, p.x, p.y);
+      if (cell && opts.isPointModeActive?.()) {
+        ev.preventDefault();
+        canvas.setPointerCapture(ev.pointerId);
+        const tgt = expandThroughMerge(cell.r, cell.c);
+        const anchor = shift && pointAnchor ? pointAnchor : { r: tgt.r1, c: tgt.c1 };
+        if (!shift) pointAnchor = anchor;
+        pointDrag = { anchor };
+        opts.onPointModeRef?.(pointRef(anchor, { r: tgt.r2, c: tgt.c2 }), { extend: shift });
+        return;
+      }
       if (cell) {
         ev.preventDefault();
         canvas.setPointerCapture(ev.pointerId);
@@ -648,7 +817,15 @@ export function attachInteractivity(
       case "Enter":
         dr = ev.shiftKey ? -1 : 1;
         break;
+      case "F2":
+        ev.preventDefault();
+        opts.onEditStart?.(cur, null);
+        return;
       default:
+        if (opts.onEditStart && ev.key.length === 1 && !ev.ctrlKey && !ev.metaKey) {
+          ev.preventDefault();
+          opts.onEditStart(cur, ev.key);
+        }
         return;
     }
     ev.preventDefault();
@@ -684,13 +861,26 @@ export function attachInteractivity(
     opts.redraw();
   }
 
+  function onDoubleClick(ev: MouseEvent) {
+    if (!opts.onEditStart) return;
+    const cp = toCanvasLocal(ev);
+    const p = toLogical(ev);
+    const grid = getGrid();
+    if (cp.x < grid.originX || cp.y < grid.originY) return;
+    const cell = cellAt(grid, p.x, p.y);
+    if (!cell) return;
+    ev.preventDefault();
+    opts.onEditStart(resolveAnchor(cell.r, cell.c), null);
+  }
+
   function onPointerUp(ev: PointerEvent) {
-    if (drag || selDrag) {
+    if (drag || selDrag || pointDrag) {
       try {
         canvas.releasePointerCapture(ev.pointerId);
       } catch {}
       drag = null;
       selDrag = null;
+      pointDrag = null;
     }
   }
 
@@ -749,6 +939,7 @@ export function attachInteractivity(
   canvas.addEventListener("pointerup", onPointerUp);
   canvas.addEventListener("pointercancel", onPointerUp);
   canvas.addEventListener("pointerleave", onPointerLeave);
+  canvas.addEventListener("dblclick", onDoubleClick);
   canvas.addEventListener("keydown", onKeyDown);
 
   canvas.addEventListener("wheel", onWheel, { passive: false });
@@ -760,6 +951,7 @@ export function attachInteractivity(
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerUp);
       canvas.removeEventListener("pointerleave", onPointerLeave);
+      canvas.removeEventListener("dblclick", onDoubleClick);
       canvas.removeEventListener("keydown", onKeyDown);
       canvas.removeEventListener("wheel", onWheel);
       canvas.style.cursor = savedCursor;

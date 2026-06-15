@@ -1,8 +1,17 @@
 import type { Chart, ChartSeries } from "./types.js";
+import type { ChartManualLayout } from "./schema/ChartManualLayout.js";
 import { drawAreaChart } from "./chartArea.js";
+import { drawBar3DChart, drawSurfaceChart } from "./chart3d.js";
+import { drawTrendlines } from "./chartTrendline.js";
+import { drawErrorBars } from "./chartErrorBars.js";
 import {
   buildLabelText,
   buildStackedRows,
+  catAxisRotation,
+  valAxisRotation,
+  rotatedLabelBandHeight,
+  rotatedLabelBandWidth,
+  drawRotatedLabel,
   categoryAxisExtraHeight,
   computeBarSlotMetrics,
   drawAxisFrame,
@@ -10,6 +19,7 @@ import {
   drawCategoryAxisExtraRowsCentered,
   drawLabel,
   drawLegend,
+  drawStyleBox,
   drawPlaceholderPlot,
   measureVerticalLegendWidth,
   effectiveLabels,
@@ -20,12 +30,15 @@ import {
   zeroAxisMetrics,
   resolveAxisRange,
   valueRange,
+  seriesLineWidth,
+  seriesLineDash,
 } from "./chartUtils.js";
 
 import {
   drawBubbleChart,
   drawChartEx,
   drawComboChart,
+  drawOfPieChart,
   drawPieChart,
   drawRadarChart,
   drawStockChart,
@@ -34,6 +47,7 @@ import {
   resolveBarFill,
   waterfallLegendEntries,
 } from "./chartAdvanced.js";
+import { advancedPointFill } from "./chartFills.js";
 
 const TITLE_PAD = 8;
 const TITLE_FONT_SIZE = 14;
@@ -53,6 +67,25 @@ export interface Rect {
   h: number;
 }
 
+function resolveManualRect(chartRect: Rect, auto: Rect, ml: ChartManualLayout): Rect {
+  const r: Rect = { ...auto };
+  if (ml.x != null) {
+    const off = ml.x * chartRect.w;
+    r.x = ml.xMode === "factor" ? auto.x + off : chartRect.x + off;
+  }
+  if (ml.y != null) {
+    const off = ml.y * chartRect.h;
+    r.y = ml.yMode === "factor" ? auto.y + off : chartRect.y + off;
+  }
+  if (ml.w != null) r.w = ml.w * chartRect.w;
+  if (ml.h != null) r.h = ml.h * chartRect.h;
+  r.w = Math.max(8, Math.min(r.w, chartRect.x + chartRect.w - r.x));
+  r.h = Math.max(8, Math.min(r.h, chartRect.y + chartRect.h - r.y));
+  r.x = Math.max(chartRect.x, Math.min(r.x, chartRect.x + chartRect.w - r.w));
+  r.y = Math.max(chartRect.y, Math.min(r.y, chartRect.y + chartRect.h - r.h));
+  return r;
+}
+
 export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
@@ -64,15 +97,36 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
   if (chart.title) {
     ctx.fillStyle = TITLE_COLOR;
     ctx.font = `${TITLE_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
-    ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    ctx.fillText(chart.title, rect.x + rect.w / 2, cursorY);
-    cursorY += TITLE_FONT_SIZE + TITLE_PAD;
+    if (chart.titleLayout) {
+      const tl = chart.titleLayout;
+      let tx = rect.x + rect.w / 2;
+      let ty = rect.y + TITLE_PAD;
+      if (tl.x != null) {
+        const off = tl.x * rect.w;
+        tx = tl.xMode === "factor" ? rect.x + rect.w / 2 + off : rect.x + off;
+        ctx.textAlign = "left";
+      } else {
+        ctx.textAlign = "center";
+      }
+      if (tl.y != null) {
+        const off = tl.y * rect.h;
+        ty = tl.yMode === "factor" ? rect.y + TITLE_PAD + off : rect.y + off;
+      }
+      tx = Math.max(rect.x + 2, Math.min(tx, rect.x + rect.w - 2));
+      ty = Math.max(rect.y + 2, Math.min(ty, rect.y + rect.h - TITLE_FONT_SIZE));
+      ctx.fillText(chart.title, tx, ty);
+    } else {
+      ctx.textAlign = "center";
+      ctx.fillText(chart.title, rect.x + rect.w / 2, cursorY);
+      cursorY += TITLE_FONT_SIZE + TITLE_PAD;
+    }
   }
 
   const cats = chart.categories ?? [];
   const legendEntries: ChartSeries[] =
-    (chart.type === "pie" || chart.type === "doughnut") && chart.series.length > 0
+    (chart.type === "pie" || chart.type === "doughnut" || chart.type === "ofpie") &&
+    chart.series.length > 0
       ? (() => {
           const s = chart.series[0]!;
           const pointColors = s.pointColors ?? [];
@@ -148,6 +202,16 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       break;
   }
 
+  if (legendPos !== null && chart.legendLayout) {
+    legendRect = resolveManualRect(rect, legendRect, chart.legendLayout);
+  }
+
+  let plotInner = true;
+  if (chart.plotAreaLayout) {
+    Object.assign(plotRect, resolveManualRect(rect, plotRect, chart.plotAreaLayout));
+    plotInner = (chart.plotAreaLayout.layoutTarget ?? "inner") === "inner";
+  }
+
   const AXIS_TITLE_FONT_SIZE = 11;
   const AXIS_TITLE_PAD = 6;
   const AXIS_TITLE_BAND = AXIS_TITLE_FONT_SIZE + AXIS_TITLE_PAD;
@@ -157,7 +221,7 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
   let xTitleRect: Rect | null = null;
   let yTitleRect: Rect | null = null;
   let yTitle2Rect: Rect | null = null;
-  if (xTitle) {
+  if (xTitle && plotInner) {
     xTitleRect = {
       x: plotRect.x,
       y: plotRect.y + plotRect.h - AXIS_TITLE_BAND,
@@ -166,7 +230,7 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     };
     plotRect.h -= AXIS_TITLE_BAND;
   }
-  if (yTitle) {
+  if (yTitle && plotInner) {
     yTitleRect = {
       x: plotRect.x,
       y: plotRect.y,
@@ -176,7 +240,7 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     plotRect.x += AXIS_TITLE_BAND;
     plotRect.w -= AXIS_TITLE_BAND;
   }
-  if (yTitle2 && (chart.secondaryAxis || chart.type === "combo")) {
+  if (yTitle2 && plotInner && (chart.secondaryAxis || chart.type === "combo")) {
     yTitle2Rect = {
       x: plotRect.x + plotRect.w - AXIS_TITLE_BAND,
       y: plotRect.y,
@@ -194,7 +258,7 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       ? chart.dispUnitsLabelSecondary
       : undefined;
   let duBandRect: Rect | null = null;
-  if (duLabel || duLabel2) {
+  if ((duLabel || duLabel2) && plotInner) {
     duBandRect = {
       x: plotRect.x,
       y: plotRect.y,
@@ -205,9 +269,37 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     plotRect.h -= DISP_UNITS_BAND;
   }
 
+  const dataTableEligible =
+    chart.dataTable != null &&
+    chart.series.length > 0 &&
+    chart.type !== "combo" &&
+    !chart.secondaryAxis &&
+    (chart.type === "column" || chart.type === "line" || chart.type === "area") &&
+    chart.grouping !== "stacked" &&
+    chart.grouping !== "percentstacked";
+  let dataTableRect: Rect | null = null;
+  if (dataTableEligible) {
+    const bandH = dataTableBandHeight(chart);
+    if (plotRect.h - bandH > 40) {
+      dataTableRect = {
+        x: plotRect.x,
+        y: plotRect.y + plotRect.h - bandH,
+        w: plotRect.w,
+        h: bandH,
+      };
+      plotRect.h -= bandH;
+    }
+  }
+
   if (plotRect.w <= 20 || plotRect.h <= 20) return;
 
-  if (chart.type === "combo" || chart.secondaryAxis) {
+  drawStyleBox(ctx, plotRect, chart.plotAreaFill, chart.plotAreaBorder);
+
+  if (chart.type === "surface") {
+    drawSurfaceChart(ctx, chart, plotRect);
+  } else if (chart.is3d && (chart.type === "column" || chart.type === "bar")) {
+    drawBar3DChart(ctx, chart, plotRect);
+  } else if (chart.type === "combo" || chart.secondaryAxis) {
     drawComboChart(ctx, chart, plotRect);
   } else {
     switch (chart.type) {
@@ -224,6 +316,9 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       case "pie":
       case "doughnut":
         drawPieChart(ctx, chart, plotRect);
+        break;
+      case "ofpie":
+        drawOfPieChart(ctx, chart, plotRect);
         break;
       case "scatter":
         drawScatterChart(ctx, chart, plotRect);
@@ -243,6 +338,10 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       default:
         drawPlaceholderPlot(ctx, chart, plotRect);
     }
+  }
+
+  if (dataTableRect) {
+    drawDataTable(ctx, chart, dataTableRect);
   }
 
   if (legendPos !== null) {
@@ -297,9 +396,109 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
   }
 }
 
+const DATA_TABLE_ROW_H = AXIS_FONT_SIZE + 8;
+
+function dataTableBandHeight(chart: Chart): number {
+  const rows = chart.series.length + 1;
+  return rows * DATA_TABLE_ROW_H;
+}
+
+function drawDataTable(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
+  const dt = chart.dataTable;
+  if (!dt) return;
+  const series = chart.series;
+  const categoryCount = Math.max(
+    ...series.map((s) => s.values.length),
+    (chart.categories ?? []).length,
+  );
+  if (categoryCount === 0) return;
+
+  ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  const swatchW = dt.showKeys ? 12 : 0;
+  const swatchPad = dt.showKeys ? 4 : 0;
+  const namePad = 6;
+  const nameW = Math.max(
+    0,
+    ...series.map((s) => ctx.measureText(s.name || "").width),
+    ...(chart.categories ?? []).map(() => 0),
+  );
+  const headerW = Math.min(
+    rect.w * 0.4,
+    Math.max(48, swatchW + swatchPad + nameW + namePad * 2 + 4),
+  );
+  const gridX = rect.x + headerW;
+  const colW = (rect.w - headerW) / categoryCount;
+  const rowH = rect.h / (series.length + 1);
+
+  ctx.textBaseline = "middle";
+
+  ctx.fillStyle = AXIS_LABEL_COLOR;
+  ctx.textAlign = "center";
+  for (let c = 0; c < categoryCount; c++) {
+    const label = (chart.categories ?? [])[c] ?? `${c + 1}`;
+    ctx.fillText(label, gridX + colW * (c + 0.5), rect.y + rowH * 0.5, colW - 4);
+  }
+
+  for (let r = 0; r < series.length; r++) {
+    const s = series[r]!;
+    const cy = rect.y + rowH * (r + 1.5);
+    let tx = rect.x + namePad;
+    if (dt.showKeys) {
+      ctx.fillStyle = s.color ?? "#4472C4";
+      ctx.fillRect(tx, cy - swatchW / 2, swatchW, swatchW);
+      tx += swatchW + swatchPad;
+    }
+    ctx.fillStyle = AXIS_LABEL_COLOR;
+    ctx.textAlign = "left";
+    ctx.fillText(s.name || `Series ${r + 1}`, tx, cy, headerW - (tx - rect.x) - namePad);
+    ctx.textAlign = "center";
+    for (let c = 0; c < categoryCount; c++) {
+      const v = s.values[c];
+      if (v == null || !Number.isFinite(v)) continue;
+      const text = formatAxisValue(v, chart.valueFormat, chart.dispUnits);
+      ctx.fillText(text, gridX + colW * (c + 0.5), cy, colW - 4);
+    }
+  }
+
+  ctx.strokeStyle = "#bfbfbf";
+  ctx.lineWidth = 1;
+  if (dt.showHorzBorder) {
+    for (let r = 1; r <= series.length; r++) {
+      const y = Math.round(rect.y + rowH * r) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(rect.x, y);
+      ctx.lineTo(rect.x + rect.w, y);
+      ctx.stroke();
+    }
+  }
+  if (dt.showVertBorder) {
+    for (let c = 0; c <= categoryCount; c++) {
+      const x = Math.round(gridX + colW * c) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x, rect.y);
+      ctx.lineTo(x, rect.y + rect.h);
+      ctx.stroke();
+    }
+    const hx = Math.round(rect.x) + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(hx, rect.y);
+    ctx.lineTo(hx, rect.y + rect.h);
+    ctx.stroke();
+  }
+  if (dt.showOutline) {
+    ctx.strokeRect(
+      Math.round(rect.x) + 0.5,
+      Math.round(rect.y) + 0.5,
+      Math.round(rect.w) - 1,
+      Math.round(rect.h) - 1,
+    );
+  }
+}
+
 function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
   const horizontal = chart.type === "bar";
   const stacked = chart.grouping === "stacked" || chart.grouping === "percentstacked";
+  const percent = chart.grouping === "percentstacked";
 
   const series = chart.series.filter((s) => s.values.length > 0);
   if (series.length === 0) {
@@ -337,23 +536,49 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   if (!Number.isFinite(minV)) minV = 0;
   if (!Number.isFinite(maxV)) maxV = 1;
 
-  const _bcRange = resolveAxisRange(
-    minV,
-    maxV,
-    chart.valueMin,
-    chart.valueMax,
-    true,
-    AXIS_TICK_COUNT,
-    chart.majorUnit,
-  );
-  minV = _bcRange.minV;
-  maxV = _bcRange.maxV;
-  const ticks = _bcRange.ticks;
+  let ticks: number[];
+  if (percent) {
+    minV = 0;
+    maxV = 100;
+    ticks = [0, 25, 50, 75, 100];
+  } else {
+    const _bcRange = resolveAxisRange(
+      minV,
+      maxV,
+      chart.valueMin,
+      chart.valueMax,
+      true,
+      AXIS_TICK_COUNT,
+      chart.majorUnit,
+    );
+    minV = _bcRange.minV;
+    maxV = _bcRange.maxV;
+    ticks = _bcRange.ticks;
+  }
 
   ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
-  const labelStrings = ticks.map((t) => formatAxisValue(t, chart.valueFormat, chart.dispUnits));
-  const yAxisW = Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
-  const xAxisH = AXIS_FONT_SIZE + 8 + (horizontal ? 0 : categoryAxisExtraHeight(chart));
+  const labelStrings = ticks.map((t) =>
+    percent ? `${Math.round(t)}%` : formatAxisValue(t, chart.valueFormat, chart.dispUnits),
+  );
+  const catRot = catAxisRotation(chart);
+  const valRot = valAxisRotation(chart);
+  const catLabels = Array.from(
+    { length: categoryCount },
+    (_, i) => (chart.categories ?? [])[i] ?? `${i + 1}`,
+  );
+  const yAxisW =
+    !horizontal && valRot !== 0
+      ? rotatedLabelBandWidth(ctx, labelStrings, valRot) + 8
+      : Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
+  const xAxisH =
+    AXIS_FONT_SIZE +
+    8 +
+    (horizontal
+      ? valRot !== 0
+        ? rotatedLabelBandHeight(ctx, labelStrings, valRot)
+        : 0
+      : categoryAxisExtraHeight(chart) +
+        (catRot !== 0 ? rotatedLabelBandHeight(ctx, catLabels, catRot) : 0));
 
   const innerRect: Rect = horizontal
     ? { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH }
@@ -378,7 +603,11 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
         ctx.lineTo(Math.round(x) + 0.5, innerRect.y + innerRect.h);
         ctx.stroke();
       }
-      ctx.fillText(labelStrings[ti]!, x, innerRect.y + innerRect.h + xAxisH / 2);
+      if (valRot !== 0) {
+        drawRotatedLabel(ctx, labelStrings[ti]!, x, innerRect.y + innerRect.h + 6, valRot, "value");
+      } else {
+        ctx.fillText(labelStrings[ti]!, x, innerRect.y + innerRect.h + xAxisH / 2);
+      }
     } else {
       const y = innerRect.y + (1 - frac) * innerRect.h;
       if (showGridlines && !isZeroLine) {
@@ -387,7 +616,11 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
         ctx.lineTo(innerRect.x + innerRect.w, Math.round(y) + 0.5);
         ctx.stroke();
       }
-      ctx.fillText(labelStrings[ti]!, innerRect.x - 4, y);
+      if (valRot !== 0) {
+        drawRotatedLabel(ctx, labelStrings[ti]!, innerRect.x - 4, y, valRot, "value");
+      } else {
+        ctx.fillText(labelStrings[ti]!, innerRect.x - 4, y);
+      }
     }
   }
 
@@ -416,6 +649,8 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     if (horizontal) {
       ctx.textAlign = "right";
       ctx.fillText(label, innerRect.x - 4, center);
+    } else if (catRot !== 0) {
+      drawRotatedLabel(ctx, label, center, innerRect.y + innerRect.h + 4, catRot, "category");
     } else {
       ctx.fillText(label, center, innerRect.y + innerRect.h + 4);
     }
@@ -453,8 +688,10 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
 
       let catTotal = 0;
       for (const s of series) catTotal += Math.max(0, s.values[i] ?? 0);
+      const scale = percent && catTotal > 0 ? 100 / catTotal : 1;
       for (const s of series) {
-        const v = s.values[i] ?? 0;
+        const raw = s.values[i] ?? 0;
+        const v = raw * scale;
         const start = v >= 0 ? pos : neg;
         const end = v >= 0 ? pos + v : neg + v;
 
@@ -483,8 +720,9 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
           bh = Math.abs(yb - ya);
         }
         if (fill.skip) continue;
-        ctx.fillStyle = fill.color;
         const c = clampFill(bx, by, bw, bh);
+        const adv = advancedPointFill(ctx, s, i, { x: c.x, y: c.y, w: c.w, h: c.h });
+        ctx.fillStyle = adv ?? fill.color;
         if (c.w > 0 && c.h > 0) ctx.fillRect(c.x, c.y, c.w, c.h);
 
         const dl = effectiveLabels(chart, s);
@@ -492,7 +730,7 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
           const po = pointLabel(dl, i);
           if (po !== null) {
             const edl = po?.dl ?? dl;
-            const text = po?.text ?? buildLabelText(edl, chart, s, i, v, catTotal);
+            const text = po?.text ?? buildLabelText(edl, chart, s, i, raw, catTotal);
             drawLabel(ctx, text, bx + bw / 2, by + bh / 2);
           }
         }
@@ -529,8 +767,9 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
           bh = Math.abs(yBot - yTop);
         }
         if (fill.skip) continue;
-        ctx.fillStyle = fill.color;
         const c = clampFill(bx, by, bw, bh);
+        const adv = advancedPointFill(ctx, s, i, { x: c.x, y: c.y, w: c.w, h: c.h });
+        ctx.fillStyle = adv ?? fill.color;
         if (c.w > 0 && c.h > 0) ctx.fillRect(c.x, c.y, c.w, c.h);
         const dl = effectiveLabels(chart, s);
         if (dl) {
@@ -593,6 +832,40 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
         }
       }
     }
+  }
+
+  if (!horizontal && series.some((s) => (s.trendlines?.length ?? 0) > 0)) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(innerRect.x, innerRect.y, innerRect.w, innerRect.h);
+    ctx.clip();
+    const yPix = (v: number) => innerRect.y + (1 - (v - minV) / (maxV - minV)) * innerRect.h;
+    const xPix = (x: number) => innerRect.x + (x + 0.5) * groupGap;
+    for (const s of series) {
+      if ((s.trendlines?.length ?? 0) === 0) continue;
+      const xsIdx = Array.from({ length: categoryCount }, (_, i) => i);
+      const ys = Array.from({ length: categoryCount }, (_, i) => s.values[i] ?? 0);
+      drawTrendlines(ctx, s, xsIdx, ys, xPix, yPix);
+    }
+    ctx.restore();
+  }
+
+  if (!horizontal && series.some((s) => s.errorBars)) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(innerRect.x, innerRect.y, innerRect.w, innerRect.h);
+    ctx.clip();
+    const yPix = (v: number) => innerRect.y + (1 - (v - minV) / (maxV - minV)) * innerRect.h;
+    for (let si = 0; si < series.length; si++) {
+      const s = series[si]!;
+      if (!s.errorBars) continue;
+      const xsIdx = Array.from({ length: categoryCount }, (_, i) => i);
+      const ys = Array.from({ length: categoryCount }, (_, i) => s.values[i] ?? 0);
+      const xCenter = (i: number) =>
+        innerRect.x + i * groupGap + slot.firstBarLeftOffset + si * slot.barShift + barSize / 2;
+      drawErrorBars(ctx, s, xsIdx, ys, xCenter, yPix);
+    }
+    ctx.restore();
   }
 
   if (zMetrics.straddlesZero) {
@@ -670,7 +943,8 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     const s = series[si]!;
     const data = stackedSeries[si]!;
     ctx.strokeStyle = s.color ?? "#4472C4";
-    ctx.lineWidth = 2;
+    ctx.lineWidth = seriesLineWidth(s, 2);
+    ctx.setLineDash(seriesLineDash(s));
     ctx.beginPath();
     let penDown = false;
     for (let i = 0; i < categoryCount; i++) {
@@ -688,6 +962,7 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
       }
     }
     ctx.stroke();
+    ctx.setLineDash([]);
 
     if (s.markerSymbol !== "none") {
       ctx.fillStyle = s.color ?? "#4472C4";
@@ -736,6 +1011,16 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
         const align: CanvasTextAlign = pos === "l" ? "right" : pos === "r" ? "left" : "center";
         drawLabel(ctx, text, lx, ly, align, baseline);
       }
+    }
+
+    if ((s.trendlines?.length ?? 0) > 0) {
+      const xsIdx = Array.from({ length: categoryCount }, (_, i) => i);
+      drawTrendlines(ctx, s, xsIdx, data, (x) => inner.x + x * xStep, yFor);
+    }
+
+    if (s.errorBars) {
+      const xsIdx = Array.from({ length: categoryCount }, (_, i) => i);
+      drawErrorBars(ctx, s, xsIdx, data, (x) => inner.x + x * xStep, yFor);
     }
   }
   ctx.restore();

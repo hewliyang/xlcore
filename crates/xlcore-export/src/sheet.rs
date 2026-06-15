@@ -14,7 +14,8 @@ fn px_per_char(default_font_size_pt: f32) -> f64 {
 }
 
 fn explicit_width_attr_to_px(width: f64, default_font_size_pt: f32) -> f32 {
-    (width * px_per_char(default_font_size_pt)) as f32
+    let mdw = px_per_char(default_font_size_pt);
+    (((256.0 * width + (128.0 / mdw).trunc()) / 256.0) * mdw).trunc() as f32
 }
 
 pub fn extract(
@@ -33,8 +34,8 @@ pub fn extract(
 
     let mut max_row = 0u32;
     let mut max_col = 0u32;
-    for row in &ws.x_sheet_data.x_row {
-        for cell in &row.x_c {
+    for row in &ws.sheet_data.row {
+        for cell in &row.cell {
             if let Some(r) = cell.cell_reference.as_ref() {
                 if let Some((rr, cc)) = parse_a1(r.as_str()) {
                     max_row = max_row.max(rr);
@@ -43,8 +44,8 @@ pub fn extract(
             }
         }
     }
-    if let Some(mc) = &ws.x_merge_cells {
-        for m in &mc.x_merge_cell {
+    if let Some(mc) = &ws.merge_cells {
+        for m in &mc.merge_cell {
             if let Some(((r1, c1), (r2, c2))) = xlcore_io::parse_range(m.reference.as_str()) {
                 max_row = max_row.max(r2.max(r1));
                 max_col = max_col.max(c2.max(c1));
@@ -66,8 +67,8 @@ pub fn extract(
     let default_row_height_px = (default_row_height_pt / PT_PER_PX) as f32;
 
     let mut cols: Vec<Col> = Vec::new();
-    if !ws.x_cols.is_empty() {
-        for c in &ws.x_cols[0].x_col {
+    if !ws.columns.is_empty() {
+        for c in &ws.columns[0].column {
             let width_px = c
                 .width
                 .map(width_attr_to_px)
@@ -77,22 +78,22 @@ pub fn extract(
                 max: c.max,
                 width_px,
                 style_index: c.style,
-                hidden: c.hidden.unwrap_or(false),
+                hidden: c.hidden.map(bool::from).unwrap_or(false),
                 outline_level: c.outline_level.unwrap_or(0).min(7),
             });
         }
     }
 
-    let mut rows: Vec<Row> = Vec::with_capacity(ws.x_sheet_data.x_row.len());
+    let mut rows: Vec<Row> = Vec::with_capacity(ws.sheet_data.row.len());
     let mut last_row_index = 0u32;
-    for r in &ws.x_sheet_data.x_row {
+    for r in &ws.sheet_data.row {
         let row_index = match r.row_index {
             Some(n) if n > 0 => n,
             _ => last_row_index + 1,
         };
         last_row_index = row_index;
-        let mut cells = Vec::with_capacity(r.x_c.len());
-        for cell in &r.x_c {
+        let mut cells = Vec::with_capacity(r.cell.len());
+        for cell in &r.cell {
             if let Some(c) = extract_cell(cell) {
                 cells.push(c);
             }
@@ -102,16 +103,16 @@ pub fn extract(
             height_px: r.height.map(|h| (h / PT_PER_PX) as f32),
             cells,
             style_index: r.style_index,
-            hidden: r.hidden.unwrap_or(false),
+            hidden: r.hidden.map(bool::from).unwrap_or(false),
             outline_level: r.outline_level.unwrap_or(0).min(7),
         });
     }
 
     let merges: Vec<Merge> = ws
-        .x_merge_cells
+        .merge_cells
         .as_ref()
         .map(|mc| {
-            mc.x_merge_cell
+            mc.merge_cell
                 .iter()
                 .filter_map(|m| {
                     let ((r1, c1), (r2, c2)) = xlcore_io::parse_range(m.reference.as_str())?;
@@ -122,7 +123,7 @@ pub fn extract(
         .unwrap_or_default();
 
     let auto_filter_range = ws
-        .x_auto_filter
+        .auto_filter
         .as_ref()
         .and_then(|af| af.reference.as_ref())
         .and_then(|r| {
@@ -141,9 +142,9 @@ pub fn extract(
     let mut freeze: Option<Freeze> = None;
     let mut show_grid_lines = true;
     if let Some(sv) = &ws.sheet_views {
-        for view in &sv.x_sheet_view {
+        for view in &sv.sheet_view {
             if let Some(g) = view.show_grid_lines {
-                show_grid_lines = g;
+                show_grid_lines = g.into();
             }
             if let Some(p) = &view.pane {
                 let split_col = p.horizontal_split.unwrap_or(0.0) as u32;
@@ -185,14 +186,14 @@ pub fn extract(
         .as_ref()
         .and_then(|sp| sp.outline_properties.as_ref())
         .and_then(|op| {
-            let sb = op.summary_below.unwrap_or(true);
-            let sr = op.summary_right.unwrap_or(true);
-            if sb && sr {
+            let sb = op.summary_below.unwrap_or(true.into());
+            let sr = op.summary_right.unwrap_or(true.into());
+            if sb.into() && sr.into() {
                 None
             } else {
                 Some(OutlinePr {
-                    summary_below: sb,
-                    summary_right: sr,
+                    summary_below: sb.into(),
+                    summary_right: sr.into(),
                 })
             }
         });
@@ -217,6 +218,7 @@ pub fn extract(
         drawings: Vec::new(),
         tables: Vec::new(),
         pivots: Vec::new(),
+        table_filter_arrows: Vec::new(),
         hyperlinks: Vec::new(),
         comments: Vec::new(),
         sparkline_groups: Vec::new(),
@@ -231,10 +233,10 @@ pub fn extract(
 
 fn extract_conditional_formats(ws: &x::Worksheet) -> Vec<ConditionalFormat> {
     let mut out = Vec::new();
-    for cf in &ws.x_conditional_formatting {
+    for cf in &ws.conditional_formatting {
         let mut ranges: Vec<Merge> = Vec::new();
         if let Some(sqref) = &cf.sequence_of_references {
-            let s = format!("{}", sqref);
+            let s = sqref.iter().cloned().collect::<Vec<_>>().join(" ");
             for part in s.split_whitespace() {
                 if let Some(((r1, c1), (r2, c2))) = xlcore_io::parse_range(part) {
                     ranges.push(Merge { r1, c1, r2, c2 });
@@ -253,18 +255,18 @@ fn extract_conditional_formats(ws: &x::Worksheet) -> Vec<ConditionalFormat> {
         }
 
         let mut rules = Vec::new();
-        for rule in &cf.x_cf_rule {
+        for rule in &cf.conditional_formatting_rule {
             let kind = format!("{:?}", rule.r#type);
             let kind_norm = normalize_cf_kind(&kind);
-            let color_scale = rule.x_color_scale.as_ref().and_then(extract_color_scale);
-            let data_bar = rule.x_data_bar.as_ref().and_then(|db| extract_data_bar(db));
-            let icon_set = rule.x_icon_set.as_ref().and_then(extract_icon_set);
+            let color_scale = rule.color_scale.as_ref().and_then(extract_color_scale);
+            let data_bar = rule.data_bar.as_ref().and_then(|db| extract_data_bar(db));
+            let icon_set = rule.icon_set.as_ref().and_then(extract_icon_set);
             let operator = rule
                 .operator
                 .as_ref()
                 .map(|o| normalize_cf_operator(&format!("{o:?}")));
             let operands: Vec<String> = rule
-                .x_formula
+                .formula
                 .iter()
                 .filter_map(|f| f.xml_content.as_deref().map(str::to_string))
                 .collect();
@@ -281,12 +283,12 @@ fn extract_conditional_formats(ws: &x::Worksheet) -> Vec<ConditionalFormat> {
                 operator,
                 operands,
                 dxf_id: rule.format_id,
-                stop_if_true: rule.stop_if_true.unwrap_or(false),
+                stop_if_true: rule.stop_if_true.map(bool::from).unwrap_or(false),
                 rank: rule.rank,
-                bottom: rule.bottom.unwrap_or(false),
-                percent: rule.percent.unwrap_or(false),
-                above_average: rule.above_average,
-                equal_average: rule.equal_average.unwrap_or(false),
+                bottom: rule.bottom.map(bool::from).unwrap_or(false),
+                percent: rule.percent.map(bool::from).unwrap_or(false),
+                above_average: rule.above_average.map(bool::from),
+                equal_average: rule.equal_average.map(bool::from).unwrap_or(false),
                 std_dev: rule.std_dev,
                 text: rule.text.clone(),
                 time_period,
@@ -414,18 +416,18 @@ fn cfvo_type_norm(dbg: &str) -> String {
 }
 
 fn extract_data_bar(db: &x::DataBar) -> Option<CfDataBar> {
-    if db.x_cfvo.len() < 2 {
+    if db.conditional_format_value_object.len() < 2 {
         return None;
     }
     let mk_stop = |cfvo: &x::ConditionalFormatValueObject| CfvoStop {
         cfvo_type: cfvo_type_norm(&format!("{:?}", cfvo.r#type)),
         val: cfvo.val.as_ref().map(|s| s.as_str().to_string()),
     };
-    let min = mk_stop(&db.x_cfvo[0]);
-    let max = mk_stop(&db.x_cfvo[1]);
+    let min = mk_stop(&db.conditional_format_value_object[0]);
+    let max = mk_stop(&db.conditional_format_value_object[1]);
 
     let color = {
-        let c = &db.x_color;
+        let c = &db.color;
         if c.rgb.is_none() && c.theme.is_none() && c.indexed.is_none() {
             Color {
                 rgb: Some("FF638EC6".to_string()),
@@ -450,7 +452,7 @@ fn extract_data_bar(db: &x::DataBar) -> Option<CfDataBar> {
 
         min_length_pct: db.min_length.unwrap_or(0),
         max_length_pct: db.max_length.unwrap_or(100),
-        show_value: db.show_value.unwrap_or(true),
+        show_value: db.show_value.unwrap_or(true.into()).into(),
 
         gradient: true,
     })
@@ -462,7 +464,7 @@ fn extract_icon_set(is: &x::IconSet) -> Option<CfIconSet> {
         None => "3Arrows".to_string(),
     };
     let cfvos: Vec<CfvoStop> = is
-        .x_cfvo
+        .conditional_format_value_object
         .iter()
         .map(|cfvo| CfvoStop {
             cfvo_type: cfvo_type_norm(&format!("{:?}", cfvo.r#type)),
@@ -475,8 +477,8 @@ fn extract_icon_set(is: &x::IconSet) -> Option<CfIconSet> {
     Some(CfIconSet {
         icon_set: icon_set_name,
         cfvos,
-        show_value: is.show_value.unwrap_or(true),
-        reverse: is.reverse.unwrap_or(false),
+        show_value: is.show_value.unwrap_or(true.into()).into(),
+        reverse: is.reverse.unwrap_or(false.into()).into(),
     })
 }
 
@@ -501,11 +503,17 @@ fn normalize_icon_set_name(dbg: &str) -> String {
 }
 
 fn extract_color_scale(cs: &x::ColorScale) -> Option<CfColorScale> {
-    if cs.x_cfvo.len() != cs.x_color.len() || cs.x_cfvo.is_empty() {
+    if cs.conditional_format_value_object.len() != cs.color.len()
+        || cs.conditional_format_value_object.is_empty()
+    {
         return None;
     }
-    let mut stops = Vec::with_capacity(cs.x_cfvo.len());
-    for (cfvo, color) in cs.x_cfvo.iter().zip(cs.x_color.iter()) {
+    let mut stops = Vec::with_capacity(cs.conditional_format_value_object.len());
+    for (cfvo, color) in cs
+        .conditional_format_value_object
+        .iter()
+        .zip(cs.color.iter())
+    {
         let cfvo_type = format!("{:?}", cfvo.r#type).to_ascii_lowercase();
         let cfvo_type = if cfvo_type.contains("min") {
             "min"
@@ -573,10 +581,10 @@ fn extract_cell(cell: &XCell) -> Option<Cell> {
             ("s", raw_v.map(str::to_string))
         } else if dt.contains("inlinestring") {
             let (s, runs) = if let Some(is) = cell.inline_string.as_ref() {
-                if !is.x_r.is_empty() {
+                if !is.run.is_empty() {
                     let mut s = String::new();
-                    let mut rs: Vec<TextRun> = Vec::with_capacity(is.x_r.len());
-                    for r in &is.x_r {
+                    let mut rs: Vec<TextRun> = Vec::with_capacity(is.run.len());
+                    for r in &is.run {
                         let txt = r.text.xml_content.as_deref().unwrap_or("").to_string();
                         s.push_str(&txt);
                         rs.push(crate::text_run_from(r, txt));
@@ -629,8 +637,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn explicit_ooxml_widths_do_not_get_padding_added_twice() {
-        assert!((explicit_width_attr_to_px(23.421875, 11.0) - 163.953_13).abs() < 0.001);
-        assert!((explicit_width_attr_to_px(8.00390625, 11.0) - 56.027344).abs() < 0.001);
+    fn explicit_ooxml_widths_use_excel_mdw_formula() {
+        assert_eq!(explicit_width_attr_to_px(23.421875, 11.0), 164.0);
+        assert_eq!(explicit_width_attr_to_px(8.00390625, 11.0), 56.0);
+        assert_eq!(explicit_width_attr_to_px(8.43, 11.0), 59.0);
     }
 }

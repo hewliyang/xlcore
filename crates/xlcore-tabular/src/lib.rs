@@ -81,6 +81,7 @@ fn empty_sheet(name: String) -> Sheet {
         hyperlinks: Vec::new(),
         comments: Vec::new(),
         pivots: Vec::new(),
+        table_filter_arrows: Vec::new(),
         outline_pr: None,
         sparkline_groups: Vec::new(),
     }

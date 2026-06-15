@@ -4,6 +4,8 @@
   "scripts": {
     "build": "pnpm --filter @hewliyang/xlsx-preview build",
     "check": "pnpm --filter @hewliyang/xlsx-preview check",
+    "format": "pnpm --filter @hewliyang/xlsx-preview format && cargo fmt --all",
+    "format:check": "pnpm --filter @hewliyang/xlsx-preview format:check && cargo fmt --all -- --check",
     "preview": "pnpm --filter @hewliyang/xlsx-preview preview",
     "site:build": "node scripts/build-site.mjs",
     "site:deploy": "pnpm run build && pnpm run site:build && wrangler pages deploy site --project-name=xlcore --branch=main --commit-dirty=true"

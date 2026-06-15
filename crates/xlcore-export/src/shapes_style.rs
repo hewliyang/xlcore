@@ -227,7 +227,7 @@ mod tests {
     }
 
     fn rgb_choice(hex: &str) -> a::FillReferenceChoice {
-        a::FillReferenceChoice::ASrgbClr(Box::new(a::RgbColorModelHex {
+        a::FillReferenceChoice::RgbColorModelHex(Box::new(a::RgbColorModelHex {
             val: hex.into(),
             ..Default::default()
         }))
@@ -248,7 +248,7 @@ mod tests {
             },
             ..Default::default()
         };
-        a::FillReferenceChoice::ASchemeClr(Box::new(sc))
+        a::FillReferenceChoice::SchemeColor(Box::new(sc))
     }
 
     #[test]

@@ -24,7 +24,6 @@ impl Fixer for PrefixCanonicalizer {
     }
 
     fn applies_to(&self, part: &str) -> bool {
-
         if !part.ends_with(".xml") {
             return false;
         }
@@ -44,7 +43,6 @@ impl Fixer for PrefixCanonicalizer {
         part: &str,
         report: &mut LoadReport,
     ) -> Result<Option<Vec<u8>>, FixerError> {
-
         let mut prefix_map: HashMap<Vec<u8>, &'static str> = HashMap::new();
 
         sax_rewrite(xml, part, report, |ctx, ev| match ev {
@@ -168,7 +166,6 @@ fn rename_qname(qname: &[u8], map: &HashMap<Vec<u8>, &'static str>) -> Option<St
 }
 
 fn rename_attr_key(key: &[u8], map: &HashMap<Vec<u8>, &'static str>) -> Option<String> {
-
     if let Some(prefix) = key.strip_prefix(b"xmlns:") {
         let canon = map.get(prefix)?;
         return Some(format!("xmlns:{canon}"));

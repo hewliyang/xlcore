@@ -4,7 +4,7 @@ use crate::schema::*;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_chart as c;
 
 pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Option<Chart> {
-    let chart = space.c_chart.as_ref()?;
+    let chart = &space.chart;
     let plot_area = &chart.plot_area;
 
     let mut secondary_ax_ids: Vec<u32> = Vec::new();
@@ -30,6 +30,37 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
 
     let mut major_unit: Option<f64> = None;
     let mut major_unit_secondary: Option<f64> = None;
+
+    let mut cat_axis_label_rotation: Option<i32> = None;
+    let mut val_axis_label_rotation: Option<i32> = None;
+
+    let data_table = plot_area.data_table.as_deref().map(|dt| ChartDataTable {
+        show_horz_border: dt
+            .show_horizontal_border
+            .as_ref()
+            .map(|s| s.val.map(bool::from).unwrap_or(true))
+            .unwrap_or(false),
+        show_vert_border: dt
+            .show_vertical_border
+            .as_ref()
+            .map(|s| s.val.map(bool::from).unwrap_or(true))
+            .unwrap_or(false),
+        show_outline: dt
+            .show_outline_border
+            .as_ref()
+            .map(|s| s.val.map(bool::from).unwrap_or(true))
+            .unwrap_or(false),
+        show_keys: dt
+            .show_keys
+            .as_ref()
+            .map(|s| s.val.map(bool::from).unwrap_or(true))
+            .unwrap_or(false),
+    });
+
+    let axis_label_rotation = |tp: Option<&c::TextProperties>| -> Option<i32> {
+        tp.and_then(|t| t.body_properties.rotation)
+            .map(|r| r / 60000)
+    };
 
     let route_title = |pos: Option<&c::AxisPositionValues>,
                        title: Option<&c::Title>,
@@ -60,15 +91,20 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
     };
     for choice in &plot_area.plot_area_choice2 {
         match choice {
-            c::PlotAreaChoice2::CCatAx(ca) => route_title(
-                ca.axis_position.as_ref().map(|p| &p.val),
-                ca.title.as_deref(),
-                &mut x_axis_title,
-                &mut y_axis_title,
-                &mut y_axis_title_secondary,
-            ),
-            c::PlotAreaChoice2::CDateAx(da) => route_title(
-                da.axis_position.as_ref().map(|p| &p.val),
+            c::PlotAreaChoice2::CategoryAxis(ca) => {
+                if cat_axis_label_rotation.is_none() {
+                    cat_axis_label_rotation = axis_label_rotation(ca.text_properties.as_deref());
+                }
+                route_title(
+                    Some(&ca.axis_position.val),
+                    ca.title.as_deref(),
+                    &mut x_axis_title,
+                    &mut y_axis_title,
+                    &mut y_axis_title_secondary,
+                )
+            }
+            c::PlotAreaChoice2::DateAxis(da) => route_title(
+                Some(&da.axis_position.val),
                 da.title.as_deref(),
                 &mut x_axis_title,
                 &mut y_axis_title,
@@ -76,9 +112,9 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
             ),
             _ => {}
         }
-        if let c::PlotAreaChoice2::CValAx(va) = choice {
-            let axid = va.axis_id.as_ref().map(|a| a.val).unwrap_or(0);
-            let pos = va.axis_position.as_ref().map(|p| &p.val);
+        if let c::PlotAreaChoice2::ValueAxis(va) = choice {
+            let axid = va.axis_id.val;
+            let pos = Some(&va.axis_position.val);
             let is_secondary = matches!(
                 pos,
                 Some(c::AxisPositionValues::Right) | Some(c::AxisPositionValues::Top)
@@ -98,19 +134,11 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 .as_ref()
                 .map(|nf| nf.format_code.as_str().to_string());
 
-            let scaling_min = va
-                .scaling
-                .as_ref()
-                .and_then(|s| s.min_axis_value.as_ref())
-                .map(|m| m.val);
-            let scaling_max = va
-                .scaling
-                .as_ref()
-                .and_then(|s| s.max_axis_value.as_ref())
-                .map(|m| m.val);
+            let scaling_min = va.scaling.min_axis_value.as_ref().map(|m| m.val);
+            let scaling_max = va.scaling.max_axis_value.as_ref().map(|m| m.val);
 
             let axis_major_unit = va
-                .c_major_unit
+                .major_unit
                 .as_ref()
                 .map(|m| m.val)
                 .filter(|v| v.is_finite() && *v > 0.0);
@@ -129,7 +157,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                     show_major_gridlines_secondary = gridlines_on;
                 }
                 if disp_units_secondary.is_none() {
-                    if let Some((f, lbl)) = extract_disp_units(va.c_disp_units.as_deref()) {
+                    if let Some((f, lbl)) = extract_disp_units(va.display_units.as_deref()) {
                         disp_units_secondary = Some(f);
                         disp_units_label_secondary = lbl;
                     }
@@ -154,7 +182,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                     show_major_gridlines = gridlines_on;
                 }
                 if disp_units.is_none() {
-                    if let Some((f, lbl)) = extract_disp_units(va.c_disp_units.as_deref()) {
+                    if let Some((f, lbl)) = extract_disp_units(va.display_units.as_deref()) {
                         disp_units = Some(f);
                         disp_units_label = lbl;
                     }
@@ -162,9 +190,12 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 if major_unit.is_none() {
                     major_unit = axis_major_unit;
                 }
+                if val_axis_label_rotation.is_none() {
+                    val_axis_label_rotation = axis_label_rotation(va.text_properties.as_deref());
+                }
             }
             route_title(
-                va.axis_position.as_ref().map(|p| &p.val),
+                Some(&va.axis_position.val),
                 va.title.as_deref(),
                 &mut x_axis_title,
                 &mut y_axis_title,
@@ -196,6 +227,16 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
 
     let mut bar_gap_width: Option<u16> = None;
     let mut bar_overlap: Option<i8> = None;
+    let mut is_3d = false;
+    let mut wireframe = false;
+    let mut gap_depth: Option<f64> = None;
+    let mut hole_size: Option<u8> = None;
+    let mut first_slice_angle: Option<u16> = None;
+    let mut of_pie_type: Option<String> = None;
+    let mut split_type: Option<String> = None;
+    let mut split_pos: Option<f64> = None;
+    let mut second_pie_size: Option<u16> = None;
+    let mut series_lines = false;
 
     let mut stock_hi_low_lines = false;
     let mut stock_up_down_bars = false;
@@ -217,22 +258,50 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                     &ser.order,
                     ser.series_text.as_deref(),
                     ser.chart_shape_properties.as_deref(),
-                    ser.c_val.as_deref(),
-                    &ser.c_d_pt,
+                    ser.values.as_deref(),
+                    &ser.data_point,
                     theme,
                 );
-                row.data_labels = extract_data_labels(ser.c_d_lbls.as_deref());
+                row.data_labels = extract_data_labels(ser.data_labels.as_deref());
                 row.axis_group = ag.clone();
                 row.chart_type = Some($kind.to_string());
                 series.push(row);
                 if $is_primary_group && categories.is_empty() {
-                    let (cs, r, fmt) = ax_data_values(ser.c_cat.as_deref());
+                    let (cs, r, fmt) = ax_data_values(ser.category_axis_data.as_deref());
                     categories = cs;
                     _categories_ref = r;
                     categories_format = fmt;
                 }
                 if $is_primary_group && value_format.is_none() {
-                    value_format = values_format(ser.c_val.as_deref());
+                    value_format = values_format(ser.values.as_deref());
+                }
+            }
+        }};
+    }
+
+    macro_rules! extract_surface {
+        ($coll:expr, $ax_ids:expr) => {{
+            let ag = axis_group_for($ax_ids, &secondary_ax_ids);
+            for ser in $coll {
+                let mut row = common_series(
+                    &ser.order,
+                    ser.series_text.as_deref(),
+                    ser.chart_shape_properties.as_deref(),
+                    ser.values.as_deref(),
+                    &[],
+                    theme,
+                );
+                row.axis_group = ag.clone();
+                row.chart_type = Some("surface".to_string());
+                series.push(row);
+                if categories.is_empty() {
+                    let (cs, r, fmt) = ax_data_values(ser.category_axis_data.as_deref());
+                    categories = cs;
+                    _categories_ref = r;
+                    categories_format = fmt;
+                }
+                if value_format.is_none() {
+                    value_format = values_format(ser.values.as_deref());
                 }
             }
         }};
@@ -240,7 +309,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
 
     for choice in &plot_area.plot_area_choice1 {
         match choice {
-            c::PlotAreaChoice::CBarChart(bc) => {
+            c::PlotAreaChoice::BarChart(bc) => {
                 let kind = match bc.bar_direction.val {
                     c::BarDirectionValues::Column => "column",
                     c::BarDirectionValues::Bar => "bar",
@@ -257,20 +326,27 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                     }
                 }
                 if chart_data_labels.is_none() {
-                    chart_data_labels = extract_data_labels(bc.c_d_lbls.as_deref());
+                    chart_data_labels = extract_data_labels(bc.data_labels.as_deref());
                 }
                 if bar_gap_width.is_none() {
-                    bar_gap_width = bc.c_gap_width.as_ref().and_then(|g| g.val);
+                    bar_gap_width = bc.gap_width.as_ref().and_then(|g| g.val);
                 }
                 if bar_overlap.is_none() {
-                    bar_overlap = bc.c_overlap.as_ref().and_then(|o| o.val);
+                    bar_overlap = bc.overlap.as_ref().and_then(|o| o.val);
                 }
-                let ag = axis_group_for(&bc.c_ax_id, &secondary_ax_ids);
+                let ag = axis_group_for(&bc.axis_id, &secondary_ax_ids);
                 let is_primary = !matches!(ag.as_deref(), Some("secondary"));
-                extract_chartlike!(&bc.c_ser, kind, &bc.c_ax_id, is_primary);
+                let series_before = series.len();
+                extract_chartlike!(&bc.bar_chart_series, kind, &bc.axis_id, is_primary);
+                for (offset, ser) in bc.bar_chart_series.iter().enumerate() {
+                    if let Some(row) = series.get_mut(series_before + offset) {
+                        row.trendlines = extract_trendlines(&ser.trendline, theme);
+                        row.error_bars = extract_error_bars(ser.error_bars.as_deref(), theme);
+                    }
+                }
                 group_types.push(kind);
             }
-            c::PlotAreaChoice::CLineChart(lc) => {
+            c::PlotAreaChoice::LineChart(lc) => {
                 if grouping.is_none() {
                     grouping = lc
                         .grouping
@@ -279,14 +355,14 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                         .map(|v| format!("{:?}", v).to_ascii_lowercase());
                 }
                 if chart_data_labels.is_none() {
-                    chart_data_labels = extract_data_labels(lc.c_d_lbls.as_deref());
+                    chart_data_labels = extract_data_labels(lc.data_labels.as_deref());
                 }
-                let ag = axis_group_for(&lc.c_ax_id, &secondary_ax_ids);
+                let ag = axis_group_for(&lc.axis_id, &secondary_ax_ids);
                 let is_primary = !matches!(ag.as_deref(), Some("secondary"));
                 let series_before = series.len();
-                extract_chartlike!(&lc.c_ser, "line", &lc.c_ax_id, is_primary);
+                extract_chartlike!(&lc.line_chart_series, "line", &lc.axis_id, is_primary);
 
-                for (offset, ser) in lc.c_ser.iter().enumerate() {
+                for (offset, ser) in lc.line_chart_series.iter().enumerate() {
                     let sym = ser
                         .marker
                         .as_ref()
@@ -294,11 +370,13 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                         .map(|s| marker_symbol_str(&s.val));
                     if let Some(row) = series.get_mut(series_before + offset) {
                         row.marker_symbol = sym;
+                        row.trendlines = extract_trendlines(&ser.trendline, theme);
+                        row.error_bars = extract_error_bars(ser.error_bars.as_deref(), theme);
                     }
                 }
                 group_types.push("line");
             }
-            c::PlotAreaChoice::CAreaChart(ac) => {
+            c::PlotAreaChoice::AreaChart(ac) => {
                 if grouping.is_none() {
                     grouping = ac
                         .grouping
@@ -307,28 +385,36 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                         .map(|v| format!("{:?}", v).to_ascii_lowercase());
                 }
                 if chart_data_labels.is_none() {
-                    chart_data_labels = extract_data_labels(ac.c_d_lbls.as_deref());
+                    chart_data_labels = extract_data_labels(ac.data_labels.as_deref());
                 }
-                let ag = axis_group_for(&ac.c_ax_id, &secondary_ax_ids);
+                let ag = axis_group_for(&ac.axis_id, &secondary_ax_ids);
                 let is_primary = !matches!(ag.as_deref(), Some("secondary"));
-                extract_chartlike!(&ac.c_ser, "area", &ac.c_ax_id, is_primary);
+                let series_before = series.len();
+                extract_chartlike!(&ac.area_chart_series, "area", &ac.axis_id, is_primary);
+                for (offset, ser) in ac.area_chart_series.iter().enumerate() {
+                    if let Some(row) = series.get_mut(series_before + offset) {
+                        row.error_bars = extract_error_bars(ser.error_bars.first(), theme);
+                    }
+                }
                 group_types.push("area");
             }
-            c::PlotAreaChoice::CPieChart(pc) => {
-                chart_data_labels = extract_data_labels(pc.c_d_lbls.as_deref());
-
-                extract_chartlike!(&pc.c_ser, "pie", &[] as &[c::AxisId], true);
+            c::PlotAreaChoice::PieChart(pc) => {
+                chart_data_labels = extract_data_labels(pc.data_labels.as_deref());
+                first_slice_angle = pc.first_slice_angle.as_ref().and_then(|f| f.val);
+                extract_chartlike!(&pc.pie_chart_series, "pie", &[] as &[c::AxisId], true);
                 group_types.push("pie");
                 break;
             }
-            c::PlotAreaChoice::CDoughnutChart(dc) => {
-                chart_data_labels = extract_data_labels(dc.c_d_lbls.as_deref());
-                extract_chartlike!(&dc.c_ser, "doughnut", &[] as &[c::AxisId], true);
+            c::PlotAreaChoice::DoughnutChart(dc) => {
+                chart_data_labels = extract_data_labels(dc.data_labels.as_deref());
+                hole_size = Some(dc.hole_size.val);
+                first_slice_angle = dc.first_slice_angle.as_ref().and_then(|f| f.val);
+                extract_chartlike!(&dc.pie_chart_series, "doughnut", &[] as &[c::AxisId], true);
                 group_types.push("doughnut");
                 break;
             }
-            c::PlotAreaChoice::CScatterChart(sc) => {
-                chart_data_labels = extract_data_labels(sc.c_d_lbls.as_deref());
+            c::PlotAreaChoice::ScatterChart(sc) => {
+                chart_data_labels = extract_data_labels(sc.data_labels.as_deref());
 
                 scatter_style = sc.scatter_style.val.as_ref().map(|v| {
                     match v {
@@ -340,41 +426,53 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                     }
                     .to_string()
                 });
-                for ser in &sc.c_ser {
+                for ser in &sc.scatter_chart_series {
                     let mut row = common_series_scatter(
                         &ser.order,
                         ser.series_text.as_deref(),
                         ser.chart_shape_properties.as_deref(),
-                        ser.c_y_val.as_deref(),
-                        &ser.c_d_pt,
+                        ser.y_values.as_deref(),
+                        &ser.data_point,
                         theme,
                     );
-                    let (xs, xref) = scatter_x_values(ser.c_x_val.as_deref());
+                    let (xs, xref) = scatter_x_values(ser.x_values.as_deref());
                     row.x_values = xs;
                     row.x_values_ref = xref;
-                    row.data_labels = extract_data_labels(ser.c_d_lbls.as_deref());
-                    row.axis_group = axis_group_for(&sc.c_ax_id, &secondary_ax_ids);
+                    row.data_labels = extract_data_labels(ser.data_labels.as_deref());
+                    row.axis_group = axis_group_for(&sc.axis_id, &secondary_ax_ids);
                     row.chart_type = Some("scatter".to_string());
                     row.marker_symbol = ser
                         .marker
                         .as_ref()
                         .and_then(|m| m.symbol.as_ref())
                         .map(|s| marker_symbol_str(&s.val));
+                    row.trendlines = extract_trendlines(&ser.trendline, theme);
+                    let eb = ser
+                        .error_bars
+                        .iter()
+                        .find(|e| {
+                            e.error_direction
+                                .as_ref()
+                                .map(|d| matches!(d.val, c::ErrorBarDirectionValues::Y))
+                                .unwrap_or(true)
+                        })
+                        .or_else(|| ser.error_bars.first());
+                    row.error_bars = extract_error_bars(eb, theme);
                     series.push(row);
                     if categories.is_empty() {
-                        let (cs, r, fmt) = x_axis_values(ser.c_x_val.as_deref());
+                        let (cs, r, fmt) = x_axis_values(ser.x_values.as_deref());
                         categories = cs;
                         _categories_ref = r;
                         categories_format = fmt;
                     }
                     if value_format.is_none() {
-                        value_format = y_values_format(ser.c_y_val.as_deref());
+                        value_format = y_values_format(ser.y_values.as_deref());
                     }
                 }
                 group_types.push("scatter");
                 break;
             }
-            c::PlotAreaChoice::CBar3DChart(bc) => {
+            c::PlotAreaChoice::Bar3DChart(bc) => {
                 let kind = match bc.bar_direction.val {
                     c::BarDirectionValues::Column => "column",
                     c::BarDirectionValues::Bar => "bar",
@@ -391,17 +489,21 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                     }
                 }
                 if chart_data_labels.is_none() {
-                    chart_data_labels = extract_data_labels(bc.c_d_lbls.as_deref());
+                    chart_data_labels = extract_data_labels(bc.data_labels.as_deref());
                 }
                 if bar_gap_width.is_none() {
-                    bar_gap_width = bc.c_gap_width.as_ref().and_then(|g| g.val);
+                    bar_gap_width = bc.gap_width.as_ref().and_then(|g| g.val);
                 }
-                let ag = axis_group_for(&bc.c_ax_id, &secondary_ax_ids);
+                is_3d = true;
+                if gap_depth.is_none() {
+                    gap_depth = bc.gap_depth.as_ref().and_then(|g| g.val).map(f64::from);
+                }
+                let ag = axis_group_for(&bc.axis_id, &secondary_ax_ids);
                 let is_primary = !matches!(ag.as_deref(), Some("secondary"));
-                extract_chartlike!(&bc.c_ser, kind, &bc.c_ax_id, is_primary);
+                extract_chartlike!(&bc.bar_chart_series, kind, &bc.axis_id, is_primary);
                 group_types.push(kind);
             }
-            c::PlotAreaChoice::CLine3DChart(lc) => {
+            c::PlotAreaChoice::Line3DChart(lc) => {
                 if grouping.is_none() {
                     grouping = lc
                         .grouping
@@ -410,13 +512,13 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                         .map(|v| format!("{:?}", v).to_ascii_lowercase());
                 }
                 if chart_data_labels.is_none() {
-                    chart_data_labels = extract_data_labels(lc.c_d_lbls.as_deref());
+                    chart_data_labels = extract_data_labels(lc.data_labels.as_deref());
                 }
-                let ag = axis_group_for(&lc.c_ax_id, &secondary_ax_ids);
+                let ag = axis_group_for(&lc.axis_id, &secondary_ax_ids);
                 let is_primary = !matches!(ag.as_deref(), Some("secondary"));
                 let series_before = series.len();
-                extract_chartlike!(&lc.c_ser, "line", &lc.c_ax_id, is_primary);
-                for (offset, ser) in lc.c_ser.iter().enumerate() {
+                extract_chartlike!(&lc.line_chart_series, "line", &lc.axis_id, is_primary);
+                for (offset, ser) in lc.line_chart_series.iter().enumerate() {
                     let sym = ser
                         .marker
                         .as_ref()
@@ -428,7 +530,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 }
                 group_types.push("line");
             }
-            c::PlotAreaChoice::CArea3DChart(ac) => {
+            c::PlotAreaChoice::Area3DChart(ac) => {
                 if grouping.is_none() {
                     grouping = ac
                         .grouping
@@ -437,20 +539,36 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                         .map(|v| format!("{:?}", v).to_ascii_lowercase());
                 }
                 if chart_data_labels.is_none() {
-                    chart_data_labels = extract_data_labels(ac.c_d_lbls.as_deref());
+                    chart_data_labels = extract_data_labels(ac.data_labels.as_deref());
                 }
-                let ag = axis_group_for(&ac.c_ax_id, &secondary_ax_ids);
+                let ag = axis_group_for(&ac.axis_id, &secondary_ax_ids);
                 let is_primary = !matches!(ag.as_deref(), Some("secondary"));
-                extract_chartlike!(&ac.c_ser, "area", &ac.c_ax_id, is_primary);
+                extract_chartlike!(&ac.area_chart_series, "area", &ac.axis_id, is_primary);
                 group_types.push("area");
             }
-            c::PlotAreaChoice::CPie3DChart(pc) => {
-                chart_data_labels = extract_data_labels(pc.c_d_lbls.as_deref());
-                extract_chartlike!(&pc.c_ser, "pie", &[] as &[c::AxisId], true);
+            c::PlotAreaChoice::Pie3DChart(pc) => {
+                chart_data_labels = extract_data_labels(pc.data_labels.as_deref());
+                extract_chartlike!(&pc.pie_chart_series, "pie", &[] as &[c::AxisId], true);
                 group_types.push("pie");
                 break;
             }
-            c::PlotAreaChoice::CRadarChart(rc) => {
+            c::PlotAreaChoice::SurfaceChart(sc) => {
+                is_3d = true;
+                if sc.wireframe.as_ref().and_then(|w| w.val).map(bool::from) == Some(true) {
+                    wireframe = true;
+                }
+                extract_surface!(&sc.surface_chart_series, &sc.axis_id);
+                group_types.push("surface");
+            }
+            c::PlotAreaChoice::Surface3DChart(sc) => {
+                is_3d = true;
+                if sc.wireframe.as_ref().and_then(|w| w.val).map(bool::from) == Some(true) {
+                    wireframe = true;
+                }
+                extract_surface!(&sc.surface_chart_series, &sc.axis_id);
+                group_types.push("surface");
+            }
+            c::PlotAreaChoice::RadarChart(rc) => {
                 if radar_style.is_none() {
                     radar_style = Some(
                         match rc.radar_style.val {
@@ -462,12 +580,12 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                     );
                 }
                 if chart_data_labels.is_none() {
-                    chart_data_labels = extract_data_labels(rc.c_d_lbls.as_deref());
+                    chart_data_labels = extract_data_labels(rc.data_labels.as_deref());
                 }
                 let series_before = series.len();
-                extract_chartlike!(&rc.c_ser, "radar", &rc.c_ax_id, true);
+                extract_chartlike!(&rc.radar_chart_series, "radar", &rc.axis_id, true);
 
-                for (offset, ser) in rc.c_ser.iter().enumerate() {
+                for (offset, ser) in rc.radar_chart_series.iter().enumerate() {
                     let sym = ser
                         .marker
                         .as_ref()
@@ -480,17 +598,17 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 group_types.push("radar");
                 break;
             }
-            c::PlotAreaChoice::CStockChart(sc) => {
+            c::PlotAreaChoice::StockChart(sc) => {
                 if chart_data_labels.is_none() {
-                    chart_data_labels = extract_data_labels(sc.c_d_lbls.as_deref());
+                    chart_data_labels = extract_data_labels(sc.data_labels.as_deref());
                 }
-                stock_hi_low_lines = stock_hi_low_lines || sc.c_hi_low_lines.is_some();
-                stock_up_down_bars = stock_up_down_bars || sc.c_up_down_bars.is_some();
-                stock_drop_lines = stock_drop_lines || sc.c_drop_lines.is_some();
+                stock_hi_low_lines = stock_hi_low_lines || sc.high_low_lines.is_some();
+                stock_up_down_bars = stock_up_down_bars || sc.up_down_bars.is_some();
+                stock_drop_lines = stock_drop_lines || sc.drop_lines.is_some();
                 let series_before = series.len();
-                extract_chartlike!(&sc.c_ser, "stock", &sc.c_ax_id, true);
+                extract_chartlike!(&sc.line_chart_series, "stock", &sc.axis_id, true);
 
-                for (offset, ser) in sc.c_ser.iter().enumerate() {
+                for (offset, ser) in sc.line_chart_series.iter().enumerate() {
                     let sym = ser
                         .marker
                         .as_ref()
@@ -503,16 +621,35 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 group_types.push("stock");
                 break;
             }
-            c::PlotAreaChoice::COfPieChart(pc) => {
-                chart_data_labels = extract_data_labels(pc.c_d_lbls.as_deref());
-                extract_chartlike!(&pc.c_ser, "pie", &[] as &[c::AxisId], true);
-                group_types.push("pie");
+            c::PlotAreaChoice::OfPieChart(pc) => {
+                chart_data_labels = extract_data_labels(pc.data_labels.as_deref());
+                of_pie_type = Some(
+                    match pc.of_pie_type.val {
+                        c::OfPieValues::Pie => "pie",
+                        c::OfPieValues::Bar => "bar",
+                    }
+                    .to_string(),
+                );
+                split_type = pc.split_type.as_ref().map(|s| {
+                    match s.val {
+                        c::SplitValues::Custom => "cust",
+                        c::SplitValues::Percent => "percent",
+                        c::SplitValues::Position => "pos",
+                        c::SplitValues::Value => "val",
+                    }
+                    .to_string()
+                });
+                split_pos = pc.split_position.as_ref().map(|s| s.val);
+                second_pie_size = pc.second_pie_size.as_ref().and_then(|s| s.val);
+                series_lines = !pc.series_lines.is_empty();
+                extract_chartlike!(&pc.pie_chart_series, "ofpie", &[] as &[c::AxisId], true);
+                group_types.push("ofpie");
                 break;
             }
-            c::PlotAreaChoice::CBubbleChart(bc) => {
-                bubble_scale = bc.c_bubble_scale.as_ref().and_then(|s| s.val);
+            c::PlotAreaChoice::BubbleChart(bc) => {
+                bubble_scale = bc.bubble_scale.as_ref().and_then(|s| s.val);
                 size_represents = bc
-                    .c_size_represents
+                    .size_represents
                     .as_ref()
                     .and_then(|s| s.val.as_ref())
                     .map(|v| {
@@ -522,35 +659,35 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                         }
                         .to_string()
                     });
-                chart_data_labels = extract_data_labels(bc.c_d_lbls.as_deref());
-                for ser in &bc.c_ser {
+                chart_data_labels = extract_data_labels(bc.data_labels.as_deref());
+                for ser in &bc.bubble_chart_series {
                     let mut row = common_series_scatter(
                         &ser.order,
                         ser.series_text.as_deref(),
                         ser.chart_shape_properties.as_deref(),
-                        ser.c_y_val.as_deref(),
-                        &ser.c_d_pt,
+                        ser.y_values.as_deref(),
+                        &ser.data_point,
                         theme,
                     );
-                    let (xs, xref) = scatter_x_values(ser.c_x_val.as_deref());
+                    let (xs, xref) = scatter_x_values(ser.x_values.as_deref());
                     row.x_values = xs;
                     row.x_values_ref = xref;
 
-                    let (sizes, sref) = bubble_size_values(ser.c_bubble_size.as_deref());
+                    let (sizes, sref) = bubble_size_values(ser.bubble_size.as_deref());
                     row.bubble_sizes = sizes;
                     row.bubble_sizes_ref = sref;
-                    row.data_labels = extract_data_labels(ser.c_d_lbls.as_deref());
-                    row.axis_group = axis_group_for(&bc.c_ax_id, &secondary_ax_ids);
+                    row.data_labels = extract_data_labels(ser.data_labels.as_deref());
+                    row.axis_group = axis_group_for(&bc.axis_id, &secondary_ax_ids);
                     row.chart_type = Some("bubble".to_string());
                     series.push(row);
                     if categories.is_empty() {
-                        let (cs, r, fmt) = x_axis_values(ser.c_x_val.as_deref());
+                        let (cs, r, fmt) = x_axis_values(ser.x_values.as_deref());
                         categories = cs;
                         _categories_ref = r;
                         categories_format = fmt;
                     }
                     if value_format.is_none() {
-                        value_format = y_values_format(ser.c_y_val.as_deref());
+                        value_format = y_values_format(ser.y_values.as_deref());
                     }
                 }
                 group_types.push("bubble");
@@ -584,6 +721,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         .auto_title_deleted
         .as_ref()
         .and_then(|a| a.val)
+        .map(bool::from)
         .unwrap_or(false);
     let title = extract_title(chart.title.as_deref()).or_else(|| {
         if chart.title.is_some() && !auto_title_deleted && series.len() == 1 {
@@ -614,6 +752,61 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
             .unwrap_or_else(|| "r".to_string())
     });
 
+    let plot_area_sp = plot_area.shape_properties.as_deref();
+    let plot_area_fill =
+        plot_area_sp.and_then(|sp| fill_color_outside_outline(&format!("{:?}", sp), theme));
+    let plot_area_border = plot_area_sp
+        .and_then(|sp| extract_style_border(sp.outline.as_deref(), &format!("{:?}", sp), theme));
+
+    let legend = chart.legend.as_deref();
+    let legend_sp = legend.and_then(|l| l.chart_shape_properties.as_deref());
+    let legend_fill =
+        legend_sp.and_then(|sp| fill_color_outside_outline(&format!("{:?}", sp), theme));
+    let legend_border = legend_sp
+        .and_then(|sp| extract_style_border(sp.outline.as_deref(), &format!("{:?}", sp), theme));
+    let legend_font = legend.and_then(|l| extract_style_font(l.text_properties.as_deref(), theme));
+
+    let view_3d = chart.view3_d.as_deref().map(|v| ChartView3D {
+        rot_x: v.rotate_x.as_ref().and_then(|r| r.val).map(f64::from),
+        rot_y: v.rotate_y.as_ref().and_then(|r| r.val).map(f64::from),
+        perspective: v.perspective.as_ref().and_then(|p| p.val).map(f64::from),
+        right_angle_axes: v
+            .right_angle_axes
+            .as_ref()
+            .and_then(|r| r.val)
+            .map(bool::from),
+        depth_percent: v.depth_percent.as_ref().and_then(|d| d.val).map(f64::from),
+        height_percent: v.height_percent.as_ref().and_then(|h| h.val).map(f64::from),
+    });
+    let surface_fill = |sp: Option<&c::ShapeProperties>| {
+        sp.and_then(|s| fill_color_outside_outline(&format!("{:?}", s), theme))
+    };
+    let floor_fill = surface_fill(
+        chart
+            .floor
+            .as_deref()
+            .and_then(|f| f.shape_properties.as_deref()),
+    );
+    let side_wall_fill = surface_fill(
+        chart
+            .side_wall
+            .as_deref()
+            .and_then(|w| w.shape_properties.as_deref()),
+    );
+    let back_wall_fill = surface_fill(
+        chart
+            .back_wall
+            .as_deref()
+            .and_then(|w| w.shape_properties.as_deref()),
+    );
+
+    let plot_area_layout = extract_manual_layout(plot_area.layout.as_deref());
+    let legend_layout = legend.and_then(|l| extract_manual_layout(l.layout.as_deref()));
+    let title_layout = chart
+        .title
+        .as_deref()
+        .and_then(|t| extract_manual_layout(t.layout.as_deref()));
+
     Some(Chart {
         chart_type,
         title,
@@ -638,6 +831,13 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         major_unit_secondary,
         bar_gap_width,
         bar_overlap,
+        hole_size,
+        first_slice_angle,
+        of_pie_type,
+        split_type,
+        split_pos,
+        second_pie_size,
+        series_lines,
         x_axis_title,
         y_axis_title,
         y_axis_title_secondary,
@@ -661,5 +861,23 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         cx_region_map_min_color: None,
         cx_region_map_mid_color: None,
         cx_region_map_max_color: None,
+        cat_axis_label_rotation,
+        val_axis_label_rotation,
+        data_table,
+        plot_area_fill,
+        plot_area_border,
+        legend_fill,
+        legend_border,
+        legend_font,
+        plot_area_layout,
+        legend_layout,
+        title_layout,
+        is_3d,
+        wireframe,
+        view_3d,
+        gap_depth,
+        floor_fill,
+        side_wall_fill,
+        back_wall_fill,
     })
 }

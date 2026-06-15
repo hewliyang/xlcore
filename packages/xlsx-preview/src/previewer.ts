@@ -1,8 +1,34 @@
 import { decodeWorkbookLayout, findCell, iterRows } from "./columnar.js";
 import { colorToCssWithTheme } from "./color.js";
 import type { LoadReport } from "./errors.js";
-import { attachInteractivity, type InteractHandle, type Selection } from "./interact.js";
+import {
+  attachInteractivity,
+  type InteractHandle,
+  type PivotFilterEvent,
+  type TableFilterEvent,
+  type Selection,
+} from "./interact.js";
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
+import { referencesToHighlights } from "./highlights.js";
+import { autocompleteState, type AutocompleteState } from "./formulaAutocomplete.js";
+import {
+  applyReferenceAtCaret,
+  caretAcceptsReference,
+  type RefSpan,
+} from "./formulaPointMode.js";
+import type { HighlightRange } from "./renderTypes.js";
+import type { DependencyReference } from "./api-schema/DependencyReference.js";
+import { cellRect } from "./geometry.js";
+import {
+  createPivotFilterPopover,
+  type PivotFilterController,
+  type PivotFilterPopoverHandle,
+} from "./pivotFilterPopover.js";
+import {
+  createTableFilterPopover,
+  type TableFilterController,
+  type TableFilterPopoverHandle,
+} from "./tableFilterPopover.js";
 import type { Sheet as WireSheet } from "./schema/Sheet.js";
 import type { Sheet, WorkbookLayout } from "./types.js";
 
@@ -12,7 +38,31 @@ export interface PreviewerOptions {
   className?: string;
   report?: LoadReport;
   showHidden?: boolean;
+  editable?: boolean;
+  onDownload?: () => void | Promise<void>;
+
+  pivotController?: PivotFilterController;
+  tableController?: TableFilterController;
+  engine?: PreviewerEngine;
 }
+
+export interface PreviewerEngine {
+  parseReferences(sheetName: string, anchorRef: string, formula: string): DependencyReference[];
+  functionNames(): string[];
+}
+
+const HIGHLIGHT_PALETTE = [
+  "#2563eb",
+  "#16a34a",
+  "#db2777",
+  "#ea580c",
+  "#0891b2",
+  "#9333ea",
+  "#ca8a04",
+];
+
+export type { PivotFilterController, PivotFilterContext } from "./pivotFilterPopover.js";
+export type { TableFilterController, TableFilterContext } from "./tableFilterPopover.js";
 
 function isTabVisible(sheet: WireSheet, showHidden: boolean): boolean {
   const state = sheet.state;
@@ -28,7 +78,16 @@ export interface PreviewerState {
   zoom: number;
 }
 
-export type PreviewerEventName = "selectionchange" | "sheetchange" | "zoomchange" | "layoutchange";
+export type PreviewerEventName =
+  | "selectionchange"
+  | "sheetchange"
+  | "zoomchange"
+  | "layoutchange"
+  | "pivotfilter"
+  | "tablefilter"
+  | "celledit";
+
+export type { PivotFilterEvent, TableFilterEvent } from "./interact.js";
 
 export interface WorkbookPreviewer {
   readonly root: HTMLElement;
@@ -38,6 +97,7 @@ export interface WorkbookPreviewer {
   readonly report?: LoadReport;
   destroy(): void;
   redraw(): void;
+  replaceLayout(layout: WorkbookLayout): void;
   getState(): PreviewerState;
   getActiveSheet(): Sheet;
   getActiveSheetIndex(): number;
@@ -77,13 +137,18 @@ export function createWorkbookPreviewer(
 class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   readonly root: HTMLElement;
   readonly canvas: HTMLCanvasElement;
-  readonly layout: WorkbookLayout;
+  layout: WorkbookLayout;
   readonly report?: LoadReport;
+  private readonly pivotController?: PivotFilterController;
+  private pivotPopover: PivotFilterPopoverHandle | null = null;
+  private readonly tableController?: TableFilterController;
+  private tablePopover: TableFilterPopoverHandle | null = null;
 
   private readonly tabs: HTMLDivElement;
   private readonly sheetTabs: HTMLDivElement;
   private readonly formulaBar: HTMLDivElement;
   private readonly zoomBox: HTMLDivElement;
+  private readonly downloadButton: HTMLButtonElement | null;
   private readonly nameBox: HTMLDivElement;
   private readonly formulaBox: HTMLInputElement;
   private readonly zoomLabel: HTMLSpanElement;
@@ -91,9 +156,27 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private readonly zoomIn: HTMLButtonElement;
   private readonly stage: HTMLDivElement;
   private readonly spacer: HTMLDivElement;
+
+  private readonly editInput: HTMLInputElement;
+  private editCell: { r: number; c: number } | null = null;
+  private editEnterMode = false;
+  private pointKeyAnchor: { r: number; c: number } | null = null;
+  private pointKeyCursor: { r: number; c: number } | null = null;
   private readonly sheetStates: SheetState[];
   private readonly tabButtons: Array<HTMLButtonElement | null> = [];
   private readonly showHidden: boolean;
+  private readonly editable: boolean;
+  private readonly onDownload?: () => void | Promise<void>;
+  private readonly engine?: PreviewerEngine;
+  private highlights: HighlightRange[] = [];
+  private pointHighlight: HighlightRange | null = null;
+  private functionNamesCache: string[] | null = null;
+  private readonly autocompleteMenu: HTMLDivElement;
+  private autocompleteFor: HTMLInputElement | null = null;
+  private autocompleteData: AutocompleteState | null = null;
+  private autocompleteActive = 0;
+  private autocompleteBlurTimer: ReturnType<typeof setTimeout> | null = null;
+  private activeRefSpan: RefSpan | null = null;
   private readonly resizeObserver: ResizeObserver;
   private interactHandle: InteractHandle | null = null;
   private activeSheetIndex = 0;
@@ -105,8 +188,13 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     super();
     this.layout = decodeWorkbookLayout(rawLayout);
     this.report = options.report;
+    this.pivotController = options.pivotController;
+    this.tableController = options.tableController;
     this.zoom = clamp(options.initialZoom ?? 1, 0.25, 4);
     this.showHidden = options.showHidden === true;
+    this.editable = options.editable === true;
+    this.onDownload = options.onDownload;
+    this.engine = options.engine;
     this.sheetStates = this.layout.sheets.map(() => ({
       colOverrides: new Map(),
       rowOverrides: new Map(),
@@ -131,11 +219,19 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     fxLabel.style.cssText =
       "font:600 12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#4b5563;padding:0 2px;";
     this.formulaBox = document.createElement("input");
-    this.formulaBox.readOnly = true;
+    this.formulaBox.readOnly = !this.editable;
     this.formulaBox.setAttribute("aria-label", "Formula or value");
     this.formulaBox.style.cssText =
       "min-width:0;flex:1;height:28px;padding:0 9px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#111827;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;";
     this.formulaBar.append(this.nameBox, fxLabel, this.formulaBox);
+    if (this.editable) {
+      this.formulaBox.addEventListener("keydown", (ev) => this.onFormulaBoxKeyDown(ev));
+      this.formulaBox.addEventListener("focus", this.scheduleDraw);
+      this.formulaBox.addEventListener("blur", () => {
+        this.scheduleAutocompleteClose();
+        this.scheduleDraw();
+      });
+    }
 
     this.tabs = document.createElement("div");
     this.tabs.className = "xlcore-tabs";
@@ -154,6 +250,16 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.zoomLabel.style.cssText = "font-size:12px;min-width:42px;text-align:center;color:#374151;";
     this.zoomIn = makeButton("+");
     this.zoomBox.append(this.zoomOut, this.zoomLabel, this.zoomIn);
+    if (this.onDownload) {
+      this.downloadButton = makeButton("Download");
+      this.downloadButton.setAttribute("aria-label", "Download workbook");
+      this.downloadButton.onclick = () => {
+        void this.onDownload?.();
+      };
+      this.zoomBox.insertBefore(this.downloadButton, this.zoomOut);
+    } else {
+      this.downloadButton = null;
+    }
     this.tabs.append(this.sheetTabs, this.zoomBox);
 
     this.stage = document.createElement("div");
@@ -165,8 +271,31 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.canvas = document.createElement("canvas");
     this.canvas.style.cssText =
       "position:sticky;top:0;left:0;background:#fff;display:block;box-shadow:0 1px 3px rgba(0,0,0,0.1);";
-    this.spacer.append(this.canvas);
+    this.editInput = document.createElement("input");
+    this.editInput.style.cssText =
+      "position:absolute;top:0;left:0;display:none;z-index:5;box-sizing:border-box;margin:0;padding:0 3px;border:2px solid #2563eb;outline:none;background:#fff;color:#111827;font:13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
+    this.spacer.append(this.canvas, this.editInput);
     this.stage.append(this.spacer);
+    this.autocompleteMenu = document.createElement("div");
+    this.autocompleteMenu.style.cssText =
+      "position:fixed;z-index:1100;display:none;background:#fff;border:1px solid #d4d4d8;border-radius:6px;" +
+      "box-shadow:0 8px 24px rgba(15,23,42,0.18);padding:4px;min-width:140px;max-height:240px;overflow:auto;" +
+      "font:12px ui-monospace,SFMono-Regular,Menlo,monospace;";
+    document.body.append(this.autocompleteMenu);
+    this.editInput.addEventListener("keydown", (ev) => this.onEditInputKeyDown(ev));
+    this.editInput.addEventListener("input", () => {
+      this.updateAutocomplete(this.editInput);
+      this.scheduleDraw();
+    });
+    this.editInput.addEventListener("blur", () => {
+      this.scheduleAutocompleteClose();
+      this.commitEdit(null);
+    });
+    if (this.editable)
+      this.formulaBox.addEventListener("input", () => {
+        this.updateAutocomplete(this.formulaBox);
+        this.scheduleDraw();
+      });
     this.root.append(this.formulaBar, this.tabs, this.stage);
     container.append(this.root);
 
@@ -192,9 +321,43 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.draw();
   }
 
+  replaceLayout(rawLayout: WorkbookLayout): void {
+    this.hideEditOverlay();
+    const prevIndex = this.activeSheetIndex;
+    const prevScroll = { top: this.stage.scrollTop, left: this.stage.scrollLeft };
+    this.layout = decodeWorkbookLayout(rawLayout);
+    if (this.sheetStates.length !== this.layout.sheets.length) {
+      const next = this.layout.sheets.map(
+        (_, i) =>
+          this.sheetStates[i] ?? {
+            colOverrides: new Map<number, number>(),
+            rowOverrides: new Map<number, number>(),
+            activeCell: { r: 1, c: 1 },
+            selection: { r1: 1, c1: 1, r2: 1, c2: 1 },
+          },
+      );
+      this.sheetStates.length = 0;
+      this.sheetStates.push(...next);
+    }
+    this.activeSheetIndex = Math.min(prevIndex, this.layout.sheets.length - 1);
+    this.renderTabs();
+    this.attachInteractivity();
+    this.updateSpacerSize();
+    this.stage.scrollTop = prevScroll.top;
+    this.stage.scrollLeft = prevScroll.left;
+    this.draw();
+    this.emit("layoutchange");
+  }
+
   destroy(): void {
+    this.pivotPopover?.destroy();
+    this.pivotPopover = null;
+    this.tablePopover?.destroy();
+    this.tablePopover = null;
     this.interactHandle?.destroy();
     this.interactHandle = null;
+    this.closeAutocomplete();
+    this.autocompleteMenu.remove();
     this.resizeObserver.disconnect();
     this.stage.removeEventListener("scroll", this.scheduleDraw);
     this.canvas.removeEventListener(
@@ -229,6 +392,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   setActiveSheet(sheet: number | string): void {
     const next = this.resolveSheet(sheet);
     if (next === this.activeSheetIndex) return;
+    this.hideEditOverlay();
     this.activeSheetIndex = next;
     this.stage.scrollTop = 0;
     this.stage.scrollLeft = 0;
@@ -309,6 +473,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   setZoom(zoom: number): void {
     const next = clamp(Math.round(zoom * 100) / 100, 0.25, 4);
     if (next === this.zoom) return;
+    this.hideEditOverlay();
     this.zoom = next;
     this.updateZoomLabel();
     this.updateSpacerSize();
@@ -346,9 +511,30 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     return this.sheetStates[this.activeSheetIndex] ?? this.sheetStates[0]!;
   }
 
+  private computeHighlights(): HighlightRange[] {
+    if (!this.engine) return [];
+    const sheet = this.getActiveSheet();
+    const active = this.editCell ?? this.currentState().activeCell;
+    let text: string;
+    if (this.editCell) text = this.editInput.value;
+    else if (document.activeElement === this.formulaBox) text = this.formulaBox.value;
+    else text = formatFormulaBar(sheet, active);
+    if (!text.startsWith("=")) return [];
+    const anchor = colLabel(active.c) + active.r;
+    let refs: DependencyReference[];
+    try {
+      refs = this.engine.parseReferences(sheet.name, anchor, text);
+    } catch {
+      return [];
+    }
+    return referencesToHighlights(refs, sheet.name, HIGHLIGHT_PALETTE);
+  }
+
   private draw(): void {
     const state = this.currentState();
     this.recomputeViewport();
+    const baseHighlights = this.computeHighlights();
+    this.highlights = this.pointHighlight ? [...baseHighlights, this.pointHighlight] : baseHighlights;
     render(this.canvas, this.getActiveSheet(), this.layout, {
       scale: window.devicePixelRatio || 1,
       zoom: this.zoom,
@@ -356,13 +542,17 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       rowOverrides: state.rowOverrides,
       activeCell: state.activeCell,
       selection: state.selection,
+      highlights: this.highlights,
       viewport: this.viewport,
     });
     this.nameBox.textContent = formatNameBox(state.activeCell, state.selection);
-    this.formulaBox.value = formatFormulaBar(this.getActiveSheet(), state.activeCell);
+    if (document.activeElement !== this.formulaBox) {
+      this.formulaBox.value = formatFormulaBar(this.getActiveSheet(), state.activeCell);
+    }
   }
 
   private attachInteractivity(): void {
+    this.hideEditOverlay();
     this.interactHandle?.destroy();
     const state = this.currentState();
     this.interactHandle = attachInteractivity(this.canvas, {
@@ -371,6 +561,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       zoom: {
         get: () => this.zoom,
         set: (value) => {
+          this.hideEditOverlay();
           this.zoom = value;
           this.updateZoomLabel();
           this.updateSpacerSize();
@@ -396,6 +587,43 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       },
       scrollContainer: this.stage,
       getViewport: () => this.viewport,
+      onPivotFilter: (info: PivotFilterEvent) => {
+        this.dispatchEvent(new CustomEvent("pivotfilter", { detail: info }));
+        if (this.pivotController) {
+          if (!this.pivotPopover) {
+            this.pivotPopover = createPivotFilterPopover(this.pivotController, (layout) => {
+              if (layout) this.replaceLayout(layout);
+              else this.scheduleDraw();
+            });
+          }
+          this.pivotPopover.open(
+            { pivot: info.pivot, field: info.field, axis: info.axis },
+            info.rect,
+          );
+        }
+      },
+      onEditStart: this.editable
+        ? (cell, initialText) => this.openEditOverlay(cell, initialText)
+        : undefined,
+      isPointModeActive: this.editable ? () => this.isPointModeActive() : undefined,
+      onPointModeRef: this.editable
+        ? (ref, o) => this.applyPointModeRef(ref, o)
+        : undefined,
+      onTableFilter: (info: TableFilterEvent) => {
+        this.dispatchEvent(new CustomEvent("tablefilter", { detail: info }));
+        if (this.tableController) {
+          if (!this.tablePopover) {
+            this.tablePopover = createTableFilterPopover(this.tableController, (layout) => {
+              if (layout) this.replaceLayout(layout);
+              else this.scheduleDraw();
+            });
+          }
+          this.tablePopover.open(
+            { field: info.field, columnOffset: info.columnOffset, rangeRef: info.rangeRef },
+            info.rect,
+          );
+        }
+      },
       redraw: this.scheduleDraw,
     });
   }
@@ -498,6 +726,322 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private emit(name: PreviewerEventName): void {
     this.dispatchEvent(new CustomEvent(name, { detail: this.getState() }));
   }
+
+  private getFunctionNames(): string[] {
+    if (!this.engine) return [];
+    if (this.functionNamesCache === null) {
+      try {
+        this.functionNamesCache = this.engine.functionNames();
+      } catch {
+        this.functionNamesCache = [];
+      }
+    }
+    return this.functionNamesCache;
+  }
+
+  private updateAutocomplete(input: HTMLInputElement): void {
+    if (!this.engine) return this.closeAutocomplete();
+    const caret = input.selectionStart;
+    if (caret === null) return this.closeAutocomplete();
+    const state = autocompleteState(input.value, caret, this.getFunctionNames());
+    if (!state) return this.closeAutocomplete();
+    this.autocompleteFor = input;
+    this.autocompleteData = state;
+    if (this.autocompleteActive >= state.matches.length) this.autocompleteActive = 0;
+    this.renderAutocomplete(input);
+  }
+
+  private renderAutocomplete(input: HTMLInputElement): void {
+    const state = this.autocompleteData;
+    if (!state) return;
+    const menu = this.autocompleteMenu;
+    menu.replaceChildren();
+    state.matches.forEach((name, i) => {
+      const item = document.createElement("div");
+      item.textContent = name;
+      const active = i === this.autocompleteActive;
+      item.style.cssText = `padding:3px 8px;cursor:pointer;border-radius:4px;${
+        active ? "background:#2563eb;color:#fff;" : "color:#111827;"
+      }`;
+      item.onmousedown = (ev) => {
+        ev.preventDefault();
+        this.acceptAutocomplete(i);
+      };
+      item.onmouseenter = () => {
+        this.autocompleteActive = i;
+        this.renderAutocomplete(input);
+      };
+      menu.append(item);
+    });
+    const rect = input.getBoundingClientRect();
+    menu.style.left = `${rect.left}px`;
+    menu.style.top = `${rect.bottom + 2}px`;
+    menu.style.display = "block";
+  }
+
+  private closeAutocomplete(): void {
+    this.autocompleteFor = null;
+    this.autocompleteData = null;
+    this.autocompleteActive = 0;
+    this.autocompleteMenu.style.display = "none";
+  }
+
+  private scheduleAutocompleteClose(): void {
+    if (this.autocompleteBlurTimer !== null) clearTimeout(this.autocompleteBlurTimer);
+    this.autocompleteBlurTimer = setTimeout(() => this.closeAutocomplete(), 120);
+  }
+
+  private isAutocompleteOpen(): boolean {
+    return this.autocompleteData !== null && this.autocompleteMenu.style.display !== "none";
+  }
+
+  private acceptAutocomplete(index: number): void {
+    const state = this.autocompleteData;
+    const input = this.autocompleteFor;
+    if (!state || !input) return;
+    const name = state.matches[index];
+    if (!name) return;
+    const insert = `${name}(`;
+    const value = input.value.slice(0, state.start) + insert + input.value.slice(state.end);
+    input.value = value;
+    const caret = state.start + insert.length;
+    input.setSelectionRange(caret, caret);
+    this.closeAutocomplete();
+    input.dispatchEvent(new Event("input"));
+  }
+
+  private handleAutocompleteKey(ev: KeyboardEvent): boolean {
+    if (!this.isAutocompleteOpen()) return false;
+    const state = this.autocompleteData!;
+    const input = this.autocompleteFor;
+    if (ev.key === "ArrowDown") {
+      ev.preventDefault();
+      this.autocompleteActive = (this.autocompleteActive + 1) % state.matches.length;
+      if (input) this.renderAutocomplete(input);
+      return true;
+    }
+    if (ev.key === "ArrowUp") {
+      ev.preventDefault();
+      this.autocompleteActive =
+        (this.autocompleteActive - 1 + state.matches.length) % state.matches.length;
+      if (input) this.renderAutocomplete(input);
+      return true;
+    }
+    if (ev.key === "Enter" || ev.key === "Tab") {
+      ev.preventDefault();
+      this.acceptAutocomplete(this.autocompleteActive);
+      return true;
+    }
+    if (ev.key === "Escape") {
+      ev.preventDefault();
+      this.closeAutocomplete();
+      return true;
+    }
+    return false;
+  }
+
+  private onFormulaBoxKeyDown(ev: KeyboardEvent): void {
+    if (this.handleAutocompleteKey(ev)) return;
+    if (this.handlePointKeyboardKey(ev)) return;
+    this.resetPointSpanOnType(ev);
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      const active = this.getActiveCell();
+      this.dispatchEvent(
+        new CustomEvent("celledit", {
+          detail: {
+            sheetIndex: this.activeSheetIndex,
+            r: active.r,
+            c: active.c,
+            input: balanceFormula(this.formulaBox.value),
+            commitMove: "down",
+          },
+        }),
+      );
+      this.formulaBox.blur();
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      this.formulaBox.value = formatFormulaBar(this.getActiveSheet(), this.getActiveCell());
+      this.formulaBox.blur();
+    }
+  }
+
+  private activeEditor(): HTMLInputElement | null {
+    if (this.editCell) return this.editInput;
+    if (
+      this.editable &&
+      document.activeElement === this.formulaBox &&
+      this.formulaBox.value.startsWith("=")
+    ) {
+      return this.formulaBox;
+    }
+    return null;
+  }
+
+  private isPointModeActive(): boolean {
+    const input = this.activeEditor();
+    if (!input) return false;
+    const caret = input.selectionStart;
+    if (caret === null) return false;
+    if (this.activeRefSpan && caret === this.activeRefSpan.end) return true;
+    return caretAcceptsReference(input.value, caret);
+  }
+
+  private applyPointModeRef(ref: string, _opts: { extend: boolean }): void {
+    const input = this.activeEditor();
+    if (!input) return;
+    const caret = input.selectionStart ?? input.value.length;
+    const res = applyReferenceAtCaret(input.value, caret, ref, this.activeRefSpan);
+    input.value = res.text;
+    this.activeRefSpan = res.span;
+    this.pointHighlight = parsePointHighlight(ref);
+    input.focus({ preventScroll: true });
+    input.setSelectionRange(res.caret, res.caret);
+    this.closeAutocomplete();
+    this.scheduleDraw();
+  }
+
+  private resetPointSpanOnType(ev: KeyboardEvent): void {
+    if (ev.key.length === 1 || ev.key === "Backspace" || ev.key === "Delete") {
+      this.activeRefSpan = null;
+      this.pointHighlight = null;
+      this.pointKeyAnchor = null;
+      this.pointKeyCursor = null;
+    }
+  }
+
+  private movePointKeyboard(dr: number, dc: number, extend: boolean): void {
+    const state = this.currentState();
+    const grid = buildGrid(this.getActiveSheet(), state.colOverrides, state.rowOverrides);
+    const base = this.pointKeyCursor ?? this.editCell ?? state.activeCell;
+    const cursor = {
+      r: clamp(base.r + dr, 1, grid.maxRow),
+      c: clamp(base.c + dc, 1, grid.maxCol),
+    };
+    const anchor = extend && this.pointKeyAnchor ? this.pointKeyAnchor : cursor;
+    this.pointKeyCursor = cursor;
+    this.pointKeyAnchor = anchor;
+    const minR = Math.min(anchor.r, cursor.r);
+    const maxR = Math.max(anchor.r, cursor.r);
+    const minC = Math.min(anchor.c, cursor.c);
+    const maxC = Math.max(anchor.c, cursor.c);
+    const ref =
+      minR === maxR && minC === maxC
+        ? `${colLabel(minC)}${minR}`
+        : `${colLabel(minC)}${minR}:${colLabel(maxC)}${maxR}`;
+    this.applyPointModeRef(ref, { extend });
+    this.scrollToCell(cursor.r, cursor.c);
+  }
+
+  private openEditOverlay(cell: { r: number; c: number }, initialText: string | null): void {
+    if (!this.editable) return;
+    const sheet = this.getActiveSheet();
+    const state = this.currentState();
+    this.scrollToCell(cell.r, cell.c);
+    const grid = buildGrid(sheet, state.colOverrides, state.rowOverrides);
+    const rect = cellRect(grid, cell.r, cell.c);
+    const z = this.zoom;
+    this.editCell = { r: cell.r, c: cell.c };
+    this.editEnterMode = initialText !== null;
+    this.activeRefSpan = null;
+    this.pointKeyAnchor = null;
+    this.pointKeyCursor = null;
+    this.editInput.style.left = `${rect.x * z}px`;
+    this.editInput.style.top = `${rect.y * z}px`;
+    this.editInput.style.width = `${Math.max(rect.w * z, 24)}px`;
+    this.editInput.style.height = `${Math.max(rect.h * z, 16)}px`;
+    this.editInput.style.display = "block";
+    this.editInput.value = initialText ?? formatFormulaBar(sheet, cell);
+    this.editInput.focus({ preventScroll: true });
+    const end = this.editInput.value.length;
+    this.editInput.setSelectionRange(end, end);
+  }
+
+  private hideEditOverlay(): void {
+    this.closeAutocomplete();
+    this.activeRefSpan = null;
+    this.pointHighlight = null;
+    this.pointKeyAnchor = null;
+    this.pointKeyCursor = null;
+    if (!this.editCell) return;
+    this.editCell = null;
+    this.editInput.style.display = "none";
+    this.editInput.value = "";
+  }
+
+  private commitEdit(commitMove: "down" | "right" | "up" | "left" | null): void {
+    const cell = this.editCell;
+    if (!cell) return;
+    const input = balanceFormula(this.editInput.value);
+    this.hideEditOverlay();
+    this.dispatchEvent(
+      new CustomEvent("celledit", {
+        detail: {
+          sheetIndex: this.activeSheetIndex,
+          r: cell.r,
+          c: cell.c,
+          input,
+          commitMove,
+        },
+      }),
+    );
+  }
+
+  private handlePointKeyboardKey(ev: KeyboardEvent): boolean {
+    if (
+      ev.key !== "ArrowUp" &&
+      ev.key !== "ArrowDown" &&
+      ev.key !== "ArrowLeft" &&
+      ev.key !== "ArrowRight"
+    ) {
+      return false;
+    }
+    if (!this.isPointModeActive()) return false;
+    ev.preventDefault();
+    const dr = ev.key === "ArrowUp" ? -1 : ev.key === "ArrowDown" ? 1 : 0;
+    const dc = ev.key === "ArrowLeft" ? -1 : ev.key === "ArrowRight" ? 1 : 0;
+    this.movePointKeyboard(dr, dc, ev.shiftKey);
+    return true;
+  }
+
+  private onEditInputKeyDown(ev: KeyboardEvent): void {
+    if (this.handleAutocompleteKey(ev)) return;
+    if (this.handlePointKeyboardKey(ev)) return;
+    this.resetPointSpanOnType(ev);
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      this.commitEdit(ev.shiftKey ? "up" : "down");
+      this.canvas.focus({ preventScroll: true });
+    } else if (ev.key === "Tab") {
+      ev.preventDefault();
+      this.commitEdit(ev.shiftKey ? "left" : "right");
+      this.canvas.focus({ preventScroll: true });
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      this.hideEditOverlay();
+      this.canvas.focus({ preventScroll: true });
+    } else if (
+      ev.key === "ArrowUp" ||
+      ev.key === "ArrowDown" ||
+      ev.key === "ArrowLeft" ||
+      ev.key === "ArrowRight"
+    ) {
+      if (!this.editEnterMode) return;
+      if (this.editInput.value.startsWith("=")) return;
+      if (this.isPointModeActive()) return;
+      ev.preventDefault();
+      const dir =
+        ev.key === "ArrowUp"
+          ? "up"
+          : ev.key === "ArrowDown"
+            ? "down"
+            : ev.key === "ArrowLeft"
+              ? "left"
+              : "right";
+      this.commitEdit(dir);
+      this.canvas.focus({ preventScroll: true });
+    }
+  }
 }
 
 function virtualSize(sheet: Sheet, state: SheetState): { w: number; h: number } {
@@ -545,6 +1089,35 @@ function formatFormulaBar(sheet: Sheet, active: { r: number; c: number }): strin
   if (cell.value !== undefined) return String(cell.value);
   if (cell.runs && cell.runs.length > 0) return cell.runs.map((run) => run.text).join("");
   return "";
+}
+
+function balanceFormula(text: string): string {
+  if (!text.startsWith("=")) return text;
+  let depth = 0;
+  let inString = false;
+  let inQuote = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') i++;
+        else inString = false;
+      }
+      continue;
+    }
+    if (inQuote) {
+      if (ch === "'") {
+        if (text[i + 1] === "'") i++;
+        else inQuote = false;
+      }
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "'") inQuote = true;
+    else if (ch === "(") depth++;
+    else if (ch === ")" && depth > 0) depth--;
+  }
+  return depth > 0 ? text + ")".repeat(depth) : text;
 }
 
 function colLabel(n: number): string {
@@ -657,6 +1230,35 @@ function colNameToIndex(s: string): number {
   let n = 0;
   for (const ch of s.toUpperCase()) n = n * 26 + (ch.charCodeAt(0) - 64);
   return n;
+}
+
+function parsePointHighlight(ref: string): HighlightRange | null {
+  const cellRe = /^\$?([A-Za-z]+)\$?(\d+)$/;
+  const parts = ref.split(":");
+  if (parts.length === 1) {
+    const m = cellRe.exec(parts[0]!.trim());
+    if (!m) return null;
+    const c = colNameToIndex(m[1]!);
+    const r = Number(m[2]);
+    return { r1: r, c1: c, r2: r, c2: c, color: HIGHLIGHT_PALETTE[0]! };
+  }
+  if (parts.length === 2) {
+    const a = cellRe.exec(parts[0]!.trim());
+    const b = cellRe.exec(parts[1]!.trim());
+    if (!a || !b) return null;
+    const ca = colNameToIndex(a[1]!);
+    const ra = Number(a[2]);
+    const cb = colNameToIndex(b[1]!);
+    const rb = Number(b[2]);
+    return {
+      r1: Math.min(ra, rb),
+      c1: Math.min(ca, cb),
+      r2: Math.max(ra, rb),
+      c2: Math.max(ca, cb),
+      color: HIGHLIGHT_PALETTE[0]!,
+    };
+  }
+  return null;
 }
 
 function clamp(v: number, lo: number, hi: number): number {

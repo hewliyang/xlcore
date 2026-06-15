@@ -13,7 +13,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-cargo test --release -p xlcore-export --features typescript export_bindings
+cargo test -p xlcore-export --features typescript export_bindings
 
 cd packages/xlsx-preview
 pnpm exec biome format --write src/schema/ >/dev/null

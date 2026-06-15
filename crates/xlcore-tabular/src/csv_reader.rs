@@ -8,11 +8,16 @@ use super::{
     track_col_width, InferredCell, TabularError, AUTO_WIDTH_SAMPLE_ROWS,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase", default)]
 pub struct CsvOptions {
+    #[serde(deserialize_with = "de_delimiter")]
     pub delimiter: Option<u8>,
+    #[serde(default = "default_max_rows", deserialize_with = "de_max_rows")]
     pub max_rows: usize,
+    #[serde(skip, default = "default_quote")]
     pub quote: u8,
+    #[serde(default = "default_sheet_name", deserialize_with = "de_sheet_name")]
     pub sheet_name: String,
 }
 
@@ -20,10 +25,59 @@ impl Default for CsvOptions {
     fn default() -> Self {
         Self {
             delimiter: None,
-            max_rows: 100_000,
-            quote: b'"',
-            sheet_name: "data".to_string(),
+            max_rows: default_max_rows(),
+            quote: default_quote(),
+            sheet_name: default_sheet_name(),
         }
+    }
+}
+
+fn default_quote() -> u8 {
+    b'"'
+}
+
+pub(crate) fn default_max_rows() -> usize {
+    100_000
+}
+
+pub(crate) fn default_sheet_name() -> String {
+    "data".to_string()
+}
+
+pub(crate) fn de_max_rows<'de, D>(deserializer: D) -> Result<usize, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+    Ok(Option::<usize>::deserialize(deserializer)?.unwrap_or_else(default_max_rows))
+}
+
+pub(crate) fn de_sheet_name<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+    Ok(Option::<String>::deserialize(deserializer)?.unwrap_or_else(default_sheet_name))
+}
+
+fn de_delimiter<'de, D>(deserializer: D) -> Result<Option<u8>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+    let Some(d) = Option::<String>::deserialize(deserializer)? else {
+        return Ok(None);
+    };
+    if d.eq_ignore_ascii_case("tab") {
+        return Ok(Some(b'\t'));
+    }
+    let bytes = d.as_bytes();
+    if bytes.len() == 1 {
+        Ok(Some(bytes[0]))
+    } else {
+        Err(serde::de::Error::custom(format!(
+            "csv delimiter must be a single byte (got {d:?})"
+        )))
     }
 }
 

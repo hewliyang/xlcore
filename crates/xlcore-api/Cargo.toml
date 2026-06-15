@@ -1,0 +1,25 @@
+[package]
+name = "xlcore-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Workbook manipulation facade for xlcore"
+
+[dependencies]
+anyhow = { workspace = true }
+ironcalc_base = { workspace = true }
+ooxmlsdk = { workspace = true }
+xlcore-bridge = { path = "../xlcore-bridge" }
+xlcore-export = { path = "../xlcore-export" }
+xlcore-io = { path = "../xlcore-io" }
+xlcore-types = { path = "../xlcore-types" }
+regex = { workspace = true }
+zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3"
+
+[dev-dependencies]
+xlcore-engine = { path = "../xlcore-engine" }
+serde_json = { workspace = true }

@@ -12,6 +12,7 @@ typescript = ["dep:ts-rs"]
 
 [dependencies]
 xlcore-io = { path = "../xlcore-io" }
+xlcore-types = { path = "../xlcore-types" }
 ooxmlsdk = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -1,0 +1,5 @@
+- Never write comments/docstrings
+- Keep changelog entries terse, most should be one liners.
+- Dont use `find` - it will hang. Use `fd` instead
+- Follow conventional commit messages
+- Most of the time what you implement can be tested e2e. Either create an .xlsx -> render using xlsx-preview cli. Else use `hsx` to render / check that the output is correct.

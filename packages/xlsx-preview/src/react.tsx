@@ -19,7 +19,8 @@ import {
   XlsxLoadError,
   reportIsClean,
 } from "./errors.js";
-import type { PreviewerState, WorkbookPreviewer } from "./previewer.js";
+import type { PivotFilterEvent, PreviewerState, WorkbookPreviewer } from "./previewer.js";
+import type { TableFilterEvent } from "./interact.js";
 
 export interface UseWorkbookPreviewerOptions extends CreateWorkbookPreviewerFromFileOptions {
   onReady?: (previewer: WorkbookPreviewer) => void;
@@ -27,6 +28,8 @@ export interface UseWorkbookPreviewerOptions extends CreateWorkbookPreviewerFrom
   onSelectionChange?: (state: PreviewerState) => void;
   onSheetChange?: (state: PreviewerState) => void;
   onZoomChange?: (state: PreviewerState) => void;
+  onPivotFilter?: (event: PivotFilterEvent) => void;
+  onTableFilter?: (event: TableFilterEvent) => void;
 }
 
 export interface UseWorkbookPreviewerResult {
@@ -152,12 +155,18 @@ export function ExcelPreviewer({
   parquetOptions,
   initialSheet,
   initialZoom,
+  editable,
+  onDownload,
   onProgress,
   onReady,
   onError,
   onSelectionChange,
   onSheetChange,
   onZoomChange,
+  onPivotFilter,
+  pivotController,
+  onTableFilter,
+  tableController,
   renderError,
   hideErrorUI = false,
   showLeniencyChip = true,
@@ -173,12 +182,18 @@ export function ExcelPreviewer({
     parquetOptions,
     initialSheet,
     initialZoom,
+    editable,
+    onDownload,
     onProgress,
     onReady,
     onError,
     onSelectionChange,
     onSheetChange,
     onZoomChange,
+    onPivotFilter,
+    pivotController,
+    onTableFilter,
+    tableController,
   });
 
   useImperativeHandle<WorkbookPreviewer | null, WorkbookPreviewer | null>(
@@ -234,6 +249,12 @@ function attachPreviewerEvents(
   });
   previewer.on("zoomchange", (event) => {
     optionsRef.current.onZoomChange?.((event as CustomEvent<PreviewerState>).detail);
+  });
+  previewer.on("pivotfilter", (event) => {
+    optionsRef.current.onPivotFilter?.((event as CustomEvent<PivotFilterEvent>).detail);
+  });
+  previewer.on("tablefilter", (event) => {
+    optionsRef.current.onTableFilter?.((event as CustomEvent<TableFilterEvent>).detail);
   });
 }
 
@@ -493,3 +514,8 @@ const CHIP_CLOSE_STYLE: CSSProperties = {
   lineHeight: 1,
   cursor: "pointer",
 };
+
+export { distinctValuesFor } from "./pivotSource.js";
+export type { PivotFilterEvent } from "./previewer.js";
+export type { PivotFilterController, PivotFilterContext } from "./pivotFilterPopover.js";
+export type { TableFilterController, TableFilterContext } from "./tableFilterPopover.js";

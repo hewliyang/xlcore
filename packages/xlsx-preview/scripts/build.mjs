@@ -18,9 +18,9 @@ await build({
 });
 
 for (const [entry, outfile, platform, external = []] of [
-  ["src/index.ts", "dist/index.js", "browser"],
-  ["src/node.ts", "dist/node.js", "node", ["skia-canvas"]],
-  ["src/cli.ts", "dist/cli.js", "node", ["skia-canvas"]],
+  ["src/index.ts", "dist/index.js", "browser", ["./xlcore_wasm.js", "node:fs"]],
+  ["src/node.ts", "dist/node.js", "node", ["skia-canvas", "./api.js"]],
+  ["src/cli.ts", "dist/cli.js", "node", ["skia-canvas", "./api.js"]],
   ["src/previewer.ts", "dist/previewer.js", "browser"],
   ["src/color.ts", "dist/color.js", "browser"],
   ["src/react.tsx", "dist/react.js", "browser", ["react", "react/jsx-runtime"]],
@@ -44,6 +44,13 @@ await build({
   entryPoints: [
     "src/browserLoader.ts",
     "src/xlsxWorker.ts",
+    "src/api.ts",
+    "src/api-refs.ts",
+    "src/api-range.ts",
+    "src/api-worksheet.ts",
+    "src/api-collections.ts",
+    "src/pivotSource.ts",
+    "src/number-formats.ts",
     "src/errors.ts",
     "src/sourceFormat.ts",
   ],

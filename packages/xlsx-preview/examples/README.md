@@ -13,6 +13,8 @@ outside local/dev hosts.
 - [`xlsx-tiles.html`](./xlsx-tiles.html) — thumbnail tile grid.
 - [`xlsx-multi.html`](./xlsx-multi.html) — multiple workbooks in
   side-by-side panes.
+- [`xlsx-playground.html`](./xlsx-playground.html) — Workbook API
+  playground: open → mutate via a small JS editor → recalc → re-render → save.
 
 ## No-build CDN demo
 

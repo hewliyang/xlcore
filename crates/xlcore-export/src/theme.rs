@@ -32,16 +32,16 @@ fn rgb_hex(r: u8, g: u8, b: u8) -> String {
 
 fn resolve_scrgb(c: &a::RgbColorModelPercentage) -> String {
     rgb_hex(
-        scrgb_byte(c.red_portion),
-        scrgb_byte(c.green_portion),
-        scrgb_byte(c.blue_portion),
+        scrgb_byte(c.red_portion.as_drawingml_percent()),
+        scrgb_byte(c.green_portion.as_drawingml_percent()),
+        scrgb_byte(c.blue_portion.as_drawingml_percent()),
     )
 }
 
 fn resolve_hsl(c: &a::HslColor) -> String {
     let h = (c.hue_value as f64) / 60_000.0;
-    let s = (c.sat_value as f64) / 100_000.0;
-    let l = (c.lum_value as f64) / 100_000.0;
+    let s = (c.sat_value.as_drawingml_percent() as f64) / 100_000.0;
+    let l = (c.lum_value.as_drawingml_percent() as f64) / 100_000.0;
     let (r, g, b) = hsl_to_rgb(h, s.clamp(0.0, 1.0), l.clamp(0.0, 1.0));
     rgb_hex(r, g, b)
 }
@@ -315,11 +315,11 @@ macro_rules! resolve_slot {
         fn $fn_name(c: &$wrapper) -> Option<String> {
             use $choice_path as Choice;
             match c.$field.as_ref()? {
-                Choice::ASrgbClr(rgb) => Some(rgb.val.as_str().to_string()),
-                Choice::ASysClr(sys) => sys.last_color.as_ref().map(|h| h.as_str().to_string()),
-                Choice::AScrgbClr(c) => Some(resolve_scrgb(c)),
-                Choice::AHslClr(c) => Some(resolve_hsl(c)),
-                Choice::APrstClr(c) => Some(resolve_preset(c)),
+                Choice::RgbColorModelHex(rgb) => Some(rgb.val.as_str().to_string()),
+                Choice::SystemColor(sys) => sys.last_color.as_ref().map(|h| h.as_str().to_string()),
+                Choice::RgbColorModelPercentage(c) => Some(resolve_scrgb(c)),
+                Choice::HslColor(c) => Some(resolve_hsl(c)),
+                Choice::PresetColor(c) => Some(resolve_preset(c)),
             }
         }
     };

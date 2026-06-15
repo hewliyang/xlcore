@@ -454,7 +454,7 @@ pub struct BorderLine {
     pub color: Option<Color>,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[cfg_attr(
     feature = "typescript",
     ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
@@ -489,6 +489,13 @@ pub struct CellFormat {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text_rotation: Option<i32>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub shrink_to_fit: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub justify_last_line: bool,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reading_order: Option<u32>,
 }
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
 #[derive(Serialize, Deserialize, Clone, Debug)]

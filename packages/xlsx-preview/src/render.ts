@@ -8,6 +8,7 @@ import { drawGridLines } from "./geometry.js";
 import { splitPanes } from "./panes.js";
 export { paneAtPoint, frozenDims } from "./panes.js";
 import { resolveSelection, drawSelection } from "./selection.js";
+import { drawHighlights } from "./highlights.js";
 import { drawDrawings } from "./drawings.js";
 import { drawCellBackgrounds, drawCellBorders, drawDefaultFills } from "./cellPaint.js";
 import { drawFreezeIndicators } from "./freezeIndicators.js";
@@ -102,7 +103,7 @@ export function render(
     ctx.clip();
     ctx.translate(pane.tx, pane.ty);
 
-    drawGridLines(ctx, sheet, grid, pane.vis);
+    drawGridLines(ctx, sheet, grid, pane.vis, opts.renderGridLines);
     drawDefaultFills(ctx, sheet, layout, grid, pane.vis);
     drawCellBackgrounds(ctx, sheet, layout, grid, pane.vis);
     drawConditionalFormats(ctx, sheet, layout, grid, pane.vis, cfDxfs, cfLocks);
@@ -114,6 +115,8 @@ export function render(
     drawFilterArrows(ctx, sheet, grid, pane.vis, filterArrows);
     drawDrawings(ctx, sheet, grid);
     drawCommentMarkers(ctx, sheet, grid, pane.vis);
+    if (opts.highlights && opts.highlights.length > 0)
+      drawHighlights(ctx, grid, opts.highlights);
     if (sel) drawSelection(ctx, sheet, grid, sel, opts.activeCell ?? null);
 
     ctx.restore();

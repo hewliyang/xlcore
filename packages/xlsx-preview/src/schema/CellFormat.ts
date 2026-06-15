@@ -10,4 +10,7 @@ export type CellFormat = {
   wrapText: boolean;
   indent?: number;
   textRotation?: number;
+  shrinkToFit: boolean;
+  justifyLastLine: boolean;
+  readingOrder?: number;
 };

@@ -201,6 +201,9 @@ pub struct Sheet {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub pivots: Vec<Pivot>,
 
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub table_filter_arrows: Vec<TableFilterArrow>,
+
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub outline_pr: Option<OutlinePr>,
@@ -320,7 +323,53 @@ pub struct Pivot {
 
     pub range: Merge,
 
-    pub filter_arrow_cells: Vec<CellRef>,
+    pub filter_arrow_cells: Vec<PivotFilterArrow>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct PivotFilterArrow {
+    pub r: u32,
+    pub c: u32,
+
+    pub field: String,
+
+    pub axis: PivotFilterAxis,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub enum PivotFilterAxis {
+    Row,
+    Column,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/schema/")
+)]
+#[serde(rename_all = "camelCase")]
+pub struct TableFilterArrow {
+    pub r: u32,
+    pub c: u32,
+
+    pub column_offset: u32,
+
+    pub column_name: String,
+
+    pub range_ref: String,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

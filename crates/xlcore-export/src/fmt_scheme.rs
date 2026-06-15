@@ -72,12 +72,12 @@ pub fn extract(theme: &a::Theme) -> FmtScheme {
     }
 
     let mut lines = Vec::new();
-    for ln in &fmt.line_style_list.a_ln {
+    for ln in &fmt.line_style_list.outline {
         lines.push(extract_line(ln));
     }
 
     let mut effects = Vec::new();
-    for es in &fmt.effect_style_list.a_effect_style {
+    for es in &fmt.effect_style_list.effect_style {
         effects.push(extract_effect(es));
     }
 
@@ -91,25 +91,25 @@ pub fn extract(theme: &a::Theme) -> FmtScheme {
 fn extract_fill_choice(c: &a::FillStyleListChoice) -> FmtFill {
     use a::FillStyleListChoice as F;
     match c {
-        F::ANoFill(_) => FmtFill::None,
-        F::ASolidFill(sf) => match sf.solid_fill_choice.as_ref() {
+        F::NoFill(_) => FmtFill::None,
+        F::SolidFill(sf) => match sf.solid_fill_choice.as_ref() {
             Some(c) => FmtColor::from_solid_choice(c)
                 .map(FmtFill::Solid)
                 .unwrap_or(FmtFill::Other),
             None => FmtFill::Other,
         },
-        F::AGradFill(g) => extract_gradient(g)
+        F::GradientFill(g) => extract_gradient(g)
             .map(FmtFill::Gradient)
             .unwrap_or(FmtFill::Other),
-        F::ABlipFill(_) | F::APattFill(_) | F::AGrpFill => FmtFill::Other,
+        F::BlipFill(_) | F::PatternFill(_) | F::GroupFill => FmtFill::Other,
     }
 }
 
 fn extract_gradient(g: &a::GradientFill) -> Option<FmtGradient> {
     let mut stops: Vec<(f32, FmtColor)> = Vec::new();
     if let Some(lst) = g.gradient_stop_list.as_ref() {
-        for gs in &lst.a_gs {
-            let pos = (gs.position as f32) / 100_000.0;
+        for gs in &lst.gradient_stop {
+            let pos = (gs.position.as_drawingml_percent() as f32) / 100_000.0;
             if let Some(c) = gs.gradient_stop_choice.as_ref() {
                 if let Some(fc) = FmtColor::from_gradient_stop_choice(c) {
                     stops.push((pos, fc));
@@ -122,23 +122,23 @@ fn extract_gradient(g: &a::GradientFill) -> Option<FmtGradient> {
     }
     use a::GradientFillChoice as GC;
     let (kind, angle_deg, path, fill_to_rect) = match g.gradient_fill_choice.as_ref() {
-        Some(GC::ALin(lin)) => (
+        Some(GC::LinearGradientFill(lin)) => (
             "linear".to_string(),
             Some((lin.angle.unwrap_or(0) as f64) / 60_000.0),
             None,
             None,
         ),
-        Some(GC::APath(p)) => {
+        Some(GC::PathGradientFill(p)) => {
             let path_tok = p
                 .path
                 .as_ref()
                 .map(|v| format!("{:?}", v).to_ascii_lowercase());
             let ftr = p.fill_to_rectangle.as_ref().map(|r| {
                 vec![
-                    rect_pct(r.left),
-                    rect_pct(r.top),
-                    rect_pct(r.right),
-                    rect_pct(r.bottom),
+                    rect_pct(r.left.map(|v| v.as_drawingml_percent())),
+                    rect_pct(r.top.map(|v| v.as_drawingml_percent())),
+                    rect_pct(r.right.map(|v| v.as_drawingml_percent())),
+                    rect_pct(r.bottom.map(|v| v.as_drawingml_percent())),
                 ]
             });
             ("path".to_string(), None, path_tok, ftr)
@@ -161,26 +161,26 @@ fn extract_line(ln: &a::Outline) -> FmtLine {
         .as_ref()
         .and_then(|v| enum_token(&format!("{:?}", v)));
     let join = ln.outline_choice3.as_ref().map(|c| match c {
-        a::OutlineChoice3::ARound => "round".to_string(),
-        a::OutlineChoice3::ABevel => "bevel".to_string(),
-        a::OutlineChoice3::AMiter(_) => "miter".to_string(),
+        a::OutlineChoice3::Round => "round".to_string(),
+        a::OutlineChoice3::LineJoinBevel => "bevel".to_string(),
+        a::OutlineChoice3::Miter(_) => "miter".to_string(),
     });
     let dash = ln.outline_choice2.as_ref().and_then(|c| match c {
-        a::OutlineChoice2::APrstDash(d) => d
+        a::OutlineChoice2::PresetDash(d) => d
             .val
             .as_ref()
             .map(|v| crate::shapes::prst_dash_token(v).to_string()),
         _ => None,
     });
     let fill = ln.outline_choice1.as_ref().and_then(|c| match c {
-        a::OutlineChoice::ASolidFill(sf) => sf
+        a::OutlineChoice::SolidFill(sf) => sf
             .solid_fill_choice
             .as_ref()
             .and_then(FmtColor::from_solid_choice)
             .map(FmtFill::Solid),
-        a::OutlineChoice::AGradFill(g) => extract_gradient(g).map(FmtFill::Gradient),
-        a::OutlineChoice::ANoFill(_) => Some(FmtFill::None),
-        a::OutlineChoice::APattFill(_) => Some(FmtFill::Other),
+        a::OutlineChoice::GradientFill(g) => extract_gradient(g).map(FmtFill::Gradient),
+        a::OutlineChoice::NoFill(_) => Some(FmtFill::None),
+        a::OutlineChoice::PatternFill(_) => Some(FmtFill::Other),
     });
 
     FmtLine {
@@ -194,15 +194,15 @@ fn extract_line(ln: &a::Outline) -> FmtLine {
 
 fn extract_effect(es: &a::EffectStyle) -> FmtEffect {
     let mut out = FmtEffect::default();
-    if let Some(a::EffectStyleChoice::AEffectLst(lst)) = es.effect_style_choice.as_ref() {
+    if let Some(a::EffectStyleChoice::EffectList(lst)) = es.effect_style_choice.as_ref() {
         if let Some(sh) = lst.outer_shadow.as_ref() {
             let color = match sh.outer_shadow_choice.as_ref() {
                 Some(c) => FmtColor::from_outer_shadow_choice(c),
                 None => None,
             };
             if let Some(color) = color {
-                let blur_emu = sh.blur_radius.unwrap_or(0);
-                let dist_emu = sh.distance.unwrap_or(0);
+                let blur_emu = sh.blur_radius.map(|v| v.to_emu()).unwrap_or(0);
+                let dist_emu = sh.distance.map(|v| v.to_emu()).unwrap_or(0);
                 let dir_deg = (sh.direction.unwrap_or(0) as f32) / 60_000.0;
                 out.outer_shadow = Some(FmtOuterShadow {
                     color,
@@ -235,30 +235,30 @@ impl FmtColor {
     fn from_solid_choice(c: &a::SolidFillChoice) -> Option<FmtColor> {
         use a::SolidFillChoice as S;
         match c {
-            S::ASchemeClr(sc) => Some(scheme_to_fmt(sc)),
-            S::ASrgbClr(c) => Some(srgb_to_fmt(c)),
-            S::APrstClr(c) => prst_to_fmt(c),
-            S::ASysClr(c) => sys_to_fmt(c),
+            S::SchemeColor(sc) => Some(scheme_to_fmt(sc)),
+            S::RgbColorModelHex(c) => Some(srgb_to_fmt(c)),
+            S::PresetColor(c) => prst_to_fmt(c),
+            S::SystemColor(c) => sys_to_fmt(c),
             _ => None,
         }
     }
     fn from_gradient_stop_choice(c: &a::GradientStopChoice) -> Option<FmtColor> {
         use a::GradientStopChoice as G;
         match c {
-            G::ASchemeClr(sc) => Some(scheme_to_fmt(sc)),
-            G::ASrgbClr(c) => Some(srgb_to_fmt(c)),
-            G::APrstClr(c) => prst_to_fmt(c),
-            G::ASysClr(c) => sys_to_fmt(c),
+            G::SchemeColor(sc) => Some(scheme_to_fmt(sc)),
+            G::RgbColorModelHex(c) => Some(srgb_to_fmt(c)),
+            G::PresetColor(c) => prst_to_fmt(c),
+            G::SystemColor(c) => sys_to_fmt(c),
             _ => None,
         }
     }
     fn from_outer_shadow_choice(c: &a::OuterShadowChoice) -> Option<FmtColor> {
         use a::OuterShadowChoice as O;
         match c {
-            O::ASchemeClr(sc) => Some(scheme_to_fmt(sc)),
-            O::ASrgbClr(c) => Some(srgb_to_fmt(c)),
-            O::APrstClr(c) => prst_to_fmt(c),
-            O::ASysClr(c) => sys_to_fmt(c),
+            O::SchemeColor(sc) => Some(scheme_to_fmt(sc)),
+            O::RgbColorModelHex(c) => Some(srgb_to_fmt(c)),
+            O::PresetColor(c) => prst_to_fmt(c),
+            O::SystemColor(c) => sys_to_fmt(c),
             _ => None,
         }
     }

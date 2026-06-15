@@ -36,21 +36,21 @@ pub(crate) fn connector_world(
     };
     Some(transform_local_box(
         parent,
-        off.x as f64,
-        off.y as f64,
-        ext.cx as f64,
-        ext.cy as f64,
+        off.x.to_emu() as f64,
+        off.y.to_emu() as f64,
+        ext.cx.to_emu() as f64,
+        ext.cy.to_emu() as f64,
     ))
 }
 
 fn preset_adj_n(sp: &xdr::ShapeProperties, target: &[&str]) -> Option<i32> {
     use xdr::ShapePropertiesChoice;
     let geom = match sp.shape_properties_choice1.as_ref()? {
-        ShapePropertiesChoice::APrstGeom(g) => g,
+        ShapePropertiesChoice::PresetGeometry(g) => g,
         _ => return None,
     };
     let avl = geom.adjust_value_list.as_ref()?;
-    for gd in &avl.a_gd {
+    for gd in &avl.shape_guide {
         let name: &str = &gd.name;
         if !target.contains(&name) {
             continue;
@@ -182,7 +182,7 @@ pub(crate) fn visit_connector(
     };
 
     let preset = preset_geom_name(sp);
-    let ln_box = sp.a_ln.as_deref();
+    let ln_box = sp.outline.as_deref();
     let (mut outline_color, mut outline_width_emu) = outline_info(ln_box, theme);
     let mut dash = line_dash_token(ln_box);
     let mut line_cap = line_cap_token(ln_box);
@@ -212,16 +212,22 @@ pub(crate) fn visit_connector(
         }
     }
     let head_end = ln_box
-        .and_then(|ln| ln.a_head_end.as_ref())
+        .and_then(|ln| ln.head_end.as_ref())
         .and_then(|e| line_end_to_schema(e.r#type.as_ref(), e.width.as_ref(), e.length.as_ref()));
     let tail_end = ln_box
-        .and_then(|ln| ln.a_tail_end.as_ref())
+        .and_then(|ln| ln.tail_end.as_ref())
         .and_then(|e| line_end_to_schema(e.r#type.as_ref(), e.width.as_ref(), e.length.as_ref()));
     let xfrm = sp.transform2_d.as_ref();
-    let flip_h =
-        override_flip_h.unwrap_or_else(|| xfrm.and_then(|x| x.horizontal_flip).unwrap_or(false));
-    let flip_v =
-        override_flip_v.unwrap_or_else(|| xfrm.and_then(|x| x.vertical_flip).unwrap_or(false));
+    let flip_h = override_flip_h.unwrap_or_else(|| {
+        xfrm.and_then(|x| x.horizontal_flip)
+            .unwrap_or(false.into())
+            .into()
+    });
+    let flip_v = override_flip_v.unwrap_or_else(|| {
+        xfrm.and_then(|x| x.vertical_flip)
+            .unwrap_or(false.into())
+            .into()
+    });
     let rotation = match override_rotation {
         Some(r) => merge_rotation(parent_rot_rad, Some(r)),
         None => merge_rotation(parent_rot_rad, xfrm.and_then(|x| x.rotation)),

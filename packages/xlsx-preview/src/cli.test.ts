@@ -32,6 +32,11 @@ async function runCli(args: string[]) {
   }
 }
 
+function pngSize(bytes: Buffer): { width: number; height: number } {
+  // IHDR is always the first chunk: width/height are big-endian u32 at 16/20.
+  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+}
+
 describe("built cli", () => {
   test("prints info for csv inputs using format detection", async () => {
     const csv = resolve(repoRoot, "tests/fixtures/csv/basic.csv");
@@ -69,6 +74,54 @@ describe("built cli", () => {
     expect((await readFile(output)).subarray(0, 8)).toEqual(
       Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     );
+  });
+
+  test("--no-headers --width --height renders an exact-size headerless png", async () => {
+    const xlsx = resolve(repoRoot, "tests/fixtures/shapes/basic-autoshapes.xlsx");
+    const outputDir = resolve(tmpdir(), "xlsx-preview-cli-test");
+    const output = resolve(outputDir, "headerless.png");
+    await mkdir(outputDir, { recursive: true });
+
+    const result = await runCli([
+      xlsx,
+      "--output",
+      output,
+      "--no-headers",
+      "--no-gridlines",
+      "--width",
+      "620",
+      "--height",
+      "420",
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(pngSize(await readFile(output))).toEqual({ width: 620, height: 420 });
+  });
+
+  test("rejects --width combined with --range", async () => {
+    const xlsx = resolve(repoRoot, "tests/fixtures/shapes/basic-autoshapes.xlsx");
+
+    const result = await runCli([
+      xlsx,
+      "--output",
+      "/tmp/cli-nope.png",
+      "--range",
+      "A1:C3",
+      "--width",
+      "400",
+    ]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("--width/--height cannot be combined with --range");
+  });
+
+  test("rejects non-positive --height", async () => {
+    const xlsx = resolve(repoRoot, "tests/fixtures/shapes/basic-autoshapes.xlsx");
+
+    const result = await runCli([xlsx, "--output", "/tmp/cli-nope.png", "--height", "0"]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("Invalid --height: 0");
   });
 
   test("strict mode fails on csv truncation warnings", async () => {
