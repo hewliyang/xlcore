@@ -157,6 +157,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
 
   private readonly editInput: HTMLInputElement;
   private editCell: { r: number; c: number } | null = null;
+  private editEnterMode = false;
   private readonly sheetStates: SheetState[];
   private readonly tabButtons: Array<HTMLButtonElement | null> = [];
   private readonly showHidden: boolean;
@@ -895,6 +896,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     const rect = cellRect(grid, cell.r, cell.c);
     const z = this.zoom;
     this.editCell = { r: cell.r, c: cell.c };
+    this.editEnterMode = initialText !== null;
     this.activeRefSpan = null;
     this.editInput.style.left = `${rect.x * z}px`;
     this.editInput.style.top = `${rect.y * z}px`;
@@ -948,6 +950,26 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     } else if (ev.key === "Escape") {
       ev.preventDefault();
       this.hideEditOverlay();
+      this.canvas.focus({ preventScroll: true });
+    } else if (
+      ev.key === "ArrowUp" ||
+      ev.key === "ArrowDown" ||
+      ev.key === "ArrowLeft" ||
+      ev.key === "ArrowRight"
+    ) {
+      if (!this.editEnterMode) return;
+      if (this.editInput.value.startsWith("=")) return;
+      if (this.isPointModeActive()) return;
+      ev.preventDefault();
+      const dir =
+        ev.key === "ArrowUp"
+          ? "up"
+          : ev.key === "ArrowDown"
+            ? "down"
+            : ev.key === "ArrowLeft"
+              ? "left"
+              : "right";
+      this.commitEdit(dir);
       this.canvas.focus({ preventScroll: true });
     }
   }
