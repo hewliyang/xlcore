@@ -17,9 +17,12 @@ malformed. Microsoft Excel reports *"We found a problem with some content … Do
 you want us to try to recover"* and silently repairs the file; the OpenXML SDK
 validator reports `Pkg_RequiredPartDoNotExist`.
 
-This is a regression in the `0.7.0` packaging rewrite (`SdkPackageStorage`); files
+This is **not** version-specific: ooxmlsdk **0.6.1 and 0.7.0** both emit the same
+invalid content-types stream from the create path (verified by building the
+minimal repro against each — both fail with `Pkg_RequiredPartDoNotExist`). Files
 that are **loaded** and re-saved are unaffected, because `open()` parses the
-existing `[Content_Types].xml` verbatim (Defaults included).
+existing `[Content_Types].xml` verbatim (Defaults included); only freshly
+*created* packages are broken.
 
 ## Reproduction
 
