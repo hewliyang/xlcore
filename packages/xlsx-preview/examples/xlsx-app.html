@@ -577,6 +577,7 @@
           <button id="scroll-active">Scroll active</button>
           <button id="reset-view">Reset view</button>
         </div>
+        <button id="recalc" disabled>Recalc formulas</button>
         <label class="row"><input id="show-hidden" type="checkbox"> Show hidden sheets</label>
       </div>
     </details>
@@ -638,6 +639,7 @@ const loading = document.getElementById("loading");
 const loadingStage = document.getElementById("loading-stage");
 const loadingElapsed = document.getElementById("loading-elapsed");
 const showHiddenToggle = document.getElementById("show-hidden");
+const recalcButton = document.getElementById("recalc");
 
 const selActive = document.getElementById("sel-active");
 const selRange = document.getElementById("sel-range");
@@ -647,6 +649,7 @@ let previewer = null;
 let elapsedTimer = null;
 let showHiddenSheets = new URLSearchParams(location.search).get("showHidden") === "1";
 showHiddenToggle.checked = showHiddenSheets;
+let recalcWorkbook = null;
 
 panelToggle.addEventListener("click", () => {
   const collapsed = document.body.classList.toggle("panel-collapsed");
@@ -1040,16 +1043,19 @@ function formatBytes(n) {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-async function buildPivotController(file) {
+async function openWorkbookForFile(file) {
   if (Workbook == null || !/\.xlsx$/i.test(file.name)) return null;
-  let wb;
   try {
-    wb = await Workbook.open(await file.arrayBuffer(), {
+    return await Workbook.open(await file.arrayBuffer(), {
       wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
     });
   } catch {
     return null;
   }
+}
+
+function buildPivotController(wb) {
+  if (wb == null) return null;
   const byName = new Map();
   for (const sheet of wb.worksheets()) {
     for (const info of sheet.pivots.list()) {
@@ -1083,16 +1089,8 @@ async function buildPivotController(file) {
   };
 }
 
-async function buildTableController(file) {
-  if (Workbook == null || !/\.xlsx$/i.test(file.name)) return null;
-  let wb;
-  try {
-    wb = await Workbook.open(await file.arrayBuffer(), {
-      wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
-    });
-  } catch {
-    return null;
-  }
+function buildTableController(wb) {
+  if (wb == null) return null;
   const kept = new Map();
   const refSheet = (ref) => {
     const bang = ref.lastIndexOf("!");
@@ -1143,8 +1141,10 @@ async function loadWorkbookFile(file) {
     Array.from(previewRoot.children).forEach((node) => {
       if (node.id !== "load-error" && node.id !== "leniency-chip") node.remove();
     });
-    const pivotController = await buildPivotController(file);
-    const tableController = await buildTableController(file);
+    recalcWorkbook = await openWorkbookForFile(file);
+    recalcButton.disabled = recalcWorkbook == null;
+    const pivotController = buildPivotController(recalcWorkbook);
+    const tableController = buildTableController(recalcWorkbook);
     previewer = await createWorkbookPreviewerFromFile(previewRoot, file, {
       wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
       workerUrl: `${ASSET_BASE}xlsxWorker.js`,
@@ -1263,6 +1263,23 @@ document.getElementById("scroll-active").addEventListener("click", () => {
   const cell = p.getActiveCell();
   p.scrollToCell(cell.r, cell.c);
   renderState();
+});
+
+recalcButton.addEventListener("click", () => {
+  if (!recalcWorkbook || !previewer) return;
+  recalcButton.disabled = true;
+  try {
+    recalcWorkbook.recalculate();
+    const activeIndex = previewer.getActiveSheetIndex();
+    previewer.replaceLayout(recalcWorkbook.layout());
+    previewer.setActiveSheet(activeIndex);
+    renderState();
+    setStatus("recalculated");
+  } catch (error) {
+    setStatus(error && error.message ? error.message : String(error));
+  } finally {
+    recalcButton.disabled = false;
+  }
 });
 
 showHiddenToggle.addEventListener("change", () => {
