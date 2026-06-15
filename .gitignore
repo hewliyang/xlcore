@@ -19,3 +19,5 @@ epplus/
 ironcalc/
 tests/fixtures/shapes/dotnet-builder/
 crates/xlcore-api/examples/
+gc.spread.sheets.d.ts
+*.long-type-*.txt

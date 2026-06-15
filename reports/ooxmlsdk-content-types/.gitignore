@@ -1,5 +1,0 @@
-target/
-bin/
-obj/
-Cargo.lock
-*.xlsx
