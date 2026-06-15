@@ -57,39 +57,13 @@ holds a non-blank, non-error cached value trust it (set fallback, return `cv`)
 otherwise surface the error literal as `CellValue::Error(kind)`. Restores
 `preserves_cached_values_for_unsupported_formulas` to pre-Item-1 assertions.
 
-## Backlog
-
-~~Item 1b~~ (shipped above)
-
-The `is_genuine_error` kind-list is wrong: ironcalc emits `#NAME?` for
-*unimplemented-but-valid* functions, so the kind split clobbers the file's
-cached value for unsupported formulas (regressed
-`preserves_cached_values_for_unsupported_formulas`, whose whole point is to
-preserve them). Replace the kind-based split with a cached-value signal in
-`evaluated_formula_value`:
-
-- If the file has an authoritative cached value that is neither blank nor an
-  error (`Some(cv)` where `cv` is Number/String/Boolean), trust it: set
-  `*fallback` and return `cv.clone()` (our engine is likely incomplete).
-- Otherwise (no cache, blank cache, or cached error) surface the error literal:
-  `CellValue::Error(error.kind)`.
-
-Delete `is_genuine_error`. Restore
-`preserves_cached_values_for_unsupported_formulas` to assert B1 keeps
-`value == Number(123.0)`, `fallback.kind == "#NAME?"`, and the saved
-`cached_value` stays `Number(123.0)`. Keep
-`engine_produced_errors_populate_fallback` asserting genuine errors (no cache)
-are `value == Error(kind)`. Verify with
-`cargo test -p xlcore-bridge -p xlcore-api` and the pnpm `check`.
-
 ### Item 2 — e2e dogfood (supervisor-verified)
 
-- Rebuild wasm: `pnpm --filter @hewliyang/xlsx-preview run build:release`.
-- `Workbook.create()` + `=1/0`, `=NOTAFUNC()`, `=A1+"x"`, `=#REF!`-style; assert
-  `cell.value()` is `{type:"error", value:"#DIV/0!"}` etc.
-- Render an errored sheet to PNG and confirm `#DIV/0!` is visible.
-- Confirm opening a real `.xlsx` with cached errors still renders unchanged, and
-  that an unimplemented-function cell still falls back to its cached value.
+Rebuilt wasm; `Workbook.create()` + `=1/0`/`=NOTAFUNC()`/`=1+"x"`/`=OFFSET(A1,-5,0)`
+return `{type:"error", value}` from `cell.value()`, survive save/reopen, and
+render as `#DIV/0!` / `#NAME?` / `#VALUE!` in PNG. Unsupported-function cells
+with a cached value still fall back to it
+(`preserves_cached_values_for_unsupported_formulas`).
 
 ## Out of scope
 
