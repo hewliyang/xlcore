@@ -1,0 +1,13 @@
+[workspace]
+
+[package]
+name = "ct-repro-rust"
+version = "0.0.0"
+edition = "2021"
+
+[[bin]]
+name = "ct-repro-rust"
+path = "src/main.rs"
+
+[dependencies]
+ooxmlsdk = "0.7.0"
