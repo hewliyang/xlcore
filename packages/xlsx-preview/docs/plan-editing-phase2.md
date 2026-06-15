@@ -48,29 +48,7 @@ needs from the host is injected through a small `PreviewerEngine` adapter.
 
 ## Backlog
 
-### P2.5 feat(previewer): point mode (click/shift-select to insert refs)
-
-Library + examples. new `src/formulaPointMode.ts`, `src/previewer.ts`,
-`src/interact.ts`.
-
-- Pure: `caretAcceptsReference(text, caretIndex) -> boolean` (caret right after
-  `=`, an operator, `(`, or `,`, and not inside a string literal); and
-  `applyReferenceAtCaret(text, caretIndex, ref) -> { text, caret }` that inserts a
-  new ref or replaces the just-inserted ref (track an "active ref span" so dragging
-  / shift-extending rewrites it rather than appending). Unit-test both.
-- Wire: while an edit is active and the caret accepts a reference, route grid
-  interactions through point mode instead of moving the active cell —
-  - pointer click on a cell → insert that cell's A1 ref; drag → replace with the
-    swept range; shift+click → extend to a range.
-  - arrow keys → start/extend a "marching" reference; typing any non-nav key exits
-    point mode and resumes normal text editing.
-  Add the needed callbacks/flags to `InteractOptions` (e.g. `isPointModeActive()`
-  + `onPointModeRef(rangeRef)`), keeping non-edit behavior unchanged.
-- Examples: works through the same `editable`/`engine` wiring (no host change
-  expected beyond Phase 1).
-- Verify (browser-harness): F2 on a cell, type `=`, click another cell → its ref
-  appears; drag → range ref; arrows → ref marches; Enter commits the formula and
-  it recalculates.
+(empty)
 
 ---
 
@@ -93,8 +71,12 @@ checks use a CLI PNG render + eyeball. Interactive items use the browser harness
   replace the `<input>`); boxes-only for now.
 - No structured-table / spilled-array ref highlighting beyond what the parser
   returns as plain areas.
+- Point mode: arrow-key "marching" ref insertion was skipped; refs come from
+  pointer click / drag / shift-click only.
 
 ## Shipped
+
+- P2.5 point mode (pure `caretAcceptsReference`/`applyReferenceAtCaret` with an active-ref span in `src/formulaPointMode.ts`; `InteractOptions.isPointModeActive`/`onPointModeRef`). While editing a `=`-formula with the caret accepting a reference, grid click inserts an A1 ref, drag sweeps a range, shift+click extends from the prior anchor, and typing/commit resets the span. Pointer interactions refocus the editor instead of the canvas. Arrow-key marching skipped (limitation).
 
 - P2.4 function autocomplete dropdown (pure `autocompleteState` in `src/formulaAutocomplete.ts`; positioned listbox in `src/previewer.ts` anchored under the active editor, keyboard nav, Enter/Tab insert `NAME(`, Esc closes dropdown only; `engine.functionNames()` cached). No-op without engine.
 

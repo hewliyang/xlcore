@@ -12,6 +12,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Point mode: click/drag/shift-click the grid while editing a formula inserts or extends A1 references (pure `formulaPointMode`; `InteractOptions.isPointModeActive`/`onPointModeRef`).
 - Function autocomplete dropdown in the editor/formula bar (pure `autocompleteState`; keyboard nav, Enter/Tab insert `NAME(`, Esc closes dropdown only).
 - Previewer `engine?: PreviewerEngine` option drives live precedent highlighting from the editor/active formula (same-sheet refs only, boxes only).
 - Render `highlights?: HighlightRange[]` option draws colored precedent boxes beneath the selection.

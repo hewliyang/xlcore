@@ -5,6 +5,7 @@ import { filterArrowRect, pivotFilterArrows, tableFilterArrows } from "./sheetCh
 import type { PivotArrowHit } from "./sheetChrome.js";
 import type { TableFilterArrow } from "./schema/TableFilterArrow.js";
 import { buildGrid, frozenDims } from "./render.js";
+import { cellA1, rangeA1 } from "./api-refs.js";
 import { createAnnotationLayer } from "./interactAnnotations.js";
 import {
   computeOutlineRuns,
@@ -50,6 +51,10 @@ export interface InteractOptions {
   onTableFilter?: (info: TableFilterEvent) => void;
 
   onEditStart?: (cell: { r: number; c: number }, initialText: string | null) => void;
+
+  isPointModeActive?: () => boolean;
+
+  onPointModeRef?: (rangeRef: string, opts: { extend: boolean }) => void;
 
   redraw(): void;
 }
@@ -97,6 +102,8 @@ export function attachInteractivity(
     kind: "cell" | "col" | "row";
     anchor: { r: number; c: number };
   } | null = null;
+  let pointDrag: { anchor: { r: number; c: number } } | null = null;
+  let pointAnchor: { r: number; c: number } | null = null;
   const savedCursor = canvas.style.cursor;
   let cachedGrid: {
     sheet: Sheet;
@@ -295,6 +302,19 @@ export function attachInteractivity(
       opts.redraw();
       return;
     }
+    if (pointDrag) {
+      const grid = getGrid();
+      const lp = toLogical(ev);
+      const cx = Math.max(grid.originX + 0.5, lp.x);
+      const cy = Math.max(grid.originY + 0.5, lp.y);
+      const cell = cellAt(grid, cx, cy);
+      if (!cell) return;
+      const cur = expandThroughMerge(cell.r, cell.c);
+      opts.onPointModeRef?.(pointRef(pointDrag.anchor, { r: cur.r2, c: cur.c2 }), {
+        extend: false,
+      });
+      return;
+    }
     if (selDrag) {
       const grid = getGrid();
       const lp = toLogical(ev);
@@ -385,6 +405,15 @@ export function attachInteractivity(
     } else {
       annotations.hidePopover();
     }
+  }
+
+  function pointRef(anchor: { r: number; c: number }, cur: { r: number; c: number }): string {
+    const r1 = Math.min(anchor.r, cur.r);
+    const c1 = Math.min(anchor.c, cur.c);
+    const r2 = Math.max(anchor.r, cur.r);
+    const c2 = Math.max(anchor.c, cur.c);
+    if (r1 === r2 && c1 === c2) return cellA1(r1, c1);
+    return rangeA1(r1, c1, r2 - r1 + 1, c2 - c1 + 1);
   }
 
   function setSelection(active: { r: number; c: number }, range: Selection) {
@@ -627,6 +656,16 @@ export function attachInteractivity(
 
     if (cp.x >= grid.originX && cp.y >= grid.originY) {
       const cell = cellAt(grid, p.x, p.y);
+      if (cell && opts.isPointModeActive?.()) {
+        ev.preventDefault();
+        canvas.setPointerCapture(ev.pointerId);
+        const tgt = expandThroughMerge(cell.r, cell.c);
+        const anchor = shift && pointAnchor ? pointAnchor : { r: tgt.r1, c: tgt.c1 };
+        if (!shift) pointAnchor = anchor;
+        pointDrag = { anchor };
+        opts.onPointModeRef?.(pointRef(anchor, { r: tgt.r2, c: tgt.c2 }), { extend: shift });
+        return;
+      }
       if (cell) {
         ev.preventDefault();
         canvas.setPointerCapture(ev.pointerId);
@@ -835,12 +874,13 @@ export function attachInteractivity(
   }
 
   function onPointerUp(ev: PointerEvent) {
-    if (drag || selDrag) {
+    if (drag || selDrag || pointDrag) {
       try {
         canvas.releasePointerCapture(ev.pointerId);
       } catch {}
       drag = null;
       selDrag = null;
+      pointDrag = null;
     }
   }
 

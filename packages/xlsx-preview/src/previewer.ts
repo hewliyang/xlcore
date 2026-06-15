@@ -11,6 +11,11 @@ import {
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
 import { referencesToHighlights } from "./highlights.js";
 import { autocompleteState, type AutocompleteState } from "./formulaAutocomplete.js";
+import {
+  applyReferenceAtCaret,
+  caretAcceptsReference,
+  type RefSpan,
+} from "./formulaPointMode.js";
 import type { HighlightRange } from "./renderTypes.js";
 import type { DependencyReference } from "./api-schema/DependencyReference.js";
 import { cellRect } from "./geometry.js";
@@ -164,6 +169,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private autocompleteData: AutocompleteState | null = null;
   private autocompleteActive = 0;
   private autocompleteBlurTimer: ReturnType<typeof setTimeout> | null = null;
+  private activeRefSpan: RefSpan | null = null;
   private readonly resizeObserver: ResizeObserver;
   private interactHandle: InteractHandle | null = null;
   private activeSheetIndex = 0;
@@ -580,6 +586,10 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       onEditStart: this.editable
         ? (cell, initialText) => this.openEditOverlay(cell, initialText)
         : undefined,
+      isPointModeActive: this.editable ? () => this.isPointModeActive() : undefined,
+      onPointModeRef: this.editable
+        ? (ref, o) => this.applyPointModeRef(ref, o)
+        : undefined,
       onTableFilter: (info: TableFilterEvent) => {
         this.dispatchEvent(new CustomEvent("tablefilter", { detail: info }));
         if (this.tableController) {
@@ -813,6 +823,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
 
   private onFormulaBoxKeyDown(ev: KeyboardEvent): void {
     if (this.handleAutocompleteKey(ev)) return;
+    this.resetPointSpanOnType(ev);
     if (ev.key === "Enter") {
       ev.preventDefault();
       const active = this.getActiveCell();
@@ -835,6 +846,46 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     }
   }
 
+  private activeEditor(): HTMLInputElement | null {
+    if (this.editCell) return this.editInput;
+    if (
+      this.editable &&
+      document.activeElement === this.formulaBox &&
+      this.formulaBox.value.startsWith("=")
+    ) {
+      return this.formulaBox;
+    }
+    return null;
+  }
+
+  private isPointModeActive(): boolean {
+    const input = this.activeEditor();
+    if (!input) return false;
+    const caret = input.selectionStart;
+    if (caret === null) return false;
+    if (this.activeRefSpan && caret === this.activeRefSpan.end) return true;
+    return caretAcceptsReference(input.value, caret);
+  }
+
+  private applyPointModeRef(ref: string, _opts: { extend: boolean }): void {
+    const input = this.activeEditor();
+    if (!input) return;
+    const caret = input.selectionStart ?? input.value.length;
+    const res = applyReferenceAtCaret(input.value, caret, ref, this.activeRefSpan);
+    input.value = res.text;
+    this.activeRefSpan = res.span;
+    input.focus({ preventScroll: true });
+    input.setSelectionRange(res.caret, res.caret);
+    this.closeAutocomplete();
+    this.scheduleDraw();
+  }
+
+  private resetPointSpanOnType(ev: KeyboardEvent): void {
+    if (ev.key.length === 1 || ev.key === "Backspace" || ev.key === "Delete") {
+      this.activeRefSpan = null;
+    }
+  }
+
   private openEditOverlay(cell: { r: number; c: number }, initialText: string | null): void {
     if (!this.editable) return;
     const sheet = this.getActiveSheet();
@@ -844,6 +895,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     const rect = cellRect(grid, cell.r, cell.c);
     const z = this.zoom;
     this.editCell = { r: cell.r, c: cell.c };
+    this.activeRefSpan = null;
     this.editInput.style.left = `${rect.x * z}px`;
     this.editInput.style.top = `${rect.y * z}px`;
     this.editInput.style.width = `${Math.max(rect.w * z, 24)}px`;
@@ -857,6 +909,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
 
   private hideEditOverlay(): void {
     this.closeAutocomplete();
+    this.activeRefSpan = null;
     if (!this.editCell) return;
     this.editCell = null;
     this.editInput.style.display = "none";
@@ -883,6 +936,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
 
   private onEditInputKeyDown(ev: KeyboardEvent): void {
     if (this.handleAutocompleteKey(ev)) return;
+    this.resetPointSpanOnType(ev);
     if (ev.key === "Enter") {
       ev.preventDefault();
       this.commitEdit(ev.shiftKey ? "up" : "down");
