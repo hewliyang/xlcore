@@ -3,12 +3,80 @@ use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
 pub use xlcore_types::{
     AlignmentPatch, BorderLinePatch, BorderLineStyle, BorderPatch, FillPatch, FontPatch,
-    FontScheme, GradientFillPatch, GradientStopPatch, GradientType, HorizontalAlign, NamedStyleInfo,
-    NamedStylePatch, PatternType, ProtectionPatch, ReadingOrder, StylePatch, UnderlinePatch,
-    VertAlign, VerticalAlign,
+    FontScheme, GradientFillPatch, GradientStopPatch, GradientType, HorizontalAlign,
+    NamedStyleInfo, NamedStylePatch, PatternType, ProtectionPatch, ReadingOrder, StylePatch,
+    UnderlinePatch, VertAlign, VerticalAlign,
 };
 
 use crate::color_resolve::resolve_color_hex;
+
+fn make_fonts(fonts: Vec<x::Font>) -> x::Fonts {
+    x::Fonts {
+        count: Some(fonts.len() as u32),
+        xml_children: fonts
+            .into_iter()
+            .map(|f| x::FontsChoice::Font(Box::new(f)))
+            .collect(),
+        ..Default::default()
+    }
+}
+
+fn make_fills(fills: Vec<x::Fill>) -> x::Fills {
+    x::Fills {
+        count: Some(fills.len() as u32),
+        xml_children: fills
+            .into_iter()
+            .map(|f| x::FillsChoice::Fill(Box::new(f)))
+            .collect(),
+    }
+}
+
+fn make_cell_formats(xfs: Vec<x::CellFormat>) -> x::CellFormats {
+    x::CellFormats {
+        count: Some(xfs.len() as u32),
+        xml_children: xfs
+            .into_iter()
+            .map(|xf| x::CellFormatsChoice::CellFormat(Box::new(xf)))
+            .collect(),
+    }
+}
+
+fn font_at(f: &x::Fonts, i: usize) -> Option<&x::Font> {
+    f.xml_children
+        .iter()
+        .filter_map(|c| match c {
+            x::FontsChoice::Font(b) => Some(&**b),
+            _ => None,
+        })
+        .nth(i)
+}
+
+fn fill_at(f: &x::Fills, i: usize) -> Option<&x::Fill> {
+    f.xml_children
+        .iter()
+        .filter_map(|c| match c {
+            x::FillsChoice::Fill(b) => Some(&**b),
+            _ => None,
+        })
+        .nth(i)
+}
+
+fn cell_format_at(cf: &x::CellFormats, i: usize) -> Option<&x::CellFormat> {
+    cf.xml_children
+        .iter()
+        .filter_map(|c| match c {
+            x::CellFormatsChoice::CellFormat(b) => Some(&**b),
+            _ => None,
+        })
+        .nth(i)
+}
+
+fn cell_format_len(cf: &x::CellFormats) -> usize {
+    cf.xml_children
+        .iter()
+        .filter(|c| matches!(c, x::CellFormatsChoice::CellFormat(_)))
+        .count()
+}
 
 use crate::errors::sdk_err_to_api;
 use crate::ooxml_header;
@@ -31,15 +99,11 @@ fn default_stylesheet() -> x::Stylesheet {
     x::Stylesheet {
         xmlns: ooxml_header::spreadsheetml_default_only(),
         xml_header: ooxml_header::STANDALONE,
-        fonts: Some(x::Fonts {
-            count: Some(1),
-            font: vec![default_font()],
-            ..Default::default()
-        }),
-        fills: Some(x::Fills {
-            count: Some(2),
-            fill: vec![pattern_fill_none(), pattern_fill_gray125()],
-        }),
+        fonts: Some(make_fonts(vec![default_font()])),
+        fills: Some(make_fills(vec![
+            pattern_fill_none(),
+            pattern_fill_gray125(),
+        ])),
         borders: Some(x::Borders {
             count: Some(1),
             border: vec![x::Border::default()],
@@ -54,17 +118,14 @@ fn default_stylesheet() -> x::Stylesheet {
                 ..Default::default()
             }],
         }),
-        cell_formats: Some(x::CellFormats {
-            count: Some(1),
-            cell_format: vec![x::CellFormat {
-                number_format_id: Some(0),
-                font_id: Some(0),
-                fill_id: Some(0),
-                border_id: Some(0),
-                format_id: Some(0),
-                ..Default::default()
-            }],
-        }),
+        cell_formats: Some(make_cell_formats(vec![x::CellFormat {
+            number_format_id: Some(0),
+            font_id: Some(0),
+            fill_id: Some(0),
+            border_id: Some(0),
+            format_id: Some(0),
+            ..Default::default()
+        }])),
         cell_styles: Some(x::CellStyles {
             count: Some(1),
             cell_style: vec![x::CellStyle {
@@ -140,14 +201,14 @@ pub(crate) fn resolve_style_index(
             *i < sheet
                 .cell_formats
                 .as_ref()
-                .map(|cf| cf.cell_format.len())
+                .map(cell_format_len)
                 .unwrap_or(0)
         })
         .unwrap_or(0);
     let base_xf = sheet
         .cell_formats
         .as_ref()
-        .and_then(|cf| cf.cell_format.get(base).cloned())
+        .and_then(|cf| cell_format_at(cf, base).cloned())
         .unwrap_or_default();
 
     let mut new_xf = if let Some(name) = patch.named_style.as_deref() {
@@ -279,33 +340,38 @@ pub(crate) fn upsert_dxf(
     let dxfs = sheet
         .differential_formats
         .get_or_insert_with(x::DifferentialFormats::default);
-    if let Some(idx) = dxfs.differential_format.iter().position(|d| d == &dxf) {
+    if let Some(idx) = dxfs.xml_children.iter().position(
+        |c| matches!(c, x::DifferentialFormatsChoice::DifferentialFormat(d) if **d == dxf),
+    ) {
         return Ok(idx as u32);
     }
-    dxfs.differential_format.push(dxf);
-    let idx = dxfs.differential_format.len() - 1;
-    dxfs.count = Some(dxfs.differential_format.len() as u32);
+    dxfs.xml_children
+        .push(x::DifferentialFormatsChoice::DifferentialFormat(Box::new(
+            dxf,
+        )));
+    let idx = dxfs.xml_children.len() - 1;
+    dxfs.count = Some(dxfs.xml_children.len() as u32);
     Ok(idx as u32)
 }
 
 fn ensure_default_collections(sheet: &mut x::Stylesheet) {
     if sheet.fonts.is_none() {
-        sheet.fonts = Some(x::Fonts {
-            count: Some(1),
-            font: vec![default_font()],
-            ..Default::default()
-        });
+        sheet.fonts = Some(make_fonts(vec![default_font()]));
     }
     if sheet.fills.is_none() {
-        sheet.fills = Some(x::Fills {
-            count: Some(2),
-            fill: vec![pattern_fill_none(), pattern_fill_gray125()],
-        });
+        sheet.fills = Some(make_fills(vec![
+            pattern_fill_none(),
+            pattern_fill_gray125(),
+        ]));
     } else {
         let fills = sheet.fills.as_mut().unwrap();
-        if fills.fill.is_empty() {
-            fills.fill.push(pattern_fill_none());
-            fills.fill.push(pattern_fill_gray125());
+        if fills.xml_children.is_empty() {
+            fills
+                .xml_children
+                .push(x::FillsChoice::Fill(Box::new(pattern_fill_none())));
+            fills
+                .xml_children
+                .push(x::FillsChoice::Fill(Box::new(pattern_fill_gray125())));
         }
     }
     if sheet.borders.is_none() {
@@ -315,17 +381,14 @@ fn ensure_default_collections(sheet: &mut x::Stylesheet) {
         });
     }
     if sheet.cell_formats.is_none() {
-        sheet.cell_formats = Some(x::CellFormats {
-            count: Some(1),
-            cell_format: vec![x::CellFormat {
-                number_format_id: Some(0),
-                font_id: Some(0),
-                fill_id: Some(0),
-                border_id: Some(0),
-                format_id: Some(0),
-                ..Default::default()
-            }],
-        });
+        sheet.cell_formats = Some(make_cell_formats(vec![x::CellFormat {
+            number_format_id: Some(0),
+            font_id: Some(0),
+            fill_id: Some(0),
+            border_id: Some(0),
+            format_id: Some(0),
+            ..Default::default()
+        }]));
     }
     if sheet.cell_style_formats.is_none() {
         sheet.cell_style_formats = Some(x::CellStyleFormats {
@@ -356,7 +419,7 @@ fn build_font(sheet: &x::Stylesheet, current: usize, patch: &FontPatch) -> Resul
     let base = sheet
         .fonts
         .as_ref()
-        .and_then(|f| f.font.get(current).cloned())
+        .and_then(|f| font_at(f, current).cloned())
         .unwrap_or_else(default_font);
     let mut font = base;
     if let Some(name) = patch.name.as_deref() {
@@ -755,23 +818,35 @@ fn apply_protection(slot: &mut Option<x::Protection>, patch: &ProtectionPatch) {
 
 fn intern_font(sheet: &mut x::Stylesheet, font: x::Font) -> u32 {
     let fonts = sheet.fonts.as_mut().expect("fonts ensured");
-    if let Some(idx) = fonts.font.iter().position(|f| fonts_equal(f, &font)) {
+    if let Some(idx) = fonts
+        .xml_children
+        .iter()
+        .position(|c| matches!(c, x::FontsChoice::Font(f) if fonts_equal(f, &font)))
+    {
         return idx as u32;
     }
-    fonts.font.push(font);
-    let idx = fonts.font.len() - 1;
-    fonts.count = Some(fonts.font.len() as u32);
+    fonts
+        .xml_children
+        .push(x::FontsChoice::Font(Box::new(font)));
+    let idx = fonts.xml_children.len() - 1;
+    fonts.count = Some(fonts.xml_children.len() as u32);
     idx as u32
 }
 
 fn intern_fill(sheet: &mut x::Stylesheet, fill: x::Fill) -> u32 {
     let fills = sheet.fills.as_mut().expect("fills ensured");
-    if let Some(idx) = fills.fill.iter().position(|f| fills_equal(f, &fill)) {
+    if let Some(idx) = fills
+        .xml_children
+        .iter()
+        .position(|c| matches!(c, x::FillsChoice::Fill(f) if fills_equal(f, &fill)))
+    {
         return idx as u32;
     }
-    fills.fill.push(fill);
-    let idx = fills.fill.len() - 1;
-    fills.count = Some(fills.fill.len() as u32);
+    fills
+        .xml_children
+        .push(x::FillsChoice::Fill(Box::new(fill)));
+    let idx = fills.xml_children.len() - 1;
+    fills.count = Some(fills.xml_children.len() as u32);
     idx as u32
 }
 
@@ -792,12 +867,17 @@ fn intern_border(sheet: &mut x::Stylesheet, border: x::Border) -> u32 {
 
 fn intern_cell_format(sheet: &mut x::Stylesheet, xf: x::CellFormat) -> u32 {
     let cfs = sheet.cell_formats.as_mut().expect("cellXfs ensured");
-    if let Some(idx) = cfs.cell_format.iter().position(|x| xfs_equal(x, &xf)) {
+    if let Some(idx) = cfs
+        .xml_children
+        .iter()
+        .position(|c| matches!(c, x::CellFormatsChoice::CellFormat(x) if xfs_equal(x, &xf)))
+    {
         return idx as u32;
     }
-    cfs.cell_format.push(xf);
-    let idx = cfs.cell_format.len() - 1;
-    cfs.count = Some(cfs.cell_format.len() as u32);
+    cfs.xml_children
+        .push(x::CellFormatsChoice::CellFormat(Box::new(xf)));
+    let idx = cfs.xml_children.len() - 1;
+    cfs.count = Some(cfs.xml_children.len() as u32);
     idx as u32
 }
 
@@ -1123,12 +1203,7 @@ pub(crate) fn xf_to_style_patch(
     let part = wb_part.workbook_styles_part(doc)?;
     let sheet = part.root_element(doc).ok()?.clone();
 
-    let xf = sheet
-        .cell_formats
-        .as_ref()?
-        .cell_format
-        .get(style_index as usize)?
-        .clone();
+    let xf = cell_format_at(sheet.cell_formats.as_ref()?, style_index as usize)?.clone();
 
     let master = xf.format_id.and_then(|fid| {
         sheet
@@ -1169,7 +1244,7 @@ pub(crate) fn xf_to_style_patch(
         if let Some(font) = sheet
             .fonts
             .as_ref()
-            .and_then(|f| f.font.get(font_id as usize))
+            .and_then(|f| font_at(f, font_id as usize))
         {
             patch.font = Some(font_to_patch(doc, font));
         }
@@ -1178,7 +1253,7 @@ pub(crate) fn xf_to_style_patch(
         if let Some(fill) = sheet
             .fills
             .as_ref()
-            .and_then(|f| f.fill.get(fill_id as usize))
+            .and_then(|f| fill_at(f, fill_id as usize))
         {
             patch.fill = fill_to_patch(doc, fill);
         }
@@ -1310,7 +1385,10 @@ fn bg_to_color(c: &x::BackgroundColor) -> x::Color {
 fn fill_to_patch(doc: &mut xlcore_io::SpreadsheetDocument, fill: &x::Fill) -> Option<FillPatch> {
     match &fill.fill_choice {
         Some(x::FillChoice::PatternFill(pf)) => {
-            let pattern = pf.pattern_type.map(x_to_pattern_type).unwrap_or(PatternType::None);
+            let pattern = pf
+                .pattern_type
+                .map(x_to_pattern_type)
+                .unwrap_or(PatternType::None);
             if matches!(pattern, PatternType::None)
                 && pf.foreground_color.is_none()
                 && pf.background_color.is_none()
@@ -1366,7 +1444,9 @@ fn x_to_border_style(style: x::BorderStyleValues) -> BorderLineStyle {
     match style {
         x::BorderStyleValues::None => BorderLineStyle::None,
         x::BorderStyleValues::Thin => BorderLineStyle::Thin,
-        x::BorderStyleValues::Medium | x::BorderStyleValues::MediumDashed => BorderLineStyle::Medium,
+        x::BorderStyleValues::Medium | x::BorderStyleValues::MediumDashed => {
+            BorderLineStyle::Medium
+        }
         x::BorderStyleValues::Thick => BorderLineStyle::Thick,
         x::BorderStyleValues::Dashed => BorderLineStyle::Dashed,
         x::BorderStyleValues::Dotted => BorderLineStyle::Dotted,

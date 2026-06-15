@@ -163,5 +163,3 @@ function colNum(letters: string): number {
   }
   return n;
 }
-
-

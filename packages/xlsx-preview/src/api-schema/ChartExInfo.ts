@@ -8,4 +8,18 @@ import type { ChartLegendPosition } from "./ChartLegendPosition.js";
 /**
  * A modern chartEx chart as read back from `chartEx{N}.xml`.
  */
-export type ChartExInfo = { sheet: string, id: string, name: string, kind: ChartExKind, title?: string, anchor: ChartAnchor, categoriesRef?: string, series: Array<ChartExSeriesInfo>, legendPosition?: ChartLegendPosition, subtotals: Array<number>, binCount?: number, binSize?: number, quartileMethod?: ChartExQuartileMethod, };
+export type ChartExInfo = {
+  sheet: string;
+  id: string;
+  name: string;
+  kind: ChartExKind;
+  title?: string;
+  anchor: ChartAnchor;
+  categoriesRef?: string;
+  series: Array<ChartExSeriesInfo>;
+  legendPosition?: ChartLegendPosition;
+  subtotals: Array<number>;
+  binCount?: number;
+  binSize?: number;
+  quartileMethod?: ChartExQuartileMethod;
+};

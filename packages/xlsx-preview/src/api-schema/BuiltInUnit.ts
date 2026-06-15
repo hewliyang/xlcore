@@ -7,4 +7,13 @@
  * shows `5` for `5_000_000`). The xlsx-preview renderer applies the factor to the
  * tick labels and draws the unit name as a label band.
  */
-export type BuiltInUnit = "hundreds" | "thousands" | "tenThousands" | "hundredThousands" | "millions" | "tenMillions" | "hundredMillions" | "billions" | "trillions";
+export type BuiltInUnit =
+  | "hundreds"
+  | "thousands"
+  | "tenThousands"
+  | "hundredThousands"
+  | "millions"
+  | "tenMillions"
+  | "hundredMillions"
+  | "billions"
+  | "trillions";

@@ -6,4 +6,4 @@ import type { RichTextRun } from "./RichTextRun.js";
  *
  * schema-excluded: t, rPh, phoneticPr
  */
-export type RichText = { runs: Array<RichTextRun>, };
+export type RichText = { runs: Array<RichTextRun> };

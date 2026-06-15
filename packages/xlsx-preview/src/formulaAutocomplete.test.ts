@@ -2,15 +2,7 @@ import { expect, test } from "vitest";
 
 import { autocompleteState } from "./formulaAutocomplete.js";
 
-const NAMES = [
-  "ABS",
-  "AVERAGE",
-  "SUM",
-  "SUMIF",
-  "SUMIFS",
-  "SUMPRODUCT",
-  "VLOOKUP",
-];
+const NAMES = ["ABS", "AVERAGE", "SUM", "SUMIF", "SUMIFS", "SUMPRODUCT", "VLOOKUP"];
 
 test("caret after = matches prefix", () => {
   const text = "=SU";

@@ -123,7 +123,12 @@ export function pointFillStyle(
     const cx = rect.x + rect.w / 2;
     const cy = rect.y + rect.h / 2;
     const half = (Math.abs(dx) * rect.w + Math.abs(dy) * rect.h) / 2;
-    const g = ctx.createLinearGradient(cx - dx * half, cy - dy * half, cx + dx * half, cy + dy * half);
+    const g = ctx.createLinearGradient(
+      cx - dx * half,
+      cy - dy * half,
+      cx + dx * half,
+      cy + dy * half,
+    );
     for (const s of stops) {
       const pos = Math.max(0, Math.min(1, (s.position ?? 0) / 100));
       g.addColorStop(pos, css(s.color, "#000000"));

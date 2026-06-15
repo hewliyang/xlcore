@@ -143,8 +143,8 @@ impl Workbook {
                 .root_element_mut(&mut self.doc)
                 .map_err(sdk_err_to_api)?;
             ws.drawing = Some(x::Drawing {
-                xml_other_attrs: Vec::new(),
                 id: rid,
+                ..Default::default()
             });
         }
 

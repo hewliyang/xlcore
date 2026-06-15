@@ -3,4 +3,21 @@ import type { DataValidationErrorStyle } from "./DataValidationErrorStyle.js";
 import type { DataValidationOperator } from "./DataValidationOperator.js";
 import type { DataValidationType } from "./DataValidationType.js";
 
-export type DataValidationInfo = { sheet: string, reference: string, ranges: Array<string>, ruleType: DataValidationType, operator?: DataValidationOperator, allowBlank: boolean, showDropDown: boolean, showInputMessage: boolean, showErrorMessage: boolean, errorStyle?: DataValidationErrorStyle, errorTitle?: string, error?: string, promptTitle?: string, prompt?: string, formula1?: string, formula2?: string, };
+export type DataValidationInfo = {
+  sheet: string;
+  reference: string;
+  ranges: Array<string>;
+  ruleType: DataValidationType;
+  operator?: DataValidationOperator;
+  allowBlank: boolean;
+  showDropDown: boolean;
+  showInputMessage: boolean;
+  showErrorMessage: boolean;
+  errorStyle?: DataValidationErrorStyle;
+  errorTitle?: string;
+  error?: string;
+  promptTitle?: string;
+  prompt?: string;
+  formula1?: string;
+  formula2?: string;
+};

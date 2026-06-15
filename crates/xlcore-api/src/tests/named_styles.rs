@@ -75,7 +75,10 @@ fn define_apply_and_round_trip_named_style() {
         .workbook_styles_part(&mut reopened.doc)
         .unwrap();
     let sheet = part.root_element(&mut reopened.doc).unwrap();
-    let xf = &sheet.cell_formats.as_ref().unwrap().cell_format[style_idx as usize];
+    let xf = match &sheet.cell_formats.as_ref().unwrap().xml_children[style_idx as usize] {
+        xlcore_io::spreadsheetml::CellFormatsChoice::CellFormat(xf) => xf,
+        _ => panic!("expected cell format"),
+    };
     let master = xf.format_id.expect("xfId set");
     let named_master = sheet
         .cell_styles

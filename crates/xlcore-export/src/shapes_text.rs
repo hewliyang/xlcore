@@ -593,7 +593,7 @@ fn body_autofit(bp: &a::BodyProperties) -> (Option<String>, Option<i32>, Option<
             n.font_scale.map(|v| v.as_drawingml_percent()),
             n.line_space_reduction.map(|v| v.as_drawingml_percent()),
         ),
-        Some(a::BodyPropertiesChoice::ShapeAutoFit(_)) => (Some("shape".to_string()), None, None),
+        Some(a::BodyPropertiesChoice::ShapeAutoFit) => (Some("shape".to_string()), None, None),
         _ => (None, None, None),
     }
 }

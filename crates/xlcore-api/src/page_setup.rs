@@ -346,10 +346,16 @@ fn build_titles_value(sheet: &str, cols: Option<&str>, rows: Option<&str>) -> Op
     let prefix = quote_sheet_name(sheet);
     let mut parts = Vec::new();
     if let Some(c) = cols.map(str::trim).filter(|s| !s.is_empty()) {
-        parts.push(format!("{prefix}!{}", absolutize_range(strip_sheet_qualifier(c))));
+        parts.push(format!(
+            "{prefix}!{}",
+            absolutize_range(strip_sheet_qualifier(c))
+        ));
     }
     if let Some(r) = rows.map(str::trim).filter(|s| !s.is_empty()) {
-        parts.push(format!("{prefix}!{}", absolutize_range(strip_sheet_qualifier(r))));
+        parts.push(format!(
+            "{prefix}!{}",
+            absolutize_range(strip_sheet_qualifier(r))
+        ));
     }
     if parts.is_empty() {
         None

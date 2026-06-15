@@ -70,11 +70,11 @@ fn add_chart_color_style_part(
         .map_err(sdk_err_to_api)?;
     Ok(())
 }
-const CAT_AX_ID: u32 = 111_111_111;
-const VAL_AX_ID: u32 = 222_222_222;
-const SEC_CAT_AX_ID: u32 = 333_333_333;
-const SEC_VAL_AX_ID: u32 = 444_444_444;
-const SER_AX_ID: u32 = 555_555_555;
+const CAT_AX_ID: i32 = 111_111_111;
+const VAL_AX_ID: i32 = 222_222_222;
+const SEC_CAT_AX_ID: i32 = 333_333_333;
+const SEC_VAL_AX_ID: i32 = 444_444_444;
+const SER_AX_ID: i32 = 555_555_555;
 
 impl Workbook {
     pub fn charts(&mut self, sheet: Option<&str>) -> Result<Vec<ChartInfo>> {
@@ -264,8 +264,8 @@ impl Workbook {
                 .root_element_mut(&mut self.doc)
                 .map_err(sdk_err_to_api)?;
             ws.drawing = Some(x::Drawing {
-                xml_other_attrs: Vec::new(),
                 id: rid,
+                ..Default::default()
             });
         }
 

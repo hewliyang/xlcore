@@ -8,20 +8,25 @@
  * is the top-left of the cell at `(to_column, to_row)` plus any EMU offsets, so
  * to span columns A..=E inclusive use `from_column: 0, to_column: 5`.
  */
-export type ChartAnchor = { 
-/**
- * 0-based column index of the top-left anchor cell (A = 0).
- */
-fromColumn: number, 
-/**
- * 0-based row index of the top-left anchor cell (row 1 = 0).
- */
-fromRow: number, 
-/**
- * 0-based column index of the bottom-right anchor cell (exclusive of any offset).
- */
-toColumn: number, 
-/**
- * 0-based row index of the bottom-right anchor cell (exclusive of any offset).
- */
-toRow: number, fromColumnOffsetEmu?: bigint, fromRowOffsetEmu?: bigint, toColumnOffsetEmu?: bigint, toRowOffsetEmu?: bigint, };
+export type ChartAnchor = {
+  /**
+   * 0-based column index of the top-left anchor cell (A = 0).
+   */
+  fromColumn: number;
+  /**
+   * 0-based row index of the top-left anchor cell (row 1 = 0).
+   */
+  fromRow: number;
+  /**
+   * 0-based column index of the bottom-right anchor cell (exclusive of any offset).
+   */
+  toColumn: number;
+  /**
+   * 0-based row index of the bottom-right anchor cell (exclusive of any offset).
+   */
+  toRow: number;
+  fromColumnOffsetEmu?: bigint;
+  fromRowOffsetEmu?: bigint;
+  toColumnOffsetEmu?: bigint;
+  toRowOffsetEmu?: bigint;
+};

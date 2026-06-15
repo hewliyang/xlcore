@@ -7,8 +7,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
     let chart = &space.chart;
     let plot_area = &chart.plot_area;
 
-    let mut secondary_ax_ids: Vec<u32> = Vec::new();
-    let mut primary_ax_ids: Vec<u32> = Vec::new();
+    let mut secondary_ax_ids: Vec<i32> = Vec::new();
+    let mut primary_ax_ids: Vec<i32> = Vec::new();
     let mut primary_val_fmt: Option<String> = None;
     let mut secondary_val_fmt: Option<String> = None;
     let mut value_min: Option<f64> = None;
@@ -206,7 +206,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
 
     let secondary_axis = !secondary_ax_ids.is_empty() && !primary_ax_ids.is_empty();
 
-    fn axis_group_for(ax_ids: &[c::AxisId], sec: &[u32]) -> Option<String> {
+    fn axis_group_for(ax_ids: &[c::AxisId], sec: &[i32]) -> Option<String> {
         if sec.is_empty() {
             return None;
         }
@@ -350,8 +350,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 if grouping.is_none() {
                     grouping = lc
                         .grouping
-                        .val
                         .as_ref()
+                        .and_then(|g| g.val.as_ref())
                         .map(|v| format!("{:?}", v).to_ascii_lowercase());
                 }
                 if chart_data_labels.is_none() {

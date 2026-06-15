@@ -15,7 +15,15 @@ pub fn extract(
     let prefix = sheet_ref_prefix(sheet_name);
 
     if let Some(range) = auto_filter_range {
-        push_range(&mut out, &mut seen, ws, &prefix, range, shared_strings, None);
+        push_range(
+            &mut out,
+            &mut seen,
+            ws,
+            &prefix,
+            range,
+            shared_strings,
+            None,
+        );
     }
 
     for table in tables {

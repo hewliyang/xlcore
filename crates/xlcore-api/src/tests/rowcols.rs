@@ -161,7 +161,9 @@ fn auto_fit_column_widens_for_long_text() {
 #[test]
 fn auto_fit_column_sets_best_fit_and_roundtrips() {
     let mut workbook = Workbook::new().unwrap();
-    workbook.set_value_in("Sheet1", "B3", "Hello World").unwrap();
+    workbook
+        .set_value_in("Sheet1", "B3", "Hello World")
+        .unwrap();
     let width = workbook.auto_fit_column("Sheet1", 2, None, None).unwrap();
     assert!(col_width(&mut workbook, "Sheet1", 2).is_some());
 
@@ -175,14 +177,18 @@ fn auto_fit_column_sets_best_fit_and_roundtrips() {
 fn auto_fit_column_respects_min_and_max() {
     let mut workbook = Workbook::new().unwrap();
     workbook.set_value_in("Sheet1", "A1", "x").unwrap();
-    let w = workbook.auto_fit_column("Sheet1", 1, Some(20.0), None).unwrap();
+    let w = workbook
+        .auto_fit_column("Sheet1", 1, Some(20.0), None)
+        .unwrap();
     assert!(w >= 20.0);
 
     let mut workbook2 = Workbook::new().unwrap();
     workbook2
         .set_value_in("Sheet1", "A1", "this is a very very long string value")
         .unwrap();
-    let w2 = workbook2.auto_fit_column("Sheet1", 1, None, Some(8.0)).unwrap();
+    let w2 = workbook2
+        .auto_fit_column("Sheet1", 1, None, Some(8.0))
+        .unwrap();
     assert!(w2 <= 8.0);
 }
 

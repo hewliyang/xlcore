@@ -14,20 +14,21 @@
  *
  * schema-excluded: spPr, txPr
  */
-export type ChartDataTable = { 
-/**
- * `c:showHorzBorder/@val`; draw horizontal cell borders.
- */
-showHorizontalBorder?: boolean, 
-/**
- * `c:showVertBorder/@val`; draw vertical cell borders.
- */
-showVerticalBorder?: boolean, 
-/**
- * `c:showOutline/@val`; draw the table's outline border.
- */
-showOutline?: boolean, 
-/**
- * `c:showKeys/@val`; show the series legend keys in the first column.
- */
-showKeys?: boolean, };
+export type ChartDataTable = {
+  /**
+   * `c:showHorzBorder/@val`; draw horizontal cell borders.
+   */
+  showHorizontalBorder?: boolean;
+  /**
+   * `c:showVertBorder/@val`; draw vertical cell borders.
+   */
+  showVerticalBorder?: boolean;
+  /**
+   * `c:showOutline/@val`; draw the table's outline border.
+   */
+  showOutline?: boolean;
+  /**
+   * `c:showKeys/@val`; show the series legend keys in the first column.
+   */
+  showKeys?: boolean;
+};

@@ -405,7 +405,11 @@ fn visit_picture(
     if world.cx <= 0.0 || world.cy <= 0.0 {
         return;
     }
-    let blip = match pic.blip_fill.blip.as_ref() {
+    let blip_fill = match pic.blip_fill.as_ref() {
+        Some(b) => b,
+        None => return,
+    };
+    let blip = match blip_fill.blip.as_ref() {
         Some(b) => b,
         None => return,
     };
@@ -417,7 +421,7 @@ fn visit_picture(
         Some(u) => u,
         None => return,
     };
-    let src = pic.blip_fill.source_rectangle.as_ref();
+    let src = blip_fill.source_rectangle.as_ref();
     let pct_i32 = |v: Option<ooxmlsdk::simple_type::DrawingmlPercentageValue>| -> i32 {
         v.map(|p| p.as_drawingml_percent()).unwrap_or(0)
     };

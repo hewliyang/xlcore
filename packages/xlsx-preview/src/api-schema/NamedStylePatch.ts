@@ -8,4 +8,4 @@ import type { StylePatch } from "./StylePatch.js";
  *
  * schema-excluded: outline_level, hidden, custom_builtin, extLst, xml_other_attrs
  */
-export type NamedStylePatch = { name: string, style: StylePatch, builtinId?: number, };
+export type NamedStylePatch = { name: string; style: StylePatch; builtinId?: number };

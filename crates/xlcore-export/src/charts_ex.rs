@@ -43,7 +43,7 @@ fn extract_chart_ex_title(t: Option<&cx::ChartTitle>) -> Option<String> {
 fn extract_text_data_v(td: &cx::TextData) -> Option<String> {
     match td.text_data_choice.as_ref()? {
         cx::TextDataChoice::VXsdstring(s) => Some(s.clone()),
-        cx::TextDataChoice::Sequence { v_xsdstring, .. } => v_xsdstring.clone(),
+        cx::TextDataChoice::Sequence(seq) => seq.v_xsdstring.clone(),
     }
 }
 

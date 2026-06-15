@@ -3,4 +3,4 @@
 /**
  * A chartEx series as read back (`cx:series`).
  */
-export type ChartExSeriesInfo = { name?: string, nameRef?: string, valuesRef: string, };
+export type ChartExSeriesInfo = { name?: string; nameRef?: string; valuesRef: string };

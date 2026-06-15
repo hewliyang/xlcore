@@ -173,8 +173,8 @@ impl Workbook {
                 .root_element_mut(&mut self.doc)
                 .map_err(sdk_err_to_api)?;
             ws.drawing = Some(x::Drawing {
-                xml_other_attrs: Vec::new(),
                 id: rid,
+                ..Default::default()
             });
         }
 
@@ -285,6 +285,7 @@ impl Workbook {
 
 fn picture_embed_rid(pic: &xdr::Picture) -> Option<String> {
     pic.blip_fill
+        .as_ref()?
         .blip
         .as_ref()
         .and_then(|b| b.embed.as_ref())
@@ -302,7 +303,11 @@ fn picture_rotation_flip(pic: &xdr::Picture) -> (f64, bool, bool) {
 }
 
 fn picture_crop_pct(pic: &xdr::Picture) -> (f64, f64, f64, f64) {
-    let Some(rect) = pic.blip_fill.source_rectangle.as_ref() else {
+    let Some(rect) = pic
+        .blip_fill
+        .as_ref()
+        .and_then(|bf| bf.source_rectangle.as_ref())
+    else {
         return (0.0, 0.0, 0.0, 0.0);
     };
     let f = |v: Option<DrawingmlPercentageValue>| {
@@ -477,7 +482,7 @@ fn build_picture_two_cell_anchor(
     let pic = xdr::Picture {
         r#macro: Some(String::new()),
         non_visual_picture_properties: Box::new(nv_pic),
-        blip_fill: Box::new(blip_fill),
+        blip_fill: Some(Box::new(blip_fill)),
         shape_properties: Box::new(sp_pr),
         ..Default::default()
     };

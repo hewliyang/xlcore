@@ -221,18 +221,16 @@ fn evaluated_formula_value(
     fallback: &mut Option<FormulaFallback>,
 ) -> CellValue {
     match engine.formula_error(key.sheet, key.r as i32, key.c as i32) {
-        Ok(Some(error)) => {
-            match cached_value {
-                Some(cv) if !matches!(cv, CellValue::Blank | CellValue::Error(_)) => {
-                    *fallback = Some(FormulaFallback {
-                        kind: error.kind,
-                        message: error.message,
-                    });
-                    cv.clone()
-                }
-                _ => CellValue::Error(error.kind),
+        Ok(Some(error)) => match cached_value {
+            Some(cv) if !matches!(cv, CellValue::Blank | CellValue::Error(_)) => {
+                *fallback = Some(FormulaFallback {
+                    kind: error.kind,
+                    message: error.message,
+                });
+                cv.clone()
             }
-        }
+            _ => CellValue::Error(error.kind),
+        },
         Ok(None) => match engine.cell_value(key.sheet, key.r as i32, key.c as i32) {
             Ok(value) => value,
             Err(err) => {
@@ -355,31 +353,31 @@ fn set_cached_formula_value(cell: &mut x::Cell, value: &CellValue) {
         }
         CellValue::Number(value) => {
             cell.data_type = None;
-            cell.cell_value = Some(x::CellValue(x::XstringType {
+            cell.cell_value = Some(x::CellValue {
                 xml_content: Some(format_number(*value)),
                 ..Default::default()
-            }));
+            });
         }
         CellValue::Boolean(value) => {
             cell.data_type = Some(x::CellValues::Boolean);
-            cell.cell_value = Some(x::CellValue(x::XstringType {
+            cell.cell_value = Some(x::CellValue {
                 xml_content: Some(if *value { "1" } else { "0" }.to_string()),
                 ..Default::default()
-            }));
+            });
         }
         CellValue::String(value) => {
             cell.data_type = Some(x::CellValues::String);
-            cell.cell_value = Some(x::CellValue(x::XstringType {
+            cell.cell_value = Some(x::CellValue {
                 xml_content: Some(value.clone()),
                 ..Default::default()
-            }));
+            });
         }
         CellValue::Error(kind) => {
             cell.data_type = Some(x::CellValues::Error);
-            cell.cell_value = Some(x::CellValue(x::XstringType {
+            cell.cell_value = Some(x::CellValue {
                 xml_content: Some(kind.clone()),
                 ..Default::default()
-            }));
+            });
         }
     }
 }
@@ -419,7 +417,7 @@ fn harvest_sheet_cells(ws: &x::Worksheet, shared_strings: &[String]) -> Vec<Harv
             let raw_v = cell
                 .cell_value
                 .as_ref()
-                .and_then(|v| v.0.xml_content.as_deref());
+                .and_then(|v| v.xml_content.as_deref());
             let value = cell_value(cell, raw_v, shared_strings);
             let (literal, cached_value) = if formula.is_some() {
                 (None, value)
@@ -724,14 +722,14 @@ fn inline_string_text(cell: &x::Cell) -> String {
     if !inline.run.is_empty() {
         let mut out = String::new();
         for run in &inline.run {
-            out.push_str(run.text.0.xml_content.as_deref().unwrap_or(""));
+            out.push_str(run.text.xml_content.as_deref().unwrap_or(""));
         }
         return out;
     }
     inline
         .text
         .as_ref()
-        .and_then(|text| text.0.xml_content.as_deref())
+        .and_then(|text| text.xml_content.as_deref())
         .unwrap_or("")
         .to_string()
 }
@@ -750,13 +748,13 @@ fn load_shared_strings(doc: &mut xlcore_io::SpreadsheetDocument) -> Vec<String> 
     let mut strings = Vec::with_capacity(sst.shared_string_item.len());
     for item in &sst.shared_string_item {
         if let Some(text) = &item.text {
-            strings.push(text.0.xml_content.as_deref().unwrap_or("").to_string());
+            strings.push(text.xml_content.as_deref().unwrap_or("").to_string());
             continue;
         }
 
         let mut out = String::new();
         for run in &item.run {
-            out.push_str(run.text.0.xml_content.as_deref().unwrap_or(""));
+            out.push_str(run.text.xml_content.as_deref().unwrap_or(""));
         }
         strings.push(out);
     }

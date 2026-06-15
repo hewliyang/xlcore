@@ -8,4 +8,13 @@ import type { VerticalAlign } from "./VerticalAlign.js";
  *
  * schema-excluded: relativeIndent, mergeCell
  */
-export type AlignmentPatch = { horizontal?: HorizontalAlign, vertical?: VerticalAlign, wrap?: boolean, indent?: number, textRotation?: number, shrinkToFit?: boolean, justifyLastLine?: boolean, readingOrder?: ReadingOrder, };
+export type AlignmentPatch = {
+  horizontal?: HorizontalAlign;
+  vertical?: VerticalAlign;
+  wrap?: boolean;
+  indent?: number;
+  textRotation?: number;
+  shrinkToFit?: boolean;
+  justifyLastLine?: boolean;
+  readingOrder?: ReadingOrder;
+};

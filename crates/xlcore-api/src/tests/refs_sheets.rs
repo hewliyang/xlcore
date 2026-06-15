@@ -78,13 +78,28 @@ fn engine_produced_errors_populate_fallback() {
 
     let recalc = workbook.recalculate(false).unwrap();
     let b1 = recalc.cell("Sheet1", "B1").unwrap();
-    assert_eq!(b1.value, xlcore_engine::CellValue::Error("#REF!".to_string()), "B1 value: {:?}", b1);
+    assert_eq!(
+        b1.value,
+        xlcore_engine::CellValue::Error("#REF!".to_string()),
+        "B1 value: {:?}",
+        b1
+    );
     assert_eq!(b1.fallback, None, "B1 fallback: {:?}", b1);
     let c1 = recalc.cell("Sheet1", "C1").unwrap();
-    assert_eq!(c1.value, xlcore_engine::CellValue::Error("#DIV/0!".to_string()), "C1 value: {:?}", c1);
+    assert_eq!(
+        c1.value,
+        xlcore_engine::CellValue::Error("#DIV/0!".to_string()),
+        "C1 value: {:?}",
+        c1
+    );
     assert_eq!(c1.fallback, None, "C1 fallback: {:?}", c1);
     let d1 = recalc.cell("Sheet1", "D1").unwrap();
-    assert_eq!(d1.value, xlcore_engine::CellValue::Error("#VALUE!".to_string()), "D1 value: {:?}", d1);
+    assert_eq!(
+        d1.value,
+        xlcore_engine::CellValue::Error("#VALUE!".to_string()),
+        "D1 value: {:?}",
+        d1
+    );
     assert_eq!(d1.fallback, None, "D1 fallback: {:?}", d1);
 }
 

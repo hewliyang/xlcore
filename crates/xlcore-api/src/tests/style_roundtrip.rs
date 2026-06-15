@@ -71,12 +71,20 @@ fn fill_superset(input: &FillPatch, output: &FillPatch) {
         assert_eq!(gin.stops.len(), gout.stops.len(), "gradient.stops len");
         for (a, b) in gin.stops.iter().zip(&gout.stops) {
             assert_eq!(a.position, b.position, "gradient stop position");
-            assert_eq!(norm_color(&a.color), norm_color(&b.color), "gradient stop color");
+            assert_eq!(
+                norm_color(&a.color),
+                norm_color(&b.color),
+                "gradient stop color"
+            );
         }
         return;
     }
     if let Some(color) = input.color.as_ref() {
-        assert_eq!(output.pattern, Some(PatternType::Solid), "fill solid pattern");
+        assert_eq!(
+            output.pattern,
+            Some(PatternType::Solid),
+            "fill solid pattern"
+        );
         assert!(
             color_superset(&Some(color.clone()), &output.foreground),
             "fill color {:?} vs foreground {:?}",
@@ -181,13 +189,13 @@ fn assert_superset(input: &StylePatch, output: &StylePatch) {
         border_superset(border, output.border.as_ref().expect("border read back"));
     }
     if let Some(align) = input.alignment.as_ref() {
-        alignment_superset(align, output.alignment.as_ref().expect("alignment read back"));
+        alignment_superset(
+            align,
+            output.alignment.as_ref().expect("alignment read back"),
+        );
     }
     if input.number_format.is_some() {
-        assert_eq!(
-            input.number_format, output.number_format,
-            "number_format"
-        );
+        assert_eq!(input.number_format, output.number_format, "number_format");
     }
     if let Some(prot) = input.protection.as_ref() {
         let out = output.protection.as_ref().expect("protection read back");

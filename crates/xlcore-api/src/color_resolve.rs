@@ -83,7 +83,10 @@ fn indexed_hex(idx: u32) -> Option<String> {
 }
 
 fn theme_palette(doc: &mut xlcore_io::SpreadsheetDocument) -> Vec<String> {
-    let mut palette: Vec<String> = DEFAULT_THEME_PALETTE.iter().map(|s| s.to_string()).collect();
+    let mut palette: Vec<String> = DEFAULT_THEME_PALETTE
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     let Ok(wb_part) = doc.workbook_part() else {
         return palette;
     };

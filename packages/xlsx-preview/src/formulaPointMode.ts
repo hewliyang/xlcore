@@ -9,21 +9,7 @@ export interface ApplyRefResult {
   span: RefSpan;
 }
 
-const ACCEPT_BEFORE = new Set([
-  "=",
-  "(",
-  ",",
-  "+",
-  "-",
-  "*",
-  "/",
-  "^",
-  "&",
-  "<",
-  ">",
-  "%",
-  " ",
-]);
+const ACCEPT_BEFORE = new Set(["=", "(", ",", "+", "-", "*", "/", "^", "&", "<", ">", "%", " "]);
 
 function insideStringLiteral(text: string, caretIndex: number): boolean {
   let quotes = 0;

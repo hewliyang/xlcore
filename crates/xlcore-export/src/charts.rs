@@ -289,7 +289,7 @@ fn anchor_target_from_two_cell(
             }
         }
         xdr::TwoCellAnchorChoice::Picture(pic) => {
-            let blip = pic.blip_fill.blip.as_ref()?;
+            let blip = pic.blip_fill.as_ref()?.blip.as_ref()?;
             let embed = blip.embed.as_ref()?;
             let cnv = pic
                 .non_visual_picture_properties
@@ -339,7 +339,7 @@ fn anchor_target_from_one_cell(
             }
         }
         xdr::OneCellAnchorChoice::Picture(pic) => {
-            let blip = pic.blip_fill.blip.as_ref()?;
+            let blip = pic.blip_fill.as_ref()?.blip.as_ref()?;
             let embed = blip.embed.as_ref()?;
             let cnv = pic
                 .non_visual_picture_properties
@@ -389,7 +389,7 @@ fn anchor_target_from_absolute(
             }
         }
         xdr::AbsoluteAnchorChoice::Picture(pic) => {
-            let blip = pic.blip_fill.blip.as_ref()?;
+            let blip = pic.blip_fill.as_ref()?.blip.as_ref()?;
             let embed = blip.embed.as_ref()?;
             let cnv = pic
                 .non_visual_picture_properties
@@ -518,7 +518,7 @@ fn find_relationship_id(
         match c {
             G::ChartReference(r) => return Some(r.id.as_str().to_string()),
             G::XmlAny(s) => {
-                let raw: &str = s;
+                let raw = String::from_utf8_lossy(s);
                 if let Some(idx) = raw.find("r:id=\"") {
                     let rest = &raw[idx + 6..];
                     if let Some(end) = rest.find('"') {

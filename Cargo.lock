@@ -724,9 +724,9 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "ooxmlsdk"
-version = "0.7.0"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8daa59c2b62c40999d41b9909b7815944f96a54060339ae56ca2f18f7badb43"
+checksum = "69f759c7d7c0ed010cf70e7fc0022fd2013c22669afd593633f02cd2c3aa9638"
 dependencies = [
  "ooxmlsdk-derive",
  "quick-xml 0.40.1",
@@ -736,9 +736,9 @@ dependencies = [
 
 [[package]]
 name = "ooxmlsdk-derive"
-version = "0.7.0"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ca5f17526dbb3b061ad8707b69afd93a48d8865140db6e23a46bd654db7f668"
+checksum = "8583d0714d3c64fef01e7aefdfe00f22979fa8979b21a522cea4b520163ead8e"
 dependencies = [
  "proc-macro2",
  "quote",

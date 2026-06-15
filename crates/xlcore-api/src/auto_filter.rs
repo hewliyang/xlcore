@@ -173,16 +173,17 @@ impl Workbook {
                 .as_deref()
                 .and_then(|af| af.reference.as_ref())
                 .map(|r| r.as_str().to_string());
-            let (r1, _c1, r2, _c2) = reference
-                .as_deref()
-                .and_then(parse_range_a1)
-                .ok_or_else(|| {
-                    ApiError::new(
-                        ApiErrorCode::InvalidAutoFilter,
-                        "auto filter is missing a valid range reference",
-                    )
-                    .with_sheet(&sheet)
-                })?;
+            let (r1, _c1, r2, _c2) =
+                reference
+                    .as_deref()
+                    .and_then(parse_range_a1)
+                    .ok_or_else(|| {
+                        ApiError::new(
+                            ApiErrorCode::InvalidAutoFilter,
+                            "auto filter is missing a valid range reference",
+                        )
+                        .with_sheet(&sheet)
+                    })?;
             (r1, r2)
         };
 
@@ -398,9 +399,7 @@ fn cmp_keys(a: &SortKey, b: &SortKey, descending: bool) -> std::cmp::Ordering {
         (_, SortKey::Blank) => Ordering::Less,
         _ => {
             let ord = match (a, b) {
-                (SortKey::Num(x), SortKey::Num(y)) => {
-                    x.partial_cmp(y).unwrap_or(Ordering::Equal)
-                }
+                (SortKey::Num(x), SortKey::Num(y)) => x.partial_cmp(y).unwrap_or(Ordering::Equal),
                 (SortKey::Num(_), SortKey::Text(_)) => Ordering::Less,
                 (SortKey::Text(_), SortKey::Num(_)) => Ordering::Greater,
                 (SortKey::Text(x), SortKey::Text(y)) => x.cmp(y),

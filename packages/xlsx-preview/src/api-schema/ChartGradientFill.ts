@@ -7,13 +7,14 @@ import type { ChartGradientStop } from "./ChartGradientStop.js";
  *
  * schema-excluded: flip, rotWithShape, tileRect, path
  */
-export type ChartGradientFill = { 
-/**
- * `a:gsLst/a:gs` stops (in document order). At least two are expected.
- */
-stops: Array<ChartGradientStop>, 
-/**
- * `a:lin/@ang` linear-gradient angle in degrees (clockwise). Defaults to 0
- * (left-to-right) when omitted.
- */
-angle?: number, };
+export type ChartGradientFill = {
+  /**
+   * `a:gsLst/a:gs` stops (in document order). At least two are expected.
+   */
+  stops: Array<ChartGradientStop>;
+  /**
+   * `a:lin/@ang` linear-gradient angle in degrees (clockwise). Defaults to 0
+   * (left-to-right) when omitted.
+   */
+  angle?: number;
+};

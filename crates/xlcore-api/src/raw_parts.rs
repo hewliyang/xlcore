@@ -14,7 +14,7 @@ impl Workbook {
             .doc
             .to_package_bytes()
             .map_err(|err| ApiError::new(ApiErrorCode::OoxmlWriteError, err.to_string()))?;
-        crate::package_fix::ensure_content_type_defaults(bytes)
+        Ok(bytes)
     }
 
     pub fn part_names(&self) -> Result<Vec<String>> {

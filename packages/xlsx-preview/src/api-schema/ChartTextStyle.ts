@@ -16,24 +16,25 @@
  * effectLst, highlight, uLnTx, uFillTx, ea, cs, sym, hlinkClick,
  * hlinkMouseOver, rtl
  */
-export type ChartTextStyle = { 
-/**
- * `a:defRPr/@sz` in whole points (1..=4000); stored as 100ths of a point.
- */
-size?: number, 
-/**
- * `a:defRPr/@b`.
- */
-bold?: boolean, 
-/**
- * `a:defRPr/@i`.
- */
-italic?: boolean, 
-/**
- * `a:defRPr/a:solidFill` color: 6-hex `RRGGBB` / 8-hex `AARRGGBB`.
- */
-color?: string, 
-/**
- * `a:defRPr/a:latin/@typeface`; font family name.
- */
-typeface?: string, };
+export type ChartTextStyle = {
+  /**
+   * `a:defRPr/@sz` in whole points (1..=4000); stored as 100ths of a point.
+   */
+  size?: number;
+  /**
+   * `a:defRPr/@b`.
+   */
+  bold?: boolean;
+  /**
+   * `a:defRPr/@i`.
+   */
+  italic?: boolean;
+  /**
+   * `a:defRPr/a:solidFill` color: 6-hex `RRGGBB` / 8-hex `AARRGGBB`.
+   */
+  color?: string;
+  /**
+   * `a:defRPr/a:latin/@typeface`; font family name.
+   */
+  typeface?: string;
+};

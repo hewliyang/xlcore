@@ -10,13 +10,29 @@ pub fn extract(s: &x::Stylesheet) -> Styles {
     let fonts: Vec<Font> = s
         .fonts
         .as_ref()
-        .map(|f| f.font.iter().map(extract_font).collect())
+        .map(|f| {
+            f.xml_children
+                .iter()
+                .filter_map(|c| match c {
+                    x::FontsChoice::Font(b) => Some(extract_font(b)),
+                    _ => None,
+                })
+                .collect()
+        })
         .unwrap_or_default();
 
     let fills: Vec<Fill> = s
         .fills
         .as_ref()
-        .map(|f| f.fill.iter().map(extract_fill).collect())
+        .map(|f| {
+            f.xml_children
+                .iter()
+                .filter_map(|c| match c {
+                    x::FillsChoice::Fill(b) => Some(extract_fill(b)),
+                    _ => None,
+                })
+                .collect()
+        })
         .unwrap_or_default();
 
     let borders: Vec<Border> = s
@@ -35,9 +51,14 @@ pub fn extract(s: &x::Stylesheet) -> Styles {
         .cell_formats
         .as_ref()
         .map(|cf| {
-            cf.cell_format
+            cf.xml_children
                 .iter()
-                .map(|xf| extract_xf_with_inheritance(xf, &cell_style_xfs))
+                .filter_map(|c| match c {
+                    x::CellFormatsChoice::CellFormat(xf) => {
+                        Some(extract_xf_with_inheritance(xf, &cell_style_xfs))
+                    }
+                    _ => None,
+                })
                 .collect()
         })
         .unwrap_or_default();
@@ -89,7 +110,13 @@ pub fn extract_dxfs(s: &x::Stylesheet) -> Vec<crate::schema::Dxf> {
     let Some(dxfs) = s.differential_formats.as_ref() else {
         return Vec::new();
     };
-    dxfs.differential_format.iter().map(extract_dxf).collect()
+    dxfs.xml_children
+        .iter()
+        .filter_map(|c| match c {
+            x::DifferentialFormatsChoice::DifferentialFormat(d) => Some(extract_dxf(d)),
+            _ => None,
+        })
+        .collect()
 }
 
 pub fn extract_table_styles(s: &x::Stylesheet) -> Vec<crate::schema::CustomTableStyle> {

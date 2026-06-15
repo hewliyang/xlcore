@@ -23,10 +23,9 @@ fn decode_u32(b64: &str) -> Vec<u32> {
 
 #[test]
 fn implicit_row_indices_are_recovered() {
-    let layout = xlcore_export::extract(fixture(
-        "producer-quirks/spreadjs-implicit-row-index.xlsx",
-    ))
-    .expect("fixture should extract");
+    let layout =
+        xlcore_export::extract(fixture("producer-quirks/spreadjs-implicit-row-index.xlsx"))
+            .expect("fixture should extract");
 
     let sheet = &layout.sheets[0];
 

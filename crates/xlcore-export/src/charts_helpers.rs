@@ -9,9 +9,7 @@ pub(crate) fn extract_line_style(
     extract_outline_style(sp_pr.and_then(|p| p.outline.as_deref()))
 }
 
-pub(crate) fn extract_outline_style(
-    outline: Option<&a::Outline>,
-) -> (Option<i32>, Option<String>) {
+pub(crate) fn extract_outline_style(outline: Option<&a::Outline>) -> (Option<i32>, Option<String>) {
     let Some(outline) = outline else {
         return (None, None);
     };
@@ -264,7 +262,7 @@ pub(crate) fn extract_data_labels(dl: Option<&c::DataLabels>) -> Option<DataLabe
 
 pub(crate) fn extract_point_data_label(dl: &c::DataLabel) -> Option<PointDataLabel> {
     let idx: u32 = dl.index.val;
-    match dl.data_label_choice.as_ref() {
+    match dl.data_label_choice.first() {
         Some(c::DataLabelChoice::Delete(_)) => Some(PointDataLabel {
             idx,
             delete: true,
@@ -432,9 +430,7 @@ pub(crate) fn extract_manual_layout(layout: Option<&c::Layout>) -> Option<ChartM
         .as_ref()
         .and_then(|t| t.val.as_ref())
         .map(|v| format!("{:?}", v).to_ascii_lowercase());
-    let mode = |m: Option<&c::LayoutModeValues>| {
-        m.map(|v| format!("{:?}", v).to_ascii_lowercase())
-    };
+    let mode = |m: Option<&c::LayoutModeValues>| m.map(|v| format!("{:?}", v).to_ascii_lowercase());
     let out = ChartManualLayout {
         x: ml.left.as_ref().map(|v| v.val),
         y: ml.top.as_ref().map(|v| v.val),
@@ -462,7 +458,13 @@ fn num_data_source_values(
             let mut indexed: Vec<(u32, f64)> = nc
                 .numeric_point
                 .iter()
-                .filter_map(|p| p.numeric_value.as_str().parse::<f64>().ok().map(|v| (p.index, v)))
+                .filter_map(|p| {
+                    p.numeric_value
+                        .as_str()
+                        .parse::<f64>()
+                        .ok()
+                        .map(|v| (p.index, v))
+                })
                 .collect();
             indexed.sort_by_key(|(i, _)| *i);
             indexed.into_iter().map(|(_, v)| v).collect::<Vec<f64>>()
@@ -473,7 +475,13 @@ fn num_data_source_values(
         let mut indexed: Vec<(u32, f64)> = lit
             .numeric_point
             .iter()
-            .filter_map(|p| p.numeric_value.as_str().parse::<f64>().ok().map(|v| (p.index, v)))
+            .filter_map(|p| {
+                p.numeric_value
+                    .as_str()
+                    .parse::<f64>()
+                    .ok()
+                    .map(|v| (p.index, v))
+            })
             .collect();
         indexed.sort_by_key(|(i, _)| *i);
         return indexed.into_iter().map(|(_, v)| v).collect();
@@ -694,7 +702,10 @@ fn srgb_hex(rgb: &a::RgbColorModelHex) -> Option<String> {
         return None;
     }
     let dbg = format!("{:?}", rgb);
-    Some(apply_color_modifiers(&format!("#{}", h.to_uppercase()), &dbg))
+    Some(apply_color_modifiers(
+        &format!("#{}", h.to_uppercase()),
+        &dbg,
+    ))
 }
 
 fn scheme_hex(sc: &a::SchemeColor, theme: Option<&Theme>) -> Option<String> {

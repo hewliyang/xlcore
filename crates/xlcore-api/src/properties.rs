@@ -1,4 +1,3 @@
-use ooxmlsdk::common::XmlNamespaceDecl;
 use ooxmlsdk::schemas::opc_core_properties as cp;
 use ooxmlsdk::simple_type::BooleanValue;
 use xlcore_io::spreadsheetml as x;
@@ -64,8 +63,18 @@ impl Workbook {
 fn read_properties(props: &cp::CoreProperties) -> WorkbookProperties {
     WorkbookProperties {
         title: opt_string(props.title.as_ref().map(|s| s.as_str())),
-        subject: opt_string(props.subject.as_ref().map(|s| s.as_str())),
-        creator: opt_string(props.creator.as_ref().map(|s| s.as_str())),
+        subject: opt_string(
+            props
+                .subject
+                .as_ref()
+                .and_then(|s| s.xml_content.as_deref()),
+        ),
+        creator: opt_string(
+            props
+                .creator
+                .as_ref()
+                .and_then(|s| s.xml_content.as_deref()),
+        ),
         keywords: props.keywords.as_ref().and_then(|k| {
             k.xml_content
                 .as_ref()
@@ -77,7 +86,12 @@ fn read_properties(props: &cp::CoreProperties) -> WorkbookProperties {
         category: opt_string(props.category.as_ref().map(|s| s.as_str())),
         content_status: opt_string(props.content_status.as_ref().map(|s| s.as_str())),
         identifier: opt_string(props.identifier.as_ref().map(|s| s.as_str())),
-        language: opt_string(props.language.as_ref().map(|s| s.as_str())),
+        language: opt_string(
+            props
+                .language
+                .as_ref()
+                .and_then(|s| s.xml_content.as_deref()),
+        ),
         revision: opt_string(props.revision.as_ref().map(|s| s.as_str())),
         version: opt_string(props.version.as_ref().map(|s| s.as_str())),
         created: props.created.as_ref().and_then(|c| {
@@ -101,10 +115,16 @@ fn apply_properties_patch(props: &mut cp::CoreProperties, patch: &WorkbookProper
         props.title = Some(v.into());
     }
     if let Some(v) = patch.subject.clone() {
-        props.subject = Some(v.into());
+        props.subject = Some(cp::Subject {
+            xml_content: Some(v),
+            ..Default::default()
+        });
     }
     if let Some(v) = patch.creator.clone() {
-        props.creator = Some(v.into());
+        props.creator = Some(cp::Creator {
+            xml_content: Some(v),
+            ..Default::default()
+        });
     }
     if let Some(v) = patch.keywords.clone() {
         props.keywords = Some(cp::Keywords {
@@ -128,7 +148,10 @@ fn apply_properties_patch(props: &mut cp::CoreProperties, patch: &WorkbookProper
         props.identifier = Some(v.into());
     }
     if let Some(v) = patch.language.clone() {
-        props.language = Some(v.into());
+        props.language = Some(cp::Language {
+            xml_content: Some(v),
+            ..Default::default()
+        });
     }
     if let Some(v) = patch.revision.clone() {
         props.revision = Some(v.into());
@@ -139,13 +162,15 @@ fn apply_properties_patch(props: &mut cp::CoreProperties, patch: &WorkbookProper
     if let Some(v) = patch.created.clone() {
         props.created = Some(cp::Created {
             xsi_type: Some(cp::XsiTypeValue::DctermsW3cdtf),
-            xml_content: Some(v.into()),
+            xml_content: Some(v),
+            ..Default::default()
         });
     }
     if let Some(v) = patch.modified.clone() {
         props.modified = Some(cp::Modified {
             xsi_type: Some(cp::XsiTypeValue::DctermsW3cdtf),
-            xml_content: Some(v.into()),
+            xml_content: Some(v),
+            ..Default::default()
         });
     }
     if let Some(v) = patch.last_printed.clone() {
@@ -156,14 +181,14 @@ fn apply_properties_patch(props: &mut cp::CoreProperties, patch: &WorkbookProper
 fn blank_core_properties() -> cp::CoreProperties {
     cp::CoreProperties {
         xmlns: vec![
-            XmlNamespaceDecl::new(
+            crate::ooxml_header::ns(
                 "cp",
                 "http://schemas.openxmlformats.org/package/2006/metadata/core-properties",
             ),
-            XmlNamespaceDecl::new("dc", "http://purl.org/dc/elements/1.1/"),
-            XmlNamespaceDecl::new("dcterms", "http://purl.org/dc/terms/"),
-            XmlNamespaceDecl::new("dcmitype", "http://purl.org/dc/dcmitype/"),
-            XmlNamespaceDecl::new("xsi", "http://www.w3.org/2001/XMLSchema-instance"),
+            crate::ooxml_header::ns("dc", "http://purl.org/dc/elements/1.1/"),
+            crate::ooxml_header::ns("dcterms", "http://purl.org/dc/terms/"),
+            crate::ooxml_header::ns("dcmitype", "http://purl.org/dc/dcmitype/"),
+            crate::ooxml_header::ns("xsi", "http://www.w3.org/2001/XMLSchema-instance"),
         ],
         ..Default::default()
     }

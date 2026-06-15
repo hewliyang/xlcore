@@ -848,10 +848,10 @@ fn write_header_row(
         cell.cell_value = None;
         cell.data_type = Some(x::CellValues::InlineString);
         cell.inline_string = Some(Box::new(x::InlineString {
-            text: Some(x::Text(x::XstringType {
+            text: Some(x::Text {
                 xml_content: Some(names[i].clone()),
                 ..Default::default()
-            })),
+            }),
             ..Default::default()
         }));
     }

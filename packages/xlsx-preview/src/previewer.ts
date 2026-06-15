@@ -11,11 +11,7 @@ import {
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
 import { referencesToHighlights } from "./highlights.js";
 import { autocompleteState, type AutocompleteState } from "./formulaAutocomplete.js";
-import {
-  applyReferenceAtCaret,
-  caretAcceptsReference,
-  type RefSpan,
-} from "./formulaPointMode.js";
+import { applyReferenceAtCaret, caretAcceptsReference, type RefSpan } from "./formulaPointMode.js";
 import type { HighlightRange } from "./renderTypes.js";
 import type { DependencyReference } from "./api-schema/DependencyReference.js";
 import { cellRect } from "./geometry.js";
@@ -534,7 +530,9 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     const state = this.currentState();
     this.recomputeViewport();
     const baseHighlights = this.computeHighlights();
-    this.highlights = this.pointHighlight ? [...baseHighlights, this.pointHighlight] : baseHighlights;
+    this.highlights = this.pointHighlight
+      ? [...baseHighlights, this.pointHighlight]
+      : baseHighlights;
     render(this.canvas, this.getActiveSheet(), this.layout, {
       scale: window.devicePixelRatio || 1,
       zoom: this.zoom,
@@ -606,9 +604,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
         ? (cell, initialText) => this.openEditOverlay(cell, initialText)
         : undefined,
       isPointModeActive: this.editable ? () => this.isPointModeActive() : undefined,
-      onPointModeRef: this.editable
-        ? (ref, o) => this.applyPointModeRef(ref, o)
-        : undefined,
+      onPointModeRef: this.editable ? (ref, o) => this.applyPointModeRef(ref, o) : undefined,
       onTableFilter: (info: TableFilterEvent) => {
         this.dispatchEvent(new CustomEvent("tablefilter", { detail: info }));
         if (this.tableController) {

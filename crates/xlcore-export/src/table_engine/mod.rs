@@ -11,7 +11,10 @@ pub fn compute_hidden_rows(
         let row_num = first_data_row + i as u32;
         let mut visible = true;
         for (col_offset, criteria) in columns {
-            let cell = row.get(*col_offset as usize).map(String::as_str).unwrap_or("");
+            let cell = row
+                .get(*col_offset as usize)
+                .map(String::as_str)
+                .unwrap_or("");
             if !passes_column(cell, criteria, rows, *col_offset) {
                 visible = false;
                 break;
@@ -42,9 +45,14 @@ fn passes_column(
             logical_and,
             criteria,
         } => passes_custom(cell, logical_and.unwrap_or(false), criteria),
-        AutoFilterCriteria::Top10 { top, percent, val } => {
-            passes_top10(cell, top.unwrap_or(true), percent.unwrap_or(false), *val, rows, col_offset)
-        }
+        AutoFilterCriteria::Top10 { top, percent, val } => passes_top10(
+            cell,
+            top.unwrap_or(true),
+            percent.unwrap_or(false),
+            *val,
+            rows,
+            col_offset,
+        ),
         AutoFilterCriteria::Unsupported { .. } => true,
     }
 }
@@ -173,7 +181,12 @@ mod tests {
 
     #[test]
     fn values_filter_keeps_matching() {
-        let rows = vec![row(&["apple"]), row(&["banana"]), row(&[""]), row(&["cherry"])];
+        let rows = vec![
+            row(&["apple"]),
+            row(&["banana"]),
+            row(&[""]),
+            row(&["cherry"]),
+        ];
         let crit = AutoFilterCriteria::Values {
             values: vec!["apple".into(), "cherry".into()],
             blank: None,
@@ -263,7 +276,13 @@ mod tests {
 
     #[test]
     fn top10_top_count() {
-        let rows = vec![row(&["10"]), row(&["50"]), row(&["30"]), row(&["20"]), row(&["40"])];
+        let rows = vec![
+            row(&["10"]),
+            row(&["50"]),
+            row(&["30"]),
+            row(&["20"]),
+            row(&["40"]),
+        ];
         let crit = AutoFilterCriteria::Top10 {
             top: Some(true),
             percent: Some(false),
@@ -275,7 +294,13 @@ mod tests {
 
     #[test]
     fn top10_bottom_count() {
-        let rows = vec![row(&["10"]), row(&["50"]), row(&["30"]), row(&["20"]), row(&["40"])];
+        let rows = vec![
+            row(&["10"]),
+            row(&["50"]),
+            row(&["30"]),
+            row(&["20"]),
+            row(&["40"]),
+        ];
         let crit = AutoFilterCriteria::Top10 {
             top: Some(false),
             percent: Some(false),

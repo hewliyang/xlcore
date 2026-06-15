@@ -1,4 +1,3 @@
-use ooxmlsdk::common::XmlNamespaceDecl;
 use ooxmlsdk::schemas::schemas_microsoft_com_office_spreadsheetml_2009_9_main as x14;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_spreadsheetml_2006_main as xspread;
 use ooxmlsdk::simple_type::BooleanValue;
@@ -110,17 +109,10 @@ impl Workbook {
             }
             None => {
                 let mut sg = x14::SparklineGroups::default();
-                sg.xmlns = vec![XmlNamespaceDecl {
-                    prefix: "xne".into(),
-                    uri: XNE_NS.into(),
-                }];
+                sg.xmlns = vec![crate::ooxml_header::ns("xne", XNE_NS)];
                 sg.sparkline_group.push(group);
                 let ext = xspread::WorksheetExtension {
-                    xmlns: vec![XmlNamespaceDecl {
-                        prefix: "x14".into(),
-                        uri: X14_NS.into(),
-                    }],
-                    xml_other_attrs: Vec::new(),
+                    xmlns: vec![crate::ooxml_header::ns("x14", X14_NS)],
                     uri: SPARKLINE_EXT_URI.to_string(),
                     worksheet_extension_choice: Some(
                         xspread::WorksheetExtensionChoice::SparklineGroups(Box::new(sg)),
@@ -400,6 +392,7 @@ fn build_group(sheet: &str, patch: &SparklineGroupPatch) -> Result<x14::Sparklin
         high_marker_color: high_marker_color(patch.high_color.as_ref()),
         low_marker_color: low_marker_color(patch.low_color.as_ref()),
         formula: None,
+        uid: None,
         sparklines: Box::new(sparklines),
     })
 }

@@ -51,10 +51,10 @@ fn is_cartesian(kind: ChartExKind) -> bool {
 }
 
 fn formula(reference: &str) -> Box<cx::Formula> {
-    Box::new(cx::Formula {
+    Box::new(cx::Formula(cx::OpenXmlFormulaElement {
         dir: None,
         xml_content: Some(reference.to_string()),
-    })
+    }))
 }
 
 fn num_dim(kind: ChartExKind, values_ref: &str) -> cx::NumericDimension {
@@ -85,14 +85,14 @@ fn str_dim(categories_ref: &str) -> cx::StringDimension {
 
 fn series_text(name: Option<&str>, name_ref: Option<&str>) -> Option<Box<cx::Text>> {
     let choice = match (name_ref, name) {
-        (Some(r), Some(v)) => cx::TextDataChoice::Sequence {
+        (Some(r), Some(v)) => cx::TextDataChoice::Sequence(Box::new(cx::TextDataChoiceSequence {
             formula: formula(r),
             v_xsdstring: Some(v.to_string()),
-        },
-        (Some(r), None) => cx::TextDataChoice::Sequence {
+        })),
+        (Some(r), None) => cx::TextDataChoice::Sequence(Box::new(cx::TextDataChoiceSequence {
             formula: formula(r),
             v_xsdstring: None,
-        },
+        })),
         (None, Some(v)) => cx::TextDataChoice::VXsdstring(v.to_string()),
         (None, None) => return None,
     };
@@ -297,14 +297,20 @@ fn chart_ex_anchor_rid(anchor: &xdr::TwoCellAnchor) -> Option<String> {
         return None;
     }
     for choice in &gf.graphic.graphic_data.graphic_data_choice {
-        if let a::GraphicDataChoice::XmlAny(raw) = choice {
-            let raw: &str = raw;
-            if let Some(i) = raw.find("r:id=\"") {
-                let rest = &raw[i + 6..];
-                if let Some(end) = rest.find('"') {
-                    return Some(rest[..end].to_string());
+        match choice {
+            a::GraphicDataChoice::ChartReference(r) if !r.id.is_empty() => {
+                return Some(r.id.clone());
+            }
+            a::GraphicDataChoice::XmlAny(raw) => {
+                let raw = String::from_utf8_lossy(raw);
+                if let Some(i) = raw.find("r:id=\"") {
+                    let rest = &raw[i + 6..];
+                    if let Some(end) = rest.find('"') {
+                        return Some(rest[..end].to_string());
+                    }
                 }
             }
+            _ => {}
         }
     }
     None
@@ -359,7 +365,9 @@ fn build_chart_ex_anchor(
     );
     let graphic_data = a::GraphicData {
         uri: CHARTEX_GRAPHIC_DATA_URI.to_string(),
-        graphic_data_choice: vec![a::GraphicDataChoice::XmlAny(chart_ref.into())],
+        graphic_data_choice: vec![a::GraphicDataChoice::XmlAny(
+            chart_ref.into_bytes().into_boxed_slice(),
+        )],
         ..Default::default()
     };
 
@@ -516,8 +524,8 @@ impl Workbook {
                 .root_element_mut(&mut self.doc)
                 .map_err(sdk_err_to_api)?;
             ws.drawing = Some(x::Drawing {
-                xml_other_attrs: Vec::new(),
                 id: rid,
+                ..Default::default()
             });
         }
 
@@ -807,10 +815,9 @@ fn read_series_text(text: Option<&cx::Text>) -> (Option<String>, Option<String>)
     match choice {
         cx::TextChoice::TextData(td) => match td.text_data_choice.as_ref() {
             Some(cx::TextDataChoice::VXsdstring(v)) => (Some(v.clone()), None),
-            Some(cx::TextDataChoice::Sequence {
-                formula,
-                v_xsdstring,
-            }) => (v_xsdstring.clone(), formula.xml_content.clone()),
+            Some(cx::TextDataChoice::Sequence(seq)) => {
+                (seq.v_xsdstring.clone(), seq.formula.0.xml_content.clone())
+            }
             None => (None, None),
         },
         cx::TextChoice::RichTextBody(_) => (None, None),

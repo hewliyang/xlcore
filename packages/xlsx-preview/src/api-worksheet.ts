@@ -249,12 +249,7 @@ export class Worksheet {
    * widths in character units.
    * @param start 1-based first column; @param end 1-based last column.
    */
-  autoFitColumns(
-    start: number,
-    end: number,
-    minWidth?: number,
-    maxWidth?: number,
-  ): number[] {
+  autoFitColumns(start: number, end: number, minWidth?: number, maxWidth?: number): number[] {
     return this.handle.autoFitColumns(
       this.name,
       start,

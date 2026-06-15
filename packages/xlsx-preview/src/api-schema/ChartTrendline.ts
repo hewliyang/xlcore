@@ -15,40 +15,41 @@ import type { TrendlineKind } from "./TrendlineKind.js";
  *
  * schema-excluded: spPr, trendlineLbl
  */
-export type ChartTrendline = { 
-/**
- * `c:trendlineType/@val`.
- */
-type: TrendlineKind, 
-/**
- * `c:name`; custom trendline label name overriding Excel's auto label.
- */
-name?: string, 
-/**
- * `c:order/@val` (2..=6); polynomial trendlines only.
- */
-polynomialOrder?: number, 
-/**
- * `c:period/@val` (>=2); moving-average trendlines only.
- */
-period?: number, 
-/**
- * `c:forward/@val`; periods to project forward.
- */
-forward?: number, 
-/**
- * `c:backward/@val`; periods to project backward.
- */
-backward?: number, 
-/**
- * `c:intercept/@val`; forced y-intercept.
- */
-intercept?: number, 
-/**
- * `c:dispEq/@val`; show the regression equation on the chart.
- */
-displayEquation?: boolean, 
-/**
- * `c:dispRSqr/@val`; show the R² value on the chart.
- */
-displayRSquared?: boolean, };
+export type ChartTrendline = {
+  /**
+   * `c:trendlineType/@val`.
+   */
+  type: TrendlineKind;
+  /**
+   * `c:name`; custom trendline label name overriding Excel's auto label.
+   */
+  name?: string;
+  /**
+   * `c:order/@val` (2..=6); polynomial trendlines only.
+   */
+  polynomialOrder?: number;
+  /**
+   * `c:period/@val` (>=2); moving-average trendlines only.
+   */
+  period?: number;
+  /**
+   * `c:forward/@val`; periods to project forward.
+   */
+  forward?: number;
+  /**
+   * `c:backward/@val`; periods to project backward.
+   */
+  backward?: number;
+  /**
+   * `c:intercept/@val`; forced y-intercept.
+   */
+  intercept?: number;
+  /**
+   * `c:dispEq/@val`; show the regression equation on the chart.
+   */
+  displayEquation?: boolean;
+  /**
+   * `c:dispRSqr/@val`; show the R² value on the chart.
+   */
+  displayRSquared?: boolean;
+};

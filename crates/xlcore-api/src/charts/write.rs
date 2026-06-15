@@ -1040,7 +1040,7 @@ pub(super) fn build_cartesian_group(
     let series = || idxs.iter().map(|&i| (i, &patch.series[i]));
     match kind {
         ChartKind::Line => c::PlotAreaChoice::LineChart(Box::new(c::LineChart {
-            grouping: Box::new(c::Grouping {
+            grouping: Some(c::Grouping {
                 val: Some(line_area_grouping(patch.stacking)),
             }),
             vary_colors: vary_colors_el(patch.vary_colors, false),
@@ -1296,9 +1296,9 @@ pub(super) fn build_point_data_label(p: &ChartDataLabel) -> c::DataLabel {
     if p.delete {
         return c::DataLabel {
             index,
-            data_label_choice: Some(c::DataLabelChoice::Delete(Box::new(c::Delete {
+            data_label_choice: vec![c::DataLabelChoice::Delete(Box::new(c::Delete {
                 val: Some(BooleanValue::from_bool(true)),
-            }))),
+            }))],
             ..Default::default()
         };
     }
@@ -1333,7 +1333,7 @@ pub(super) fn build_point_data_label(p: &ChartDataLabel) -> c::DataLabel {
     };
     c::DataLabel {
         index,
-        data_label_choice: Some(c::DataLabelChoice::Sequence(Box::new(seq))),
+        data_label_choice: vec![c::DataLabelChoice::Sequence(Box::new(seq))],
         ..Default::default()
     }
 }
@@ -1352,7 +1352,7 @@ pub(super) fn data_label_pos_to(p: ChartDataLabelPosition) -> c::DataLabelPositi
     }
 }
 
-pub(super) fn axis_id(val: u32) -> c::AxisId {
+pub(super) fn axis_id(val: i32) -> c::AxisId {
     c::AxisId { val }
 }
 
@@ -1669,7 +1669,7 @@ pub(super) fn build_pie_series(
     cat_ref: Option<&str>,
 ) -> c::PieChartSeries {
     c::PieChartSeries {
-        index: Box::new(c::Index { val: idx as u32 }),
+        index: Some(c::Index { val: idx as u32 }),
         order: Box::new(c::Order { val: idx as u32 }),
         series_text: build_series_text(s),
         chart_shape_properties: build_series_shape_with_line(s.color.as_deref(), s.line.as_ref()),
@@ -2245,7 +2245,7 @@ pub(super) fn build_val_axis() -> c::ValueAxis {
     build_val_axis_xy(VAL_AX_ID, CAT_AX_ID, c::AxisPositionValues::Left)
 }
 
-pub(super) fn build_val_axis_xy(id: u32, cross: u32, pos: c::AxisPositionValues) -> c::ValueAxis {
+pub(super) fn build_val_axis_xy(id: i32, cross: i32, pos: c::AxisPositionValues) -> c::ValueAxis {
     c::ValueAxis {
         axis_id: Box::new(axis_id(id)),
         scaling: Box::new(c::Scaling {

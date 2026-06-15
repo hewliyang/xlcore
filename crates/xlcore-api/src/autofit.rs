@@ -103,7 +103,11 @@ impl Workbook {
         max_width: Option<f64>,
     ) -> Result<Vec<f64>> {
         let sheet = sheet.as_ref().to_string();
-        let (lo, hi) = if start <= end { (start, end) } else { (end, start) };
+        let (lo, hi) = if start <= end {
+            (start, end)
+        } else {
+            (end, start)
+        };
         let mut widths = Vec::new();
         for column in lo..=hi.min(MAX_COLUMN) {
             widths.push(self.auto_fit_column(&sheet, column, min_width, max_width)?);

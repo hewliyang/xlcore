@@ -90,11 +90,11 @@ impl Workbook {
             reference: cell_ref_str.clone().into(),
             author_id: (author_id as u32).into(),
             comment_text: Box::new(x::CommentText {
-                text: Some(x::Text(x::XstringType {
+                text: Some(x::Text {
                     space: Some(ooxmlsdk::schemas::xml::SpaceProcessingModeValues::Preserve),
                     xml_content: Some(patch.text.clone().into()),
                     ..Default::default()
-                })),
+                }),
                 ..Default::default()
             }),
             ..Default::default()

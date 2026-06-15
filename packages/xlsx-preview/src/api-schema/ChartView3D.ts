@@ -7,29 +7,30 @@
  *
  * schema-excluded: extLst
  */
-export type ChartView3D = { 
-/**
- * `c:rotX/@val` (-90..=90); rotation about the x-axis in degrees.
- */
-rotX?: number, 
-/**
- * `c:rotY/@val` (0..=360); rotation about the y-axis in degrees.
- */
-rotY?: number, 
-/**
- * `c:perspective/@val` (0..=240); perspective distance. Ignored when
- * `right_angle_axes` is `true`.
- */
-perspective?: number, 
-/**
- * `c:rAngAx/@val`; render axes at right angles (no perspective).
- */
-rightAngleAxes?: boolean, 
-/**
- * `c:depthPercent/@val` (20..=2000); depth of the plot as a percent of width.
- */
-depthPercent?: number, 
-/**
- * `c:hPercent/@val` (5..=500); height of the plot as a percent of width.
- */
-heightPercent?: number, };
+export type ChartView3D = {
+  /**
+   * `c:rotX/@val` (-90..=90); rotation about the x-axis in degrees.
+   */
+  rotX?: number;
+  /**
+   * `c:rotY/@val` (0..=360); rotation about the y-axis in degrees.
+   */
+  rotY?: number;
+  /**
+   * `c:perspective/@val` (0..=240); perspective distance. Ignored when
+   * `right_angle_axes` is `true`.
+   */
+  perspective?: number;
+  /**
+   * `c:rAngAx/@val`; render axes at right angles (no perspective).
+   */
+  rightAngleAxes?: boolean;
+  /**
+   * `c:depthPercent/@val` (20..=2000); depth of the plot as a percent of width.
+   */
+  depthPercent?: number;
+  /**
+   * `c:hPercent/@val` (5..=500); height of the plot as a percent of width.
+   */
+  heightPercent?: number;
+};

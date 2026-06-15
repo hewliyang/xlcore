@@ -115,8 +115,7 @@ export function render(
     drawFilterArrows(ctx, sheet, grid, pane.vis, filterArrows);
     drawDrawings(ctx, sheet, grid);
     drawCommentMarkers(ctx, sheet, grid, pane.vis);
-    if (opts.highlights && opts.highlights.length > 0)
-      drawHighlights(ctx, grid, opts.highlights);
+    if (opts.highlights && opts.highlights.length > 0) drawHighlights(ctx, grid, opts.highlights);
     if (sel) drawSelection(ctx, sheet, grid, sel, opts.activeCell ?? null);
 
     ctx.restore();

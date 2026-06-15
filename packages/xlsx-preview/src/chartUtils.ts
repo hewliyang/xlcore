@@ -262,9 +262,7 @@ export function drawAxisFrame(
       : Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
   const catRot = catAxisRotation(chart);
   const catBand =
-    !horizontal && catRot !== 0
-      ? rotatedLabelBandHeight(ctx, chart.categories ?? [], catRot)
-      : 0;
+    !horizontal && catRot !== 0 ? rotatedLabelBandHeight(ctx, chart.categories ?? [], catRot) : 0;
   const xAxisH =
     AXIS_FONT_SIZE +
     8 +

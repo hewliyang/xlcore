@@ -16,55 +16,62 @@ import type { TickMark } from "./TickMark.js";
  *
  * schema-excluded: spPr, auto, lblAlgn, lblOffset, tickLblSkip, tickMarkSkip, noMultiLvlLbl
  */
-export type ChartAxisPatch = { title?: string, 
-/**
- * Hide the axis entirely (`c:delete = 1`).
- */
-hidden?: boolean, 
-/**
- * `c:scaling/c:min`.
- */
-min?: number, 
-/**
- * `c:scaling/c:max`.
- */
-max?: number, 
-/**
- * `c:scaling/c:logBase` (2..=1000); value axis only.
- */
-logBase?: number, 
-/**
- * Reverse axis direction (`c:scaling/c:orientation = maxMin`).
- */
-reversed?: boolean, 
-/**
- * `c:majorUnit`; value axis only.
- */
-majorUnit?: number, 
-/**
- * `c:minorUnit`; value axis only.
- */
-minorUnit?: number, majorGridlines?: boolean, minorGridlines?: boolean, majorTickMark?: TickMark, minorTickMark?: TickMark, tickLabelPosition?: TickLabelPosition, 
-/**
- * `c:numFmt`.
- */
-numberFormat?: string, 
-/**
- * `c:crossBetween`; value axis only.
- */
-crossBetween?: CrossBetween, 
-/**
- * `c:crossesAt`.
- */
-crossesAt?: number, 
-/**
- * `c:dispUnits`; value axis only. A built-in unit name or custom divisor that
- * scales the value-axis labels. Renderer-visible.
- */
-displayUnits?: DisplayUnits, 
-/**
- * Tick-label rotation in whole degrees (-90..=90), stored as `c:txPr`'s
- * `a:bodyPr/@rot` in 60000ths of a degree. Round-trips for Excel; the
- * xlsx-preview renderer draws axis labels horizontally regardless.
- */
-labelRotation?: number, };
+export type ChartAxisPatch = {
+  title?: string;
+  /**
+   * Hide the axis entirely (`c:delete = 1`).
+   */
+  hidden?: boolean;
+  /**
+   * `c:scaling/c:min`.
+   */
+  min?: number;
+  /**
+   * `c:scaling/c:max`.
+   */
+  max?: number;
+  /**
+   * `c:scaling/c:logBase` (2..=1000); value axis only.
+   */
+  logBase?: number;
+  /**
+   * Reverse axis direction (`c:scaling/c:orientation = maxMin`).
+   */
+  reversed?: boolean;
+  /**
+   * `c:majorUnit`; value axis only.
+   */
+  majorUnit?: number;
+  /**
+   * `c:minorUnit`; value axis only.
+   */
+  minorUnit?: number;
+  majorGridlines?: boolean;
+  minorGridlines?: boolean;
+  majorTickMark?: TickMark;
+  minorTickMark?: TickMark;
+  tickLabelPosition?: TickLabelPosition;
+  /**
+   * `c:numFmt`.
+   */
+  numberFormat?: string;
+  /**
+   * `c:crossBetween`; value axis only.
+   */
+  crossBetween?: CrossBetween;
+  /**
+   * `c:crossesAt`.
+   */
+  crossesAt?: number;
+  /**
+   * `c:dispUnits`; value axis only. A built-in unit name or custom divisor that
+   * scales the value-axis labels. Renderer-visible.
+   */
+  displayUnits?: DisplayUnits;
+  /**
+   * Tick-label rotation in whole degrees (-90..=90), stored as `c:txPr`'s
+   * `a:bodyPr/@rot` in 60000ths of a degree. Round-trips for Excel; the
+   * xlsx-preview renderer draws axis labels horizontally regardless.
+   */
+  labelRotation?: number;
+};

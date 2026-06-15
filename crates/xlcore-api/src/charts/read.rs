@@ -85,14 +85,14 @@ pub(super) struct ParsedChart {
     pub(super) title_layout: Option<ChartManualLayout>,
 }
 
-pub(super) fn group_is_secondary(axis_ids: &[c::AxisId], sec: &[u32]) -> bool {
+pub(super) fn group_is_secondary(axis_ids: &[c::AxisId], sec: &[i32]) -> bool {
     !sec.is_empty() && axis_ids.iter().any(|a| sec.contains(&a.val))
 }
 
 pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
     let plot = &space.chart.plot_area;
 
-    let secondary_ax_ids: Vec<u32> = plot
+    let secondary_ax_ids: Vec<i32> = plot
         .plot_area_choice2
         .iter()
         .filter_map(|ax| match ax {
@@ -184,7 +184,11 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
                     kind_set = true;
                 }
                 let gsec = group_is_secondary(&lc.axis_id, &secondary_ax_ids);
-                stacking = lc.grouping.val.as_ref().map(grouping_to_stacking);
+                stacking = lc
+                    .grouping
+                    .as_ref()
+                    .and_then(|g| g.val.as_ref())
+                    .map(grouping_to_stacking);
                 for s in &lc.line_chart_series {
                     let mut info = read_series(
                         s.series_text.as_deref(),
@@ -1491,7 +1495,7 @@ pub(super) fn read_data_labels(dl: Option<&c::DataLabels>) -> Option<ChartDataLa
 pub(super) fn read_point_data_label(d: &c::DataLabel) -> ChartDataLabel {
     let index = d.index.val;
     let bv = |b: Option<&BooleanValue>| b.map(|v| bool::from(*v));
-    match d.data_label_choice.as_ref() {
+    match d.data_label_choice.first() {
         Some(c::DataLabelChoice::Delete(_)) => ChartDataLabel {
             index,
             delete: true,

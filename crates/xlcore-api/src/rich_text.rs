@@ -61,10 +61,10 @@ fn build_run(run: &RichTextRun) -> Result<x::Run> {
             .map(build_run_properties)
             .transpose()?
             .flatten(),
-        text: Box::new(x::Text(x::XstringType {
+        text: Box::new(x::Text {
             xml_content: Some(run.text.clone()),
             ..Default::default()
-        })),
+        }),
     })
 }
 

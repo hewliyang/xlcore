@@ -4,4 +4,14 @@ import type { PageMarginsPatch } from "./PageMarginsPatch.js";
 import type { PageSetupSettings } from "./PageSetupSettings.js";
 import type { PrintOptionsInfo } from "./PrintOptionsInfo.js";
 
-export type SheetPageSetupPatch = { page?: PageSetupSettings, margins?: PageMarginsPatch, printOptions?: PrintOptionsInfo, headerFooter?: HeaderFooterInfo, printArea?: string, printTitleRows?: string, printTitleColumns?: string, rowBreaks?: Array<number>, columnBreaks?: Array<number>, };
+export type SheetPageSetupPatch = {
+  page?: PageSetupSettings;
+  margins?: PageMarginsPatch;
+  printOptions?: PrintOptionsInfo;
+  headerFooter?: HeaderFooterInfo;
+  printArea?: string;
+  printTitleRows?: string;
+  printTitleColumns?: string;
+  rowBreaks?: Array<number>;
+  columnBreaks?: Array<number>;
+};

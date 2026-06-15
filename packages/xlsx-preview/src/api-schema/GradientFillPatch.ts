@@ -2,4 +2,12 @@
 import type { GradientStopPatch } from "./GradientStopPatch.js";
 import type { GradientType } from "./GradientType.js";
 
-export type GradientFillPatch = { kind?: GradientType, degree?: number, left?: number, right?: number, top?: number, bottom?: number, stops: Array<GradientStopPatch>, };
+export type GradientFillPatch = {
+  kind?: GradientType;
+  degree?: number;
+  left?: number;
+  right?: number;
+  top?: number;
+  bottom?: number;
+  stops: Array<GradientStopPatch>;
+};

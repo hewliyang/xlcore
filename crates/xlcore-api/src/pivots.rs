@@ -698,7 +698,6 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
         let caches = wb.pivot_caches.get_or_insert_with(Default::default);
         caches.pivot_cache.push(x::PivotCache {
-            xml_other_attrs: Vec::new(),
             cache_id,
             id: rid.to_string(),
         });
@@ -796,16 +795,10 @@ fn aggregation_from_sdk(v: Option<DataConsolidateFunctionValues>) -> PivotAggreg
     }
 }
 
-fn pivot_namespaces() -> Vec<ooxmlsdk::common::XmlNamespaceDecl> {
+fn pivot_namespaces() -> Vec<ooxmlsdk::common::XmlNamespace> {
     vec![
-        ooxmlsdk::common::XmlNamespaceDecl {
-            prefix: "".into(),
-            uri: SPREADSHEETML.into(),
-        },
-        ooxmlsdk::common::XmlNamespaceDecl {
-            prefix: "r".into(),
-            uri: RELATIONSHIPS.into(),
-        },
+        crate::ooxml_header::ns("", SPREADSHEETML),
+        crate::ooxml_header::ns("r", RELATIONSHIPS),
     ]
 }
 
@@ -867,8 +860,6 @@ fn build_cache_definition(
                 })
                 .collect();
             x::CacheField {
-                xmlns: Vec::new(),
-                xml_other_attrs: Vec::new(),
                 name: col.name.clone(),
                 shared_items: Some(items),
                 ..Default::default()
@@ -885,12 +876,10 @@ fn build_cache_definition(
         refreshed_version: Some(8u8.into()),
         min_refreshable_version: Some(3u8.into()),
         cache_source: Box::new(x::CacheSource {
-            xml_other_attrs: Vec::new(),
             r#type: x::SourceValues::Worksheet,
             connection_id: None,
             cache_source_choice: Some(x::CacheSourceChoice::WorksheetSource(Box::new(
                 x::WorksheetSource {
-                    xml_other_attrs: Vec::new(),
                     reference: Some(source_ref.to_string()),
                     name: None,
                     sheet: Some(source_sheet.to_string()),
@@ -1078,7 +1067,6 @@ fn build_pivot_definition(
                 let header = &d.field;
                 let default_name = format!("{} of {}", agg_label(d.aggregation), header);
                 x::DataField {
-                    xml_other_attrs: Vec::new(),
                     name: Some(d.name.clone().unwrap_or(default_name)),
                     field: index_of(header) as u32,
                     subtotal: Some(aggregation_to_sdk(d.aggregation)),

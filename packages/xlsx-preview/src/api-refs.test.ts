@@ -90,4 +90,3 @@ describe("absoluteAnchor", () => {
     expect(() => absoluteAnchor(0, 0, 10, 10, { rowHeightPx: -5 })).toThrow(/rowHeightPx/);
   });
 });
-

@@ -5,4 +5,12 @@ import type { FillPatch } from "./FillPatch.js";
 import type { FontPatch } from "./FontPatch.js";
 import type { ProtectionPatch } from "./ProtectionPatch.js";
 
-export type StylePatch = { font?: FontPatch, fill?: FillPatch, border?: BorderPatch, alignment?: AlignmentPatch, numberFormat?: string, protection?: ProtectionPatch, namedStyle?: string, };
+export type StylePatch = {
+  font?: FontPatch;
+  fill?: FillPatch;
+  border?: BorderPatch;
+  alignment?: AlignmentPatch;
+  numberFormat?: string;
+  protection?: ProtectionPatch;
+  namedStyle?: string;
+};

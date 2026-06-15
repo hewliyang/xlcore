@@ -67,8 +67,7 @@ export function drawPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: 
   const cx = rect.x + rect.w / 2;
   const cy = rect.y + rect.h / 2;
   const r = Math.min(rect.w, rect.h) / 2 - 8;
-  const holeFrac =
-    chart.holeSize != null ? Math.max(0, Math.min(90, chart.holeSize)) / 100 : 0.55;
+  const holeFrac = chart.holeSize != null ? Math.max(0, Math.min(90, chart.holeSize)) / 100 : 0.55;
   const innerR = chart.type === "doughnut" ? r * holeFrac : 0;
 
   const pointColors = ser.pointColors ?? [];
@@ -192,14 +191,7 @@ export function drawOfPieChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
   let otherStart = 0;
   let otherEnd = 0;
   let start = -Math.PI / 2 + ((chart.firstSliceAngle ?? 0) * Math.PI) / 180;
-  const drawSlice = (
-    cx: number,
-    cy: number,
-    r: number,
-    a0: number,
-    a1: number,
-    color: string,
-  ) => {
+  const drawSlice = (cx: number, cy: number, r: number, a0: number, a1: number, color: string) => {
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.moveTo(cx, cy);

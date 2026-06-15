@@ -2,4 +2,18 @@
 import type { TableColumnInfo } from "./TableColumnInfo.js";
 import type { TableStyleSettings } from "./TableStyleSettings.js";
 
-export type TableInfo = { name: string, displayName: string, sheet: string, reference: string, startRow: number, startColumn: number, endRow: number, endColumn: number, headerRowCount: number, totalsRowCount: number, hasAutoFilter: boolean, columns: Array<TableColumnInfo>, style?: TableStyleSettings, };
+export type TableInfo = {
+  name: string;
+  displayName: string;
+  sheet: string;
+  reference: string;
+  startRow: number;
+  startColumn: number;
+  endRow: number;
+  endColumn: number;
+  headerRowCount: number;
+  totalsRowCount: number;
+  hasAutoFilter: boolean;
+  columns: Array<TableColumnInfo>;
+  style?: TableStyleSettings;
+};

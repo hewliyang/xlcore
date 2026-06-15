@@ -67,7 +67,10 @@ impl Workbook {
             id: id.clone().into(),
             parent_id: None,
             done: None,
-            threaded_comment_text: Some(patch.text.clone().into()),
+            threaded_comment_text: Some(tc::ThreadedCommentText(x::XstringType {
+                xml_content: Some(patch.text.clone()),
+                ..Default::default()
+            })),
             ..Default::default()
         });
         let shadow_ws_part = self.worksheet_part_for_sheet(&cell_ref.sheet)?;
@@ -125,7 +128,10 @@ impl Workbook {
             id: id.clone().into(),
             parent_id: Some(parent_id.to_string().into()),
             done: None,
-            threaded_comment_text: Some(patch.text.clone().into()),
+            threaded_comment_text: Some(tc::ThreadedCommentText(x::XstringType {
+                xml_content: Some(patch.text.clone()),
+                ..Default::default()
+            })),
             ..Default::default()
         });
         let shadow_ws_part = self.worksheet_part_for_sheet(&sheet)?;
@@ -254,7 +260,7 @@ fn note_to_info(
     let text = note
         .threaded_comment_text
         .as_ref()
-        .map(|s| s.as_str().to_string())
+        .and_then(|s| s.0.xml_content.clone())
         .unwrap_or_default();
     let date = note.d_t.as_ref().map(|s| s.as_str().to_string());
     let done = note
@@ -450,11 +456,11 @@ fn write_classic_shadow(
         reference: cell_ref_str.to_string().into(),
         author_id: author_id as u32,
         comment_text: Box::new(x::CommentText {
-            text: Some(x::Text(x::XstringType {
+            text: Some(x::Text {
                 space: Some(ooxmlsdk::schemas::xml::SpaceProcessingModeValues::Preserve),
                 xml_content: Some(text.to_string().into()),
                 ..Default::default()
-            })),
+            }),
             ..Default::default()
         }),
         ..Default::default()

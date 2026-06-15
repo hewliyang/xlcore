@@ -13,22 +13,23 @@ import type { ChartTextStyle } from "./ChartTextStyle.js";
  *
  * schema-excluded: legendPos, legendEntry, overlay, extLst
  */
-export type ChartLegend = { 
-/**
- * `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
- * `"none"` for an explicit no-fill (`a:noFill`).
- */
-fill?: string, 
-/**
- * `c:spPr/a:ln` border styling (width, dash, hidden).
- */
-border?: ChartLine, 
-/**
- * `c:txPr/a:p/a:pPr/a:defRPr` legend text font.
- */
-font?: ChartTextStyle, 
-/**
- * `c:legend/c:layout/c:manualLayout` manual legend placement.
- * {@link ChartManualLayout.layoutTarget} is ignored (plot area only).
- */
-layout?: ChartManualLayout, };
+export type ChartLegend = {
+  /**
+   * `c:spPr` solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`, or the literal
+   * `"none"` for an explicit no-fill (`a:noFill`).
+   */
+  fill?: string;
+  /**
+   * `c:spPr/a:ln` border styling (width, dash, hidden).
+   */
+  border?: ChartLine;
+  /**
+   * `c:txPr/a:p/a:pPr/a:defRPr` legend text font.
+   */
+  font?: ChartTextStyle;
+  /**
+   * `c:legend/c:layout/c:manualLayout` manual legend placement.
+   * {@link ChartManualLayout.layoutTarget} is ignored (plot area only).
+   */
+  layout?: ChartManualLayout;
+};

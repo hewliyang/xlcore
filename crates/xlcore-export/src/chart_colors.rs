@@ -54,7 +54,10 @@ pub(crate) fn series_color_via_debug(
     None
 }
 
-pub(crate) fn color_from_solid_fill_block(fill_block: &str, theme: Option<&Theme>) -> Option<String> {
+pub(crate) fn color_from_solid_fill_block(
+    fill_block: &str,
+    theme: Option<&Theme>,
+) -> Option<String> {
     let end = fill_block
         .find("})),")
         .or_else(|| fill_block.find("}))"))
