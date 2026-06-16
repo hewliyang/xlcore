@@ -112,3 +112,4 @@ Routing pivot/table filtering through the worker needs the controllers to allow
 - Item 1 — edit worker (`src/editWorker.ts`) + `WorkerWorkbook` proxy with shadow workbook under `./worker` entry.
 - Item 2 — `examples/xlsx-app.html` routes editing/recalc/save through `WorkerWorkbook`; previewer `engine` = `wb.engine`.
 - Item 3 — async-capable pivot/table filter controllers + `WorkerWorkbook` pivot/table ops (`pivotMetas`/`distinctValues`/`updatePivot`/`tableSetFilter`/`tableSetSort`).
+- Item 4 — example pivot/table filtering routed through `WorkerWorkbook` async ops.

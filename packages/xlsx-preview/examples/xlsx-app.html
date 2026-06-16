@@ -624,7 +624,7 @@ try {
   throw error;
 }
 const ASSET_BASE = runtime.assetBase;
-const { createWorkbookPreviewerFromFile, Workbook, WorkerWorkbook, distinctValuesFor } = runtime;
+const { createWorkbookPreviewerFromFile, Workbook, WorkerWorkbook } = runtime;
 const colorToCssWithTheme = runtime.colorToCssWithTheme ?? fallbackColorToCssWithTheme;
 const picker = document.getElementById("picker");
 const status = document.getElementById("status");
@@ -1092,13 +1092,11 @@ async function openWorkbookForFile(file) {
   }
 }
 
-function buildPivotController(wb) {
-  if (wb == null || typeof wb.worksheets !== "function") return null;
+async function buildPivotController(wb) {
+  if (wb == null) return null;
   const byName = new Map();
-  for (const sheet of wb.worksheets()) {
-    for (const info of sheet.pivots.list()) {
-      byName.set(info.name, { sheet: sheet.name, id: info.id, sourceRef: info.sourceRef });
-    }
+  for (const meta of await wb.pivotMetas()) {
+    byName.set(meta.name, { sheet: meta.sheet, id: meta.id, sourceRef: meta.sourceRef });
   }
   if (byName.size === 0) return null;
   const hidden = new Map();
@@ -1111,13 +1109,12 @@ function buildPivotController(wb) {
       const [p, field] = k.split("\u0000");
       if (p === pivot && hide.length > 0) hiddenItems.push({ field, hide });
     }
-    wb.sheet(meta.sheet).pivots.update(meta.id, { hiddenItems });
-    return wb.layout();
+    return wb.updatePivot(meta.sheet, meta.id, { hiddenItems });
   };
   return {
     items: ({ pivot, field }) => {
       const meta = byName.get(pivot);
-      return meta ? distinctValuesFor(wb, meta.sourceRef, field) : [];
+      return meta ? wb.distinctValues(meta.sourceRef, field) : [];
     },
     hiddenValues: ({ pivot, field }) => hidden.get(key(pivot, field)) ?? [],
     setHidden: ({ pivot, field, hidden: hide }) => {
@@ -1127,44 +1124,24 @@ function buildPivotController(wb) {
   };
 }
 
-function buildTableController(wb) {
-  if (wb == null || typeof wb.worksheets !== "function") return null;
+async function buildTableController(wb) {
+  if (wb == null) return null;
   const kept = new Map();
-  const refSheet = (ref) => {
-    const bang = ref.lastIndexOf("!");
-    if (bang < 0) return null;
-    let s = ref.slice(0, bang);
-    if (s.startsWith("'") && s.endsWith("'")) s = s.slice(1, -1).replace(/''/g, "'");
-    return s;
-  };
-  const wsFor = (ref) => {
-    const name = refSheet(ref);
-    const ws = name ? wb.sheet(name) : wb.activeSheet();
-    if (!ws.autoFilter.get()) ws.autoFilter.set(ref);
-    return ws;
-  };
   return {
-    items: ({ rangeRef, field }) => distinctValuesFor(wb, rangeRef, field),
+    items: ({ rangeRef, field }) => wb.distinctValues(rangeRef, field),
     activeValues: ({ columnOffset, rangeRef, field }) =>
-      kept.get(columnOffset) ?? distinctValuesFor(wb, rangeRef, field),
-    setFilter: ({ columnOffset, rangeRef, field, values }) => {
-      const ws = wsFor(rangeRef);
-      const all = distinctValuesFor(wb, rangeRef, field);
+      kept.get(columnOffset) ?? wb.distinctValues(rangeRef, field),
+    setFilter: async ({ columnOffset, rangeRef, field, values }) => {
+      const all = await wb.distinctValues(rangeRef, field);
       if (values.length === 0 || values.length >= all.length) {
-        ws.autoFilter.removeColumn(columnOffset);
         kept.delete(columnOffset);
       } else {
-        ws.autoFilter.setColumnValues(columnOffset, values);
         kept.set(columnOffset, values);
       }
-      return wb.layout();
+      return wb.tableSetFilter({ rangeRef, columnOffset, field, values });
     },
-    setSort: ({ columnOffset, rangeRef, descending }) => {
-      const ws = wsFor(rangeRef);
-      if (descending === null) ws.autoFilter.clearSort();
-      else ws.autoFilter.setSort(columnOffset, { descending });
-      return wb.layout();
-    },
+    setSort: ({ columnOffset, rangeRef, descending }) =>
+      wb.tableSetSort({ rangeRef, columnOffset, descending }),
   };
 }
 
@@ -1184,8 +1161,8 @@ async function loadWorkbookFile(file) {
     recalcButton.disabled = recalcWorkbook == null;
     downloadButton.disabled = recalcWorkbook == null;
     loadedFileName = file.name;
-    const pivotController = buildPivotController(recalcWorkbook);
-    const tableController = buildTableController(recalcWorkbook);
+    const pivotController = await buildPivotController(recalcWorkbook);
+    const tableController = await buildTableController(recalcWorkbook);
     previewer = await createWorkbookPreviewerFromFile(previewRoot, file, {
       wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
       workerUrl: `${ASSET_BASE}xlsxWorker.js`,

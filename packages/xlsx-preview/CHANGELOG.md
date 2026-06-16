@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Example app: pivot/table filtering routed through `WorkerWorkbook` async ops.
 - `WorkerWorkbook` pivot/table ops (`pivotMetas`/`distinctValues`/`updatePivot`/`tableSetFilter`/`tableSetSort`); pivot/table filter controllers now accept async returns.
 - `./worker` entry: `WorkerWorkbook` proxy runs recalc/layout/save off the main thread via a persistent edit worker, with a sync shadow-backed `engine` for highlights/autocomplete.
 - Example app: editing/recalc/save routed through `WorkerWorkbook`, keeping the main thread responsive on commit.
