@@ -11,6 +11,7 @@ import {
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
 import { referencesToHighlights } from "./highlights.js";
 import { autocompleteState, type AutocompleteState } from "./formulaAutocomplete.js";
+import { lookupSignature, signatureAt } from "./formulaSignature.js";
 import { applyReferenceAtCaret, caretAcceptsReference, type RefSpan } from "./formulaPointMode.js";
 import type { HighlightRange } from "./renderTypes.js";
 import type { DependencyReference } from "./api-schema/DependencyReference.js";
@@ -57,8 +58,14 @@ const HIGHLIGHT_PALETTE = [
   "#ca8a04",
 ];
 
-export type { PivotFilterController, PivotFilterContext } from "./pivotFilterPopover.js";
-export type { TableFilterController, TableFilterContext } from "./tableFilterPopover.js";
+export type {
+  PivotFilterController,
+  PivotFilterContext,
+} from "./pivotFilterPopover.js";
+export type {
+  TableFilterController,
+  TableFilterContext,
+} from "./tableFilterPopover.js";
 
 function isTabVisible(sheet: WireSheet, showHidden: boolean): boolean {
   const state = sheet.state;
@@ -172,6 +179,9 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private autocompleteData: AutocompleteState | null = null;
   private autocompleteActive = 0;
   private autocompleteBlurTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly signatureTip: HTMLDivElement;
+  private signatureFor: HTMLInputElement | null = null;
+  private signatureBlurTimer: ReturnType<typeof setTimeout> | null = null;
   private activeRefSpan: RefSpan | null = null;
   private readonly resizeObserver: ResizeObserver;
   private interactHandle: InteractHandle | null = null;
@@ -225,6 +235,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       this.formulaBox.addEventListener("focus", this.scheduleDraw);
       this.formulaBox.addEventListener("blur", () => {
         this.scheduleAutocompleteClose();
+        this.scheduleSignatureTipClose();
         this.scheduleDraw();
       });
     }
@@ -278,18 +289,27 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       "box-shadow:0 8px 24px rgba(15,23,42,0.18);padding:4px;min-width:140px;max-height:240px;overflow:auto;" +
       "font:12px ui-monospace,SFMono-Regular,Menlo,monospace;";
     document.body.append(this.autocompleteMenu);
+    this.signatureTip = document.createElement("div");
+    this.signatureTip.style.cssText =
+      "position:fixed;z-index:1099;display:none;background:#fff;border:1px solid #d4d4d8;border-radius:4px;" +
+      "box-shadow:0 4px 12px rgba(15,23,42,0.12);padding:6px 10px;max-width:480px;" +
+      "font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#111827;";
+    document.body.append(this.signatureTip);
     this.editInput.addEventListener("keydown", (ev) => this.onEditInputKeyDown(ev));
     this.editInput.addEventListener("input", () => {
       this.updateAutocomplete(this.editInput);
+      this.updateSignatureTip(this.editInput);
       this.scheduleDraw();
     });
     this.editInput.addEventListener("blur", () => {
       this.scheduleAutocompleteClose();
+      this.scheduleSignatureTipClose();
       this.commitEdit(null);
     });
     if (this.editable)
       this.formulaBox.addEventListener("input", () => {
         this.updateAutocomplete(this.formulaBox);
+        this.updateSignatureTip(this.formulaBox);
         this.scheduleDraw();
       });
     this.root.append(this.formulaBar, this.tabs, this.stage);
@@ -320,7 +340,10 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   replaceLayout(rawLayout: WorkbookLayout): void {
     this.hideEditOverlay();
     const prevIndex = this.activeSheetIndex;
-    const prevScroll = { top: this.stage.scrollTop, left: this.stage.scrollLeft };
+    const prevScroll = {
+      top: this.stage.scrollTop,
+      left: this.stage.scrollLeft,
+    };
     this.layout = decodeWorkbookLayout(rawLayout);
     if (this.sheetStates.length !== this.layout.sheets.length) {
       const next = this.layout.sheets.map(
@@ -353,7 +376,9 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.interactHandle?.destroy();
     this.interactHandle = null;
     this.closeAutocomplete();
+    this.hideSignatureTip();
     this.autocompleteMenu.remove();
+    this.signatureTip.remove();
     this.resizeObserver.disconnect();
     this.stage.removeEventListener("scroll", this.scheduleDraw);
     this.canvas.removeEventListener(
@@ -615,7 +640,11 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
             });
           }
           this.tablePopover.open(
-            { field: info.field, columnOffset: info.columnOffset, rangeRef: info.rangeRef },
+            {
+              field: info.field,
+              columnOffset: info.columnOffset,
+              rangeRef: info.rangeRef,
+            },
             info.rect,
           );
         }
@@ -740,7 +769,11 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     const caret = input.selectionStart;
     if (caret === null) return this.closeAutocomplete();
     const state = autocompleteState(input.value, caret, this.getFunctionNames());
-    if (!state) return this.closeAutocomplete();
+    if (!state) {
+      this.closeAutocomplete();
+      this.updateSignatureTip(input);
+      return;
+    }
     this.autocompleteFor = input;
     this.autocompleteData = state;
     if (this.autocompleteActive >= state.matches.length) this.autocompleteActive = 0;
@@ -804,6 +837,94 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     input.setSelectionRange(caret, caret);
     this.closeAutocomplete();
     input.dispatchEvent(new Event("input"));
+  }
+
+  private updateSignatureTip(input: HTMLInputElement): void {
+    if (this.isAutocompleteOpen()) return this.hideSignatureTip();
+    const caret = input.selectionStart;
+    if (caret === null) return this.hideSignatureTip();
+    const ctx = signatureAt(input.value, caret);
+    if (!ctx) return this.hideSignatureTip();
+    const sig = lookupSignature(ctx.name);
+    if (!sig) return this.hideSignatureTip();
+    this.signatureFor = input;
+    this.renderSignatureTip(input, sig, ctx.argIndex);
+  }
+
+  private renderSignatureTip(
+    input: HTMLInputElement,
+    sig: { name: string; args: string[]; summary: string },
+    argIndex: number,
+  ): void {
+    const tip = this.signatureTip;
+    tip.replaceChildren();
+
+    const sigLine = document.createElement("div");
+    sigLine.style.cssText = "margin:0 0 6px 0;line-height:1.4;";
+
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = sig.name;
+    nameSpan.style.fontWeight = "600";
+    sigLine.append(nameSpan);
+
+    const openParen = document.createElement("span");
+    openParen.textContent = "(";
+    sigLine.append(openParen);
+
+    const highlightIndex =
+      sig.args.length === 0
+        ? -1
+        : argIndex >= sig.args.length - 1 && sig.args[sig.args.length - 1] === "..."
+          ? sig.args.length - 1
+          : Math.min(argIndex, sig.args.length - 1);
+
+    sig.args.forEach((arg, i) => {
+      if (i > 0) {
+        const comma = document.createElement("span");
+        comma.textContent = ", ";
+        sigLine.append(comma);
+      }
+      const argSpan = document.createElement("span");
+      argSpan.textContent = arg;
+      if (i === highlightIndex) {
+        argSpan.style.cssText =
+          "font-weight:700;background:#fef9c3;padding:0 2px;border-radius:2px;";
+      }
+      sigLine.append(argSpan);
+    });
+
+    const closeParen = document.createElement("span");
+    closeParen.textContent = ")";
+    sigLine.append(closeParen);
+    tip.append(sigLine);
+
+    const summaryLabel = document.createElement("div");
+    summaryLabel.textContent = "Summary";
+    summaryLabel.style.cssText =
+      "font:600 11px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#6b7280;margin:0 0 2px 0;";
+    tip.append(summaryLabel);
+
+    const summaryText = document.createElement("div");
+    summaryText.textContent = sig.summary;
+    summaryText.style.cssText =
+      "font:12px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#374151;line-height:1.35;";
+    tip.append(summaryText);
+
+    const rect = input.getBoundingClientRect();
+    tip.style.left = `${rect.left}px`;
+    tip.style.top = `${rect.bottom + 2}px`;
+    tip.style.display = "block";
+  }
+
+  private hideSignatureTip(): void {
+    this.signatureFor = null;
+    this.signatureTip.style.display = "none";
+    this.signatureTip.replaceChildren();
+  }
+
+  private scheduleSignatureTipClose(): void {
+    if (this.signatureBlurTimer !== null) clearTimeout(this.signatureBlurTimer);
+    this.signatureBlurTimer = setTimeout(() => this.hideSignatureTip(), 120);
   }
 
   private handleAutocompleteKey(ev: KeyboardEvent): boolean {
@@ -894,6 +1015,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     input.focus({ preventScroll: true });
     input.setSelectionRange(res.caret, res.caret);
     this.closeAutocomplete();
+    this.updateSignatureTip(input);
     this.scheduleDraw();
   }
 
@@ -955,6 +1077,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
 
   private hideEditOverlay(): void {
     this.closeAutocomplete();
+    this.hideSignatureTip();
     this.activeRefSpan = null;
     this.pointHighlight = null;
     this.pointKeyAnchor = null;
