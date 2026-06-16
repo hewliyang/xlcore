@@ -1,18 +1,38 @@
+import { Workbook, distinctValuesFor } from "./api.js";
+import type { Worksheet } from "./api-worksheet.js";
 import type { CellInput } from "./api-range.js";
 import type {
   DefinedNameInfo,
+  PivotInfo,
+  PivotUpdate,
   SheetInfo,
   LayoutOptions as WorkbookLayoutOptions,
 } from "./api-schema/index.js";
 import { xlsxLoadErrorPayloadFromUnknown } from "./errors.js";
-import init, { WorkbookHandle as WasmWorkbookHandle } from "./xlcore_wasm.js";
 
 export interface WorkbookStructure {
   sheets: string[];
   definedNames: DefinedNameInfo[];
 }
 
-export type EditWorkerOp = "open" | "applyEdit" | "recalculate" | "layout" | "save";
+export interface PivotMeta {
+  name: string;
+  sheet: string;
+  id: string;
+  sourceRef: string;
+}
+
+export type EditWorkerOp =
+  | "open"
+  | "applyEdit"
+  | "recalculate"
+  | "layout"
+  | "save"
+  | "pivotMetas"
+  | "distinctValues"
+  | "updatePivot"
+  | "tableSetFilter"
+  | "tableSetSort";
 
 export interface EditWorkerRequest {
   id: number;
@@ -24,8 +44,7 @@ export type EditWorkerResponse =
   | { id: number; ok: true; result: unknown }
   | { id: number; ok: false; error: ReturnType<typeof xlsxLoadErrorPayloadFromUnknown> };
 
-let wasmReady: Promise<void> | null = null;
-let handle: WasmWorkbookHandle | null = null;
+let wb: Workbook | null = null;
 
 function post(message: EditWorkerResponse, transfer?: Transferable[]): void {
   (
@@ -43,19 +62,34 @@ function coerce(input: string): CellInput {
   return input;
 }
 
-function requireHandle(): WasmWorkbookHandle {
-  if (!handle) {
+function requireWorkbook(): Workbook {
+  if (!wb) {
     throw new Error("workbook is not open");
   }
-  return handle;
+  return wb;
 }
 
 function structure(): WorkbookStructure {
-  const h = requireHandle();
+  const w = requireWorkbook();
   return {
-    sheets: (h.sheets() as SheetInfo[]).map((s) => s.name),
-    definedNames: h.definedNames() as DefinedNameInfo[],
+    sheets: w.worksheets().map((s) => s.name),
+    definedNames: w.definedNames.list(),
   };
+}
+
+function unquoteSheet(ref: string): string | null {
+  const bang = ref.lastIndexOf("!");
+  if (bang < 0) return null;
+  let s = ref.slice(0, bang);
+  if (s.startsWith("'") && s.endsWith("'")) s = s.slice(1, -1).replace(/''/g, "'");
+  return s;
+}
+
+function wsFromRangeRef(w: Workbook, rangeRef: string): Worksheet {
+  const name = unquoteSheet(rangeRef);
+  const ws = name ? w.sheet(name) : w.activeSheet();
+  if (!ws.autoFilter.get()) ws.autoFilter.set(rangeRef);
+  return ws;
 }
 
 async function handleRequest(request: EditWorkerRequest): Promise<{
@@ -68,11 +102,9 @@ async function handleRequest(request: EditWorkerRequest): Promise<{
         bytes: ArrayBuffer;
         wasmBinaryUrl: string;
       };
-      wasmReady ??= init({ module_or_path: wasmBinaryUrl }).then(() => undefined);
-      await wasmReady;
-      handle?.dispose();
-      handle = WasmWorkbookHandle.open(new Uint8Array(bytes));
-      return { result: { layout: handle.layout({}), structure: structure() } };
+      wb?.dispose();
+      wb = await Workbook.open(new Uint8Array(bytes), { wasmBinaryUrl });
+      return { result: { layout: wb.layout({}), structure: structure() } };
     }
     case "applyEdit": {
       const { sheetName, address, input, recalc } = request.args as {
@@ -81,30 +113,93 @@ async function handleRequest(request: EditWorkerRequest): Promise<{
         input: string;
         recalc: boolean;
       };
-      const h = requireHandle();
+      const w = requireWorkbook();
+      const cell = w.sheet(sheetName).cell(address);
       if (input.startsWith("=")) {
-        h.setFormula(sheetName, address, input);
+        cell.setFormula(input);
       } else {
-        h.setValue(sheetName, address, coerce(input));
+        cell.setValue(coerce(input));
       }
       if (recalc) {
-        h.recalculate(true);
+        w.recalculate();
       }
-      return { result: { layout: h.layout({}), structure: structure() } };
+      return { result: { layout: w.layout({}), structure: structure() } };
     }
     case "recalculate": {
-      const h = requireHandle();
-      h.recalculate(true);
-      return { result: { layout: h.layout({}), structure: structure() } };
+      const w = requireWorkbook();
+      w.recalculate();
+      return { result: { layout: w.layout({}), structure: structure() } };
     }
     case "layout": {
       const { options } = request.args as { options?: WorkbookLayoutOptions };
-      const h = requireHandle();
-      return { result: { layout: h.layout(options ?? {}) } };
+      const w = requireWorkbook();
+      return { result: { layout: w.layout(options ?? {}) } };
     }
     case "save": {
-      const bytes = requireHandle().save();
+      const bytes = requireWorkbook().save();
       return { result: { bytes }, transfer: [bytes.buffer] };
+    }
+    case "pivotMetas": {
+      const w = requireWorkbook();
+      const pivots: PivotMeta[] = [];
+      for (const ws of w.worksheets()) {
+        for (const info of ws.pivots.list() as PivotInfo[]) {
+          pivots.push({
+            name: info.name,
+            sheet: ws.name,
+            id: info.id,
+            sourceRef: info.sourceRef,
+          });
+        }
+      }
+      return { result: { pivots } };
+    }
+    case "distinctValues": {
+      const { sourceRef, field } = request.args as { sourceRef: string; field: string };
+      const w = requireWorkbook();
+      return { result: { values: distinctValuesFor(w, sourceRef, field) } };
+    }
+    case "updatePivot": {
+      const { sheet, id, patch } = request.args as {
+        sheet: string;
+        id: string;
+        patch: PivotUpdate;
+      };
+      const w = requireWorkbook();
+      w.sheet(sheet).pivots.update(id, patch);
+      return { result: { layout: w.layout({}), structure: structure() } };
+    }
+    case "tableSetFilter": {
+      const { rangeRef, columnOffset, field, values } = request.args as {
+        rangeRef: string;
+        columnOffset: number;
+        field: string;
+        values: string[];
+      };
+      const w = requireWorkbook();
+      const ws = wsFromRangeRef(w, rangeRef);
+      const all = distinctValuesFor(w, rangeRef, field);
+      if (values.length === 0 || values.length >= all.length) {
+        ws.autoFilter.removeColumn(columnOffset);
+      } else {
+        ws.autoFilter.setColumnValues(columnOffset, values);
+      }
+      return { result: { layout: w.layout({}), structure: structure() } };
+    }
+    case "tableSetSort": {
+      const { rangeRef, columnOffset, descending } = request.args as {
+        rangeRef: string;
+        columnOffset: number;
+        descending: boolean | null;
+      };
+      const w = requireWorkbook();
+      const ws = wsFromRangeRef(w, rangeRef);
+      if (descending === null) {
+        ws.autoFilter.clearSort();
+      } else {
+        ws.autoFilter.setSort(columnOffset, { descending });
+      }
+      return { result: { layout: w.layout({}), structure: structure() } };
     }
   }
 }

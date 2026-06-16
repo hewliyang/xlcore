@@ -7,13 +7,17 @@ export interface TableFilterContext {
 }
 
 export interface TableFilterController {
-  items(ctx: TableFilterContext): string[];
+  items(ctx: TableFilterContext): string[] | Promise<string[]>;
 
-  activeValues(ctx: TableFilterContext): string[];
+  activeValues(ctx: TableFilterContext): string[] | Promise<string[]>;
 
-  setFilter(ctx: TableFilterContext & { values: string[] }): WorkbookLayout | void;
+  setFilter(
+    ctx: TableFilterContext & { values: string[] },
+  ): WorkbookLayout | void | Promise<WorkbookLayout | void>;
 
-  setSort(ctx: TableFilterContext & { descending: boolean | null }): WorkbookLayout | void;
+  setSort(
+    ctx: TableFilterContext & { descending: boolean | null },
+  ): WorkbookLayout | void | Promise<WorkbookLayout | void>;
 }
 
 export interface TableFilterPopoverHandle {
@@ -39,10 +43,12 @@ export function createTableFilterPopover(
     menu = null;
   }
 
-  function render(ctx: TableFilterContext) {
+  async function render(ctx: TableFilterContext) {
     if (!menu) return;
-    const items = controller.items(ctx);
-    const active = controller.activeValues(ctx);
+    const items = await Promise.resolve(controller.items(ctx));
+    if (!menu) return;
+    const active = await Promise.resolve(controller.activeValues(ctx));
+    if (!menu) return;
     const kept = new Set(active.length === 0 ? items : active);
     menu.replaceChildren();
 
@@ -65,12 +71,12 @@ export function createTableFilterPopover(
       btn.onmouseenter = () => (btn.style.background = "#f1f5f9");
       btn.onmouseleave = () => (btn.style.background = "none");
     }
-    sortAsc.onclick = () => {
-      onChange(controller.setSort({ ...ctx, descending: false }));
+    sortAsc.onclick = async () => {
+      onChange(await Promise.resolve(controller.setSort({ ...ctx, descending: false })));
       close();
     };
-    sortDesc.onclick = () => {
-      onChange(controller.setSort({ ...ctx, descending: true }));
+    sortDesc.onclick = async () => {
+      onChange(await Promise.resolve(controller.setSort({ ...ctx, descending: true })));
       close();
     };
     menu.append(sortAsc, sortDesc);
@@ -80,10 +86,10 @@ export function createTableFilterPopover(
     clear.href = "#";
     clear.style.cssText =
       "display:block;padding:4px 6px;margin:2px 0;color:#2563eb;cursor:pointer;text-decoration:none;";
-    clear.onclick = (e) => {
+    clear.onclick = async (e) => {
       e.preventDefault();
-      onChange(controller.setFilter({ ...ctx, values: [] }));
-      render(ctx);
+      onChange(await Promise.resolve(controller.setFilter({ ...ctx, values: [] })));
+      void render(ctx);
     };
     menu.append(clear);
 
@@ -106,14 +112,14 @@ export function createTableFilterPopover(
       const cb = document.createElement("input");
       cb.type = "checkbox";
       cb.checked = kept.has(value);
-      cb.onchange = () => {
+      cb.onchange = async () => {
         const next = new Set(kept);
         if (cb.checked) next.add(value);
         else next.delete(value);
         const values = next.size === items.length ? [] : [...next];
-        const layout = controller.setFilter({ ...ctx, values });
+        const layout = await Promise.resolve(controller.setFilter({ ...ctx, values }));
         onChange(layout);
-        render(ctx);
+        void render(ctx);
       };
       const span = document.createElement("span");
       span.textContent = value;
@@ -140,7 +146,7 @@ export function createTableFilterPopover(
     menu.style.top = `${anchor.bottom + 4}px`;
 
     document.body.append(scrim, menu);
-    render(ctx);
+    void render(ctx);
   }
 
   return {

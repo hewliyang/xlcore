@@ -7,11 +7,13 @@ export interface PivotFilterContext {
 }
 
 export interface PivotFilterController {
-  items(ctx: PivotFilterContext): string[];
+  items(ctx: PivotFilterContext): string[] | Promise<string[]>;
 
-  hiddenValues(ctx: PivotFilterContext): string[];
+  hiddenValues(ctx: PivotFilterContext): string[] | Promise<string[]>;
 
-  setHidden(ctx: PivotFilterContext & { hidden: string[] }): WorkbookLayout | void;
+  setHidden(
+    ctx: PivotFilterContext & { hidden: string[] },
+  ): WorkbookLayout | void | Promise<WorkbookLayout | void>;
 }
 
 export interface PivotFilterPopoverHandle {
@@ -37,10 +39,12 @@ export function createPivotFilterPopover(
     menu = null;
   }
 
-  function render(ctx: PivotFilterContext) {
+  async function render(ctx: PivotFilterContext) {
     if (!menu) return;
-    const items = controller.items(ctx);
-    const hidden = new Set(controller.hiddenValues(ctx));
+    const items = await Promise.resolve(controller.items(ctx));
+    if (!menu) return;
+    const hidden = new Set(await Promise.resolve(controller.hiddenValues(ctx)));
+    if (!menu) return;
     menu.replaceChildren();
 
     const header = document.createElement("div");
@@ -64,13 +68,13 @@ export function createPivotFilterPopover(
       const cb = document.createElement("input");
       cb.type = "checkbox";
       cb.checked = !hidden.has(value);
-      cb.onchange = () => {
-        const next = new Set(controller.hiddenValues(ctx));
+      cb.onchange = async () => {
+        const next = new Set(await Promise.resolve(controller.hiddenValues(ctx)));
         if (cb.checked) next.delete(value);
         else next.add(value);
-        const layout = controller.setHidden({ ...ctx, hidden: [...next] });
+        const layout = await Promise.resolve(controller.setHidden({ ...ctx, hidden: [...next] }));
         onChange(layout);
-        render(ctx);
+        void render(ctx);
       };
       const span = document.createElement("span");
       span.textContent = value;
@@ -97,7 +101,7 @@ export function createPivotFilterPopover(
     menu.style.top = `${anchor.bottom + 4}px`;
 
     document.body.append(scrim, menu);
-    render(ctx);
+    void render(ctx);
   }
 
   return {

@@ -1,12 +1,14 @@
 import { Workbook } from "./api.js";
 import type {
   DependencyReference,
+  PivotUpdate,
   LayoutOptions as WorkbookLayoutOptions,
 } from "./api-schema/index.js";
 import type {
   EditWorkerOp,
   EditWorkerRequest,
   EditWorkerResponse,
+  PivotMeta,
   WorkbookStructure,
 } from "./editWorker.js";
 import { XlsxLoadError } from "./errors.js";
@@ -111,6 +113,50 @@ export class WorkerWorkbook {
   async save(): Promise<Uint8Array> {
     const { bytes } = await this.request<{ bytes: Uint8Array }>("save", {});
     return bytes;
+  }
+
+  async pivotMetas(): Promise<PivotMeta[]> {
+    const { pivots } = await this.request<{ pivots: PivotMeta[] }>("pivotMetas", {});
+    return pivots;
+  }
+
+  async distinctValues(sourceRef: string, field: string): Promise<string[]> {
+    const { values } = await this.request<{ values: string[] }>("distinctValues", {
+      sourceRef,
+      field,
+    });
+    return values;
+  }
+
+  async updatePivot(sheet: string, id: string, patch: PivotUpdate): Promise<WorkbookLayout> {
+    const { layout, structure } = await this.request<EditResult>("updatePivot", {
+      sheet,
+      id,
+      patch,
+    });
+    await this.syncShadow(structure);
+    return layout;
+  }
+
+  async tableSetFilter(input: {
+    rangeRef: string;
+    columnOffset: number;
+    field: string;
+    values: string[];
+  }): Promise<WorkbookLayout> {
+    const { layout, structure } = await this.request<EditResult>("tableSetFilter", { ...input });
+    await this.syncShadow(structure);
+    return layout;
+  }
+
+  async tableSetSort(input: {
+    rangeRef: string;
+    columnOffset: number;
+    descending: boolean | null;
+  }): Promise<WorkbookLayout> {
+    const { layout, structure } = await this.request<EditResult>("tableSetSort", { ...input });
+    await this.syncShadow(structure);
+    return layout;
   }
 
   get engine(): PreviewerEngine {
