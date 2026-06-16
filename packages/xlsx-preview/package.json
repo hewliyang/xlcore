@@ -80,6 +80,10 @@
       "import": "./dist/api.js",
       "types": "./dist/api.d.ts"
     },
+    "./worker": {
+      "import": "./dist/worker.js",
+      "types": "./dist/worker.d.ts"
+    },
     "./react": {
       "import": "./dist/react.js",
       "types": "./dist/react.d.ts"

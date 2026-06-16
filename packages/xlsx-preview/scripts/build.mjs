@@ -44,6 +44,8 @@ await build({
   entryPoints: [
     "src/browserLoader.ts",
     "src/xlsxWorker.ts",
+    "src/editWorker.ts",
+    "src/worker.ts",
     "src/api.ts",
     "src/api-refs.ts",
     "src/api-range.ts",

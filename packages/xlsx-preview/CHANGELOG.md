@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `./worker` entry: `WorkerWorkbook` proxy runs recalc/layout/save off the main thread via a persistent edit worker, with a sync shadow-backed `engine` for highlights/autocomplete.
 - Previewer: optional `onDownload` callback renders a Download button in the toolbar.
 
 - Point mode: click/drag/shift-click the grid while editing a formula inserts or extends A1 references (pure `formulaPointMode`; `InteractOptions.isPointModeActive`/`onPointModeRef`).
