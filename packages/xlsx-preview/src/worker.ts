@@ -218,13 +218,15 @@ export class WorkerWorkbook {
       }
     }
     for (const info of structure.definedNames) {
-      shadow.definedNames.set({
-        name: info.name,
-        reference: info.reference,
-        scope: info.scope,
-        comment: info.comment,
-        hidden: info.hidden,
-      });
+      try {
+        shadow.definedNames.set({
+          name: info.name,
+          reference: info.reference,
+          scope: info.scope,
+          comment: info.comment,
+          hidden: info.hidden,
+        });
+      } catch {}
     }
     this.shadow = shadow;
     this.shadowSnapshot = snapshot;
