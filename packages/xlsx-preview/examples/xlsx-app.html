@@ -614,7 +614,7 @@
 import { loadXlsxPreviewRuntime } from "./shared/loadXlsxPreview.js";
 let runtime;
 try {
-  runtime = await loadXlsxPreviewRuntime({ modules: ["browserLoader.js", "color.js", "api.js"] });
+  runtime = await loadXlsxPreviewRuntime({ modules: ["browserLoader.js", "color.js", "api.js", "worker.js"] });
 } catch (error) {
   document.body.innerHTML =
     `<pre style="margin: 24px; padding: 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font: 13px/1.5 ui-monospace, monospace; color: #7f1d1d; white-space: pre-wrap;">` +
@@ -624,7 +624,7 @@ try {
   throw error;
 }
 const ASSET_BASE = runtime.assetBase;
-const { createWorkbookPreviewerFromFile, Workbook, distinctValuesFor } = runtime;
+const { createWorkbookPreviewerFromFile, Workbook, WorkerWorkbook, distinctValuesFor } = runtime;
 const colorToCssWithTheme = runtime.colorToCssWithTheme ?? fallbackColorToCssWithTheme;
 const picker = document.getElementById("picker");
 const status = document.getElementById("status");
@@ -660,24 +660,18 @@ autoRecalcToggle.addEventListener("change", () => {
   autoRecalc = autoRecalcToggle.checked;
 });
 
-function coerceInput(input) {
-  if (input === "") return null;
-  if (/^-?\d+(\.\d+)?$/.test(input)) return Number(input);
-  if (input === "true") return true;
-  if (input === "false") return false;
-  return input;
-}
-
-function applyEdit({ sheetIndex, r, c, input, commitMove }) {
+async function applyEdit({ sheetIndex, r, c, input, commitMove }) {
   if (recalcWorkbook == null || !previewer) return;
   const addr = formatCell(r, c);
   try {
     const name = previewer.layout.sheets[sheetIndex].name;
-    const ws = recalcWorkbook.sheet(name);
-    if (input.startsWith("=")) ws.cell(addr).setFormula(input);
-    else ws.cell(addr).setValue(coerceInput(input));
-    if (autoRecalc) recalcWorkbook.recalculate();
-    previewer.replaceLayout(recalcWorkbook.layout());
+    const { layout } = await recalcWorkbook.applyEdit({
+      sheetName: name,
+      address: addr,
+      input,
+      recalc: autoRecalc,
+    });
+    previewer.replaceLayout(layout);
     if (commitMove) {
       let nr = r;
       let nc = c;
@@ -1087,10 +1081,11 @@ function formatBytes(n) {
 }
 
 async function openWorkbookForFile(file) {
-  if (Workbook == null || !/\.xlsx$/i.test(file.name)) return null;
+  if (WorkerWorkbook == null || !/\.xlsx$/i.test(file.name)) return null;
   try {
-    return await Workbook.open(await file.arrayBuffer(), {
+    return await WorkerWorkbook.open(await file.arrayBuffer(), {
       wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
+      workerUrl: `${ASSET_BASE}editWorker.js`,
     });
   } catch {
     return null;
@@ -1098,7 +1093,7 @@ async function openWorkbookForFile(file) {
 }
 
 function buildPivotController(wb) {
-  if (wb == null) return null;
+  if (wb == null || typeof wb.worksheets !== "function") return null;
   const byName = new Map();
   for (const sheet of wb.worksheets()) {
     for (const info of sheet.pivots.list()) {
@@ -1133,7 +1128,7 @@ function buildPivotController(wb) {
 }
 
 function buildTableController(wb) {
-  if (wb == null) return null;
+  if (wb == null || typeof wb.worksheets !== "function") return null;
   const kept = new Map();
   const refSheet = (ref) => {
     const bang = ref.lastIndexOf("!");
@@ -1184,6 +1179,7 @@ async function loadWorkbookFile(file) {
     Array.from(previewRoot.children).forEach((node) => {
       if (node.id !== "load-error" && node.id !== "leniency-chip") node.remove();
     });
+    recalcWorkbook?.dispose?.();
     recalcWorkbook = await openWorkbookForFile(file);
     recalcButton.disabled = recalcWorkbook == null;
     downloadButton.disabled = recalcWorkbook == null;
@@ -1197,14 +1193,7 @@ async function loadWorkbookFile(file) {
       editable: true,
       pivotController,
       tableController,
-      engine:
-        recalcWorkbook != null
-          ? {
-              parseReferences: (sheet, anchor, formula) =>
-                recalcWorkbook.parseFormulaReferences(sheet, anchor, formula),
-              functionNames: () => recalcWorkbook.functionNames(),
-            }
-          : undefined,
+      engine: recalcWorkbook != null ? recalcWorkbook.engine : undefined,
       onProgress: ({ label }) => setLoadingStage(label),
     });
     window.xlcorePreviewer = previewer;
@@ -1320,13 +1309,13 @@ document.getElementById("scroll-active").addEventListener("click", () => {
   renderState();
 });
 
-function runRecalc() {
+async function runRecalc() {
   if (!recalcWorkbook || !previewer) return;
   recalcButton.disabled = true;
   try {
-    recalcWorkbook.recalculate();
     const activeIndex = previewer.getActiveSheetIndex();
-    previewer.replaceLayout(recalcWorkbook.layout());
+    const layout = await recalcWorkbook.recalculate();
+    previewer.replaceLayout(layout);
     previewer.setActiveSheet(activeIndex);
     renderState();
     setStatus("recalculated");
@@ -1339,9 +1328,9 @@ function runRecalc() {
 
 recalcButton.addEventListener("click", runRecalc);
 
-function downloadWorkbook() {
+async function downloadWorkbook() {
   if (!recalcWorkbook) return;
-  const bytes = recalcWorkbook.save();
+  const bytes = await recalcWorkbook.save();
   const blob = new Blob([bytes], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });

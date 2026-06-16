@@ -56,20 +56,7 @@ Response: `{ id, ok: true, result } | { id, ok: false, error: XlsxLoadErrorPaylo
   (mirror `coerceInput` in `examples/xlsx-app.html`).
 - Errors: wrap via `xlsxLoadErrorPayloadFromUnknown` from `src/errors.ts`.
 
-## Backlog
-
-### Item 2 — feat(example): route editing through `WorkerWorkbook`
-- `examples/xlsx-app.html`: make `recalcWorkbook` a `WorkerWorkbook`. Add
-  `worker.js` to the `loadXlsxPreviewRuntime({ modules: [...] })` list and pull
-  `WorkerWorkbook` off `runtime`.
-- `applyEdit` becomes `async`: `const { layout } = await wb.applyEdit({ sheetName, address: addr, input, recalc: autoRecalc }); previewer.replaceLayout(layout);` then move/select.
-- Previewer `engine` = `wb.engine`. Recalc (F9/button) → `await wb.recalculate()`
-  then `replaceLayout`. Download → `await wb.save()`.
-- Keep the Auto-recalc toggle (drives the `recalc` flag).
-- Verify e2e: load a sample `.xlsx`, type `=1+2` in a cell, Enter → cell shows
-  `3`; edit a precedent of an existing formula → dependent updates; highlights
-  still appear instantly while typing a formula; main thread stays responsive.
-
 ## Shipped
 
 - Item 1 — edit worker (`src/editWorker.ts`) + `WorkerWorkbook` proxy with shadow workbook under `./worker` entry.
+- Item 2 — `examples/xlsx-app.html` routes editing/recalc/save through `WorkerWorkbook`; previewer `engine` = `wb.engine`.
