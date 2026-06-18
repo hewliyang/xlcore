@@ -3,9 +3,11 @@ import {
   FILTER_ARROW_BOX_H,
   FILTER_ARROW_BOX_W,
   FILTER_ARROW_INSET_X,
+  VALIDATION_ARROW_BOX,
   filterArrowRect,
   pivotFilterArrows,
   tableFilterArrows,
+  validationArrowRect,
 } from "./sheetChrome.js";
 import type { Sheet } from "./types.js";
 
@@ -16,6 +18,22 @@ describe("filterArrowRect", () => {
     expect(box.h).toBe(FILTER_ARROW_BOX_H);
     expect(box.x).toBe(100 + 80 - FILTER_ARROW_BOX_W - FILTER_ARROW_INSET_X);
     expect(box.y).toBe(40 + (20 - FILTER_ARROW_BOX_H) / 2);
+  });
+});
+
+describe("validationArrowRect", () => {
+  it("places the button just outside the cell's right edge", () => {
+    const box = validationArrowRect({ x: 100, y: 40, w: 80, h: 20 });
+    expect(box.x).toBe(180);
+    expect(box.w).toBe(VALIDATION_ARROW_BOX);
+    expect(box.h).toBe(VALIDATION_ARROW_BOX);
+    expect(box.y).toBe(40 + (20 - VALIDATION_ARROW_BOX) / 2);
+  });
+
+  it("caps the button height to short rows", () => {
+    const box = validationArrowRect({ x: 0, y: 0, w: 50, h: 10 });
+    expect(box.h).toBe(10);
+    expect(box.y).toBe(0);
   });
 });
 

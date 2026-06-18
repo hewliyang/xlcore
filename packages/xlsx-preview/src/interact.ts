@@ -1,7 +1,12 @@
 import type { Sheet, WorkbookLayout } from "./types.js";
 import { drawingHyperlinkAt } from "./drawingHits.js";
 import { cellRect } from "./geometry.js";
-import { filterArrowRect, pivotFilterArrows, tableFilterArrows } from "./sheetChrome.js";
+import {
+  filterArrowRect,
+  pivotFilterArrows,
+  tableFilterArrows,
+  validationArrowRect,
+} from "./sheetChrome.js";
 import type { PivotArrowHit } from "./sheetChrome.js";
 import type { TableFilterArrow } from "./schema/TableFilterArrow.js";
 import { buildGrid, frozenDims } from "./render.js";
@@ -296,13 +301,15 @@ export function attachInteractivity(
     const sheet = opts.getSheet();
     const dropdowns = sheet.validationDropdowns ?? [];
     if (dropdowns.length === 0) return null;
+    const active = opts.activeCell.get();
+    if (!active) return null;
+    const d = dropdowns.find((dd) => dd.r === active.r && dd.c === active.c);
+    if (!d) return null;
     const lists = sheet.validationLists ?? [];
     const grid = getGrid();
-    for (const d of dropdowns) {
-      const box = filterArrowRect(cellRect(grid, d.r, d.c));
-      if (lp.x >= box.x && lp.x <= box.x + box.w && lp.y >= box.y && lp.y <= box.y + box.h) {
-        return { r: d.r, c: d.c, options: lists[d.list] ?? [] };
-      }
+    const box = validationArrowRect(cellRect(grid, d.r, d.c));
+    if (lp.x >= box.x && lp.x <= box.x + box.w && lp.y >= box.y && lp.y <= box.y + box.h) {
+      return { r: d.r, c: d.c, options: lists[d.list] ?? [] };
     }
     return null;
   }
@@ -311,20 +318,20 @@ export function attachInteractivity(
     if (!opts.onValidationPick) return;
     const grid = getGrid();
     const sheet = opts.getSheet();
-    const box = filterArrowRect(cellRect(grid, a.r, a.c));
+    const cell = cellRect(grid, a.r, a.c);
     const z = opts.zoom.get();
     const r = canvas.getBoundingClientRect();
     const vp = opts.getViewport?.() ?? null;
     const { splitX, splitY } = frozenDims(sheet, grid);
     const sx = vp && a.c >= splitX ? vp.x : 0;
     const sy = vp && a.r >= splitY ? vp.y : 0;
-    const left = r.left + (box.x - sx) * z;
-    const top = r.top + (box.y - sy) * z;
+    const left = r.left + (cell.x - sx) * z;
+    const top = r.top + (cell.y - sy) * z;
     opts.onValidationPick({
       r: a.r,
       c: a.c,
       options: a.options,
-      rect: { left, top, right: left + box.w * z, bottom: top + box.h * z },
+      rect: { left, top, right: left + cell.w * z, bottom: top + cell.h * z },
     });
   }
 

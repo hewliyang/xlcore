@@ -114,7 +114,7 @@ export function render(
     drawCfIcons(ctx, sheet, grid, pane.vis, cfIconDraw);
     drawSparklines(ctx, sheet, grid, pane.vis);
     drawFilterArrows(ctx, sheet, grid, pane.vis, filterArrows);
-    drawValidationArrows(ctx, sheet, grid, pane.vis);
+    drawValidationArrows(ctx, sheet, grid, pane.vis, opts.activeCell ?? null);
     drawDrawings(ctx, sheet, grid);
     drawCommentMarkers(ctx, sheet, grid, pane.vis);
     if (opts.highlights && opts.highlights.length > 0) drawHighlights(ctx, grid, opts.highlights);

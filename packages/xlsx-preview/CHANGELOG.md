@@ -5,6 +5,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Data-validation dropdown arrows now render in a gutter just outside the cell's right edge (no longer overlap cell text); interactively only the active cell's arrow shows, static previews still show all.
+
 ### Added
 
 - Interactive list data-validation dropdowns: clicking a dropdown arrow (editable previewer) opens a popover of the validation's options and writes the chosen value via `celledit`.

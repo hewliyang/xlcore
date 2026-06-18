@@ -135,11 +135,12 @@ Excel does it differently and we should match it:
   every validated cell at once. (Filter/pivot header arrows are persistent in
   Excel; the on-hover-only rule is mainly the data-validation dropdown.)
 
-Follow-up: move arrow geometry to an outside-the-cell gutter rect and gate
-data-validation arrows on active/hover instead of always-on. Hit-testing in
-`interact.ts` must use the same gutter rect so clicks still land. Affects
-`sheetChrome.ts` (`filterArrowRect`, `drawFilterArrows`, `drawValidationArrows`)
-and `interact.ts` (`tableArrowAt`, `validationArrowAt`).
+Done for **data-validation** (`validationArrowRect` = gutter rect just outside
+the right edge; `drawValidationArrows`/`validationArrowAt` use it; arrow drawn
+only for the active cell when one is set, all cells in static previews where no
+active cell exists). Filter/table/pivot header arrows remain inside + persistent
+(matches Excel). Remaining follow-up: gate the DV arrow on hover too, and apply
+the gutter to merged validated cells (currently uses the anchor cell width).
 
 ## Key Files
 

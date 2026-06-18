@@ -191,6 +191,37 @@ export function filterArrowRect(rect: CellRect): CellRect {
   };
 }
 
+export const VALIDATION_ARROW_BOX = 16;
+
+export function validationArrowRect(rect: CellRect): CellRect {
+  const h = Math.min(VALIDATION_ARROW_BOX, rect.h);
+  return {
+    x: rect.x + rect.w,
+    y: rect.y + (rect.h - h) / 2,
+    w: VALIDATION_ARROW_BOX,
+    h,
+  };
+}
+
+function drawArrowButton(ctx: CanvasRenderingContext2D, box: CellRect): void {
+  const { x, y, w, h } = box;
+  ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.35)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+
+  ctx.fillStyle = "#374151";
+  ctx.beginPath();
+  const ax = x + w / 2;
+  const ay = y + h / 2 + 1;
+  ctx.moveTo(ax - 4, ay - 2);
+  ctx.lineTo(ax + 4, ay - 2);
+  ctx.lineTo(ax, ay + 3);
+  ctx.closePath();
+  ctx.fill();
+}
+
 export interface PivotArrowHit extends PivotFilterArrow {
   pivot: string;
 }
@@ -250,35 +281,15 @@ export function drawValidationArrows(
   sheet: Sheet,
   g: Grid,
   vis: Visible,
+  active: { r: number; c: number } | null,
 ): void {
   const dropdowns = sheet.validationDropdowns ?? [];
   if (dropdowns.length === 0) return;
-  const BOX_W = FILTER_ARROW_BOX_W,
-    BOX_H = FILTER_ARROW_BOX_H;
-  for (const d of dropdowns) {
-    const r = d.r,
-      c = d.c;
-    if (r < vis.firstRow || r > vis.lastRow) continue;
-    if (c < vis.firstCol || c > vis.lastCol) continue;
-    const box = filterArrowRect(cellRect(g, r, c));
-    const x = box.x;
-    const y = box.y;
-
-    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-    ctx.fillRect(x, y, BOX_W, BOX_H);
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.25)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x + 0.5, y + 0.5, BOX_W - 1, BOX_H - 1);
-
-    ctx.fillStyle = "#374151";
-    ctx.beginPath();
-    const ax = x + BOX_W / 2;
-    const ay = y + BOX_H / 2 + 2;
-    ctx.moveTo(ax - 4, ay - 2);
-    ctx.lineTo(ax + 4, ay - 2);
-    ctx.lineTo(ax, ay + 3);
-    ctx.closePath();
-    ctx.fill();
+  const list = active ? dropdowns.filter((d) => d.r === active.r && d.c === active.c) : dropdowns;
+  for (const d of list) {
+    if (d.r < vis.firstRow || d.r > vis.lastRow) continue;
+    if (d.c < vis.firstCol || d.c > vis.lastCol) continue;
+    drawArrowButton(ctx, validationArrowRect(cellRect(g, d.r, d.c)));
   }
 }
 
