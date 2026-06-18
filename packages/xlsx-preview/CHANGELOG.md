@@ -8,6 +8,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Render schema exposes `Sheet.validationDropdowns` (list-type data-validation cells) for dropdown rendering.
+- Render list data-validation dropdown arrows on the canvas previewer.
 
 ### Fixed
 

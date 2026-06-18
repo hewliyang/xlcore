@@ -42,17 +42,8 @@ Fixture already created: `packages/xlsx-preview/tests/fixtures/data-validation-l
 
 ### TODO
 
-- [ ] **Item 2 — TS: draw dropdown arrows for validation cells + e2e render.**
-  - In `sheetChrome.ts` add `drawValidationArrows(ctx, sheet, g, vis)` modeled on
-    `drawFilterArrows` but iterating `sheet.validationDropdowns ?? []`. Reuse
-    `filterArrowRect`, `FILTER_ARROW_BOX_W/H`, same chevron. Skip cells outside `vis`.
-  - Call it from `render.ts` right after the `drawFilterArrows(...)` call (per pane).
-  - Build TS (`pnpm --filter @hewliyang/xlsx-preview build:ts`) and render the
-    fixture: `node dist/cli.js tests/fixtures/data-validation-list.xlsx --output /tmp/dv.png --scale 2`.
-    Confirm dropdown arrows appear on B2:B6 and D2.
-  - Run package checks: `pnpm --filter @hewliyang/xlsx-preview typecheck` and `lint`.
-  - Changelog one-liner + commit `feat(xlsx-preview): render list data-validation dropdown arrows`.
-
 ### Shipped
+
+- Item 2 — TS: `drawValidationArrows` in `sheetChrome.ts` mirrors `drawFilterArrows`, iterates `sheet.validationDropdowns ?? []`, called per pane in `render.ts`. E2e render of fixture shows arrows on B2:B6 + D2.
 
 - Item 1 — Rust: `data_validation::extract` pulls list-type DV cells into render schema (`Sheet.validation_dropdowns` / `ValidationDropdown {r,c}`); ts-rs regen + `cargo test -p xlcore-export` green. Indexing is 1-based (B2..B6 + D2 => (2,2)..(6,2),(2,4)).

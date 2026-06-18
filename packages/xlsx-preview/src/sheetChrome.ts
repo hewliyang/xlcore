@@ -245,6 +245,43 @@ export function drawFilterArrows(
   }
 }
 
+export function drawValidationArrows(
+  ctx: CanvasRenderingContext2D,
+  sheet: Sheet,
+  g: Grid,
+  vis: Visible,
+): void {
+  const dropdowns = sheet.validationDropdowns ?? [];
+  if (dropdowns.length === 0) return;
+  const BOX_W = FILTER_ARROW_BOX_W,
+    BOX_H = FILTER_ARROW_BOX_H;
+  for (const d of dropdowns) {
+    const r = d.r,
+      c = d.c;
+    if (r < vis.firstRow || r > vis.lastRow) continue;
+    if (c < vis.firstCol || c > vis.lastCol) continue;
+    const box = filterArrowRect(cellRect(g, r, c));
+    const x = box.x;
+    const y = box.y;
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+    ctx.fillRect(x, y, BOX_W, BOX_H);
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.25)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, BOX_W - 1, BOX_H - 1);
+
+    ctx.fillStyle = "#374151";
+    ctx.beginPath();
+    const ax = x + BOX_W / 2;
+    const ay = y + BOX_H / 2 + 2;
+    ctx.moveTo(ax - 4, ay - 2);
+    ctx.lineTo(ax + 4, ay - 2);
+    ctx.lineTo(ax, ay + 3);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
 export function drawHeaders(
   ctx: CanvasRenderingContext2D,
   sheet: Sheet,
