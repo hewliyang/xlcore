@@ -6,6 +6,7 @@ mod comments;
 mod conditional_format;
 mod data_validation;
 mod defined_names;
+mod formula_canonicalize;
 mod hyperlinks;
 mod images;
 mod named_styles;

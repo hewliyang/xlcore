@@ -5,6 +5,7 @@ mod charts_ex;
 mod charts_helpers;
 mod charts_legacy;
 mod columnar;
+mod data_validation;
 mod fmt_scheme;
 mod font_flat;
 mod pivot_engine;
@@ -22,7 +23,6 @@ mod sparklines;
 mod styles;
 #[allow(dead_code)]
 pub mod table_engine;
-mod data_validation;
 mod table_filter;
 mod tables;
 mod theme;

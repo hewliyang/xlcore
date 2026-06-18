@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Formula bar now shows clean display formulas (e.g. `CONCAT` instead of `_xlfn.CONCAT`) by stripping OOXML `_xlfn.`/`_xlws.` decorations at extract time.
 - Data-validation dropdown arrows now render in a gutter just outside the cell's right edge (no longer overlap cell text); interactively only the active cell's arrow shows, static previews still show all.
 
 ### Added
@@ -17,6 +18,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Writing formulas with post-2007 functions (e.g. `MAXIFS`, `TEXTJOIN`, `XLOOKUP`) now stores the canonical `_xlfn.`-prefixed form, so saved files stay valid OOXML instead of triggering Excel repair. Covers `setFormula`, range formulas, and expression-valued defined names.
 - `WorkerWorkbook`: tolerate defined names that fail to replay into the shadow workbook so opening still succeeds (e.g. array-constant names); edits no longer silently no-op.
 
 ### Added

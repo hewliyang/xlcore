@@ -3,6 +3,7 @@ use xlcore_io::spreadsheetml as x;
 use xlcore_types::{ApiError, ApiErrorCode, ApiWarning, DefinedNameInfo, DefinedNamePatch};
 
 use crate::errors::sdk_err_to_api;
+use crate::refs::ResolvedCellRef;
 use crate::{Result, Workbook};
 
 impl Workbook {
@@ -30,6 +31,27 @@ impl Workbook {
             Some(sheet) => Some(resolve_scope(sheet, &sheet_names)?),
         };
 
+        let trimmed_formula = patch.reference.trim().to_string();
+        let engine_supported = looks_like_reference_formula(&trimmed_formula);
+        let stored_formula = if engine_supported {
+            trimmed_formula.clone()
+        } else {
+            let anchor_sheet = patch
+                .scope
+                .as_deref()
+                .map(str::to_string)
+                .or_else(|| sheet_names.first().cloned())
+                .unwrap_or_default();
+            self.canonicalize_formula(
+                &ResolvedCellRef {
+                    sheet: anchor_sheet,
+                    row: 1,
+                    column: 1,
+                },
+                &trimmed_formula,
+            )?
+        };
+
         let wb_part = self.doc.workbook_part().map_err(sdk_err_to_api)?.clone();
         let wb = wb_part
             .root_element_mut(&mut self.doc)
@@ -37,8 +59,6 @@ impl Workbook {
         let dns = wb
             .defined_names
             .get_or_insert_with(x::DefinedNames::default);
-        let trimmed_formula = patch.reference.trim().to_string();
-        let engine_supported = looks_like_reference_formula(&trimmed_formula);
         let pos = dns
             .defined_name
             .iter()
@@ -47,14 +67,14 @@ impl Workbook {
         let hidden = patch.hidden.map(|h| h.into());
         if let Some(idx) = pos {
             let existing = &mut dns.defined_name[idx];
-            existing.xml_content = Some(trimmed_formula.clone().into());
+            existing.xml_content = Some(stored_formula.clone().into());
             existing.comment = comment;
             existing.hidden = hidden;
         } else {
             dns.defined_name.push(x::DefinedName {
                 name: patch.name.clone(),
                 local_sheet_id,
-                xml_content: Some(trimmed_formula.clone().into()),
+                xml_content: Some(stored_formula.clone().into()),
                 comment,
                 hidden,
                 ..Default::default()
@@ -62,7 +82,7 @@ impl Workbook {
         }
         let info = DefinedNameInfo {
             name: patch.name.clone(),
-            reference: trimmed_formula.clone(),
+            reference: stored_formula.clone(),
             scope: patch.scope.clone(),
             comment: patch.comment,
             hidden: patch.hidden.unwrap_or(false),

@@ -1,6 +1,7 @@
 use std::collections::{BTreeSet, HashMap};
 
-use ironcalc_base::expressions::parser::{new_parser_english, DefinedNameS, Node};
+use ironcalc_base::expressions::parser::stringify::to_excel_string;
+use ironcalc_base::expressions::parser::{new_parser_english, DefinedNameS, Node, Parser};
 use ironcalc_base::expressions::types::CellReferenceRC;
 use xlcore_types::{ApiError, ApiErrorCode, DependencyInfo, DependencyReference};
 
@@ -68,6 +69,30 @@ impl Workbook {
             return Ok(Vec::new());
         };
         self.references_for_formula(&cell_ref, &formula)
+    }
+
+    pub(crate) fn formula_parser(&mut self) -> Result<Parser<'static>> {
+        let context = self.dependency_context()?;
+        Ok(new_parser_english(
+            context.sheet_names,
+            context.defined_names,
+            HashMap::new(),
+        ))
+    }
+
+    pub(crate) fn canonicalize_formula(
+        &mut self,
+        cell_ref: &ResolvedCellRef,
+        formula: &str,
+    ) -> Result<String> {
+        let mut parser = self.formula_parser()?;
+        Ok(canonicalize_with_parser(
+            &mut parser,
+            &cell_ref.sheet,
+            cell_ref.row,
+            cell_ref.column,
+            formula,
+        ))
     }
 
     fn references_for_formula(
@@ -214,6 +239,29 @@ struct DependencyKey {
     start_column: u32,
     end_row: u32,
     end_column: u32,
+}
+
+pub(crate) fn canonicalize_with_parser(
+    parser: &mut Parser,
+    sheet: &str,
+    row: u32,
+    column: u32,
+    formula: &str,
+) -> String {
+    let stripped = formula.trim().strip_prefix('=').unwrap_or(formula.trim());
+    if stripped.is_empty() {
+        return stripped.to_string();
+    }
+    let cell_ref_rc = CellReferenceRC {
+        sheet: sheet.to_string(),
+        row: row as i32,
+        column: column as i32,
+    };
+    let node = parser.parse(stripped, &cell_ref_rc);
+    if matches!(node, Node::ParseErrorKind { .. }) {
+        return stripped.to_string();
+    }
+    to_excel_string(&node, &cell_ref_rc)
 }
 
 fn parse_formula_references(

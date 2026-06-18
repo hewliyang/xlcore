@@ -270,14 +270,6 @@ pub(crate) fn sheet_state_name(state: &x::SheetStateValues) -> Option<String> {
     }
 }
 
-pub(crate) fn normalize_formula(formula: &str) -> String {
-    formula
-        .trim()
-        .strip_prefix('=')
-        .unwrap_or(formula.trim())
-        .to_string()
-}
-
 fn format_number(value: f64) -> String {
     if value == 0.0 {
         "0".to_string()

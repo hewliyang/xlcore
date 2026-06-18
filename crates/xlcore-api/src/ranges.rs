@@ -9,7 +9,7 @@ use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_range_reference, qualify_ref, validate_matrix_shape, ResolvedRangeRef};
 use crate::styles;
 use crate::xml::{
-    apply_clear_mode, ensure_cell, load_shared_strings, mark_formulas_stale, normalize_formula,
+    apply_clear_mode, ensure_cell, load_shared_strings, mark_formulas_stale,
     read_cell_value, set_cell_value,
 };
 use crate::{Result, Workbook};
@@ -152,18 +152,37 @@ impl Workbook {
         let range_ref = self.resolve_range_ref(reference.as_ref())?;
         validate_matrix_shape(&formulas, &range_ref, "formulas")?;
 
+        let mut parser = self.formula_parser()?;
+        let mut canonical: Vec<Vec<Option<String>>> = Vec::with_capacity(formulas.len());
+        for (r_off, row) in formulas.iter().enumerate() {
+            let row_idx = range_ref.start_row + r_off as u32;
+            let mut out_row = Vec::with_capacity(row.len());
+            for (c_off, formula) in row.iter().enumerate() {
+                let col_idx = range_ref.start_column + c_off as u32;
+                out_row.push(formula.as_ref().map(|text| {
+                    crate::dependencies::canonicalize_with_parser(
+                        &mut parser,
+                        &range_ref.sheet,
+                        row_idx,
+                        col_idx,
+                        text.as_str(),
+                    )
+                }));
+            }
+            canonical.push(out_row);
+        }
+
         let ws_part = self.worksheet_part_for_sheet(&range_ref.sheet)?;
         let ws = ws_part
             .root_element_mut(&mut self.doc)
             .map_err(sdk_err_to_api)?;
-        for (r_off, row) in formulas.iter().enumerate() {
+        for (r_off, row) in canonical.into_iter().enumerate() {
             let row_idx = range_ref.start_row + r_off as u32;
-            for (c_off, formula) in row.iter().enumerate() {
+            for (c_off, formula) in row.into_iter().enumerate() {
                 let col_idx = range_ref.start_column + c_off as u32;
                 let cell = ensure_cell(ws, row_idx, col_idx);
                 match formula {
-                    Some(text) => {
-                        let normalized = normalize_formula(text.as_str());
+                    Some(normalized) => {
                         cell.data_type = None;
                         cell.inline_string = None;
                         cell.cell_value = None;

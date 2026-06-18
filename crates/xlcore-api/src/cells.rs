@@ -5,7 +5,7 @@ use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_cell_reference, qualify_ref, ResolvedCellRef};
 use crate::xml::{
     apply_clear_mode, cell_info_from_cell, ensure_cell, load_shared_strings, mark_formulas_stale,
-    normalize_formula, set_cell_value,
+    set_cell_value,
 };
 use crate::{Result, Workbook};
 
@@ -106,7 +106,7 @@ impl Workbook {
         formula: impl AsRef<str>,
     ) -> Result<CellInfo> {
         let cell_ref = self.resolve_cell_ref(reference.as_ref())?;
-        let formula = normalize_formula(formula.as_ref());
+        let formula = self.canonicalize_formula(&cell_ref, formula.as_ref())?;
         let ws_part = self.worksheet_part_for_sheet(&cell_ref.sheet)?;
         let ws = ws_part
             .root_element_mut(&mut self.doc)

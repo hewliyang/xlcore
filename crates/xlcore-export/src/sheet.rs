@@ -18,6 +18,39 @@ fn explicit_width_attr_to_px(width: f64, default_font_size_pt: f32) -> f32 {
     (((256.0 * width + (128.0 / mdw).trunc()) / 256.0) * mdw).trunc() as f32
 }
 
+const FORMULA_DECORATIONS: [&str; 3] = ["_xlfn.", "_xlws.", "_xlpm."];
+
+fn strip_formula_decorations(formula: &str) -> String {
+    if !FORMULA_DECORATIONS.iter().any(|d| formula.contains(d)) {
+        return formula.to_string();
+    }
+    let mut out = String::with_capacity(formula.len());
+    let mut rest = formula;
+    let mut in_string = false;
+    while let Some(ch) = rest.chars().next() {
+        if in_string {
+            out.push(ch);
+            if ch == '"' {
+                in_string = false;
+            }
+            rest = &rest[ch.len_utf8()..];
+        } else if ch == '"' {
+            in_string = true;
+            out.push(ch);
+            rest = &rest[1..];
+        } else if let Some(stripped) = FORMULA_DECORATIONS
+            .iter()
+            .find_map(|d| rest.strip_prefix(d))
+        {
+            rest = stripped;
+        } else {
+            out.push(ch);
+            rest = &rest[ch.len_utf8()..];
+        }
+    }
+    out
+}
+
 pub fn extract(
     ws: &x::Worksheet,
     index: usize,
@@ -562,7 +595,8 @@ fn extract_cell(cell: &XCell) -> Option<Cell> {
     let formula = cell
         .cell_formula
         .as_ref()
-        .and_then(|f| f.xml_content.as_deref().map(str::to_string));
+        .and_then(|f| f.xml_content.as_deref())
+        .map(strip_formula_decorations);
 
     let raw_v = cell
         .cell_value
@@ -643,5 +677,34 @@ mod tests {
         assert_eq!(explicit_width_attr_to_px(23.421875, 11.0), 164.0);
         assert_eq!(explicit_width_attr_to_px(8.00390625, 11.0), 56.0);
         assert_eq!(explicit_width_attr_to_px(8.43, 11.0), 59.0);
+    }
+
+    #[test]
+    fn strips_xlfn_and_xlws_decorations_for_display() {
+        assert_eq!(
+            strip_formula_decorations("_xlfn.MAXIFS(Data!J:J,Data!D:D,$B$1)"),
+            "MAXIFS(Data!J:J,Data!D:D,$B$1)"
+        );
+        assert_eq!(
+            strip_formula_decorations("_xlfn._xlws.FILTER(A:A,B:B)"),
+            "FILTER(A:A,B:B)"
+        );
+        assert_eq!(
+            strip_formula_decorations("_xlfn.LET(_xlpm.a,SUM(B2:B5),_xlpm.a-1)"),
+            "LET(a,SUM(B2:B5),a-1)"
+        );
+    }
+
+    #[test]
+    fn preserves_decorations_inside_string_literals() {
+        assert_eq!(
+            strip_formula_decorations("CONCAT(\"_xlfn.\",A1)"),
+            "CONCAT(\"_xlfn.\",A1)"
+        );
+    }
+
+    #[test]
+    fn leaves_plain_formulas_untouched() {
+        assert_eq!(strip_formula_decorations("SUM(A1:A10)"), "SUM(A1:A10)");
     }
 }
