@@ -44,6 +44,7 @@ export type Sheet = {
   pivots: Array<Pivot>;
   tableFilterArrows: Array<TableFilterArrow>;
   validationDropdowns: Array<ValidationDropdown>;
+  validationLists: Array<Array<string>>;
   outlinePr?: OutlinePr;
   sparklineGroups: Array<SparklineGroup>;
 };

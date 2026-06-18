@@ -220,6 +220,7 @@ pub fn extract(
         pivots: Vec::new(),
         table_filter_arrows: Vec::new(),
         validation_dropdowns: Vec::new(),
+        validation_lists: Vec::new(),
         hyperlinks: Vec::new(),
         comments: Vec::new(),
         sparkline_groups: Vec::new(),

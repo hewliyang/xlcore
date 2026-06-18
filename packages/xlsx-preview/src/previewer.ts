@@ -6,6 +6,7 @@ import {
   type InteractHandle,
   type PivotFilterEvent,
   type TableFilterEvent,
+  type ValidationPickEvent,
   type Selection,
 } from "./interact.js";
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
@@ -26,6 +27,10 @@ import {
   type TableFilterController,
   type TableFilterPopoverHandle,
 } from "./tableFilterPopover.js";
+import {
+  createValidationDropdownPopover,
+  type ValidationDropdownPopoverHandle,
+} from "./validationDropdownPopover.js";
 import type { Sheet as WireSheet } from "./schema/Sheet.js";
 import type { Sheet, WorkbookLayout } from "./types.js";
 
@@ -90,7 +95,7 @@ export type PreviewerEventName =
   | "tablefilter"
   | "celledit";
 
-export type { PivotFilterEvent, TableFilterEvent } from "./interact.js";
+export type { PivotFilterEvent, TableFilterEvent, ValidationPickEvent } from "./interact.js";
 
 export interface WorkbookPreviewer {
   readonly root: HTMLElement;
@@ -146,6 +151,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private pivotPopover: PivotFilterPopoverHandle | null = null;
   private readonly tableController?: TableFilterController;
   private tablePopover: TableFilterPopoverHandle | null = null;
+  private validationPopover: ValidationDropdownPopoverHandle | null = null;
 
   private readonly tabs: HTMLDivElement;
   private readonly sheetTabs: HTMLDivElement;
@@ -373,6 +379,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.pivotPopover = null;
     this.tablePopover?.destroy();
     this.tablePopover = null;
+    this.validationPopover?.destroy();
+    this.validationPopover = null;
     this.interactHandle?.destroy();
     this.interactHandle = null;
     this.closeAutocomplete();
@@ -649,6 +657,9 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
           );
         }
       },
+      onValidationPick: this.editable
+        ? (info: ValidationPickEvent) => this.openValidationPopover(info)
+        : undefined,
       redraw: this.scheduleDraw,
     });
   }
@@ -1049,6 +1060,28 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
         : `${colLabel(minC)}${minR}:${colLabel(maxC)}${maxR}`;
     this.applyPointModeRef(ref, { extend });
     this.scrollToCell(cursor.r, cursor.c);
+  }
+
+  private openValidationPopover(info: ValidationPickEvent): void {
+    if (!this.editable) return;
+    const sheet = this.getActiveSheet();
+    const current = formatFormulaBar(sheet, { r: info.r, c: info.c });
+    this.validationPopover?.destroy();
+    this.validationPopover = createValidationDropdownPopover((value) => {
+      this.dispatchEvent(
+        new CustomEvent("celledit", {
+          detail: {
+            sheetIndex: this.activeSheetIndex,
+            r: info.r,
+            c: info.c,
+            input: value,
+            commitMove: null,
+          },
+        }),
+      );
+    });
+    this.selectCell(info.r, info.c);
+    this.validationPopover.open(info.options, current, info.rect);
   }
 
   private openEditOverlay(cell: { r: number; c: number }, initialText: string | null): void {

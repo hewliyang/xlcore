@@ -47,3 +47,5 @@ Fixture already created: `packages/xlsx-preview/tests/fixtures/data-validation-l
 - Item 2 — TS: `drawValidationArrows` in `sheetChrome.ts` mirrors `drawFilterArrows`, iterates `sheet.validationDropdowns ?? []`, called per pane in `render.ts`. E2e render of fixture shows arrows on B2:B6 + D2.
 
 - Item 1 — Rust: `data_validation::extract` pulls list-type DV cells into render schema (`Sheet.validation_dropdowns` / `ValidationDropdown {r,c}`); ts-rs regen + `cargo test -p xlcore-export` green. Indexing is 1-based (B2..B6 + D2 => (2,2)..(6,2),(2,4)).
+
+- Item 3 — Interactive dropdowns (Phase 2): `ValidationDropdown` carries a `list` index into deduped `Sheet.validationLists` (inline `"a,b,c"` + same-sheet range refs resolved in Rust; respects inverted `showDropDown` suppression). `interact.ts` hit-tests arrows + `onValidationPick`; previewer opens `validationDropdownPopover` and commits the pick via `celledit`. Verified e2e in-browser (B5→Pending, D2→No write to the correct cells with distinct lists).

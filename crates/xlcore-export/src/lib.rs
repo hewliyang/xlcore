@@ -176,7 +176,10 @@ pub fn extract_doc_with_options(
             &tables,
             &shared_strings.0,
         );
-        sheet.validation_dropdowns = data_validation::extract(&ws_clone);
+        let (validation_dropdowns, validation_lists) =
+            data_validation::extract(&ws_clone, &sheet.name, &shared_strings.0);
+        sheet.validation_dropdowns = validation_dropdowns;
+        sheet.validation_lists = validation_lists;
         sheet.tables = tables;
         sheet.pivots = pivots;
         merge_pivot_cells(&mut sheet, pivot_cells);

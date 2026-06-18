@@ -207,6 +207,9 @@ pub struct Sheet {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub validation_dropdowns: Vec<ValidationDropdown>,
 
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub validation_lists: Vec<Vec<String>>,
+
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub outline_pr: Option<OutlinePr>,
@@ -385,6 +388,7 @@ pub struct TableFilterArrow {
 pub struct ValidationDropdown {
     pub r: u32,
     pub c: u32,
+    pub list: u32,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

@@ -83,6 +83,7 @@ fn empty_sheet(name: String) -> Sheet {
         pivots: Vec::new(),
         table_filter_arrows: Vec::new(),
         validation_dropdowns: Vec::new(),
+        validation_lists: Vec::new(),
         outline_pr: None,
         sparkline_groups: Vec::new(),
     }

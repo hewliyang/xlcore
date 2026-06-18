@@ -50,6 +50,8 @@ export interface InteractOptions {
 
   onTableFilter?: (info: TableFilterEvent) => void;
 
+  onValidationPick?: (info: ValidationPickEvent) => void;
+
   onEditStart?: (cell: { r: number; c: number }, initialText: string | null) => void;
 
   isPointModeActive?: () => boolean;
@@ -71,6 +73,19 @@ export interface TableFilterEvent {
   columnOffset: number;
   rangeRef: string;
   rect: { left: number; top: number; right: number; bottom: number };
+}
+
+export interface ValidationPickEvent {
+  r: number;
+  c: number;
+  options: string[];
+  rect: { left: number; top: number; right: number; bottom: number };
+}
+
+interface ValidationArrowHit {
+  r: number;
+  c: number;
+  options: string[];
 }
 
 export interface Selection {
@@ -277,6 +292,42 @@ export function attachInteractivity(
     });
   }
 
+  function validationArrowAt(lp: { x: number; y: number }): ValidationArrowHit | null {
+    const sheet = opts.getSheet();
+    const dropdowns = sheet.validationDropdowns ?? [];
+    if (dropdowns.length === 0) return null;
+    const lists = sheet.validationLists ?? [];
+    const grid = getGrid();
+    for (const d of dropdowns) {
+      const box = filterArrowRect(cellRect(grid, d.r, d.c));
+      if (lp.x >= box.x && lp.x <= box.x + box.w && lp.y >= box.y && lp.y <= box.y + box.h) {
+        return { r: d.r, c: d.c, options: lists[d.list] ?? [] };
+      }
+    }
+    return null;
+  }
+
+  function fireValidationPick(a: ValidationArrowHit) {
+    if (!opts.onValidationPick) return;
+    const grid = getGrid();
+    const sheet = opts.getSheet();
+    const box = filterArrowRect(cellRect(grid, a.r, a.c));
+    const z = opts.zoom.get();
+    const r = canvas.getBoundingClientRect();
+    const vp = opts.getViewport?.() ?? null;
+    const { splitX, splitY } = frozenDims(sheet, grid);
+    const sx = vp && a.c >= splitX ? vp.x : 0;
+    const sy = vp && a.r >= splitY ? vp.y : 0;
+    const left = r.left + (box.x - sx) * z;
+    const top = r.top + (box.y - sy) * z;
+    opts.onValidationPick({
+      r: a.r,
+      c: a.c,
+      options: a.options,
+      rect: { left, top, right: left + box.w * z, bottom: top + box.h * z },
+    });
+  }
+
   function maybeOutlineCursor(cp: { x: number; y: number }): boolean {
     if (outlineButtonAt(cp) || outlineCornerAt(cp)) {
       canvas.style.cursor = "pointer";
@@ -354,6 +405,14 @@ export function attachInteractivity(
     if (opts.onTableFilter) {
       const lp = toLogical(ev);
       if (tableArrowAt(lp)) {
+        canvas.style.cursor = "pointer";
+        annotations.hidePopover();
+        return;
+      }
+    }
+    if (opts.onValidationPick) {
+      const lp = toLogical(ev);
+      if (validationArrowAt(lp)) {
         canvas.style.cursor = "pointer";
         annotations.hidePopover();
         return;
@@ -564,6 +623,16 @@ export function attachInteractivity(
       if (arrow) {
         ev.preventDefault();
         fireTableFilter(arrow);
+        canvas.focus({ preventScroll: true });
+        return;
+      }
+    }
+
+    if (opts.onValidationPick) {
+      const arrow = validationArrowAt(p);
+      if (arrow) {
+        ev.preventDefault();
+        fireValidationPick(arrow);
         canvas.focus({ preventScroll: true });
         return;
       }
