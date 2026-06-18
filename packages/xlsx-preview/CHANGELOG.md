@@ -5,6 +5,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Render schema exposes `Sheet.validationDropdowns` (list-type data-validation cells) for dropdown rendering.
+
 ### Fixed
 
 - `WorkerWorkbook`: tolerate defined names that fail to replay into the shadow workbook so opening still succeeds (e.g. array-constant names); edits no longer silently no-op.

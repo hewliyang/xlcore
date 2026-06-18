@@ -15,6 +15,7 @@ import type { SparklineGroup } from "./SparklineGroup.js";
 import type { Table } from "./Table.js";
 import type { TableFilterArrow } from "./TableFilterArrow.js";
 import type { TextRun } from "./TextRun.js";
+import type { ValidationDropdown } from "./ValidationDropdown.js";
 
 export type Sheet = {
   index: number;
@@ -42,6 +43,7 @@ export type Sheet = {
   comments: Array<Comment>;
   pivots: Array<Pivot>;
   tableFilterArrows: Array<TableFilterArrow>;
+  validationDropdowns: Array<ValidationDropdown>;
   outlinePr?: OutlinePr;
   sparklineGroups: Array<SparklineGroup>;
 };
