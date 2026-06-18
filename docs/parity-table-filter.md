@@ -121,6 +121,26 @@ autoFilter { filterColumn[], sortState }  (definition)
 
 - Color filters, icon filters, dynamic (relative-date) filters, slicers.
 
+## Arrow placement (parity gap)
+
+All our dropdown arrows (autofilter/table, pivot, data-validation) are currently
+drawn **inside** the cell box (`filterArrowRect(cellRect(...))`), always visible.
+Excel does it differently and we should match it:
+
+- The arrow sits in a **gutter just outside the cell's right edge** (overflowing
+  into the start of the next column), so it never overlaps cell text. See
+  Excel's data-validation dropdown: `Open` fills the cell, the arrow button
+  hangs off the right border.
+- It's shown **only for the active/hovered validated cell**, not painted on
+  every validated cell at once. (Filter/pivot header arrows are persistent in
+  Excel; the on-hover-only rule is mainly the data-validation dropdown.)
+
+Follow-up: move arrow geometry to an outside-the-cell gutter rect and gate
+data-validation arrows on active/hover instead of always-on. Hit-testing in
+`interact.ts` must use the same gutter rect so clicks still land. Affects
+`sheetChrome.ts` (`filterArrowRect`, `drawFilterArrows`, `drawValidationArrows`)
+and `interact.ts` (`tableArrowAt`, `validationArrowAt`).
+
 ## Key Files
 
 - `crates/xlcore-export/src/table_engine/mod.rs` — **new** filter/sort engine.
