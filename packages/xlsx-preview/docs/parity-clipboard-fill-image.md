@@ -101,12 +101,7 @@ honoring a `recalc` flag (mirror `applyEdit`). No UI yet. Round-trip test at the
 `Workbook` level. Gotcha: `copyRange` signature is
 `(sheet, ref, destSheet, destRef)`; keep same-sheet dest the common case.
 
-### 8. Image paste from clipboard
-Handle a clipboard image on Ctrl/Cmd-V (when the payload is an image, not
-cells): read the blob, anchor at the active cell, call #2 `setImage`. Shares the
-paste entrypoint from #5 — branch on payload type (image blob vs TSV/HTML).
-Verify: screenshot to clipboard → paste → image anchored at active cell, round-
-trips through save.
+All backlog items shipped.
 
 ## Shipped
 
@@ -116,4 +111,5 @@ trips through save.
 4. Range copy / cut — `interact.ts` Cmd/Ctrl+C/X → `opts.onCopy`; `previewer.ts` `handleCopy` serializes via #3, writes `text/plain`+`text/html` (`clipboardIo.ts`, fallback to `writeText`), records `cutRange` (for #5), emits `rangecopy`/`rangecut`. Marching-ants cut overlay deferred.
 6. Fill handle — `interact.ts` hit-tests the bottom-right handle in `onPointerDown` (`fillHandleAt`, ~5px), drags a dominant-axis preview via `opts.selection`, fires `opts.onFill` on grow; `previewer.ts` `handleFill` reads source via `readRangeValues` (added to `clipboardModel.ts`), tiles with pure `projectFill` (`fillModel.ts`, unit-tested), emits `rangefill`; example app `applyFill` → `setRangeValues`. Copy-fill (tile) only; linear/date series detection deferred.
 7. Image drop into sheet — `xlsx-app.html` drop IIFE branches image MIME (`image/png|jpeg|gif|webp`) to `insertDroppedImage` → `recalcWorkbook.setImage(sheetName, patch)` anchored as a default box at the active cell → `patchSheetLayout`. Drop-point anchoring + image-size autofit deferred (baseline 5×10 box at active cell).
+8. Image paste from clipboard — `readClipboard` (`clipboardIo.ts`) detects image MIME → `imageBytes`/`imageType`; `previewer.ts` `handlePaste` dispatches `imagepaste` (target/bytes/mime) when payload is an image; example app `applyImagePaste` reuses shared `insertImageBytes` (refactored from `insertDroppedImage`) anchored at the active cell.
 5. Range paste — `interact.ts` Cmd/Ctrl+V → `opts.onPaste`; `previewer.ts` `handlePaste` reads clipboard (`readClipboard`), parses (#3), emits `rangepaste` with target/values/formulas/source/sourceSheet/sourceRange/cutRange; example app `applyPaste` → internal `copyRange` (keeps formulas) / external `setRangeValues`, clears cut source, reselects pasted region. Single-cell-source → multi-target tiling deferred (paste at top-left only).

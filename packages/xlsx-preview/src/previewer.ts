@@ -104,6 +104,7 @@ export type PreviewerEventName =
   | "rangecopy"
   | "rangecut"
   | "rangepaste"
+  | "imagepaste"
   | "rangefill"
   | "sheetadd";
 
@@ -452,7 +453,16 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   }
 
   private async handlePaste(target: { r: number; c: number }): Promise<void> {
-    const parsed = parseClipboard(await readClipboard());
+    const clip = await readClipboard();
+    if (clip.imageBytes) {
+      this.dispatchEvent(
+        new CustomEvent("imagepaste", {
+          detail: { target, bytes: clip.imageBytes, mime: clip.imageType },
+        }),
+      );
+      return;
+    }
+    const parsed = parseClipboard(clip);
     const cutRange = this.cutRange;
     this.cutRange = null;
     this.dispatchEvent(

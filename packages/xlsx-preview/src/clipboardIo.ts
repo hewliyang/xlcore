@@ -12,16 +12,30 @@ export async function writeClipboard({ tsv, html }: SerializedRange): Promise<vo
   }
 }
 
-export async function readClipboard(): Promise<{ html?: string; tsv?: string }> {
+const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+
+export async function readClipboard(): Promise<{
+  html?: string;
+  tsv?: string;
+  imageBytes?: Uint8Array;
+  imageType?: string;
+}> {
   try {
     const items = await navigator.clipboard.read();
     let html: string | undefined;
     let tsv: string | undefined;
+    let imageBytes: Uint8Array | undefined;
+    let imageType: string | undefined;
     for (const item of items) {
       if (item.types.includes("text/html")) html = await (await item.getType("text/html")).text();
       if (item.types.includes("text/plain")) tsv = await (await item.getType("text/plain")).text();
+      const imgType = IMAGE_TYPES.find((t) => item.types.includes(t));
+      if (imgType && !imageBytes) {
+        imageBytes = new Uint8Array(await (await item.getType(imgType)).arrayBuffer());
+        imageType = imgType;
+      }
     }
-    if (html || tsv) return { html, tsv };
+    if (html || tsv || imageBytes) return { html, tsv, imageBytes, imageType };
   } catch {
     // fall through
   }
