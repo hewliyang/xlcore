@@ -101,15 +101,6 @@ honoring a `recalc` flag (mirror `applyEdit`). No UI yet. Round-trip test at the
 `Workbook` level. Gotcha: `copyRange` signature is
 `(sheet, ref, destSheet, destRef)`; keep same-sheet dest the common case.
 
-### 4. Range copy / cut (Ctrl/Cmd-C, Ctrl/Cmd-X)
-In `interact.ts onKeyDown`, intercept Cmd/Ctrl+C and +X (guard on
-`opts.selection`); call a new `opts.onCopy/onCut(selection)`. `previewer.ts`
-serializes the selection via #3 and writes the clipboard (`ClipboardItem` with
-`text/plain`+`text/html`, fallback to a synthetic copy event). Cut marks the
-range (dashed "marching ants" overlay is optional/nice-to-have) and clears it on
-the next successful paste. Emit a `rangecopy`/`rangecut` event for the app if
-needed. Verify: copy from previewer → paste into Excel/Sheets/TextEdit.
-
 ### 5. Range paste (Ctrl/Cmd-V)
 Intercept Cmd/Ctrl+V in `onKeyDown` → `opts.onPaste`. `previewer.ts` reads the
 clipboard, parses via #3, and emits a `rangepaste` event with the target
@@ -152,3 +143,4 @@ trips through save.
 1. Worker range ops — `setRangeValues`/`setRangeFormulas`/`copyRange`/`clearRange` on `WorkerWorkbook` + `editWorker.ts`, single-sheet layout, `recalc` flag; Workbook-level round-trip test.
 2. Worker image-insert op — `setImage` op on `editWorker.ts` + `WorkerWorkbook.setImage(sheetName, patch)`, single-sheet layout, bytes sent as transferable `ArrayBuffer`; round-trip test.
 3. Clipboard serialize/parse helpers — pure `clipboardModel.ts` (`serializeRange`/`parseClipboard`) with TSV quoting, HTML `<table>` + `data-xlcore` internal payload (values+formulas+range); unit-tested round-trips.
+4. Range copy / cut — `interact.ts` Cmd/Ctrl+C/X → `opts.onCopy`; `previewer.ts` `handleCopy` serializes via #3, writes `text/plain`+`text/html` (`clipboardIo.ts`, fallback to `writeText`), records `cutRange` (for #5), emits `rangecopy`/`rangecut`. Marching-ants cut overlay deferred.

@@ -13,6 +13,8 @@ import {
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
 import { anchorToRect } from "./grid.js";
 import { buildDrawingMovedDetail } from "./anchorConvert.js";
+import { serializeRange } from "./clipboardModel.js";
+import { writeClipboard } from "./clipboardIo.js";
 import { referencesToHighlights } from "./highlights.js";
 import { autocompleteState, type AutocompleteState } from "./formulaAutocomplete.js";
 import { lookupSignature, signatureAt } from "./formulaSignature.js";
@@ -98,6 +100,8 @@ export type PreviewerEventName =
   | "tablefilter"
   | "celledit"
   | "drawingmoved"
+  | "rangecopy"
+  | "rangecut"
   | "sheetadd";
 
 export type { PivotFilterEvent, TableFilterEvent, ValidationPickEvent } from "./interact.js";
@@ -182,6 +186,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private readonly tabButtons: Array<HTMLButtonElement | null> = [];
   private readonly showHidden: boolean;
   private readonly editable: boolean;
+  private cutRange: Selection | null = null;
   private readonly onDownload?: () => void | Promise<void>;
   private readonly engine?: PreviewerEngine;
   private highlights: HighlightRange[] = [];
@@ -432,6 +437,17 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     return (this.layout.sheets[this.activeSheetIndex] ?? this.layout.sheets[0]!) as Sheet;
   }
 
+  private handleCopy(sel: Selection, isCut: boolean): void {
+    const sheetName = this.getActiveSheet().name;
+    void writeClipboard(serializeRange(this.layout, sheetName, sel));
+    this.cutRange = isCut ? sel : null;
+    this.dispatchEvent(
+      new CustomEvent(isCut ? "rangecut" : "rangecopy", {
+        detail: { selection: sel, cut: isCut },
+      }),
+    );
+  }
+
   getActiveSheetIndex(): number {
     return this.activeSheetIndex;
   }
@@ -678,6 +694,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       onEditStart: this.editable
         ? (cell, initialText) => this.openEditOverlay(cell, initialText)
         : undefined,
+      onCopy: this.editable ? (sel, isCut) => this.handleCopy(sel, isCut) : undefined,
       isPointModeActive: this.editable ? () => this.isPointModeActive() : undefined,
       onPointModeRef: this.editable ? (ref, o) => this.applyPointModeRef(ref, o) : undefined,
       onTableFilter: (info: TableFilterEvent) => {

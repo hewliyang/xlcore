@@ -79,6 +79,8 @@ export interface InteractOptions {
 
   onEditStart?: (cell: { r: number; c: number }, initialText: string | null) => void;
 
+  onCopy?: (selection: Selection, isCut: boolean) => void;
+
   isPointModeActive?: () => boolean;
 
   onDrawingMoved?: (info: {
@@ -1066,6 +1068,12 @@ export function attachInteractivity(
     }
     const cur = opts.activeCell.get();
     if (!cur) return;
+    if ((ev.ctrlKey || ev.metaKey) && (ev.key === "c" || ev.key === "x") && opts.onCopy) {
+      ev.preventDefault();
+      const sel = opts.selection?.get() ?? { r1: cur.r, c1: cur.c, r2: cur.r, c2: cur.c };
+      opts.onCopy(sel, ev.key === "x");
+      return;
+    }
     let dr = 0,
       dc = 0;
     switch (ev.key) {
