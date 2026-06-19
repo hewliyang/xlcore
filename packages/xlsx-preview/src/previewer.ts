@@ -144,8 +144,8 @@ export interface WorkbookPreviewer {
 interface SheetState {
   colOverrides: Map<number, number>;
   rowOverrides: Map<number, number>;
-  activeCell: { r: number; c: number };
-  selection: Selection;
+  activeCell: { r: number; c: number } | null;
+  selection: Selection | null;
   selectedDrawing: number | null;
 }
 
@@ -437,8 +437,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   getState(): PreviewerState {
     return {
       activeSheetIndex: this.activeSheetIndex,
-      activeCell: { ...this.currentState().activeCell },
-      selection: { ...this.currentState().selection },
+      activeCell: this.getActiveCell(),
+      selection: this.getSelection(),
       zoom: this.zoom,
     };
   }
@@ -525,11 +525,13 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   }
 
   getActiveCell(): { r: number; c: number } {
-    return { ...this.currentState().activeCell };
+    const active = this.currentState().activeCell;
+    return active ? { ...active } : { r: 1, c: 1 };
   }
 
   getSelection(): Selection {
-    return { ...this.currentState().selection };
+    const sel = this.currentState().selection;
+    return sel ? { ...sel } : { r1: 1, c1: 1, r2: 1, c2: 1 };
   }
 
   selectCell(r: number, c: number, options: { scroll?: boolean } = {}): void {
@@ -637,6 +639,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     if (!this.engine) return [];
     const sheet = this.getActiveSheet();
     const active = this.editCell ?? this.currentState().activeCell;
+    if (!active) return [];
     let text: string;
     if (this.editCell) text = this.editInput.value;
     else if (document.activeElement === this.formulaBox) text = this.formulaBox.value;
@@ -679,14 +682,14 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       selectedDrawingRect,
       viewport: this.viewport,
     });
-    this.nameBox.textContent = formatNameBox(
-      state.activeCell,
-      state.selection,
-      this.layout,
-      this.activeSheetIndex,
-    );
+    this.nameBox.textContent =
+      state.activeCell && state.selection
+        ? formatNameBox(state.activeCell, state.selection, this.layout, this.activeSheetIndex)
+        : "";
     if (document.activeElement !== this.formulaBox) {
-      this.formulaBox.value = formatFormulaBar(this.getActiveSheet(), state.activeCell);
+      this.formulaBox.value = state.activeCell
+        ? formatFormulaBar(this.getActiveSheet(), state.activeCell)
+        : "";
     }
   }
 
@@ -712,16 +715,14 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       activeCell: {
         get: () => state.activeCell,
         set: (value) => {
-          if (value) state.activeCell = value;
+          state.activeCell = value;
         },
       },
       selection: {
         get: () => state.selection,
         set: (value) => {
-          if (value) {
-            state.selection = value;
-            this.emit("selectionchange");
-          }
+          state.selection = value;
+          this.emit("selectionchange");
         },
       },
       selectedDrawing: {
@@ -1216,7 +1217,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private movePointKeyboard(dr: number, dc: number, extend: boolean): void {
     const state = this.currentState();
     const grid = buildGrid(this.getActiveSheet(), state.colOverrides, state.rowOverrides);
-    const base = this.pointKeyCursor ?? this.editCell ?? state.activeCell;
+    const base = this.pointKeyCursor ?? this.editCell ?? state.activeCell ?? { r: 1, c: 1 };
     const cursor = {
       r: clamp(base.r + dr, 1, grid.maxRow),
       c: clamp(base.c + dc, 1, grid.maxCol),

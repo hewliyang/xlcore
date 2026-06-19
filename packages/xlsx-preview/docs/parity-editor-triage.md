@@ -11,16 +11,9 @@ Verify: `pnpm --filter @<pkg> check` and `pnpm --filter @<pkg> test` from
 
 ## Backlog
 
-### 2. Allow clearing focus (no active cell)
-`activeCell`/`selection` setters in `attachInteractivity` opts
-(`previewer.ts:~699,707`) ignore null, so focus can never be cleared. Add an
-Escape branch in `interact.ts` `onKeyDown` (when not editing and no drawing
-selected) that clears active cell + selection. Make the setters accept null,
-and make `render`/`draw` + name box + formula bar tolerate a null active cell
-(skip drawing the active-cell box; blank name/formula boxes). Scope: ~30 lines
-across `interact.ts`, `previewer.ts`, `render.ts`.
-
 ## Shipped
+
+- Esc on the grid (not editing, no drawing selected) clears active cell + selection.
 
 - Esc commits the cell edit (commitEdit(null)) instead of discarding.
 - Delete/Backspace on a cell selection fires `cellclear` -> `clearRange`.

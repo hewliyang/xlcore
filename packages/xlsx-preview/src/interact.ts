@@ -1089,6 +1089,13 @@ export function attachInteractivity(
       opts.redraw();
       return;
     }
+    if (ev.key === "Escape") {
+      ev.preventDefault();
+      opts.activeCell.set(null);
+      opts.selection?.set(null);
+      opts.redraw();
+      return;
+    }
     const selDi = opts.selectedDrawing?.get();
     if (selDi != null) {
       if (ev.key === "Delete" || ev.key === "Backspace") {
