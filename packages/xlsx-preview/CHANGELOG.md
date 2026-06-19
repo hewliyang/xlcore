@@ -14,6 +14,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Drag a selected drawing's body to move it, with live redraw and re-anchoring via `rectToAnchor`.
 - `rectToAnchor(rect, grid, template)` inverts `anchorToRect`, preserving the template's two-cell vs absolute anchor style.
 - Hovering a selected drawing's body shows a `move` cursor; selection clears on sheet change, range select, and scroll-to-cell.
 - Selected drawings now render selection chrome (1px box + 8 square handles) in the grid accent color.

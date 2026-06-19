@@ -80,14 +80,6 @@ move/resize.
 
 ### B — Move (visual)
 
-- **B2. Drag to move.** New drag mode in `interact.ts` (`drawDrag = { index,
-  startPx, startRect }`). On pointer-down inside a selected drawing's body (not
-  a handle), capture pointer + start. On move: compute new rect = start + delta
-  (clamp to ≥ origin), `sheet.drawings[i].anchor = rectToAnchor(newRect, grid,
-  prevAnchor)`, `invalidateGrid()`, `redraw()`. On up: emit move (D1). Files:
-  `interact.ts`. Verify: CLI render before/after a programmatic drag shows the
-  chart translated; `pnpm test`.
-
 - **B3. Keyboard nudge.** With a drawing selected and no cell active, arrow keys
   move it by 1px (Shift = 10px); `Delete` is **out of scope** (no remove here).
   Files: `interact.ts` (`onKeyDown`). Verify: `pnpm test`.
@@ -141,6 +133,8 @@ move/resize.
   `pnpm test`.
 
 ## Shipped
+
+- **B2.** `drawDrag` mode in `interact.ts`: pointer-down on an already-selected drawing's body captures pointer + start rect; move sets `sheet.drawings[i].anchor = rectToAnchor(start+delta clamped to origin)` + redraw; up clears and fires optional `onDrawingMoved` (unwired in previewer).
 
 - **B1.** `rectToAnchor(rect, grid, template)` in `grid.ts` inverts `anchorToRect` via binary search over `colX`/`rowY` (remainder→EMU), preserving two-cell vs absolute (`extEmuCx/Cy`) anchor style; round-trip property tests in `grid.anchor.test.ts`.
 - **A3.** `move` cursor when hovering a selected drawing's body (`interact.ts`); deselect drawing on sheet change / `selectRange` / `scrollToCell` (`previewer.ts`).
