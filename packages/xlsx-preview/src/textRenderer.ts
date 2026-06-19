@@ -723,8 +723,13 @@ export function drawCellText(
         blockTop = ownRect.y + ownRect.h - totalH - 2;
     }
 
+    const isJustify = halign === "justify" || halign === "distributed";
     let lineTop = blockTop;
-    for (const line of lines) {
+    for (let li = 0; li < lines.length; li++) {
+      const line = lines[li]!;
+      const isLast = li === lines.length - 1;
+      const justifyThis =
+        isJustify && line.pieces.length > 0 && (halign === "distributed" || !isLast);
       let lineX: number;
       switch (halign) {
         case "center":
@@ -734,23 +739,66 @@ export function drawCellText(
         case "right":
           lineX = alignRect.x + alignRect.w - padX - indentRight - line.width;
           break;
+        case "justify":
+        case "distributed":
+          lineX = textOriginX + padX + indentLeft;
+          break;
         default:
           if (defaultAlign === "right" && !halign)
             lineX = alignRect.x + alignRect.w - padX - indentRight - line.width;
           else lineX = textOriginX + padX + indentLeft;
       }
       const baseline = lineTop + line.ascent;
-      let cursorX = lineX;
-      for (const piece of line.pieces) {
-        ctx.font = piece.span.font;
-        ctx.fillStyle = piece.span.color;
-        const pieceBaseline = baseline + (piece.span.baselineShiftPx ?? 0);
-        ctx.fillText(piece.text, cursorX, pieceBaseline);
-        paintTextDecorations(ctx, piece.span, cursorX, pieceBaseline, piece.width, {
-          x: clip.x + 1,
-          w: Math.max(0, clip.w - 2),
-        });
-        cursorX += piece.width;
+      if (justifyThis) {
+        const segs: { span: Span; text: string; space: boolean }[] = [];
+        for (const piece of line.pieces) {
+          for (const part of piece.text.split(/(\s+)/)) {
+            if (part.length === 0) continue;
+            segs.push({ span: piece.span, text: part, space: /^\s+$/.test(part) });
+          }
+        }
+        let firstWord = -1;
+        let lastWord = -1;
+        for (let i = 0; i < segs.length; i++) {
+          if (!segs[i]!.space) {
+            if (firstWord < 0) firstWord = i;
+            lastWord = i;
+          }
+        }
+        let gaps = 0;
+        for (let i = firstWord + 1; i < lastWord; i++) {
+          if (segs[i]!.space) gaps++;
+        }
+        const extra = Math.max(0, innerW - line.width);
+        const perGap = gaps > 0 ? extra / gaps : 0;
+        let cursorX = lineX;
+        for (let i = 0; i < segs.length; i++) {
+          const seg = segs[i]!;
+          ctx.font = seg.span.font;
+          ctx.fillStyle = seg.span.color;
+          const segW = ctx.measureText(seg.text).width;
+          const segBaseline = baseline + (seg.span.baselineShiftPx ?? 0);
+          ctx.fillText(seg.text, cursorX, segBaseline);
+          paintTextDecorations(ctx, seg.span, cursorX, segBaseline, segW, {
+            x: clip.x + 1,
+            w: Math.max(0, clip.w - 2),
+          });
+          cursorX += segW;
+          if (seg.space && i > firstWord && i < lastWord) cursorX += perGap;
+        }
+      } else {
+        let cursorX = lineX;
+        for (const piece of line.pieces) {
+          ctx.font = piece.span.font;
+          ctx.fillStyle = piece.span.color;
+          const pieceBaseline = baseline + (piece.span.baselineShiftPx ?? 0);
+          ctx.fillText(piece.text, cursorX, pieceBaseline);
+          paintTextDecorations(ctx, piece.span, cursorX, pieceBaseline, piece.width, {
+            x: clip.x + 1,
+            w: Math.max(0, clip.w - 2),
+          });
+          cursorX += piece.width;
+        }
       }
       lineTop += line.height;
     }

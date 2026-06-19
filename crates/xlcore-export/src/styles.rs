@@ -508,6 +508,8 @@ fn extract_xf(xf: &XCellFormat) -> CellFormat {
             cf.horizontal_alignment = Some(
                 if dbg.contains("continuous") {
                     "centerContinuous"
+                } else if dbg.contains("distributed") {
+                    "distributed"
                 } else if dbg.contains("center") {
                     "center"
                 } else if dbg.contains("right") {
