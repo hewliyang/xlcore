@@ -14,13 +14,13 @@ import {
 } from "./chartUtils.js";
 
 describe("chartFontScale — plot-area font auto-scaling", () => {
-  it("returns 1 at the reference dimension (360px min)", () => {
-    expect(chartFontScale({ x: 0, y: 0, w: 360, h: 360 })).toBeCloseTo(1, 5);
+  it("returns 1 at the reference dimension (200px min)", () => {
+    expect(chartFontScale({ x: 0, y: 0, w: 200, h: 200 })).toBeCloseTo(1, 5);
   });
 
   it("scales by the smaller dimension", () => {
-    expect(chartFontScale({ x: 0, y: 0, w: 1000, h: 720 })).toBeCloseTo(2, 5);
-    expect(chartFontScale({ x: 0, y: 0, w: 720, h: 540 })).toBeCloseTo(1.5, 5);
+    expect(chartFontScale({ x: 0, y: 0, w: 600, h: 400 })).toBeCloseTo(2, 5);
+    expect(chartFontScale({ x: 0, y: 0, w: 500, h: 300 })).toBeCloseTo(1.5, 5);
   });
 
   it("clamps small charts to the baseline minimum", () => {
@@ -28,15 +28,15 @@ describe("chartFontScale — plot-area font auto-scaling", () => {
   });
 
   it("clamps large charts to a maximum", () => {
-    expect(chartFontScale({ x: 0, y: 0, w: 4000, h: 4000 })).toBeCloseTo(2, 5);
+    expect(chartFontScale({ x: 0, y: 0, w: 4000, h: 4000 })).toBeCloseTo(2.2, 5);
   });
 
   it("applyChartFontScale grows the exported sizes proportionally", () => {
-    applyChartFontScale({ x: 0, y: 0, w: 720, h: 720 });
+    applyChartFontScale({ x: 0, y: 0, w: 400, h: 400 });
     expect(AXIS_FONT_SIZE).toBe(20);
     expect(TITLE_FONT_SIZE).toBe(28);
     expect(LEGEND_FONT_SIZE).toBe(22);
-    applyChartFontScale({ x: 0, y: 0, w: 360, h: 360 });
+    applyChartFontScale({ x: 0, y: 0, w: 200, h: 200 });
     expect(AXIS_FONT_SIZE).toBe(10);
     expect(TITLE_FONT_SIZE).toBe(14);
     expect(LEGEND_FONT_SIZE).toBe(11);
