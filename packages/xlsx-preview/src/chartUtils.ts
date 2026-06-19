@@ -223,6 +223,36 @@ export function valAxisRotation(chart: Chart): number {
   return Number.isFinite(r) && r !== 0 ? r : 0;
 }
 
+export function categoryAxisLabels(chart: Chart, categoryCount: number): string[] {
+  const fmt = chart.categoriesFormat;
+  const cats = chart.categories ?? [];
+  return Array.from({ length: categoryCount }, (_, i) => {
+    const raw = cats[i] ?? `${i + 1}`;
+    if (!fmt) return raw;
+    const n = parseFloat(raw);
+    if (!Number.isFinite(n)) return raw;
+    return formatValue(n, fmt).text;
+  });
+}
+
+export function resolveCatAxisRotation(
+  ctx: CanvasRenderingContext2D,
+  chart: Chart,
+  labels: string[],
+  innerWidth: number,
+): number {
+  const explicit = catAxisRotation(chart);
+  if (explicit !== 0) return explicit;
+  if (labels.length <= 1 || !(innerWidth > 0)) return 0;
+  const minGapPx = 8;
+  const slot = innerWidth / Math.max(1, labels.length - 1);
+  const maxW = Math.max(0, ...labels.map((s) => ctx.measureText(s).width));
+  if (maxW + minGapPx <= slot) return 0;
+  const need45 = AXIS_FONT_SIZE / Math.sin(Math.PI / 4) + minGapPx;
+  if (need45 <= slot) return -45;
+  return -90;
+}
+
 export function rotatedLabelBandHeight(
   ctx: CanvasRenderingContext2D,
   labels: string[],
@@ -288,9 +318,9 @@ export function drawAxisFrame(
     : valRot !== 0
       ? rotatedLabelBandWidth(ctx, labelStrings, valRot) + 8
       : Math.max(...labelStrings.map((s) => ctx.measureText(s).width)) + 8;
-  const catRot = catAxisRotation(chart);
-  const catBand =
-    !horizontal && catRot !== 0 ? rotatedLabelBandHeight(ctx, chart.categories ?? [], catRot) : 0;
+  const catLabels = categoryAxisLabels(chart, (chart.categories ?? []).length);
+  const catRot = horizontal ? 0 : resolveCatAxisRotation(ctx, chart, catLabels, rect.w - yAxisW);
+  const catBand = catRot !== 0 ? rotatedLabelBandHeight(ctx, catLabels, catRot) : 0;
   const xAxisH =
     AXIS_FONT_SIZE +
     8 +
@@ -367,37 +397,31 @@ export function drawCategoryAxis(
 
   const denom = Math.max(1, categoryCount - 1);
 
-  const fmt = chart.categoriesFormat;
-  const cats = chart.categories ?? [];
-  const labels = Array.from({ length: categoryCount }, (_, i) => {
-    const raw = cats[i] ?? `${i + 1}`;
-    if (!fmt) return raw;
-    const n = parseFloat(raw);
-    if (!Number.isFinite(n)) return raw;
-    return formatValue(n, fmt).text;
-  });
-  const catRot = catAxisRotation(chart);
+  const labels = categoryAxisLabels(chart, categoryCount);
+  if (horizontal) {
+    for (let i = 0; i < categoryCount; i++) {
+      ctx.fillText(labels[i]!, inner.x - 4, inner.y + (i / denom) * inner.h);
+    }
+    return;
+  }
+  const catRot = resolveCatAxisRotation(ctx, chart, labels, inner.w);
   const minGapPx = 8;
   let lastRight = -Infinity;
   for (let i = 0; i < categoryCount; i++) {
     const label = labels[i]!;
-    const w = ctx.measureText(label).width;
-    if (horizontal) {
-      ctx.fillText(label, inner.x - 4, inner.y + (i / denom) * inner.h);
-      continue;
-    }
     const cx = inner.x + (i / denom) * inner.w;
     if (catRot !== 0) {
       drawRotatedLabel(ctx, label, cx, inner.y + inner.h + 4, catRot, "category");
       continue;
     }
+    const w = ctx.measureText(label).width;
     const left = cx - w / 2;
     if (left < lastRight + minGapPx) continue;
     ctx.fillText(label, cx, inner.y + inner.h + 4);
     lastRight = cx + w / 2;
   }
 
-  if (!horizontal) {
+  {
     const extras = categoryAxisExtraRows(chart);
     const rowH = AXIS_FONT_SIZE + 4;
     for (let ri = 0; ri < extras.length; ri++) {

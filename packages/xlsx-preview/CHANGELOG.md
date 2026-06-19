@@ -5,6 +5,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Category axis labels auto-rotate (-45°, then -90°) when horizontal labels overflow instead of being dropped; band height reserves the rotated space. Explicit XML `rot` stays authoritative.
+
 ### Fixed
 
 - Axis number format with a quoted literal (e.g. `0.0"%"`) no longer triggers the percent ×100 operator; quoted `"..."` segments are emitted as literal text.

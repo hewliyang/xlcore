@@ -11,7 +11,38 @@ import {
   AXIS_FONT_SIZE,
   TITLE_FONT_SIZE,
   LEGEND_FONT_SIZE,
+  resolveCatAxisRotation,
 } from "./chartUtils.js";
+import type { Chart } from "./types.js";
+
+function fakeCtx(perChar: number): CanvasRenderingContext2D {
+  return { measureText: (s: string) => ({ width: s.length * perChar }) } as CanvasRenderingContext2D;
+}
+
+describe("resolveCatAxisRotation — auto-rotate colliding category labels", () => {
+  const years = Array.from({ length: 17 }, (_, i) => `${2009 + i}`);
+  const baseChart = { categories: years } as unknown as Chart;
+
+  it("keeps labels horizontal when they comfortably fit", () => {
+    applyChartFontScale({ x: 0, y: 0, w: 200, h: 200 });
+    expect(resolveCatAxisRotation(fakeCtx(6), baseChart, years, 2000)).toBe(0);
+  });
+
+  it("rotates 45deg when labels overflow horizontally but fit tilted", () => {
+    applyChartFontScale({ x: 0, y: 0, w: 200, h: 200 });
+    expect(resolveCatAxisRotation(fakeCtx(6), baseChart, years, 450)).toBe(-45);
+  });
+
+  it("escalates to 90deg when 45deg still collides", () => {
+    applyChartFontScale({ x: 0, y: 0, w: 200, h: 200 });
+    expect(resolveCatAxisRotation(fakeCtx(6), baseChart, years, 220)).toBe(-90);
+  });
+
+  it("honors an explicit XML rotation as authoritative", () => {
+    const rotated = { categories: years, catAxisLabelRotation: 30 } as unknown as Chart;
+    expect(resolveCatAxisRotation(fakeCtx(6), rotated, years, 600)).toBe(30);
+  });
+});
 
 describe("chartFontScale — plot-area font auto-scaling", () => {
   it("returns 1 at the reference dimension (200px min)", () => {
