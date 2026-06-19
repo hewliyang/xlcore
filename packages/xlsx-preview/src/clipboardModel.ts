@@ -185,7 +185,7 @@ function parseTsv(tsv: string): string[][] {
   let row: string[] = [];
   let field = "";
   let inQuotes = false;
-  let started = false;
+  let pending = false;
   const pushField = () => {
     row.push(field);
     field = "";
@@ -194,11 +194,12 @@ function parseTsv(tsv: string): string[][] {
     pushField();
     values.push(row);
     row = [];
+    pending = false;
   };
   for (let i = 0; i < tsv.length; i++) {
     const ch = tsv[i];
-    started = true;
     if (inQuotes) {
+      pending = true;
       if (ch === '"') {
         if (tsv[i + 1] === '"') {
           field += '"';
@@ -213,8 +214,10 @@ function parseTsv(tsv: string): string[][] {
     }
     if (ch === '"' && field === "") {
       inQuotes = true;
+      pending = true;
     } else if (ch === "\t") {
       pushField();
+      pending = true;
     } else if (ch === "\n") {
       pushRow();
     } else if (ch === "\r") {
@@ -222,9 +225,10 @@ function parseTsv(tsv: string): string[][] {
       pushRow();
     } else {
       field += ch;
+      pending = true;
     }
   }
-  if (started) pushRow();
+  if (pending) pushRow();
   return values;
 }
 

@@ -145,6 +145,23 @@ describe("parseClipboard external", () => {
     ]);
   });
 
+  it("drops a trailing newline instead of emitting an empty row", () => {
+    const parsed = parseClipboard({ tsv: "a\tb\nc\td\n" });
+    expect(parsed.values).toEqual([
+      ["a", "b"],
+      ["c", "d"],
+    ]);
+  });
+
+  it("keeps interior blank rows", () => {
+    const parsed = parseClipboard({ tsv: "a\tb\n\nc\td" });
+    expect(parsed.values).toEqual([
+      ["a", "b"],
+      [""],
+      ["c", "d"],
+    ]);
+  });
+
   it("parses TSV with quoting", () => {
     const parsed = parseClipboard({ tsv: '"ta\tb"\t"line\nbreak"\n"say ""hi"""\tplain' });
     expect(parsed.values).toEqual([

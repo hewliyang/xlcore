@@ -23,6 +23,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Clipboard TSV paste no longer emits a spurious trailing empty row from a trailing newline (was `values matrix row N has 1 cells but range expects ...`).
 - Axis number format with a quoted literal (e.g. `0.0"%"`) no longer triggers the percent ×100 operator; quoted `"..."` segments are emitted as literal text.
 
 ### Changed
