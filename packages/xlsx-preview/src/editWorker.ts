@@ -5,11 +5,12 @@ import type {
   ChartAnchor,
   ChartInfo,
   DefinedNameInfo,
+  ImageInfo,
   PivotInfo,
   PivotUpdate,
   LayoutOptions as WorkbookLayoutOptions,
 } from "./api-schema/index.js";
-import { resolveChartId } from "./drawingResolve.js";
+import { resolveDrawingId } from "./drawingResolve.js";
 import { xlsxLoadErrorPayloadFromUnknown } from "./errors.js";
 
 export interface WorkbookStructure {
@@ -182,12 +183,19 @@ async function handleRequest(request: EditWorkerRequest): Promise<{
       };
       const w = requireWorkbook();
       if (kind === "chart") {
-        const id = resolveChartId(
+        const id = resolveDrawingId(
           w.sheet(sheetName).charts.list() as ChartInfo[],
           prevAnchor,
           drawingIndex,
         );
         if (id) w.sheet(sheetName).charts.update(id, { anchor });
+      } else if (kind === "image") {
+        const id = resolveDrawingId(
+          w.sheet(sheetName).images.list() as ImageInfo[],
+          prevAnchor,
+          drawingIndex,
+        );
+        if (id) w.sheet(sheetName).images.update(id, { anchor });
       }
       return { result: { layout: w.layout({ sheetName }), structure: structure() } };
     }

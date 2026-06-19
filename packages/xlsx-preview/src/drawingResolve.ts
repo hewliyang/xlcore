@@ -1,5 +1,9 @@
 import type { ChartAnchor } from "./api-schema/ChartAnchor.js";
-import type { ChartInfo } from "./api-schema/ChartInfo.js";
+
+export interface AnchoredDrawing {
+  id: string;
+  anchor: ChartAnchor;
+}
 
 function anchorCellsMatch(a: ChartAnchor, b: ChartAnchor): boolean {
   return (
@@ -10,13 +14,21 @@ function anchorCellsMatch(a: ChartAnchor, b: ChartAnchor): boolean {
   );
 }
 
+export function resolveDrawingId(
+  items: AnchoredDrawing[],
+  prevAnchor: ChartAnchor,
+  ordinal?: number,
+): string | null {
+  const matches = items.filter((c) => anchorCellsMatch(c.anchor, prevAnchor));
+  if (matches.length === 1 && matches[0]) return matches[0].id;
+  if (ordinal !== undefined) return items[ordinal]?.id ?? null;
+  return null;
+}
+
 export function resolveChartId(
-  charts: ChartInfo[],
+  charts: AnchoredDrawing[],
   prevAnchor: ChartAnchor,
   chartOrdinal?: number,
 ): string | null {
-  const matches = charts.filter((c) => anchorCellsMatch(c.anchor, prevAnchor));
-  if (matches.length === 1 && matches[0]) return matches[0].id;
-  if (chartOrdinal !== undefined) return charts[chartOrdinal]?.id ?? null;
-  return null;
+  return resolveDrawingId(charts, prevAnchor, chartOrdinal);
 }
