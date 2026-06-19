@@ -30,6 +30,7 @@ export type EditWorkerOp =
   | "open"
   | "applyEdit"
   | "setRangeValues"
+  | "pasteCells"
   | "setRangeFormulas"
   | "copyRange"
   | "clearRange"
@@ -64,6 +65,16 @@ function post(message: EditWorkerResponse, transfer?: Transferable[]): void {
       postMessage(message: unknown, transfer?: Transferable[]): void;
     }
   ).postMessage(message, transfer ?? []);
+}
+
+function colLabel(n: number): string {
+  let s = "";
+  while (n > 0) {
+    const r = (n - 1) % 26;
+    s = String.fromCharCode(65 + r) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
 }
 
 function coerce(input: string): CellInput {
@@ -146,6 +157,31 @@ async function handleRequest(request: EditWorkerRequest): Promise<{
       };
       const w = requireWorkbook();
       w.sheet(sheetName).range(ref).setValues(values);
+      if (recalc) {
+        w.recalculate();
+      }
+      return { result: { layout: w.layout({ sheetName }), structure: structure() } };
+    }
+    case "pasteCells": {
+      const { sheetName, row, column, values, recalc } = request.args as {
+        sheetName: string;
+        row: number;
+        column: number;
+        values: string[][];
+        recalc: boolean;
+      };
+      const w = requireWorkbook();
+      const ws = w.sheet(sheetName);
+      values.forEach((cells, r) => {
+        cells.forEach((raw, c) => {
+          const cell = ws.cell(`${colLabel(column + c)}${row + r}`);
+          if (raw.startsWith("=")) {
+            cell.setFormula(raw);
+          } else {
+            cell.setValue(coerce(raw));
+          }
+        });
+      });
       if (recalc) {
         w.recalculate();
       }

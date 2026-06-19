@@ -735,9 +735,10 @@ async function applyPaste(detail) {
         recalc: autoRecalc,
       }));
     } else {
-      ({ layout } = await recalcWorkbook.setRangeValues({
+      ({ layout } = await recalcWorkbook.pasteCells({
         sheetName,
-        ref: destRef,
+        row: target.r,
+        column: target.c,
         values,
         recalc: autoRecalc,
       }));

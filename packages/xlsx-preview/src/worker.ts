@@ -114,6 +114,18 @@ export class WorkerWorkbook {
     return { layout };
   }
 
+  async pasteCells(input: {
+    sheetName: string;
+    row: number;
+    column: number;
+    values: string[][];
+    recalc: boolean;
+  }): Promise<{ layout: WorkbookLayout }> {
+    const { layout, structure } = await this.request<EditResult>("pasteCells", { ...input });
+    await this.syncShadow(structure);
+    return { layout };
+  }
+
   async setRangeFormulas(input: {
     sheetName: string;
     ref: string;
