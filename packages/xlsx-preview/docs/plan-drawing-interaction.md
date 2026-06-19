@@ -55,16 +55,13 @@ resolves the id; keep the resolver pure + tested.
 
 ## Known limitations (visual-only kinds; note as follow-ups, don't block)
 
-- **Images:** `setImage` requires `bytes`; there is no `updateImage`/bytes
-  accessor in the WASM bindings → cannot persist a move from JS. Visual move/
-  resize only. Follow-up: Rust-side anchor-only `updateImage`/`moveDrawing`.
 - **Shapes:** `setShape` needs full `preset` + style; `ShapeInfo` exposes enough
   to reconstruct but it's lossy. Visual-only for now; attempt persistence only
   if a clean `ShapePatch` round-trips in a test, else defer.
 - **ChartEx:** no anchor update in bindings → visual-only.
 
-Persistence (round-trip) in this plan targets **charts**. All kinds get visual
-move/resize.
+Persistence (round-trip) now covers **charts and images** (anchor-only
+`updateChart`/`updateImage` bindings). All kinds get visual move/resize.
 
 ## Conventions
 
@@ -81,6 +78,8 @@ move/resize.
 _(complete)_
 
 ## Shipped
+
+- **E (post-plan).** Single-gesture drag-to-move (press+drag any drawing selects and moves it; `drawingmoved` fires only on real anchor change). Rust `ImageUpdate` + `Workbook::update_image` + WASM `updateImage` binding (anchor/name/rotation/flips, two-cell and one-cell pictures); `ImageCollection.update`; `editWorker` `moveDrawing` image branch via generalized `resolveDrawingId` (`images.update`); Rust + TS image-move round-trip tests.
 
 - **D5.** `src/chartRoundtrip.test.ts` opens `tests/fixtures/charts/chart-bar3d.xlsx` via `Workbook.open` (built `dist/api.js` + `dist/xlcore_wasm_bg.wasm`), moves the first chart's anchor (+3 cols/+5 rows) with `charts.update(id, { anchor })`, `save()`s, reopens, and asserts the reopened anchor's from/to col/row reflect the move — confirming the chart persistence path independent of UI.
 
