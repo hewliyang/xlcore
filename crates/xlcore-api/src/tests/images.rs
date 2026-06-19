@@ -56,6 +56,62 @@ fn images_create_list_remove_roundtrip() {
 }
 
 #[test]
+fn images_update_anchor_roundtrip() {
+    let mut wb = Workbook::new().unwrap();
+    let created = wb
+        .set_image(
+            "Sheet1",
+            ImagePatch {
+                name: Some("Logo".to_string()),
+                anchor: AnchorSpec::Cells(ChartAnchor {
+                    from_column: 1,
+                    from_row: 1,
+                    to_column: 5,
+                    to_row: 10,
+                    ..Default::default()
+                }),
+                bytes: PNG_1X1.to_vec(),
+                format: None,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    let updated = wb
+        .update_image(
+            "Sheet1",
+            &created.id,
+            ImageUpdate {
+                name: Some("Moved".to_string()),
+                anchor: Some(AnchorSpec::Cells(ChartAnchor {
+                    from_column: 4,
+                    from_row: 6,
+                    to_column: 8,
+                    to_row: 15,
+                    ..Default::default()
+                })),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(updated.id, created.id);
+    assert_eq!(updated.name, "Moved");
+    assert_eq!(updated.anchor.from_column, 4);
+    assert_eq!(updated.anchor.to_row, 15);
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let images = reopened.images(None).unwrap();
+    assert_eq!(images.len(), 1);
+    assert_eq!(images[0].name, "Moved");
+    assert_eq!(images[0].anchor.from_column, 4);
+    assert_eq!(images[0].anchor.from_row, 6);
+    assert_eq!(images[0].anchor.to_column, 8);
+    assert_eq!(images[0].anchor.to_row, 15);
+    assert_eq!(images[0].byte_len as usize, PNG_1X1.len());
+}
+
+#[test]
 fn images_rotation_crop_flip_roundtrip() {
     let mut wb = Workbook::new().unwrap();
     let info = wb

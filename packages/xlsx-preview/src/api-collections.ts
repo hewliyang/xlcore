@@ -23,6 +23,7 @@ import type {
   HyperlinkPatch,
   ImageInfo,
   ImagePatch,
+  ImageUpdate,
   MergeInfo,
   NamedStyleInfo,
   NamedStylePatch,
@@ -240,6 +241,9 @@ export class ImageCollection extends SheetScopedCollection {
   }
   set(patch: ImagePatch): ImageInfo {
     return this.handle.setImage(this.sheet, patch) as ImageInfo;
+  }
+  update(id: string, update: ImageUpdate): ImageInfo {
+    return this.handle.updateImage(this.sheet, id, update) as ImageInfo;
   }
   remove(id: string): ImageInfo | null {
     return (this.handle.removeImage(this.sheet, id) as ImageInfo | null) ?? null;

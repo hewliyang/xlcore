@@ -15,6 +15,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `worksheet.images.update(id, ImageUpdate)` (WASM `updateImage`) updates an existing image's anchor/name/rotation/flips in place, so image moves/resizes persist on `save()`.
 - Chart anchor round-trip test: `charts.update` move persists through `save`/`open`.
 - Example app persists chart moves: wires `drawingmoved` → `recalcWorkbook.moveDrawing` → `patchSheetLayout`.
 - `WorkerWorkbook.moveDrawing` + editWorker `moveDrawing` op persist chart moves via `resolveChartId` anchor-match.

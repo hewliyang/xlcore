@@ -670,6 +670,15 @@ export const workbookhandle_updateChart: (
   f: number,
   g: number,
 ) => void;
+export const workbookhandle_updateImage: (
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+  g: number,
+) => void;
 export const workbookhandle_updatePivot: (
   a: number,
   b: number,

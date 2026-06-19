@@ -1254,6 +1254,30 @@
     "ret": "json"
   },
   {
+    "name": "update_image",
+    "jsName": "updateImage",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "id",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "update",
+        "kind": "de",
+        "type": "xlcore_api::ImageUpdate"
+      }
+    ],
+    "ret": "json"
+  },
+  {
     "name": "remove_image",
     "jsName": "removeImage",
     "source": "table",

@@ -69,6 +69,7 @@ export type { IconSetPatch } from "./IconSetPatch.js";
 export type { ImageFormat } from "./ImageFormat.js";
 export type { ImageInfo } from "./ImageInfo.js";
 export type { ImagePatch } from "./ImagePatch.js";
+export type { ImageUpdate } from "./ImageUpdate.js";
 export type { LayoutOptions } from "./LayoutOptions.js";
 export type { MergeInfo } from "./MergeInfo.js";
 export type { NamedStyleInfo } from "./NamedStyleInfo.js";

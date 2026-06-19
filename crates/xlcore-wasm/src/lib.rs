@@ -370,6 +370,7 @@ api_methods! {
     { remove_pivot as "removePivot" (s sheet, s id) -> json }
     { images (os sheet) -> json }
     { set_image as "setImage" (s sheet, de patch: xlcore_api::ImagePatch) -> json }
+    { update_image as "updateImage" (s sheet, s id, de update: xlcore_api::ImageUpdate) -> json }
     { remove_image as "removeImage" (s sheet, s id) -> json }
     { shapes (os sheet) -> json }
     { set_shape as "setShape" (s sheet, de patch: xlcore_api::ShapePatch) -> json }

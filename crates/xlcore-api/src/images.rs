@@ -6,7 +6,9 @@ use ooxmlsdk::sdk::SdkPart;
 use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use ooxmlsdk::units::DrawingmlPercentageValue;
 use xlcore_io::spreadsheetml as x;
-use xlcore_types::{ApiError, ApiErrorCode, ChartAnchor, ImageFormat, ImageInfo, ImagePatch};
+use xlcore_types::{
+    ApiError, ApiErrorCode, ChartAnchor, ImageFormat, ImageInfo, ImagePatch, ImageUpdate,
+};
 
 use crate::refs::resolve_anchor;
 
@@ -233,6 +235,128 @@ impl Workbook {
         })
     }
 
+    pub fn update_image(
+        &mut self,
+        sheet: impl AsRef<str>,
+        id: impl AsRef<str>,
+        update: ImageUpdate,
+    ) -> Result<ImageInfo> {
+        let sheet = sheet.as_ref();
+        let id = id.as_ref();
+        if !self.sheet_exists(sheet)? {
+            return Err(ApiError::new(
+                ApiErrorCode::MissingSheet,
+                format!("sheet not found: {sheet}"),
+            )
+            .with_sheet(sheet));
+        }
+        let resolved_anchor = update
+            .anchor
+            .as_ref()
+            .map(resolve_anchor)
+            .transpose()?;
+        let rotation_emu = match update.rotation_degrees {
+            Some(d) => Some(degrees_to_rot60000(d, sheet)?),
+            None => None,
+        };
+
+        let ws_part = self.worksheet_part_for_sheet(sheet)?;
+        let Some(drawings_part) = ws_part.drawings_part(&self.doc).map(|p| p.clone()) else {
+            return Err(ApiError::new(
+                ApiErrorCode::Other,
+                format!("image not found: {id}"),
+            )
+            .with_sheet(sheet));
+        };
+
+        let drawing_mut = drawings_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        let mut found = false;
+        for choice in &mut drawing_mut.worksheet_drawing_choice {
+            match choice {
+                xdr::WorksheetDrawingChoice::TwoCellAnchor(a) => {
+                    let Some(xdr::TwoCellAnchorChoice::Picture(pic)) =
+                        a.two_cell_anchor_choice.as_mut()
+                    else {
+                        continue;
+                    };
+                    if picture_embed_rid(pic).as_deref() != Some(id) {
+                        continue;
+                    }
+                    if let Some(anchor) = &resolved_anchor {
+                        a.from_marker = Box::new(xdr::FromMarker {
+                            column_id: anchor.from_column as i32,
+                            column_offset: CoordinateValue::Emu(
+                                anchor.from_column_offset_emu.unwrap_or(0),
+                            ),
+                            row_id: anchor.from_row as i32,
+                            row_offset: CoordinateValue::Emu(
+                                anchor.from_row_offset_emu.unwrap_or(0),
+                            ),
+                            ..Default::default()
+                        });
+                        a.to_marker = Box::new(xdr::ToMarker {
+                            column_id: anchor.to_column as i32,
+                            column_offset: CoordinateValue::Emu(
+                                anchor.to_column_offset_emu.unwrap_or(0),
+                            ),
+                            row_id: anchor.to_row as i32,
+                            row_offset: CoordinateValue::Emu(anchor.to_row_offset_emu.unwrap_or(0)),
+                            ..Default::default()
+                        });
+                    }
+                    apply_picture_update(pic, update.name.as_deref(), rotation_emu, &update);
+                    found = true;
+                    break;
+                }
+                xdr::WorksheetDrawingChoice::OneCellAnchor(a) => {
+                    let Some(xdr::OneCellAnchorChoice::Picture(pic)) =
+                        a.one_cell_anchor_choice.as_mut()
+                    else {
+                        continue;
+                    };
+                    if picture_embed_rid(pic).as_deref() != Some(id) {
+                        continue;
+                    }
+                    if let Some(anchor) = &resolved_anchor {
+                        a.from_marker = Box::new(xdr::FromMarker {
+                            column_id: anchor.from_column as i32,
+                            column_offset: CoordinateValue::Emu(
+                                anchor.from_column_offset_emu.unwrap_or(0),
+                            ),
+                            row_id: anchor.from_row as i32,
+                            row_offset: CoordinateValue::Emu(
+                                anchor.from_row_offset_emu.unwrap_or(0),
+                            ),
+                            ..Default::default()
+                        });
+                    }
+                    apply_picture_update(pic, update.name.as_deref(), rotation_emu, &update);
+                    found = true;
+                    break;
+                }
+                _ => continue,
+            }
+        }
+
+        if !found {
+            return Err(ApiError::new(
+                ApiErrorCode::Other,
+                format!("image not found: {id}"),
+            )
+            .with_sheet(sheet));
+        }
+
+        self.images(Some(sheet))?
+            .into_iter()
+            .find(|c| c.id == id)
+            .ok_or_else(|| {
+                ApiError::new(ApiErrorCode::Other, format!("image not found: {id}"))
+                    .with_sheet(sheet)
+            })
+    }
+
     pub fn remove_image(
         &mut self,
         sheet: impl AsRef<str>,
@@ -280,6 +404,42 @@ impl Workbook {
             .map_err(sdk_err_to_api)?;
 
         Ok(Some(info))
+    }
+}
+
+fn apply_picture_update(
+    pic: &mut xdr::Picture,
+    name: Option<&str>,
+    rotation_emu: Option<i32>,
+    update: &ImageUpdate,
+) {
+    if let Some(name) = name {
+        pic.non_visual_picture_properties
+            .non_visual_drawing_properties
+            .name = name.to_string();
+    }
+    if rotation_emu.is_none() && update.flip_horizontal.is_none() && update.flip_vertical.is_none() {
+        return;
+    }
+    let Some(xfrm) = pic.shape_properties.transform2_d.as_mut() else {
+        return;
+    };
+    if let Some(rot) = rotation_emu {
+        xfrm.rotation = Some(rot);
+    }
+    if let Some(fh) = update.flip_horizontal {
+        xfrm.horizontal_flip = if fh {
+            Some(BooleanValue::from_bool(true))
+        } else {
+            None
+        };
+    }
+    if let Some(fv) = update.flip_vertical {
+        xfrm.vertical_flip = if fv {
+            Some(BooleanValue::from_bool(true))
+        } else {
+            None
+        };
     }
 }
 
