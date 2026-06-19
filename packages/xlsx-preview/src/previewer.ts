@@ -1326,7 +1326,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       this.canvas.focus({ preventScroll: true });
     } else if (ev.key === "Escape") {
       ev.preventDefault();
-      this.hideEditOverlay();
+      this.commitEdit(null);
       this.canvas.focus({ preventScroll: true });
     } else if (
       ev.key === "ArrowUp" ||

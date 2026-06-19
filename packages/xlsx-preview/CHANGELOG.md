@@ -23,6 +23,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Esc in the cell editor now commits the edit (like click-away) instead of discarding the typed value.
 - Clipboard TSV paste no longer emits a spurious trailing empty row from a trailing newline (was `values matrix row N has 1 cells but range expects ...`).
 - External clipboard paste now applies each cell like a manual edit (`pasteCells` worker op): numeric/boolean strings become typed values and `=`-prefixed strings become formulas, so pasted numbers compute (`SUM` works) and pasted formulas evaluate.
 - Internal cut→paste now uses true Excel move semantics (`moveRange`): moved formulas keep their relative references (no copy-style shift) and formulas elsewhere that referenced the moved cells are retargeted to follow them (absolute and cross-sheet refs included).
