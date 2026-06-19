@@ -93,14 +93,6 @@ two files to thin wiring/dispatch.
 
 ## Backlog (one item per agent; do in order — later items depend on earlier)
 
-### 1. Worker range ops (foundation)
-Add `setRangeValues`, `setRangeFormulas`, `copyRange`, `clearRange` ops to
-`editWorker.ts` and matching async methods on `WorkerWorkbook` (`worker.ts`),
-each returning a single-sheet `{ layout: layout({ sheetName }), structure }` and
-honoring a `recalc` flag (mirror `applyEdit`). No UI yet. Round-trip test at the
-`Workbook` level. Gotcha: `copyRange` signature is
-`(sheet, ref, destSheet, destRef)`; keep same-sheet dest the common case.
-
 All backlog items shipped.
 
 ## Shipped
