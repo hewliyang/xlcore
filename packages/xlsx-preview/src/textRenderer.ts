@@ -717,6 +717,8 @@ export function drawCellText(
     let blockTop: number;
     switch (valign) {
       case "top":
+      case "justify":
+      case "distributed":
         blockTop = ownRect.y + 2;
         break;
       case "center":
@@ -725,6 +727,13 @@ export function drawCellText(
       default:
         blockTop = ownRect.y + ownRect.h - totalH - 2;
     }
+
+    const availH = ownRect.h - 4;
+    const vJustify =
+      (valign === "justify" || valign === "distributed") &&
+      lines.length >= 2 &&
+      totalH < availH;
+    const vGap = vJustify ? (availH - totalH) / (lines.length - 1) : 0;
 
     const isJustify = halign === "justify" || halign === "distributed";
     const justifyLast = xf?.justifyLastLine ?? false;
@@ -806,7 +815,7 @@ export function drawCellText(
           cursorX += piece.width;
         }
       }
-      lineTop += line.height;
+      lineTop += line.height + vGap;
     }
 
     ctx.restore();

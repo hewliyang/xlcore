@@ -527,7 +527,11 @@ fn extract_xf(xf: &XCellFormat) -> CellFormat {
         if let Some(v) = &align.vertical {
             let dbg = format!("{v:?}").to_ascii_lowercase();
             cf.vertical_alignment = Some(
-                if dbg.contains("center") {
+                if dbg.contains("distributed") {
+                    "distributed"
+                } else if dbg.contains("justify") {
+                    "justify"
+                } else if dbg.contains("center") {
                     "center"
                 } else if dbg.contains("top") {
                     "top"

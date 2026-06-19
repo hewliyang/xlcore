@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `justify`/`distributed` vertical alignment: spreads wrapped lines top-to-bottom to fill the row height.
 - `readingOrder` RTL (value 2): right-anchors text whose alignment is general/unspecified; explicit left/center/right preserved.
 - `fill` horizontal alignment: repeats single-line cell text to fill the column width, clipped.
 - `centerContinuous` horizontal alignment (Center Across Selection): centers text across the run of empty cells to the right.
