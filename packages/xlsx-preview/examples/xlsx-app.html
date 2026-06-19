@@ -671,7 +671,7 @@ async function applyEdit({ sheetIndex, r, c, input, commitMove }) {
       input,
       recalc: autoRecalc,
     });
-    previewer.replaceLayout(layout);
+    previewer.patchSheetLayout(layout);
     if (commitMove) {
       let nr = r;
       let nc = c;
@@ -1175,7 +1175,19 @@ async function loadWorkbookFile(file) {
     });
     window.xlcorePreviewer = previewer;
     previewer.on("selectionchange", renderState);
-    previewer.on("sheetchange", renderState);
+    previewer.on("sheetchange", async () => {
+      if (recalcWorkbook && previewer) {
+        const idx = previewer.getActiveSheetIndex();
+        const name = previewer.layout.sheets[idx]?.name;
+        if (name != null) {
+          try {
+            const fresh = await recalcWorkbook.layout({ sheetName: name });
+            previewer.patchSheetLayout(fresh);
+          } catch {}
+        }
+      }
+      renderState();
+    });
     previewer.on("zoomchange", renderState);
     previewer.on("celledit", (e) => applyEdit(e.detail));
     populateSheets();

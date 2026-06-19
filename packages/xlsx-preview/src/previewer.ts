@@ -1,4 +1,5 @@
 import { decodeWorkbookLayout, findCell, iterRows } from "./columnar.js";
+import { patchWorkbookSheet } from "./layoutPatch.js";
 import { colorToCssWithTheme } from "./color.js";
 import type { LoadReport } from "./errors.js";
 import {
@@ -106,6 +107,7 @@ export interface WorkbookPreviewer {
   destroy(): void;
   redraw(): void;
   replaceLayout(layout: WorkbookLayout): void;
+  patchSheetLayout(layout: WorkbookLayout): void;
   getState(): PreviewerState;
   getActiveSheet(): Sheet;
   getActiveSheetIndex(): number;
@@ -371,6 +373,15 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.stage.scrollTop = prevScroll.top;
     this.stage.scrollLeft = prevScroll.left;
     this.draw();
+    this.emit("layoutchange");
+  }
+
+  patchSheetLayout(rawLayout: WorkbookLayout): void {
+    if (!patchWorkbookSheet(this.layout, rawLayout)) {
+      this.replaceLayout(rawLayout);
+      return;
+    }
+    this.scheduleDraw();
     this.emit("layoutchange");
   }
 

@@ -37,20 +37,18 @@ recalc and reused after. `set_value`/`set_formula` route the single mutation
 into it (`set_input`/`set_formula`); every other mutation invalidates it
 (`engine = None`) for a clean rebuild. DOM stays source-of-truth for `save`.
 
+### 2. Scope layout to active sheet
+`editWorker.applyEdit` now returns `layout({ sheetName })` (single sheet, full
+shared pools); the `layout` op accepts `{ sheetName }` for on-demand refetch.
+
+### 3. Single-sheet patch + partial redraw
+`previewer.patchSheetLayout` merges a single-sheet layout into the resident
+multi-sheet layout (swaps the named sheet + shared pools, re-decodes only that
+sheet, `scheduleDraw` without re-rendering tabs/interactivity); scroll +
+selection preserved. Falls back to `replaceLayout` if the sheet is absent.
+Cross-sheet staleness fixed by refetching the target sheet on switch.
+
 ## Actionable items (ordered by leverage)
-
-### 2. Scope layout to active sheet, then viewport
-`extract_doc_with_options` already supports single-sheet extraction
-(`xlcore-export/src/lib.rs:58`).
-- [ ] `editWorker.applyEdit` returns `layout({ sheetName })`, not `{}`.
-- [ ] Add a row/col window to `ExtractOptions`; extract only visible range.
-
-### 3. Cell-patch responses + partial redraw
-Stop reserializing/repainting the whole grid.
-- [ ] `applyEdit` returns a `{ changed: CellPatch[] }` delta (changed cells +
-      structure-dirty flag), not a full `WorkbookLayout`.
-- [ ] `interact.ts` applies the patch and invalidates only affected rects
-      instead of `buildGrid` + full `redraw`.
 
 ### 4. Incremental recalc (do last, after #1)
 Only recompute the edited cell's transitive dependents.

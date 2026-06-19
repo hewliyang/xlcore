@@ -5,7 +5,6 @@ import type {
   DefinedNameInfo,
   PivotInfo,
   PivotUpdate,
-  SheetInfo,
   LayoutOptions as WorkbookLayoutOptions,
 } from "./api-schema/index.js";
 import { xlsxLoadErrorPayloadFromUnknown } from "./errors.js";
@@ -123,7 +122,7 @@ async function handleRequest(request: EditWorkerRequest): Promise<{
       if (recalc) {
         w.recalculate();
       }
-      return { result: { layout: w.layout({}), structure: structure() } };
+      return { result: { layout: w.layout({ sheetName }), structure: structure() } };
     }
     case "recalculate": {
       const w = requireWorkbook();

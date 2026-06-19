@@ -8,11 +8,13 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Recalc now reuses a resident calc engine across recalcs; cell value/formula edits route into it, other mutations invalidate it for a clean rebuild.
+- Cell edits now re-extract + redraw only the active sheet (`applyEdit` returns a single-sheet layout) merged via `previewer.patchSheetLayout`, instead of reserializing/repainting the whole workbook.
 - Formula bar now shows clean display formulas (e.g. `CONCAT` instead of `_xlfn.CONCAT`) by stripping OOXML `_xlfn.`/`_xlws.` decorations at extract time.
 - Data-validation dropdown arrows now render in a gutter just outside the cell's right edge (no longer overlap cell text); interactively only the active cell's arrow shows, static previews still show all.
 
 ### Added
 
+- `previewer.patchSheetLayout(singleSheetLayout)` merges one sheet into the resident layout, preserving scroll/selection.
 - Interactive list data-validation dropdowns: clicking a dropdown arrow (editable previewer) opens a popover of the validation's options and writes the chosen value via `celledit`.
 - Render schema exposes `Sheet.validationDropdowns` + `Sheet.validationLists` (list-type data-validation cells and their resolved options).
 - Render list data-validation dropdown arrows on the canvas previewer.
