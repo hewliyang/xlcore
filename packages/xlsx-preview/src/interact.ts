@@ -80,6 +80,7 @@ export interface InteractOptions {
   onEditStart?: (cell: { r: number; c: number }, initialText: string | null) => void;
 
   onCopy?: (selection: Selection, isCut: boolean) => void;
+  onPaste?: (target: { r: number; c: number }) => void;
 
   isPointModeActive?: () => boolean;
 
@@ -1072,6 +1073,11 @@ export function attachInteractivity(
       ev.preventDefault();
       const sel = opts.selection?.get() ?? { r1: cur.r, c1: cur.c, r2: cur.r, c2: cur.c };
       opts.onCopy(sel, ev.key === "x");
+      return;
+    }
+    if ((ev.ctrlKey || ev.metaKey) && ev.key === "v" && opts.onPaste) {
+      ev.preventDefault();
+      opts.onPaste({ r: cur.r, c: cur.c });
       return;
     }
     let dr = 0,

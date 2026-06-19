@@ -21,6 +21,8 @@ export interface ParsedClipboard {
   values: string[][];
   formulas?: (string | null)[][];
   source: "internal" | "external";
+  sourceSheet?: string;
+  sourceRange?: string;
 }
 
 function normalize(sel: Selection): { r1: number; c1: number; r2: number; c2: number } {
@@ -214,6 +216,8 @@ export function parseClipboard(input: { html?: string; tsv?: string }): ParsedCl
         values: payload.values,
         formulas: payload.formulas,
         source: "internal",
+        sourceSheet: payload.sheet,
+        sourceRange: payload.range,
       };
     }
     const table = parseHtmlTable(input.html);

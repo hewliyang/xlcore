@@ -101,16 +101,6 @@ honoring a `recalc` flag (mirror `applyEdit`). No UI yet. Round-trip test at the
 `Workbook` level. Gotcha: `copyRange` signature is
 `(sheet, ref, destSheet, destRef)`; keep same-sheet dest the common case.
 
-### 5. Range paste (Ctrl/Cmd-V)
-Intercept Cmd/Ctrl+V in `onKeyDown` → `opts.onPaste`. `previewer.ts` reads the
-clipboard, parses via #3, and emits a `rangepaste` event with the target
-top-left (active cell) + 2D values (+ formulas/source). Example app applies it:
-internal-source paste → `WorkerWorkbook.copyRange` (preserves formulas/formats);
-external → `setRangeValues`. Then `patchSheetLayout` + reselect the pasted
-region. Handle single-cell-source → multi-cell-target tiling like Excel
-(optional first cut: paste at top-left only). For cut-source, clear the original
-after paste. Verify: paste TSV from Sheets; internal copy keeps formulas.
-
 ### 6. Fill handle (drag-to-fill)
 Draw a small square handle at the selection's bottom-right corner (only in
 `editable` mode, only when not editing); hit-test it in `onPointerDown`, and on
@@ -144,3 +134,4 @@ trips through save.
 2. Worker image-insert op — `setImage` op on `editWorker.ts` + `WorkerWorkbook.setImage(sheetName, patch)`, single-sheet layout, bytes sent as transferable `ArrayBuffer`; round-trip test.
 3. Clipboard serialize/parse helpers — pure `clipboardModel.ts` (`serializeRange`/`parseClipboard`) with TSV quoting, HTML `<table>` + `data-xlcore` internal payload (values+formulas+range); unit-tested round-trips.
 4. Range copy / cut — `interact.ts` Cmd/Ctrl+C/X → `opts.onCopy`; `previewer.ts` `handleCopy` serializes via #3, writes `text/plain`+`text/html` (`clipboardIo.ts`, fallback to `writeText`), records `cutRange` (for #5), emits `rangecopy`/`rangecut`. Marching-ants cut overlay deferred.
+5. Range paste — `interact.ts` Cmd/Ctrl+V → `opts.onPaste`; `previewer.ts` `handlePaste` reads clipboard (`readClipboard`), parses (#3), emits `rangepaste` with target/values/formulas/source/sourceSheet/sourceRange/cutRange; example app `applyPaste` → internal `copyRange` (keeps formulas) / external `setRangeValues`, clears cut source, reselects pasted region. Single-cell-source → multi-target tiling deferred (paste at top-left only).

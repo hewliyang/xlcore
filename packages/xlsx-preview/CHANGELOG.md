@@ -11,6 +11,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `WorkerWorkbook.setImage(sheetName, patch)` inserts/anchors an image; bytes transferred across the worker boundary.
 - Pure `clipboardModel` helpers: `serializeRange`/`parseClipboard` (TSV + HTML table with internal `data-xlcore` payload preserving formulas).
 - Range copy/cut (Cmd/Ctrl+C/X) in editable previewer: writes `text/plain`+`text/html`, emits `rangecopy`/`rangecut` (cut overlay deferred).
+- Range paste (Cmd/Ctrl+V) in editable previewer: emits `rangepaste`; internal copies preserve formulas via `copyRange`, external uses `setRangeValues`, cut source cleared (single→multi tiling deferred).
 - Name box shows the defined-name when the selection matches a named range.
 - "+" tab button (editable mode) creates a new sheet via `WorkerWorkbook.addSheet`; wired into the example app.
 - Example app starts with a blank workbook and gains a "New" button to create one from scratch.

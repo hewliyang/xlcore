@@ -13,8 +13,8 @@ import {
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
 import { anchorToRect } from "./grid.js";
 import { buildDrawingMovedDetail } from "./anchorConvert.js";
-import { serializeRange } from "./clipboardModel.js";
-import { writeClipboard } from "./clipboardIo.js";
+import { parseClipboard, serializeRange } from "./clipboardModel.js";
+import { writeClipboard, readClipboard } from "./clipboardIo.js";
 import { referencesToHighlights } from "./highlights.js";
 import { autocompleteState, type AutocompleteState } from "./formulaAutocomplete.js";
 import { lookupSignature, signatureAt } from "./formulaSignature.js";
@@ -102,6 +102,7 @@ export type PreviewerEventName =
   | "drawingmoved"
   | "rangecopy"
   | "rangecut"
+  | "rangepaste"
   | "sheetadd";
 
 export type { PivotFilterEvent, TableFilterEvent, ValidationPickEvent } from "./interact.js";
@@ -448,6 +449,25 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     );
   }
 
+  private async handlePaste(target: { r: number; c: number }): Promise<void> {
+    const parsed = parseClipboard(await readClipboard());
+    const cutRange = this.cutRange;
+    this.cutRange = null;
+    this.dispatchEvent(
+      new CustomEvent("rangepaste", {
+        detail: {
+          target,
+          values: parsed.values,
+          formulas: parsed.formulas,
+          source: parsed.source,
+          sourceSheet: parsed.sourceSheet,
+          sourceRange: parsed.sourceRange,
+          cutRange,
+        },
+      }),
+    );
+  }
+
   getActiveSheetIndex(): number {
     return this.activeSheetIndex;
   }
@@ -695,6 +715,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
         ? (cell, initialText) => this.openEditOverlay(cell, initialText)
         : undefined,
       onCopy: this.editable ? (sel, isCut) => this.handleCopy(sel, isCut) : undefined,
+      onPaste: this.editable ? (target) => void this.handlePaste(target) : undefined,
       isPointModeActive: this.editable ? () => this.isPointModeActive() : undefined,
       onPointModeRef: this.editable ? (ref, o) => this.applyPointModeRef(ref, o) : undefined,
       onTableFilter: (info: TableFilterEvent) => {

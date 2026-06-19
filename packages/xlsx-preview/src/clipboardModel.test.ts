@@ -114,6 +114,8 @@ describe("serializeRange", () => {
     expect(parsed.source).toBe("internal");
     expect(parsed.values).toEqual([["3", "x"]]);
     expect(parsed.formulas).toEqual([["=1+2", null]]);
+    expect(parsed.sourceSheet).toBe("Sheet1");
+    expect(parsed.sourceRange).toBe("A1:B1");
   });
 });
 

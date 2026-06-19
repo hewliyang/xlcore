@@ -692,6 +692,52 @@ async function applyEdit({ sheetIndex, r, c, input, commitMove }) {
   }
 }
 
+async function applyPaste(detail) {
+  if (recalcWorkbook == null || !previewer) return;
+  const { target, values, source, sourceSheet, sourceRange, cutRange } = detail;
+  if (!values || values.length === 0 || values[0].length === 0) return;
+  const rows = values.length;
+  const cols = values[0].length;
+  const r2 = target.r + rows - 1;
+  const c2 = target.c + cols - 1;
+  const destRef = formatSelection({ r1: target.r, c1: target.c, r2, c2 });
+  const sheetName = previewer.getActiveSheet().name;
+  try {
+    let layout;
+    if (source === "internal" && sourceSheet && sourceRange) {
+      ({ layout } = await recalcWorkbook.copyRange({
+        sheetName: sourceSheet,
+        ref: sourceRange,
+        destSheet: sheetName,
+        destRef,
+        recalc: autoRecalc,
+      }));
+    } else {
+      ({ layout } = await recalcWorkbook.setRangeValues({
+        sheetName,
+        ref: destRef,
+        values,
+        recalc: autoRecalc,
+      }));
+    }
+    previewer.patchSheetLayout(layout);
+    if (cutRange && source === "internal") {
+      const cutRef = formatSelection(cutRange);
+      const { layout: cleared } = await recalcWorkbook.clearRange({
+        sheetName: sourceSheet ?? sheetName,
+        ref: cutRef,
+        recalc: autoRecalc,
+      });
+      previewer.patchSheetLayout(cleared);
+    }
+    previewer.selectRange({ r1: target.r, c1: target.c, r2, c2 }, { scroll: true });
+    renderState();
+    setStatus("pasted " + destRef);
+  } catch (error) {
+    setStatus(error && error.message ? error.message : String(error));
+  }
+}
+
 async function addSheet({ name }) {
   if (recalcWorkbook == null || !previewer) return;
   try {
@@ -1227,6 +1273,7 @@ async function loadWorkbookFile(file) {
     previewer.on("zoomchange", renderState);
     previewer.on("sheetadd", (e) => addSheet(e.detail));
     previewer.on("celledit", (e) => applyEdit(e.detail));
+    previewer.on("rangepaste", (e) => applyPaste(e.detail));
     previewer.on("drawingmoved", async (e) => {
       if (recalcWorkbook == null || !previewer) return;
       try {
