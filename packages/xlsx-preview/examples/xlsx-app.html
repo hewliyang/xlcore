@@ -1360,8 +1360,42 @@ picker.addEventListener("change", () => {
   picker.value = "";
 });
 
+const IMAGE_MIME = {
+  "image/png": "png",
+  "image/jpeg": "jpeg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+};
+
+async function insertDroppedImage(file) {
+  if (recalcWorkbook == null || !previewer) return;
+  const format = IMAGE_MIME[file.type];
+  if (!format) {
+    setStatus("unsupported image type");
+    return;
+  }
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const a = previewer.getActiveCell();
+    const anchor = formatSelection({ r1: a.r, c1: a.c, r2: a.r + 9, c2: a.c + 4 });
+    const sheetName = previewer.getActiveSheet().name;
+    const { layout } = await recalcWorkbook.setImage(sheetName, {
+      anchor,
+      bytes,
+      format,
+      name: file.name,
+    });
+    previewer.patchSheetLayout(layout);
+    renderState();
+    setStatus("inserted image " + file.name);
+  } catch (error) {
+    setStatus(error && error.message ? error.message : String(error));
+  }
+}
+
 (() => {
   let depth = 0;
+  const isImage = (f) => f && f.type in IMAGE_MIME;
   const isSupported = (f) =>
     f && (
       /\.(xlsx|csv|tsv|parquet|pqt)$/i.test(f.name) ||
@@ -1391,9 +1425,12 @@ picker.addEventListener("change", () => {
     e.preventDefault();
     depth = 0;
     previewRoot.classList.remove("drop-target");
-    const file = Array.from(e.dataTransfer.files).find(isSupported);
+    const files = Array.from(e.dataTransfer.files);
+    const image = files.find(isImage);
+    const file = files.find(isSupported);
     if (file) loadWorkbookFile(file);
-    else setStatus("unsupported file (expected .xlsx, .csv, .tsv, .parquet, or .pqt)");
+    else if (image) insertDroppedImage(image);
+    else setStatus("unsupported file (expected .xlsx, .csv, .tsv, .parquet, .pqt, or an image)");
   });
 
   window.addEventListener("dragover", (e) => {
