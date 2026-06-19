@@ -64,7 +64,6 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     maxV,
     chart.valueMin,
     chart.valueMax,
-    false,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );
@@ -204,7 +203,7 @@ export function drawStockChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
       }),
     ];
     const { maxV: vMax } = valueRange(volRows);
-    const vRange = resolveAxisRange(0, vMax, 0, undefined, true, 2);
+    const vRange = resolveAxisRange(0, vMax, 0, undefined, 2);
     const vInner = drawAxisFrame(
       ctx,
       chart,

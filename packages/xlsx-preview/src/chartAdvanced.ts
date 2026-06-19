@@ -612,7 +612,6 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     maxV,
     chart.valueMin,
     chart.valueMax,
-    false,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );

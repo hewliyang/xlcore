@@ -131,7 +131,6 @@ export function drawBar3DChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     maxV,
     chart.valueMin,
     chart.valueMax,
-    true,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );
@@ -425,7 +424,6 @@ export function drawSurfaceChart(ctx: CanvasRenderingContext2D, chart: Chart, re
     maxV,
     chart.valueMin,
     chart.valueMax,
-    true,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );

@@ -101,7 +101,6 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
     primaryRange.maxV,
     chart.valueMin,
     chart.valueMax,
-    primaryHasBars,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );
@@ -114,7 +113,6 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
         secondaryRange.maxV,
         chart.valueMinSecondary,
         chart.valueMaxSecondary,
-        secondaryHasBars,
         AXIS_TICK_COUNT,
         chart.majorUnitSecondary,
       )

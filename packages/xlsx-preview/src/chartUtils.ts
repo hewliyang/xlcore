@@ -688,7 +688,6 @@ export function resolveAxisRange(
   dataMax: number,
   forcedMin: number | undefined,
   forcedMax: number | undefined,
-  zeroClamp: boolean,
   tickCount: number,
   forcedMajorUnit?: number,
 ): { minV: number; maxV: number; ticks: number[] } {
@@ -696,9 +695,13 @@ export function resolveAxisRange(
   let hi = forcedMax ?? dataMax;
   const userScaled =
     forcedMin !== undefined || forcedMax !== undefined || forcedMajorUnit !== undefined;
-  if (zeroClamp && !userScaled) {
-    if (lo > 0) lo = 0;
-    if (hi < 0) hi = 0;
+  if (!userScaled) {
+    const FIVE_SIXTHS = 5 / 6;
+    if (dataMin >= 0 && dataMax > 0) {
+      if (dataMin <= FIVE_SIXTHS * dataMax) lo = 0;
+    } else if (dataMax <= 0 && dataMin < 0) {
+      if (dataMax >= FIVE_SIXTHS * dataMin) hi = 0;
+    }
   }
   if (lo === hi) hi = lo + 1;
   const EPS = 1e-9;

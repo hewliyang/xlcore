@@ -60,7 +60,6 @@ export function drawHistogramChartEx(
     maxCount,
     undefined,
     undefined,
-    true,
     AXIS_TICK_COUNT,
     undefined,
   );
@@ -139,7 +138,6 @@ export function drawParetoChartEx(ctx: CanvasRenderingContext2D, chart: Chart, r
     maxCount,
     undefined,
     undefined,
-    true,
     AXIS_TICK_COUNT,
     undefined,
   );
@@ -259,7 +257,6 @@ export function drawBoxWhiskerChartEx(
     maxObs,
     chart.valueMin,
     chart.valueMax,
-    false,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );

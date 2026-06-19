@@ -127,34 +127,34 @@ describe("zeroAxisMetrics — shared zero-baseline helper", () => {
 
 describe("resolveAxisRange — <c:majorUnit> cadence", () => {
   it("AGS NWC: max=45000, majorUnit=9000, positive data → 0/9000/.../45000", () => {
-    const r = resolveAxisRange(17869, 43118, undefined, 45000, false, 5, 9000);
+    const r = resolveAxisRange(17869, 43118, undefined, 45000, 5, 9000);
     expect(r.ticks).toEqual([0, 9000, 18000, 27000, 36000, 45000]);
     expect(r.minV).toBe(0);
     expect(r.maxV).toBe(45000);
   });
 
   it("respects forcedMin verbatim and anchors step cadence above it", () => {
-    const r = resolveAxisRange(115, 136, 100, 140, false, 5, 10);
+    const r = resolveAxisRange(115, 136, 100, 140, 5, 10);
     expect(r.minV).toBe(100);
     expect(r.maxV).toBe(140);
     expect(r.ticks).toEqual([100, 110, 120, 130, 140]);
   });
 
   it("falls back to niceTicks when majorUnit is absent", () => {
-    const r = resolveAxisRange(17, 43, undefined, undefined, true, 5);
+    const r = resolveAxisRange(17, 43, undefined, undefined, 5);
     expect(r.ticks[0]).toBe(0);
     expect(r.ticks[r.ticks.length - 1]).toBeGreaterThanOrEqual(43);
   });
 
   it("caps the walk-to-zero extension at 14 ticks to avoid blow-ups", () => {
-    const r = resolveAxisRange(100, 200, undefined, 200, false, 5, 1);
+    const r = resolveAxisRange(100, 200, undefined, 200, 5, 1);
 
     expect(r.ticks.length).toBeLessThan(120);
     expect(r.minV).toBeGreaterThanOrEqual(100);
   });
 
   it("handles dataMin straddling zero: walks one step below zero", () => {
-    const r = resolveAxisRange(-15, 30, undefined, 30, false, 5, 10);
+    const r = resolveAxisRange(-15, 30, undefined, 30, 5, 10);
     expect(r.minV).toBeLessThanOrEqual(-15);
     expect(r.maxV).toBe(30);
 
@@ -163,10 +163,30 @@ describe("resolveAxisRange — <c:majorUnit> cadence", () => {
     }
   });
 
+  it("line case: dataMin 2765 / max 5218 → axis min 0 (5/6 rule)", () => {
+    const r = resolveAxisRange(2765, 5218, undefined, undefined, 5);
+    expect(r.minV).toBe(0);
+  });
+
+  it("bar case: dataMin 4224 / max 4980 → non-zero axis min (5/6 rule)", () => {
+    const r = resolveAxisRange(4224, 4980, undefined, undefined, 5);
+    expect(r.minV).toBeGreaterThan(0);
+  });
+
+  it("all-negative: dataMax -10 / min -100 → axis max 0 (5/6 rule)", () => {
+    const r = resolveAxisRange(-100, -10, undefined, undefined, 5);
+    expect(r.maxV).toBe(0);
+  });
+
+  it("all-negative tight: dataMax -90 / min -100 → non-zero axis max", () => {
+    const r = resolveAxisRange(-100, -90, undefined, undefined, 5);
+    expect(r.maxV).toBeLessThan(0);
+  });
+
   it("rejects invalid majorUnit (zero / negative / non-finite) and uses niceTicks", () => {
-    const r1 = resolveAxisRange(0, 100, undefined, undefined, true, 5, 0);
-    const r2 = resolveAxisRange(0, 100, undefined, undefined, true, 5, -10);
-    const r3 = resolveAxisRange(0, 100, undefined, undefined, true, 5, Infinity);
+    const r1 = resolveAxisRange(0, 100, undefined, undefined, 5, 0);
+    const r2 = resolveAxisRange(0, 100, undefined, undefined, 5, -10);
+    const r3 = resolveAxisRange(0, 100, undefined, undefined, 5, Infinity);
 
     expect(r1.ticks).toEqual(r2.ticks);
     expect(r1.ticks).toEqual(r3.ticks);

@@ -47,7 +47,6 @@ export function drawAreaChart(ctx: CanvasRenderingContext2D, chart: Chart, rect:
     maxV,
     chart.valueMin,
     chart.valueMax,
-    true,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );

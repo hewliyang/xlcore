@@ -547,7 +547,6 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
       maxV,
       chart.valueMin,
       chart.valueMax,
-      true,
       AXIS_TICK_COUNT,
       chart.majorUnit,
     );
@@ -912,7 +911,6 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
     maxV,
     chart.valueMin,
     chart.valueMax,
-    false,
     AXIS_TICK_COUNT,
     chart.majorUnit,
   );
