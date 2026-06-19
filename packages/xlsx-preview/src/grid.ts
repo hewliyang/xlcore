@@ -1,3 +1,4 @@
+import type { DrawingAnchor } from "./schema/DrawingAnchor.js";
 import type { Drawing, Sheet } from "./types.js";
 import { iterRows } from "./columnar.js";
 
@@ -188,6 +189,75 @@ export function anchorToRect(
     return null;
   }
   return { x: fromX, y: fromY, w, h };
+}
+
+const EMU_PER_PX = 9525;
+
+function invertEdge(
+  edges: number[],
+  origin: number,
+  minStep: number,
+  val: number,
+): { edge: number; rem: number } {
+  const lastIdx = edges.length - 1;
+  const last = edges[lastIdx] ?? origin;
+  if (val >= last) {
+    const prev = edges[lastIdx - 1] ?? origin;
+    const step = Math.max(minStep, last - prev);
+    const extra = Math.floor((val - last) / step);
+    const edgeVal = last + extra * step;
+    return { edge: lastIdx + extra, rem: val - edgeVal };
+  }
+  let lo = 1;
+  let hi = lastIdx;
+  let edge = 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if ((edges[mid] ?? origin) <= val) {
+      edge = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return { edge, rem: Math.max(0, val - (edges[edge] ?? origin)) };
+}
+
+export function rectToAnchor(
+  rect: { x: number; y: number; w: number; h: number },
+  g: Grid,
+  template: DrawingAnchor,
+): DrawingAnchor {
+  const x = Math.max(g.originX, rect.x);
+  const y = Math.max(g.originY, rect.y);
+  const w = Math.max(1, rect.w);
+  const h = Math.max(1, rect.h);
+
+  const from = {
+    cx: invertEdge(g.colX, g.originX, 40, x),
+    cy: invertEdge(g.rowY, g.originY, 20, y),
+  };
+  const to = {
+    cx: invertEdge(g.colX, g.originX, 40, x + w),
+    cy: invertEdge(g.rowY, g.originY, 20, y + h),
+  };
+
+  const absolute = template.extEmuCx != null && template.extEmuCx > 0;
+  return {
+    ...(template.anchorKind != null ? { anchorKind: template.anchorKind } : {}),
+    ...(template.editAs != null ? { editAs: template.editAs } : {}),
+    fromCol: from.cx.edge - 1,
+    fromColOffEmu: Math.round(from.cx.rem * EMU_PER_PX),
+    fromRow: from.cy.edge - 1,
+    fromRowOffEmu: Math.round(from.cy.rem * EMU_PER_PX),
+    toCol: to.cx.edge - 1,
+    toColOffEmu: Math.round(to.cx.rem * EMU_PER_PX),
+    toRow: to.cy.edge - 1,
+    toRowOffEmu: Math.round(to.cy.rem * EMU_PER_PX),
+    ...(absolute
+      ? { extEmuCx: Math.round(w * EMU_PER_PX), extEmuCy: Math.round(h * EMU_PER_PX) }
+      : {}),
+  };
 }
 
 function colEdge(g: Grid, c: number): number {

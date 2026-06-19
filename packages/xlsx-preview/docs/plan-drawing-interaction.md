@@ -80,16 +80,6 @@ move/resize.
 
 ### B — Move (visual)
 
-- **B1. Pixel→anchor inverse.** In `grid.ts` add `rectToAnchor(rect, grid,
-  template)` that produces a `DrawingAnchor` from a target `{x,y,w,h}`,
-  preserving the template's anchor *style*: if `extEmuCx/Cy` present, keep
-  absolute size and recompute `from*` cell+offset from `rect.x/y`; else
-  recompute both `from*` and `to*` cell+offsets. Must satisfy
-  `anchorToRect(rectToAnchor(r)) ≈ r` (±1px). Use binary search over
-  `grid.colX/rowY` for the containing cell, remainder→EMU. Files: `grid.ts`,
-  `grid.anchor.test.ts` (round-trip property test, incl. both anchor styles +
-  off-grid clamping).
-
 - **B2. Drag to move.** New drag mode in `interact.ts` (`drawDrag = { index,
   startPx, startRect }`). On pointer-down inside a selected drawing's body (not
   a handle), capture pointer + start. On move: compute new rect = start + delta
@@ -152,6 +142,7 @@ move/resize.
 
 ## Shipped
 
+- **B1.** `rectToAnchor(rect, grid, template)` in `grid.ts` inverts `anchorToRect` via binary search over `colX`/`rowY` (remainder→EMU), preserving two-cell vs absolute (`extEmuCx/Cy`) anchor style; round-trip property tests in `grid.anchor.test.ts`.
 - **A3.** `move` cursor when hovering a selected drawing's body (`interact.ts`); deselect drawing on sheet change / `selectRange` / `scrollToCell` (`previewer.ts`).
 - **A2.** `drawDrawingSelection`/`drawingHandles` in `src/drawingSelection.ts`; `selectedDrawingRect` threaded through `RenderOptions` (computed in `previewer.ts` via `anchorToRect`) and drawn per-pane after `drawDrawings`.
 - **A1.** Top-most drawing hit-test (`drawingIndexAtPoint`) + per-sheet `selectedDrawing` state wired through `InteractOptions`; click selects a drawing, Escape/cell click clears it.
