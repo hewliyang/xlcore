@@ -954,6 +954,44 @@ export function attachInteractivity(
       opts.redraw();
       return;
     }
+    const selDi = opts.selectedDrawing?.get();
+    if (selDi != null) {
+      let ndx = 0,
+        ndy = 0;
+      switch (ev.key) {
+        case "ArrowUp":
+          ndy = -1;
+          break;
+        case "ArrowDown":
+          ndy = 1;
+          break;
+        case "ArrowLeft":
+          ndx = -1;
+          break;
+        case "ArrowRight":
+          ndx = 1;
+          break;
+      }
+      if (ndx !== 0 || ndy !== 0) {
+        ev.preventDefault();
+        const step = ev.shiftKey ? 10 : 1;
+        const grid = getGrid();
+        const sheet = opts.getSheet();
+        const d = sheet.drawings[selDi];
+        if (d) {
+          const prevAnchor = d.anchor;
+          const r = anchorToRect(d, grid);
+          if (!r) return;
+          const x = Math.max(grid.originX, r.x + ndx * step);
+          const y = Math.max(grid.originY, r.y + ndy * step);
+          d.anchor = rectToAnchor({ x, y, w: r.w, h: r.h }, grid, prevAnchor);
+          invalidateGrid();
+          opts.redraw();
+          opts.onDrawingMoved?.({ index: selDi, prevAnchor, anchor: d.anchor });
+        }
+        return;
+      }
+    }
     const cur = opts.activeCell.get();
     if (!cur) return;
     let dr = 0,

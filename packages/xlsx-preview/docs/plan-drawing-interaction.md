@@ -78,12 +78,6 @@ move/resize.
 
 ## Backlog
 
-### B — Move (visual)
-
-- **B3. Keyboard nudge.** With a drawing selected and no cell active, arrow keys
-  move it by 1px (Shift = 10px); `Delete` is **out of scope** (no remove here).
-  Files: `interact.ts` (`onKeyDown`). Verify: `pnpm test`.
-
 ### C — Resize (visual)
 
 - **C1. Handle hit-test + cursors.** Add handle geometry (8 rects from the
@@ -133,6 +127,8 @@ move/resize.
   `pnpm test`.
 
 ## Shipped
+
+- **B3.** Arrow keys in `onKeyDown` nudge the selected drawing (1px, 10px with Shift) before cell-movement logic: `anchorToRect`→translate (clamped to origin)→`rectToAnchor` keeping anchor template, set `sheet.drawings[i].anchor`, `invalidateGrid()`+`redraw()`, fire `onDrawingMoved` with snapshotted `prevAnchor`; Delete/Backspace out of scope.
 
 - **B2.** `drawDrag` mode in `interact.ts`: pointer-down on an already-selected drawing's body captures pointer + start rect; move sets `sheet.drawings[i].anchor = rectToAnchor(start+delta clamped to origin)` + redraw; up clears and fires optional `onDrawingMoved` (unwired in previewer).
 
