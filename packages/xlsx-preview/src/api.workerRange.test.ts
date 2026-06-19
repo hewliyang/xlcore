@@ -79,6 +79,33 @@ describe("worker range ops backing api", () => {
     }
   });
 
+  test("images.remove deletes the image and round-trips through save/reopen", async () => {
+    const { Workbook } = await loadApi();
+    const png = Uint8Array.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+      0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
+      0x89, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0x60, 0x00, 0x02, 0x00,
+      0x00, 0x05, 0x00, 0x01, 0xe2, 0x26, 0x05, 0x9b, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44,
+      0xae, 0x42, 0x60, 0x82,
+    ]);
+    const wb = await Workbook.create({ wasmBinaryUrl: wasmBytes() });
+    try {
+      const info = wb.sheet("Sheet1").images.set({ anchor: "C3:E10", bytes: png, format: "png" });
+      expect(wb.sheet("Sheet1").images.list().length).toBe(1);
+      wb.sheet("Sheet1").images.remove(info.id);
+      expect(wb.sheet("Sheet1").images.list().length).toBe(0);
+      const bytes = wb.save();
+      const wb2 = await Workbook.open(bytes, { wasmBinaryUrl: wasmBytes() });
+      try {
+        expect(wb2.sheet("Sheet1").images.list().length).toBe(0);
+      } finally {
+        wb2.dispose();
+      }
+    } finally {
+      wb.dispose();
+    }
+  });
+
   test("clearRange empties cells", async () => {
     const { Workbook } = await loadApi();
     const wb = await Workbook.create({ wasmBinaryUrl: wasmBytes() });

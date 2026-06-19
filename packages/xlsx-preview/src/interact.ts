@@ -92,6 +92,8 @@ export interface InteractOptions {
     anchor: DrawingAnchor;
   }) => void;
 
+  onDrawingDelete?: (info: { index: number }) => void;
+
   onPointModeRef?: (rangeRef: string, opts: { extend: boolean }) => void;
 
   redraw(): void;
@@ -1087,6 +1089,12 @@ export function attachInteractivity(
     }
     const selDi = opts.selectedDrawing?.get();
     if (selDi != null) {
+      if (ev.key === "Delete" || ev.key === "Backspace") {
+        ev.preventDefault();
+        opts.onDrawingDelete?.({ index: selDi });
+        opts.selectedDrawing?.set(null);
+        return;
+      }
       let ndx = 0,
         ndy = 0;
       switch (ev.key) {

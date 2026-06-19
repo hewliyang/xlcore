@@ -42,6 +42,7 @@ export type EditWorkerOp =
   | "distinctValues"
   | "updatePivot"
   | "moveDrawing"
+  | "removeDrawing"
   | "tableSetFilter"
   | "tableSetSort";
 
@@ -276,6 +277,31 @@ async function handleRequest(request: EditWorkerRequest): Promise<{
           drawingIndex,
         );
         if (id) w.sheet(sheetName).images.update(id, { anchor });
+      }
+      return { result: { layout: w.layout({ sheetName }), structure: structure() } };
+    }
+    case "removeDrawing": {
+      const { sheetName, kind, drawingIndex, prevAnchor } = request.args as {
+        sheetName: string;
+        kind: string;
+        drawingIndex: number;
+        prevAnchor: ChartAnchor;
+      };
+      const w = requireWorkbook();
+      if (kind === "chart") {
+        const id = resolveDrawingId(
+          w.sheet(sheetName).charts.list() as ChartInfo[],
+          prevAnchor,
+          drawingIndex,
+        );
+        if (id) w.sheet(sheetName).charts.remove(id);
+      } else if (kind === "image") {
+        const id = resolveDrawingId(
+          w.sheet(sheetName).images.list() as ImageInfo[],
+          prevAnchor,
+          drawingIndex,
+        );
+        if (id) w.sheet(sheetName).images.remove(id);
       }
       return { result: { layout: w.layout({ sheetName }), structure: structure() } };
     }

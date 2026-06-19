@@ -101,6 +101,7 @@ export type PreviewerEventName =
   | "tablefilter"
   | "celledit"
   | "drawingmoved"
+  | "drawingdeleted"
   | "rangecopy"
   | "rangecut"
   | "rangepaste"
@@ -770,6 +771,23 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
               index,
               prevAnchor,
               anchor,
+            ),
+          }),
+        );
+      },
+      onDrawingDelete: ({ index }) => {
+        const sheet = this.getActiveSheet();
+        const d = sheet.drawings?.[index];
+        if (!d) return;
+        this.currentState().selectedDrawing = null;
+        this.dispatchEvent(
+          new CustomEvent("drawingdeleted", {
+            detail: buildDrawingMovedDetail(
+              sheet.name,
+              d.kind,
+              index,
+              d.anchor,
+              d.anchor,
             ),
           }),
         );

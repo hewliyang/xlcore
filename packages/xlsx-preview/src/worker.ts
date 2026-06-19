@@ -222,6 +222,17 @@ export class WorkerWorkbook {
     return layout;
   }
 
+  async removeDrawing(input: {
+    sheetName: string;
+    kind: string;
+    drawingIndex: number;
+    prevAnchor: ChartAnchor;
+  }): Promise<WorkbookLayout> {
+    const { layout, structure } = await this.request<EditResult>("removeDrawing", { ...input });
+    await this.syncShadow(structure);
+    return layout;
+  }
+
   async tableSetFilter(input: {
     rangeRef: string;
     columnOffset: number;

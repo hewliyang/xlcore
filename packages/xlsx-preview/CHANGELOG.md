@@ -9,6 +9,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `WorkerWorkbook` range ops: `setRangeValues`, `setRangeFormulas`, `copyRange`, `clearRange`.
 - `WorkerWorkbook.setImage(sheetName, patch)` inserts/anchors an image; bytes transferred across the worker boundary.
+- Delete/Backspace removes a selected drawing (chart/image): `removeDrawing` worker op + `drawingdeleted` previewer event; example app wires it.
 - Pure `clipboardModel` helpers: `serializeRange`/`parseClipboard` (TSV + HTML table with internal `data-xlcore` payload preserving formulas).
 - Range copy/cut (Cmd/Ctrl+C/X) in editable previewer: writes `text/plain`+`text/html`, emits `rangecopy`/`rangecut` (cut overlay deferred).
 - Image paste (Cmd/Ctrl+V) in editable previewer: an image clipboard payload emits `imagepaste`; example app anchors it at the active cell via `setImage`.
