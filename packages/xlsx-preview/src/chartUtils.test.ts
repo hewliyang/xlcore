@@ -81,6 +81,12 @@ describe("formatAxisValue — dispUnits divisor", () => {
   it("respects percent format after divisor (rare but legal)", () => {
     expect(formatAxisValue(0.5, "0%", undefined)).toBe("50%");
   });
+
+  it("treats quoted literal % as a suffix, not the percent operator", () => {
+    expect(formatAxisValue(100, '0.0"%"')).toBe("100.0%");
+    expect(formatAxisValue(0.847, "0.0%")).toBe("84.7%");
+    expect(formatAxisValue(6000, "$#,##0")).toBe("$6,000");
+  });
 });
 
 describe("zeroAxisMetrics — shared zero-baseline helper", () => {

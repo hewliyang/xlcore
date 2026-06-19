@@ -791,15 +791,20 @@ export function formatAxisValue(
   if (!fmt || fmt === "General") return formatGeneral(v);
   const stripped = fmt.replace(/\[[^\]]*\]/g, "");
   const section = stripped.split(";")[0] ?? stripped;
-  const decimals = decimalsIn(section);
-  if (section.includes("%")) return (v * 100).toFixed(decimals) + "%";
-  if (section.includes("$")) {
-    const grouped = section.includes(",") || section.includes("#,##");
-    return "$" + (grouped ? withGrouping(v, decimals) : v.toFixed(decimals));
+  let literal = "";
+  const code = section.replace(/"([^"]*)"/g, (_, t) => {
+    literal += t;
+    return "";
+  });
+  const decimals = decimalsIn(code);
+  if (code.includes("%")) return (v * 100).toFixed(decimals) + "%";
+  if (code.includes("$")) {
+    const grouped = code.includes(",") || code.includes("#,##");
+    return "$" + (grouped ? withGrouping(v, decimals) : v.toFixed(decimals)) + literal;
   }
-  if (section.includes(",")) return withGrouping(v, decimals);
-  if (section.includes("0") || section.includes("#")) return v.toFixed(decimals);
-  return formatGeneral(v);
+  if (code.includes(",")) return withGrouping(v, decimals) + literal;
+  if (code.includes("0") || code.includes("#")) return v.toFixed(decimals) + literal;
+  return formatGeneral(v) + literal;
 }
 export function formatGeneral(v: number): string {
   if (Number.isInteger(v) && Math.abs(v) < 1e15) return v.toString();

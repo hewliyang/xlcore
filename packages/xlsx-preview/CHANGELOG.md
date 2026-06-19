@@ -5,6 +5,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Axis number format with a quoted literal (e.g. `0.0"%"`) no longer triggers the percent ×100 operator; quoted `"..."` segments are emitted as literal text.
+
 ### Changed
 
 - Chart value-axis min/max now uses Excel's data-driven 5/6 zero-clamp rule (axis hits zero only when data is close enough), replacing the per-chart-type `zeroClamp` boolean.

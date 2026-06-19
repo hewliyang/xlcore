@@ -31,3 +31,4 @@ build + vitest). Render compare:
 ## Shipped
 
 - Data-driven zero-clamp (Excel 5/6 rule) in `resolveAxisRange`; dropped per-call-site `zeroClamp` boolean.
+- `formatAxisValue` ignores quoted `"..."` literals (e.g. `0.0"%"`) when detecting the `%`/`$`/comma operators; emits them as literal suffix.
