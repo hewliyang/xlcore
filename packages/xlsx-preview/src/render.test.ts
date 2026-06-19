@@ -1,6 +1,11 @@
 import { expect, test, vi } from "vitest";
 import { applyTint } from "./render";
-import { drawDrawingSelection, drawingHandles } from "./drawingSelection";
+import {
+  drawDrawingSelection,
+  drawingHandleAtPoint,
+  drawingHandleCursor,
+  drawingHandles,
+} from "./drawingSelection";
 
 function close(a: string, b: string, tol = 2): boolean {
   const ar = parseInt(a.slice(1, 3), 16),
@@ -61,6 +66,23 @@ test("drawingHandles yields 8 handles at corners and edge midpoints", () => {
   expect(centers).toContainEqual([50, 0]);
   expect(centers).toContainEqual([100, 20]);
   expect(centers).toContainEqual([0, 40]);
+});
+
+test("drawingHandleAtPoint maps points to handle indices and cursors", () => {
+  const rect = { x: 0, y: 0, w: 100, h: 40 };
+  expect(drawingHandleAtPoint(rect, 0, 0)).toBe(0);
+  expect(drawingHandleAtPoint(rect, 100, 40)).toBe(4);
+  expect(drawingHandleAtPoint(rect, 100, 0)).toBe(2);
+  expect(drawingHandleAtPoint(rect, 0, 40)).toBe(6);
+  expect(drawingHandleAtPoint(rect, 50, 20)).toBeNull();
+  expect(drawingHandleCursor(0)).toBe("nwse-resize");
+  expect(drawingHandleCursor(4)).toBe("nwse-resize");
+  expect(drawingHandleCursor(2)).toBe("nesw-resize");
+  expect(drawingHandleCursor(6)).toBe("nesw-resize");
+  expect(drawingHandleCursor(1)).toBe("ns-resize");
+  expect(drawingHandleCursor(5)).toBe("ns-resize");
+  expect(drawingHandleCursor(3)).toBe("ew-resize");
+  expect(drawingHandleCursor(7)).toBe("ew-resize");
 });
 
 test("drawDrawingSelection draws box + 8 handles", () => {

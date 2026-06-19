@@ -27,6 +27,31 @@ export function drawingHandles(rect: DrawingRect): DrawingRect[] {
   return pts.map(([px, py]) => ({ x: px - s / 2, y: py - s / 2, w: s, h: s }));
 }
 
+export function drawingHandleAtPoint(rect: DrawingRect, x: number, y: number, tol = 2): number | null {
+  const handles = drawingHandles(rect);
+  for (let i = 0; i < handles.length; i++) {
+    const h = handles[i];
+    if (!h) continue;
+    if (x >= h.x - tol && x <= h.x + h.w + tol && y >= h.y - tol && y <= h.y + h.h + tol) return i;
+  }
+  return null;
+}
+
+const HANDLE_CURSORS = [
+  "nwse-resize",
+  "ns-resize",
+  "nesw-resize",
+  "ew-resize",
+  "nwse-resize",
+  "ns-resize",
+  "nesw-resize",
+  "ew-resize",
+];
+
+export function drawingHandleCursor(index: number): string {
+  return HANDLE_CURSORS[index] ?? "default";
+}
+
 export function drawDrawingSelection(ctx: CanvasRenderingContext2D, rect: DrawingRect): void {
   ctx.save();
   ctx.strokeStyle = SELECTION_STROKE;

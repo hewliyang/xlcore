@@ -80,11 +80,6 @@ move/resize.
 
 ### C — Resize (visual)
 
-- **C1. Handle hit-test + cursors.** Add handle geometry (8 rects from the
-  selection box, ~7px) in `drawingSelection.ts` (shared with A2). In
-  `interact.ts`, before body-move, test handles; set the matching resize cursor
-  (`nwse`/`nesw`/`ns`/`ew`). Files: `drawingSelection.ts`, `interact.ts`.
-
 - **C2. Drag handle to resize.** Resize drag mode: each handle adjusts the
   corresponding rect edge(s); enforce `MIN` size (reuse the >1px floor in
   `anchorToRect`). Convert via `rectToAnchor` keeping anchor style; live redraw;
@@ -127,6 +122,8 @@ move/resize.
   `pnpm test`.
 
 ## Shipped
+
+- **C1.** `drawingHandleAtPoint(rect, x, y, tol)` + `drawingHandleCursor(i)` in `drawingSelection.ts`; `interact.ts` hover section tests handles before body-move and sets `nwse`/`nesw`/`ns`/`ew` cursors (handle order TL,top,TR,right,BR,bottom,BL,left); unit test in `render.test.ts`.
 
 - **B3.** Arrow keys in `onKeyDown` nudge the selected drawing (1px, 10px with Shift) before cell-movement logic: `anchorToRect`→translate (clamped to origin)→`rectToAnchor` keeping anchor template, set `sheet.drawings[i].anchor`, `invalidateGrid()`+`redraw()`, fire `onDrawingMoved` with snapshotted `prevAnchor`; Delete/Backspace out of scope.
 

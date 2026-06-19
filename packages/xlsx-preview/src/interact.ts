@@ -11,6 +11,7 @@ import type { PivotArrowHit } from "./sheetChrome.js";
 import type { TableFilterArrow } from "./schema/TableFilterArrow.js";
 import { buildGrid, frozenDims } from "./render.js";
 import { anchorToRect, rectToAnchor } from "./grid.js";
+import { drawingHandleAtPoint, drawingHandleCursor } from "./drawingSelection.js";
 import type { DrawingAnchor } from "./schema/DrawingAnchor.js";
 import { cellA1, rangeA1 } from "./api-refs.js";
 import { createAnnotationLayer } from "./interactAnnotations.js";
@@ -472,6 +473,16 @@ export function attachInteractivity(
     if (sel != null) {
       const grid = getGrid();
       const lp2 = toLogical(ev);
+      const selDrawing = opts.getSheet().drawings?.[sel];
+      const rect = selDrawing ? anchorToRect(selDrawing, grid) : null;
+      if (rect) {
+        const hi = drawingHandleAtPoint(rect, lp2.x, lp2.y);
+        if (hi != null) {
+          canvas.style.cursor = drawingHandleCursor(hi);
+          annotations.hidePopover();
+          return;
+        }
+      }
       if (
         lp2.x >= grid.originX &&
         lp2.y >= grid.originY &&
