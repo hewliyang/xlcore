@@ -1,7 +1,7 @@
 import { Workbook, distinctValuesFor } from "./api.js";
 import type { Worksheet } from "./api-worksheet.js";
 import type { CellInput } from "./api-range.js";
-import type { ClearMode } from "./api-schema/index.js";
+import type { ClearMode, ImagePatch } from "./api-schema/index.js";
 import type {
   ChartAnchor,
   ChartInfo,
@@ -33,6 +33,7 @@ export type EditWorkerOp =
   | "setRangeFormulas"
   | "copyRange"
   | "clearRange"
+  | "setImage"
   | "addSheet"
   | "recalculate"
   | "layout"
@@ -190,6 +191,16 @@ async function handleRequest(request: EditWorkerRequest): Promise<{
       if (recalc) {
         w.recalculate();
       }
+      return { result: { layout: w.layout({ sheetName }), structure: structure() } };
+    }
+    case "setImage": {
+      const { sheetName, patch, bytes } = request.args as {
+        sheetName: string;
+        patch: Omit<ImagePatch, "bytes">;
+        bytes: ArrayBuffer;
+      };
+      const w = requireWorkbook();
+      w.sheet(sheetName).images.set({ ...patch, bytes: new Uint8Array(bytes) });
       return { result: { layout: w.layout({ sheetName }), structure: structure() } };
     }
     case "addSheet": {

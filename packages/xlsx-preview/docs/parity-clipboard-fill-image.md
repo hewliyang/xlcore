@@ -101,15 +101,6 @@ honoring a `recalc` flag (mirror `applyEdit`). No UI yet. Round-trip test at the
 `Workbook` level. Gotcha: `copyRange` signature is
 `(sheet, ref, destSheet, destRef)`; keep same-sheet dest the common case.
 
-### 2. Worker image-insert op (foundation)
-Add a `setImage` op to `editWorker.ts` + `WorkerWorkbook.setImage(sheetName,
-patch)` returning single-sheet layout (recalc not needed; image is a drawing).
-Pass `ImagePatch` through verbatim (`bytes`, `anchor` as A1 range string,
-`format`). Test: insert PNG bytes anchored at `"C3:E10"`, `save`/reopen, assert
-`images.list()` has it. Gotcha: `bytes` must survive the worker boundary — send
-as transferable `ArrayBuffer` and rebuild `Uint8Array` in the worker (see
-`open` op's `bytes` handling).
-
 ### 3. Clipboard serialize/parse helpers (pure)
 New module (e.g. `clipboardModel.ts`): `serializeRange(layout, sheet, selection)
 → { tsv, html }` and `parseClipboard({ html?, tsv? }) → { values, formulas?,
@@ -168,3 +159,4 @@ trips through save.
 ## Shipped
 
 1. Worker range ops — `setRangeValues`/`setRangeFormulas`/`copyRange`/`clearRange` on `WorkerWorkbook` + `editWorker.ts`, single-sheet layout, `recalc` flag; Workbook-level round-trip test.
+2. Worker image-insert op — `setImage` op on `editWorker.ts` + `WorkerWorkbook.setImage(sheetName, patch)`, single-sheet layout, bytes sent as transferable `ArrayBuffer`; round-trip test.

@@ -8,6 +8,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - `WorkerWorkbook` range ops: `setRangeValues`, `setRangeFormulas`, `copyRange`, `clearRange`.
+- `WorkerWorkbook.setImage(sheetName, patch)` inserts/anchors an image; bytes transferred across the worker boundary.
 - Name box shows the defined-name when the selection matches a named range.
 - "+" tab button (editable mode) creates a new sheet via `WorkerWorkbook.addSheet`; wired into the example app.
 - Example app starts with a blank workbook and gains a "New" button to create one from scratch.

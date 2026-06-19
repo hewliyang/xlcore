@@ -3,6 +3,7 @@ import type {
   ChartAnchor,
   ClearMode,
   DependencyReference,
+  ImagePatch,
   PivotUpdate,
   LayoutOptions as WorkbookLayoutOptions,
 } from "./api-schema/index.js";
@@ -143,6 +144,20 @@ export class WorkerWorkbook {
     recalc: boolean;
   }): Promise<{ layout: WorkbookLayout }> {
     const { layout, structure } = await this.request<EditResult>("clearRange", { ...input });
+    await this.syncShadow(structure);
+    return { layout };
+  }
+
+  async setImage(sheetName: string, patch: ImagePatch): Promise<{ layout: WorkbookLayout }> {
+    const { bytes, ...rest } = patch;
+    const source = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes);
+    const copy = source.slice();
+    const buffer = copy.buffer;
+    const { layout, structure } = await this.request<EditResult>(
+      "setImage",
+      { sheetName, patch: rest, bytes: buffer },
+      [buffer],
+    );
     await this.syncShadow(structure);
     return { layout };
   }
