@@ -692,6 +692,28 @@ async function applyEdit({ sheetIndex, r, c, input, commitMove }) {
   }
 }
 
+async function applyFill(detail) {
+  if (recalcWorkbook == null || !previewer) return;
+  const { target, values } = detail;
+  if (!values || values.length === 0 || values[0].length === 0) return;
+  const destRef = formatSelection(target);
+  const sheetName = previewer.getActiveSheet().name;
+  try {
+    const { layout } = await recalcWorkbook.setRangeValues({
+      sheetName,
+      ref: destRef,
+      values,
+      recalc: autoRecalc,
+    });
+    previewer.patchSheetLayout(layout);
+    previewer.selectRange(target, { scroll: true });
+    renderState();
+    setStatus("filled " + destRef);
+  } catch (error) {
+    setStatus(error && error.message ? error.message : String(error));
+  }
+}
+
 async function applyPaste(detail) {
   if (recalcWorkbook == null || !previewer) return;
   const { target, values, source, sourceSheet, sourceRange, cutRange } = detail;
@@ -1274,6 +1296,7 @@ async function loadWorkbookFile(file) {
     previewer.on("sheetadd", (e) => addSheet(e.detail));
     previewer.on("celledit", (e) => applyEdit(e.detail));
     previewer.on("rangepaste", (e) => applyPaste(e.detail));
+    previewer.on("rangefill", (e) => applyFill(e.detail));
     previewer.on("drawingmoved", async (e) => {
       if (recalcWorkbook == null || !previewer) return;
       try {

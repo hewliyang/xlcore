@@ -82,6 +82,8 @@ export interface InteractOptions {
   onCopy?: (selection: Selection, isCut: boolean) => void;
   onPaste?: (target: { r: number; c: number }) => void;
 
+  onFill?: (source: Selection, target: Selection) => void;
+
   isPointModeActive?: () => boolean;
 
   onDrawingMoved?: (info: {
@@ -167,6 +169,7 @@ export function attachInteractivity(
     startRect: { x: number; y: number; w: number; h: number };
     prevAnchor: DrawingAnchor;
   } | null = null;
+  let fillDrag: { source: Selection } | null = null;
   let pointAnchor: { r: number; c: number } | null = null;
   const savedCursor = canvas.style.cursor;
   let cachedGrid: {
@@ -454,6 +457,24 @@ export function attachInteractivity(
       });
       return;
     }
+    if (fillDrag) {
+      const grid = getGrid();
+      const lp = toLogical(ev);
+      const cx = Math.max(grid.originX + 0.5, lp.x);
+      const cy = Math.max(grid.originY + 0.5, lp.y);
+      const cell = cellAt(grid, cx, cy);
+      if (!cell) return;
+      const s = fillDrag.source;
+      const rowExtend = cell.r - s.r2;
+      const colExtend = cell.c - s.c2;
+      const target =
+        rowExtend >= colExtend
+          ? { r1: s.r1, c1: s.c1, r2: Math.max(s.r2, cell.r), c2: s.c2 }
+          : { r1: s.r1, c1: s.c1, r2: s.r2, c2: Math.max(s.c2, cell.c) };
+      opts.selection?.set(target);
+      opts.redraw();
+      return;
+    }
     if (selDrag) {
       const grid = getGrid();
       const lp = toLogical(ev);
@@ -481,6 +502,11 @@ export function attachInteractivity(
       return;
     }
     const cp = toCanvasLocal(ev);
+    if (cp.x >= 0 && fillHandleAt(toLogical(ev))) {
+      canvas.style.cursor = "crosshair";
+      annotations.hidePopover();
+      return;
+    }
     if (maybeOutlineCursor(cp)) return;
     if (opts.onPivotFilter) {
       const lp = toLogical(ev);
@@ -577,6 +603,28 @@ export function attachInteractivity(
     } else {
       annotations.hidePopover();
     }
+  }
+
+  function normalizeSel(s: Selection): Selection {
+    return {
+      r1: Math.min(s.r1, s.r2),
+      c1: Math.min(s.c1, s.c2),
+      r2: Math.max(s.r1, s.r2),
+      c2: Math.max(s.c1, s.c2),
+    };
+  }
+
+  function fillHandleAt(lp: { x: number; y: number }): Selection | null {
+    if (!opts.onFill) return null;
+    const sel = opts.selection?.get();
+    if (!sel) return null;
+    const n = normalizeSel(sel);
+    const grid = getGrid();
+    const x2 = grid.colX[n.c2 + 1] ?? 0;
+    const y2 = grid.rowY[n.r2 + 1] ?? 0;
+    if (x2 === 0 || y2 === 0) return null;
+    if (Math.abs(lp.x - x2) <= 5 && Math.abs(lp.y - y2) <= 5) return n;
+    return null;
   }
 
   function pointRef(anchor: { r: number; c: number }, cur: { r: number; c: number }): string {
@@ -884,6 +932,14 @@ export function attachInteractivity(
     }
 
     if (cp.x >= grid.originX && cp.y >= grid.originY) {
+      const fillSource = fillHandleAt(p);
+      if (fillSource) {
+        ev.preventDefault();
+        canvas.setPointerCapture(ev.pointerId);
+        fillDrag = { source: fillSource };
+        canvas.focus({ preventScroll: true });
+        return;
+      }
       const cell = cellAt(grid, p.x, p.y);
       if (cell && opts.isPointModeActive?.()) {
         ev.preventDefault();
@@ -1185,6 +1241,18 @@ export function attachInteractivity(
         });
       }
       drawDrag = null;
+    }
+    if (fillDrag) {
+      try {
+        canvas.releasePointerCapture(ev.pointerId);
+      } catch {}
+      const s = fillDrag.source;
+      const target = opts.selection?.get();
+      fillDrag = null;
+      if (target) {
+        const t = normalizeSel(target);
+        if (t.r2 > s.r2 || t.c2 > s.c2) opts.onFill?.(s, t);
+      }
     }
     if (drag || selDrag || pointDrag) {
       try {

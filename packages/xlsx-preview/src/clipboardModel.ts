@@ -90,6 +90,26 @@ function decodeEntities(s: string): string {
     .replace(/&amp;/g, "&");
 }
 
+export function readRangeValues(
+  layout: WorkbookLayout,
+  sheetName: string,
+  selection: Selection,
+): string[][] {
+  const sheet = layout.sheets.find((s) => s.name === sheetName) as Sheet | undefined;
+  const n = normalize(selection);
+  const values: string[][] = [];
+  if (sheet) {
+    for (let r = n.r1; r <= n.r2; r++) {
+      const rowVals: string[] = [];
+      for (let c = n.c1; c <= n.c2; c++) {
+        rowVals.push(cellDisplay(sheet, layout, r, c));
+      }
+      values.push(rowVals);
+    }
+  }
+  return values;
+}
+
 export function serializeRange(
   layout: WorkbookLayout,
   sheetName: string,

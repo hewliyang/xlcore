@@ -101,17 +101,6 @@ honoring a `recalc` flag (mirror `applyEdit`). No UI yet. Round-trip test at the
 `Workbook` level. Gotcha: `copyRange` signature is
 `(sheet, ref, destSheet, destRef)`; keep same-sheet dest the common case.
 
-### 6. Fill handle (drag-to-fill)
-Draw a small square handle at the selection's bottom-right corner (only in
-`editable` mode, only when not editing); hit-test it in `onPointerDown`, and on
-drag extend a preview rectangle along the dominant axis. On release, fill the
-new cells: copy-fill (repeat source) as the baseline; linear/series detection
-(numbers, dates, `Jan/Feb…`, `1,2,3`) as a follow-up — note in the doc if you
-defer series. Apply via the #1 ops (`copyRange` for copy-fill, `setRangeValues`
-for series). Add a pure `projectFill(sourceValues, sourceRange, targetRange)`
-helper with unit tests. Gotcha: keep the drag handling consistent with the
-existing drawing-resize pointer flow in `interact.ts`.
-
 ### 7. Image drop into sheet
 In the example app (and/or previewer), accept an **image** file dropped onto the
 canvas (not just whole-workbook files): map the drop point to a cell, build an
@@ -134,4 +123,5 @@ trips through save.
 2. Worker image-insert op — `setImage` op on `editWorker.ts` + `WorkerWorkbook.setImage(sheetName, patch)`, single-sheet layout, bytes sent as transferable `ArrayBuffer`; round-trip test.
 3. Clipboard serialize/parse helpers — pure `clipboardModel.ts` (`serializeRange`/`parseClipboard`) with TSV quoting, HTML `<table>` + `data-xlcore` internal payload (values+formulas+range); unit-tested round-trips.
 4. Range copy / cut — `interact.ts` Cmd/Ctrl+C/X → `opts.onCopy`; `previewer.ts` `handleCopy` serializes via #3, writes `text/plain`+`text/html` (`clipboardIo.ts`, fallback to `writeText`), records `cutRange` (for #5), emits `rangecopy`/`rangecut`. Marching-ants cut overlay deferred.
+6. Fill handle — `interact.ts` hit-tests the bottom-right handle in `onPointerDown` (`fillHandleAt`, ~5px), drags a dominant-axis preview via `opts.selection`, fires `opts.onFill` on grow; `previewer.ts` `handleFill` reads source via `readRangeValues` (added to `clipboardModel.ts`), tiles with pure `projectFill` (`fillModel.ts`, unit-tested), emits `rangefill`; example app `applyFill` → `setRangeValues`. Copy-fill (tile) only; linear/date series detection deferred.
 5. Range paste — `interact.ts` Cmd/Ctrl+V → `opts.onPaste`; `previewer.ts` `handlePaste` reads clipboard (`readClipboard`), parses (#3), emits `rangepaste` with target/values/formulas/source/sourceSheet/sourceRange/cutRange; example app `applyPaste` → internal `copyRange` (keeps formulas) / external `setRangeValues`, clears cut source, reselects pasted region. Single-cell-source → multi-target tiling deferred (paste at top-left only).

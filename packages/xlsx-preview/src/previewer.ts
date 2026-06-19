@@ -13,7 +13,8 @@ import {
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
 import { anchorToRect } from "./grid.js";
 import { buildDrawingMovedDetail } from "./anchorConvert.js";
-import { parseClipboard, serializeRange } from "./clipboardModel.js";
+import { parseClipboard, readRangeValues, serializeRange } from "./clipboardModel.js";
+import { projectFill } from "./fillModel.js";
 import { writeClipboard, readClipboard } from "./clipboardIo.js";
 import { referencesToHighlights } from "./highlights.js";
 import { autocompleteState, type AutocompleteState } from "./formulaAutocomplete.js";
@@ -103,6 +104,7 @@ export type PreviewerEventName =
   | "rangecopy"
   | "rangecut"
   | "rangepaste"
+  | "rangefill"
   | "sheetadd";
 
 export type { PivotFilterEvent, TableFilterEvent, ValidationPickEvent } from "./interact.js";
@@ -468,6 +470,13 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     );
   }
 
+  private handleFill(source: Selection, target: Selection): void {
+    const sheetName = this.getActiveSheet().name;
+    const values = readRangeValues(this.layout, sheetName, source);
+    const projected = projectFill(values, target, source);
+    this.dispatchEvent(new CustomEvent("rangefill", { detail: { target, values: projected } }));
+  }
+
   getActiveSheetIndex(): number {
     return this.activeSheetIndex;
   }
@@ -716,6 +725,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
         : undefined,
       onCopy: this.editable ? (sel, isCut) => this.handleCopy(sel, isCut) : undefined,
       onPaste: this.editable ? (target) => void this.handlePaste(target) : undefined,
+      onFill: this.editable ? (source, target) => this.handleFill(source, target) : undefined,
       isPointModeActive: this.editable ? () => this.isPointModeActive() : undefined,
       onPointModeRef: this.editable ? (ref, o) => this.applyPointModeRef(ref, o) : undefined,
       onTableFilter: (info: TableFilterEvent) => {
