@@ -380,6 +380,7 @@ export function drawCellText(
     const halign = xf?.horizontalAlignment ?? defaultAlign;
     const valign = xf?.verticalAlignment ?? "bottom";
     const wrap = xf?.wrapText ?? false;
+    const shrink = xf?.shrinkToFit ?? false;
 
     const spans = resolveCellSpans(
       cell,
@@ -654,7 +655,12 @@ export function drawCellText(
         ctx.restore();
         return;
       }
-      if (ctx.measureText(display).width > innerW && innerW > 8) {
+      let shrinkPx = span.fontSizePx;
+      if (shrink && innerW > 0 && ctx.measureText(display).width > innerW) {
+        const ratio = innerW / ctx.measureText(display).width;
+        shrinkPx = Math.max(1, span.fontSizePx * ratio);
+        ctx.font = span.font.replace(/[\d.]+px/, `${shrinkPx}px`);
+      } else if (ctx.measureText(display).width > innerW && innerW > 8) {
         const ell = "…";
         let lo = 0,
           hi = display.length;
@@ -680,7 +686,7 @@ export function drawCellText(
             tx = alignRect.x + alignRect.w - padX - indentRight - tw;
           else tx = textOriginX + padX + indentLeft;
       }
-      const ascent = span.fontSizePx * 0.8;
+      const ascent = shrinkPx * 0.8;
       let ty: number;
       switch (valign) {
         case "top":
