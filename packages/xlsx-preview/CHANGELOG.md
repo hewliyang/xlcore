@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `readingOrder` RTL (value 2): right-anchors text whose alignment is general/unspecified; explicit left/center/right preserved.
 - `fill` horizontal alignment: repeats single-line cell text to fill the column width, clipped.
 - `centerContinuous` horizontal alignment (Center Across Selection): centers text across the run of empty cells to the right.
 - `shrinkToFit`: scales down font size of overflowing single-line text to fit the cell instead of ellipsizing.

@@ -377,7 +377,10 @@ export function drawCellText(
     const baseColor =
       (dxf?.fontColor ? colorToCss(dxf.fontColor, "#000000") : formatColor) ??
       colorToCss(font?.color, "#000000");
-    const halign = xf?.horizontalAlignment ?? defaultAlign;
+    const rtl = xf?.readingOrder === 2;
+    const explicitHalign = xf?.horizontalAlignment;
+    const isGeneralAlign = explicitHalign === undefined || explicitHalign === "general";
+    const halign = rtl && isGeneralAlign ? "right" : (explicitHalign ?? defaultAlign);
     const valign = xf?.verticalAlignment ?? "bottom";
     const wrap = xf?.wrapText ?? false;
     const shrink = xf?.shrinkToFit ?? false;
