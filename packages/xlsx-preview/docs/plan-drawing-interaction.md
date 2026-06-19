@@ -78,15 +78,6 @@ move/resize.
 
 ## Backlog
 
-### C — Resize (visual)
-
-- **C2. Drag handle to resize.** Resize drag mode: each handle adjusts the
-  corresponding rect edge(s); enforce `MIN` size (reuse the >1px floor in
-  `anchorToRect`). Convert via `rectToAnchor` keeping anchor style; live redraw;
-  emit resize (D1). Corner handles scale two edges, edge handles one. Files:
-  `interact.ts`. Verify: CLI before/after render shows resized chart; round-trip
-  test in `grid.anchor.test.ts` covers each handle.
-
 ### D — Events + round-trip (charts)
 
 - **D1. Previewer drawing events.** Add `"drawingmoved"` to `PreviewerEventName`
@@ -122,6 +113,8 @@ move/resize.
   `pnpm test`.
 
 ## Shipped
+
+- **C2.** `resizeRect(startRect, handle, dx, dy, min=8)` in `drawingSelection.ts` (left edge {0,6,7}, right {2,3,4}, top {0,1,2}, bottom {4,5,6}; min-size clamp, no inversion); `interact.ts` `resizeDrag` mode tested before body-move drawDrag — pointer-down on a selected drawing's handle captures pointer+startRect+prevAnchor, move applies `rectToAnchor(resizeRect(...))`+invalidate/redraw, up clears and fires `onDrawingMoved`; unit tests in `render.test.ts`.
 
 - **C1.** `drawingHandleAtPoint(rect, x, y, tol)` + `drawingHandleCursor(i)` in `drawingSelection.ts`; `interact.ts` hover section tests handles before body-move and sets `nwse`/`nesw`/`ns`/`ew` cursors (handle order TL,top,TR,right,BR,bottom,BL,left); unit test in `render.test.ts`.
 

@@ -5,6 +5,7 @@ import {
   drawingHandleAtPoint,
   drawingHandleCursor,
   drawingHandles,
+  resizeRect,
 } from "./drawingSelection";
 
 function close(a: string, b: string, tol = 2): boolean {
@@ -83,6 +84,26 @@ test("drawingHandleAtPoint maps points to handle indices and cursors", () => {
   expect(drawingHandleCursor(5)).toBe("ns-resize");
   expect(drawingHandleCursor(3)).toBe("ew-resize");
   expect(drawingHandleCursor(7)).toBe("ew-resize");
+});
+
+test("resizeRect moves only the edges each handle controls, opposite stays fixed", () => {
+  const s = { x: 100, y: 100, w: 200, h: 80 };
+  expect(resizeRect(s, 4, 10, 20)).toEqual({ x: 100, y: 100, w: 210, h: 100 });
+  expect(resizeRect(s, 0, 10, 20)).toEqual({ x: 110, y: 120, w: 190, h: 60 });
+  expect(resizeRect(s, 1, 10, 20)).toEqual({ x: 100, y: 120, w: 200, h: 60 });
+  expect(resizeRect(s, 5, 10, 20)).toEqual({ x: 100, y: 100, w: 200, h: 100 });
+  expect(resizeRect(s, 3, 10, 20)).toEqual({ x: 100, y: 100, w: 210, h: 80 });
+  expect(resizeRect(s, 7, 10, 20)).toEqual({ x: 110, y: 100, w: 190, h: 80 });
+  expect(resizeRect(s, 2, 10, 20)).toEqual({ x: 100, y: 120, w: 210, h: 60 });
+  expect(resizeRect(s, 6, 10, 20)).toEqual({ x: 110, y: 100, w: 190, h: 100 });
+});
+
+test("resizeRect clamps to min size without inverting", () => {
+  const s = { x: 100, y: 100, w: 200, h: 80 };
+  const r = resizeRect(s, 0, 1000, 1000, 8);
+  expect(r).toEqual({ x: 292, y: 172, w: 8, h: 8 });
+  const r2 = resizeRect(s, 4, -1000, -1000, 8);
+  expect(r2).toEqual({ x: 100, y: 100, w: 8, h: 8 });
 });
 
 test("drawDrawingSelection draws box + 8 handles", () => {

@@ -14,6 +14,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Drag a selected drawing's resize handle to resize it, with live redraw and re-anchoring.
 - Hovering a selected drawing's resize handle shows the matching directional cursor.
 - Arrow keys nudge a selected drawing by 1px (10px with Shift) with live redraw and re-anchoring.
 - Drag a selected drawing's body to move it, with live redraw and re-anchoring via `rectToAnchor`.

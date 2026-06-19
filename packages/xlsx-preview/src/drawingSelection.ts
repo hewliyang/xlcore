@@ -52,6 +52,35 @@ export function drawingHandleCursor(index: number): string {
   return HANDLE_CURSORS[index] ?? "default";
 }
 
+export function resizeRect(
+  startRect: DrawingRect,
+  handle: number,
+  dx: number,
+  dy: number,
+  min = 8,
+): DrawingRect {
+  const left = handle === 0 || handle === 6 || handle === 7;
+  const right = handle === 2 || handle === 3 || handle === 4;
+  const top = handle === 0 || handle === 1 || handle === 2;
+  const bottom = handle === 4 || handle === 5 || handle === 6;
+  let { x, y, w, h } = startRect;
+  if (left) {
+    const nx = Math.min(startRect.x + dx, startRect.x + startRect.w - min);
+    w = startRect.x + startRect.w - nx;
+    x = nx;
+  } else if (right) {
+    w = Math.max(min, startRect.w + dx);
+  }
+  if (top) {
+    const ny = Math.min(startRect.y + dy, startRect.y + startRect.h - min);
+    h = startRect.y + startRect.h - ny;
+    y = ny;
+  } else if (bottom) {
+    h = Math.max(min, startRect.h + dy);
+  }
+  return { x, y, w, h };
+}
+
 export function drawDrawingSelection(ctx: CanvasRenderingContext2D, rect: DrawingRect): void {
   ctx.save();
   ctx.strokeStyle = SELECTION_STROKE;

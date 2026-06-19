@@ -11,7 +11,7 @@ import type { PivotArrowHit } from "./sheetChrome.js";
 import type { TableFilterArrow } from "./schema/TableFilterArrow.js";
 import { buildGrid, frozenDims } from "./render.js";
 import { anchorToRect, rectToAnchor } from "./grid.js";
-import { drawingHandleAtPoint, drawingHandleCursor } from "./drawingSelection.js";
+import { drawingHandleAtPoint, drawingHandleCursor, resizeRect } from "./drawingSelection.js";
 import type { DrawingAnchor } from "./schema/DrawingAnchor.js";
 import { cellA1, rangeA1 } from "./api-refs.js";
 import { createAnnotationLayer } from "./interactAnnotations.js";
@@ -136,6 +136,14 @@ export function attachInteractivity(
   let pointDrag: { anchor: { r: number; c: number } } | null = null;
   let drawDrag: {
     index: number;
+    startX: number;
+    startY: number;
+    startRect: { x: number; y: number; w: number; h: number };
+    prevAnchor: DrawingAnchor;
+  } | null = null;
+  let resizeDrag: {
+    index: number;
+    handle: number;
     startX: number;
     startY: number;
     startRect: { x: number; y: number; w: number; h: number };
@@ -363,6 +371,24 @@ export function attachInteractivity(
   }
 
   function onPointerMove(ev: PointerEvent) {
+    if (resizeDrag) {
+      const grid = getGrid();
+      const p = toLogical(ev);
+      const sheet = opts.getSheet();
+      const d = sheet.drawings[resizeDrag.index];
+      if (d) {
+        const r = resizeRect(
+          resizeDrag.startRect,
+          resizeDrag.handle,
+          p.x - resizeDrag.startX,
+          p.y - resizeDrag.startY,
+        );
+        d.anchor = rectToAnchor(r, grid, resizeDrag.prevAnchor);
+      }
+      invalidateGrid();
+      opts.redraw();
+      return;
+    }
     if (drawDrag) {
       const grid = getGrid();
       const p = toLogical(ev);
@@ -794,6 +820,26 @@ export function attachInteractivity(
     }
 
     if (cp.x >= grid.originX && cp.y >= grid.originY && opts.selectedDrawing) {
+      const selIdx = opts.selectedDrawing.get();
+      if (selIdx != null) {
+        const selD = opts.getSheet().drawings[selIdx];
+        const selRect = selD ? anchorToRect(selD, grid) : null;
+        const handle = selRect ? drawingHandleAtPoint(selRect, p.x, p.y) : null;
+        if (selD && selRect && handle !== null) {
+          ev.preventDefault();
+          canvas.setPointerCapture(ev.pointerId);
+          resizeDrag = {
+            index: selIdx,
+            handle,
+            startX: p.x,
+            startY: p.y,
+            startRect: selRect,
+            prevAnchor: { ...selD.anchor },
+          };
+          canvas.focus({ preventScroll: true });
+          return;
+        }
+      }
       const di = drawingIndexAtPoint(opts.getSheet(), grid, p.x, p.y);
       if (di !== null) {
         ev.preventDefault();
@@ -1083,6 +1129,20 @@ export function attachInteractivity(
   }
 
   function onPointerUp(ev: PointerEvent) {
+    if (resizeDrag) {
+      try {
+        canvas.releasePointerCapture(ev.pointerId);
+      } catch {}
+      const moved = opts.getSheet().drawings[resizeDrag.index];
+      if (moved) {
+        opts.onDrawingMoved?.({
+          index: resizeDrag.index,
+          prevAnchor: resizeDrag.prevAnchor,
+          anchor: moved.anchor,
+        });
+      }
+      resizeDrag = null;
+    }
     if (drawDrag) {
       try {
         canvas.releasePointerCapture(ev.pointerId);
