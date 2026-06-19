@@ -131,6 +131,7 @@ interface SheetState {
   rowOverrides: Map<number, number>;
   activeCell: { r: number; c: number };
   selection: Selection;
+  selectedDrawing: number | null;
 }
 
 const VIRTUAL_EXTRA_COLS = 50;
@@ -214,6 +215,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       rowOverrides: new Map(),
       activeCell: { r: 1, c: 1 },
       selection: { r1: 1, c1: 1, r2: 1, c2: 1 },
+      selectedDrawing: null,
     }));
 
     this.root = document.createElement("div");
@@ -361,6 +363,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
             rowOverrides: new Map<number, number>(),
             activeCell: { r: 1, c: 1 },
             selection: { r1: 1, c1: 1, r2: 1, c2: 1 },
+            selectedDrawing: null,
           },
       );
       this.sheetStates.length = 0;
@@ -625,6 +628,12 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
             state.selection = value;
             this.emit("selectionchange");
           }
+        },
+      },
+      selectedDrawing: {
+        get: () => state.selectedDrawing,
+        set: (value) => {
+          state.selectedDrawing = value;
         },
       },
       scrollContainer: this.stage,

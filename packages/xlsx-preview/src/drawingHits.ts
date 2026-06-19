@@ -43,3 +43,15 @@ export function drawingAtPoint(
   }
   return undefined;
 }
+
+export function drawingIndexAtPoint(sheet: Sheet, grid: Grid, x: number, y: number): number | null {
+  const drawings = sheet.drawings ?? [];
+  for (let i = drawings.length - 1; i >= 0; i--) {
+    const rect = anchorToRect(drawings[i]!, grid);
+    if (!rect) continue;
+    if (x >= rect.x && y >= rect.y && x < rect.x + rect.w && y < rect.y + rect.h) {
+      return i;
+    }
+  }
+  return null;
+}

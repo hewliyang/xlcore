@@ -80,19 +80,6 @@ move/resize.
 
 ### A — Selection (visual)
 
-- **A1. Drawing hit-test + selection state.** Add `selectedDrawing:
-  { get(): number|null; set(v): void }` (index into `sheet.drawings`) to
-  `InteractOptions`, backed by per-sheet state in `previewer.ts`. In
-  `onPointerDown`, before the cell-selection branch, call
-  `drawingAtPoint(sheet, getGrid(), p.x, p.y)` (top-most = last drawn wins;
-  iterate `drawings` in reverse). On hit: set `selectedDrawing` to its index,
-  clear cell `selection`, `redraw()`, return. Clicking a cell / empty area or
-  pressing `Escape` clears `selectedDrawing`. Files: `interact.ts`,
-  `drawingHits.ts` (add reverse/top-most variant returning index), `previewer.ts`.
-  Verify: `pnpm test`; render an xlsx with a chart via CLI and confirm clicking
-  it no longer changes the cell selection (add a unit test in
-  `drawingHits.test.ts` for top-most index resolution).
-
 - **A2. Selection chrome.** New `src/drawingSelection.ts`:
   `drawDrawingSelection(ctx, rect, handles)` drawing a 1px box + 8 square
   handles (corners + edge midpoints) in the grid accent color. Call it from
@@ -181,4 +168,4 @@ move/resize.
 
 ## Shipped
 
-(move items here as completed, terse)
+- **A1.** Top-most drawing hit-test (`drawingIndexAtPoint`) + per-sheet `selectedDrawing` state wired through `InteractOptions`; click selects a drawing, Escape/cell click clears it.

@@ -14,6 +14,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Click a drawing (chart/image/shape) to select it (top-most wins); Escape or a cell/empty click clears it. Visual selection chrome lands next.
 - `previewer.patchSheetLayout(singleSheetLayout)` merges one sheet into the resident layout, preserving scroll/selection.
 - Interactive list data-validation dropdowns: clicking a dropdown arrow (editable previewer) opens a popover of the validation's options and writes the chosen value via `celledit`.
 - Render schema exposes `Sheet.validationDropdowns` + `Sheet.validationLists` (list-type data-validation cells and their resolved options).

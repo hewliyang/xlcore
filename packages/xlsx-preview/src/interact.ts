@@ -1,5 +1,5 @@
 import type { Sheet, WorkbookLayout } from "./types.js";
-import { drawingHyperlinkAt } from "./drawingHits.js";
+import { drawingHyperlinkAt, drawingIndexAtPoint } from "./drawingHits.js";
 import { cellRect } from "./geometry.js";
 import {
   filterArrowRect,
@@ -46,6 +46,8 @@ export interface InteractOptions {
   };
 
   selection?: { get(): Selection | null; set(v: Selection | null): void };
+
+  selectedDrawing?: { get(): number | null; set(v: number | null): void };
 
   scrollContainer?: HTMLElement;
 
@@ -483,6 +485,7 @@ export function attachInteractivity(
   }
 
   function setSelection(active: { r: number; c: number }, range: Selection) {
+    opts.selectedDrawing?.set(null);
     opts.activeCell.set(active);
     opts.selection?.set(range);
   }
@@ -730,6 +733,18 @@ export function attachInteractivity(
       return;
     }
 
+    if (cp.x >= grid.originX && cp.y >= grid.originY && opts.selectedDrawing) {
+      const di = drawingIndexAtPoint(opts.getSheet(), grid, p.x, p.y);
+      if (di !== null) {
+        ev.preventDefault();
+        opts.selectedDrawing.set(di);
+        opts.selection?.set(null);
+        opts.redraw();
+        canvas.focus({ preventScroll: true });
+        return;
+      }
+    }
+
     if (cp.x >= grid.originX && cp.y >= grid.originY) {
       const cell = cellAt(grid, p.x, p.y);
       if (cell && opts.isPointModeActive?.()) {
@@ -870,6 +885,12 @@ export function attachInteractivity(
   }
 
   function onKeyDown(ev: KeyboardEvent) {
+    if (ev.key === "Escape" && opts.selectedDrawing?.get() != null) {
+      ev.preventDefault();
+      opts.selectedDrawing.set(null);
+      opts.redraw();
+      return;
+    }
     const cur = opts.activeCell.get();
     if (!cur) return;
     let dr = 0,

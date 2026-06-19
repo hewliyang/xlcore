@@ -1,30 +1,13 @@
 import { expect, test } from "vitest";
 
-import { drawingHyperlinkAt } from "./drawingHits.js";
+import { drawingHyperlinkAt, drawingIndexAtPoint } from "./drawingHits.js";
 import { buildGrid } from "./grid.js";
 import type { Drawing, Sheet } from "./types.js";
 
-test("drawingHyperlinkAt returns shape hyperlink when point is inside bbox", () => {
-  const emu = 9525;
-  const drawing: Drawing = {
-    kind: "shape",
-    anchor: {
-      anchorKind: "twoCell",
-      fromCol: 0,
-      fromColOffEmu: emu,
-      fromRow: 0,
-      fromRowOffEmu: emu,
-      toCol: 0,
-      toColOffEmu: 0,
-      toRow: 0,
-      toRowOffEmu: 0,
-      extEmuCx: 10 * emu,
-      extEmuCy: 8 * emu,
-    },
-    hyperlink: { target: "https://example.com/test", tooltip: "Go" },
-    shape: { nodes: [{ relX: 0, relY: 0, relW: 1, relH: 1, paragraphs: [] }] },
-  };
-  const sheet = {
+const emu = 9525;
+
+function makeSheet(drawings: Drawing[]): Sheet {
+  return {
     index: 0,
     name: "S",
     maxRow: 10,
@@ -36,7 +19,7 @@ test("drawingHyperlinkAt returns shape hyperlink when point is inside bbox", () 
     freeze: null,
     showGridLines: true,
     cells: [],
-    drawings: [drawing],
+    drawings,
     hyperlinks: [],
     comments: [],
     decodedCells: {
@@ -60,6 +43,34 @@ test("drawingHyperlinkAt returns shape hyperlink when point is inside bbox", () 
       byIndex: new Map(),
     },
   } as unknown as Sheet;
+}
+
+function absDrawing(kind: Drawing["kind"], cx: number, cy: number, off: number): Drawing {
+  return {
+    kind,
+    anchor: {
+      anchorKind: "twoCell",
+      fromCol: 0,
+      fromColOffEmu: off,
+      fromRow: 0,
+      fromRowOffEmu: off,
+      toCol: 0,
+      toColOffEmu: 0,
+      toRow: 0,
+      toRowOffEmu: 0,
+      extEmuCx: cx,
+      extEmuCy: cy,
+    },
+    shape: { nodes: [{ relX: 0, relY: 0, relW: 1, relH: 1, paragraphs: [] }] },
+  } as Drawing;
+}
+
+test("drawingHyperlinkAt returns shape hyperlink when point is inside bbox", () => {
+  const drawing: Drawing = {
+    ...absDrawing("shape", 10 * emu, 8 * emu, emu),
+    hyperlink: { target: "https://example.com/test", tooltip: "Go" },
+  };
+  const sheet = makeSheet([drawing]);
   const grid = buildGrid(sheet);
   const insideX = grid.originX + 5;
   const insideY = grid.originY + 4;
@@ -67,4 +78,13 @@ test("drawingHyperlinkAt returns shape hyperlink when point is inside bbox", () 
   expect(link?.target).toBe("https://example.com/test");
   expect(link?.tooltip).toBe("Go");
   expect(drawingHyperlinkAt(sheet, grid, 0, 0)).toBeUndefined();
+});
+
+test("drawingIndexAtPoint returns the top-most overlapping drawing", () => {
+  const sheet = makeSheet([absDrawing("chart", 30 * emu, 30 * emu, emu), absDrawing("image", 30 * emu, 30 * emu, emu)]);
+  const grid = buildGrid(sheet);
+  const x = grid.originX + 5;
+  const y = grid.originY + 5;
+  expect(drawingIndexAtPoint(sheet, grid, x, y)).toBe(1);
+  expect(drawingIndexAtPoint(sheet, grid, 0, 0)).toBeNull();
 });
