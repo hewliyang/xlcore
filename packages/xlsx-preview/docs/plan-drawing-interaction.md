@@ -80,11 +80,6 @@ move/resize.
 
 ### D — Events + round-trip (charts)
 
-- **D4. Example app wiring.** In `examples/xlsx-app.html`, on
-  `previewer.on("drawingmoved", …)` call `recalcWorkbook.moveDrawing(detail)`
-  then `previewer.patchSheetLayout(layout)`. Verify: build, open an xlsx with a
-  chart in the demo, drag it, hit Download, reopen — chart stays moved.
-
 - **D5. Round-trip test.** Node/vitest: open a fixture xlsx with a chart via the
   `Workbook` API, `charts.update(id, { anchor })`, `save()`, reopen, assert the
   chart anchor changed. Confirms the persistence path independent of UI. Files:
@@ -92,6 +87,8 @@ move/resize.
   `pnpm test`.
 
 ## Shipped
+
+- **D4.** `examples/xlsx-app.html` wires `previewer.on("drawingmoved", …)` → `recalcWorkbook.moveDrawing(e.detail)` → `previewer.patchSheetLayout(layout)`, guarded with try/catch + `setStatus`, mirroring the `celledit`/`applyEdit` pattern.
 
 - **D3.** Pure `resolveChartId(charts, prevAnchor, chartOrdinal?)` in `src/drawingResolve.ts` (cell-coord match tolerant to offsets; single match→id, else ordinal fallback into `charts[]`, else null; tests in `drawingResolve.test.ts`); `editWorker` `"moveDrawing"` op resolves chart id + `charts.update(id, { anchor })` for chart kind (non-chart no-op) and returns `{ layout: layout({ sheetName }), structure }`; `WorkerWorkbook.moveDrawing(input)` mirrors `updatePivot` (request→syncShadow→layout).
 

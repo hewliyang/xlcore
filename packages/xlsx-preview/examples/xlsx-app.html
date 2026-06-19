@@ -1190,6 +1190,16 @@ async function loadWorkbookFile(file) {
     });
     previewer.on("zoomchange", renderState);
     previewer.on("celledit", (e) => applyEdit(e.detail));
+    previewer.on("drawingmoved", async (e) => {
+      if (recalcWorkbook == null || !previewer) return;
+      try {
+        const layout = await recalcWorkbook.moveDrawing(e.detail);
+        previewer.patchSheetLayout(layout);
+        setStatus("moved drawing");
+      } catch (error) {
+        setStatus(error && error.message ? error.message : String(error));
+      }
+    });
     populateSheets();
     renderState();
     requestAnimationFrame(finishLoading);
