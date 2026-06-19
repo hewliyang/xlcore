@@ -78,15 +78,11 @@ move/resize.
 
 ## Backlog
 
-### D — Events + round-trip (charts)
-
-- **D5. Round-trip test.** Node/vitest: open a fixture xlsx with a chart via the
-  `Workbook` API, `charts.update(id, { anchor })`, `save()`, reopen, assert the
-  chart anchor changed. Confirms the persistence path independent of UI. Files:
-  test under `src/` + a small fixture (or generate via the API). Verify:
-  `pnpm test`.
+_(complete)_
 
 ## Shipped
+
+- **D5.** `src/chartRoundtrip.test.ts` opens `tests/fixtures/charts/chart-bar3d.xlsx` via `Workbook.open` (built `dist/api.js` + `dist/xlcore_wasm_bg.wasm`), moves the first chart's anchor (+3 cols/+5 rows) with `charts.update(id, { anchor })`, `save()`s, reopens, and asserts the reopened anchor's from/to col/row reflect the move — confirming the chart persistence path independent of UI.
 
 - **D4.** `examples/xlsx-app.html` wires `previewer.on("drawingmoved", …)` → `recalcWorkbook.moveDrawing(e.detail)` → `previewer.patchSheetLayout(layout)`, guarded with try/catch + `setStatus`, mirroring the `celledit`/`applyEdit` pattern.
 
