@@ -48,22 +48,23 @@ sheet, `scheduleDraw` without re-rendering tabs/interactivity); scroll +
 selection preserved. Falls back to `replaceLayout` if the sheet is absent.
 Cross-sheet staleness fixed by refetching the target sheet on switch.
 
-## Actionable items (ordered by leverage)
+## Deferred (measured, not worth it now)
 
-### 4. Incremental recalc (do last, after #1)
-Only recompute the edited cell's transitive dependents.
-- [ ] Build a reverse-dep index (precedent→dependents) in the engine.
-- [ ] On edit: mark cell dirty, propagate, re-evaluate only that closure
-      (don't `cells.clear()`); reuse memoized values for clean cells.
-- [ ] Handle volatiles (`NOW`/`RAND`/`OFFSET`/`INDIRECT`) as always-dirty.
+### 4. Incremental recalc — deferred, not needed
+Benchmark (resident engine, 50k-formula deep chain): parse/load 103ms, full
+`evaluate()` ~20ms, edit + full re-evaluate ~19ms. After #1 eliminated the
+per-edit parse, full recalc is ~20ms even at 50k formulas — inside budget. A
+reverse-dep dirty closure would shave ~15ms best-case while adding major
+correctness risk (volatiles `NOW`/`RAND`/`OFFSET`/`INDIRECT`, dynamic refs,
+reverse-dep maintenance, cycles). Revisit only if a real workload exceeds budget.
 
-### 5. Coalesce + debounce
-- [ ] Batch rapid edits (typing) into one recalc; expose `pauseEvaluation`
-      (ironcalc `user_model` already has it).
-- [ ] Debounce layout extraction to animation frames.
+### 5. Coalesce/debounce — deferred, no consumer
+Edits are discrete atomic commits (celledit → single-cell `applyEdit`); there is
+no rapid-edit/paste/fill path to batch, and draws are already rAF-batched
+(`previewer.scheduleDraw`). A `pauseEvaluation`/batch API would be speculative
+infra with no caller. Add it alongside a future multi-cell paste/fill feature.
 
-## Sequencing
+## Outcome
 
-Ship #1 + #2 + #3 and measure first — likely gets interactive latency without
-touching the recalc algorithm. Pay for #4's complexity (correctness of dirty
-propagation, cycles, volatiles) only if eval is still the bottleneck after that.
+#1+#2+#3 removed the actual bottlenecks (per-edit engine rebuild + full-workbook
+layout extract/serialize/redraw). #4/#5 deferred with data above.
