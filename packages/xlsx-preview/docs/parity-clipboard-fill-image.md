@@ -75,7 +75,14 @@ changes.
 ## Verification
 
 Per item: `pnpm --filter @hewliyang/xlsx-preview test` (builds dist + vitest +
-freshness gates) and `pnpm run check` (typecheck/lint/loc/knip/schema/api).
+freshness gates), plus `typecheck` + `lint` + `knip`.
+
+**LOC gotcha:** `check:loc` (1500-line cap) is **already red on `main`** — 7
+files exceed it, including `previewer.ts` (1569) and `interact.ts` (1264). Do
+NOT touch unrelated oversized files to "fix" the gate, and crucially **do not
+grow `previewer.ts`/`interact.ts`**: put all new logic in new small modules
+(clipboard model, fill projection, image-drop helpers) and keep edits to those
+two files to thin wiring/dispatch.
 - Pure helpers (TSV/HTML serialize+parse, fill-series projection, drop-cell→
   anchor math) get unit tests — they're the testable core.
 - Worker ops get an in-process `Workbook`-level round-trip test (open → mutate →
