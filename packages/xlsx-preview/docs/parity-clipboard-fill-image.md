@@ -101,15 +101,6 @@ honoring a `recalc` flag (mirror `applyEdit`). No UI yet. Round-trip test at the
 `Workbook` level. Gotcha: `copyRange` signature is
 `(sheet, ref, destSheet, destRef)`; keep same-sheet dest the common case.
 
-### 3. Clipboard serialize/parse helpers (pure)
-New module (e.g. `clipboardModel.ts`): `serializeRange(layout, sheet, selection)
-→ { tsv, html }` and `parseClipboard({ html?, tsv? }) → { values, formulas?,
-source: "internal" | "external" }`. TSV uses tab/newline with the usual
-quoting/escape rules; HTML emits a `<table>` plus an app-private payload (JSON in
-a data attribute or comment) carrying formulas + the source range for fidelity.
-Unit-test round-trip incl. embedded tabs/newlines/quotes and the Sheets/Excel
-TSV dialect. No wiring yet.
-
 ### 4. Range copy / cut (Ctrl/Cmd-C, Ctrl/Cmd-X)
 In `interact.ts onKeyDown`, intercept Cmd/Ctrl+C and +X (guard on
 `opts.selection`); call a new `opts.onCopy/onCut(selection)`. `previewer.ts`
@@ -160,3 +151,4 @@ trips through save.
 
 1. Worker range ops — `setRangeValues`/`setRangeFormulas`/`copyRange`/`clearRange` on `WorkerWorkbook` + `editWorker.ts`, single-sheet layout, `recalc` flag; Workbook-level round-trip test.
 2. Worker image-insert op — `setImage` op on `editWorker.ts` + `WorkerWorkbook.setImage(sheetName, patch)`, single-sheet layout, bytes sent as transferable `ArrayBuffer`; round-trip test.
+3. Clipboard serialize/parse helpers — pure `clipboardModel.ts` (`serializeRange`/`parseClipboard`) with TSV quoting, HTML `<table>` + `data-xlcore` internal payload (values+formulas+range); unit-tested round-trips.
