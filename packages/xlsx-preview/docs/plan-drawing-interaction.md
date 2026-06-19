@@ -80,15 +80,6 @@ move/resize.
 
 ### D — Events + round-trip (charts)
 
-- **D3. WorkerWorkbook + editWorker `moveDrawing` op.** Add
-  `WorkerWorkbook.moveDrawing({ sheetName, kind, drawingIndex, anchor,
-  prevAnchor }): Promise<WorkbookLayout>` and an `editWorker` `"moveDrawing"`
-  case: resolve the chart id (pure resolver: anchor-match `charts(sheet)` vs
-  `prevAnchor`, index fallback), call `updateChart(sheet, id, { anchor })`,
-  return `{ layout: layout({ sheetName }), structure }`. Non-chart kinds → no-op
-  layout refetch (visual already applied). Files: `worker.ts`, `editWorker.ts`,
-  new pure resolver module + test. Verify: `pnpm test`.
-
 - **D4. Example app wiring.** In `examples/xlsx-app.html`, on
   `previewer.on("drawingmoved", …)` call `recalcWorkbook.moveDrawing(detail)`
   then `previewer.patchSheetLayout(layout)`. Verify: build, open an xlsx with a
@@ -101,6 +92,8 @@ move/resize.
   `pnpm test`.
 
 ## Shipped
+
+- **D3.** Pure `resolveChartId(charts, prevAnchor, chartOrdinal?)` in `src/drawingResolve.ts` (cell-coord match tolerant to offsets; single match→id, else ordinal fallback into `charts[]`, else null; tests in `drawingResolve.test.ts`); `editWorker` `"moveDrawing"` op resolves chart id + `charts.update(id, { anchor })` for chart kind (non-chart no-op) and returns `{ layout: layout({ sheetName }), structure }`; `WorkerWorkbook.moveDrawing(input)` mirrors `updatePivot` (request→syncShadow→layout).
 
 - **D1.** `"drawingmoved"` added to `PreviewerEventName`; previewer's `onDrawingMoved` builds the detail via pure `buildDrawingMovedDetail(sheetName, kind, index, prevAnchor, anchor)` (in `anchorConvert.ts`, converts both wire anchors→ChartAnchor) and `dispatchEvent`s its own `CustomEvent("drawingmoved", { detail })` (not `emit()`); payload-builder test in `anchorConvert.test.ts`.
 

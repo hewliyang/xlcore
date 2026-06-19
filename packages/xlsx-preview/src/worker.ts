@@ -1,5 +1,6 @@
 import { Workbook } from "./api.js";
 import type {
+  ChartAnchor,
   DependencyReference,
   PivotUpdate,
   LayoutOptions as WorkbookLayoutOptions,
@@ -134,6 +135,18 @@ export class WorkerWorkbook {
       id,
       patch,
     });
+    await this.syncShadow(structure);
+    return layout;
+  }
+
+  async moveDrawing(input: {
+    sheetName: string;
+    kind: string;
+    drawingIndex: number;
+    anchor: ChartAnchor;
+    prevAnchor: ChartAnchor;
+  }): Promise<WorkbookLayout> {
+    const { layout, structure } = await this.request<EditResult>("moveDrawing", { ...input });
     await this.syncShadow(structure);
     return layout;
   }

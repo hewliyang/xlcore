@@ -2,11 +2,14 @@ import { Workbook, distinctValuesFor } from "./api.js";
 import type { Worksheet } from "./api-worksheet.js";
 import type { CellInput } from "./api-range.js";
 import type {
+  ChartAnchor,
+  ChartInfo,
   DefinedNameInfo,
   PivotInfo,
   PivotUpdate,
   LayoutOptions as WorkbookLayoutOptions,
 } from "./api-schema/index.js";
+import { resolveChartId } from "./drawingResolve.js";
 import { xlsxLoadErrorPayloadFromUnknown } from "./errors.js";
 
 export interface WorkbookStructure {
@@ -30,6 +33,7 @@ export type EditWorkerOp =
   | "pivotMetas"
   | "distinctValues"
   | "updatePivot"
+  | "moveDrawing"
   | "tableSetFilter"
   | "tableSetSort";
 
@@ -167,6 +171,25 @@ async function handleRequest(request: EditWorkerRequest): Promise<{
       const w = requireWorkbook();
       w.sheet(sheet).pivots.update(id, patch);
       return { result: { layout: w.layout({}), structure: structure() } };
+    }
+    case "moveDrawing": {
+      const { sheetName, kind, drawingIndex, anchor, prevAnchor } = request.args as {
+        sheetName: string;
+        kind: string;
+        drawingIndex: number;
+        anchor: ChartAnchor;
+        prevAnchor: ChartAnchor;
+      };
+      const w = requireWorkbook();
+      if (kind === "chart") {
+        const id = resolveChartId(
+          w.sheet(sheetName).charts.list() as ChartInfo[],
+          prevAnchor,
+          drawingIndex,
+        );
+        if (id) w.sheet(sheetName).charts.update(id, { anchor });
+      }
+      return { result: { layout: w.layout({ sheetName }), structure: structure() } };
     }
     case "tableSetFilter": {
       const { rangeRef, columnOffset, field, values } = request.args as {
