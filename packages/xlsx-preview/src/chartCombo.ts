@@ -89,13 +89,6 @@ export function drawComboChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
   const primaryRange = rangeFor(primarySeries);
   const secondaryRange = secondarySeries.length > 0 ? rangeFor(secondarySeries) : null;
 
-  const axisHasBaselineSeries = (group: typeof primarySeries) =>
-    group.some((s) => {
-      const k = seriesKind(s);
-      return k === "column" || k === "bar" || k === "area";
-    });
-  const primaryHasBars = axisHasBaselineSeries(primarySeries);
-  const secondaryHasBars = axisHasBaselineSeries(secondarySeries);
   const pResolved = resolveAxisRange(
     primaryRange.minV,
     primaryRange.maxV,
