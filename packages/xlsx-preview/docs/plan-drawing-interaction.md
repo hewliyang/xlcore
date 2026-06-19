@@ -80,15 +80,6 @@ move/resize.
 
 ### A — Selection (visual)
 
-- **A2. Selection chrome.** New `src/drawingSelection.ts`:
-  `drawDrawingSelection(ctx, rect, handles)` drawing a 1px box + 8 square
-  handles (corners + edge midpoints) in the grid accent color. Call it from
-  `render.ts` after `drawDrawings` when `opts.selectedDrawingRect` is set;
-  thread `selectedDrawingRect` through `RenderOptions` and from `previewer.ts`
-  (compute via `anchorToRect`). Clip to pane like other passes.
-  Verify: CLI render with a forced selection shows the box+handles aligned to
-  the chart bounds (pixel-spot-check the screenshot).
-
 - **A3. Cursor + deselect polish.** Hover over a selected drawing's body →
   `move` cursor; over a handle → resize cursor (set in A-C as handles land).
   Deselect on scroll-to-cell / sheet change. Files: `interact.ts`,
@@ -168,4 +159,5 @@ move/resize.
 
 ## Shipped
 
+- **A2.** `drawDrawingSelection`/`drawingHandles` in `src/drawingSelection.ts`; `selectedDrawingRect` threaded through `RenderOptions` (computed in `previewer.ts` via `anchorToRect`) and drawn per-pane after `drawDrawings`.
 - **A1.** Top-most drawing hit-test (`drawingIndexAtPoint`) + per-sheet `selectedDrawing` state wired through `InteractOptions`; click selects a drawing, Escape/cell click clears it.

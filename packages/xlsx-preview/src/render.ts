@@ -10,6 +10,7 @@ export { paneAtPoint, frozenDims } from "./panes.js";
 import { resolveSelection, drawSelection } from "./selection.js";
 import { drawHighlights } from "./highlights.js";
 import { drawDrawings } from "./drawings.js";
+import { drawDrawingSelection } from "./drawingSelection.js";
 import { drawCellBackgrounds, drawCellBorders, drawDefaultFills } from "./cellPaint.js";
 import { drawFreezeIndicators } from "./freezeIndicators.js";
 import { computeOverflowSuppressedSides, drawCellText } from "./textRenderer.js";
@@ -116,6 +117,7 @@ export function render(
     drawFilterArrows(ctx, sheet, grid, pane.vis, filterArrows);
     drawValidationArrows(ctx, sheet, grid, pane.vis, opts.activeCell ?? null);
     drawDrawings(ctx, sheet, grid);
+    if (opts.selectedDrawingRect) drawDrawingSelection(ctx, opts.selectedDrawingRect);
     drawCommentMarkers(ctx, sheet, grid, pane.vis);
     if (opts.highlights && opts.highlights.length > 0) drawHighlights(ctx, grid, opts.highlights);
     if (sel) drawSelection(ctx, sheet, grid, sel, opts.activeCell ?? null);

@@ -11,6 +11,7 @@ import {
   type Selection,
 } from "./interact.js";
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
+import { anchorToRect } from "./grid.js";
 import { referencesToHighlights } from "./highlights.js";
 import { autocompleteState, type AutocompleteState } from "./formulaAutocomplete.js";
 import { lookupSignature, signatureAt } from "./formulaSignature.js";
@@ -580,7 +581,16 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.highlights = this.pointHighlight
       ? [...baseHighlights, this.pointHighlight]
       : baseHighlights;
-    render(this.canvas, this.getActiveSheet(), this.layout, {
+    const sheet = this.getActiveSheet();
+    let selectedDrawingRect = null;
+    if (state.selectedDrawing != null) {
+      const d = sheet.drawings?.[state.selectedDrawing];
+      if (d) {
+        const grid = buildGrid(sheet, state.colOverrides, state.rowOverrides);
+        selectedDrawingRect = anchorToRect(d, grid);
+      }
+    }
+    render(this.canvas, sheet, this.layout, {
       scale: window.devicePixelRatio || 1,
       zoom: this.zoom,
       colOverrides: state.colOverrides,
@@ -588,6 +598,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       activeCell: state.activeCell,
       selection: state.selection,
       highlights: this.highlights,
+      selectedDrawingRect,
       viewport: this.viewport,
     });
     this.nameBox.textContent = formatNameBox(state.activeCell, state.selection);

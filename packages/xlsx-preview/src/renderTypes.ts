@@ -24,6 +24,7 @@ export interface RenderOptions {
   activeCell?: { r: number; c: number } | null;
   selection?: { r1: number; c1: number; r2: number; c2: number } | null;
   highlights?: HighlightRange[];
+  selectedDrawingRect?: { x: number; y: number; w: number; h: number } | null;
   viewport?: Viewport;
 }
 

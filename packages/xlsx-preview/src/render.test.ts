@@ -1,5 +1,6 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { applyTint } from "./render";
+import { drawDrawingSelection, drawingHandles } from "./drawingSelection";
 
 function close(a: string, b: string, tol = 2): boolean {
   const ar = parseInt(a.slice(1, 3), 16),
@@ -51,4 +52,28 @@ test("tint of pure red stays on the red hue line", () => {
 
 test("zero tint is identity", () => {
   expect(applyTint("#4472C4", 0)).toBe("#4472c4");
+});
+
+test("drawingHandles yields 8 handles at corners and edge midpoints", () => {
+  const handles = drawingHandles({ x: 0, y: 0, w: 100, h: 40 });
+  expect(handles).toHaveLength(8);
+  const centers = handles.map((h) => [h.x + h.w / 2, h.y + h.h / 2]);
+  expect(centers).toContainEqual([50, 0]);
+  expect(centers).toContainEqual([100, 20]);
+  expect(centers).toContainEqual([0, 40]);
+});
+
+test("drawDrawingSelection draws box + 8 handles", () => {
+  const ctx = {
+    save: vi.fn(),
+    restore: vi.fn(),
+    strokeRect: vi.fn(),
+    fillRect: vi.fn(),
+    strokeStyle: "",
+    fillStyle: "",
+    lineWidth: 0,
+  } as unknown as CanvasRenderingContext2D;
+  drawDrawingSelection(ctx, { x: 10, y: 20, w: 200, h: 80 });
+  expect((ctx.strokeRect as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(9);
+  expect((ctx.fillRect as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(8);
 });
