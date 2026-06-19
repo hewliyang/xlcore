@@ -87,11 +87,6 @@ move/resize.
   `interact.ts` (callback `onDrawingMoved` in `InteractOptions`). Verify:
   `pnpm test` + a vitest asserting the event fires with the new anchor.
 
-- **D2. Anchor conversion helpers.** Pure `wireAnchorToChartAnchor` /
-  `chartAnchorToWireAnchor` (handle offset number↔bigint, `extEmuCx/Cy`).
-  New `src/anchorConvert.ts` + test. Files: `anchorConvert.ts`,
-  `anchorConvert.test.ts`.
-
 - **D3. WorkerWorkbook + editWorker `moveDrawing` op.** Add
   `WorkerWorkbook.moveDrawing({ sheetName, kind, drawingIndex, anchor,
   prevAnchor }): Promise<WorkbookLayout>` and an `editWorker` `"moveDrawing"`
@@ -113,6 +108,8 @@ move/resize.
   `pnpm test`.
 
 ## Shipped
+
+- **D2.** Pure `wireAnchorToChartAnchor`/`chartAnchorToWireAnchor` in `src/anchorConvert.ts` (offset number↔bigint, omit zero/absent offsets on the chart side; ChartAnchor has no `extEmuCx/Cy`); round-trip + omission tests in `anchorConvert.test.ts`.
 
 - **C2.** `resizeRect(startRect, handle, dx, dy, min=8)` in `drawingSelection.ts` (left edge {0,6,7}, right {2,3,4}, top {0,1,2}, bottom {4,5,6}; min-size clamp, no inversion); `interact.ts` `resizeDrag` mode tested before body-move drawDrag — pointer-down on a selected drawing's handle captures pointer+startRect+prevAnchor, move applies `rectToAnchor(resizeRect(...))`+invalidate/redraw, up clears and fires `onDrawingMoved`; unit tests in `render.test.ts`.
 

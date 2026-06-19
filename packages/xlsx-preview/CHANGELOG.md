@@ -14,6 +14,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `wireAnchorToChartAnchor`/`chartAnchorToWireAnchor` pure helpers for drawing anchor round-tripping.
 - Drag a selected drawing's resize handle to resize it, with live redraw and re-anchoring.
 - Hovering a selected drawing's resize handle shows the matching directional cursor.
 - Arrow keys nudge a selected drawing by 1px (10px with Shift) with live redraw and re-anchoring.
