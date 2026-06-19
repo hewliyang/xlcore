@@ -36,6 +36,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Worker bundle (`editWorker.js`) now ships its `drawingResolve.js` dependency, so `WorkerWorkbook.open` no longer throws — restores cell editing and data-validation dropdowns in the example app (both silently no-op when the worker fails to load). `check-dist-imports` now also imports the worker bundles to catch missing-sibling regressions.
 - Writing formulas with post-2007 functions (e.g. `MAXIFS`, `TEXTJOIN`, `XLOOKUP`) now stores the canonical `_xlfn.`-prefixed form, so saved files stay valid OOXML instead of triggering Excel repair. Covers `setFormula`, range formulas, and expression-valued defined names.
 - `WorkerWorkbook`: tolerate defined names that fail to replay into the shadow workbook so opening still succeeds (e.g. array-constant names); edits no longer silently no-op.
 

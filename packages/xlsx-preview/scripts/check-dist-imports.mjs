@@ -7,6 +7,9 @@ const entries = [
   "../dist/previewer.js",
   "../dist/react.js",
   "../dist/cdn.js",
+  "../dist/worker.js",
+  "../dist/editWorker.js",
+  "../dist/xlsxWorker.js",
 ];
 
 for (const entry of entries) {
