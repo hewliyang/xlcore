@@ -84,6 +84,8 @@ export interface InteractOptions {
 
   onFill?: (source: Selection, target: Selection) => void;
 
+  onClear?: (selection: Selection) => void;
+
   isPointModeActive?: () => boolean;
 
   onDrawingMoved?: (info: {
@@ -1142,6 +1144,12 @@ export function attachInteractivity(
     if ((ev.ctrlKey || ev.metaKey) && ev.key === "v" && opts.onPaste) {
       ev.preventDefault();
       opts.onPaste({ r: cur.r, c: cur.c });
+      return;
+    }
+    if ((ev.key === "Delete" || ev.key === "Backspace") && opts.onClear) {
+      ev.preventDefault();
+      const sel = opts.selection?.get() ?? { r1: cur.r, c1: cur.c, r2: cur.r, c2: cur.c };
+      opts.onClear(sel);
       return;
     }
     let dr = 0,

@@ -27,16 +27,7 @@ width, clipping long content. Make the input auto-grow horizontally on `input`
 viewport), so a long value/formula overflows past the cell like Excel. Reset
 size on `hideEditOverlay`. Scope: ~20 lines in `previewer.ts`.
 
-### 4. Delete/Backspace clears the selected cell range
-`interact.ts` `onKeyDown` only handles Delete/Backspace for a **selected
-drawing**; a normal cell selection does nothing. Add a Delete/Backspace branch
-(when `selectedDrawing` is null) that fires a new `onClear?(selection)` opt with
-the current selection (fallback to active cell). Wire it in `previewer.ts` to
-dispatch a `cellclear` CustomEvent `{ sheetIndex, ref }`, and in
-`examples/xlsx-app.html` route `cellclear` -> `recalcWorkbook.clearRange(...)`
-(already exists in `editWorker.ts:235`). Scope: ~10 lines interact + handler +
-example wiring.
-
 ## Shipped
 
 - Esc commits the cell edit (commitEdit(null)) instead of discarding.
+- Delete/Backspace on a cell selection fires `cellclear` -> `clearRange`.

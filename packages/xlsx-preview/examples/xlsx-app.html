@@ -714,6 +714,24 @@ async function applyFill(detail) {
   }
 }
 
+async function applyClear(detail) {
+  if (recalcWorkbook == null || !previewer) return;
+  const { ref } = detail;
+  const sheetName = previewer.getActiveSheet().name;
+  try {
+    const { layout } = await recalcWorkbook.clearRange({
+      sheetName,
+      ref,
+      recalc: autoRecalc,
+    });
+    previewer.patchSheetLayout(layout);
+    renderState();
+    setStatus("cleared " + ref);
+  } catch (error) {
+    setStatus(error && error.message ? error.message : String(error));
+  }
+}
+
 async function applyPaste(detail) {
   if (recalcWorkbook == null || !previewer) return;
   const { target, values, source, sourceSheet, sourceRange, cutRange } = detail;
@@ -1298,6 +1316,7 @@ async function loadWorkbookFile(file) {
     previewer.on("rangepaste", (e) => applyPaste(e.detail));
     previewer.on("imagepaste", (e) => applyImagePaste(e.detail));
     previewer.on("rangefill", (e) => applyFill(e.detail));
+    previewer.on("cellclear", (e) => applyClear(e.detail));
     previewer.on("drawingmoved", async (e) => {
       if (recalcWorkbook == null || !previewer) return;
       try {
