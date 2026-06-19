@@ -167,4 +167,4 @@ trips through save.
 
 ## Shipped
 
-_(none yet)_
+1. Worker range ops — `setRangeValues`/`setRangeFormulas`/`copyRange`/`clearRange` on `WorkerWorkbook` + `editWorker.ts`, single-sheet layout, `recalc` flag; Workbook-level round-trip test.

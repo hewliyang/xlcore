@@ -1,6 +1,7 @@
 import { Workbook, distinctValuesFor } from "./api.js";
 import type { Worksheet } from "./api-worksheet.js";
 import type { CellInput } from "./api-range.js";
+import type { ClearMode } from "./api-schema/index.js";
 import type {
   ChartAnchor,
   ChartInfo,
@@ -28,6 +29,10 @@ export interface PivotMeta {
 export type EditWorkerOp =
   | "open"
   | "applyEdit"
+  | "setRangeValues"
+  | "setRangeFormulas"
+  | "copyRange"
+  | "clearRange"
   | "addSheet"
   | "recalculate"
   | "layout"
@@ -125,6 +130,63 @@ async function handleRequest(request: EditWorkerRequest): Promise<{
       } else {
         cell.setValue(coerce(input));
       }
+      if (recalc) {
+        w.recalculate();
+      }
+      return { result: { layout: w.layout({ sheetName }), structure: structure() } };
+    }
+    case "setRangeValues": {
+      const { sheetName, ref, values, recalc } = request.args as {
+        sheetName: string;
+        ref: string;
+        values: CellInput[][];
+        recalc: boolean;
+      };
+      const w = requireWorkbook();
+      w.sheet(sheetName).range(ref).setValues(values);
+      if (recalc) {
+        w.recalculate();
+      }
+      return { result: { layout: w.layout({ sheetName }), structure: structure() } };
+    }
+    case "setRangeFormulas": {
+      const { sheetName, ref, formulas, recalc } = request.args as {
+        sheetName: string;
+        ref: string;
+        formulas: Array<Array<string | null>>;
+        recalc: boolean;
+      };
+      const w = requireWorkbook();
+      w.sheet(sheetName).range(ref).setFormulas(formulas);
+      if (recalc) {
+        w.recalculate();
+      }
+      return { result: { layout: w.layout({ sheetName }), structure: structure() } };
+    }
+    case "copyRange": {
+      const { sheetName, ref, destSheet, destRef, recalc } = request.args as {
+        sheetName: string;
+        ref: string;
+        destSheet: string;
+        destRef: string;
+        recalc: boolean;
+      };
+      const w = requireWorkbook();
+      w.sheet(sheetName).range(ref).copyTo(w.sheet(destSheet).range(destRef));
+      if (recalc) {
+        w.recalculate();
+      }
+      return { result: { layout: w.layout({ sheetName: destSheet }), structure: structure() } };
+    }
+    case "clearRange": {
+      const { sheetName, ref, mode, recalc } = request.args as {
+        sheetName: string;
+        ref: string;
+        mode?: ClearMode;
+        recalc: boolean;
+      };
+      const w = requireWorkbook();
+      w.sheet(sheetName).range(ref).clear(mode);
       if (recalc) {
         w.recalculate();
       }

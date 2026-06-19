@@ -1,10 +1,12 @@
 import { Workbook } from "./api.js";
 import type {
   ChartAnchor,
+  ClearMode,
   DependencyReference,
   PivotUpdate,
   LayoutOptions as WorkbookLayoutOptions,
 } from "./api-schema/index.js";
+import type { CellInput } from "./api-range.js";
 import type {
   EditWorkerOp,
   EditWorkerRequest,
@@ -96,6 +98,51 @@ export class WorkerWorkbook {
 
   async applyEdit(input: ApplyEditInput): Promise<{ layout: WorkbookLayout }> {
     const { layout, structure } = await this.request<EditResult>("applyEdit", { ...input });
+    await this.syncShadow(structure);
+    return { layout };
+  }
+
+  async setRangeValues(input: {
+    sheetName: string;
+    ref: string;
+    values: CellInput[][];
+    recalc: boolean;
+  }): Promise<{ layout: WorkbookLayout }> {
+    const { layout, structure } = await this.request<EditResult>("setRangeValues", { ...input });
+    await this.syncShadow(structure);
+    return { layout };
+  }
+
+  async setRangeFormulas(input: {
+    sheetName: string;
+    ref: string;
+    formulas: Array<Array<string | null>>;
+    recalc: boolean;
+  }): Promise<{ layout: WorkbookLayout }> {
+    const { layout, structure } = await this.request<EditResult>("setRangeFormulas", { ...input });
+    await this.syncShadow(structure);
+    return { layout };
+  }
+
+  async copyRange(input: {
+    sheetName: string;
+    ref: string;
+    destSheet: string;
+    destRef: string;
+    recalc: boolean;
+  }): Promise<{ layout: WorkbookLayout }> {
+    const { layout, structure } = await this.request<EditResult>("copyRange", { ...input });
+    await this.syncShadow(structure);
+    return { layout };
+  }
+
+  async clearRange(input: {
+    sheetName: string;
+    ref: string;
+    mode?: ClearMode;
+    recalc: boolean;
+  }): Promise<{ layout: WorkbookLayout }> {
+    const { layout, structure } = await this.request<EditResult>("clearRange", { ...input });
     await this.syncShadow(structure);
     return { layout };
   }
