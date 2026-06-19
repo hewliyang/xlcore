@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Edit overlay auto-grows horizontally so long values/formulas overflow past the cell like Excel.
 - Delete/Backspace on a cell selection emits `cellclear`; example app wires it to `clearRange`.
 - `WorkerWorkbook` range ops: `setRangeValues`, `setRangeFormulas`, `copyRange`, `clearRange`.
 - `WorkerWorkbook.setImage(sheetName, patch)` inserts/anchors an image; bytes transferred across the worker boundary.

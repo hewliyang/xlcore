@@ -20,14 +20,8 @@ and make `render`/`draw` + name box + formula bar tolerate a null active cell
 (skip drawing the active-cell box; blank name/formula boxes). Scope: ~30 lines
 across `interact.ts`, `previewer.ts`, `render.ts`.
 
-### 3. Edit overlay should overflow the cell like Excel
-`openEditOverlay` (`previewer.ts:~1259`) hard-sizes `editInput` to the cell
-width, clipping long content. Make the input auto-grow horizontally on `input`
-(white-space:nowrap; grow width to fit text, clamped to the visible stage
-viewport), so a long value/formula overflows past the cell like Excel. Reset
-size on `hideEditOverlay`. Scope: ~20 lines in `previewer.ts`.
-
 ## Shipped
 
 - Esc commits the cell edit (commitEdit(null)) instead of discarding.
 - Delete/Backspace on a cell selection fires `cellclear` -> `clearRange`.
+- Edit overlay auto-grows horizontally to overflow the cell like Excel.

@@ -187,6 +187,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private readonly editInput: HTMLInputElement;
   private editCell: { r: number; c: number } | null = null;
   private editEnterMode = false;
+  private editBaseLeft = 0;
+  private editBaseWidth = 0;
   private pointKeyAnchor: { r: number; c: number } | null = null;
   private pointKeyCursor: { r: number; c: number } | null = null;
   private readonly sheetStates: SheetState[];
@@ -325,6 +327,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.editInput.addEventListener("input", () => {
       this.updateAutocomplete(this.editInput);
       this.updateSignatureTip(this.editInput);
+      this.growEditInput();
       this.scheduleDraw();
     });
     this.editInput.addEventListener("blur", () => {
@@ -1268,15 +1271,28 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.activeRefSpan = null;
     this.pointKeyAnchor = null;
     this.pointKeyCursor = null;
-    this.editInput.style.left = `${rect.x * z}px`;
+    this.editBaseLeft = rect.x * z;
+    this.editBaseWidth = Math.max(rect.w * z, 24);
+    this.editInput.style.left = `${this.editBaseLeft}px`;
     this.editInput.style.top = `${rect.y * z}px`;
-    this.editInput.style.width = `${Math.max(rect.w * z, 24)}px`;
+    this.editInput.style.width = `${this.editBaseWidth}px`;
     this.editInput.style.height = `${Math.max(rect.h * z, 16)}px`;
+    this.editInput.style.whiteSpace = "nowrap";
     this.editInput.style.display = "block";
     this.editInput.value = initialText ?? formatFormulaBar(sheet, cell);
     this.editInput.focus({ preventScroll: true });
     const end = this.editInput.value.length;
     this.editInput.setSelectionRange(end, end);
+    this.growEditInput();
+  }
+
+  private growEditInput(): void {
+    if (!this.editCell) return;
+    this.editInput.style.width = `${this.editBaseWidth}px`;
+    const fit = this.editInput.scrollWidth + 2;
+    const maxWidth = this.stage.scrollLeft + this.stage.clientWidth - this.editBaseLeft;
+    const width = Math.min(Math.max(this.editBaseWidth, fit), Math.max(this.editBaseWidth, maxWidth));
+    this.editInput.style.width = `${width}px`;
   }
 
   private hideEditOverlay(): void {
@@ -1289,6 +1305,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     if (!this.editCell) return;
     this.editCell = null;
     this.editInput.style.display = "none";
+    this.editInput.style.width = "";
     this.editInput.value = "";
   }
 
