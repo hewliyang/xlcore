@@ -7,6 +7,9 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Name box shows the defined-name when the selection matches a named range.
+- "+" tab button (editable mode) creates a new sheet via `WorkerWorkbook.addSheet`; wired into the example app.
+- Example app starts with a blank workbook and gains a "New" button to create one from scratch.
 - Category axis labels auto-rotate (-45°, then -90°) when horizontal labels overflow instead of being dropped; band height reserves the rotated space. Explicit XML `rot` stays authoritative.
 
 ### Fixed

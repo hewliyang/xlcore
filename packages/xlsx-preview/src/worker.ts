@@ -100,6 +100,15 @@ export class WorkerWorkbook {
     return { layout };
   }
 
+  async addSheet(name: string): Promise<{ layout: WorkbookLayout; name: string }> {
+    const { layout, structure, name: created } = await this.request<EditResult & { name: string }>(
+      "addSheet",
+      { name },
+    );
+    await this.syncShadow(structure);
+    return { layout, name: created };
+  }
+
   async recalculate(): Promise<WorkbookLayout> {
     const { layout, structure } = await this.request<EditResult>("recalculate", {});
     await this.syncShadow(structure);

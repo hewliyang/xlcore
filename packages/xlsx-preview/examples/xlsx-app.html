@@ -518,6 +518,10 @@
     <span>Open</span>
     <input type="file" id="picker" accept=".xlsx,.csv,.tsv,.parquet,.pqt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/tab-separated-values">
   </label>
+  <button class="file-picker" id="new-workbook" type="button" title="New blank workbook">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+    <span>New</span>
+  </button>
   <span class="sep"></span>
   <span class="name-box" id="name-box">—</span>
   <span class="fx-label">fx</span>
@@ -683,6 +687,20 @@ async function applyEdit({ sheetIndex, r, c, input, commitMove }) {
     }
     renderState();
     setStatus("edited " + addr);
+  } catch (error) {
+    setStatus(error && error.message ? error.message : String(error));
+  }
+}
+
+async function addSheet({ name }) {
+  if (recalcWorkbook == null || !previewer) return;
+  try {
+    const { layout, name: created } = await recalcWorkbook.addSheet(name);
+    previewer.replaceLayout(layout);
+    previewer.setActiveSheet(created);
+    populateSheets();
+    renderState();
+    setStatus("added sheet " + created);
   } catch (error) {
     setStatus(error && error.message ? error.message : String(error));
   }
@@ -895,6 +913,24 @@ function populateSheets() {
     });
     sheetTabs.append(btn);
   });
+  if (recalcWorkbook) {
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "tab";
+    add.textContent = "+";
+    add.title = "New sheet";
+    add.setAttribute("aria-label", "New sheet");
+    add.addEventListener("click", () => addSheet({ name: nextSheetName() }));
+    sheetTabs.append(add);
+  }
+}
+
+function nextSheetName() {
+  const existing = new Set((previewer?.layout.sheets ?? []).map((s) => s.name.toLowerCase()));
+  let n = (previewer?.layout.sheets.length ?? 0) + 1;
+  let name = `Sheet${n}`;
+  while (existing.has(name.toLowerCase())) name = `Sheet${++n}`;
+  return name;
 }
 
 function parseCell(value) {
@@ -1189,6 +1225,7 @@ async function loadWorkbookFile(file) {
       renderState();
     });
     previewer.on("zoomchange", renderState);
+    previewer.on("sheetadd", (e) => addSheet(e.detail));
     previewer.on("celledit", (e) => applyEdit(e.detail));
     previewer.on("drawingmoved", async (e) => {
       if (recalcWorkbook == null || !previewer) return;
@@ -1218,6 +1255,34 @@ async function loadWorkbookFile(file) {
     setStatus(error && error.message ? error.message : String(error));
   }
 }
+
+async function createBlankWorkbook() {
+  if (Workbook == null) {
+    setStatus("blank workbooks are unavailable");
+    return;
+  }
+  hideErrorOverlay();
+  const started = startLoading();
+  let wb;
+  try {
+    setLoadingStage("Creating blank workbook");
+    wb = await Workbook.create({ wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm` });
+    if (wb.worksheets().length === 0) wb.addSheet("Sheet1");
+    const bytes = wb.save();
+    const file = new File([bytes], "Untitled.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    await loadWorkbookFile(file);
+  } catch (error) {
+    finishLoading();
+    showErrorOverlay(error, { name: "Untitled.xlsx" });
+    setStatus(error && error.message ? error.message : String(error));
+  } finally {
+    wb?.dispose?.();
+  }
+}
+
+document.getElementById("new-workbook").addEventListener("click", createBlankWorkbook);
 
 picker.addEventListener("change", () => {
   const file = picker.files && picker.files[0];
@@ -1366,6 +1431,8 @@ document.getElementById("reset-view").addEventListener("click", () => {
   p.selectCell(1, 1, { scroll: true });
   renderState();
 });
+
+createBlankWorkbook();
 </script>
 </body>
 </html>

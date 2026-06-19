@@ -28,6 +28,7 @@ export interface PivotMeta {
 export type EditWorkerOp =
   | "open"
   | "applyEdit"
+  | "addSheet"
   | "recalculate"
   | "layout"
   | "save"
@@ -128,6 +129,12 @@ async function handleRequest(request: EditWorkerRequest): Promise<{
         w.recalculate();
       }
       return { result: { layout: w.layout({ sheetName }), structure: structure() } };
+    }
+    case "addSheet": {
+      const { name } = request.args as { name: string };
+      const w = requireWorkbook();
+      const ws = w.addSheet(name);
+      return { result: { layout: w.layout({}), structure: structure(), name: ws.name } };
     }
     case "recalculate": {
       const w = requireWorkbook();

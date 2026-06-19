@@ -97,7 +97,8 @@ export type PreviewerEventName =
   | "pivotfilter"
   | "tablefilter"
   | "celledit"
-  | "drawingmoved";
+  | "drawingmoved"
+  | "sheetadd";
 
 export type { PivotFilterEvent, TableFilterEvent, ValidationPickEvent } from "./interact.js";
 
@@ -606,7 +607,12 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       selectedDrawingRect,
       viewport: this.viewport,
     });
-    this.nameBox.textContent = formatNameBox(state.activeCell, state.selection);
+    this.nameBox.textContent = formatNameBox(
+      state.activeCell,
+      state.selection,
+      this.layout,
+      this.activeSheetIndex,
+    );
     if (document.activeElement !== this.formulaBox) {
       this.formulaBox.value = formatFormulaBar(this.getActiveSheet(), state.activeCell);
     }
@@ -732,7 +738,31 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       this.sheetTabs.append(button);
       this.tabButtons[i] = button;
     });
+    if (this.editable) {
+      const add = makeButton("+");
+      add.setAttribute("aria-label", "New sheet");
+      add.title = "New sheet";
+      add.style.cssText +=
+        "flex:none;align-self:center;font-weight:600;line-height:1;padding:4px 10px;";
+      add.onclick = () => {
+        this.dispatchEvent(
+          new CustomEvent("sheetadd", { detail: { name: this.nextSheetName() } }),
+        );
+      };
+      this.sheetTabs.append(add);
+    }
     this.updateActiveTab();
+  }
+
+  private nextSheetName(): string {
+    const existing = new Set(this.layout.sheets.map((s) => s.name.toLocaleLowerCase()));
+    let n = this.layout.sheets.length + 1;
+    let name = `Sheet${n}`;
+    while (existing.has(name.toLocaleLowerCase())) {
+      n++;
+      name = `Sheet${n}`;
+    }
+    return name;
   }
 
   private updateActiveTab(): void {
@@ -1277,11 +1307,82 @@ function normalizeSelection(selection: Selection, maxRow: number, maxCol: number
   return { r1, c1, r2, c2 };
 }
 
-function formatNameBox(active: { r: number; c: number }, selection: Selection): string {
+function formatNameBox(
+  active: { r: number; c: number },
+  selection: Selection,
+  layout: WorkbookLayout,
+  activeSheetIndex: number,
+): string {
+  const named = matchNamedRange(selection, layout, activeSheetIndex);
+  if (named) return named;
   if (selection.r1 !== selection.r2 || selection.c1 !== selection.c2) {
     return `${colLabel(active.c)}${active.r}  (${selection.r2 - selection.r1 + 1}R×${selection.c2 - selection.c1 + 1}C)`;
   }
   return colLabel(active.c) + active.r;
+}
+
+function matchNamedRange(
+  selection: Selection,
+  layout: WorkbookLayout,
+  activeSheetIndex: number,
+): string | null {
+  const names = layout.definedNames ?? [];
+  for (const n of names) {
+    if (n.localSheetId !== undefined && n.localSheetId !== activeSheetIndex) continue;
+    const range = parseSheetRangeLocation(n.formula, layout, n.localSheetId ?? activeSheetIndex);
+    if (!range) continue;
+    if (range.sheetIndex !== activeSheetIndex) continue;
+    if (
+      range.r1 === selection.r1 &&
+      range.c1 === selection.c1 &&
+      range.r2 === selection.r2 &&
+      range.c2 === selection.c2
+    ) {
+      return n.name;
+    }
+  }
+  return null;
+}
+
+function parseSheetRangeLocation(
+  raw: string,
+  layout: WorkbookLayout,
+  fallbackSheetIndex: number,
+): { sheetIndex: number; r1: number; c1: number; r2: number; c2: number } | null {
+  const ref = raw.trim().replace(/^=/, "");
+  const bang = findUnquotedBang(ref);
+  let sheetIndex = fallbackSheetIndex;
+  let addr = ref;
+  if (bang >= 0) {
+    const sheetName = unquoteSheetName(ref.slice(0, bang));
+    const idx = layout.sheets.findIndex((s) => s.name === sheetName);
+    if (idx < 0) return null;
+    sheetIndex = idx;
+    addr = ref.slice(bang + 1);
+  }
+  const parts = addr.split(":");
+  const cellRe = /^\$?([A-Za-z]{1,3})\$?(\d+)$/;
+  const a = cellRe.exec(parts[0]!.trim());
+  if (!a) return null;
+  const ra = Number(a[2]);
+  const ca = colNameToIndex(a[1]!);
+  let rb = ra;
+  let cb = ca;
+  if (parts.length === 2) {
+    const b = cellRe.exec(parts[1]!.trim());
+    if (!b) return null;
+    rb = Number(b[2]);
+    cb = colNameToIndex(b[1]!);
+  } else if (parts.length !== 1) {
+    return null;
+  }
+  return {
+    sheetIndex,
+    r1: Math.min(ra, rb),
+    c1: Math.min(ca, cb),
+    r2: Math.max(ra, rb),
+    c2: Math.max(ca, cb),
+  };
 }
 
 function formatFormulaBar(sheet: Sheet, active: { r: number; c: number }): string {
