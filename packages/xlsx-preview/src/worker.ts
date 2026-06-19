@@ -149,6 +149,18 @@ export class WorkerWorkbook {
     return { layout };
   }
 
+  async moveRange(input: {
+    sheetName: string;
+    ref: string;
+    destSheet: string;
+    destRef: string;
+    recalc: boolean;
+  }): Promise<{ layout: WorkbookLayout }> {
+    const { layout, structure } = await this.request<EditResult>("moveRange", { ...input });
+    await this.syncShadow(structure);
+    return { layout };
+  }
+
   async clearRange(input: {
     sheetName: string;
     ref: string;

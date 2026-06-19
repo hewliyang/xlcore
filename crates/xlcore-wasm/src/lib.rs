@@ -396,6 +396,7 @@ api_methods! {
     { clear_range_in as "clearRange" (s sheet, s reference) -> json }
     { clear_range_with_in as "clearRangeWith" (s sheet, s reference, de mode: xlcore_api::ClearMode) -> json }
     { copy_range_in as "copyRange" (s src_sheet, s src_reference, s dst_sheet, s dst_reference) -> json }
+    { move_range_in as "moveRange" (s src_sheet, s src_reference, s dst_sheet, s dst_reference) -> json }
     { fill_range_in as "fillRange" (s src_sheet, s src_reference, s dst_sheet, s dst_reference) -> json }
     { create_sheet as "createSheet" (s name) -> json }
     { rename_sheet as "renameSheet" (s old_name, s new_name) -> unit }

@@ -5,7 +5,7 @@ use xlcore_types::{ApiError, ApiErrorCode, RangeInfo};
 
 use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_range_reference, qualify_ref, ResolvedRangeRef};
-use crate::structural::{translate_formula_refs, MAX_COLUMN, MAX_ROW};
+use crate::structural::{move_formula_refs, translate_formula_refs, MoveRect, MAX_COLUMN, MAX_ROW};
 use crate::xml::ensure_cell;
 use crate::{Result, Workbook};
 
@@ -41,6 +41,110 @@ impl Workbook {
         let src_reference = qualify_ref(src_sheet, src_reference)?;
         let dst_reference = qualify_ref(dst_sheet, dst_reference)?;
         self.fill_range(src_reference, dst_reference)
+    }
+
+    pub fn move_range_in(
+        &mut self,
+        src_sheet: &str,
+        src_reference: &str,
+        dst_sheet: &str,
+        dst_reference: &str,
+    ) -> Result<RangeInfo> {
+        let src_reference = qualify_ref(src_sheet, src_reference)?;
+        let dst_reference = qualify_ref(dst_sheet, dst_reference)?;
+        self.move_range(src_reference, dst_reference)
+    }
+
+    pub fn move_range(
+        &mut self,
+        src_reference: impl AsRef<str>,
+        dst_reference: impl AsRef<str>,
+    ) -> Result<RangeInfo> {
+        let src = self.resolve_range_ref(src_reference.as_ref())?;
+        let dst_parsed = parse_range_reference(dst_reference.as_ref())?;
+        let dst_sheet = dst_parsed.sheet.unwrap_or_else(|| src.sheet.clone());
+        let src_rows = src.end_row - src.start_row + 1;
+        let src_cols = src.end_column - src.start_column + 1;
+        let dst = ResolvedRangeRef {
+            sheet: dst_sheet,
+            start_row: dst_parsed.start_row,
+            start_column: dst_parsed.start_column,
+            end_row: dst_parsed.start_row + src_rows - 1,
+            end_column: dst_parsed.start_column + src_cols - 1,
+        };
+        check_bounds(dst.end_row, dst.end_column, dst_reference.as_ref())?;
+        let dr = dst.start_row as i64 - src.start_row as i64;
+        let dc = dst.start_column as i64 - src.start_column as i64;
+        if dr == 0 && dc == 0 && dst.sheet.eq_ignore_ascii_case(&src.sheet) {
+            return self.read_range(&dst);
+        }
+
+        let snapshot = self.snapshot_range(&src)?;
+        self.clear_cells(&src.sheet, &src)?;
+        self.write_snapshot_at(&dst.sheet, dst.start_row, dst.start_column, &snapshot, 0, 0)?;
+
+        let rect = MoveRect {
+            start_row: src.start_row,
+            end_row: src.end_row,
+            start_column: src.start_column,
+            end_column: src.end_column,
+        };
+        let sheet_names: Vec<String> = self
+            .workbook_sheets()?
+            .iter()
+            .map(|s| s.name.as_str().to_string())
+            .collect();
+        for name in &sheet_names {
+            let part = self.worksheet_part_for_sheet(name)?;
+            let ws = part
+                .root_element_mut(&mut self.doc)
+                .map_err(sdk_err_to_api)?;
+            for row in &mut ws.sheet_data.row {
+                for cell in &mut row.cell {
+                    if let Some(formula) = cell.cell_formula.as_mut() {
+                        if let Some(text) = formula.xml_content.as_mut() {
+                            *text = move_formula_refs(text, name, &src.sheet, rect, dr, dc);
+                        }
+                    }
+                }
+            }
+        }
+
+        self.mark_formulas_stale()?;
+        self.read_range(&dst)
+    }
+
+    fn clear_cells(&mut self, sheet: &str, rect: &ResolvedRangeRef) -> Result<()> {
+        let ws_part = self.worksheet_part_for_sheet(sheet)?;
+        let ws = ws_part
+            .root_element_mut(&mut self.doc)
+            .map_err(sdk_err_to_api)?;
+        for row in &mut ws.sheet_data.row {
+            let Some(row_idx) = row.row_index else {
+                continue;
+            };
+            if row_idx < rect.start_row || row_idx > rect.end_row {
+                continue;
+            }
+            for cell in &mut row.cell {
+                let Some((cr, cc)) = cell
+                    .cell_reference
+                    .as_ref()
+                    .and_then(|r| xlcore_io::parse_a1(r.as_str()))
+                else {
+                    continue;
+                };
+                if cr != row_idx || cc < rect.start_column || cc > rect.end_column {
+                    continue;
+                }
+                cell.data_type = None;
+                cell.cell_value = None;
+                cell.cell_formula = None;
+                cell.inline_string = None;
+                cell.style_index = None;
+            }
+        }
+        Ok(())
     }
 
     pub fn copy_range(

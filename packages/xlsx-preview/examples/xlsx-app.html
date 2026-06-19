@@ -726,7 +726,15 @@ async function applyPaste(detail) {
   const sheetName = previewer.getActiveSheet().name;
   try {
     let layout;
-    if (source === "internal" && sourceSheet && sourceRange) {
+    if (source === "internal" && sourceSheet && sourceRange && cutRange) {
+      ({ layout } = await recalcWorkbook.moveRange({
+        sheetName: sourceSheet,
+        ref: sourceRange,
+        destSheet: sheetName,
+        destRef,
+        recalc: autoRecalc,
+      }));
+    } else if (source === "internal" && sourceSheet && sourceRange) {
       ({ layout } = await recalcWorkbook.copyRange({
         sheetName: sourceSheet,
         ref: sourceRange,
@@ -744,15 +752,6 @@ async function applyPaste(detail) {
       }));
     }
     previewer.patchSheetLayout(layout);
-    if (cutRange && source === "internal") {
-      const cutRef = formatSelection(cutRange);
-      const { layout: cleared } = await recalcWorkbook.clearRange({
-        sheetName: sourceSheet ?? sheetName,
-        ref: cutRef,
-        recalc: autoRecalc,
-      });
-      previewer.patchSheetLayout(cleared);
-    }
     previewer.selectRange({ r1: target.r, c1: target.c, r2, c2 }, { scroll: true });
     renderState();
     setStatus("pasted " + destRef);

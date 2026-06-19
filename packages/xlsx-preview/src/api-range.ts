@@ -95,6 +95,13 @@ export class Range {
     return new Range(this.handle, this.sheetRef, info.reference);
   }
 
+  moveTo(dest: Range | string): Range {
+    const destSheet = dest instanceof Range ? dest.sheet : this.sheet;
+    const destRef = dest instanceof Range ? dest.reference : dest;
+    const info = this.handle.moveRange(this.sheet, this.reference, destSheet, destRef) as RangeInfo;
+    return new Range(this.handle, this.sheetRef, info.reference);
+  }
+
   merge(): this {
     this.handle.addMerge(this.sheet, this.reference);
     return this;

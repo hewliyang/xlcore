@@ -33,6 +33,7 @@ export type EditWorkerOp =
   | "pasteCells"
   | "setRangeFormulas"
   | "copyRange"
+  | "moveRange"
   | "clearRange"
   | "setImage"
   | "addSheet"
@@ -211,6 +212,21 @@ async function handleRequest(request: EditWorkerRequest): Promise<{
       };
       const w = requireWorkbook();
       w.sheet(sheetName).range(ref).copyTo(w.sheet(destSheet).range(destRef));
+      if (recalc) {
+        w.recalculate();
+      }
+      return { result: { layout: w.layout({ sheetName: destSheet }), structure: structure() } };
+    }
+    case "moveRange": {
+      const { sheetName, ref, destSheet, destRef, recalc } = request.args as {
+        sheetName: string;
+        ref: string;
+        destSheet: string;
+        destRef: string;
+        recalc: boolean;
+      };
+      const w = requireWorkbook();
+      w.sheet(sheetName).range(ref).moveTo(w.sheet(destSheet).range(destRef));
       if (recalc) {
         w.recalculate();
       }

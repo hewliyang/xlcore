@@ -396,6 +396,82 @@ fn copy_range_across_sheets_keeps_sheet_qualifier() {
 }
 
 #[test]
+fn move_range_keeps_relative_refs_unshifted() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_formula("Sheet1!B1", "=Z1").unwrap();
+    workbook.move_range("Sheet1!B1", "Sheet1!D1").unwrap();
+    assert_eq!(
+        workbook.get_cell("Sheet1!D1").unwrap().formula.as_deref(),
+        Some("Z1")
+    );
+    assert_eq!(
+        workbook.get_cell("Sheet1!B1").unwrap().value,
+        CellValue::Blank
+    );
+}
+
+#[test]
+fn move_range_retargets_external_formula_including_absolute() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value("Sheet1!A1", 10.0).unwrap();
+    workbook.set_formula("Sheet1!C1", "=A1").unwrap();
+    workbook.set_formula("Sheet1!C2", "=$A$1").unwrap();
+
+    workbook.move_range("Sheet1!A1", "Sheet1!A3").unwrap();
+
+    assert_eq!(
+        workbook.get_cell("Sheet1!C1").unwrap().formula.as_deref(),
+        Some("A3")
+    );
+    assert_eq!(
+        workbook.get_cell("Sheet1!C2").unwrap().formula.as_deref(),
+        Some("$A$3")
+    );
+    assert_eq!(
+        workbook.get_cell("Sheet1!A3").unwrap().value,
+        CellValue::Number(10.0)
+    );
+    assert_eq!(
+        workbook.get_cell("Sheet1!A1").unwrap().value,
+        CellValue::Blank
+    );
+}
+
+#[test]
+fn move_range_refs_within_block_follow() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.set_value("Sheet1!A1", 10.0).unwrap();
+    workbook.set_formula("Sheet1!B1", "=A1").unwrap();
+    workbook.set_formula("Sheet1!C1", "=Z1").unwrap();
+
+    workbook.move_range("Sheet1!A1:C1", "Sheet1!A3").unwrap();
+
+    assert_eq!(
+        workbook.get_cell("Sheet1!B3").unwrap().formula.as_deref(),
+        Some("A3")
+    );
+    assert_eq!(
+        workbook.get_cell("Sheet1!C3").unwrap().formula.as_deref(),
+        Some("Z1")
+    );
+}
+
+#[test]
+fn move_range_retargets_cross_sheet_refs() {
+    let mut workbook = Workbook::new().unwrap();
+    workbook.create_sheet("Other").unwrap();
+    workbook.set_value("Sheet1!A1", 5.0).unwrap();
+    workbook.set_formula("Other!B1", "=Sheet1!A1").unwrap();
+
+    workbook.move_range("Sheet1!A1", "Sheet1!A3").unwrap();
+
+    assert_eq!(
+        workbook.get_cell("Other!B1").unwrap().formula.as_deref(),
+        Some("Sheet1!A3")
+    );
+}
+
+#[test]
 fn fill_range_tiles_source_with_translation() {
     let mut workbook = Workbook::new().unwrap();
     workbook.set_value("Sheet1!A1", 1.0).unwrap();

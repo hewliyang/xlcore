@@ -574,6 +574,51 @@ pub(crate) fn translate_formula_refs(src: &str, dr: i64, dc: i64) -> String {
     walk_formula_refs(src, &mut rewrite)
 }
 
+#[derive(Clone, Copy)]
+pub(crate) struct MoveRect {
+    pub(crate) start_row: u32,
+    pub(crate) end_row: u32,
+    pub(crate) start_column: u32,
+    pub(crate) end_column: u32,
+}
+
+pub(crate) fn move_formula_refs(
+    src: &str,
+    owning: &str,
+    src_sheet: &str,
+    rect: MoveRect,
+    dr: i64,
+    dc: i64,
+) -> String {
+    let mut rewrite =
+        |start: Endpoint, end: Option<Endpoint>, sheet: Option<&str>, prefix_literal: &str| {
+            let target_sheet = sheet.unwrap_or(owning);
+            if !target_sheet.eq_ignore_ascii_case(src_sheet) {
+                return format!("{}{}", prefix_literal, render_ref_body(start, end));
+            }
+            let inside = |e: &Endpoint| {
+                matches!(e.kind(), EndpointKind::Cell)
+                    && e.col.is_some_and(|c| c >= rect.start_column && c <= rect.end_column)
+                    && e.row.is_some_and(|r| r >= rect.start_row && r <= rect.end_row)
+            };
+            let all_in = inside(&start) && end.as_ref().map(inside).unwrap_or(true);
+            if !all_in {
+                return format!("{}{}", prefix_literal, render_ref_body(start, end));
+            }
+            let displace = |e: Endpoint| Endpoint {
+                col: e.col.map(|c| (c as i64 + dc) as u32),
+                row: e.row.map(|r| (r as i64 + dr) as u32),
+                ..e
+            };
+            format!(
+                "{}{}",
+                prefix_literal,
+                render_ref_body(displace(start), end.map(displace))
+            )
+        };
+    walk_formula_refs(src, &mut rewrite)
+}
+
 fn translate_ref_token(
     start: Endpoint,
     end: Option<Endpoint>,
