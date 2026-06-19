@@ -3,8 +3,37 @@ import type { Rect } from "./chart.js";
 import type { ChartStyleBorder } from "./schema/ChartStyleBorder.js";
 import type { ChartStyleFont } from "./schema/ChartStyleFont.js";
 
-const AXIS_FONT_SIZE = 10;
-const LEGEND_FONT_SIZE = 11;
+const BASE_AXIS_FONT_SIZE = 10;
+const BASE_LEGEND_FONT_SIZE = 11;
+const BASE_TITLE_FONT_SIZE = 14;
+const BASE_AXIS_TITLE_FONT_SIZE = 11;
+const BASE_DATA_LABEL_FONT_SIZE = 9;
+const FONT_SCALE_REF = 360;
+const FONT_SCALE_MIN = 1;
+const FONT_SCALE_MAX = 2;
+
+export let AXIS_FONT_SIZE = BASE_AXIS_FONT_SIZE;
+export let LEGEND_FONT_SIZE = BASE_LEGEND_FONT_SIZE;
+export let TITLE_FONT_SIZE = BASE_TITLE_FONT_SIZE;
+export let AXIS_TITLE_FONT_SIZE = BASE_AXIS_TITLE_FONT_SIZE;
+export let DATA_LABEL_FONT_SIZE = BASE_DATA_LABEL_FONT_SIZE;
+
+export function chartFontScale(rect: Rect): number {
+  const minDim = Math.min(rect.w, rect.h);
+  const raw = minDim / FONT_SCALE_REF;
+  return Math.max(FONT_SCALE_MIN, Math.min(FONT_SCALE_MAX, raw));
+}
+
+export function applyChartFontScale(rect: Rect): number {
+  const s = chartFontScale(rect);
+  AXIS_FONT_SIZE = Math.round(BASE_AXIS_FONT_SIZE * s);
+  LEGEND_FONT_SIZE = Math.round(BASE_LEGEND_FONT_SIZE * s);
+  TITLE_FONT_SIZE = Math.round(BASE_TITLE_FONT_SIZE * s);
+  AXIS_TITLE_FONT_SIZE = Math.round(BASE_AXIS_TITLE_FONT_SIZE * s);
+  DATA_LABEL_FONT_SIZE = Math.round(BASE_DATA_LABEL_FONT_SIZE * s);
+  return s;
+}
+
 const GRIDLINE_COLOR = "#e5e7eb";
 const AXIS_LABEL_COLOR = "#52525b";
 const LEGEND_FONT_FAMILY = `-apple-system, "Helvetica Neue", Arial, sans-serif`;
@@ -109,7 +138,6 @@ export function paintZeroBaseline(
 export function isZeroTickInside(t: number, minV: number, maxV: number): boolean {
   return Math.abs(t) < ZERO_EPS && axisStraddlesZero(minV, maxV);
 }
-const DATA_LABEL_FONT_SIZE = 9;
 const DATA_LABEL_COLOR = "#1f2937";
 
 export interface BarSlotMetrics {

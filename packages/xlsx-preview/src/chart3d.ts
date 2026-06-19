@@ -2,9 +2,13 @@ import type { Chart, ChartSeries } from "./types.js";
 import type { Rect } from "./chart.js";
 import { applyTint } from "./color.js";
 import { resolveBarFill } from "./chartAdvanced.js";
-import { drawPlaceholderPlot, formatAxisValue, resolveAxisRange } from "./chartUtils.js";
+import {
+  drawPlaceholderPlot,
+  formatAxisValue,
+  resolveAxisRange,
+  AXIS_FONT_SIZE,
+} from "./chartUtils.js";
 
-const AXIS_FONT_SIZE = 10;
 const AXIS_TICK_COUNT = 5;
 const GRIDLINE_COLOR = "#e5e7eb";
 const AXIS_LABEL_COLOR = "#52525b";

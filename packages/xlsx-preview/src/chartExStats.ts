@@ -2,9 +2,13 @@ import type { Chart } from "./types.js";
 import type { Rect } from "./chart.js";
 import { activeThemeColor } from "./color.js";
 import { DEFAULT_PIE_ACCENTS } from "./chartAdvanced.js";
-import { drawAxisFrame, drawPlaceholderPlot, resolveAxisRange } from "./chartUtils.js";
+import {
+  drawAxisFrame,
+  drawPlaceholderPlot,
+  resolveAxisRange,
+  AXIS_FONT_SIZE,
+} from "./chartUtils.js";
 
-const AXIS_FONT_SIZE = 10;
 const AXIS_LABEL_COLOR = "#52525b";
 const AXIS_TICK_COUNT = 5;
 

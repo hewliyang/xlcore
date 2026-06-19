@@ -18,9 +18,9 @@ import {
   seriesLineDash,
   seriesLineWidth,
   withAlpha,
+  AXIS_FONT_SIZE,
 } from "./chartUtils.js";
 
-const AXIS_FONT_SIZE = 10;
 const AXIS_LABEL_COLOR = "#52525b";
 const AXIS_TICK_COUNT = 5;
 const GRIDLINE_COLOR = "#e5e7eb";

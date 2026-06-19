@@ -11,15 +11,6 @@ build + vitest). Render compare:
 
 ## Todo
 
-### 2. Chart font auto-scaling to plot-area size
-- Font sizes are fixed px constants (`AXIS_FONT_SIZE=10`, title 14, legend/axis-title
-  11) duplicated across `chart.ts`, `chartAdvanced.ts`, `chart3d.ts`, `chartEx.ts`,
-  `chartCombo.ts`, `chartStock.ts`, `chartExStats.ts`. They don't scale with chart
-  size, so large charts get tiny text (Excel auto-scales font with plot area).
-- Scale fonts proportionally to chart dimensions (Excel uses ~min(width,height)
-  based scaling, base ~10pt at a reference size). Keep explicit `<a:rPr sz=...>`
-  overrides authoritative. Centralize the constant if practical.
-
 ### 3. Auto-rotate category labels when they collide
 - `drawCategoryAxis` (`src/chartUtils.ts:353-368`) only rotates when explicit `rot`
   is in XML; otherwise draws horizontal and *drops* colliding labels
@@ -30,5 +21,6 @@ build + vitest). Render compare:
 
 ## Shipped
 
+- Chart fonts auto-scale with plot-area size via shared `chartFontScale`/`applyChartFontScale` in `chartUtils.ts` (exported `let` sizes consumed by all renderers); explicit `<a:rPr sz=...>` overrides stay authoritative.
 - Data-driven zero-clamp (Excel 5/6 rule) in `resolveAxisRange`; dropped per-call-site `zeroClamp` boolean.
 - `formatAxisValue` ignores quoted `"..."` literals (e.g. `0.0"%"`) when detecting the `%`/`$`/comma operators; emits them as literal suffix.

@@ -11,6 +11,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Chart fonts (axis/title/legend/axis-title/data labels) now auto-scale with plot-area size like Excel, centralized in `chartUtils`; explicit `sz` overrides stay authoritative.
 - Chart value-axis min/max now uses Excel's data-driven 5/6 zero-clamp rule (axis hits zero only when data is close enough), replacing the per-chart-type `zeroClamp` boolean.
 - Drawing move is now a single gesture: pressing and dragging any drawing selects and moves it in one motion (no separate select-first click); `drawingmoved` only fires when the anchor actually changes.
 - Recalc now reuses a resident calc engine across recalcs; cell value/formula edits route into it, other mutations invalidate it for a clean rebuild.

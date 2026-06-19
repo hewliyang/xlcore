@@ -32,6 +32,11 @@ import {
   valueRange,
   seriesLineWidth,
   seriesLineDash,
+  applyChartFontScale,
+  AXIS_FONT_SIZE,
+  LEGEND_FONT_SIZE,
+  TITLE_FONT_SIZE,
+  AXIS_TITLE_FONT_SIZE,
 } from "./chartUtils.js";
 
 import {
@@ -50,9 +55,6 @@ import {
 import { advancedPointFill } from "./chartFills.js";
 
 const TITLE_PAD = 8;
-const TITLE_FONT_SIZE = 14;
-const AXIS_FONT_SIZE = 10;
-const LEGEND_FONT_SIZE = 11;
 const PLOT_PAD_LEFT = 8;
 const PLOT_PAD_RIGHT = 12;
 const AXIS_TICK_COUNT = 5;
@@ -87,6 +89,7 @@ function resolveManualRect(chartRect: Rect, auto: Rect, ml: ChartManualLayout): 
 }
 
 export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
+  applyChartFontScale(rect);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   ctx.strokeStyle = "#d4d4d8";
@@ -212,7 +215,6 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     plotInner = (chart.plotAreaLayout.layoutTarget ?? "inner") === "inner";
   }
 
-  const AXIS_TITLE_FONT_SIZE = 11;
   const AXIS_TITLE_PAD = 6;
   const AXIS_TITLE_BAND = AXIS_TITLE_FONT_SIZE + AXIS_TITLE_PAD;
   const xTitle = chart.xAxisTitle;
@@ -250,7 +252,7 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
     plotRect.w -= AXIS_TITLE_BAND;
   }
 
-  const DISP_UNITS_FONT_SIZE = 10;
+  const DISP_UNITS_FONT_SIZE = AXIS_FONT_SIZE;
   const DISP_UNITS_BAND = DISP_UNITS_FONT_SIZE + 4;
   const duLabel = chart.dispUnits != null ? chart.dispUnitsLabel : undefined;
   const duLabel2 =
