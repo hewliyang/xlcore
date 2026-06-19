@@ -1,6 +1,30 @@
 import type { DrawingAnchor } from "./schema/DrawingAnchor.js";
 import type { ChartAnchor } from "./api-schema/ChartAnchor.js";
 
+export interface DrawingMovedDetail {
+  sheetName: string;
+  kind: string | undefined;
+  drawingIndex: number;
+  anchor: ChartAnchor;
+  prevAnchor: ChartAnchor;
+}
+
+export function buildDrawingMovedDetail(
+  sheetName: string,
+  kind: string | undefined,
+  index: number,
+  prevAnchor: DrawingAnchor,
+  anchor: DrawingAnchor,
+): DrawingMovedDetail {
+  return {
+    sheetName,
+    kind,
+    drawingIndex: index,
+    anchor: wireAnchorToChartAnchor(anchor),
+    prevAnchor: wireAnchorToChartAnchor(prevAnchor),
+  };
+}
+
 export function wireAnchorToChartAnchor(a: DrawingAnchor): ChartAnchor {
   const out: ChartAnchor = {
     fromColumn: a.fromCol,

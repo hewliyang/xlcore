@@ -14,6 +14,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `"drawingmoved"` previewer event dispatched on drawing move/resize/nudge with sheet name, kind, index, and ChartAnchor before/after.
 - `wireAnchorToChartAnchor`/`chartAnchorToWireAnchor` pure helpers for drawing anchor round-tripping.
 - Drag a selected drawing's resize handle to resize it, with live redraw and re-anchoring.
 - Hovering a selected drawing's resize handle shows the matching directional cursor.

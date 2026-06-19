@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { DrawingAnchor } from "./schema/DrawingAnchor.js";
-import { chartAnchorToWireAnchor, wireAnchorToChartAnchor } from "./anchorConvert.js";
+import {
+  buildDrawingMovedDetail,
+  chartAnchorToWireAnchor,
+  wireAnchorToChartAnchor,
+} from "./anchorConvert.js";
 
 const cases: DrawingAnchor[] = [
   { fromCol: 0, fromColOffEmu: 0, fromRow: 0, fromRowOffEmu: 0, toCol: 0, toColOffEmu: 0, toRow: 0, toRowOffEmu: 0 },
@@ -40,6 +44,19 @@ describe("anchorConvert", () => {
     const nonzero = wireAnchorToChartAnchor(cases[1]!);
     expect(nonzero.fromColumnOffsetEmu).toBe(9525n);
     expect(nonzero.toRowOffsetEmu).toBe(67890n);
+  });
+
+  it("builds drawingmoved detail with converted anchors", () => {
+    const detail = buildDrawingMovedDetail("Sheet1", "chart", 2, cases[0]!, cases[1]!);
+    expect(detail).toEqual({
+      sheetName: "Sheet1",
+      kind: "chart",
+      drawingIndex: 2,
+      prevAnchor: wireAnchorToChartAnchor(cases[0]!),
+      anchor: wireAnchorToChartAnchor(cases[1]!),
+    });
+    const ev = new CustomEvent("drawingmoved", { detail });
+    expect((ev.detail as typeof detail).anchor.toColumn).toBe(5);
   });
 
   it("defaults missing chart offsets to 0", () => {

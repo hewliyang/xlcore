@@ -80,13 +80,6 @@ move/resize.
 
 ### D — Events + round-trip (charts)
 
-- **D1. Previewer drawing events.** Add `"drawingmoved"` to `PreviewerEventName`
-  + `WorkbookPreviewer`. On move/resize commit, dispatch
-  `CustomEvent("drawingmoved", { detail: { sheetName, kind, drawingIndex,
-  anchor: ChartAnchor, prevAnchor: ChartAnchor } })`. Files: `previewer.ts`,
-  `interact.ts` (callback `onDrawingMoved` in `InteractOptions`). Verify:
-  `pnpm test` + a vitest asserting the event fires with the new anchor.
-
 - **D3. WorkerWorkbook + editWorker `moveDrawing` op.** Add
   `WorkerWorkbook.moveDrawing({ sheetName, kind, drawingIndex, anchor,
   prevAnchor }): Promise<WorkbookLayout>` and an `editWorker` `"moveDrawing"`
@@ -108,6 +101,8 @@ move/resize.
   `pnpm test`.
 
 ## Shipped
+
+- **D1.** `"drawingmoved"` added to `PreviewerEventName`; previewer's `onDrawingMoved` builds the detail via pure `buildDrawingMovedDetail(sheetName, kind, index, prevAnchor, anchor)` (in `anchorConvert.ts`, converts both wire anchors→ChartAnchor) and `dispatchEvent`s its own `CustomEvent("drawingmoved", { detail })` (not `emit()`); payload-builder test in `anchorConvert.test.ts`.
 
 - **D2.** Pure `wireAnchorToChartAnchor`/`chartAnchorToWireAnchor` in `src/anchorConvert.ts` (offset number↔bigint, omit zero/absent offsets on the chart side; ChartAnchor has no `extEmuCx/Cy`); round-trip + omission tests in `anchorConvert.test.ts`.
 

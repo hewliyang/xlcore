@@ -12,6 +12,7 @@ import {
 } from "./interact.js";
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
 import { anchorToRect } from "./grid.js";
+import { buildDrawingMovedDetail } from "./anchorConvert.js";
 import { referencesToHighlights } from "./highlights.js";
 import { autocompleteState, type AutocompleteState } from "./formulaAutocomplete.js";
 import { lookupSignature, signatureAt } from "./formulaSignature.js";
@@ -95,7 +96,8 @@ export type PreviewerEventName =
   | "layoutchange"
   | "pivotfilter"
   | "tablefilter"
-  | "celledit";
+  | "celledit"
+  | "drawingmoved";
 
 export type { PivotFilterEvent, TableFilterEvent, ValidationPickEvent } from "./interact.js";
 
@@ -694,6 +696,20 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       onValidationPick: this.editable
         ? (info: ValidationPickEvent) => this.openValidationPopover(info)
         : undefined,
+      onDrawingMoved: ({ index, prevAnchor, anchor }) => {
+        const sheet = this.getActiveSheet();
+        this.dispatchEvent(
+          new CustomEvent("drawingmoved", {
+            detail: buildDrawingMovedDetail(
+              sheet.name,
+              sheet.drawings?.[index]?.kind,
+              index,
+              prevAnchor,
+              anchor,
+            ),
+          }),
+        );
+      },
       redraw: this.scheduleDraw,
     });
   }
