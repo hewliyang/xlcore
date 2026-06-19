@@ -506,7 +506,9 @@ fn extract_xf(xf: &XCellFormat) -> CellFormat {
         if let Some(h) = &align.horizontal {
             let dbg = format!("{h:?}").to_ascii_lowercase();
             cf.horizontal_alignment = Some(
-                if dbg.contains("center") {
+                if dbg.contains("continuous") {
+                    "centerContinuous"
+                } else if dbg.contains("center") {
                     "center"
                 } else if dbg.contains("right") {
                     "right"

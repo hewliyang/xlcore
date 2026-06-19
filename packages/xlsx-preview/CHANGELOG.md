@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `centerContinuous` horizontal alignment (Center Across Selection): centers text across the run of empty cells to the right.
 - Esc on the grid (not editing, no drawing selected) clears the active cell + selection.
 - Edit overlay auto-grows horizontally so long values/formulas overflow past the cell like Excel.
 - Delete/Backspace on a cell selection emits `cellclear`; example app wires it to `clearRange`.

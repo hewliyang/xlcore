@@ -530,6 +530,16 @@ export function drawCellText(
       clip.x += iconReserve;
       clip.w -= iconReserve;
     }
+    if (halign === "centerContinuous") {
+      const rightCol = isMerged ? merge!.c2 : cell.c;
+      let cc = rightCol + 1;
+      while (cc <= g.maxCol && !occupied.has(`${cell.r}:${cc}`)) {
+        const w = g.colW[cc] ?? 0;
+        alignRect.w += w;
+        clip.w += w;
+        cc++;
+      }
+    }
     if (!wrap) {
       let maxLineW = 0;
       let curW = 0;
@@ -612,7 +622,10 @@ export function drawCellText(
       ctx.font = span.font;
       ctx.fillStyle = span.color;
 
-      let display = halign === "center" ? span.text.trim() || span.text : span.text;
+      let display =
+        halign === "center" || halign === "centerContinuous"
+          ? span.text.trim() || span.text
+          : span.text;
       if (ctx.measureText(display).width > innerW && innerW > 8) {
         const ell = "…";
         let lo = 0,
@@ -628,6 +641,7 @@ export function drawCellText(
       let tx: number;
       switch (halign) {
         case "center":
+        case "centerContinuous":
           tx = alignRect.x + (alignRect.w - tw) / 2;
           break;
         case "right":
@@ -680,6 +694,7 @@ export function drawCellText(
       let lineX: number;
       switch (halign) {
         case "center":
+        case "centerContinuous":
           lineX = alignRect.x + (alignRect.w - line.width) / 2;
           break;
         case "right":
