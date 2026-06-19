@@ -626,6 +626,34 @@ export function drawCellText(
         halign === "center" || halign === "centerContinuous"
           ? span.text.trim() || span.text
           : span.text;
+      if (halign === "fill") {
+        const unitW = ctx.measureText(span.text).width;
+        if (unitW > 0 && innerW > 0) {
+          const count = Math.max(1, Math.floor(innerW / unitW));
+          display = span.text.repeat(count);
+        }
+        const tx = textOriginX + padX + indentLeft;
+        const ascent = span.fontSizePx * 0.8;
+        let ty: number;
+        switch (valign) {
+          case "top":
+            ty = ownRect.y + ascent + 2;
+            break;
+          case "center":
+            ty = ownRect.y + ownRect.h / 2 + ascent / 2 - 1;
+            break;
+          default:
+            ty = ownRect.y + ownRect.h - 4;
+        }
+        const tyShift = ty + (span.baselineShiftPx ?? 0);
+        ctx.fillText(display, tx, tyShift);
+        paintTextDecorations(ctx, span, tx, tyShift, ctx.measureText(display).width, {
+          x: clip.x + 1,
+          w: Math.max(0, clip.w - 2),
+        });
+        ctx.restore();
+        return;
+      }
       if (ctx.measureText(display).width > innerW && innerW > 8) {
         const ell = "…";
         let lo = 0,
