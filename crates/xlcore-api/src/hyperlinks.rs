@@ -7,7 +7,7 @@ use xlcore_types::ApiCellValue as CellValue;
 
 use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_range_a1, qualify_ref, ranges_overlap, ResolvedRangeRef};
-use crate::xml::{ensure_cell, mark_formulas_stale, set_cell_value};
+use crate::xml::{ensure_cell, set_cell_value};
 use crate::{Result, Workbook};
 
 impl Workbook {
@@ -131,7 +131,7 @@ impl Workbook {
             }
         }
         if populated_display {
-            mark_formulas_stale(&mut self.doc)?;
+            self.mark_formulas_stale()?;
         }
         Ok(hyperlink_info(&range_ref, &patch))
     }

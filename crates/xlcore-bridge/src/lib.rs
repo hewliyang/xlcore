@@ -31,8 +31,93 @@ pub fn recalculate_layout<P: AsRef<Path>>(
     recalculate_layout_doc(&mut doc)
 }
 
+pub struct ResidentEngine {
+    engine: WorkbookEngine<'static>,
+    fallbacks: HashMap<CellKey, FormulaFallback>,
+}
+
+impl ResidentEngine {
+    pub fn sheet_index(&self, name: &str) -> Option<u32> {
+        self.engine
+            .sheet_names()
+            .iter()
+            .position(|n| n == name)
+            .map(|i| i as u32)
+    }
+
+    pub fn set_cell_value(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &xlcore_types::ApiCellValue,
+    ) -> Result<()> {
+        use xlcore_types::ApiCellValue;
+        let input = match value {
+            ApiCellValue::Blank | ApiCellValue::Error(_) => String::new(),
+            ApiCellValue::String(v) => format!("'{v}"),
+            ApiCellValue::Number(v) => v.to_string(),
+            ApiCellValue::Boolean(v) => v.to_string(),
+        };
+        self.engine.set_input(sheet, row, column, input)?;
+        self.fallbacks.remove(&CellKey {
+            sheet,
+            r: row as u32,
+            c: column as u32,
+        });
+        Ok(())
+    }
+
+    pub fn set_cell_formula(&mut self, sheet: u32, row: i32, column: i32, formula: &str) {
+        let key = CellKey {
+            sheet,
+            r: row as u32,
+            c: column as u32,
+        };
+        match self.engine.set_formula(sheet, row, column, formula) {
+            Ok(()) => {
+                self.fallbacks.remove(&key);
+            }
+            Err(err) => {
+                self.fallbacks.insert(
+                    key,
+                    FormulaFallback {
+                        kind: "#ERROR!".to_string(),
+                        message: err.to_string(),
+                    },
+                );
+            }
+        }
+    }
+}
+
 pub fn recalculate_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<RecalcWorkbook> {
+    let mut resident = None;
+    recalculate_doc_with_resident(doc, &mut resident)
+}
+
+pub fn recalculate_doc_with_resident(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    resident: &mut Option<ResidentEngine>,
+) -> Result<RecalcWorkbook> {
     let shared_strings = load_shared_strings(doc);
+    let (harvested, harvested_defined_names) = harvest_workbook(doc, &shared_strings)?;
+
+    if resident.is_none() {
+        let mut engine = WorkbookEngine::new("xlcore-bridge")?;
+        let fallbacks = load_engine(&mut engine, &harvested, &harvested_defined_names)?;
+        *resident = Some(ResidentEngine { engine, fallbacks });
+    }
+    let resident = resident.as_mut().expect("resident engine present");
+    resident.engine.evaluate();
+
+    build_report(&resident.engine, &harvested, &resident.fallbacks)
+}
+
+fn harvest_workbook(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    shared_strings: &[String],
+) -> Result<(Vec<HarvestedSheet>, Vec<HarvestedDefinedName>)> {
     let (workbook_sheets, harvested_defined_names) = {
         let wb_part = doc.workbook_part()?;
         let wb = wb_part.root_element(doc)?;
@@ -78,35 +163,39 @@ pub fn recalculate_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<Recal
         harvested.push(HarvestedSheet {
             index: idx as u32,
             name: wb_sheet.name.as_str().to_string(),
-            cells: harvest_sheet_cells(ws, &shared_strings),
+            cells: harvest_sheet_cells(ws, shared_strings),
         });
     }
 
-    let mut engine = WorkbookEngine::new("xlcore-bridge")?;
-    let mut fallbacks = load_engine(&mut engine, &harvested, &harvested_defined_names)?;
-    engine.evaluate();
+    Ok((harvested, harvested_defined_names))
+}
 
+fn build_report(
+    engine: &WorkbookEngine<'_>,
+    harvested: &[HarvestedSheet],
+    fallbacks: &HashMap<CellKey, FormulaFallback>,
+) -> Result<RecalcWorkbook> {
     let mut sheets = Vec::with_capacity(harvested.len());
     for sheet in harvested {
         let mut cells = Vec::new();
-        for cell in sheet.cells {
-            if let Some(formula) = cell.formula {
+        for cell in &sheet.cells {
+            if let Some(formula) = &cell.formula {
                 let key = CellKey {
                     sheet: sheet.index,
                     r: cell.r,
                     c: cell.c,
                 };
-                let mut fallback = fallbacks.remove(&key);
+                let mut fallback = fallbacks.get(&key).cloned();
                 let value = if fallback.is_some() {
                     cell.cached_value.clone().unwrap_or(CellValue::Blank)
                 } else {
-                    evaluated_formula_value(&engine, key, cell.cached_value.as_ref(), &mut fallback)
+                    evaluated_formula_value(engine, key, cell.cached_value.as_ref(), &mut fallback)
                 };
                 cells.push(RecalcCell {
                     r: cell.r,
                     c: cell.c,
-                    formula,
-                    cached_value: cell.cached_value,
+                    formula: formula.clone(),
+                    cached_value: cell.cached_value.clone(),
                     value,
                     fallback,
                 });
@@ -114,7 +203,7 @@ pub fn recalculate_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<Recal
         }
         sheets.push(RecalcSheet {
             index: sheet.index,
-            name: sheet.name,
+            name: sheet.name.clone(),
             cells,
         });
     }
@@ -125,7 +214,15 @@ pub fn recalculate_doc(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<Recal
 pub fn recalculate_doc_with_writeback(
     doc: &mut xlcore_io::SpreadsheetDocument,
 ) -> Result<RecalcWorkbook> {
-    let recalculated = recalculate_doc(doc)?;
+    let mut resident = None;
+    recalculate_doc_with_writeback_resident(doc, &mut resident)
+}
+
+pub fn recalculate_doc_with_writeback_resident(
+    doc: &mut xlcore_io::SpreadsheetDocument,
+    resident: &mut Option<ResidentEngine>,
+) -> Result<RecalcWorkbook> {
+    let recalculated = recalculate_doc_with_resident(doc, resident)?;
     write_cached_formula_values(doc, &recalculated)?;
     mark_cached_formula_values_current(doc)?;
     Ok(recalculated)
@@ -781,6 +878,34 @@ mod tests {
         assert_eq!(
             wb.cell("Sheet1", "C2").map(|cell| &cell.value),
             Some(&CellValue::Number(80.0))
+        );
+    }
+
+    #[test]
+    fn reuses_resident_engine_across_recalcs() {
+        let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/engine/basic-formulas.xlsx");
+        let mut doc = xlcore_io::open(&fixture).unwrap();
+        let mut resident: Option<ResidentEngine> = None;
+
+        let first = recalculate_doc_with_resident(&mut doc, &mut resident).unwrap();
+        assert_eq!(
+            first.cell("Sheet1", "C1").map(|cell| &cell.value),
+            Some(&CellValue::Number(30.0))
+        );
+        assert!(resident.is_some());
+
+        resident
+            .as_mut()
+            .unwrap()
+            .set_cell_value(0, 1, 1, &xlcore_types::ApiCellValue::Number(100.0))
+            .unwrap();
+
+        let second = recalculate_doc_with_resident(&mut doc, &mut resident).unwrap();
+        assert_eq!(
+            second.cell("Sheet1", "C1").map(|cell| &cell.value),
+            Some(&CellValue::Number(120.0)),
+            "resident engine must be reused (not rebuilt from DOM) so the engine-only A1 edit persists"
         );
     }
 

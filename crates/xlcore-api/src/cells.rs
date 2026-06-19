@@ -97,6 +97,7 @@ impl Workbook {
         let cell = ensure_cell(ws, cell_ref.row, cell_ref.column);
         set_cell_value(cell, &value);
         mark_formulas_stale(&mut self.doc)?;
+        self.route_value_to_engine(&cell_ref.sheet, cell_ref.row, cell_ref.column, &value);
         self.get_cell(cell_ref.full_reference())
     }
 
@@ -116,10 +117,11 @@ impl Workbook {
         cell.inline_string = None;
         cell.cell_value = None;
         cell.cell_formula = Some(x::CellFormula {
-            xml_content: Some(formula),
+            xml_content: Some(formula.clone()),
             ..Default::default()
         });
         mark_formulas_stale(&mut self.doc)?;
+        self.route_formula_to_engine(&cell_ref.sheet, cell_ref.row, cell_ref.column, &formula);
         self.get_cell(cell_ref.full_reference())
     }
 
@@ -140,7 +142,7 @@ impl Workbook {
         let cell = ensure_cell(ws, cell_ref.row, cell_ref.column);
         apply_clear_mode(cell, mode);
         if touches_formulas {
-            mark_formulas_stale(&mut self.doc)?;
+            self.mark_formulas_stale()?;
         }
         self.get_cell(cell_ref.full_reference())
     }

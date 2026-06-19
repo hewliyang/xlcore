@@ -6,7 +6,7 @@ use xlcore_types::{
 use crate::errors::sdk_err_to_api;
 use crate::refs::qualify_ref;
 use crate::styles::parse_color;
-use crate::xml::{ensure_cell, mark_formulas_stale};
+use crate::xml::ensure_cell;
 use crate::{ApiError, ApiErrorCode, Result, Workbook};
 
 impl Workbook {
@@ -48,7 +48,7 @@ impl Workbook {
             run: sdk_runs,
             ..Default::default()
         }));
-        mark_formulas_stale(&mut self.doc)?;
+        self.mark_formulas_stale()?;
         self.get_cell(cell_ref.full_reference())
     }
 }

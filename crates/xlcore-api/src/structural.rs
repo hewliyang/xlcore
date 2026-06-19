@@ -3,7 +3,6 @@ use xlcore_types::{ApiError, ApiErrorCode};
 
 use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_range_a1, quote_sheet_name};
-use crate::xml::mark_formulas_stale;
 use crate::{Result, Workbook};
 
 pub(crate) const MAX_ROW: u32 = 1_048_576;
@@ -122,7 +121,7 @@ impl Workbook {
             }
         }
 
-        mark_formulas_stale(&mut self.doc)?;
+        self.mark_formulas_stale()?;
         Ok(())
     }
 }

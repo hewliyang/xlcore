@@ -9,8 +9,7 @@ use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_range_reference, qualify_ref, validate_matrix_shape, ResolvedRangeRef};
 use crate::styles;
 use crate::xml::{
-    apply_clear_mode, ensure_cell, load_shared_strings, mark_formulas_stale,
-    read_cell_value, set_cell_value,
+    apply_clear_mode, ensure_cell, load_shared_strings, read_cell_value, set_cell_value,
 };
 use crate::{Result, Workbook};
 
@@ -90,7 +89,7 @@ impl Workbook {
                 set_cell_value(cell, value);
             }
         }
-        mark_formulas_stale(&mut self.doc)?;
+        self.mark_formulas_stale()?;
         self.read_range(&range_ref)
     }
 
@@ -133,7 +132,7 @@ impl Workbook {
                 set_cell_value(cell, value);
             }
         }
-        mark_formulas_stale(&mut self.doc)?;
+        self.mark_formulas_stale()?;
         let range_ref = ResolvedRangeRef {
             sheet,
             start_row,
@@ -200,7 +199,7 @@ impl Workbook {
                 }
             }
         }
-        mark_formulas_stale(&mut self.doc)?;
+        self.mark_formulas_stale()?;
         self.read_range(&range_ref)
     }
 
@@ -288,7 +287,7 @@ impl Workbook {
             }
         }
         if touches_formulas {
-            mark_formulas_stale(&mut self.doc)?;
+            self.mark_formulas_stale()?;
         }
         self.read_range(&range_ref)
     }

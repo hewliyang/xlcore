@@ -8,7 +8,7 @@ use xlcore_types::{ApiError, ApiErrorCode, SheetInfo, SheetVisibility};
 use crate::errors::sdk_err_to_api;
 use crate::refs::validate_sheet_name;
 use crate::structural::rename_sheet_in_formula_refs;
-use crate::xml::{empty_worksheet, mark_formulas_stale, sheet_dimensions, sheet_state_name};
+use crate::xml::{empty_worksheet, sheet_dimensions, sheet_state_name};
 use crate::{Result, Workbook};
 
 impl Workbook {
@@ -84,6 +84,7 @@ impl Workbook {
         });
 
         let index = workbook.sheets.sheet.len() - 1;
+        self.invalidate_engine();
         Ok(SheetInfo {
             index,
             id: next_sheet_id,
@@ -168,7 +169,7 @@ impl Workbook {
             }
         }
 
-        mark_formulas_stale(&mut self.doc)?;
+        self.mark_formulas_stale()?;
         Ok(())
     }
 
@@ -200,6 +201,7 @@ impl Workbook {
         let _ = wb_part
             .delete_part_by_id(&mut self.doc, relationship_id.as_str())
             .map_err(sdk_err_to_api)?;
+        self.invalidate_engine();
         self.normalize_active_sheet_after_delete(index as u32)?;
         Ok(())
     }
@@ -227,6 +229,7 @@ impl Workbook {
         if from != to {
             let sheet = workbook.sheets.sheet.remove(from);
             workbook.sheets.sheet.insert(to, sheet);
+            self.invalidate_engine();
             self.normalize_active_sheet_after_move(from as u32, to as u32)?;
         }
         self.sheet_info_by_name(name)

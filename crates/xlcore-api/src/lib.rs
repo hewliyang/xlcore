@@ -77,6 +77,7 @@ pub struct Workbook {
     pub(crate) doc: xlcore_io::SpreadsheetDocument,
     pub(crate) report: xlcore_io::LoadReport,
     pub(crate) warnings: Vec<ApiWarning>,
+    pub(crate) engine: Option<xlcore_bridge::ResidentEngine>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -109,6 +110,7 @@ impl Workbook {
             doc: blank_workbook()?,
             report: Default::default(),
             warnings: Vec::new(),
+            engine: None,
         })
     }
 
@@ -119,6 +121,7 @@ impl Workbook {
             doc,
             report,
             warnings: Vec::new(),
+            engine: None,
         })
     }
 
@@ -159,6 +162,61 @@ impl Workbook {
         self.warnings.push(warning);
     }
 
+    pub(crate) fn invalidate_engine(&mut self) {
+        self.engine = None;
+    }
+
+    pub(crate) fn mark_formulas_stale(&mut self) -> Result<()> {
+        self.invalidate_engine();
+        crate::xml::mark_formulas_stale(&mut self.doc)
+    }
+
+    pub(crate) fn route_value_to_engine(
+        &mut self,
+        sheet: &str,
+        row: u32,
+        column: u32,
+        value: &CellValue,
+    ) {
+        if self.engine.is_none() {
+            return;
+        }
+        let Some(idx) = self.engine.as_ref().and_then(|e| e.sheet_index(sheet)) else {
+            self.engine = None;
+            return;
+        };
+        let failed = self
+            .engine
+            .as_mut()
+            .map(|e| {
+                e.set_cell_value(idx, row as i32, column as i32, value)
+                    .is_err()
+            })
+            .unwrap_or(false);
+        if failed {
+            self.engine = None;
+        }
+    }
+
+    pub(crate) fn route_formula_to_engine(
+        &mut self,
+        sheet: &str,
+        row: u32,
+        column: u32,
+        formula: &str,
+    ) {
+        if self.engine.is_none() {
+            return;
+        }
+        let Some(idx) = self.engine.as_ref().and_then(|e| e.sheet_index(sheet)) else {
+            self.engine = None;
+            return;
+        };
+        if let Some(engine) = self.engine.as_mut() {
+            engine.set_cell_formula(idx, row as i32, column as i32, formula);
+        }
+    }
+
     pub fn batch<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T>) -> BatchOutcome<T> {
         let prior = std::mem::take(&mut self.warnings);
         let outcome = f(self);
@@ -179,8 +237,9 @@ impl Workbook {
     }
 
     pub fn recalculate(&mut self, errors_only: bool) -> Result<xlcore_bridge::RecalcWorkbook> {
-        let mut report = xlcore_bridge::recalculate_doc_with_writeback(&mut self.doc)
-            .map_err(anyhow_err_to_api)?;
+        let mut report =
+            xlcore_bridge::recalculate_doc_with_writeback_resident(&mut self.doc, &mut self.engine)
+                .map_err(anyhow_err_to_api)?;
         if errors_only {
             for sheet in &mut report.sheets {
                 sheet.cells.retain(|cell| cell.fallback.is_some());

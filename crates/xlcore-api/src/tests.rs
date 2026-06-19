@@ -18,6 +18,7 @@ mod ranges_styles;
 mod raw_parts;
 mod refs_in;
 mod refs_sheets;
+mod resident_engine;
 mod rich_text;
 mod rowcols;
 mod search;

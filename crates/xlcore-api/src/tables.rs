@@ -9,7 +9,7 @@ use xlcore_types::{
 
 use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_range_a1, qualify_ref, ranges_overlap};
-use crate::xml::{ensure_cell, mark_formulas_stale};
+use crate::xml::ensure_cell;
 use crate::{Result, Workbook};
 
 impl Workbook {
@@ -272,7 +272,7 @@ impl Workbook {
         });
         tp.count = Some(tp.table_part.len() as u32);
 
-        mark_formulas_stale(&mut self.doc)?;
+        self.mark_formulas_stale()?;
 
         let table_ref = self.worksheet_part_for_sheet(&range_ref.sheet)?;
         let tp = table_ref
@@ -491,7 +491,7 @@ impl Workbook {
             write_header_row(self, &target_range, &column_names)?;
         }
 
-        mark_formulas_stale(&mut self.doc)?;
+        self.mark_formulas_stale()?;
 
         let ws_part = self.worksheet_part_for_sheet(sheet)?;
         let tp = ws_part

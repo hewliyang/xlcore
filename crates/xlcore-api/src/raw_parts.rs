@@ -104,6 +104,7 @@ impl Workbook {
             .map_err(crate::errors::load_err_to_api)?;
         self.doc = doc;
         self.report = report;
+        self.invalidate_engine();
         Ok(())
     }
 }

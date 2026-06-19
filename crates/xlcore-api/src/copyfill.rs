@@ -6,7 +6,7 @@ use xlcore_types::{ApiError, ApiErrorCode, RangeInfo};
 use crate::errors::sdk_err_to_api;
 use crate::refs::{parse_range_reference, qualify_ref, ResolvedRangeRef};
 use crate::structural::{translate_formula_refs, MAX_COLUMN, MAX_ROW};
-use crate::xml::{ensure_cell, mark_formulas_stale};
+use crate::xml::ensure_cell;
 use crate::{Result, Workbook};
 
 #[derive(Clone, Default)]
@@ -97,7 +97,7 @@ impl Workbook {
             }
             r += src_rows;
         }
-        mark_formulas_stale(&mut self.doc)?;
+        self.mark_formulas_stale()?;
         self.read_range(&dst)
     }
 
@@ -157,7 +157,7 @@ impl Workbook {
             }
             r += src_rows;
         }
-        mark_formulas_stale(&mut self.doc)?;
+        self.mark_formulas_stale()?;
         self.read_range(&dst)
     }
 

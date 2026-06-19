@@ -87,6 +87,7 @@ impl Workbook {
             comment: patch.comment,
             hidden: patch.hidden.unwrap_or(false),
         };
+        self.invalidate_engine();
         if !engine_supported {
             let mut warning = ApiWarning::new(
                 ApiErrorCode::LossyOperation,
@@ -133,6 +134,7 @@ impl Workbook {
         if dns.defined_name.is_empty() {
             wb.defined_names = None;
         }
+        self.invalidate_engine();
         Ok(removed)
     }
 
