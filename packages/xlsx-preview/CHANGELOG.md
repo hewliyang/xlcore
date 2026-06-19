@@ -14,6 +14,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Hovering a selected drawing's body shows a `move` cursor; selection clears on sheet change, range select, and scroll-to-cell.
 - Selected drawings now render selection chrome (1px box + 8 square handles) in the grid accent color.
 - Click a drawing (chart/image/shape) to select it (top-most wins); Escape or a cell/empty click clears it. Visual selection chrome lands next.
 - `previewer.patchSheetLayout(singleSheetLayout)` merges one sheet into the resident layout, preserving scroll/selection.

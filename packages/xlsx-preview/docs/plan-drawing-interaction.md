@@ -78,13 +78,6 @@ move/resize.
 
 ## Backlog
 
-### A — Selection (visual)
-
-- **A3. Cursor + deselect polish.** Hover over a selected drawing's body →
-  `move` cursor; over a handle → resize cursor (set in A-C as handles land).
-  Deselect on scroll-to-cell / sheet change. Files: `interact.ts`,
-  `previewer.ts`. Verify: `pnpm test`.
-
 ### B — Move (visual)
 
 - **B1. Pixel→anchor inverse.** In `grid.ts` add `rectToAnchor(rect, grid,
@@ -159,5 +152,6 @@ move/resize.
 
 ## Shipped
 
+- **A3.** `move` cursor when hovering a selected drawing's body (`interact.ts`); deselect drawing on sheet change / `selectRange` / `scrollToCell` (`previewer.ts`).
 - **A2.** `drawDrawingSelection`/`drawingHandles` in `src/drawingSelection.ts`; `selectedDrawingRect` threaded through `RenderOptions` (computed in `previewer.ts` via `anchorToRect`) and drawn per-pane after `drawDrawings`.
 - **A1.** Top-most drawing hit-test (`drawingIndexAtPoint`) + per-sheet `selectedDrawing` state wired through `InteractOptions`; click selects a drawing, Escape/cell click clears it.

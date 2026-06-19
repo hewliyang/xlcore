@@ -434,6 +434,21 @@ export function attachInteractivity(
       return;
     }
 
+    const sel = opts.selectedDrawing?.get();
+    if (sel != null) {
+      const grid = getGrid();
+      const lp2 = toLogical(ev);
+      if (
+        lp2.x >= grid.originX &&
+        lp2.y >= grid.originY &&
+        drawingIndexAtPoint(opts.getSheet(), grid, lp2.x, lp2.y) === sel
+      ) {
+        canvas.style.cursor = "move";
+        annotations.hidePopover();
+        return;
+      }
+    }
+
     annotations.ensureMaps();
     const lp = toLogical(ev);
     const cell = cellAtLogical(lp);

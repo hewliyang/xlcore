@@ -436,6 +436,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   setActiveSheet(sheet: number | string): void {
     const next = this.resolveSheet(sheet);
     if (next === this.activeSheetIndex) return;
+    this.currentState().selectedDrawing = null;
     this.hideEditOverlay();
     this.activeSheetIndex = next;
     this.stage.scrollTop = 0;
@@ -482,6 +483,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     const state = this.currentState();
     state.activeCell = active;
     state.selection = range;
+    state.selectedDrawing = null;
     if (options.scroll) this.scrollToCell(active.r, active.c);
     this.draw();
     this.emit("selectionchange");
@@ -490,6 +492,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   scrollToCell(r: number, c: number): void {
     const sheet = this.getActiveSheet();
     const state = this.currentState();
+    state.selectedDrawing = null;
     const grid = buildGrid(sheet, state.colOverrides, state.rowOverrides);
     const rr = clamp(Math.floor(r), 1, grid.maxRow);
     const cc = clamp(Math.floor(c), 1, grid.maxCol);
