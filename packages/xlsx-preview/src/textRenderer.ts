@@ -727,12 +727,15 @@ export function drawCellText(
     }
 
     const isJustify = halign === "justify" || halign === "distributed";
+    const justifyLast = xf?.justifyLastLine ?? false;
     let lineTop = blockTop;
     for (let li = 0; li < lines.length; li++) {
       const line = lines[li]!;
       const isLast = li === lines.length - 1;
       const justifyThis =
-        isJustify && line.pieces.length > 0 && (halign === "distributed" || !isLast);
+        isJustify &&
+        line.pieces.length > 0 &&
+        (halign === "distributed" || !isLast || justifyLast);
       let lineX: number;
       switch (halign) {
         case "center":
