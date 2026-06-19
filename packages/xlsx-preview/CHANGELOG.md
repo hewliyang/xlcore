@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Drawing move is now a single gesture: pressing and dragging any drawing selects and moves it in one motion (no separate select-first click); `drawingmoved` only fires when the anchor actually changes.
 - Recalc now reuses a resident calc engine across recalcs; cell value/formula edits route into it, other mutations invalidate it for a clean rebuild.
 - Cell edits now re-extract + redraw only the active sheet (`applyEdit` returns a single-sheet layout) merged via `previewer.patchSheetLayout`, instead of reserializing/repainting the whole workbook.
 - Formula bar now shows clean display formulas (e.g. `CONCAT` instead of `_xlfn.CONCAT`) by stripping OOXML `_xlfn.`/`_xlws.` decorations at extract time.

@@ -24,6 +24,21 @@ import {
 } from "./outlineGutter.js";
 
 const RESIZE_TOL = 4;
+
+function anchorChanged(a: DrawingAnchor, b: DrawingAnchor): boolean {
+  return (
+    a.fromCol !== b.fromCol ||
+    a.fromRow !== b.fromRow ||
+    a.toCol !== b.toCol ||
+    a.toRow !== b.toRow ||
+    a.fromColOffEmu !== b.fromColOffEmu ||
+    a.fromRowOffEmu !== b.fromRowOffEmu ||
+    a.toColOffEmu !== b.toColOffEmu ||
+    a.toRowOffEmu !== b.toRowOffEmu ||
+    a.extEmuCx !== b.extEmuCx ||
+    a.extEmuCy !== b.extEmuCy
+  );
+}
 const MIN_COL_W = 8;
 const MIN_ROW_H = 4;
 const ZOOM_MIN = 0.25;
@@ -843,10 +858,14 @@ export function attachInteractivity(
       const di = drawingIndexAtPoint(opts.getSheet(), grid, p.x, p.y);
       if (di !== null) {
         ev.preventDefault();
-        const sel = opts.selectedDrawing.get();
         const d = opts.getSheet().drawings[di];
         const rect = d ? anchorToRect(d, grid) : null;
-        if (sel === di && d && rect) {
+        if (opts.selectedDrawing.get() !== di) {
+          opts.selectedDrawing.set(di);
+          opts.selection?.set(null);
+          opts.redraw();
+        }
+        if (d && rect) {
           canvas.setPointerCapture(ev.pointerId);
           drawDrag = {
             index: di,
@@ -855,10 +874,6 @@ export function attachInteractivity(
             startRect: rect,
             prevAnchor: { ...d.anchor },
           };
-        } else {
-          opts.selectedDrawing.set(di);
-          opts.selection?.set(null);
-          opts.redraw();
         }
         canvas.focus({ preventScroll: true });
         return;
@@ -1134,7 +1149,7 @@ export function attachInteractivity(
         canvas.releasePointerCapture(ev.pointerId);
       } catch {}
       const moved = opts.getSheet().drawings[resizeDrag.index];
-      if (moved) {
+      if (moved && anchorChanged(resizeDrag.prevAnchor, moved.anchor)) {
         opts.onDrawingMoved?.({
           index: resizeDrag.index,
           prevAnchor: resizeDrag.prevAnchor,
@@ -1148,7 +1163,7 @@ export function attachInteractivity(
         canvas.releasePointerCapture(ev.pointerId);
       } catch {}
       const moved = opts.getSheet().drawings[drawDrag.index];
-      if (moved) {
+      if (moved && anchorChanged(drawDrag.prevAnchor, moved.anchor)) {
         opts.onDrawingMoved?.({
           index: drawDrag.index,
           prevAnchor: drawDrag.prevAnchor,
