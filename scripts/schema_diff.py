@@ -42,7 +42,7 @@ FIELD_RE = re.compile(r"\n[ \t]*pub (?:r#)?(\w+):\s*([^\n]+),")
 EXTLST = "extlst"
 # ooxmlsdk serialization plumbing carried on every part/struct, never OOXML
 # schema content; ignored globally so per-pair manifests stay schema-only.
-PLUMBING = {"xmlns", "xmlheader", "xmlotherattrs"}
+PLUMBING = {"xmlns", "xmlheader", "xmlotherattrs", "xmlotherchildren"}
 
 
 def base_type(ftype):
@@ -92,7 +92,7 @@ def file_text(path):
 
 def find_struct(text, name):
     m = re.search(
-        r'(#\[sdk\(qname = "([^"]+)"\)\]\s*)?pub struct '
+        r'(#\[sdk\([^\]]*?qname = "([^"]+)"[^\]]*\)\]\s*)?pub struct '
         + re.escape(name)
         + r" \{(.*?)\n\}",
         text,
@@ -236,11 +236,108 @@ def analyze(root, sdk_struct, dto_struct, ns, derived, excluded, aliases):
     }
 
 
-def load_manifest():
+def load_manifest_full():
     path = os.path.join(os.path.dirname(__file__), "schema_coverage.toml")
     with open(path, "rb") as fh:
-        data = tomllib.load(fh)
-    return data.get("pair", [])
+        return tomllib.load(fh)
+
+
+def load_manifest():
+    return load_manifest_full().get("pair", [])
+
+
+CHART_AUDIT_ROOTS = ["Chart"]
+
+
+def chart_schema_file(root):
+    for p in schema_files(root):
+        if "drawingml_2006_chart" in os.path.basename(p):
+            return p
+    raise SystemExit("chart schema file not found under ooxmlsdk")
+
+
+def build_chart_graph(path):
+    text = file_text(path)
+    structs = {}
+    for m in re.finditer(
+        r'#\[sdk\(qname = "([^"]+)"\)\]\s*pub struct (\w+) \{(.*?)\n\}', text, re.DOTALL
+    ):
+        structs[m.group(2)] = (m.group(1), m.group(3))
+    enums = {}
+    for m in re.finditer(r"pub enum (\w+) \{(.*?)\n\}", text, re.DOTALL):
+        variants = [b for _a, b in re.findall(r"(\w+)\((?:std::boxed::Box<)?(\w+)>?\)", m.group(2))]
+        if variants:
+            enums[m.group(1)] = variants
+    return structs, enums
+
+
+def field_basetypes(body):
+    return [base_type(fm.group(1)) for fm in re.finditer(r"pub (?:r#)?\w+:\s*([^\n,]+),", body)]
+
+
+def is_container(name, structs, enums):
+    if name.endswith(("Extension", "ExtensionList")):
+        return False
+    for x in field_basetypes(structs[name][1]):
+        if x in enums:
+            return True
+        if x in structs and not x.endswith(("Extension", "ExtensionList")):
+            return True
+    return False
+
+
+def reachable_containers(structs, enums, roots):
+    seen, out = set(), set()
+    stack = list(roots)
+    while stack:
+        n = stack.pop()
+        if n in seen or n not in structs:
+            continue
+        seen.add(n)
+        if is_container(n, structs, enums):
+            out.add(n)
+        for x in field_basetypes(structs[n][1]):
+            if x in enums:
+                stack.extend(enums[x])
+            elif x in structs:
+                stack.append(x)
+    return out
+
+
+def run_audit(root):
+    structs, enums = build_chart_graph(chart_schema_file(root))
+    containers = reachable_containers(structs, enums, CHART_AUDIT_ROOTS)
+    data = load_manifest_full()
+    paired = {p["sdk"] for p in data.get("pair", [])}
+    deferred = {d["sdk"]: d.get("note", "") for d in data.get("deferred", [])}
+    unaccounted = []
+    for n in sorted(containers):
+        if n in paired:
+            print(f"pair {n}")
+        elif n in deferred:
+            print(f"ack  {n} -- {deferred[n]}")
+        else:
+            unaccounted.append(n)
+            print(f"GAP  {n} (reachable chart container with no pair or deferral)")
+    stale = sorted(s for s in deferred if s not in containers and s not in paired)
+    promoted = sorted(s for s in deferred if s in paired)
+    for s in stale:
+        print(f"stale-deferral {s} (no longer a reachable chart container)")
+    for s in promoted:
+        print(f"stale-deferral {s} (now has a pair; drop from [[deferred]])")
+    n_ack = sum(1 for n in containers if n in deferred and n not in paired)
+    n_pair = sum(1 for n in containers if n in paired)
+    print(
+        f"\naudit: {len(containers)} reachable chart containers "
+        f"-- {n_pair} paired, {n_ack} deferred, {len(unaccounted)} unaccounted"
+    )
+    if unaccounted or stale or promoted:
+        print(
+            f"{len(unaccounted)} unaccounted, {len(stale) + len(promoted)} stale deferrals",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
 
 
 def pair_decls(p):
@@ -288,9 +385,14 @@ def run_check(root):
     failures = []
     for p in pairs:
         ns, derived, excluded, aliases = pair_decls(p)
-        res = analyze(root, p["sdk"], p["dto"], ns, derived, excluded, aliases)
-        missing = [f["field"] for f, _, gap in res["rows"] if gap]
         label = f"{p['sdk']} vs {p['dto']}"
+        try:
+            res = analyze(root, p["sdk"], p["dto"], ns, derived, excluded, aliases)
+        except SystemExit as e:
+            failures.append((label, [str(e)]))
+            print(f"FAIL {label}: {e}")
+            continue
+        missing = [f["field"] for f, _, gap in res["rows"] if gap]
         if missing:
             failures.append((label, missing))
             print(f"FAIL {label}: {', '.join(missing)}")
@@ -312,12 +414,22 @@ def main():
     ap.add_argument("dto_struct", nargs="?", help="xlcore-types struct, e.g. ChartAxisPatch")
     ap.add_argument("--ooxmlsdk-root", default=None)
     ap.add_argument("--ns", default=None, help="namespace prefix to disambiguate (c/x/a)")
-    ap.add_argument("--check", action="store_true", help="check every manifest pair")
+    ap.add_argument("--check", action="store_true", help="check every manifest pair + audit")
+    ap.add_argument(
+        "--audit",
+        action="store_true",
+        help="audit: every chart container reachable from c:chart must be paired or deferred",
+    )
     args = ap.parse_args()
 
     root = find_ooxmlsdk_root(args.ooxmlsdk_root)
+    if args.audit:
+        raise SystemExit(run_audit(root))
     if args.check:
-        raise SystemExit(run_check(root))
+        rc = run_check(root)
+        print()
+        rc |= run_audit(root)
+        raise SystemExit(rc)
     if not args.sdk_struct or not args.dto_struct:
         ap.error("sdk_struct and dto_struct are required unless --check")
 

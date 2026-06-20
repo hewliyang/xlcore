@@ -12,6 +12,11 @@
 #
 # Deferrals shared by a DTO live in its doc comment (`schema-excluded:`); per-pair
 # specifics live below. Every entry is a deliberate decision.
+#
+# `schema_diff.py --audit` walks every chart-namespace container struct reachable
+# from c:chart and requires each to be either a [[pair]] above or a [[deferred]]
+# acknowledgement below (with a note). This turns "we forgot to model X" into a
+# CI failure instead of relying on memory. `--check` runs both pairs and audit.
 
 # --- chart axes -------------------------------------------------------------
 [[pair]]
@@ -328,3 +333,187 @@ ns = "x"
 derived = ["id", "totalsRowShown"]
 excluded = ["comment", "tableType", "insertRow", "insertRowShift", "published", "connectionId", "headerRowDxfId", "dataDxfId", "totalsRowDxfId", "headerRowBorderDxfId", "tableBorderDxfId", "totalsRowBorderDxfId", "headerRowCellStyle", "dataCellStyle", "totalsRowCellStyle"]
 aliases = { tableColumns = "columns" }
+
+# --- chart container acknowledgements (schema_diff.py --audit) --------------
+# Every chart-namespace container reachable from c:chart that has no [[pair]].
+# Most are deliberately flattened into ChartPatch/ChartSeriesPatch/ChartAxisPatch
+# fields (the diff can't recurse through a flattened scalar, so we acknowledge
+# them here); the rest are genuinely unmodeled. Promote to a [[pair]] when a
+# struct gets a dedicated DTO.
+
+# chart-type plot containers (kind/grouping/dir flattened into ChartPatch + series)
+[[deferred]]
+sdk = "AreaChart"
+note = "chart-type container; kind/grouping flattened into ChartPatch + per-series patches"
+[[deferred]]
+sdk = "BarChart"
+note = "chart-type container; kind/barDir/grouping/gapWidth/overlap flattened into ChartPatch"
+[[deferred]]
+sdk = "BubbleChart"
+note = "chart-type container; bubbleScale/sizeRepresents flattened into ChartPatch"
+[[deferred]]
+sdk = "LineChart"
+note = "chart-type container; grouping/marker/seriesLines flattened into ChartPatch"
+[[deferred]]
+sdk = "PieChart"
+note = "chart-type container; firstSliceAngle/holeSize flattened into ChartPatch"
+[[deferred]]
+sdk = "RadarChart"
+note = "chart-type container; radarStyle flattened into ChartPatch"
+[[deferred]]
+sdk = "ScatterChart"
+note = "chart-type container; scatterStyle flattened into ChartPatch"
+
+# series containers (flattened into ChartSeriesPatch / render ChartSeries)
+[[deferred]]
+sdk = "AreaChartSeries"
+note = "series flattened into ChartSeriesPatch"
+[[deferred]]
+sdk = "BubbleChartSeries"
+note = "series flattened into ChartSeriesPatch"
+[[deferred]]
+sdk = "RadarChartSeries"
+note = "series flattened into ChartSeriesPatch"
+[[deferred]]
+sdk = "SurfaceChartSeries"
+note = "series flattened into ChartSeriesPatch"
+
+# series data refs/caches (resolved to values/categories, not authored as structure)
+[[deferred]]
+sdk = "NumberReference"
+note = "numeric data ref; resolved to values"
+[[deferred]]
+sdk = "StringReference"
+note = "string data ref; resolved to categories"
+[[deferred]]
+sdk = "MultiLevelStringReference"
+note = "multi-level category ref; resolved to categories"
+[[deferred]]
+sdk = "NumberLiteral"
+note = "inline numeric literal data; resolved to values"
+[[deferred]]
+sdk = "StringLiteral"
+note = "inline string literal data; resolved to categories"
+[[deferred]]
+sdk = "NumberingCache"
+note = "cached numeric values; read-time data, not authored"
+[[deferred]]
+sdk = "StringCache"
+note = "cached category strings; read-time data, not authored"
+[[deferred]]
+sdk = "MultiLevelStringCache"
+note = "cached multi-level labels; read-time data, not authored"
+[[deferred]]
+sdk = "Values"
+note = "series Y data ref; resolved to values"
+[[deferred]]
+sdk = "XValues"
+note = "scatter/bubble X data ref; resolved to values"
+[[deferred]]
+sdk = "YValues"
+note = "scatter/bubble Y data ref; resolved to values"
+[[deferred]]
+sdk = "BubbleSize"
+note = "bubble size data ref; resolved to values"
+[[deferred]]
+sdk = "CategoryAxisData"
+note = "category data ref; resolved to categories"
+[[deferred]]
+sdk = "SeriesText"
+note = "series name ref; resolved to series name"
+[[deferred]]
+sdk = "Level"
+note = "multi-level category level; resolved via categories"
+
+# axis sub-structures (flattened into ChartAxisPatch)
+[[deferred]]
+sdk = "Scaling"
+note = "min/max/orientation/logBase flattened into ChartAxisPatch"
+[[deferred]]
+sdk = "MajorGridlines"
+note = "flattened into ChartAxisPatch.major_gridlines / showMajorGridlines"
+[[deferred]]
+sdk = "MinorGridlines"
+note = "minor gridlines not modeled"
+[[deferred]]
+sdk = "DisplayUnits"
+note = "flattened into ChartAxisPatch dispUnits"
+[[deferred]]
+sdk = "DisplayUnitsLabel"
+note = "display-units label flattened into ChartAxisPatch"
+[[deferred]]
+sdk = "DateAxis"
+note = "date axis type not modeled (cat/val axes only)"
+[[deferred]]
+sdk = "SeriesAxis"
+note = "series (depth) axis not modeled (cat/val axes only)"
+
+# stock/line decorations (flattened into ChartPatch booleans)
+[[deferred]]
+sdk = "HighLowLines"
+note = "flattened into ChartPatch.hi_low_lines"
+[[deferred]]
+sdk = "DropLines"
+note = "flattened into ChartPatch.drop_lines"
+[[deferred]]
+sdk = "UpDownBars"
+note = "flattened into ChartPatch.up_down_bars"
+[[deferred]]
+sdk = "UpBars"
+note = "up-bars flattened into ChartPatch.up_down_bars"
+[[deferred]]
+sdk = "DownBars"
+note = "down-bars flattened into ChartPatch.up_down_bars"
+[[deferred]]
+sdk = "SeriesLines"
+note = "flattened into ChartPatch.series_lines"
+
+# error bars
+[[deferred]]
+sdk = "Plus"
+note = "error-bar plus value; flattened into ErrorBars pair"
+[[deferred]]
+sdk = "Minus"
+note = "error-bar minus value; flattened into ErrorBars pair"
+
+# labels / text / layout wrappers
+[[deferred]]
+sdk = "DataLabels"
+note = "data-label settings flattened into DataLabels DTO"
+[[deferred]]
+sdk = "ChartText"
+note = "title rich-text/strRef; flattened into title string + titleFont"
+[[deferred]]
+sdk = "Layout"
+note = "c:layout wrapper; manual layout modeled via ManualLayout pair"
+[[deferred]]
+sdk = "LegendEntry"
+note = "per-entry legend visibility/format not modeled"
+[[deferred]]
+sdk = "TrendlineLabel"
+note = "trendline label text/format not modeled (Trendline pair covers the line)"
+
+# of-pie / pivot / picture / surface extras
+[[deferred]]
+sdk = "CustomSplit"
+note = "of-pie custom split not modeled (splitType/splitPos only)"
+[[deferred]]
+sdk = "PivotFormat"
+note = "pivot-chart per-element format not modeled"
+[[deferred]]
+sdk = "PivotFormats"
+note = "pivot-chart formats not modeled"
+[[deferred]]
+sdk = "PictureOptions"
+note = "picture-fill options not modeled"
+[[deferred]]
+sdk = "BandFormat"
+note = "surface band format not modeled"
+[[deferred]]
+sdk = "BandFormats"
+note = "surface band formats not modeled"
+
+# audit root
+[[deferred]]
+sdk = "Chart"
+note = "audit root; children fanned out across ChartPatch/ChartUpdate"
