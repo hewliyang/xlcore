@@ -187,6 +187,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private readonly editInput: HTMLInputElement;
   private editCell: { r: number; c: number } | null = null;
   private editEnterMode = false;
+  private pointModeArmed = false;
   private editBaseLeft = 0;
   private editBaseWidth = 0;
   private pointKeyAnchor: { r: number; c: number } | null = null;
@@ -260,7 +261,10 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.formulaBar.append(this.nameBox, fxLabel, this.formulaBox);
     if (this.editable) {
       this.formulaBox.addEventListener("keydown", (ev) => this.onFormulaBoxKeyDown(ev));
-      this.formulaBox.addEventListener("focus", this.scheduleDraw);
+      this.formulaBox.addEventListener("focus", () => {
+        this.pointModeArmed = false;
+        this.scheduleDraw();
+      });
       this.formulaBox.addEventListener("blur", () => {
         this.scheduleAutocompleteClose();
         this.scheduleSignatureTipClose();
@@ -325,22 +329,35 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     document.body.append(this.signatureTip);
     this.editInput.addEventListener("keydown", (ev) => this.onEditInputKeyDown(ev));
     this.editInput.addEventListener("input", () => {
+      this.armPointMode(this.editInput);
       this.updateAutocomplete(this.editInput);
       this.updateSignatureTip(this.editInput);
       this.growEditInput();
       this.scheduleDraw();
     });
+    this.editInput.addEventListener("keyup", () => this.updateSignatureTip(this.editInput));
+    this.editInput.addEventListener("mousedown", () => {
+      this.pointModeArmed = false;
+    });
+    this.editInput.addEventListener("click", () => this.updateSignatureTip(this.editInput));
     this.editInput.addEventListener("blur", () => {
       this.scheduleAutocompleteClose();
       this.scheduleSignatureTipClose();
       this.commitEdit(null);
     });
-    if (this.editable)
+    if (this.editable) {
       this.formulaBox.addEventListener("input", () => {
+        this.armPointMode(this.formulaBox);
         this.updateAutocomplete(this.formulaBox);
         this.updateSignatureTip(this.formulaBox);
         this.scheduleDraw();
       });
+      this.formulaBox.addEventListener("keyup", () => this.updateSignatureTip(this.formulaBox));
+      this.formulaBox.addEventListener("mousedown", () => {
+        this.pointModeArmed = false;
+      });
+      this.formulaBox.addEventListener("click", () => this.updateSignatureTip(this.formulaBox));
+    }
     this.root.append(this.formulaBar, this.tabs, this.stage);
     container.append(this.root);
 
@@ -1181,6 +1198,11 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     return null;
   }
 
+  private armPointMode(input: HTMLInputElement): void {
+    const caret = input.selectionStart;
+    this.pointModeArmed = caret !== null && caretAcceptsReference(input.value, caret);
+  }
+
   private isPointModeActive(): boolean {
     const input = this.activeEditor();
     if (!input) return false;
@@ -1197,11 +1219,13 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     const res = applyReferenceAtCaret(input.value, caret, ref, this.activeRefSpan);
     input.value = res.text;
     this.activeRefSpan = res.span;
+    this.pointModeArmed = true;
     this.pointHighlight = parsePointHighlight(ref);
     input.focus({ preventScroll: true });
     input.setSelectionRange(res.caret, res.caret);
     this.closeAutocomplete();
     this.updateSignatureTip(input);
+    this.growEditInput();
     this.scheduleDraw();
   }
 
@@ -1284,6 +1308,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.editInput.focus({ preventScroll: true });
     const end = this.editInput.value.length;
     this.editInput.setSelectionRange(end, end);
+    this.pointModeArmed = this.editEnterMode && caretAcceptsReference(this.editInput.value, end);
     this.growEditInput();
   }
 
@@ -1303,6 +1328,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.pointHighlight = null;
     this.pointKeyAnchor = null;
     this.pointKeyCursor = null;
+    this.pointModeArmed = false;
     if (!this.editCell) return;
     this.editCell = null;
     this.editInput.style.display = "none";
@@ -1337,7 +1363,10 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     ) {
       return false;
     }
-    if (!this.isPointModeActive()) return false;
+    if (!this.pointModeArmed || !this.isPointModeActive()) {
+      this.pointModeArmed = false;
+      return false;
+    }
     ev.preventDefault();
     const dr = ev.key === "ArrowUp" ? -1 : ev.key === "ArrowDown" ? 1 : 0;
     const dc = ev.key === "ArrowLeft" ? -1 : ev.key === "ArrowRight" ? 1 : 0;

@@ -33,6 +33,9 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Edit overlay now auto-grows when a reference is inserted via point mode (mouse/arrow selection), not only while typing.
+- Arrow keys during formula editing only enter point mode when freshly typing an operator; navigating the caret (click/Home/End/arrow) moves within the text instead of inserting references.
+- Formula signature helper now updates on caret movement (arrows/click), so it shows while the cursor sits on an existing function argument, not only while typing.
 - Esc in the cell editor now commits the edit (like click-away) instead of discarding the typed value.
 - Clipboard TSV paste no longer emits a spurious trailing empty row from a trailing newline (was `values matrix row N has 1 cells but range expects ...`).
 - External clipboard paste now applies each cell like a manual edit (`pasteCells` worker op): numeric/boolean strings become typed values and `=`-prefixed strings become formulas, so pasted numbers compute (`SUM` works) and pasted formulas evaluate.
