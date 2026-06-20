@@ -386,7 +386,8 @@ export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, re
       pts.push({ x: px, y: py, v: ys[i]!, i });
     }
 
-    if ((drawLines || drawSmooth) && pts.length >= 2) {
+    const seriesDrawsLine = (drawLines || drawSmooth) && !s.lineNone;
+    if (seriesDrawsLine && pts.length >= 2) {
       const sorted = pts.slice().sort((a, b) => a.x - b.x);
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -718,9 +719,11 @@ export function drawRadarChart(ctx: CanvasRenderingContext2D, chart: Chart, rect
       ctx.fillStyle = withAlpha(color, 0.45);
       ctx.fill();
     }
-    ctx.strokeStyle = color;
-    ctx.lineWidth = filled ? 1.25 : 2;
-    ctx.stroke();
+    if (!s.lineNone) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = filled ? 1.25 : 2;
+      ctx.stroke();
+    }
 
     if (showMarkers && s.markerSymbol !== "none") {
       ctx.fillStyle = color;

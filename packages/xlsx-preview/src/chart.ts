@@ -942,27 +942,29 @@ function drawLineChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect):
   for (let si = 0; si < series.length; si++) {
     const s = series[si]!;
     const data = stackedSeries[si]!;
-    ctx.strokeStyle = s.color ?? "#4472C4";
-    ctx.lineWidth = seriesLineWidth(s, 2);
-    ctx.setLineDash(seriesLineDash(s));
-    ctx.beginPath();
-    let penDown = false;
-    for (let i = 0; i < categoryCount; i++) {
-      if (!hasPointL(s, i)) {
-        penDown = false;
-        continue;
+    if (!s.lineNone) {
+      ctx.strokeStyle = s.color ?? "#4472C4";
+      ctx.lineWidth = seriesLineWidth(s, 2);
+      ctx.setLineDash(seriesLineDash(s));
+      ctx.beginPath();
+      let penDown = false;
+      for (let i = 0; i < categoryCount; i++) {
+        if (!hasPointL(s, i)) {
+          penDown = false;
+          continue;
+        }
+        const x = inner.x + i * xStep;
+        const y = yFor(data[i] ?? 0);
+        if (!penDown) {
+          ctx.moveTo(x, y);
+          penDown = true;
+        } else {
+          ctx.lineTo(x, y);
+        }
       }
-      const x = inner.x + i * xStep;
-      const y = yFor(data[i] ?? 0);
-      if (!penDown) {
-        ctx.moveTo(x, y);
-        penDown = true;
-      } else {
-        ctx.lineTo(x, y);
-      }
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
-    ctx.stroke();
-    ctx.setLineDash([]);
 
     if (s.markerSymbol !== "none") {
       ctx.fillStyle = s.color ?? "#4472C4";

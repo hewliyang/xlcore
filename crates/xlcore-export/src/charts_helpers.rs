@@ -9,6 +9,11 @@ pub(crate) fn extract_line_style(
     extract_outline_style(sp_pr.and_then(|p| p.outline.as_deref()))
 }
 
+pub(crate) fn line_is_none(sp_pr: Option<&c::ChartShapeProperties>) -> Option<bool> {
+    let outline = sp_pr.and_then(|p| p.outline.as_deref())?;
+    matches!(outline.outline_choice1, Some(a::OutlineChoice::NoFill(_))).then_some(true)
+}
+
 pub(crate) fn extract_outline_style(outline: Option<&a::Outline>) -> (Option<i32>, Option<String>) {
     let Some(outline) = outline else {
         return (None, None);
@@ -374,6 +379,7 @@ pub(crate) fn common_series(
     let point_explosions = extract_point_explosions(d_pts, values.len());
     let point_fills = extract_point_fills(d_pts, theme);
     let (lw, ld) = extract_line_style(sp_pr);
+    let line_none = line_is_none(sp_pr);
     ChartSeries {
         name: name.unwrap_or_default(),
         name_ref,
@@ -393,6 +399,7 @@ pub(crate) fn common_series(
         marker_symbol: None,
         line_width_emu: lw,
         line_dash: ld,
+        line_none,
         trendlines: Vec::new(),
         error_bars: None,
     }
@@ -569,6 +576,7 @@ pub(crate) fn common_series_scatter(
     let point_explosions = extract_point_explosions(d_pts, values.len());
     let point_fills = extract_point_fills(d_pts, theme);
     let (lw, ld) = extract_line_style(sp_pr);
+    let line_none = line_is_none(sp_pr);
     ChartSeries {
         name: name.unwrap_or_default(),
         name_ref,
@@ -588,6 +596,7 @@ pub(crate) fn common_series_scatter(
         marker_symbol: None,
         line_width_emu: lw,
         line_dash: ld,
+        line_none,
         trendlines: Vec::new(),
         error_bars: None,
     }

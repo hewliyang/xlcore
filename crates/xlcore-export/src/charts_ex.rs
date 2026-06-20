@@ -173,6 +173,7 @@ fn make_chart_series(name: String, values: Vec<f64>, values_ref: Option<String>)
         marker_symbol: None,
         line_width_emu: None,
         line_dash: None,
+        line_none: None,
         trendlines: Vec::new(),
         error_bars: None,
     }

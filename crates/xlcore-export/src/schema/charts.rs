@@ -943,6 +943,10 @@ pub struct ChartSeries {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub line_dash: Option<String>,
 
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line_none: Option<bool>,
+
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub trendlines: Vec<ChartTrendline>,
 

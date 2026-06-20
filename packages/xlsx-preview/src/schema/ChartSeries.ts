@@ -23,6 +23,7 @@ export type ChartSeries = {
   markerSymbol?: string;
   lineWidthEmu?: number;
   lineDash?: string;
+  lineNone?: boolean;
   trendlines: Array<ChartTrendline>;
   errorBars?: ChartErrorBars;
 };
