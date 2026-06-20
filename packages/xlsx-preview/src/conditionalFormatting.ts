@@ -669,10 +669,10 @@ export function resolveCfvoValue(
   switch (s.type) {
     case "min":
     case "automin":
-      return Math.min(0, dataMin);
+      return dataMin;
     case "max":
     case "automax":
-      return Math.max(0, dataMax);
+      return dataMax;
     case "num":
     case "formula":
       return parseFloat(s.val ?? (isMin ? `${dataMin}` : `${dataMax}`));

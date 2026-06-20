@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Data bars now scale from the series min/max instead of clamping the baseline to 0, matching Excel for all-positive ranges.
 - Scatter/line/radar series with `a:ln/a:noFill` now render markers-only; previously every series got a connecting line from the chart-level `c:scatterStyle`.
 - Chart move/delete now works for modern chartEx charts (waterfall, funnel, histogram, etc.); previously they snapped back on recalc because `moveDrawing`/`removeDrawing` only handled legacy charts.
 
