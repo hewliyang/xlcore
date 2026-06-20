@@ -53,25 +53,6 @@ E2E: author a chart with the new property, `wb.save()` to xlsx, render with
 
 ## Backlog
 
-### 1. Chart & axis title box fill + border (`c:title/c:spPr`)
-
-The title pair currently marks `spPr` excluded. Model the title box background
-fill and border, mirroring the legend's `fill`/`border`.
-
-- DTO: add `title_fill: Option<String>` (hex or "none") and
-  `title_border: Option<ChartLine>` to `ChartPatch`, `ChartUpdate`, `ChartInfo`
-  (chart title) and `ChartAxisPatch` (axis title). Reuse `ChartLine` (see legend
-  `border`). `ChartTextStyle`/`ChartLine` patterns already exist.
-- Write: emit `c:title/c:spPr` with `a:solidFill`/`a:noFill` + `a:ln` (see how
-  legend spPr / plot-area border is built in write.rs).
-- Render model + renderer: surface as `Chart.titleFill`/`titleBorder` etc and
-  draw a filled/stroked box behind the title text (see `drawStyleBox` usage for
-  plot area / legend in `chart.ts`).
-- Manifest: in the `Title` pair, replace `excluded = ["spPr"]` with
-  `aliases = { ..., spPr = "title_fill" }` (keep tx/layout/txPr aliases). Verify
-  `python3 scripts/schema_diff.py Title ChartUpdate` shows spPr covered, and
-  `--audit`/`--check` stay green.
-
 ### 2. Axis tick-label font (`c:catAx/c:txPr`, `c:valAx/c:txPr`)
 
 Axes currently model only label rotation from their own `c:txPr`. Add tick-label
@@ -89,4 +70,10 @@ font control (size/bold/italic/color/typeface).
 
 ## Shipped
 
-(none yet)
+### 1. Chart & axis title box fill + border (`c:title/c:spPr`)
+
+Modeled `title_fill`/`title_border` on `ChartPatch`/`ChartUpdate`/`ChartInfo`
+(chart title) and `ChartAxisPatch` (axis title), reusing `ChartLine`. Emits
+`c:title/c:spPr` solidFill/noFill + `a:ln`, reads back, render model surfaces
+`titleFill`/`titleBorder` + axis variants, and the preview draws a filled/stroked
+box behind each title. Title pair now aliases `spPr = title_fill`.

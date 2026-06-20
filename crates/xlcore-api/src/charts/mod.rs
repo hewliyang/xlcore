@@ -179,6 +179,8 @@ impl Workbook {
                     legend: parsed.legend_style,
                     title_layout: parsed.title_layout,
                     title_font: parsed.title_font,
+                    title_fill: parsed.title_fill,
+                    title_border: parsed.title_border,
                 });
             }
         }
@@ -381,6 +383,8 @@ impl Workbook {
             legend: patch.legend.clone(),
             title_layout: patch.title_layout,
             title_font: patch.title_font.clone(),
+            title_fill: patch.title_fill.clone(),
+            title_border: patch.title_border.clone(),
         })
     }
 
@@ -672,6 +676,8 @@ impl Workbook {
                 legend: None,
                 title_layout: None,
                 title_font: None,
+                title_fill: None,
+                title_border: None,
             };
             space.chart.plot_area.plot_area_choice1 = build_plot_charts(&synth);
             space
@@ -711,14 +717,27 @@ impl Workbook {
                 space.chart.title = Some(Box::new(build_title_styled(
                     title,
                     update.title_font.as_ref(),
+                    update.title_fill.as_deref(),
+                    update.title_border.as_ref(),
                 )));
                 space.chart.auto_title_deleted = Some(c::AutoTitleDeleted {
                     val: Some(BooleanValue::from_bool(false)),
                 });
             }
-        } else if let Some(font) = &update.title_font {
+        } else if update.title_font.is_some()
+            || update.title_fill.is_some()
+            || update.title_border.is_some()
+        {
             if let Some(title) = space.chart.title.as_deref_mut() {
-                title.text_properties = Some(Box::new(build_text_style(font)));
+                if let Some(font) = &update.title_font {
+                    title.text_properties = Some(Box::new(build_text_style(font)));
+                }
+                if update.title_fill.is_some() || update.title_border.is_some() {
+                    title.chart_shape_properties = build_legend_shape(
+                        update.title_fill.as_deref(),
+                        update.title_border.as_ref(),
+                    );
+                }
             }
         }
 

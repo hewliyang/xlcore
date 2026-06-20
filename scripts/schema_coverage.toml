@@ -231,8 +231,7 @@ sdk = "Title"
 dto = "ChartUpdate"
 ns = "c"
 derived = ["overlay"]
-excluded = ["spPr"]
-aliases = { tx = "title", layout = "title_layout", txPr = "title_font" }
+aliases = { tx = "title", layout = "title_layout", txPr = "title_font", spPr = "title_fill" }
 
 [[pair]]
 sdk = "ManualLayout"

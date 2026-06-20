@@ -1,5 +1,6 @@
 import type { Chart, ChartSeries } from "./types.js";
 import type { ChartManualLayout } from "./schema/ChartManualLayout.js";
+import type { ChartStyleBorder } from "./schema/ChartStyleBorder.js";
 import { drawAreaChart } from "./chartArea.js";
 import { drawBar3DChart, drawSurfaceChart } from "./chart3d.js";
 import { drawTrendlines } from "./chartTrendline.js";
@@ -70,6 +71,33 @@ export interface Rect {
   h: number;
 }
 
+function drawTitleBox(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  fontSize: number,
+  align: CanvasTextAlign,
+  fill?: string,
+  border?: ChartStyleBorder,
+  baseline: "top" | "middle" = "top",
+): void {
+  if ((!fill || fill === "none") && !border) return;
+  const tw = ctx.measureText(text).width;
+  const padX = Math.max(2, fontSize * 0.3);
+  const padY = Math.max(2, fontSize * 0.25);
+  let left = x;
+  if (align === "center") left = x - tw / 2;
+  else if (align === "right" || align === "end") left = x - tw;
+  const top = baseline === "middle" ? y - fontSize / 2 : y;
+  drawStyleBox(
+    ctx,
+    { x: left - padX, y: top - padY, w: tw + 2 * padX, h: fontSize + 2 * padY },
+    fill,
+    border,
+  );
+}
+
 function resolveManualRect(chartRect: Rect, auto: Rect, ml: ChartManualLayout): Rect {
   const r: Rect = { ...auto };
   if (ml.x != null) {
@@ -100,7 +128,6 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
   let cursorY = rect.y + TITLE_PAD;
   if (chart.title) {
     const tf = resolveTitleFont(chart.titleFont, TITLE_FONT_SIZE);
-    ctx.fillStyle = tf.color ?? TITLE_COLOR;
     ctx.font = tf.css;
     ctx.textBaseline = "top";
     if (chart.titleLayout) {
@@ -120,9 +147,22 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       }
       tx = Math.max(rect.x + 2, Math.min(tx, rect.x + rect.w - 2));
       ty = Math.max(rect.y + 2, Math.min(ty, rect.y + rect.h - tf.size));
+      drawTitleBox(ctx, chart.title, tx, ty, tf.size, ctx.textAlign, chart.titleFill, chart.titleBorder);
+      ctx.fillStyle = tf.color ?? TITLE_COLOR;
       ctx.fillText(chart.title, tx, ty);
     } else {
       ctx.textAlign = "center";
+      drawTitleBox(
+        ctx,
+        chart.title,
+        rect.x + rect.w / 2,
+        cursorY,
+        tf.size,
+        "center",
+        chart.titleFill,
+        chart.titleBorder,
+      );
+      ctx.fillStyle = tf.color ?? TITLE_COLOR;
       ctx.fillText(chart.title, rect.x + rect.w / 2, cursorY);
       cursorY += tf.size + TITLE_PAD;
     }
@@ -357,20 +397,44 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
   }
 
   if (xTitleRect && xTitle) {
-    ctx.fillStyle = xTitleTf.color ?? TITLE_COLOR;
     ctx.font = xTitleTf.css;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(xTitle, xTitleRect.x + xTitleRect.w / 2, xTitleRect.y + xTitleRect.h / 2);
+    const cx = xTitleRect.x + xTitleRect.w / 2;
+    const cy = xTitleRect.y + xTitleRect.h / 2;
+    drawTitleBox(
+      ctx,
+      xTitle,
+      cx,
+      cy,
+      xTitleTf.size,
+      "center",
+      chart.xAxisTitleFill,
+      chart.xAxisTitleBorder,
+      "middle",
+    );
+    ctx.fillStyle = xTitleTf.color ?? TITLE_COLOR;
+    ctx.fillText(xTitle, cx, cy);
   }
   if (yTitleRect && yTitle) {
     ctx.save();
-    ctx.fillStyle = yTitleTf.color ?? TITLE_COLOR;
     ctx.font = yTitleTf.css;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.translate(yTitleRect.x + yTitleRect.w / 2, yTitleRect.y + yTitleRect.h / 2);
     ctx.rotate(-Math.PI / 2);
+    drawTitleBox(
+      ctx,
+      yTitle,
+      0,
+      0,
+      yTitleTf.size,
+      "center",
+      chart.yAxisTitleFill,
+      chart.yAxisTitleBorder,
+      "middle",
+    );
+    ctx.fillStyle = yTitleTf.color ?? TITLE_COLOR;
     ctx.fillText(yTitle, 0, 0);
     ctx.restore();
   }

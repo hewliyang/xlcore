@@ -652,6 +652,15 @@ pub struct ChartAxisPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title_font: Option<ChartTextStyle>,
+    /// `c:title/c:spPr` axis-title box solid fill: 6-hex `RRGGBB` / 8-hex
+    /// `AARRGGBB`, or the literal `"none"` for an explicit no-fill.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_fill: Option<String>,
+    /// `c:title/c:spPr/a:ln` axis-title box border styling.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_border: Option<ChartLine>,
     /// Hide the axis entirely (`c:delete = 1`).
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1581,6 +1590,15 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title_font: Option<ChartTextStyle>,
+    /// `c:title/c:spPr` title box solid fill: 6-hex `RRGGBB` / 8-hex `AARRGGBB`,
+    /// or the literal `"none"` for an explicit no-fill. Renderer-visible.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_fill: Option<String>,
+    /// `c:title/c:spPr/a:ln` title box border styling. Renderer-visible.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_border: Option<ChartLine>,
     pub anchor: AnchorSpec,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1748,6 +1766,14 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title_font: Option<ChartTextStyle>,
+    /// `c:title/c:spPr` title box solid fill.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_fill: Option<String>,
+    /// `c:title/c:spPr/a:ln` title box border styling.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_border: Option<ChartLine>,
     pub anchor: ChartAnchor,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1916,6 +1942,14 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title_font: Option<ChartTextStyle>,
+    /// `c:title/c:spPr` title box solid fill. Renderer-visible.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_fill: Option<String>,
+    /// `c:title/c:spPr/a:ln` title box border styling. Renderer-visible.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_border: Option<ChartLine>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub anchor: Option<AnchorSpec>,

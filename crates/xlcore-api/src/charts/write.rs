@@ -1,18 +1,20 @@
 use super::*;
 
 pub(super) fn set_axis_title(slot: &mut Option<Box<c::Title>>, text: &str) {
-    set_axis_title_styled(slot, text, None);
+    set_axis_title_styled(slot, text, None, None, None);
 }
 
 pub(super) fn set_axis_title_styled(
     slot: &mut Option<Box<c::Title>>,
     text: &str,
     font: Option<&ChartTextStyle>,
+    fill: Option<&str>,
+    border: Option<&ChartLine>,
 ) {
     if text.is_empty() {
         *slot = None;
     } else {
-        *slot = Some(Box::new(build_title_styled(text, font)));
+        *slot = Some(Box::new(build_title_styled(text, font, fill, border)));
     }
 }
 
@@ -619,7 +621,14 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
         .title
         .as_deref()
         .filter(|t| !t.is_empty())
-        .map(|t| build_title_styled(t, patch.title_font.as_ref()))
+        .map(|t| {
+            build_title_styled(
+                t,
+                patch.title_font.as_ref(),
+                patch.title_fill.as_deref(),
+                patch.title_border.as_ref(),
+            )
+        })
         .map(|mut t| {
             t.layout = build_layout(patch.title_layout.as_ref());
             t
@@ -2035,10 +2044,15 @@ pub(super) fn is_valid_hex_color(s: &str) -> bool {
 }
 
 pub(super) fn build_title(text: &str) -> c::Title {
-    build_title_styled(text, None)
+    build_title_styled(text, None, None, None)
 }
 
-pub(super) fn build_title_styled(text: &str, font: Option<&ChartTextStyle>) -> c::Title {
+pub(super) fn build_title_styled(
+    text: &str,
+    font: Option<&ChartTextStyle>,
+    fill: Option<&str>,
+    border: Option<&ChartLine>,
+) -> c::Title {
     let run = a::Run {
         run_properties: font
             .map(|f| Box::new(build_title_run_properties(f)))
@@ -2073,6 +2087,7 @@ pub(super) fn build_title_styled(text: &str, font: Option<&ChartTextStyle>) -> c
         chart_text: Some(Box::new(c::ChartText {
             chart_text_choice: Some(c::ChartTextChoice::RichText(Box::new(rich))),
         })),
+        chart_shape_properties: build_legend_shape(fill, border),
         text_properties: font.map(|f| Box::new(build_text_style(f))),
         overlay: Some(c::Overlay {
             val: Some(BooleanValue::from_bool(false)),
@@ -2471,7 +2486,13 @@ macro_rules! apply_axis_common {
             };
         }
         if let Some(t) = &$p.title {
-            set_axis_title_styled(&mut $ax.title, t, $p.title_font.as_ref());
+            set_axis_title_styled(
+                &mut $ax.title,
+                t,
+                $p.title_font.as_ref(),
+                $p.title_fill.as_deref(),
+                $p.title_border.as_ref(),
+            );
         }
         if let Some(nf) = &$p.number_format {
             $ax.numbering_format = Some(c::NumberingFormat {

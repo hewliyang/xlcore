@@ -7,6 +7,7 @@ import type { ChartDataTable } from "./ChartDataTable.js";
 import type { ChartKind } from "./ChartKind.js";
 import type { ChartLegend } from "./ChartLegend.js";
 import type { ChartLegendPosition } from "./ChartLegendPosition.js";
+import type { ChartLine } from "./ChartLine.js";
 import type { ChartManualLayout } from "./ChartManualLayout.js";
 import type { ChartPlotArea } from "./ChartPlotArea.js";
 import type { ChartSeriesInfo } from "./ChartSeriesInfo.js";
@@ -52,6 +53,14 @@ export type ChartInfo = {
    * `c:title/c:txPr/a:p/a:pPr/a:defRPr` chart-title font.
    */
   titleFont?: ChartTextStyle;
+  /**
+   * `c:title/c:spPr` title box solid fill.
+   */
+  titleFill?: string;
+  /**
+   * `c:title/c:spPr/a:ln` title box border styling.
+   */
+  titleBorder?: ChartLine;
   anchor: ChartAnchor;
   categoryAxisTitle?: string;
   valueAxisTitle?: string;

@@ -21,6 +21,10 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
     let mut y_axis_title_secondary: Option<String> = None;
     let mut x_axis_title_font: Option<ChartFont> = None;
     let mut y_axis_title_font: Option<ChartFont> = None;
+    let mut x_axis_title_fill: Option<String> = None;
+    let mut y_axis_title_fill: Option<String> = None;
+    let mut x_axis_title_border: Option<ChartStyleBorder> = None;
+    let mut y_axis_title_border: Option<ChartStyleBorder> = None;
 
     let mut show_major_gridlines: Option<bool> = None;
     let mut show_major_gridlines_secondary: Option<bool> = None;
@@ -70,16 +74,26 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                        y: &mut Option<String>,
                        y2: &mut Option<String>,
                        xf: &mut Option<ChartFont>,
-                       yf: &mut Option<ChartFont>| {
+                       yf: &mut Option<ChartFont>,
+                       xfill: &mut Option<String>,
+                       yfill: &mut Option<String>,
+                       xborder: &mut Option<ChartStyleBorder>,
+                       yborder: &mut Option<ChartStyleBorder>| {
         let Some(t) = extract_title(title) else {
             return;
         };
         let font = extract_title_font(title);
+        let title_sp = title.and_then(|t| t.chart_shape_properties.as_deref());
+        let fill = title_sp.and_then(|sp| fill_color_outside_outline(&format!("{:?}", sp), theme));
+        let border = title_sp
+            .and_then(|sp| extract_style_border(sp.outline.as_deref(), &format!("{:?}", sp), theme));
         match pos {
             Some(c::AxisPositionValues::Bottom) | Some(c::AxisPositionValues::Top) => {
                 if x.is_none() {
                     *x = Some(t);
                     *xf = font;
+                    *xfill = fill;
+                    *xborder = border;
                 }
             }
             Some(c::AxisPositionValues::Right) => {
@@ -92,6 +106,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 if y.is_none() {
                     *y = Some(t);
                     *yf = font;
+                    *yfill = fill;
+                    *yborder = border;
                 }
             }
         }
@@ -110,6 +126,10 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                     &mut y_axis_title_secondary,
                     &mut x_axis_title_font,
                     &mut y_axis_title_font,
+                    &mut x_axis_title_fill,
+                    &mut y_axis_title_fill,
+                    &mut x_axis_title_border,
+                    &mut y_axis_title_border,
                 )
             }
             c::PlotAreaChoice2::DateAxis(da) => route_title(
@@ -120,6 +140,10 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 &mut y_axis_title_secondary,
                 &mut x_axis_title_font,
                 &mut y_axis_title_font,
+                    &mut x_axis_title_fill,
+                    &mut y_axis_title_fill,
+                    &mut x_axis_title_border,
+                    &mut y_axis_title_border,
             ),
             _ => {}
         }
@@ -213,6 +237,10 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 &mut y_axis_title_secondary,
                 &mut x_axis_title_font,
                 &mut y_axis_title_font,
+                    &mut x_axis_title_fill,
+                    &mut y_axis_title_fill,
+                    &mut x_axis_title_border,
+                    &mut y_axis_title_border,
             );
         }
     }
@@ -749,6 +777,13 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         }
     });
     let title_font = extract_title_font(chart.title.as_deref());
+    let title_sp = chart
+        .title
+        .as_deref()
+        .and_then(|t| t.chart_shape_properties.as_deref());
+    let title_fill = title_sp.and_then(|sp| fill_color_outside_outline(&format!("{:?}", sp), theme));
+    let title_border = title_sp
+        .and_then(|sp| extract_style_border(sp.outline.as_deref(), &format!("{:?}", sp), theme));
 
     let legend_pos = chart.legend.as_ref().map(|l| {
         l.legend_position
@@ -825,6 +860,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         chart_type,
         title,
         title_font,
+        title_fill,
+        title_border,
         series,
         categories,
         categories_ref: _categories_ref,
@@ -855,8 +892,12 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         series_lines,
         x_axis_title,
         x_axis_title_font,
+        x_axis_title_fill,
+        x_axis_title_border,
         y_axis_title,
         y_axis_title_font,
+        y_axis_title_fill,
+        y_axis_title_border,
         y_axis_title_secondary,
         show_major_gridlines,
         show_major_gridlines_secondary,

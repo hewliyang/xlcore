@@ -84,6 +84,8 @@ pub(super) struct ParsedChart {
     pub(super) legend_style: Option<ChartLegend>,
     pub(super) title_layout: Option<ChartManualLayout>,
     pub(super) title_font: Option<ChartTextStyle>,
+    pub(super) title_fill: Option<String>,
+    pub(super) title_border: Option<ChartLine>,
 }
 
 pub(super) fn group_is_secondary(axis_ids: &[c::AxisId], sec: &[i32]) -> bool {
@@ -692,6 +694,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         .as_ref()
         .and_then(|t| extract_title_text(t));
     let title_font = read_title_font(space.chart.title.as_deref());
+    let title_fill = read_title_fill(space.chart.title.as_deref());
+    let title_border = read_title_border(space.chart.title.as_deref());
 
     let legend = space.chart.legend.as_ref().and_then(|l| {
         l.legend_position
@@ -756,6 +760,8 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         legend_style,
         title_layout,
         title_font,
+        title_fill,
+        title_border,
     }
 }
 
@@ -1210,6 +1216,19 @@ pub(super) fn read_title_font(title: Option<&c::Title>) -> Option<ChartTextStyle
     (style != ChartTextStyle::default()).then_some(style)
 }
 
+pub(super) fn read_title_fill(title: Option<&c::Title>) -> Option<String> {
+    read_shape_fill(title?.chart_shape_properties.as_deref())
+}
+
+pub(super) fn read_title_border(title: Option<&c::Title>) -> Option<ChartLine> {
+    read_outline(
+        title?
+            .chart_shape_properties
+            .as_deref()
+            .and_then(|s| s.outline.as_deref()),
+    )
+}
+
 pub(super) fn read_legend_style(legend: &c::Legend) -> Option<ChartLegend> {
     let fill = read_shape_fill(legend.chart_shape_properties.as_deref());
     let border = read_outline(
@@ -1617,6 +1636,8 @@ pub(super) fn read_cat_axis_patch(ax: &c::CategoryAxis) -> Option<ChartAxisPatch
     let mut p = ChartAxisPatch {
         title: ax.title.as_deref().and_then(extract_title_text),
         title_font: read_title_font(ax.title.as_deref()),
+        title_fill: read_title_fill(ax.title.as_deref()),
+        title_border: read_title_border(ax.title.as_deref()),
         hidden: read_axis_hidden(ax.delete.as_ref()),
         min: ax.scaling.min_axis_value.as_ref().map(|m| m.val),
         max: ax.scaling.max_axis_value.as_ref().map(|m| m.val),
@@ -1658,6 +1679,8 @@ pub(super) fn read_val_axis_patch(ax: &c::ValueAxis) -> Option<ChartAxisPatch> {
     let mut p = ChartAxisPatch {
         title: ax.title.as_deref().and_then(extract_title_text),
         title_font: read_title_font(ax.title.as_deref()),
+        title_fill: read_title_fill(ax.title.as_deref()),
+        title_border: read_title_border(ax.title.as_deref()),
         hidden: read_axis_hidden(ax.delete.as_ref()),
         min: ax.scaling.min_axis_value.as_ref().map(|m| m.val),
         max: ax.scaling.max_axis_value.as_ref().map(|m| m.val),

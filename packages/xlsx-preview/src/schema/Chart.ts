@@ -12,6 +12,8 @@ export type Chart = {
   type: string;
   title?: string;
   titleFont?: ChartFont;
+  titleFill?: string;
+  titleBorder?: ChartStyleBorder;
   series: Array<ChartSeries>;
   categories: Array<string>;
   categoriesRef?: string;
@@ -42,8 +44,12 @@ export type Chart = {
   seriesLines: boolean;
   xAxisTitle?: string;
   xAxisTitleFont?: ChartFont;
+  xAxisTitleFill?: string;
+  xAxisTitleBorder?: ChartStyleBorder;
   yAxisTitle?: string;
   yAxisTitleFont?: ChartFont;
+  yAxisTitleFill?: string;
+  yAxisTitleBorder?: ChartStyleBorder;
   yAxisTitleSecondary?: string;
   showMajorGridlines?: boolean;
   showMajorGridlinesSecondary?: boolean;
