@@ -37,6 +37,7 @@ import {
   LEGEND_FONT_SIZE,
   TITLE_FONT_SIZE,
   AXIS_TITLE_FONT_SIZE,
+  resolveTitleFont,
 } from "./chartUtils.js";
 
 import {
@@ -98,8 +99,9 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
 
   let cursorY = rect.y + TITLE_PAD;
   if (chart.title) {
-    ctx.fillStyle = TITLE_COLOR;
-    ctx.font = `${TITLE_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+    const tf = resolveTitleFont(chart.titleFont, TITLE_FONT_SIZE);
+    ctx.fillStyle = tf.color ?? TITLE_COLOR;
+    ctx.font = tf.css;
     ctx.textBaseline = "top";
     if (chart.titleLayout) {
       const tl = chart.titleLayout;
@@ -117,12 +119,12 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
         ty = tl.yMode === "factor" ? rect.y + TITLE_PAD + off : rect.y + off;
       }
       tx = Math.max(rect.x + 2, Math.min(tx, rect.x + rect.w - 2));
-      ty = Math.max(rect.y + 2, Math.min(ty, rect.y + rect.h - TITLE_FONT_SIZE));
+      ty = Math.max(rect.y + 2, Math.min(ty, rect.y + rect.h - tf.size));
       ctx.fillText(chart.title, tx, ty);
     } else {
       ctx.textAlign = "center";
       ctx.fillText(chart.title, rect.x + rect.w / 2, cursorY);
-      cursorY += TITLE_FONT_SIZE + TITLE_PAD;
+      cursorY += tf.size + TITLE_PAD;
     }
   }
 
@@ -220,27 +222,31 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
   const xTitle = chart.xAxisTitle;
   const yTitle = chart.yAxisTitle;
   const yTitle2 = chart.yAxisTitleSecondary;
+  const xTitleTf = resolveTitleFont(chart.xAxisTitleFont, AXIS_TITLE_FONT_SIZE);
+  const yTitleTf = resolveTitleFont(chart.yAxisTitleFont, AXIS_TITLE_FONT_SIZE);
+  const xTitleBand = xTitleTf.size + AXIS_TITLE_PAD;
+  const yTitleBand = yTitleTf.size + AXIS_TITLE_PAD;
   let xTitleRect: Rect | null = null;
   let yTitleRect: Rect | null = null;
   let yTitle2Rect: Rect | null = null;
   if (xTitle && plotInner) {
     xTitleRect = {
       x: plotRect.x,
-      y: plotRect.y + plotRect.h - AXIS_TITLE_BAND,
+      y: plotRect.y + plotRect.h - xTitleBand,
       w: plotRect.w,
-      h: AXIS_TITLE_BAND,
+      h: xTitleBand,
     };
-    plotRect.h -= AXIS_TITLE_BAND;
+    plotRect.h -= xTitleBand;
   }
   if (yTitle && plotInner) {
     yTitleRect = {
       x: plotRect.x,
       y: plotRect.y,
-      w: AXIS_TITLE_BAND,
+      w: yTitleBand,
       h: plotRect.h,
     };
-    plotRect.x += AXIS_TITLE_BAND;
-    plotRect.w -= AXIS_TITLE_BAND;
+    plotRect.x += yTitleBand;
+    plotRect.w -= yTitleBand;
   }
   if (yTitle2 && plotInner && (chart.secondaryAxis || chart.type === "combo")) {
     yTitle2Rect = {
@@ -351,16 +357,16 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
   }
 
   if (xTitleRect && xTitle) {
-    ctx.fillStyle = TITLE_COLOR;
-    ctx.font = `${AXIS_TITLE_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+    ctx.fillStyle = xTitleTf.color ?? TITLE_COLOR;
+    ctx.font = xTitleTf.css;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(xTitle, xTitleRect.x + xTitleRect.w / 2, xTitleRect.y + xTitleRect.h / 2);
   }
   if (yTitleRect && yTitle) {
     ctx.save();
-    ctx.fillStyle = TITLE_COLOR;
-    ctx.font = `${AXIS_TITLE_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+    ctx.fillStyle = yTitleTf.color ?? TITLE_COLOR;
+    ctx.font = yTitleTf.css;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.translate(yTitleRect.x + yTitleRect.w / 2, yTitleRect.y + yTitleRect.h / 2);

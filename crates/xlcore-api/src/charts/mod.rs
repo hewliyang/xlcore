@@ -178,6 +178,7 @@ impl Workbook {
                     plot_area: parsed.plot_area,
                     legend: parsed.legend_style,
                     title_layout: parsed.title_layout,
+                    title_font: parsed.title_font,
                 });
             }
         }
@@ -379,6 +380,7 @@ impl Workbook {
             plot_area: patch.plot_area.clone(),
             legend: patch.legend.clone(),
             title_layout: patch.title_layout,
+            title_font: patch.title_font.clone(),
         })
     }
 
@@ -669,6 +671,7 @@ impl Workbook {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             };
             space.chart.plot_area.plot_area_choice1 = build_plot_charts(&synth);
             space
@@ -705,10 +708,17 @@ impl Workbook {
                     val: Some(BooleanValue::from_bool(true)),
                 });
             } else {
-                space.chart.title = Some(Box::new(build_title(title)));
+                space.chart.title = Some(Box::new(build_title_styled(
+                    title,
+                    update.title_font.as_ref(),
+                )));
                 space.chart.auto_title_deleted = Some(c::AutoTitleDeleted {
                     val: Some(BooleanValue::from_bool(false)),
                 });
+            }
+        } else if let Some(font) = &update.title_font {
+            if let Some(title) = space.chart.title.as_deref_mut() {
+                title.text_properties = Some(Box::new(build_text_style(font)));
             }
         }
 

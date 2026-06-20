@@ -83,6 +83,7 @@ pub(super) struct ParsedChart {
     pub(super) plot_area: Option<ChartPlotArea>,
     pub(super) legend_style: Option<ChartLegend>,
     pub(super) title_layout: Option<ChartManualLayout>,
+    pub(super) title_font: Option<ChartTextStyle>,
 }
 
 pub(super) fn group_is_secondary(axis_ids: &[c::AxisId], sec: &[i32]) -> bool {
@@ -690,6 +691,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         .title
         .as_ref()
         .and_then(|t| extract_title_text(t));
+    let title_font = read_title_font(space.chart.title.as_deref());
 
     let legend = space.chart.legend.as_ref().and_then(|l| {
         l.legend_position
@@ -753,6 +755,7 @@ pub(super) fn read_chart_space(space: &c::ChartSpace) -> ParsedChart {
         plot_area,
         legend_style,
         title_layout,
+        title_font,
     }
 }
 
@@ -1168,6 +1171,45 @@ pub(super) fn read_text_style(tp: Option<&c::TextProperties>) -> Option<ChartTex
     (style != ChartTextStyle::default()).then_some(style)
 }
 
+pub(super) fn read_title_font(title: Option<&c::Title>) -> Option<ChartTextStyle> {
+    let title = title?;
+    if let Some(s) = read_text_style(title.text_properties.as_deref()) {
+        return Some(s);
+    }
+    let c::ChartTextChoice::RichText(rich) =
+        title.chart_text.as_ref()?.chart_text_choice.as_ref()?
+    else {
+        return None;
+    };
+    let run = rich
+        .paragraph
+        .first()?
+        .paragraph_choice
+        .iter()
+        .find_map(|ch| match ch {
+            a::ParagraphChoice::Run(r) => Some(r),
+            _ => None,
+        })?;
+    let rpr = run.run_properties.as_deref()?;
+    let color = match rpr.run_properties_choice1.as_ref() {
+        Some(a::RunPropertiesChoice::SolidFill(sf)) => match sf.solid_fill_choice.as_ref() {
+            Some(a::SolidFillChoice::RgbColorModelHex(rgb)) => {
+                Some(rgb.val.to_string().to_uppercase())
+            }
+            _ => None,
+        },
+        _ => None,
+    };
+    let style = ChartTextStyle {
+        size: rpr.font_size.map(|sz| sz as f64 / 100.0),
+        bold: rpr.bold.as_ref().map(|b| b.as_bool()),
+        italic: rpr.italic.as_ref().map(|b| b.as_bool()),
+        color,
+        typeface: rpr.latin_font.as_ref().and_then(|f| f.typeface.clone()),
+    };
+    (style != ChartTextStyle::default()).then_some(style)
+}
+
 pub(super) fn read_legend_style(legend: &c::Legend) -> Option<ChartLegend> {
     let fill = read_shape_fill(legend.chart_shape_properties.as_deref());
     let border = read_outline(
@@ -1574,6 +1616,7 @@ pub(super) fn read_display_units(du: Option<&c::DisplayUnits>) -> Option<Display
 pub(super) fn read_cat_axis_patch(ax: &c::CategoryAxis) -> Option<ChartAxisPatch> {
     let mut p = ChartAxisPatch {
         title: ax.title.as_deref().and_then(extract_title_text),
+        title_font: read_title_font(ax.title.as_deref()),
         hidden: read_axis_hidden(ax.delete.as_ref()),
         min: ax.scaling.min_axis_value.as_ref().map(|m| m.val),
         max: ax.scaling.max_axis_value.as_ref().map(|m| m.val),
@@ -1614,6 +1657,7 @@ pub(super) fn read_cat_axis_patch(ax: &c::CategoryAxis) -> Option<ChartAxisPatch
 pub(super) fn read_val_axis_patch(ax: &c::ValueAxis) -> Option<ChartAxisPatch> {
     let mut p = ChartAxisPatch {
         title: ax.title.as_deref().and_then(extract_title_text),
+        title_font: read_title_font(ax.title.as_deref()),
         hidden: read_axis_hidden(ax.delete.as_ref()),
         min: ax.scaling.min_axis_value.as_ref().map(|m| m.val),
         max: ax.scaling.max_axis_value.as_ref().map(|m| m.val),

@@ -1,4 +1,5 @@
 import type { Chart, ChartSeries, DataLabels } from "./types.js";
+import type { ChartFont } from "./schema/ChartFont.js";
 import type { Rect } from "./chart.js";
 import type { ChartStyleBorder } from "./schema/ChartStyleBorder.js";
 import type { ChartStyleFont } from "./schema/ChartStyleFont.js";
@@ -17,6 +18,7 @@ export let LEGEND_FONT_SIZE = BASE_LEGEND_FONT_SIZE;
 export let TITLE_FONT_SIZE = BASE_TITLE_FONT_SIZE;
 export let AXIS_TITLE_FONT_SIZE = BASE_AXIS_TITLE_FONT_SIZE;
 export let DATA_LABEL_FONT_SIZE = BASE_DATA_LABEL_FONT_SIZE;
+export let CHART_FONT_SCALE = 1;
 
 export function chartFontScale(rect: Rect): number {
   const minDim = Math.min(rect.w, rect.h);
@@ -31,12 +33,26 @@ export function applyChartFontScale(rect: Rect): number {
   TITLE_FONT_SIZE = Math.round(BASE_TITLE_FONT_SIZE * s);
   AXIS_TITLE_FONT_SIZE = Math.round(BASE_AXIS_TITLE_FONT_SIZE * s);
   DATA_LABEL_FONT_SIZE = Math.round(BASE_DATA_LABEL_FONT_SIZE * s);
+  CHART_FONT_SCALE = s;
   return s;
 }
 
 const GRIDLINE_COLOR = "#e5e7eb";
 const AXIS_LABEL_COLOR = "#52525b";
 const LEGEND_FONT_FAMILY = `-apple-system, "Helvetica Neue", Arial, sans-serif`;
+
+export type ResolvedTitleFont = { css: string; size: number; color?: string };
+
+export function resolveTitleFont(
+  font: ChartFont | undefined,
+  baseSizePx: number,
+): ResolvedTitleFont {
+  const size =
+    font?.size != null ? Math.max(1, Math.round(font.size * CHART_FONT_SCALE)) : baseSizePx;
+  const family = font?.typeface ? `"${font.typeface}", ${LEGEND_FONT_FAMILY}` : LEGEND_FONT_FAMILY;
+  const prefix = `${font?.italic ? "italic " : ""}${font?.bold ? "bold " : ""}`;
+  return { css: `${prefix}${size}px ${family}`, size, color: font?.color };
+}
 
 function styleDashFor(dash: string | undefined): number[] {
   switch (dash) {

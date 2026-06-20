@@ -13,6 +13,7 @@ import type { ChartSeriesInfo } from "./ChartSeriesInfo.js";
 import type { ChartSplitType } from "./ChartSplitType.js";
 import type { ChartStacking } from "./ChartStacking.js";
 import type { ChartSurfaceWall } from "./ChartSurfaceWall.js";
+import type { ChartTextStyle } from "./ChartTextStyle.js";
 import type { ChartView3D } from "./ChartView3D.js";
 import type { DispBlanksAs } from "./DispBlanksAs.js";
 import type { RadarStyle } from "./RadarStyle.js";
@@ -47,6 +48,10 @@ export type ChartInfo = {
    * {@link ChartManualLayout.layoutTarget} is ignored (plot area only).
    */
   titleLayout?: ChartManualLayout;
+  /**
+   * `c:title/c:txPr/a:p/a:pPr/a:defRPr` chart-title font.
+   */
+  titleFont?: ChartTextStyle;
   anchor: ChartAnchor;
   categoryAxisTitle?: string;
   valueAxisTitle?: string;

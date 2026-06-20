@@ -12,6 +12,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Chart title and axis-title fonts: `ChartUpdate.titleFont`/`ChartPatch.titleFont` (`c:title/c:txPr`) and `ChartAxisPatch.titleFont` (axis-title `c:txPr`), supporting size/bold/italic/color/typeface. Round-trips and renders in the preview.
 - `ChartExCollection.update(id, { anchor, name })` (WASM `updateChartEx`) for in-place chartEx anchor/name edits.
 - `justify`/`distributed` vertical alignment: spreads wrapped lines top-to-bottom to fill the row height.
 - `readingOrder` RTL (value 2): right-anchors text whose alignment is general/unspecified; explicit left/center/right preserved.

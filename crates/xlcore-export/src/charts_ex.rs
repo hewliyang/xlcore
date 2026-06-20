@@ -294,6 +294,7 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
     Some(Chart {
         chart_type: "chartex".to_string(),
         title,
+        title_font: None,
         series,
         categories: primary_data.categories,
         categories_ref: primary_data.categories_ref,
@@ -323,7 +324,9 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
         second_pie_size: None,
         series_lines: false,
         x_axis_title: None,
+        x_axis_title_font: None,
         y_axis_title: None,
+        y_axis_title_font: None,
         y_axis_title_secondary: None,
         show_major_gridlines: None,
         show_major_gridlines_secondary: None,

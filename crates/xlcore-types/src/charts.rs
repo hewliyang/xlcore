@@ -647,6 +647,11 @@ pub struct ChartAxisPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    /// `c:title/c:txPr/a:p/a:pPr/a:defRPr` axis-title font. Distinct from the
+    /// axis tick-label `c:txPr` (which is not modeled). Renderer-visible.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_font: Option<ChartTextStyle>,
     /// Hide the axis entirely (`c:delete = 1`).
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1572,6 +1577,10 @@ pub struct ChartPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title_layout: Option<ChartManualLayout>,
+    /// `c:title/c:txPr/a:p/a:pPr/a:defRPr` chart-title font. Renderer-visible.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_font: Option<ChartTextStyle>,
     pub anchor: AnchorSpec,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1735,6 +1744,10 @@ pub struct ChartInfo {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title_layout: Option<ChartManualLayout>,
+    /// `c:title/c:txPr/a:p/a:pPr/a:defRPr` chart-title font.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_font: Option<ChartTextStyle>,
     pub anchor: ChartAnchor,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1899,6 +1912,10 @@ pub struct ChartUpdate {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title_layout: Option<ChartManualLayout>,
+    /// `c:title/c:txPr/a:p/a:pPr/a:defRPr` chart-title font. Renderer-visible.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_font: Option<ChartTextStyle>,
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub anchor: Option<AnchorSpec>,

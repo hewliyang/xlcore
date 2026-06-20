@@ -222,6 +222,14 @@ excluded = ["legendEntry"]
 aliases = { spPr = "fill", txPr = "font" }
 
 [[pair]]
+sdk = "Title"
+dto = "ChartUpdate"
+ns = "c"
+derived = ["overlay"]
+excluded = ["spPr"]
+aliases = { tx = "title", layout = "title_layout", txPr = "title_font" }
+
+[[pair]]
 sdk = "ManualLayout"
 dto = "ChartManualLayout"
 ns = "c"

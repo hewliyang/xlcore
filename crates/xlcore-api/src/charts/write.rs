@@ -1,10 +1,18 @@
 use super::*;
 
 pub(super) fn set_axis_title(slot: &mut Option<Box<c::Title>>, text: &str) {
+    set_axis_title_styled(slot, text, None);
+}
+
+pub(super) fn set_axis_title_styled(
+    slot: &mut Option<Box<c::Title>>,
+    text: &str,
+    font: Option<&ChartTextStyle>,
+) {
     if text.is_empty() {
         *slot = None;
     } else {
-        *slot = Some(Box::new(build_title(text)));
+        *slot = Some(Box::new(build_title_styled(text, font)));
     }
 }
 
@@ -611,7 +619,7 @@ pub(super) fn build_chart_space(patch: &ChartPatch) -> c::ChartSpace {
         .title
         .as_deref()
         .filter(|t| !t.is_empty())
-        .map(build_title)
+        .map(|t| build_title_styled(t, patch.title_font.as_ref()))
         .map(|mut t| {
             t.layout = build_layout(patch.title_layout.as_ref());
             t
@@ -2027,11 +2035,19 @@ pub(super) fn is_valid_hex_color(s: &str) -> bool {
 }
 
 pub(super) fn build_title(text: &str) -> c::Title {
+    build_title_styled(text, None)
+}
+
+pub(super) fn build_title_styled(text: &str, font: Option<&ChartTextStyle>) -> c::Title {
     let run = a::Run {
-        run_properties: Some(Box::new(a::RunProperties {
-            language: Some("en-US".to_string()),
-            ..Default::default()
-        })),
+        run_properties: font
+            .map(|f| Box::new(build_title_run_properties(f)))
+            .or_else(|| {
+                Some(Box::new(a::RunProperties {
+                    language: Some("en-US".to_string()),
+                    ..Default::default()
+                }))
+            }),
         text: text.to_string(),
         ..Default::default()
     };
@@ -2057,11 +2073,33 @@ pub(super) fn build_title(text: &str) -> c::Title {
         chart_text: Some(Box::new(c::ChartText {
             chart_text_choice: Some(c::ChartTextChoice::RichText(Box::new(rich))),
         })),
+        text_properties: font.map(|f| Box::new(build_text_style(f))),
         overlay: Some(c::Overlay {
             val: Some(BooleanValue::from_bool(false)),
         }),
         ..Default::default()
     }
+}
+
+fn build_title_run_properties(style: &ChartTextStyle) -> a::RunProperties {
+    let mut rpr = a::RunProperties {
+        language: Some("en-US".to_string()),
+        font_size: style.size.map(|pt| (pt * 100.0).round() as i32),
+        bold: style.bold.map(BooleanValue::from_bool),
+        italic: style.italic.map(BooleanValue::from_bool),
+        ..Default::default()
+    };
+    if let Some(color) = style.color.as_deref() {
+        rpr.run_properties_choice1 =
+            build_solid_fill(color).map(|sf| a::RunPropertiesChoice::SolidFill(Box::new(sf)));
+    }
+    if let Some(face) = style.typeface.as_deref() {
+        rpr.latin_font = Some(a::LatinFont {
+            typeface: Some(face.to_string()),
+            ..Default::default()
+        });
+    }
+    rpr
 }
 
 pub(super) fn build_legend(pos: c::LegendPositionValues) -> c::Legend {
@@ -2433,7 +2471,7 @@ macro_rules! apply_axis_common {
             };
         }
         if let Some(t) = &$p.title {
-            set_axis_title(&mut $ax.title, t);
+            set_axis_title_styled(&mut $ax.title, t, $p.title_font.as_ref());
         }
         if let Some(nf) = &$p.number_format {
             $ax.numbering_format = Some(c::NumberingFormat {

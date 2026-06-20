@@ -67,6 +67,7 @@ fn charts_create_list_remove_roundtrip() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -201,6 +202,7 @@ fn update_chart_preserves_unmodeled_xml_and_stable_id() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -302,6 +304,7 @@ fn update_chart_replaces_series_and_stacking() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -407,6 +410,7 @@ fn chart_axis_patch_authors_and_round_trips() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -509,6 +513,7 @@ fn chart_value_axis_display_units_round_trip() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -605,6 +610,7 @@ fn chart_axis_label_rotation_round_trip() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -748,6 +754,7 @@ fn charts_supports_multiple_kinds() {
         plot_area: None,
         legend: None,
         title_layout: None,
+        title_font: None,
     };
     for kind in [
         ChartKind::Column,
@@ -856,6 +863,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             plot_area: None,
             legend: None,
             title_layout: None,
+            title_font: None,
         },
     )
     .unwrap();
@@ -915,6 +923,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             plot_area: None,
             legend: None,
             title_layout: None,
+            title_font: None,
         },
     )
     .unwrap();
@@ -972,6 +981,7 @@ fn charts_scatter_bubble_doughnut_color_and_axis_titles_roundtrip() {
             plot_area: None,
             legend: None,
             title_layout: None,
+            title_font: None,
         },
     )
     .unwrap();
@@ -1074,6 +1084,7 @@ fn chart_series_color_accepts_argb_and_strips_alpha() {
             plot_area: None,
             legend: None,
             title_layout: None,
+            title_font: None,
         },
     )
     .unwrap();
@@ -1142,6 +1153,7 @@ fn chart_series_color_rejects_malformed_hex() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap_err();
@@ -1248,6 +1260,7 @@ fn authored_parts_emit_xml_prolog_and_bound_root_prefix() {
             plot_area: None,
             legend: None,
             title_layout: None,
+            title_font: None,
         },
     )
     .unwrap();
@@ -1353,6 +1366,7 @@ fn charts_stacking_roundtrips_for_bar_line_area() {
         plot_area: None,
         legend: None,
         title_layout: None,
+        title_font: None,
     };
 
     let col_stacked = wb
@@ -1483,6 +1497,7 @@ fn charts_stacking_on_pie_emits_warning_and_drops() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -1542,6 +1557,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             plot_area: None,
             legend: None,
             title_layout: None,
+            title_font: None,
         },
     );
     assert!(missing_x.is_err());
@@ -1593,6 +1609,7 @@ fn charts_scatter_requires_x_values_and_rejects_bad_color() {
             plot_area: None,
             legend: None,
             title_layout: None,
+            title_font: None,
         },
     );
     assert!(bad_color.is_err());
@@ -1666,6 +1683,7 @@ fn charts_data_labels_roundtrip() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -1749,6 +1767,7 @@ fn charts_data_labels_pie_show_percent_roundtrip() {
             plot_area: None,
             legend: None,
             title_layout: None,
+            title_font: None,
         },
     )
     .unwrap();
@@ -1834,6 +1853,7 @@ fn charts_per_series_data_labels_override_chart_level() {
             plot_area: None,
             legend: None,
             title_layout: None,
+            title_font: None,
         },
     )
     .unwrap();
@@ -1939,6 +1959,7 @@ fn charts_per_point_data_labels_roundtrip_and_update() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -2059,6 +2080,7 @@ fn chart_gap_width_overlap_roundtrip_and_update() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -2167,6 +2189,7 @@ fn chart_series_marker_roundtrip_and_validation() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -2244,6 +2267,7 @@ fn chart_series_marker_roundtrip_and_validation() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap_err();
@@ -2315,6 +2339,7 @@ fn chart_series_smooth_roundtrips_and_sets_scatter_style() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -2398,6 +2423,7 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -2471,6 +2497,7 @@ fn chart_data_point_fills_roundtrip_and_validation() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap_err();
@@ -2539,6 +2566,7 @@ fn chart_data_point_explosion_roundtrip() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -2612,6 +2640,7 @@ fn chart_data_point_gradient_pattern_invert_marker_roundtrip_and_update() {
         plot_area: None,
         legend: None,
         title_layout: None,
+        title_font: None,
     };
 
     let mut wb = Workbook::new().unwrap();
@@ -2795,6 +2824,7 @@ fn combo_chart_secondary_axis_roundtrip() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -2862,6 +2892,7 @@ fn combo_chart_secondary_axis_roundtrip() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap_err();
@@ -2942,6 +2973,7 @@ fn radar_chart_build_roundtrip_and_update() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -3033,6 +3065,7 @@ fn doughnut_hole_size_and_first_slice_angle_roundtrip_and_update() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -3115,6 +3148,7 @@ fn doughnut_hole_size_out_of_range_rejected() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap_err();
@@ -3207,6 +3241,7 @@ fn stock_chart_build_roundtrip_and_update() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -3304,6 +3339,7 @@ fn stock_chart_requires_three_to_six_series() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap_err();
@@ -3372,6 +3408,7 @@ fn chart_series_line_roundtrips_and_updates() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -3474,6 +3511,7 @@ fn disp_blanks_as_builds_reads_updates() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -3565,6 +3603,7 @@ fn vary_colors_and_invert_if_negative_roundtrip_and_update() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -3673,6 +3712,7 @@ fn chart_trendline_roundtrips_and_updates() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -3795,6 +3835,7 @@ fn chart_trendline_moving_average_on_scatter_roundtrips() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -3863,6 +3904,7 @@ fn chart_trendline_rejected_on_pie_and_bad_params() {
         plot_area: None,
         legend: None,
         title_layout: None,
+        title_font: None,
     };
 
     let linear = ChartTrendline {
@@ -3967,6 +4009,7 @@ fn chart_error_bars_fixed_roundtrips_and_updates() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -4095,6 +4138,7 @@ fn chart_error_bars_custom_on_scatter_roundtrips() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -4167,6 +4211,7 @@ fn chart_error_bars_rejected_on_pie_and_bad_params() {
         plot_area: None,
         legend: None,
         title_layout: None,
+        title_font: None,
     };
 
     let fixed = ChartErrorBars {
@@ -4264,6 +4309,7 @@ fn chart_data_table_roundtrips_and_updates() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .unwrap();
@@ -4368,6 +4414,7 @@ fn chart_data_table_rejected_on_pie() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
             },
         )
         .is_err());
@@ -4419,6 +4466,7 @@ fn base_3d_patch(kind: ChartKind) -> ChartPatch {
         plot_area: None,
         legend: None,
         title_layout: None,
+        title_font: None,
     }
 }
 
@@ -4537,6 +4585,7 @@ fn chart_3d_column_view3d_and_shape_roundtrip_and_update() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
                 ..Default::default()
             },
         )
@@ -4660,6 +4709,7 @@ fn chart_surface_wireframe_and_view3d_roundtrip_and_update() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
                 ..Default::default()
             },
         )
@@ -4915,6 +4965,7 @@ fn chart_of_pie_options_roundtrip_and_update() {
                 plot_area: None,
                 legend: None,
                 title_layout: None,
+                title_font: None,
                 ..Default::default()
             },
         )
@@ -5060,6 +5111,83 @@ fn chart_plot_area_and_legend_styling_roundtrips_and_updates() {
         chart.legend.as_ref().unwrap().font.as_ref().unwrap().size,
         Some(8.0)
     );
+}
+
+#[test]
+fn chart_title_and_axis_title_fonts_roundtrip() {
+    use xlcore_types::{ChartAxisPatch, ChartTextStyle, ChartUpdate};
+
+    let mut wb = Workbook::new().unwrap();
+    seed_3d(&mut wb);
+
+    let mut patch = base_3d_patch(ChartKind::Column);
+    patch.title = Some("Revenue".to_string());
+    patch.title_font = Some(ChartTextStyle {
+        size: Some(28.0),
+        bold: Some(true),
+        italic: Some(true),
+        color: Some("C00000".to_string()),
+        typeface: Some("Calibri".to_string()),
+    });
+    patch.value_axis = Some(ChartAxisPatch {
+        title: Some("USD".to_string()),
+        title_font: Some(ChartTextStyle {
+            size: Some(16.0),
+            color: Some("1565C0".to_string()),
+            ..Default::default()
+        }),
+        ..Default::default()
+    });
+
+    let info = wb.set_chart("Sheet1", patch).unwrap();
+    assert_eq!(info.title_font.as_ref().unwrap().size, Some(28.0));
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("sz=\"2800\""));
+    assert!(xml.contains("typeface=\"Calibri\""));
+    assert!(xml.contains("sz=\"1600\""));
+
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    let chart = &charts[0];
+    let tf = chart.title_font.as_ref().unwrap();
+    assert_eq!(tf.size, Some(28.0));
+    assert_eq!(tf.bold, Some(true));
+    assert_eq!(tf.italic, Some(true));
+    assert_eq!(tf.color.as_deref(), Some("C00000"));
+    assert_eq!(tf.typeface.as_deref(), Some("Calibri"));
+    let vf = chart
+        .value_axis
+        .as_ref()
+        .unwrap()
+        .title_font
+        .as_ref()
+        .unwrap();
+    assert_eq!(vf.size, Some(16.0));
+    assert_eq!(vf.color.as_deref(), Some("1565C0"));
+
+    let id = chart.id.clone();
+    reopened
+        .update_chart(
+            "Sheet1",
+            &id,
+            ChartUpdate {
+                title_font: Some(ChartTextStyle {
+                    size: Some(10.0),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let charts = reopened.charts(None).unwrap();
+    assert_eq!(
+        charts[0].title_font.as_ref().unwrap().size,
+        Some(10.0),
+        "title font size update should apply without resetting the title text"
+    );
+    assert_eq!(charts[0].title.as_deref(), Some("Revenue"));
 }
 
 #[test]
@@ -5262,6 +5390,7 @@ fn charts_companion_style_parts_set_update_remove() {
         plot_area: None,
         legend: None,
         title_layout: None,
+        title_font: None,
     };
 
     let info = wb

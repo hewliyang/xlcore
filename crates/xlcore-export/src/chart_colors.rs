@@ -1,5 +1,6 @@
 use crate::schema::*;
 use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_chart as c;
+use ooxmlsdk::schemas::schemas_openxmlformats_org_drawingml_2006_main as a;
 
 pub(crate) fn line_has_no_fill(props: &c::ChartShapeProperties) -> bool {
     let dbg = format!("{:?}", props);
@@ -547,6 +548,67 @@ pub(crate) fn office_accent_color_default(n: u32) -> String {
         _ => "#4472C4",
     }
     .to_string()
+}
+
+fn srgb_hex(sf: &a::SolidFill) -> Option<String> {
+    match sf.solid_fill_choice.as_ref()? {
+        a::SolidFillChoice::RgbColorModelHex(rgb) => Some(format!("#{}", rgb.val.to_uppercase())),
+        _ => None,
+    }
+}
+
+pub(crate) fn extract_title_font(t: Option<&c::Title>) -> Option<ChartFont> {
+    let t = t?;
+    let from_txpr = t
+        .text_properties
+        .as_deref()
+        .and_then(|tp| tp.paragraph.first())
+        .and_then(|p| p.paragraph_properties.as_ref())
+        .and_then(|pp| pp.default_run_properties.as_deref())
+        .and_then(|def| {
+            let color = match def.default_run_properties_choice1.as_ref() {
+                Some(a::DefaultRunPropertiesChoice::SolidFill(sf)) => srgb_hex(sf),
+                _ => None,
+            };
+            let font = ChartFont {
+                size: def.font_size.map(|sz| sz as f64 / 100.0),
+                bold: def.bold.as_ref().map(|b| bool::from(*b)),
+                italic: def.italic.as_ref().map(|b| bool::from(*b)),
+                color,
+                typeface: def.latin_font.as_ref().and_then(|f| f.typeface.clone()),
+            };
+            (font != ChartFont::default()).then_some(font)
+        });
+    if from_txpr.is_some() {
+        return from_txpr;
+    }
+    let c::ChartTextChoice::RichText(rich) = t.chart_text.as_ref()?.chart_text_choice.as_ref()?
+    else {
+        return None;
+    };
+    let rpr = rich
+        .paragraph
+        .first()?
+        .paragraph_choice
+        .iter()
+        .find_map(|ch| match ch {
+            a::ParagraphChoice::Run(r) => Some(r),
+            _ => None,
+        })?
+        .run_properties
+        .as_deref()?;
+    let color = match rpr.run_properties_choice1.as_ref() {
+        Some(a::RunPropertiesChoice::SolidFill(sf)) => srgb_hex(sf),
+        _ => None,
+    };
+    let font = ChartFont {
+        size: rpr.font_size.map(|sz| sz as f64 / 100.0),
+        bold: rpr.bold.as_ref().map(|b| bool::from(*b)),
+        italic: rpr.italic.as_ref().map(|b| bool::from(*b)),
+        color,
+        typeface: rpr.latin_font.as_ref().and_then(|f| f.typeface.clone()),
+    };
+    (font != ChartFont::default()).then_some(font)
 }
 
 pub(crate) fn extract_title(t: Option<&c::Title>) -> Option<String> {

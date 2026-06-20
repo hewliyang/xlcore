@@ -19,6 +19,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
     let mut x_axis_title: Option<String> = None;
     let mut y_axis_title: Option<String> = None;
     let mut y_axis_title_secondary: Option<String> = None;
+    let mut x_axis_title_font: Option<ChartFont> = None;
+    let mut y_axis_title_font: Option<ChartFont> = None;
 
     let mut show_major_gridlines: Option<bool> = None;
     let mut show_major_gridlines_secondary: Option<bool> = None;
@@ -66,14 +68,18 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                        title: Option<&c::Title>,
                        x: &mut Option<String>,
                        y: &mut Option<String>,
-                       y2: &mut Option<String>| {
+                       y2: &mut Option<String>,
+                       xf: &mut Option<ChartFont>,
+                       yf: &mut Option<ChartFont>| {
         let Some(t) = extract_title(title) else {
             return;
         };
+        let font = extract_title_font(title);
         match pos {
             Some(c::AxisPositionValues::Bottom) | Some(c::AxisPositionValues::Top) => {
                 if x.is_none() {
                     *x = Some(t);
+                    *xf = font;
                 }
             }
             Some(c::AxisPositionValues::Right) => {
@@ -85,6 +91,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
             _ => {
                 if y.is_none() {
                     *y = Some(t);
+                    *yf = font;
                 }
             }
         }
@@ -101,6 +108,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                     &mut x_axis_title,
                     &mut y_axis_title,
                     &mut y_axis_title_secondary,
+                    &mut x_axis_title_font,
+                    &mut y_axis_title_font,
                 )
             }
             c::PlotAreaChoice2::DateAxis(da) => route_title(
@@ -109,6 +118,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 &mut x_axis_title,
                 &mut y_axis_title,
                 &mut y_axis_title_secondary,
+                &mut x_axis_title_font,
+                &mut y_axis_title_font,
             ),
             _ => {}
         }
@@ -200,6 +211,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 &mut x_axis_title,
                 &mut y_axis_title,
                 &mut y_axis_title_secondary,
+                &mut x_axis_title_font,
+                &mut y_axis_title_font,
             );
         }
     }
@@ -735,6 +748,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
             None
         }
     });
+    let title_font = extract_title_font(chart.title.as_deref());
 
     let legend_pos = chart.legend.as_ref().map(|l| {
         l.legend_position
@@ -810,6 +824,7 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
     Some(Chart {
         chart_type,
         title,
+        title_font,
         series,
         categories,
         categories_ref: _categories_ref,
@@ -839,7 +854,9 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         second_pie_size,
         series_lines,
         x_axis_title,
+        x_axis_title_font,
         y_axis_title,
+        y_axis_title_font,
         y_axis_title_secondary,
         show_major_gridlines,
         show_major_gridlines_secondary,
