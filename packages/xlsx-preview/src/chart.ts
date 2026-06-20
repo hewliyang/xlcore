@@ -148,7 +148,16 @@ export function drawChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rec
       }
       tx = Math.max(rect.x + 2, Math.min(tx, rect.x + rect.w - 2));
       ty = Math.max(rect.y + 2, Math.min(ty, rect.y + rect.h - tf.size));
-      drawTitleBox(ctx, chart.title, tx, ty, tf.size, ctx.textAlign, chart.titleFill, chart.titleBorder);
+      drawTitleBox(
+        ctx,
+        chart.title,
+        tx,
+        ty,
+        tf.size,
+        ctx.textAlign,
+        chart.titleFill,
+        chart.titleBorder,
+      );
       ctx.fillStyle = tf.color ?? TITLE_COLOR;
       ctx.fillText(chart.title, tx, ty);
     } else {
