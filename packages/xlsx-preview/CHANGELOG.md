@@ -5,8 +5,13 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Chart move/delete now works for modern chartEx charts (waterfall, funnel, histogram, etc.); previously they snapped back on recalc because `moveDrawing`/`removeDrawing` only handled legacy charts.
+
 ### Added
 
+- `ChartExCollection.update(id, { anchor, name })` (WASM `updateChartEx`) for in-place chartEx anchor/name edits.
 - `justify`/`distributed` vertical alignment: spreads wrapped lines top-to-bottom to fill the row height.
 - `readingOrder` RTL (value 2): right-anchors text whose alignment is general/unspecified; explicit left/center/right preserved.
 - `fill` horizontal alignment: repeats single-line cell text to fill the column width, clipped.

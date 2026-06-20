@@ -131,6 +131,7 @@ export const workbookhandle_tables: (a: number, b: number, c: number, d: number)
 export const workbookhandle_takeWarnings: (a: number, b: number) => void;
 export const workbookhandle_threadedNotes: (a: number, b: number, c: number, d: number) => void;
 export const workbookhandle_updateChart: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+export const workbookhandle_updateChartEx: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
 export const workbookhandle_updateImage: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
 export const workbookhandle_updatePivot: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
 export const workbookhandle_warnings: (a: number, b: number) => void;

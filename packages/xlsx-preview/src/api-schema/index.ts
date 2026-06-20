@@ -30,6 +30,7 @@ export type { ChartExPatch } from "./ChartExPatch.js";
 export type { ChartExQuartileMethod } from "./ChartExQuartileMethod.js";
 export type { ChartExSeriesInfo } from "./ChartExSeriesInfo.js";
 export type { ChartExSeriesPatch } from "./ChartExSeriesPatch.js";
+export type { ChartExUpdate } from "./ChartExUpdate.js";
 export type { ChartInfo } from "./ChartInfo.js";
 export type { ChartKind } from "./ChartKind.js";
 export type { ChartLegendPosition } from "./ChartLegendPosition.js";

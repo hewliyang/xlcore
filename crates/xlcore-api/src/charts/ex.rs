@@ -8,7 +8,7 @@ use ooxmlsdk::simple_type::{BooleanValue, CoordinateValue};
 use xlcore_io::spreadsheetml as x;
 use xlcore_types::{
     ApiError, ApiErrorCode, ChartAnchor, ChartExInfo, ChartExKind, ChartExPatch,
-    ChartExQuartileMethod, ChartExSeriesInfo, ChartLegendPosition,
+    ChartExQuartileMethod, ChartExSeriesInfo, ChartExUpdate, ChartLegendPosition,
 };
 
 use crate::errors::sdk_err_to_api;
@@ -596,6 +596,93 @@ impl Workbook {
                 .quartile_method
                 .filter(|_| patch.kind == ChartExKind::BoxWhisker),
         })
+    }
+
+    pub fn update_chart_ex(
+        &mut self,
+        sheet: impl AsRef<str>,
+        id: impl AsRef<str>,
+        update: ChartExUpdate,
+    ) -> Result<ChartExInfo> {
+        let sheet = sheet.as_ref().to_string();
+        let id = id.as_ref().to_string();
+        let resolved_anchor = update
+            .anchor
+            .as_ref()
+            .map(crate::refs::resolve_anchor)
+            .transpose()?;
+
+        if !self.sheet_exists(&sheet)? {
+            return Err(ApiError::new(
+                ApiErrorCode::MissingSheet,
+                format!("sheet not found: {sheet}"),
+            )
+            .with_sheet(&sheet));
+        }
+
+        let ws_part = self.worksheet_part_for_sheet(&sheet)?;
+        let Some(drawings_part) = ws_part.drawings_part(&self.doc).map(|p| p.clone()) else {
+            return Err(ApiError::new(
+                ApiErrorCode::InvalidChart,
+                format!("chartEx not found on sheet '{sheet}': {id}"),
+            )
+            .with_sheet(&sheet));
+        };
+
+        if resolved_anchor.is_some() || update.name.is_some() {
+            let drawing_mut = drawings_part
+                .root_element_mut(&mut self.doc)
+                .map_err(sdk_err_to_api)?;
+            for choice in &mut drawing_mut.worksheet_drawing_choice {
+                let xdr::WorksheetDrawingChoice::TwoCellAnchor(a) = choice else {
+                    continue;
+                };
+                if chart_ex_anchor_rid(a.as_ref()).as_deref() != Some(id.as_str()) {
+                    continue;
+                }
+                if let Some(anchor) = &resolved_anchor {
+                    a.from_marker = Box::new(xdr::FromMarker {
+                        column_id: anchor.from_column as i32,
+                        column_offset: CoordinateValue::Emu(
+                            anchor.from_column_offset_emu.unwrap_or(0),
+                        ),
+                        row_id: anchor.from_row as i32,
+                        row_offset: CoordinateValue::Emu(anchor.from_row_offset_emu.unwrap_or(0)),
+                        ..Default::default()
+                    });
+                    a.to_marker = Box::new(xdr::ToMarker {
+                        column_id: anchor.to_column as i32,
+                        column_offset: CoordinateValue::Emu(
+                            anchor.to_column_offset_emu.unwrap_or(0),
+                        ),
+                        row_id: anchor.to_row as i32,
+                        row_offset: CoordinateValue::Emu(anchor.to_row_offset_emu.unwrap_or(0)),
+                        ..Default::default()
+                    });
+                }
+                if let Some(name) = &update.name {
+                    if let Some(xdr::TwoCellAnchorChoice::GraphicFrame(gf)) =
+                        a.two_cell_anchor_choice.as_mut()
+                    {
+                        gf.non_visual_graphic_frame_properties
+                            .non_visual_drawing_properties
+                            .name = name.clone();
+                    }
+                }
+                break;
+            }
+        }
+
+        let all = self.chart_exs(Some(&sheet))?;
+        all.into_iter()
+            .find(|c| c.id == id)
+            .ok_or_else(|| {
+                ApiError::new(
+                    ApiErrorCode::InvalidChart,
+                    format!("chartEx not found on sheet '{sheet}': {id}"),
+                )
+                .with_sheet(&sheet)
+            })
     }
 
     pub fn remove_chart_ex(

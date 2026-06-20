@@ -1107,6 +1107,30 @@
     "ret": "json"
   },
   {
+    "name": "update_chart_ex",
+    "jsName": "updateChartEx",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "id",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "update",
+        "kind": "de",
+        "type": "xlcore_api::ChartExUpdate"
+      }
+    ],
+    "ret": "json"
+  },
+  {
     "name": "remove_chart_ex",
     "jsName": "removeChartEx",
     "source": "table",
@@ -1647,6 +1671,35 @@
   {
     "name": "copy_range_in",
     "jsName": "copyRange",
+    "source": "table",
+    "kind": "method",
+    "args": [
+      {
+        "name": "src_sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "src_reference",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "dst_sheet",
+        "kind": "s",
+        "type": "&str"
+      },
+      {
+        "name": "dst_reference",
+        "kind": "s",
+        "type": "&str"
+      }
+    ],
+    "ret": "json"
+  },
+  {
+    "name": "move_range_in",
+    "jsName": "moveRange",
     "source": "table",
     "kind": "method",
     "args": [

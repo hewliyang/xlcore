@@ -100,6 +100,44 @@ fn chart_ex_create_list_remove_roundtrip() {
 }
 
 #[test]
+fn chart_ex_update_anchor_persists() {
+    let mut wb = Workbook::new().unwrap();
+    seed(&mut wb);
+    wb.set_chart_ex("Sheet1", base_patch(ChartExKind::Waterfall))
+        .unwrap();
+
+    let before = wb.chart_exs(Some("Sheet1")).unwrap()[0].anchor.clone();
+    let moved = ChartAnchor {
+        from_column: before.from_column + 3,
+        from_row: before.from_row + 5,
+        to_column: before.to_column + 3,
+        to_row: before.to_row + 5,
+        ..before.clone()
+    };
+    wb.update_chart_ex(
+        "Sheet1",
+        "rId1",
+        ChartExUpdate {
+            anchor: Some(AnchorSpec::Cells(moved.clone())),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let after = wb.chart_exs(Some("Sheet1")).unwrap()[0].anchor.clone();
+    assert_eq!(after.from_column, moved.from_column);
+    assert_eq!(after.to_row, moved.to_row);
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let roundtrip = reopened.chart_exs(Some("Sheet1")).unwrap()[0].anchor.clone();
+    assert_eq!(roundtrip.from_column, moved.from_column);
+    assert_eq!(roundtrip.from_row, moved.from_row);
+    assert_eq!(roundtrip.to_column, moved.to_column);
+    assert_eq!(roundtrip.to_row, moved.to_row);
+}
+
+#[test]
 fn chart_ex_all_kinds_author_and_round_trip() {
     let mut wb = Workbook::new().unwrap();
     seed(&mut wb);

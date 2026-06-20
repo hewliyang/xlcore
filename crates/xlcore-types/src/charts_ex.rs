@@ -83,6 +83,25 @@ pub struct ChartExSeriesPatch {
 )]
 #[serde(rename_all = "camelCase")]
 #[allow(clippy::derive_partial_eq_without_eq)]
+/// In-place update for a chartEx chart. Only drawing-anchor and name are
+/// editable; the `cx:chartSpace` part itself is left untouched.
+pub struct ChartExUpdate {
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub anchor: Option<AnchorSpec>,
+}
+
+#[cfg_attr(feature = "typescript", derive(ts_rs::TS))]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "typescript",
+    ts(export, export_to = "../../../packages/xlsx-preview/src/api-schema/")
+)]
+#[serde(rename_all = "camelCase")]
+#[allow(clippy::derive_partial_eq_without_eq)]
 /// Authoring patch for a modern chartEx chart (`cx:chartSpace` in a separate
 /// `chartEx{N}.xml` part), distilled from ooxmlsdk `ChartSpace`/`Chart`/`Series`.
 ///

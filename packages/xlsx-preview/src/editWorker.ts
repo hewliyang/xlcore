@@ -4,6 +4,7 @@ import type { CellInput } from "./api-range.js";
 import type { ClearMode, ImagePatch } from "./api-schema/index.js";
 import type {
   ChartAnchor,
+  ChartExInfo,
   ChartInfo,
   DefinedNameInfo,
   ImageInfo,
@@ -316,12 +317,18 @@ async function handleRequest(request: EditWorkerRequest): Promise<{
       };
       const w = requireWorkbook();
       if (kind === "chart") {
-        const id = resolveDrawingId(
-          w.sheet(sheetName).charts.list() as ChartInfo[],
-          prevAnchor,
-          drawingIndex,
-        );
-        if (id) w.sheet(sheetName).charts.update(id, { anchor });
+        const ws = w.sheet(sheetName);
+        const chartId = resolveDrawingId(ws.charts.list() as ChartInfo[], prevAnchor, drawingIndex);
+        if (chartId) {
+          ws.charts.update(chartId, { anchor });
+        } else {
+          const exId = resolveDrawingId(
+            ws.chartsEx.list() as ChartExInfo[],
+            prevAnchor,
+            drawingIndex,
+          );
+          if (exId) ws.chartsEx.update(exId, { anchor });
+        }
       } else if (kind === "image") {
         const id = resolveDrawingId(
           w.sheet(sheetName).images.list() as ImageInfo[],
@@ -341,12 +348,18 @@ async function handleRequest(request: EditWorkerRequest): Promise<{
       };
       const w = requireWorkbook();
       if (kind === "chart") {
-        const id = resolveDrawingId(
-          w.sheet(sheetName).charts.list() as ChartInfo[],
-          prevAnchor,
-          drawingIndex,
-        );
-        if (id) w.sheet(sheetName).charts.remove(id);
+        const ws = w.sheet(sheetName);
+        const chartId = resolveDrawingId(ws.charts.list() as ChartInfo[], prevAnchor, drawingIndex);
+        if (chartId) {
+          ws.charts.remove(chartId);
+        } else {
+          const exId = resolveDrawingId(
+            ws.chartsEx.list() as ChartExInfo[],
+            prevAnchor,
+            drawingIndex,
+          );
+          if (exId) ws.chartsEx.remove(exId);
+        }
       } else if (kind === "image") {
         const id = resolveDrawingId(
           w.sheet(sheetName).images.list() as ImageInfo[],

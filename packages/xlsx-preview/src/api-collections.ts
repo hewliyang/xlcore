@@ -8,6 +8,7 @@ import type {
   CalcPropertiesPatch,
   ChartExInfo,
   ChartExPatch,
+  ChartExUpdate,
   ChartInfo,
   ChartPatch,
   ChartUpdate,
@@ -229,6 +230,9 @@ export class ChartExCollection extends SheetScopedCollection {
   }
   set(patch: ChartExPatch): ChartExInfo {
     return this.handle.setChartEx(this.sheet, patch) as ChartExInfo;
+  }
+  update(id: string, update: ChartExUpdate): ChartExInfo {
+    return this.handle.updateChartEx(this.sheet, id, update) as ChartExInfo;
   }
   remove(id: string): ChartExInfo | null {
     return (this.handle.removeChartEx(this.sheet, id) as ChartExInfo | null) ?? null;

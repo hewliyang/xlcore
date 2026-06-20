@@ -129,6 +129,7 @@ export class WorkbookHandle {
     takeWarnings(): any;
     threadedNotes(sheet: string): any;
     updateChart(sheet: string, id: string, update: any): any;
+    updateChartEx(sheet: string, id: string, update: any): any;
     updateImage(sheet: string, id: string, update: any): any;
     updatePivot(sheet: string, id: string, update: any): any;
     warnings(): any;
@@ -277,6 +278,7 @@ export interface InitOutput {
     readonly workbookhandle_takeWarnings: (a: number, b: number) => void;
     readonly workbookhandle_threadedNotes: (a: number, b: number, c: number, d: number) => void;
     readonly workbookhandle_updateChart: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+    readonly workbookhandle_updateChartEx: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly workbookhandle_updateImage: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly workbookhandle_updatePivot: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly workbookhandle_warnings: (a: number, b: number) => void;
