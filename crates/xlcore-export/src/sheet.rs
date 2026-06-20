@@ -485,8 +485,8 @@ fn extract_data_bar(db: &x::DataBar) -> Option<CfDataBar> {
         color,
         negative_color: None,
 
-        min_length_pct: db.min_length.unwrap_or(0),
-        max_length_pct: db.max_length.unwrap_or(100),
+        min_length_pct: db.min_length.unwrap_or(10),
+        max_length_pct: db.max_length.unwrap_or(90),
         show_value: db.show_value.unwrap_or(true.into()).into(),
 
         gradient: true,
