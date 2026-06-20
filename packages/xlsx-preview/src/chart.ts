@@ -39,6 +39,7 @@ import {
   TITLE_FONT_SIZE,
   AXIS_TITLE_FONT_SIZE,
   resolveTitleFont,
+  resolveAxisLabelFont,
 } from "./chartUtils.js";
 
 import {
@@ -627,7 +628,9 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     ticks = _bcRange.ticks;
   }
 
-  ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  const valTf = resolveAxisLabelFont(chart.valAxisLabelFont);
+  const catTf = resolveAxisLabelFont(chart.catAxisLabelFont);
+  ctx.font = valTf.css;
   const labelStrings = ticks.map((t) =>
     percent ? `${Math.round(t)}%` : formatAxisValue(t, chart.valueFormat, chart.dispUnits),
   );
@@ -656,7 +659,7 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
     : { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH };
 
   const showGridlines = chart.showMajorGridlines !== false;
-  ctx.fillStyle = AXIS_LABEL_COLOR;
+  ctx.fillStyle = valTf.color!;
   ctx.strokeStyle = GRIDLINE_COLOR;
   ctx.lineWidth = 1;
   ctx.textAlign = horizontal ? "center" : "right";
@@ -709,7 +712,8 @@ function drawBarColumnChart(ctx: CanvasRenderingContext2D, chart: Chart, rect: R
   const zeroY = zMetrics.zeroY;
   const zeroX = zMetrics.zeroX;
 
-  ctx.fillStyle = AXIS_LABEL_COLOR;
+  ctx.font = catTf.css;
+  ctx.fillStyle = catTf.color!;
   ctx.textAlign = "center";
   ctx.textBaseline = horizontal ? "middle" : "top";
   for (let i = 0; i < categoryCount; i++) {

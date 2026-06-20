@@ -1665,6 +1665,7 @@ pub(super) fn read_cat_axis_patch(ax: &c::CategoryAxis) -> Option<ChartAxisPatch
             _ => None,
         },
         label_rotation: read_axis_label_rotation(ax.text_properties.as_deref()),
+        label_font: read_text_style(ax.text_properties.as_deref()),
         ..Default::default()
     };
     p.title = p.title.filter(|t| !t.is_empty());
@@ -1716,6 +1717,7 @@ pub(super) fn read_val_axis_patch(ax: &c::ValueAxis) -> Option<ChartAxisPatch> {
         },
         display_units: read_display_units(ax.display_units.as_deref()),
         label_rotation: read_axis_label_rotation(ax.text_properties.as_deref()),
+        label_font: read_text_style(ax.text_properties.as_deref()),
     };
     p.title = p.title.filter(|t| !t.is_empty());
     if p == ChartAxisPatch::default() {

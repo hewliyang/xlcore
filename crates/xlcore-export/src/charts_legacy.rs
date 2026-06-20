@@ -39,6 +39,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
 
     let mut cat_axis_label_rotation: Option<i32> = None;
     let mut val_axis_label_rotation: Option<i32> = None;
+    let mut cat_axis_label_font: Option<ChartFont> = None;
+    let mut val_axis_label_font: Option<ChartFont> = None;
 
     let data_table = plot_area.data_table.as_deref().map(|dt| ChartDataTable {
         show_horz_border: dt
@@ -117,6 +119,9 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
             c::PlotAreaChoice2::CategoryAxis(ca) => {
                 if cat_axis_label_rotation.is_none() {
                     cat_axis_label_rotation = axis_label_rotation(ca.text_properties.as_deref());
+                }
+                if cat_axis_label_font.is_none() {
+                    cat_axis_label_font = extract_txpr_font(ca.text_properties.as_deref());
                 }
                 route_title(
                     Some(&ca.axis_position.val),
@@ -227,6 +232,9 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
                 }
                 if val_axis_label_rotation.is_none() {
                     val_axis_label_rotation = axis_label_rotation(va.text_properties.as_deref());
+                }
+                if val_axis_label_font.is_none() {
+                    val_axis_label_font = extract_txpr_font(va.text_properties.as_deref());
                 }
             }
             route_title(
@@ -921,6 +929,8 @@ pub(super) fn extract_chart(space: &c::ChartSpace, theme: Option<&Theme>) -> Opt
         cx_region_map_max_color: None,
         cat_axis_label_rotation,
         val_axis_label_rotation,
+        cat_axis_label_font,
+        val_axis_label_font,
         data_table,
         plot_area_fill,
         plot_area_border,

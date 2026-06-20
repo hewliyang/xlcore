@@ -73,6 +73,8 @@ export type Chart = {
   cxRegionMapMaxColor?: string;
   catAxisLabelRotation?: number;
   valAxisLabelRotation?: number;
+  catAxisLabelFont?: ChartFont;
+  valAxisLabelFont?: ChartFont;
   dataTable?: ChartDataTable;
   plotAreaFill?: string;
   plotAreaBorder?: ChartStyleBorder;

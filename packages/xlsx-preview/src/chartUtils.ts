@@ -54,6 +54,11 @@ export function resolveTitleFont(
   return { css: `${prefix}${size}px ${family}`, size, color: font?.color };
 }
 
+export function resolveAxisLabelFont(font: ChartFont | undefined): ResolvedTitleFont {
+  const tf = resolveTitleFont(font, AXIS_FONT_SIZE);
+  return { ...tf, color: tf.color ?? AXIS_LABEL_COLOR };
+}
+
 function styleDashFor(dash: string | undefined): number[] {
   switch (dash) {
     case "dot":
@@ -324,7 +329,8 @@ export function drawAxisFrame(
   horizontal: boolean,
   percent: boolean,
 ): Rect {
-  ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+  const valTf = resolveAxisLabelFont(chart.valAxisLabelFont);
+  ctx.font = valTf.css;
   const labelStrings = ticks.map((t) =>
     percent ? `${Math.round(t)}%` : formatAxisValue(t, chart.valueFormat, chart.dispUnits),
   );
@@ -350,7 +356,7 @@ export function drawAxisFrame(
     : { x: rect.x + yAxisW, y: rect.y, w: rect.w - yAxisW, h: rect.h - xAxisH };
 
   const showGridlines = chart.showMajorGridlines !== false;
-  ctx.fillStyle = AXIS_LABEL_COLOR;
+  ctx.fillStyle = valTf.color!;
   ctx.strokeStyle = GRIDLINE_COLOR;
   ctx.lineWidth = 1;
   ctx.textAlign = horizontal ? "center" : "right";
@@ -406,8 +412,9 @@ export function drawCategoryAxis(
   categoryCount: number,
   horizontal: boolean,
 ): void {
-  ctx.font = `${AXIS_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
-  ctx.fillStyle = AXIS_LABEL_COLOR;
+  const catTf = resolveAxisLabelFont(chart.catAxisLabelFont);
+  ctx.font = catTf.css;
+  ctx.fillStyle = catTf.color!;
   ctx.textAlign = "center";
   ctx.textBaseline = horizontal ? "middle" : "top";
 

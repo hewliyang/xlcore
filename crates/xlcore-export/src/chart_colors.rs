@@ -557,12 +557,8 @@ fn srgb_hex(sf: &a::SolidFill) -> Option<String> {
     }
 }
 
-pub(crate) fn extract_title_font(t: Option<&c::Title>) -> Option<ChartFont> {
-    let t = t?;
-    let from_txpr = t
-        .text_properties
-        .as_deref()
-        .and_then(|tp| tp.paragraph.first())
+pub(crate) fn extract_txpr_font(tp: Option<&c::TextProperties>) -> Option<ChartFont> {
+    tp.and_then(|tp| tp.paragraph.first())
         .and_then(|p| p.paragraph_properties.as_ref())
         .and_then(|pp| pp.default_run_properties.as_deref())
         .and_then(|def| {
@@ -578,7 +574,12 @@ pub(crate) fn extract_title_font(t: Option<&c::Title>) -> Option<ChartFont> {
                 typeface: def.latin_font.as_ref().and_then(|f| f.typeface.clone()),
             };
             (font != ChartFont::default()).then_some(font)
-        });
+        })
+}
+
+pub(crate) fn extract_title_font(t: Option<&c::Title>) -> Option<ChartFont> {
+    let t = t?;
+    let from_txpr = extract_txpr_font(t.text_properties.as_deref());
     if from_txpr.is_some() {
         return from_txpr;
     }

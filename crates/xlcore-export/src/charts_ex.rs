@@ -356,6 +356,8 @@ pub(super) fn extract_chart_ex(space: &cx::ChartSpace, theme: Option<&Theme>) ->
         cx_region_map_max_color: rm_max,
         cat_axis_label_rotation: None,
         val_axis_label_rotation: None,
+        cat_axis_label_font: None,
+        val_axis_label_font: None,
         data_table: None,
         plot_area_fill: None,
         plot_area_border: None,

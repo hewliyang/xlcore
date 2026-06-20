@@ -12,6 +12,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Axis tick-label fonts: `ChartAxisPatch.labelFont` (`c:catAx`/`c:valAx` `c:txPr`), size/bold/italic/color/typeface, merged with `labelRotation`. Round-trips and renders.
 - Chart title and axis-title fonts: `ChartUpdate.titleFont`/`ChartPatch.titleFont` (`c:title/c:txPr`) and `ChartAxisPatch.titleFont` (axis-title `c:txPr`), supporting size/bold/italic/color/typeface. Round-trips and renders in the preview.
 - Chart & axis title box fill/border: `titleFill`/`titleBorder` on `ChartPatch`/`ChartUpdate`/`ChartInfo` and `ChartAxisPatch` (`c:title/c:spPr` solidFill/noFill + `a:ln`). Round-trips and draws a filled/stroked box behind each title in the preview.
 - `ChartExCollection.update(id, { anchor, name })` (WASM `updateChartEx`) for in-place chartEx anchor/name edits.

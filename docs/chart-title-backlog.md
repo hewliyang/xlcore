@@ -53,22 +53,18 @@ E2E: author a chart with the new property, `wb.save()` to xlsx, render with
 
 ## Backlog
 
-### 2. Axis tick-label font (`c:catAx/c:txPr`, `c:valAx/c:txPr`)
-
-Axes currently model only label rotation from their own `c:txPr`. Add tick-label
-font control (size/bold/italic/color/typeface).
-
-- DTO: add `label_font: Option<ChartTextStyle>` to `ChartAxisPatch`.
-- Write: emit the axis `c:txPr` `a:defRPr` with font props, alongside the
-  existing rotation handling (don't clobber rotation; merge both into one txPr).
-- Read: parse axis `c:txPr` font.
-- Render model + renderer: surface per-axis label font; the renderer currently
-  uses hardcoded `AXIS_FONT_SIZE`/`AXIS_LABEL_COLOR` for tick labels — honor the
-  custom font (reuse the `resolveTitleFont` helper or add a sibling).
-- Manifest: the axis pairs alias `txPr = "label_rotation"`; that already marks
-  txPr covered, so no change strictly needed, but confirm `--check` green.
+_(empty)_
 
 ## Shipped
+
+### 2. Axis tick-label font (`c:catAx/c:txPr`, `c:valAx/c:txPr`)
+
+Added `label_font: Option<ChartTextStyle>` to `ChartAxisPatch`, merged into the
+axis `c:txPr` `a:defRPr` alongside `label_rotation` (one shared txPr), reads
+back, render model surfaces `catAxisLabelFont`/`valAxisLabelFont`, and the
+renderer honors them for tick labels via `resolveAxisLabelFont` (sibling of
+`resolveTitleFont`). Axis pairs already alias `txPr = label_rotation`; `--check`
+stays green.
 
 ### 1. Chart & axis title box fill + border (`c:title/c:spPr`)
 

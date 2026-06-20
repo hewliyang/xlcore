@@ -727,6 +727,11 @@ pub struct ChartAxisPatch {
     #[cfg_attr(feature = "typescript", ts(optional))]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label_rotation: Option<i32>,
+    /// `c:catAx/c:txPr` (or `c:valAx/c:txPr`) tick-label font. Merged with
+    /// `label_rotation` into one `c:txPr`. Renderer-visible.
+    #[cfg_attr(feature = "typescript", ts(optional))]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label_font: Option<ChartTextStyle>,
 }
 
 #[cfg_attr(feature = "typescript", derive(ts_rs::TS))]

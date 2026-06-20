@@ -5293,6 +5293,104 @@ fn chart_title_and_axis_title_fonts_roundtrip() {
 }
 
 #[test]
+fn chart_axis_label_fonts_roundtrip_and_merge_with_rotation() {
+    use xlcore_types::{ChartAxisPatch, ChartTextStyle, ChartUpdate};
+
+    let mut wb = Workbook::new().unwrap();
+    seed_3d(&mut wb);
+
+    let mut patch = base_3d_patch(ChartKind::Column);
+    patch.category_axis = Some(ChartAxisPatch {
+        label_rotation: Some(-45),
+        label_font: Some(ChartTextStyle {
+            size: Some(14.0),
+            bold: Some(true),
+            color: Some("C00000".to_string()),
+            typeface: Some("Calibri".to_string()),
+            ..Default::default()
+        }),
+        ..Default::default()
+    });
+    patch.value_axis = Some(ChartAxisPatch {
+        label_font: Some(ChartTextStyle {
+            size: Some(9.0),
+            italic: Some(true),
+            color: Some("1565C0".to_string()),
+            ..Default::default()
+        }),
+        ..Default::default()
+    });
+
+    wb.set_chart("Sheet1", patch).unwrap();
+
+    let bytes = wb.save_bytes().unwrap();
+    let xml = chart_xml(&bytes);
+    assert!(xml.contains("rot=\"-2700000\""), "cat rotation kept: {xml}");
+    assert!(xml.contains("sz=\"1400\""));
+    assert!(xml.contains("typeface=\"Calibri\""));
+    assert!(xml.contains("sz=\"900\""));
+
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    let charts = reopened.charts(None).unwrap();
+    let chart = &charts[0];
+    let cf = chart
+        .category_axis
+        .as_ref()
+        .unwrap()
+        .label_font
+        .as_ref()
+        .unwrap();
+    assert_eq!(cf.size, Some(14.0));
+    assert_eq!(cf.bold, Some(true));
+    assert_eq!(cf.color.as_deref(), Some("C00000"));
+    assert_eq!(cf.typeface.as_deref(), Some("Calibri"));
+    assert_eq!(
+        chart.category_axis.as_ref().unwrap().label_rotation,
+        Some(-45)
+    );
+    let vf = chart
+        .value_axis
+        .as_ref()
+        .unwrap()
+        .label_font
+        .as_ref()
+        .unwrap();
+    assert_eq!(vf.size, Some(9.0));
+    assert_eq!(vf.italic, Some(true));
+    assert_eq!(vf.color.as_deref(), Some("1565C0"));
+
+    let id = chart.id.clone();
+    reopened
+        .update_chart(
+            "Sheet1",
+            &id,
+            ChartUpdate {
+                value_axis: Some(ChartAxisPatch {
+                    label_font: Some(ChartTextStyle {
+                        size: Some(20.0),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let charts = reopened.charts(None).unwrap();
+    assert_eq!(
+        charts[0]
+            .value_axis
+            .as_ref()
+            .unwrap()
+            .label_font
+            .as_ref()
+            .unwrap()
+            .size,
+        Some(20.0)
+    );
+}
+
+#[test]
 fn chart_title_and_axis_title_box_fill_border_roundtrip() {
     use xlcore_types::{ChartAxisPatch, ChartLine, ChartUpdate, LineDash};
 

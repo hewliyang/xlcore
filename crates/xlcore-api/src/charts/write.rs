@@ -2398,19 +2398,26 @@ pub(super) fn built_in_unit_to(u: BuiltInUnit) -> c::BuiltInUnitValues {
     }
 }
 
-pub(super) fn build_axis_txpr(rotation_degrees: i32) -> c::TextProperties {
-    c::TextProperties {
-        body_properties: Box::new(a::BodyProperties {
-            rotation: Some(rotation_degrees * 60000),
+pub(super) fn build_axis_txpr(
+    rotation_degrees: Option<i32>,
+    font: Option<&ChartTextStyle>,
+) -> c::TextProperties {
+    let mut tp = match font {
+        Some(f) => build_text_style(f),
+        None => c::TextProperties {
+            body_properties: Box::new(a::BodyProperties::default()),
+            list_style: Some(Box::new(a::ListStyle::default())),
+            paragraph: vec![a::Paragraph {
+                paragraph_properties: Some(Box::new(a::ParagraphProperties::default())),
+                ..Default::default()
+            }],
             ..Default::default()
-        }),
-        list_style: Some(Box::new(a::ListStyle::default())),
-        paragraph: vec![a::Paragraph {
-            paragraph_properties: Some(Box::new(a::ParagraphProperties::default())),
-            ..Default::default()
-        }],
-        ..Default::default()
+        },
+    };
+    if let Some(rot) = rotation_degrees {
+        tp.body_properties.rotation = Some(rot * 60000);
     }
+    tp
 }
 
 pub(super) fn build_display_units(du: &DisplayUnits) -> c::DisplayUnits {
@@ -2515,8 +2522,11 @@ macro_rules! apply_axis_common {
                 val: Some(tick_label_pos_to(tlp)),
             });
         }
-        if let Some(rot) = $p.label_rotation {
-            $ax.text_properties = Some(Box::new(build_axis_txpr(rot)));
+        if $p.label_rotation.is_some() || $p.label_font.is_some() {
+            $ax.text_properties = Some(Box::new(build_axis_txpr(
+                $p.label_rotation,
+                $p.label_font.as_ref(),
+            )));
         }
     }};
 }

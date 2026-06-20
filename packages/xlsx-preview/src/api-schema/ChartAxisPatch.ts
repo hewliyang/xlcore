@@ -90,4 +90,9 @@ export type ChartAxisPatch = {
    * xlsx-preview renderer draws axis labels horizontally regardless.
    */
   labelRotation?: number;
+  /**
+   * `c:catAx/c:txPr` (or `c:valAx/c:txPr`) tick-label font. Merged with
+   * `label_rotation` into one `c:txPr`. Renderer-visible.
+   */
+  labelFont?: ChartTextStyle;
 };
