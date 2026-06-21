@@ -99,7 +99,7 @@ backlog — work top to bottom, one item per agent:
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
   High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, ~~TAKE~~/~~DROP~~,
-  CHOOSECOLS/ROWS, TOCOL/TOROW, EXPAND, SORTBY, MMULT, MINVERSE, MUNIT, RANDARRAY,
+  ~~CHOOSECOLS~~/~~CHOOSEROWS~~, TOCOL/TOROW, EXPAND, SORTBY, MMULT, MINVERSE, MUNIT, RANDARRAY,
   FREQUENCY, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
 
 Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
@@ -114,6 +114,12 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- choosecols/chooserows (S4) — CHOOSECOLS(array,col_num1,...)/CHOOSEROWS(
+  array,row_num1,...): read array via shared read_array_arg into
+  Vec<Vec<ArrayNode>>; index args flattened in order (each may be a scalar or a
+  range/array of indices, truncated to int); 1-based, negative counts from end
+  (-1=last), repeats allowed; index 0 or |index|>dimension => #VALUE!. Returns
+  CalcResult::Array (spills + round-trips); >=2 args else #ERROR!; _xlfn.
 - take/drop (S4) — TAKE(array,rows,[columns])/DROP(array,rows,[columns]): read
   array via shared read_array_arg into Vec<Vec<ArrayNode>>; rows/columns truncated
   to int, positive keeps/drops from start (top/left), negative from end

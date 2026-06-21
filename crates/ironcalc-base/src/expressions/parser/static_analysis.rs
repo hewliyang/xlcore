@@ -926,6 +926,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
             }
             result
         }
+        Function::Choosecols | Function::Chooserows => vec![Signature::Vector; arg_count],
         Function::Aggregate => {
             let mut result = vec![Signature::Vector; arg_count];
             if arg_count >= 1 {
@@ -1523,6 +1524,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Vstack => not_implemented(args),
         Function::Take => not_implemented(args),
         Function::Drop => not_implemented(args),
+        Function::Choosecols => not_implemented(args),
+        Function::Chooserows => not_implemented(args),
         Function::Aggregate => not_implemented(args),
         Function::Rand => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),

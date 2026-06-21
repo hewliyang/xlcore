@@ -482,7 +482,9 @@
       "hstack": "HSTACK",
       "vstack": "VSTACK",
       "take": "TAKE",
-      "drop": "DROP"
+      "drop": "DROP",
+      "choosecols": "CHOOSECOLS",
+      "chooserows": "CHOOSEROWS"
     }
   },
   "de": {
@@ -968,7 +970,9 @@
       "hstack": "HSTACK",
       "vstack": "VSTACK",
       "take": "TAKE",
-      "drop": "DROP"
+      "drop": "DROP",
+      "choosecols": "CHOOSECOLS",
+      "chooserows": "CHOOSEROWS"
     }
   },
   "fr": {
@@ -1454,7 +1458,9 @@
         "hstack": "HSTACK",
         "vstack": "VSTACK",
       "take": "TAKE",
-      "drop": "DROP"
+      "drop": "DROP",
+      "choosecols": "CHOOSECOLS",
+      "chooserows": "CHOOSEROWS"
     }
   },
   "es": {
@@ -1940,7 +1946,9 @@
       "hstack": "HSTACK",
       "vstack": "VSTACK",
       "take": "TAKE",
-      "drop": "DROP"
+      "drop": "DROP",
+      "choosecols": "CHOOSECOLS",
+      "chooserows": "CHOOSEROWS"
     }
   }
 }

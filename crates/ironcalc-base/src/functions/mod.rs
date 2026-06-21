@@ -540,6 +540,8 @@ pub enum Function {
     Vstack,
     Take,
     Drop,
+    Choosecols,
+    Chooserows,
 }
 
 macro_rules! impl_function_lookup {
@@ -1054,6 +1056,8 @@ impl_function_lookup! {
     vstack          => Vstack,
     take            => Take,
     drop            => Drop,
+    choosecols      => Choosecols,
+    chooserows      => Chooserows,
 }
 
 pub fn english_function_names() -> Vec<String> {
@@ -1533,9 +1537,11 @@ impl Function {
             Function::Vstack => functions.vstack.clone(),
             Function::Take => functions.take.clone(),
             Function::Drop => functions.drop.clone(),
+            Function::Choosecols => functions.choosecols.clone(),
+            Function::Chooserows => functions.chooserows.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 463> {
+    pub fn into_iter() -> IntoIter<Function, 465> {
         [
             Function::And,
             Function::False,
@@ -2000,6 +2006,8 @@ impl Function {
             Function::Vstack,
             Function::Take,
             Function::Drop,
+            Function::Choosecols,
+            Function::Chooserows,
         ]
         .into_iter()
     }
@@ -2054,6 +2062,8 @@ impl Function {
             Function::Vstack => "_xlfn.VSTACK".to_string(),
             Function::Take => "_xlfn.TAKE".to_string(),
             Function::Drop => "_xlfn.DROP".to_string(),
+            Function::Choosecols => "_xlfn.CHOOSECOLS".to_string(),
+            Function::Chooserows => "_xlfn.CHOOSEROWS".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2661,6 +2671,8 @@ impl<'a> Model<'a> {
             Function::Vstack => self.fn_vstack(args, cell),
             Function::Take => self.fn_take(args, cell),
             Function::Drop => self.fn_drop(args, cell),
+            Function::Choosecols => self.fn_choosecols(args, cell),
+            Function::Chooserows => self.fn_chooserows(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

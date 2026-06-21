@@ -28,6 +28,28 @@ fn drop_range(arg: Option<i64>, len: usize) -> Vec<usize> {
     }
 }
 
+fn resolve_choose_indices(indices: &[i64], len: usize) -> Option<Vec<usize>> {
+    let len_i = len as i64;
+    let mut out = Vec::with_capacity(indices.len());
+    for &idx in indices {
+        let pos = if idx > 0 {
+            if idx > len_i {
+                return None;
+            }
+            (idx - 1) as usize
+        } else if idx < 0 {
+            if -idx > len_i {
+                return None;
+            }
+            (len_i + idx) as usize
+        } else {
+            return None;
+        };
+        out.push(pos);
+    }
+    Some(out)
+}
+
 fn array_node_to_calc_result(node: &ArrayNode) -> CalcResult {
     match node {
         ArrayNode::Number(f) => CalcResult::Number(*f),
@@ -813,6 +835,120 @@ impl<'a> Model<'a> {
         for r in row_range {
             let mut new_row = Vec::with_capacity(col_range.len());
             for &c in &col_range {
+                new_row.push(
+                    grid.get(r)
+                        .and_then(|row| row.get(c))
+                        .cloned()
+                        .unwrap_or(ArrayNode::Error(Error::NA)),
+                );
+            }
+            out.push(new_row);
+        }
+        CalcResult::Array(out)
+    }
+
+    fn collect_choose_indices(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<i64>, CalcResult> {
+        let mut indices = Vec::new();
+        for arg in args {
+            let grid = self.read_array_arg(arg, cell)?;
+            for row in grid {
+                for node in row {
+                    match node {
+                        ArrayNode::Number(f) => indices.push(f.trunc() as i64),
+                        ArrayNode::Boolean(b) => indices.push(i64::from(b)),
+                        ArrayNode::Error(error) => {
+                            return Err(CalcResult::new_error(
+                                error,
+                                cell,
+                                "CHOOSE: error index".to_string(),
+                            ))
+                        }
+                        ArrayNode::String(_) => {
+                            return Err(CalcResult::new_error(
+                                Error::VALUE,
+                                cell,
+                                "CHOOSE: non-numeric index".to_string(),
+                            ))
+                        }
+                    }
+                }
+            }
+        }
+        Ok(indices)
+    }
+
+    pub(crate) fn fn_choosecols(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() < 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let grid = match self.read_array_arg(&args[0], cell) {
+            Ok(g) => g,
+            Err(e) => return e,
+        };
+        let n_rows = grid.len();
+        let n_cols = grid.iter().map(|r| r.len()).max().unwrap_or(0);
+        let indices = match self.collect_choose_indices(&args[1..], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let cols = match resolve_choose_indices(&indices, n_cols) {
+            Some(c) => c,
+            None => {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "CHOOSECOLS: index out of range".to_string(),
+                )
+            }
+        };
+        let mut out: Vec<Vec<ArrayNode>> = Vec::with_capacity(n_rows);
+        for r in 0..n_rows {
+            let mut new_row = Vec::with_capacity(cols.len());
+            for &c in &cols {
+                new_row.push(
+                    grid.get(r)
+                        .and_then(|row| row.get(c))
+                        .cloned()
+                        .unwrap_or(ArrayNode::Error(Error::NA)),
+                );
+            }
+            out.push(new_row);
+        }
+        CalcResult::Array(out)
+    }
+
+    pub(crate) fn fn_chooserows(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() < 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let grid = match self.read_array_arg(&args[0], cell) {
+            Ok(g) => g,
+            Err(e) => return e,
+        };
+        let n_rows = grid.len();
+        let n_cols = grid.iter().map(|r| r.len()).max().unwrap_or(0);
+        let indices = match self.collect_choose_indices(&args[1..], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let rows = match resolve_choose_indices(&indices, n_rows) {
+            Some(r) => r,
+            None => {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "CHOOSEROWS: index out of range".to_string(),
+                )
+            }
+        };
+        let mut out: Vec<Vec<ArrayNode>> = Vec::with_capacity(rows.len());
+        for &r in &rows {
+            let mut new_row = Vec::with_capacity(n_cols);
+            for c in 0..n_cols {
                 new_row.push(
                     grid.get(r)
                         .and_then(|row| row.get(c))

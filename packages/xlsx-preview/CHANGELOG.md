@@ -17,6 +17,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- CHOOSECOLS/CHOOSEROWS dynamic-array functions select columns/rows by 1-based index (negative counts from the end, repeats allowed); spills and round-trips.
 - TAKE/DROP dynamic-array functions keep/remove rows and columns from the start or end of an array; spills and round-trips.
 - HSTACK/VSTACK dynamic-array functions stack arrays horizontally/vertically, padding ragged inputs with `#N/A`; spills and round-trips.
 - FILTER(array,include,[if_empty]) dynamic-array function; spills and round-trips.

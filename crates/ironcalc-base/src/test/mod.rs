@@ -40,6 +40,8 @@ mod test_fn_hstack;
 mod test_fn_vstack;
 mod test_fn_take;
 mod test_fn_drop;
+mod test_fn_choosecols;
+mod test_fn_chooserows;
 mod test_fn_transpose;
 mod test_fn_bahttext;
 mod test_fn_percentile;
