@@ -494,6 +494,9 @@ pub struct Functions {
     pub torow: String,
     pub expand: String,
     pub sortby: String,
+    pub mmult: String,
+    pub minverse: String,
+    pub munit: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

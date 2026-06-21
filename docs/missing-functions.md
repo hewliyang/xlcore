@@ -99,7 +99,7 @@ backlog — work top to bottom, one item per agent:
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
   High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, ~~TAKE~~/~~DROP~~,
-  ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, ~~SORTBY~~, MMULT, MINVERSE, MUNIT, RANDARRAY,
+  ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, ~~SORTBY~~, ~~MMULT~~, ~~MINVERSE~~, ~~MUNIT~~, RANDARRAY,
   FREQUENCY, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
 
 Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
@@ -114,6 +114,15 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- mmult/minverse/munit (S4) — MMULT(a,b) matrix product via shared
+  read_numeric_matrix (rectangular numeric reader factored out of read_square_matrix;
+  any non-numeric/empty cell => #VALUE!); a is m x n, b must be n x p else #VALUE!,
+  result[i][j]=sum_k a[i][k]*b[k][j]. MINVERSE(a) inverse of a square matrix
+  (non-square => #VALUE!) via Gauss-Jordan with partial pivoting augmenting with
+  identity; zero pivot => #NUM! (singular). MUNIT(n) n x n identity, n truncated to
+  int, n<1 => #VALUE!. All return CalcResult::Array (spill + round-trip); MMULT 2
+  args, MINVERSE/MUNIT 1 arg else #ERROR!; MMULT/MINVERSE legacy (plain name), MUNIT
+  _xlfn.
 - sortby (S4) — SORTBY(array,by_array1,[sort_order1],[by_array2,sort_order2],...):
   read array via shared read_array_arg into Vec<Vec<ArrayNode>>; args[1..] parsed as
   (by_array, [sort_order]) groups — each by_array flattened to a vector that must

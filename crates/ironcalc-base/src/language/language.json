@@ -488,7 +488,10 @@
       "tocol": "TOCOL",
       "torow": "TOROW",
       "expand": "EXPAND",
-      "sortby": "SORTBY"
+      "sortby": "SORTBY",
+      "mmult": "MMULT",
+      "minverse": "MINVERSE",
+      "munit": "MUNIT"
     }
   },
   "de": {
@@ -980,7 +983,10 @@
       "tocol": "TOCOL",
       "torow": "TOROW",
       "expand": "EXPAND",
-      "sortby": "SORTBY"
+      "sortby": "SORTBY",
+      "mmult": "MMULT",
+      "minverse": "MINVERSE",
+      "munit": "MUNIT"
     }
   },
   "fr": {
@@ -1472,7 +1478,10 @@
       "tocol": "TOCOL",
       "torow": "TOROW",
       "expand": "EXPAND",
-      "sortby": "SORTBY"
+      "sortby": "SORTBY",
+      "mmult": "MMULT",
+      "minverse": "MINVERSE",
+      "munit": "MUNIT"
     }
   },
   "es": {
@@ -1964,7 +1973,10 @@
       "tocol": "TOCOL",
       "torow": "TOROW",
       "expand": "EXPAND",
-      "sortby": "SORTBY"
+      "sortby": "SORTBY",
+      "mmult": "MMULT",
+      "minverse": "MINVERSE",
+      "munit": "MUNIT"
     }
   }
 }

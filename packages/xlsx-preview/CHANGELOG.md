@@ -17,6 +17,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- MMULT/MINVERSE/MUNIT matrix functions return arrays: matrix product, inverse (Gauss-Jordan, `#NUM!` if singular), and the n×n identity; spill and round-trip.
 - SORTBY dynamic-array function sorts an array's rows by one or more separate key vectors (per-key asc/desc, stable tie-break); spills and round-trips.
 - EXPAND dynamic-array function pads an array out to a target height/width (custom pad value, defaults to `#N/A`; cannot shrink); spills and round-trips.
 - TOCOL/TOROW dynamic-array functions flatten an array into a single column/row (scan by row or column, ignore errors); spills and round-trips.

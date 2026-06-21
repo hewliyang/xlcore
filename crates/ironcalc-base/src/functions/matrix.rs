@@ -83,7 +83,7 @@ fn calc_result_to_array_node(value: CalcResult) -> ArrayNode {
 }
 
 impl<'a> Model<'a> {
-    fn read_square_matrix(
+    fn read_numeric_matrix(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,
@@ -156,25 +156,41 @@ impl<'a> Model<'a> {
                 return Err(CalcResult::new_error(
                     Error::VALUE,
                     cell,
-                    "MDETERM requires a numeric matrix".to_string(),
+                    "requires a numeric matrix".to_string(),
                 ));
             }
         };
-
-        let n = matrix.len();
-        if n == 0 {
+        if matrix.is_empty() || matrix.iter().any(|r| r.is_empty()) {
             return Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
-                "MDETERM requires a square matrix".to_string(),
+                "requires a numeric matrix".to_string(),
             ));
         }
+        let cols = matrix[0].len();
+        if matrix.iter().any(|r| r.len() != cols) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "requires a rectangular matrix".to_string(),
+            ));
+        }
+        Ok(matrix)
+    }
+
+    fn read_square_matrix(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<f64>>, CalcResult> {
+        let matrix = self.read_numeric_matrix(arg, cell)?;
+        let n = matrix.len();
         for row in &matrix {
             if row.len() != n {
                 return Err(CalcResult::new_error(
                     Error::VALUE,
                     cell,
-                    "MDETERM requires a square matrix".to_string(),
+                    "requires a square matrix".to_string(),
                 ));
             }
         }
@@ -1223,5 +1239,124 @@ impl<'a> Model<'a> {
         }
 
         CalcResult::Number(det)
+    }
+
+    pub(crate) fn fn_mmult(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let a = match self.read_numeric_matrix(&args[0], cell) {
+            Ok(m) => m,
+            Err(e) => return e,
+        };
+        let b = match self.read_numeric_matrix(&args[1], cell) {
+            Ok(m) => m,
+            Err(e) => return e,
+        };
+        let m = a.len();
+        let n = a[0].len();
+        let p = b[0].len();
+        if b.len() != n {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "MMULT dimension mismatch".to_string(),
+            );
+        }
+        let mut out: Vec<Vec<ArrayNode>> = Vec::with_capacity(m);
+        for i in 0..m {
+            let mut new_row = Vec::with_capacity(p);
+            for j in 0..p {
+                let mut sum = 0.0;
+                for k in 0..n {
+                    sum += a[i][k] * b[k][j];
+                }
+                new_row.push(ArrayNode::Number(sum));
+            }
+            out.push(new_row);
+        }
+        CalcResult::Array(out)
+    }
+
+    pub(crate) fn fn_minverse(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let matrix = match self.read_square_matrix(&args[0], cell) {
+            Ok(m) => m,
+            Err(e) => return e,
+        };
+        let n = matrix.len();
+        let mut aug: Vec<Vec<f64>> = Vec::with_capacity(n);
+        for (i, row) in matrix.iter().enumerate() {
+            let mut new_row = row.clone();
+            for j in 0..n {
+                new_row.push(if i == j { 1.0 } else { 0.0 });
+            }
+            aug.push(new_row);
+        }
+        for column in 0..n {
+            let mut pivot = column;
+            let mut pivot_value = aug[column][column].abs();
+            for row in (column + 1)..n {
+                let value = aug[row][column].abs();
+                if value > pivot_value {
+                    pivot_value = value;
+                    pivot = row;
+                }
+            }
+            if aug[pivot][column] == 0.0 {
+                return CalcResult::new_error(Error::NUM, cell, "MINVERSE: singular".to_string());
+            }
+            if pivot != column {
+                aug.swap(pivot, column);
+            }
+            let pivot_diag = aug[column][column];
+            for col in 0..(2 * n) {
+                aug[column][col] /= pivot_diag;
+            }
+            for row in 0..n {
+                if row != column {
+                    let factor = aug[row][column];
+                    if factor != 0.0 {
+                        for col in 0..(2 * n) {
+                            aug[row][col] -= factor * aug[column][col];
+                        }
+                    }
+                }
+            }
+        }
+        let mut out: Vec<Vec<ArrayNode>> = Vec::with_capacity(n);
+        for row in &aug {
+            out.push(row[n..(2 * n)].iter().map(|v| ArrayNode::Number(*v)).collect());
+        }
+        CalcResult::Array(out)
+    }
+
+    pub(crate) fn fn_munit(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let n = match self.get_number(&args[0], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(e) => return e,
+        };
+        if n < 1 {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "MUNIT requires a positive dimension".to_string(),
+            );
+        }
+        let n = n as usize;
+        let mut out: Vec<Vec<ArrayNode>> = Vec::with_capacity(n);
+        for i in 0..n {
+            let mut new_row = Vec::with_capacity(n);
+            for j in 0..n {
+                new_row.push(ArrayNode::Number(if i == j { 1.0 } else { 0.0 }));
+            }
+            out.push(new_row);
+        }
+        CalcResult::Array(out)
     }
 }
