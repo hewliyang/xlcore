@@ -54,6 +54,10 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- permut/prob/trimmean — PERMUT (n!/(n-k)!, trunc to int, #NUM! if n<0|k<0|k>n),
+  PROB (sum of probs where lower<=x<=upper; upper omitted => x==lower; ranges must
+  match length else #N/A; probs in [0,1] summing to ~1 else #NUM!), TRIMMEAN
+  (percent in [0,1) else #NUM!; trim TRUNC(n*percent/2)*2 evenly from sorted ends).
 - percentrank — PERCENTRANK/PERCENTRANK.INC, PERCENTRANK.EXC (rank of x as a
   fraction; .INC = i/(n-1), .EXC = (i+1)/(n+1), interpolating between bracketing
   values; x outside [min,max] => #N/A; result truncated to `significance` sig

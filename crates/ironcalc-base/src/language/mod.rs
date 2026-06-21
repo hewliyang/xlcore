@@ -442,6 +442,9 @@ pub struct Functions {
     pub seriessum: String,
     pub fvschedule: String,
     pub permutationa: String,
+    pub permut: String,
+    pub prob: String,
+    pub trimmean: String,
     pub hyperlink: String,
 }
 

@@ -437,6 +437,9 @@
       "seriessum": "SERIESSUM",
       "fvschedule": "FVSCHEDULE",
       "permutationa": "PERMUTATIONA",
+      "permut": "PERMUT",
+      "prob": "PROB",
+      "trimmean": "TRIMMEAN",
       "hyperlink": "HYPERLINK"
     }
   },
@@ -878,6 +881,9 @@
       "seriessum": "POTENZREIHE",
       "fvschedule": "ZW2",
       "permutationa": "VARIATIONEN2",
+      "permut": "VARIATIONEN",
+      "prob": "WAHRSCHBEREICH",
+      "trimmean": "GESTUTZTMITTEL",
       "hyperlink": "HYPERLINK"
     }
   },
@@ -1319,6 +1325,9 @@
         "seriessum": "SOMME.SERIES",
         "fvschedule": "VC.PAIEMENTS",
         "permutationa": "PERMUTATIONA",
+        "permut": "PERMUTATION",
+        "prob": "PROBABILITE",
+        "trimmean": "MOYENNE.REDUITE",
         "hyperlink": "LIEN_HYPERTEXTE"
     }
   },
@@ -1760,6 +1769,9 @@
       "seriessum": "SUMA.SERIES",
       "fvschedule": "VF.PLAN",
       "permutationa": "PERMUTACIONESA",
+      "permut": "PERMUTACIONES",
+      "prob": "PROBABILIDAD",
+      "trimmean": "MEDIA.ACOTADA",
       "hyperlink": "HIPERVINCULO"
     }
   }

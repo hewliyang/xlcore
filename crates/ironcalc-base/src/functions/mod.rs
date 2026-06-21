@@ -124,6 +124,7 @@ pub enum Function {
     Multinomial,
     Seriessum,
     Permutationa,
+    Permut,
 
     // Information
     ErrorType,
@@ -343,8 +344,9 @@ pub enum Function {
     PercentRankLegacy,
     PercentRankInc,
     PercentRankExc,
+    Prob,
+    Trimmean,
     // Trend,
-    // Trimmean,
     VarP,
     VarS,
     VarpA,
@@ -609,6 +611,7 @@ impl_function_lookup! {
     multinomial     => Multinomial,
     seriessum       => Seriessum,
     permutationa    => Permutationa,
+    permut          => Permut,
 
     // Information
     errortype   => ErrorType,
@@ -813,6 +816,8 @@ impl_function_lookup! {
     percentranklegacy => PercentRankLegacy,
     percentrankinc => PercentRankInc,
     percentrankexc => PercentRankExc,
+    prob           => Prob,
+    trimmean       => Trimmean,
     varp           => VarP,
     vars           => VarS,
     varpa          => VarpA,
@@ -1070,6 +1075,7 @@ impl Function {
             Function::Multinomial => functions.multinomial.clone(),
             Function::Seriessum => functions.seriessum.clone(),
             Function::Permutationa => functions.permutationa.clone(),
+            Function::Permut => functions.permut.clone(),
             Function::ErrorType => functions.errortype.clone(),
             Function::Formulatext => functions.formulatext.clone(),
             Function::Isblank => functions.isblank.clone(),
@@ -1265,6 +1271,8 @@ impl Function {
             Function::PercentRankLegacy => functions.percentranklegacy.clone(),
             Function::PercentRankInc => functions.percentrankinc.clone(),
             Function::PercentRankExc => functions.percentrankexc.clone(),
+            Function::Prob => functions.prob.clone(),
+            Function::Trimmean => functions.trimmean.clone(),
             Function::VarP => functions.varp.clone(),
             Function::VarS => functions.vars.clone(),
             Function::VarpA => functions.varpa.clone(),
@@ -1399,7 +1407,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 418> {
+    pub fn into_iter() -> IntoIter<Function, 421> {
         [
             Function::And,
             Function::False,
@@ -1685,6 +1693,7 @@ impl Function {
             Function::Multinomial,
             Function::Seriessum,
             Function::Permutationa,
+            Function::Permut,
             Function::N,
             Function::Cell,
             Function::Info,
@@ -1796,6 +1805,8 @@ impl Function {
             Function::PercentRankLegacy,
             Function::PercentRankInc,
             Function::PercentRankExc,
+            Function::Prob,
+            Function::Trimmean,
             Function::VarP,
             Function::VarS,
             Function::VarpA,
@@ -2295,6 +2306,7 @@ impl<'a> Model<'a> {
             Function::Multinomial => self.fn_multinomial(args, cell),
             Function::Seriessum => self.fn_seriessum(args, cell),
             Function::Permutationa => self.fn_permutationa(args, cell),
+            Function::Permut => self.fn_permut(args, cell),
             Function::N => self.fn_n(args, cell),
             Function::Cell => self.fn_cell(args, cell),
             Function::Info => self.fn_info(args, cell),
@@ -2406,6 +2418,8 @@ impl<'a> Model<'a> {
             Function::PercentRankLegacy => self.fn_percentrank_inc(args, cell),
             Function::PercentRankInc => self.fn_percentrank_inc(args, cell),
             Function::PercentRankExc => self.fn_percentrank_exc(args, cell),
+            Function::Prob => self.fn_prob(args, cell),
+            Function::Trimmean => self.fn_trimmean(args, cell),
             Function::VarP => self.fn_var_p(args, cell),
             Function::VarS => self.fn_var_s(args, cell),
             Function::VarpA => self.fn_varpa(args, cell),

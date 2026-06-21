@@ -917,6 +917,28 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
             }
         }
         Function::Permutationa => args_signature_scalars(arg_count, 2, 0),
+        Function::Permut => args_signature_scalars(arg_count, 2, 0),
+        Function::Prob => {
+            if arg_count == 3 {
+                vec![Signature::Vector, Signature::Vector, Signature::Scalar]
+            } else if arg_count == 4 {
+                vec![
+                    Signature::Vector,
+                    Signature::Vector,
+                    Signature::Scalar,
+                    Signature::Scalar,
+                ]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::Trimmean => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
         Function::N => args_signature_scalars(arg_count, 1, 0),
         Function::Sheets => args_signature_scalars(arg_count, 0, 1),
         Function::Cell => args_signature_scalars(arg_count, 1, 1),
@@ -1427,6 +1449,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Multinomial => StaticResult::Scalar,
         Function::Seriessum => StaticResult::Scalar,
         Function::Permutationa => scalar_arguments(args),
+        Function::Permut => scalar_arguments(args),
+        Function::Prob => StaticResult::Scalar,
+        Function::Trimmean => StaticResult::Scalar,
         Function::N => scalar_arguments(args),
         Function::Sheets => scalar_arguments(args),
         Function::Cell => scalar_arguments(args),

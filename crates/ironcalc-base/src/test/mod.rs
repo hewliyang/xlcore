@@ -22,6 +22,7 @@ mod test_fn_byte_variants;
 mod test_fn_dispersion_legacy;
 mod test_fn_tdist_mode;
 mod test_fn_percentile;
+mod test_fn_prob;
 mod test_fn_percentrank;
 mod test_fn_stat_legacy;
 mod test_fn_count;

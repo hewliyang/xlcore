@@ -1752,6 +1752,33 @@ impl<'a> Model<'a> {
         }
         CalcResult::Number(number.powf(number_chosen))
     }
+
+    pub(crate) fn fn_permut(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let n = match self.get_number(&args[0], cell) {
+            Ok(f) => f.trunc(),
+            Err(s) => return s,
+        };
+        let k = match self.get_number(&args[1], cell) {
+            Ok(f) => f.trunc(),
+            Err(s) => return s,
+        };
+        if n < 0.0 || k < 0.0 || k > n {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Invalid arguments".to_string(),
+            };
+        }
+        let k = k as usize;
+        let mut result = 1.0;
+        for i in 0..k {
+            result *= n - i as f64;
+        }
+        CalcResult::Number(result)
+    }
 }
 
 fn factorial(n: f64) -> f64 {
