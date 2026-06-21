@@ -5,6 +5,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Spilled-range operator `A1#` (ANCHORARRAY): a reference followed by `#` returns the whole dynamic-array spill anchored at that cell (`=SUM(A1#)`), spilling again when used bare; non-array cell returns that cell, empty cell returns `#REF!`. Serializes as `_xlfn.ANCHORARRAY(...)` for xlsx and `A1#` for display.
+
 ### Fixed
 
 - Implicit intersection now works: a bare range formula (`=A1:A3`) or `@`-coerced range (`=@A1:A3`) on an intersecting row/column returns that single cell's value (non-intersecting => `#VALUE!`), and `@` on a dynamic-array result (`=@SEQUENCE(3)`) collapses to the top-left element instead of returning `#N/IMPL`.

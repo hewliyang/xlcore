@@ -691,6 +691,7 @@ fn stringify(
                 | DefinedNameKind(_)
                 | TableNameKind(_)
                 | WrongVariableKind(_)
+                | SpillReferenceKind { .. }
                 | WrongRangeKind { .. } => stringify(
                     left,
                     context,
@@ -733,6 +734,7 @@ fn stringify(
                 | DefinedNameKind(_)
                 | TableNameKind(_)
                 | WrongVariableKind(_)
+                | SpillReferenceKind { .. }
                 | WrongRangeKind { .. } => stringify(
                     right,
                     context,
@@ -846,6 +848,7 @@ fn stringify(
                     | TableNameKind(_)
                     | WrongVariableKind(_)
                     | ImplicitIntersection { .. }
+                    | SpillReferenceKind { .. }
                     | CompareKind { .. }
                     | ErrorKind(_)
                     | ParseErrorKind { .. }
@@ -944,6 +947,21 @@ fn stringify(
                 )
             )
         }
+        SpillReferenceKind { reference } => {
+            let inner = stringify(
+                reference,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language,
+            );
+            if export_to_excel {
+                format!("_xlfn.ANCHORARRAY({inner})")
+            } else {
+                format!("{inner}#")
+            }
+        }
     }
 }
 
@@ -1037,6 +1055,9 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
+        Node::SpillReferenceKind { reference } => {
+            rename_sheet_in_node(reference, sheet_index, new_name);
+        }
 
         // Do nothing
         Node::BooleanKind(_) => {}
@@ -1120,6 +1141,9 @@ pub(crate) fn rename_defined_name_in_node(
             child,
         } => {
             rename_defined_name_in_node(child, name, scope, new_name);
+        }
+        Node::SpillReferenceKind { reference } => {
+            rename_defined_name_in_node(reference, name, scope, new_name);
         }
 
         // Do nothing

@@ -715,7 +715,10 @@ impl<'a> Lexer<'a> {
             self.position += errors.circ.chars().count() - 1;
             return TokenType::Error(Error::CIRC);
         }
-        TokenType::Illegal(self.set_error("Invalid error.", self.position))
+        if matches!(self.chars.get(self.position), Some(c) if c.is_alphabetic()) {
+            return TokenType::Illegal(self.set_error("Invalid error.", self.position));
+        }
+        TokenType::Spill
     }
 
     fn consume_whitespace(&mut self) {

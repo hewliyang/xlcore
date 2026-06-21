@@ -95,8 +95,8 @@ backlog — work top to bottom, one item per agent:
   non-numeric top-left no longer flattens to `0`. `get_cell_value`,
   `Cell::value`/`get_type`, and `spill_array` cache/render the real top-left
   ArrayNode. Prerequisite for text-producing array fns; numeric path unchanged.
-- [ ] **S3 — reference/intersection polish.** `A1#` spill operator (remaining).
-  `@` implicit intersection: done (see Shipped).
+- [x] **S3 — reference/intersection polish.** `A1#` spill operator + `@`
+  implicit intersection both done (see Shipped).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
   High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, ~~TAKE~~/~~DROP~~,
   ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, ~~SORTBY~~, ~~MMULT~~, ~~MINVERSE~~, ~~MUNIT~~, ~~RANDARRAY~~,
@@ -115,6 +115,17 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- spill operator (S3, A1#) — a reference followed by `#` parses to
+  Node::SpillReferenceKind (new lexer TokenType::Spill: bare `#` not forming a
+  known error literal and not followed by a letter falls through from
+  consume_error). Eval (evaluate_node_in_context) resolves the reference to its
+  anchor cell, forces its evaluation, and if it's a Cell::CellFormulaArray reads
+  the cached spill `range` and returns CalcResult::Array of the whole block (so a
+  bare `=A1#` spills again and `=SUM(A1#)` aggregates); a non-array, non-empty
+  cell returns that cell's value (`A1#` == `A1`); an empty anchor => #REF!.
+  Stringify emits `_xlfn.ANCHORARRAY(ref)` for xlsx and `ref#` for display, and
+  `_xlfn.ANCHORARRAY(...)` parses back on read; the formula string round-trips.
+  Deferred: xl/metadata.xml dynamic-array `cm` fidelity (same as S2b). _xlfn.
 - implicit intersection (S3, @) — set_cell_value's `CalcResult::Range` arm now
   applies real implicit intersection via the `implicit_intersection` helper
   (intersecting row/col => that cell's value, non-intersecting => #VALUE!,

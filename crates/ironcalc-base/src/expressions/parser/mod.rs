@@ -187,6 +187,9 @@ pub enum Node {
         automatic: bool,
         child: Box<Node>,
     },
+    SpillReferenceKind {
+        reference: Box<Node>,
+    },
     CompareKind {
         kind: OpCompare,
         left: Box<Node>,
@@ -503,7 +506,17 @@ impl<'a> Parser<'a> {
                 child: Box::new(t),
             };
         }
-        self.parse_primary()
+        let t = self.parse_primary();
+        if self.lexer.peek_token() == TokenType::Spill {
+            self.lexer.advance_token();
+            if let Node::ParseErrorKind { .. } = t {
+                return t;
+            }
+            return Node::SpillReferenceKind {
+                reference: Box::new(t),
+            };
+        }
+        t
     }
 
     fn parse_array_row(&mut self) -> Result<Vec<ArrayNode>, Node> {
@@ -776,6 +789,18 @@ impl<'a> Parser<'a> {
                             child: Box::new(args[0].clone()),
                         };
                     }
+                    if &name == "_xlfn.ANCHORARRAY" {
+                        if args.len() != 1 {
+                            return Node::ParseErrorKind {
+                                formula: self.lexer.get_formula(),
+                                position: self.lexer.get_position() as usize,
+                                message: "Spill reference requires just one argument".to_string(),
+                            };
+                        }
+                        return Node::SpillReferenceKind {
+                            reference: Box::new(args[0].clone()),
+                        };
+                    }
                     // We should do this *only* importing functions from xlsx
                     if let Some(function_kind) = self
                         .language
@@ -897,6 +922,11 @@ impl<'a> Parser<'a> {
                     message: "Unexpected token: '@'".to_string(),
                 }
             }
+            TokenType::Spill => Node::ParseErrorKind {
+                formula: self.lexer.get_formula(),
+                position: 0,
+                message: "Unexpected token: '#'".to_string(),
+            },
             TokenType::RightParenthesis
             | TokenType::RightBracket
             | TokenType::Colon

@@ -508,5 +508,11 @@ fn to_string_moved(
                 to_string_moved(child, move_context, locale, language)
             )
         }
+        SpillReferenceKind { reference } => {
+            format!(
+                "{}#",
+                to_string_moved(reference, move_context, locale, language)
+            )
+        }
     }
 }

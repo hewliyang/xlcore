@@ -549,6 +549,64 @@ impl<'a> Model<'a> {
                 },
                 _ => self.evaluate_node_in_context(child, cell),
             },
+            SpillReferenceKind { reference } => {
+                match self.evaluate_node_with_reference(reference, cell) {
+                    CalcResult::Range { left, .. } => {
+                        let _ = self.evaluate_cell(left);
+                        let anchor_range = self
+                            .workbook
+                            .worksheets
+                            .get(left.sheet as usize)
+                            .and_then(|ws| ws.cell(left.row, left.column))
+                            .map(|c| match c {
+                                Cell::CellFormulaArray { range, .. } => Some(range.clone()),
+                                _ => None,
+                            });
+                        match anchor_range {
+                            Some(Some(range)) => match range.split_once(':') {
+                                Some((a, b)) => match (
+                                    utils::parse_reference_a1(a),
+                                    utils::parse_reference_a1(b),
+                                ) {
+                                    (Some(tl), Some(br)) => {
+                                        let mut rows = Vec::new();
+                                        for r in tl.row..=br.row {
+                                            let mut row_vals = Vec::new();
+                                            for c in tl.column..=br.column {
+                                                let v = self.evaluate_cell(CellReferenceIndex {
+                                                    sheet: left.sheet,
+                                                    row: r,
+                                                    column: c,
+                                                });
+                                                row_vals.push(match v {
+                                                    CalcResult::Number(n) => ArrayNode::Number(n),
+                                                    CalcResult::String(s) => ArrayNode::String(s),
+                                                    CalcResult::Boolean(b) => ArrayNode::Boolean(b),
+                                                    CalcResult::Error { error, .. } => {
+                                                        ArrayNode::Error(error)
+                                                    }
+                                                    _ => ArrayNode::Number(0.0),
+                                                });
+                                            }
+                                            rows.push(row_vals);
+                                        }
+                                        CalcResult::Array(rows)
+                                    }
+                                    _ => self.evaluate_cell(left),
+                                },
+                                None => self.evaluate_cell(left),
+                            },
+                            Some(None) => self.evaluate_cell(left),
+                            None => CalcResult::new_error(
+                                Error::REF,
+                                cell,
+                                "Spill reference to empty cell".to_string(),
+                            ),
+                        }
+                    }
+                    other => other,
+                }
+            }
         }
     }
 

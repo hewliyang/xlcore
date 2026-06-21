@@ -71,6 +71,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         | Node::WrongRangeKind { .. }
         | Node::InvalidFunctionKind { .. }
         | Node::ArrayKind(_)
+        | Node::SpillReferenceKind { .. }
         | Node::ReferenceKind { .. } => {}
         Node::ImplicitIntersection { child, .. } => {
             // We need to check wether the II can be automatic or not
@@ -277,6 +278,7 @@ fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::TableNameKind(_) => StaticResult::Unknown,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::ImplicitIntersection { .. } => StaticResult::Scalar,
+        Node::SpillReferenceKind { .. } => StaticResult::Unknown,
     }
 }
 
