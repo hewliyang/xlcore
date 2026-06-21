@@ -11,14 +11,11 @@ New pure modules should get a `.test.ts`.
 
 ## Backlog
 
-8. Extract `cellEditor.ts` (+ test): the edit overlay + point mode. Owns
-   `editInput` and all edit/point state; methods openEditOverlay, growEditInput,
-   hideEditOverlay, commitEdit, onEditInputKeyDown, armPointMode, isPointModeActive,
-   applyPointModeRef, resetPointSpanOnType, movePointKeyboard, handlePointKeyboardKey.
-   Composes the three widgets from items 5-7. Host wires callbacks (scrollToCell,
-   getActiveSheet, emit celledit, scheduleDraw).
+(empty)
 
 ## Shipped
+
+8. Extracted `cellEditor.ts` (+ test): `CellEditor` owns the edit overlay `editInput` + all edit/point-mode state and methods; previewer delegates via `this.editor` through a `CellEditorHost` interface; composes the autocomplete/signature/validation widgets.
 
 7. Extracted `validationDropdown.ts` (+ test): `createValidationDropdown` owns the menu element + options/filter state; previewer delegates via `this.validation` (open/refresh/handleKey/reset).
 
