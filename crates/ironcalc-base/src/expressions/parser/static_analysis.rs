@@ -966,6 +966,31 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::TDistRT => args_signature_scalars(arg_count, 2, 0),
         Function::TInv => args_signature_scalars(arg_count, 2, 0),
         Function::TInv2T => args_signature_scalars(arg_count, 2, 0),
+        Function::ChiDistLegacy => args_signature_scalars(arg_count, 3, 0),
+        Function::ChiInvLegacy => args_signature_scalars(arg_count, 2, 0),
+        Function::ChiTestLegacy => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::FDistLegacy => args_signature_scalars(arg_count, 3, 0),
+        Function::FInvLegacy => args_signature_scalars(arg_count, 3, 0),
+        Function::FTestLegacy => vec![Signature::Vector; 2],
+        Function::TInvLegacy => args_signature_scalars(arg_count, 2, 0),
+        Function::TTestLegacy => {
+            if arg_count == 4 {
+                vec![
+                    Signature::Vector,
+                    Signature::Vector,
+                    Signature::Scalar,
+                    Signature::Scalar,
+                ]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
         Function::TTest => {
             if arg_count == 4 {
                 vec![
@@ -1342,6 +1367,14 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::TInv => StaticResult::Scalar,
         Function::TInv2T => StaticResult::Scalar,
         Function::TTest => StaticResult::Scalar,
+        Function::ChiDistLegacy => StaticResult::Scalar,
+        Function::ChiInvLegacy => StaticResult::Scalar,
+        Function::ChiTestLegacy => StaticResult::Scalar,
+        Function::FDistLegacy => StaticResult::Scalar,
+        Function::FInvLegacy => StaticResult::Scalar,
+        Function::FTestLegacy => StaticResult::Scalar,
+        Function::TInvLegacy => StaticResult::Scalar,
+        Function::TTestLegacy => StaticResult::Scalar,
         Function::VarP => StaticResult::Scalar,
         Function::VarS => StaticResult::Scalar,
         Function::VarpA => StaticResult::Scalar,
