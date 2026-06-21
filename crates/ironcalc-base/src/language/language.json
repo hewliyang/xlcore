@@ -476,7 +476,8 @@
       "arraytotext": "ARRAYTOTEXT",
       "transpose": "TRANSPOSE",
       "sequence": "SEQUENCE",
-      "sort": "SORT"
+      "sort": "SORT",
+      "unique": "UNIQUE"
     }
   },
   "de": {
@@ -956,7 +957,8 @@
       "arraytotext": "MATRICEENTEXTE",
       "transpose": "MTRANS",
       "sequence": "SEQUENZ",
-      "sort": "SORTIEREN"
+      "sort": "SORTIEREN",
+      "unique": "EINDEUTIG"
     }
   },
   "fr": {
@@ -1436,7 +1438,8 @@
         "arraytotext": "MATRICEENTEXTE",
         "transpose": "TRANSPOSE",
         "sequence": "SEQUENCE",
-        "sort": "TRIER"
+        "sort": "TRIER",
+        "unique": "UNIQUE"
     }
   },
   "es": {
@@ -1916,7 +1919,8 @@
       "arraytotext": "MATRIZATEXTO",
       "transpose": "TRANSPONER",
       "sequence": "SECUENCIA",
-      "sort": "ORDENAR"
+      "sort": "ORDENAR",
+      "unique": "UNICOS"
     }
   }
 }

@@ -17,6 +17,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- UNIQUE(array,[by_col],[exactly_once]) dynamic-array function; spills and round-trips.
 - SORT(array,[sort_index],[sort_order],[by_col]) dynamic-array function; spills and round-trips.
 - SEQUENCE(rows,[columns],[start],[step]) dynamic-array function; spills and round-trips.
 - Recalc round-trips dynamic-array spills as legacy CSE arrays: anchor + every spilled cell get a cached `<v>`, and pre-cached spill cells from real Excel saves no longer reload as a false `#SPILL!`. (metadata.xml/dynamic-array fidelity deferred.)

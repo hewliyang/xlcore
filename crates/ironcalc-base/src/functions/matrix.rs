@@ -362,6 +362,118 @@ impl<'a> Model<'a> {
         CalcResult::Array(out)
     }
 
+    pub(crate) fn fn_unique(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let result = self.evaluate_node_in_context(&args[0], cell);
+        let grid: Vec<Vec<ArrayNode>> = match result {
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    );
+                }
+                let mut rows = Vec::new();
+                for row in left.row..=right.row {
+                    let mut current = Vec::new();
+                    for column in left.column..=right.column {
+                        let cell_ref = CellReferenceIndex {
+                            sheet: left.sheet,
+                            row,
+                            column,
+                        };
+                        current.push(calc_result_to_array_node(self.evaluate_cell(cell_ref)));
+                    }
+                    rows.push(current);
+                }
+                rows
+            }
+            CalcResult::Array(array) => array,
+            error @ CalcResult::Error { .. } => return error,
+            other => vec![vec![calc_result_to_array_node(other)]],
+        };
+        let n_rows = grid.len();
+        if n_rows == 0 {
+            return CalcResult::new_error(Error::VALUE, cell, "UNIQUE: empty array".to_string());
+        }
+        let n_cols = grid.iter().map(|r| r.len()).max().unwrap_or(0);
+        if n_cols == 0 {
+            return CalcResult::new_error(Error::VALUE, cell, "UNIQUE: empty array".to_string());
+        }
+        let by_col = if args.len() >= 2 {
+            match self.get_boolean(&args[1], cell) {
+                Ok(b) => b,
+                Err(e) => return e,
+            }
+        } else {
+            false
+        };
+        let exactly_once = if args.len() >= 3 {
+            match self.get_boolean(&args[2], cell) {
+                Ok(b) => b,
+                Err(e) => return e,
+            }
+        } else {
+            false
+        };
+        let lines: Vec<Vec<ArrayNode>> = if by_col {
+            let mut cols: Vec<Vec<ArrayNode>> = Vec::with_capacity(n_cols);
+            for c in 0..n_cols {
+                let mut col = Vec::with_capacity(n_rows);
+                for row in grid.iter() {
+                    col.push(row.get(c).cloned().unwrap_or(ArrayNode::Number(0.0)));
+                }
+                cols.push(col);
+            }
+            cols
+        } else {
+            grid.clone()
+        };
+        let lines_eq = |a: &[ArrayNode], b: &[ArrayNode]| -> bool {
+            if a.len() != b.len() {
+                return false;
+            }
+            a.iter()
+                .zip(b.iter())
+                .all(|(x, y)| array_node_cmp(x, y) == std::cmp::Ordering::Equal)
+        };
+        let mut kept: Vec<Vec<ArrayNode>> = Vec::new();
+        for line in lines.iter() {
+            if exactly_once {
+                let count = lines.iter().filter(|other| lines_eq(line, other)).count();
+                if count == 1 && !kept.iter().any(|k| lines_eq(k, line)) {
+                    kept.push(line.clone());
+                }
+            } else if !kept.iter().any(|k| lines_eq(k, line)) {
+                kept.push(line.clone());
+            }
+        }
+        if kept.is_empty() {
+            return CalcResult::new_error(
+                Error::CALC,
+                cell,
+                "UNIQUE: no unique values".to_string(),
+            );
+        }
+        let out = if by_col {
+            let mut rows: Vec<Vec<ArrayNode>> = Vec::with_capacity(n_rows);
+            for r in 0..n_rows {
+                let mut new_row = Vec::with_capacity(kept.len());
+                for col in kept.iter() {
+                    new_row.push(col.get(r).cloned().unwrap_or(ArrayNode::Number(0.0)));
+                }
+                rows.push(new_row);
+            }
+            rows
+        } else {
+            kept
+        };
+        CalcResult::Array(out)
+    }
+
     pub(crate) fn fn_mdeterm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);

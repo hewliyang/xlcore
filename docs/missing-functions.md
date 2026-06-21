@@ -98,7 +98,7 @@ backlog — work top to bottom, one item per agent:
 - [ ] **S3 — reference/intersection polish.** `A1#` spill operator;
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
-  High value first: ~~SEQUENCE~~, ~~SORT~~, UNIQUE, FILTER, then HSTACK/VSTACK, TAKE/DROP,
+  High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, FILTER, then HSTACK/VSTACK, TAKE/DROP,
   CHOOSECOLS/ROWS, TOCOL/TOROW, EXPAND, SORTBY, MMULT, MINVERSE, MUNIT, RANDARRAY,
   FREQUENCY, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
 
@@ -114,6 +114,14 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- unique (S4) — UNIQUE(array,[by_col],[exactly_once]): reads range/array row-major
+  into Vec<Vec<ArrayNode>> (TRANSPOSE/SORT pattern); by_col FALSE (default) dedups
+  ROWS, TRUE dedups COLUMNS; exactly_once FALSE (default) keeps each distinct
+  row/col once in first-occurrence order, TRUE keeps only rows/cols appearing
+  exactly once; whole-row/col equality elementwise via array_node_cmp (numbers
+  exact, text case-insensitive, types distinct); empty result => #CALC!; returns
+  CalcResult::Array preserving cell types (spills + round-trips); 1-3 args else
+  #ERROR!; _xlfn.
 - sort (S4) — SORT(array,[sort_index],[sort_order],[by_col]): reads range/array
   row-major into Vec<Vec<ArrayNode>> (like TRANSPOSE), stable-sorts and returns
   CalcResult::Array (spills + round-trips). sort_index 1-based (default 1), out of
