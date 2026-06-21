@@ -760,8 +760,11 @@ impl<'a> Model<'a> {
             _ => String::new(),
         };
         let top_left_v = match array[0].first() {
-            Some(ArrayNode::Number(v)) => *v,
-            _ => 0.0,
+            Some(ArrayNode::Number(v)) => ArrayCachedValue::Number(*v),
+            Some(ArrayNode::String(s)) => ArrayCachedValue::String(s.clone()),
+            Some(ArrayNode::Boolean(b)) => ArrayCachedValue::Boolean(*b),
+            Some(ArrayNode::Error(e)) => ArrayCachedValue::Error(e.clone()),
+            None => ArrayCachedValue::Number(0.0),
         };
         *self.workbook.worksheets[sheet as usize]
             .sheet_data
@@ -912,7 +915,16 @@ impl<'a> Model<'a> {
             CellFormulaBoolean { v, .. } => CalcResult::Boolean(*v),
             CellFormulaNumber { v, .. } => CalcResult::Number(*v),
             CellFormulaString { v, .. } => CalcResult::String(v.clone()),
-            CellFormulaArray { v, .. } => CalcResult::Number(*v),
+            CellFormulaArray { v, .. } => match v {
+                ArrayCachedValue::Number(n) => CalcResult::Number(*n),
+                ArrayCachedValue::String(s) => CalcResult::String(s.clone()),
+                ArrayCachedValue::Boolean(b) => CalcResult::Boolean(*b),
+                ArrayCachedValue::Error(ei) => CalcResult::new_error(
+                    ei.clone(),
+                    cell_reference,
+                    ei.to_localized_error_string(self.language),
+                ),
+            },
             CellFormulaError { ei, o, m, .. } => {
                 if let Some(cell_reference) = self.parse_reference(o) {
                     CalcResult::new_error(ei.clone(), cell_reference, m.clone())

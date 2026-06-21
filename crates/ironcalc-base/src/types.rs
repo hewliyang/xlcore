@@ -159,6 +159,17 @@ pub enum CellType {
     CompoundData = 128,
 }
 
+/// Cached top-left value of a dynamic-array anchor cell. Mirrors the typed
+/// specialization of the other `CellFormula*` variants so a non-numeric
+/// top-left isn't flattened to `0`.
+#[derive(Encode, Decode, Debug, Clone, PartialEq)]
+pub enum ArrayCachedValue {
+    Number(f64),
+    String(String),
+    Boolean(bool),
+    Error(Error),
+}
+
 #[derive(Encode, Decode, Debug, Clone, PartialEq)]
 pub enum Cell {
     EmptyCell {
@@ -221,7 +232,7 @@ pub enum Cell {
     // spilled; behaves like a cached formula cell holding the top-left value.
     CellFormulaArray {
         f: i32,
-        v: f64,
+        v: ArrayCachedValue,
         s: i32,
         // Spill range anchored at this cell, e.g. "A1:C3"
         range: String,

@@ -123,7 +123,12 @@ impl Cell {
             Cell::CellFormulaNumber { .. } => CellType::Number,
             Cell::CellFormulaString { .. } => CellType::Text,
             Cell::CellFormulaError { .. } => CellType::ErrorValue,
-            Cell::CellFormulaArray { .. } => CellType::Number,
+            Cell::CellFormulaArray { v, .. } => match v {
+                ArrayCachedValue::Number(_) => CellType::Number,
+                ArrayCachedValue::String(_) => CellType::Text,
+                ArrayCachedValue::Boolean(_) => CellType::LogicalValue,
+                ArrayCachedValue::Error(_) => CellType::ErrorValue,
+            },
         }
     }
 
@@ -180,7 +185,14 @@ impl Cell {
                 let v = ei.to_localized_error_string(language);
                 CellValue::String(v)
             }
-            Cell::CellFormulaArray { v, .. } => CellValue::Number(*v),
+            Cell::CellFormulaArray { v, .. } => match v {
+                ArrayCachedValue::Number(n) => CellValue::Number(*n),
+                ArrayCachedValue::String(s) => CellValue::String(s.clone()),
+                ArrayCachedValue::Boolean(b) => CellValue::Boolean(*b),
+                ArrayCachedValue::Error(ei) => {
+                    CellValue::String(ei.to_localized_error_string(language))
+                }
+            },
         }
     }
 

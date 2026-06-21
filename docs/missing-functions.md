@@ -90,11 +90,11 @@ backlog — work top to bottom, one item per agent:
   Reads `<f t="array" ref=...>`, excludes spilled targets from harvest, writes
   cached `<v>` per spilled cell. metadata.xml / `cm` / dynamicArrayProperties
   fidelity + `CellInfo` spill-range surfacing deferred to a follow-up.
-- [ ] **S2c — generalize anchor cached value.** `CellFormulaArray.v` is `f64`
-  today (types.rs:222), so a non-numeric top-left renders/persists as `0`. Make
-  the anchor cached value hold Number/String/Boolean/Error (mirror the other
-  CellFormula* variants); fix `get_cell_value` + keep bitcode + tests green.
-  Prerequisite for text-producing array fns.
+- [x] **S2c — generalize anchor cached value.** `CellFormulaArray.v` now holds a
+  typed `ArrayCachedValue` (Number/String/Boolean/Error) instead of `f64`, so a
+  non-numeric top-left no longer flattens to `0`. `get_cell_value`,
+  `Cell::value`/`get_type`, and `spill_array` cache/render the real top-left
+  ArrayNode. Prerequisite for text-producing array fns; numeric path unchanged.
 - [ ] **S3 — reference/intersection polish.** `A1#` spill operator;
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
@@ -137,9 +137,10 @@ CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
   readable by other formulas; `Model::spill_owners` maps spilled cell->anchor,
   rebuilt each `evaluate()` to clear stale spills (idempotent, no false #SPILL!)
   and to force anchor eval when a spilled cell is read out of order. Scope: numeric
-  arrays are the supported path (cached `v` is f64 — anchor caches numeric top-left
-  only); non-numeric neighbours spill but anchor display is numeric; calc-engine
-  only, no xlsx round-trip (S2b). _xlfn.
+  arrays are the supported path; the anchor's cached `v` is a typed
+  `ArrayCachedValue` (Number/String/Boolean/Error, S2c) so a text/boolean/error
+  top-left renders and round-trips correctly; calc-engine only, no xlsx
+  round-trip (S2b). _xlfn.
 - arraytotext — ARRAYTOTEXT(array,[format]): always one string; walks range/array
   row-major; format 0 (default) concise joins all values with `, `; format 1
   strict wraps in `{...}`, cols `,` rows `;`, strings double-quoted, numbers as

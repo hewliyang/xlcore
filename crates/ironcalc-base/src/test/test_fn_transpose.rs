@@ -64,6 +64,22 @@ fn fn_transpose_idempotent() {
 }
 
 #[test]
+fn fn_transpose_text_anchor() {
+    let mut model = new_empty_model();
+    model._set("C1", "alpha");
+    model._set("D1", "beta");
+    model._set("C2", "gamma");
+    model._set("D2", "delta");
+    model._set("A4", "=TRANSPOSE(C1:D2)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A4"), *"alpha");
+    assert_eq!(model._get_text("B4"), *"gamma");
+    assert_eq!(model._get_text("A5"), *"beta");
+    assert_eq!(model._get_text("B5"), *"delta");
+}
+
+#[test]
 fn fn_transpose_spill_collision() {
     let mut model = new_empty_model();
     setup_source(&mut model);
