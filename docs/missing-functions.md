@@ -98,7 +98,7 @@ backlog — work top to bottom, one item per agent:
 - [ ] **S3 — reference/intersection polish.** `A1#` spill operator;
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
-  High value first: SEQUENCE, SORT, UNIQUE, FILTER, then HSTACK/VSTACK, TAKE/DROP,
+  High value first: ~~SEQUENCE~~, SORT, UNIQUE, FILTER, then HSTACK/VSTACK, TAKE/DROP,
   CHOOSECOLS/ROWS, TOCOL/TOROW, EXPAND, SORTBY, MMULT, MINVERSE, MUNIT, RANDARRAY,
   FREQUENCY, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
 
@@ -114,6 +114,11 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- sequence (S4) — SEQUENCE(rows,[columns],[start],[step]): row-major rows x columns
+  array of numbers starting at start (default 1) stepping by step (default 1),
+  columns default 1; dims truncated to int, rows<1 or columns<1 => #VALUE!;
+  returns CalcResult::Array(Number) so it spills via model.rs spill_array and
+  round-trips through xlsx; 1-4 args else #ERROR!; _xlfn.
 - spill round-trip (S2b, CSE-array) — xlcore-bridge recalc now persists
   dynamic-array spills as legacy `<f t="array" ref=...>` + cached `<v>` on the
   anchor AND every spilled cell. Write (write_cached_formula_values): after

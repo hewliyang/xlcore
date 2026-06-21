@@ -480,6 +480,7 @@ pub struct Functions {
     pub bahttext: String,
     pub arraytotext: String,
     pub transpose: String,
+    pub sequence: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

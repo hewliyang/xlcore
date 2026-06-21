@@ -168,6 +168,58 @@ impl<'a> Model<'a> {
         CalcResult::Array(transposed)
     }
 
+    pub(crate) fn fn_sequence(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 4 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let rows = match self.get_number(&args[0], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(e) => return e,
+        };
+        let columns = if args.len() >= 2 {
+            match self.get_number(&args[1], cell) {
+                Ok(f) => f.trunc() as i64,
+                Err(e) => return e,
+            }
+        } else {
+            1
+        };
+        let start = if args.len() >= 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(f) => f,
+                Err(e) => return e,
+            }
+        } else {
+            1.0
+        };
+        let step = if args.len() >= 4 {
+            match self.get_number(&args[3], cell) {
+                Ok(f) => f,
+                Err(e) => return e,
+            }
+        } else {
+            1.0
+        };
+        if rows < 1 || columns < 1 {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "SEQUENCE requires positive dimensions".to_string(),
+            );
+        }
+        let mut grid: Vec<Vec<ArrayNode>> = Vec::with_capacity(rows as usize);
+        let mut counter = 0.0;
+        for _ in 0..rows {
+            let mut new_row = Vec::with_capacity(columns as usize);
+            for _ in 0..columns {
+                new_row.push(ArrayNode::Number(start + counter * step));
+                counter += 1.0;
+            }
+            grid.push(new_row);
+        }
+        CalcResult::Array(grid)
+    }
+
     pub(crate) fn fn_mdeterm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);

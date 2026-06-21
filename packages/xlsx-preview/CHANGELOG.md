@@ -17,6 +17,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- SEQUENCE(rows,[columns],[start],[step]) dynamic-array function; spills and round-trips.
 - Recalc round-trips dynamic-array spills as legacy CSE arrays: anchor + every spilled cell get a cached `<v>`, and pre-cached spill cells from real Excel saves no longer reload as a false `#SPILL!`. (metadata.xml/dynamic-array fidelity deferred.)
 - `bindRecalcWorkbook(previewer, workbook, opts)` (exported from `@hewliyang/xlsx-preview/worker`): opt-in helper that wires the full previewer edit-event set (incl. easy-to-miss `drawingmoved`/`drawingdeleted`) to a `WorkerWorkbook`, removing the per-host reimplementation footgun. Hosts needing custom policy can still wire events by hand.
 - Axis tick-label fonts: `ChartAxisPatch.labelFont` (`c:catAx`/`c:valAx` `c:txPr`), size/bold/italic/color/typeface, merged with `labelRotation`. Round-trips and renders.

@@ -474,7 +474,8 @@
       "hyperlink": "HYPERLINK",
       "bahttext": "BAHTTEXT",
       "arraytotext": "ARRAYTOTEXT",
-      "transpose": "TRANSPOSE"
+      "transpose": "TRANSPOSE",
+      "sequence": "SEQUENCE"
     }
   },
   "de": {
@@ -952,7 +953,8 @@
       "hyperlink": "HYPERLINK",
       "bahttext": "BAHTTEXT",
       "arraytotext": "MATRICEENTEXTE",
-      "transpose": "MTRANS"
+      "transpose": "MTRANS",
+      "sequence": "SEQUENZ"
     }
   },
   "fr": {
@@ -1430,7 +1432,8 @@
         "hyperlink": "LIEN_HYPERTEXTE",
         "bahttext": "BAHTTEXT",
         "arraytotext": "MATRICEENTEXTE",
-        "transpose": "TRANSPOSE"
+        "transpose": "TRANSPOSE",
+        "sequence": "SEQUENCE"
     }
   },
   "es": {
@@ -1908,7 +1911,8 @@
       "hyperlink": "HIPERVINCULO",
       "bahttext": "TEXTOBAHT",
       "arraytotext": "MATRIZATEXTO",
-      "transpose": "TRANSPONER"
+      "transpose": "TRANSPONER",
+      "sequence": "SECUENCIA"
     }
   }
 }
