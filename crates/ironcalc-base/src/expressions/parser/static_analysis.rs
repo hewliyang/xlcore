@@ -919,6 +919,13 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
             result
         }
         Function::Hstack | Function::Vstack => vec![Signature::Vector; arg_count],
+        Function::Take | Function::Drop => {
+            let mut result = vec![Signature::Vector; arg_count];
+            for item in result.iter_mut().skip(1) {
+                *item = Signature::Scalar;
+            }
+            result
+        }
         Function::Aggregate => {
             let mut result = vec![Signature::Vector; arg_count];
             if arg_count >= 1 {
@@ -1514,6 +1521,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Filter => not_implemented(args),
         Function::Hstack => not_implemented(args),
         Function::Vstack => not_implemented(args),
+        Function::Take => not_implemented(args),
+        Function::Drop => not_implemented(args),
         Function::Aggregate => not_implemented(args),
         Function::Rand => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),

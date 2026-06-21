@@ -486,6 +486,8 @@ pub struct Functions {
     pub filter: String,
     pub hstack: String,
     pub vstack: String,
+    pub take: String,
+    pub drop: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

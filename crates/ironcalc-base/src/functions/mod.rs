@@ -538,6 +538,8 @@ pub enum Function {
     Filter,
     Hstack,
     Vstack,
+    Take,
+    Drop,
 }
 
 macro_rules! impl_function_lookup {
@@ -1050,6 +1052,8 @@ impl_function_lookup! {
     filter          => Filter,
     hstack          => Hstack,
     vstack          => Vstack,
+    take            => Take,
+    drop            => Drop,
 }
 
 pub fn english_function_names() -> Vec<String> {
@@ -1527,9 +1531,11 @@ impl Function {
             Function::Filter => functions.filter.clone(),
             Function::Hstack => functions.hstack.clone(),
             Function::Vstack => functions.vstack.clone(),
+            Function::Take => functions.take.clone(),
+            Function::Drop => functions.drop.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 461> {
+    pub fn into_iter() -> IntoIter<Function, 463> {
         [
             Function::And,
             Function::False,
@@ -1992,6 +1998,8 @@ impl Function {
             Function::Filter,
             Function::Hstack,
             Function::Vstack,
+            Function::Take,
+            Function::Drop,
         ]
         .into_iter()
     }
@@ -2044,6 +2052,8 @@ impl Function {
             Function::Filter => "_xlfn.FILTER".to_string(),
             Function::Hstack => "_xlfn.HSTACK".to_string(),
             Function::Vstack => "_xlfn.VSTACK".to_string(),
+            Function::Take => "_xlfn.TAKE".to_string(),
+            Function::Drop => "_xlfn.DROP".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2649,6 +2659,8 @@ impl<'a> Model<'a> {
             Function::Filter => self.fn_filter(args, cell),
             Function::Hstack => self.fn_hstack(args, cell),
             Function::Vstack => self.fn_vstack(args, cell),
+            Function::Take => self.fn_take(args, cell),
+            Function::Drop => self.fn_drop(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

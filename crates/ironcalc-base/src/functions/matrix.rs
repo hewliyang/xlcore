@@ -3,6 +3,31 @@ use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{calc_result::CalcResult, model::Model};
 
+fn take_range(arg: Option<i64>, len: usize) -> Vec<usize> {
+    let len = len as i64;
+    match arg {
+        None => (0..len as usize).collect(),
+        Some(n) if n == 0 => Vec::new(),
+        Some(n) if n > 0 => (0..n.min(len) as usize).collect(),
+        Some(n) => {
+            let start = (len + n).max(0);
+            (start as usize..len as usize).collect()
+        }
+    }
+}
+
+fn drop_range(arg: Option<i64>, len: usize) -> Vec<usize> {
+    let len = len as i64;
+    match arg {
+        None | Some(0) => (0..len as usize).collect(),
+        Some(n) if n > 0 => (n.min(len) as usize..len as usize).collect(),
+        Some(n) => {
+            let end = (len + n).max(0);
+            (0..end as usize).collect()
+        }
+    }
+}
+
 fn array_node_to_calc_result(node: &ArrayNode) -> CalcResult {
     match node {
         ArrayNode::Number(f) => CalcResult::Number(*f),
@@ -710,6 +735,92 @@ impl<'a> Model<'a> {
                 }
                 out.push(new_row);
             }
+        }
+        CalcResult::Array(out)
+    }
+
+    pub(crate) fn fn_take(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() < 2 || args.len() > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let grid = match self.read_array_arg(&args[0], cell) {
+            Ok(g) => g,
+            Err(e) => return e,
+        };
+        let n_rows = grid.len();
+        let n_cols = grid.iter().map(|r| r.len()).max().unwrap_or(0);
+        let rows_arg = match self.get_number(&args[1], cell) {
+            Ok(f) => Some(f.trunc() as i64),
+            Err(e) => return e,
+        };
+        let cols_arg = if args.len() == 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(f) => Some(f.trunc() as i64),
+                Err(e) => return e,
+            }
+        } else {
+            None
+        };
+        let row_range = take_range(rows_arg, n_rows);
+        let col_range = take_range(cols_arg, n_cols);
+        if row_range.is_empty() || col_range.is_empty() {
+            return CalcResult::new_error(Error::CALC, cell, "TAKE: empty result".to_string());
+        }
+        let mut out: Vec<Vec<ArrayNode>> = Vec::with_capacity(row_range.len());
+        for r in row_range {
+            let mut new_row = Vec::with_capacity(col_range.len());
+            for &c in &col_range {
+                new_row.push(
+                    grid.get(r)
+                        .and_then(|row| row.get(c))
+                        .cloned()
+                        .unwrap_or(ArrayNode::Error(Error::NA)),
+                );
+            }
+            out.push(new_row);
+        }
+        CalcResult::Array(out)
+    }
+
+    pub(crate) fn fn_drop(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() < 2 || args.len() > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let grid = match self.read_array_arg(&args[0], cell) {
+            Ok(g) => g,
+            Err(e) => return e,
+        };
+        let n_rows = grid.len();
+        let n_cols = grid.iter().map(|r| r.len()).max().unwrap_or(0);
+        let rows_arg = match self.get_number(&args[1], cell) {
+            Ok(f) => Some(f.trunc() as i64),
+            Err(e) => return e,
+        };
+        let cols_arg = if args.len() == 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(f) => Some(f.trunc() as i64),
+                Err(e) => return e,
+            }
+        } else {
+            None
+        };
+        let row_range = drop_range(rows_arg, n_rows);
+        let col_range = drop_range(cols_arg, n_cols);
+        if row_range.is_empty() || col_range.is_empty() {
+            return CalcResult::new_error(Error::CALC, cell, "DROP: empty result".to_string());
+        }
+        let mut out: Vec<Vec<ArrayNode>> = Vec::with_capacity(row_range.len());
+        for r in row_range {
+            let mut new_row = Vec::with_capacity(col_range.len());
+            for &c in &col_range {
+                new_row.push(
+                    grid.get(r)
+                        .and_then(|row| row.get(c))
+                        .cloned()
+                        .unwrap_or(ArrayNode::Error(Error::NA)),
+                );
+            }
+            out.push(new_row);
         }
         CalcResult::Array(out)
     }

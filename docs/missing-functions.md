@@ -98,7 +98,7 @@ backlog — work top to bottom, one item per agent:
 - [ ] **S3 — reference/intersection polish.** `A1#` spill operator;
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
-  High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, then TAKE/DROP,
+  High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, ~~TAKE~~/~~DROP~~,
   CHOOSECOLS/ROWS, TOCOL/TOROW, EXPAND, SORTBY, MMULT, MINVERSE, MUNIT, RANDARRAY,
   FREQUENCY, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
 
@@ -114,6 +114,13 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- take/drop (S4) — TAKE(array,rows,[columns])/DROP(array,rows,[columns]): read
+  array via shared read_array_arg into Vec<Vec<ArrayNode>>; rows/columns truncated
+  to int, positive keeps/drops from start (top/left), negative from end
+  (bottom/right). TAKE omitted rows/cols keeps all; abs>=len clamps to whole. DROP
+  omitted rows/cols drops none. rows=0/cols=0 in TAKE or DROP removing everything
+  => #CALC!. Returns CalcResult::Array (spills + round-trips); 2-3 args else
+  #ERROR!; _xlfn.
 - hstack/vstack (S4) — HSTACK(a,b,...)/VSTACK(a,b,...): each reads 1+ array/range
   args into Vec<Vec<ArrayNode>> via shared read_array_arg (transpose pattern;
   Range walks evaluate_cell, Array passthrough, Error propagates, scalar=>1x1).

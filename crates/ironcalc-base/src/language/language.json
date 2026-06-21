@@ -480,7 +480,9 @@
       "unique": "UNIQUE",
       "filter": "FILTER",
       "hstack": "HSTACK",
-      "vstack": "VSTACK"
+      "vstack": "VSTACK",
+      "take": "TAKE",
+      "drop": "DROP"
     }
   },
   "de": {
@@ -964,7 +966,9 @@
       "unique": "EINDEUTIG",
       "filter": "FILTER",
       "hstack": "HSTACK",
-      "vstack": "VSTACK"
+      "vstack": "VSTACK",
+      "take": "TAKE",
+      "drop": "DROP"
     }
   },
   "fr": {
@@ -1448,7 +1452,9 @@
         "unique": "UNIQUE",
         "filter": "FILTRE",
         "hstack": "HSTACK",
-        "vstack": "VSTACK"
+        "vstack": "VSTACK",
+      "take": "TAKE",
+      "drop": "DROP"
     }
   },
   "es": {
@@ -1932,7 +1938,9 @@
       "unique": "UNICOS",
       "filter": "FILTRAR",
       "hstack": "HSTACK",
-      "vstack": "VSTACK"
+      "vstack": "VSTACK",
+      "take": "TAKE",
+      "drop": "DROP"
     }
   }
 }
