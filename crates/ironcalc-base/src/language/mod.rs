@@ -424,6 +424,8 @@ pub struct Functions {
     pub intercept: String,
     pub slope: String,
     pub steyx: String,
+    pub forecast: String,
+    pub forecast_linear: String,
     pub gauss: String,
     pub harmean: String,
     pub kurt: String,

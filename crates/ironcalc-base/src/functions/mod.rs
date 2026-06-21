@@ -496,6 +496,8 @@ pub enum Function {
     Intercept,
     Slope,
     Steyx,
+    Forecast,
+    ForecastLinear,
 }
 
 macro_rules! impl_function_lookup {
@@ -968,6 +970,8 @@ impl_function_lookup! {
     intercept => Intercept,
     slope     => Slope,
     steyx     => Steyx,
+    forecast        => Forecast,
+    forecast_linear => ForecastLinear,
 }
 
 pub fn english_function_names() -> Vec<String> {
@@ -1405,9 +1409,11 @@ impl Function {
             Function::Intercept => functions.intercept.clone(),
             Function::Slope => functions.slope.clone(),
             Function::Steyx => functions.steyx.clone(),
+            Function::Forecast => functions.forecast.clone(),
+            Function::ForecastLinear => functions.forecast_linear.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 421> {
+    pub fn into_iter() -> IntoIter<Function, 423> {
         [
             Function::And,
             Function::False,
@@ -1818,6 +1824,8 @@ impl Function {
             Function::Intercept,
             Function::Slope,
             Function::Steyx,
+            Function::Forecast,
+            Function::ForecastLinear,
             Function::Large,
             Function::Median,
             Function::Small,
@@ -2004,6 +2012,7 @@ impl Function {
             Function::SkewP => "_xlfn.SKEW.P".to_string(),
             Function::RankAvg => "_xlfn.RANK.AVG".to_string(),
             Function::RankEq => "_xlfn.RANK.EQ".to_string(),
+            Function::ForecastLinear => "_xlfn.FORECAST.LINEAR".to_string(),
 
             _ => {
                 let language = get_default_language();
@@ -2434,6 +2443,8 @@ impl<'a> Model<'a> {
             Function::Intercept => self.fn_intercept(args, cell),
             Function::Slope => self.fn_slope(args, cell),
             Function::Steyx => self.fn_steyx(args, cell),
+            Function::Forecast => self.fn_forecast(args, cell),
+            Function::ForecastLinear => self.fn_forecast(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

@@ -54,6 +54,9 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- forecast — FORECAST/FORECAST.LINEAR (alias) linear regression a+b*x; b =
+  sum((xi-xbar)(yi-ybar))/sum((xi-xbar)^2), a = ybar-b*xbar; known_ys/known_xs
+  must be equal length & nonempty (#N/A else); xs variance 0 => #DIV/0!.
 - permut/prob/trimmean — PERMUT (n!/(n-k)!, trunc to int, #NUM! if n<0|k<0|k>n),
   PROB (sum of probs where lower<=x<=upper; upper omitted => x==lower; ranges must
   match length else #N/A; probs in [0,1] summing to ~1 else #NUM!), TRIMMEAN
