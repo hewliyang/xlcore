@@ -551,6 +551,7 @@ pub enum Function {
     Munit,
     Randarray,
     Frequency,
+    Textsplit,
 }
 
 macro_rules! impl_function_lookup {
@@ -1073,6 +1074,7 @@ impl_function_lookup! {
     sortby          => Sortby,
     randarray       => Randarray,
     frequency       => Frequency,
+    textsplit       => Textsplit,
     mmult           => Mmult,
     minverse        => Minverse,
     munit           => Munit,
@@ -1566,9 +1568,10 @@ impl Function {
             Function::Munit => functions.munit.clone(),
             Function::Randarray => functions.randarray.clone(),
             Function::Frequency => functions.frequency.clone(),
+            Function::Textsplit => functions.textsplit.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 474> {
+    pub fn into_iter() -> IntoIter<Function, 475> {
         [
             Function::And,
             Function::False,
@@ -2044,6 +2047,7 @@ impl Function {
             Function::Munit,
             Function::Randarray,
             Function::Frequency,
+            Function::Textsplit,
         ]
         .into_iter()
     }
@@ -2107,6 +2111,7 @@ impl Function {
             Function::Munit => "_xlfn.MUNIT".to_string(),
             Function::Randarray => "_xlfn.RANDARRAY".to_string(),
             Function::Frequency => "FREQUENCY".to_string(),
+            Function::Textsplit => "_xlfn.TEXTSPLIT".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2725,6 +2730,7 @@ impl<'a> Model<'a> {
             Function::Munit => self.fn_munit(args, cell),
             Function::Randarray => self.fn_randarray(args, cell),
             Function::Frequency => self.fn_frequency(args, cell),
+            Function::Textsplit => self.fn_textsplit(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

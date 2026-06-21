@@ -100,7 +100,7 @@ backlog — work top to bottom, one item per agent:
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
   High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, ~~TAKE~~/~~DROP~~,
   ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, ~~SORTBY~~, ~~MMULT~~, ~~MINVERSE~~, ~~MUNIT~~, ~~RANDARRAY~~,
-  ~~FREQUENCY~~, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
+  ~~FREQUENCY~~, MODE.MULT, SEQUENCE, ~~TEXTSPLIT~~, LINEST/LOGEST/TREND/GROWTH.
 
 Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
 live on the anchor cell as `<f t="array" ref=...>` + `cm` → `xl/metadata.xml`
@@ -114,6 +114,16 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- textsplit (S4) — TEXTSPLIT(text,col_delimiter,[row_delimiter],[ignore_empty],
+  [match_mode],[pad_with]): row_delimiter splits text into ROWS (whole text = 1 row
+  if omitted), col_delimiter splits each row into COLUMNS. Each delimiter arg is a
+  single string or a range/array of strings (split on ANY of them, via split_on_any,
+  empty delimiter strings dropped); col_delimiter required and non-empty else
+  #VALUE!. ignore_empty (default FALSE) drops empty fields from consecutive
+  delimiters and fully-empty rows; match_mode 0 case-sensitive (default) / 1
+  case-insensitive (else #VALUE!). Short rows padded to max column count with
+  pad_with (default #N/A). Fields kept as ArrayNode::String (no numeric coercion).
+  Returns CalcResult::Array (spills + round-trips); 2-6 args else #ERROR!; _xlfn.
 - frequency (S4) — FREQUENCY(data_array,bins_array): counts data values per bin,
   returns a COLUMN array of length bins+1. data/bins read via read_array_arg,
   flattened ignoring non-numeric cells; bins sorted ascending + deduped for

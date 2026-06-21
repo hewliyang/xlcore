@@ -16,6 +16,47 @@ use super::{
     util::from_wildcard_to_regex,
 };
 
+fn split_on_any(text: &str, delimiters: &[String], case_insensitive: bool) -> Vec<String> {
+    let mut result = Vec::new();
+    let chars: Vec<char> = text.chars().collect();
+    let hay: Vec<char> = if case_insensitive {
+        text.to_lowercase().chars().collect()
+    } else {
+        chars.clone()
+    };
+    let needles: Vec<Vec<char>> = delimiters
+        .iter()
+        .map(|d| {
+            if case_insensitive {
+                d.to_lowercase().chars().collect()
+            } else {
+                d.chars().collect()
+            }
+        })
+        .collect();
+    let mut start = 0;
+    let mut i = 0;
+    while i < chars.len() {
+        let mut matched = None;
+        for needle in &needles {
+            let n = needle.len();
+            if n > 0 && i + n <= hay.len() && hay[i..i + n] == needle[..] {
+                matched = Some(n);
+                break;
+            }
+        }
+        if let Some(n) = matched {
+            result.push(chars[start..i].iter().collect());
+            i += n;
+            start = i;
+        } else {
+            i += 1;
+        }
+    }
+    result.push(chars[start..].iter().collect());
+    result
+}
+
 fn array_to_text_value(value: &CalcResult, strict: bool) -> String {
     match value {
         CalcResult::Number(f) => format!("{f}"),
@@ -1414,6 +1455,151 @@ impl<'a> Model<'a> {
         }
         let result = values.join(&delimiter);
         CalcResult::String(result)
+    }
+
+    fn read_delimiters(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<String>, CalcResult> {
+        let result = self.evaluate_node_in_context(node, cell);
+        match result {
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    ));
+                }
+                let mut out = Vec::new();
+                for row in left.row..=right.row {
+                    for column in left.column..=right.column {
+                        let value = self.evaluate_cell(CellReferenceIndex {
+                            sheet: left.sheet,
+                            row,
+                            column,
+                        });
+                        match self.cast_to_string(value, cell) {
+                            Ok(s) => out.push(s),
+                            Err(e) => return Err(e),
+                        }
+                    }
+                }
+                Ok(out)
+            }
+            CalcResult::Array(array) => {
+                let mut out = Vec::new();
+                for row in array {
+                    for node in row {
+                        match node {
+                            ArrayNode::String(s) => out.push(s),
+                            ArrayNode::Number(f) => out.push(format!("{f}")),
+                            ArrayNode::Boolean(b) => {
+                                out.push(if b { "TRUE".to_string() } else { "FALSE".to_string() })
+                            }
+                            ArrayNode::Error(error) => {
+                                return Err(CalcResult::new_error(error, cell, "".to_string()))
+                            }
+                        }
+                    }
+                }
+                Ok(out)
+            }
+            error @ CalcResult::Error { .. } => Err(error),
+            other => match self.cast_to_string(other, cell) {
+                Ok(s) => Ok(vec![s]),
+                Err(e) => Err(e),
+            },
+        }
+    }
+
+    // TEXTSPLIT(text, col_delimiter, [row_delimiter], [ignore_empty], [match_mode], [pad_with])
+    pub(crate) fn fn_textsplit(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(2..=6).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let text = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(error) => return error,
+        };
+        let col_delimiters = match self.read_delimiters(&args[1], cell) {
+            Ok(d) => d,
+            Err(error) => return error,
+        };
+        let col_delimiters: Vec<String> =
+            col_delimiters.into_iter().filter(|d| !d.is_empty()).collect();
+        if col_delimiters.is_empty() {
+            return CalcResult::new_error(Error::VALUE, cell, "Missing delimiter".to_string());
+        }
+        let row_delimiters: Vec<String> = if arg_count >= 3 {
+            match self.read_delimiters(&args[2], cell) {
+                Ok(d) => d.into_iter().filter(|d| !d.is_empty()).collect(),
+                Err(error) => return error,
+            }
+        } else {
+            Vec::new()
+        };
+        let ignore_empty = if arg_count >= 4 {
+            match self.get_boolean(&args[3], cell) {
+                Ok(b) => b,
+                Err(error) => return error,
+            }
+        } else {
+            false
+        };
+        let match_mode = if arg_count >= 5 {
+            match self.get_number(&args[4], cell) {
+                Ok(n) => n.trunc() as i64,
+                Err(error) => return error,
+            }
+        } else {
+            0
+        };
+        if match_mode != 0 && match_mode != 1 {
+            return CalcResult::new_error(Error::VALUE, cell, "Invalid match_mode".to_string());
+        }
+        let pad_with = if arg_count >= 6 {
+            let value = self.evaluate_node_in_context(&args[5], cell);
+            match value {
+                CalcResult::Number(f) => ArrayNode::Number(f),
+                CalcResult::String(s) => ArrayNode::String(s),
+                CalcResult::Boolean(b) => ArrayNode::Boolean(b),
+                CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::String(String::new()),
+                CalcResult::Error { error, .. } => ArrayNode::Error(error),
+                _ => ArrayNode::Error(Error::VALUE),
+            }
+        } else {
+            ArrayNode::Error(Error::NA)
+        };
+        let case_insensitive = match_mode == 1;
+        let row_texts: Vec<String> = if row_delimiters.is_empty() {
+            vec![text]
+        } else {
+            split_on_any(&text, &row_delimiters, case_insensitive)
+        };
+        let mut rows: Vec<Vec<ArrayNode>> = Vec::new();
+        for row_text in row_texts {
+            let mut fields = split_on_any(&row_text, &col_delimiters, case_insensitive);
+            if ignore_empty {
+                fields.retain(|f| !f.is_empty());
+            }
+            if ignore_empty && fields.is_empty() {
+                continue;
+            }
+            rows.push(fields.into_iter().map(ArrayNode::String).collect());
+        }
+        if rows.is_empty() {
+            rows.push(vec![ArrayNode::String(String::new())]);
+        }
+        let max_cols = rows.iter().map(|r| r.len()).max().unwrap_or(1).max(1);
+        for row in &mut rows {
+            while row.len() < max_cols {
+                row.push(pad_with.clone());
+            }
+        }
+        CalcResult::Array(rows)
     }
 
     // SUBSTITUTE(text, old_text, new_text, [instance_num])

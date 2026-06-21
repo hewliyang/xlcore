@@ -493,7 +493,8 @@
       "minverse": "MINVERSE",
       "munit": "MUNIT",
       "randarray": "RANDARRAY",
-      "frequency": "FREQUENCY"
+      "frequency": "FREQUENCY",
+      "textsplit": "TEXTSPLIT"
     }
   },
   "de": {
@@ -990,7 +991,8 @@
       "minverse": "MINVERSE",
       "munit": "MUNIT",
       "randarray": "RANDARRAY",
-      "frequency": "FREQUENCY"
+      "frequency": "FREQUENCY",
+      "textsplit": "TEXTSPLIT"
     }
   },
   "fr": {
@@ -1487,7 +1489,8 @@
       "minverse": "MINVERSE",
       "munit": "MUNIT",
       "randarray": "RANDARRAY",
-      "frequency": "FREQUENCY"
+      "frequency": "FREQUENCY",
+      "textsplit": "TEXTSPLIT"
     }
   },
   "es": {
@@ -1984,7 +1987,8 @@
       "minverse": "MINVERSE",
       "munit": "MUNIT",
       "randarray": "RANDARRAY",
-      "frequency": "FREQUENCY"
+      "frequency": "FREQUENCY",
+      "textsplit": "TEXTSPLIT"
     }
   }
 }

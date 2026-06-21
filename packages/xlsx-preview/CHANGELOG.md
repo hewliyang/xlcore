@@ -17,6 +17,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- TEXTSPLIT(text, col_delimiter, [row_delimiter], [ignore_empty], [match_mode], [pad_with]) dynamic-array function: splits text into a 2-D array by column/row delimiters (any of multiple), with ignore_empty, case-insensitive match_mode, and pad_with for ragged rows; spills and round-trips.
 - FREQUENCY(data_array, bins_array) dynamic-array function: counts data values into bins, returns a column of bins+1 counts; spills and round-trips.
 - RANDARRAY([rows],[columns],[min],[max],[whole_number]) dynamic-array function: grid of random reals or whole numbers; spills and round-trips.
 - MMULT/MINVERSE/MUNIT matrix functions return arrays: matrix product, inverse (Gauss-Jordan, `#NUM!` if singular), and the n×n identity; spill and round-trip.
