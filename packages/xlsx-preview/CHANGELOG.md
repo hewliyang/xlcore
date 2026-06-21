@@ -19,6 +19,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - MODE.MULT(number1,[number2],...) dynamic-array function: returns a vertical array of all the most-frequently-occurring values (`#N/A` if none repeat); spills and round-trips.
 - LINEST/TREND linear-regression dynamic-array functions: ordinary least squares (single or multiple predictors, optional intercept); LINEST returns coefficients or the 5-row stats array, TREND predicts new x values; both spill and round-trip.
+- LOGEST/GROWTH exponential-regression dynamic-array functions: fit y=b·m1^x1·… via OLS on ln(y) (known_ys must be positive); LOGEST returns exponentiated coefficients or the 5-row stats array, GROWTH predicts new x values; both spill and round-trip.
 - TEXTSPLIT(text, col_delimiter, [row_delimiter], [ignore_empty], [match_mode], [pad_with]) dynamic-array function: splits text into a 2-D array by column/row delimiters (any of multiple), with ignore_empty, case-insensitive match_mode, and pad_with for ragged rows; spills and round-trips.
 - FREQUENCY(data_array, bins_array) dynamic-array function: counts data values into bins, returns a column of bins+1 counts; spills and round-trips.
 - RANDARRAY([rows],[columns],[min],[max],[whole_number]) dynamic-array function: grid of random reals or whole numbers; spills and round-trips.

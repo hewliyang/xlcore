@@ -100,7 +100,8 @@ backlog — work top to bottom, one item per agent:
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
   High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, ~~TAKE~~/~~DROP~~,
   ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, ~~SORTBY~~, ~~MMULT~~, ~~MINVERSE~~, ~~MUNIT~~, ~~RANDARRAY~~,
-  ~~FREQUENCY~~, ~~MODE.MULT~~, SEQUENCE, ~~TEXTSPLIT~~, ~~LINEST~~/LOGEST/~~TREND~~/GROWTH.
+  ~~FREQUENCY~~, ~~MODE.MULT~~, SEQUENCE, ~~TEXTSPLIT~~, ~~LINEST~~/~~LOGEST~~/~~TREND~~/~~GROWTH~~.
+  All S4 high-value rollout items now struck (shipped).
 
 Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
 live on the anchor cell as `<f t="array" ref=...>` + `cm` → `xl/metadata.xml`
@@ -114,6 +115,14 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- logest/growth (S4) — exponential analogues of LINEST/TREND for y=b*m1^x1*...
+  via shared ols_fit on ln(known_ys) (all known_ys must be >0 else #NUM!). LOGEST
+  returns LINEST shape with coefficients exponentiated (row0 m_i=exp(coef),
+  b=exp(intercept)); stats=TRUE keeps the ln-fit regression stats unexponentiated
+  (standard errors of linear coeffs, r^2, sey, F, df, ss_reg, ss_resid). GROWTH
+  fits the ln model and predicts exp(linear_prediction) for new_xs (omitted =>
+  known xs), output shaped to new_xs orientation. CalcResult::Array; 1-4 args else
+  #ERROR!; legacy (plain name, no _xlfn).
 - linest/trend (S4) — LINEST(known_ys,[known_xs],[const],[stats]) /
   TREND(known_ys,[known_xs],[new_xs],[const]) via shared ordinary-least-squares
   ols_fit (normal equations (X^T X)beta = X^T y, X^T X inverted with the matrix.rs

@@ -1908,4 +1908,182 @@ impl<'a> Model<'a> {
             CalcResult::Array(preds.into_iter().map(|p| vec![ArrayNode::Number(p)]).collect())
         }
     }
+
+    pub(crate) fn fn_logest(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 4 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let (ys, xs) = match self.read_regression_inputs(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let mut ln_ys = Vec::with_capacity(ys.len());
+        for y in &ys {
+            if *y <= 0.0 {
+                return CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "LOGEST: known_ys must be positive".to_string(),
+                );
+            }
+            ln_ys.push(y.ln());
+        }
+        let with_const = if args.len() >= 3
+            && !matches!(
+                self.evaluate_node_in_context(&args[2], cell),
+                CalcResult::EmptyCell | CalcResult::EmptyArg
+            ) {
+            match self.get_boolean(&args[2], cell) {
+                Ok(b) => b,
+                Err(e) => return e,
+            }
+        } else {
+            true
+        };
+        let stats = if args.len() >= 4
+            && !matches!(
+                self.evaluate_node_in_context(&args[3], cell),
+                CalcResult::EmptyCell | CalcResult::EmptyArg
+            ) {
+            match self.get_boolean(&args[3], cell) {
+                Ok(b) => b,
+                Err(e) => return e,
+            }
+        } else {
+            false
+        };
+        let fit = match ols_fit(&ln_ys, &xs, with_const) {
+            Some(f) => f,
+            None => {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "LOGEST: cannot fit model".to_string(),
+                )
+            }
+        };
+        let k = fit.coeffs.len();
+        let width = k + 1;
+        let mut row0: Vec<ArrayNode> = Vec::with_capacity(width);
+        for j in (0..k).rev() {
+            row0.push(ArrayNode::Number(fit.coeffs[j].exp()));
+        }
+        row0.push(ArrayNode::Number(fit.intercept.exp()));
+        if !stats {
+            return CalcResult::Array(vec![row0]);
+        }
+        let mut row1: Vec<ArrayNode> = Vec::with_capacity(width);
+        for j in (0..k).rev() {
+            row1.push(ArrayNode::Number(fit.se_coeffs[j]));
+        }
+        row1.push(ArrayNode::Number(fit.se_intercept));
+        let pad = |first: f64, second: f64| -> Vec<ArrayNode> {
+            let mut row = vec![ArrayNode::Number(first), ArrayNode::Number(second)];
+            while row.len() < width {
+                row.push(ArrayNode::Error(Error::NA));
+            }
+            row
+        };
+        let row2 = pad(fit.r2, fit.sey);
+        let row3 = pad(fit.f, fit.df);
+        let row4 = pad(fit.ss_reg, fit.ss_resid);
+        CalcResult::Array(vec![row0, row1, row2, row3, row4])
+    }
+
+    pub(crate) fn fn_growth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 4 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let (ys, xs) = match self.read_regression_inputs(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let mut ln_ys = Vec::with_capacity(ys.len());
+        for y in &ys {
+            if *y <= 0.0 {
+                return CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "GROWTH: known_ys must be positive".to_string(),
+                );
+            }
+            ln_ys.push(y.ln());
+        }
+        let with_const = if args.len() >= 4
+            && !matches!(
+                self.evaluate_node_in_context(&args[3], cell),
+                CalcResult::EmptyCell | CalcResult::EmptyArg
+            ) {
+            match self.get_boolean(&args[3], cell) {
+                Ok(b) => b,
+                Err(e) => return e,
+            }
+        } else {
+            true
+        };
+        let fit = match ols_fit(&ln_ys, &xs, with_const) {
+            Some(f) => f,
+            None => {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "GROWTH: cannot fit model".to_string(),
+                )
+            }
+        };
+        let k = fit.coeffs.len();
+        let new_present = args.len() >= 3
+            && !matches!(
+                self.evaluate_node_in_context(&args[2], cell),
+                CalcResult::EmptyCell | CalcResult::EmptyArg
+            );
+        let (new_xs, as_row) = if new_present {
+            let grid = match self.read_array_arg(&args[2], cell) {
+                Ok(g) => g,
+                Err(e) => return e,
+            };
+            let nums = match grid_to_numbers(&grid) {
+                Some(v) => v,
+                None => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "new_xs must be numeric".to_string(),
+                    )
+                }
+            };
+            match normalize_by_predictors(&nums, k) {
+                Some(v) => v,
+                None => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "new_xs predictor mismatch".to_string(),
+                    )
+                }
+            }
+        } else {
+            (xs.clone(), false)
+        };
+        let mut preds: Vec<f64> = Vec::with_capacity(new_xs.len());
+        for row in &new_xs {
+            if row.len() != k {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "new_xs predictor mismatch".to_string(),
+                );
+            }
+            let mut yhat = fit.intercept;
+            for (j, v) in row.iter().enumerate() {
+                yhat += fit.coeffs[j] * v;
+            }
+            preds.push(yhat.exp());
+        }
+        if as_row {
+            CalcResult::Array(vec![preds.into_iter().map(ArrayNode::Number).collect()])
+        } else {
+            CalcResult::Array(preds.into_iter().map(|p| vec![ArrayNode::Number(p)]).collect())
+        }
+    }
 }

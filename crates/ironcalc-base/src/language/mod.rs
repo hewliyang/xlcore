@@ -503,6 +503,8 @@ pub struct Functions {
     pub modemult: String,
     pub linest: String,
     pub trend: String,
+    pub logest: String,
+    pub growth: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

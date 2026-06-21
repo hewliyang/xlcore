@@ -497,7 +497,9 @@
       "textsplit": "TEXTSPLIT",
       "modemult": "MODE.MULT",
       "linest": "LINEST",
-      "trend": "TREND"
+      "trend": "TREND",
+      "logest": "LOGEST",
+      "growth": "GROWTH"
     }
   },
   "de": {
@@ -998,7 +1000,9 @@
       "textsplit": "TEXTSPLIT",
       "modemult": "MODE.MULT",
       "linest": "LINEST",
-      "trend": "TREND"
+      "trend": "TREND",
+      "logest": "LOGEST",
+      "growth": "GROWTH"
     }
   },
   "fr": {
@@ -1499,7 +1503,9 @@
       "textsplit": "TEXTSPLIT",
       "modemult": "MODE.MULT",
       "linest": "LINEST",
-      "trend": "TREND"
+      "trend": "TREND",
+      "logest": "LOGEST",
+      "growth": "GROWTH"
     }
   },
   "es": {
@@ -2000,7 +2006,9 @@
       "textsplit": "TEXTSPLIT",
       "modemult": "MODE.MULT",
       "linest": "LINEST",
-      "trend": "TREND"
+      "trend": "TREND",
+      "logest": "LOGEST",
+      "growth": "GROWTH"
     }
   }
 }

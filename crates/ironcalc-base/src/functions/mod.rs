@@ -555,6 +555,8 @@ pub enum Function {
     ModeMult,
     Linest,
     Trend,
+    Logest,
+    Growth,
 }
 
 macro_rules! impl_function_lookup {
@@ -1081,6 +1083,8 @@ impl_function_lookup! {
     modemult        => ModeMult,
     linest          => Linest,
     trend           => Trend,
+    logest          => Logest,
+    growth          => Growth,
     mmult           => Mmult,
     minverse        => Minverse,
     munit           => Munit,
@@ -1578,9 +1582,11 @@ impl Function {
             Function::ModeMult => functions.modemult.clone(),
             Function::Linest => functions.linest.clone(),
             Function::Trend => functions.trend.clone(),
+            Function::Logest => functions.logest.clone(),
+            Function::Growth => functions.growth.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 478> {
+    pub fn into_iter() -> IntoIter<Function, 480> {
         [
             Function::And,
             Function::False,
@@ -2060,6 +2066,8 @@ impl Function {
             Function::ModeMult,
             Function::Linest,
             Function::Trend,
+            Function::Logest,
+            Function::Growth,
         ]
         .into_iter()
     }
@@ -2127,6 +2135,8 @@ impl Function {
             Function::ModeMult => "_xlfn.MODE.MULT".to_string(),
             Function::Linest => "LINEST".to_string(),
             Function::Trend => "TREND".to_string(),
+            Function::Logest => "LOGEST".to_string(),
+            Function::Growth => "GROWTH".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2749,6 +2759,8 @@ impl<'a> Model<'a> {
             Function::ModeMult => self.fn_mode_mult(args, cell),
             Function::Linest => self.fn_linest(args, cell),
             Function::Trend => self.fn_trend(args, cell),
+            Function::Logest => self.fn_logest(args, cell),
+            Function::Growth => self.fn_growth(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),
