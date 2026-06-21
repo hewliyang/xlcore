@@ -83,12 +83,9 @@ backlog — work top to bottom, one item per agent:
   `match cell` site (behaves like a cached formula cell), keep bitcode
   serialization + all tests green. No behavior. (xlcore-types/CellInfo surfacing
   folded into S2 where it's exercised.)
-- [ ] **S2a — in-memory spill (calc engine only).** At the `CalcResult::Array`
-  write path (model.rs:684): anchor cell becomes `CellFormulaArray` with its spill
-  `ref`; spill the rectangular block of values into neighbouring `sheet_data`
-  cells; `#SPILL!` if any target is non-empty; other formulas can read the
-  spilled cells. Scope to NUMERIC arrays first (cached `v` is f64 today — S1
-  gotcha). Pilot fn: TRANSPOSE. Verify with a Rust test in ironcalc-base.
+- [x] **S2a — in-memory spill (calc engine only).** Pilot fn: TRANSPOSE. See
+  Shipped. Numeric arrays fully cached; non-numeric neighbours spill but the
+  anchor caches numeric top-left only. No xlsx yet (S2b).
 - [ ] **S2b — xlsx round-trip persistence.** Read `<f t="array" ref=...>` (+ `cm`
   → `xl/metadata.xml`); write anchor + metadata part + cached `<v>` per spilled
   cell; surface spill range on `xlcore-types::CellInfo`. Verify: build .xlsx →
@@ -110,6 +107,20 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- transpose + in-memory spill (S2a) — TRANSPOSE(array): reads the single
+  range/array arg row-major and returns CalcResult::Array transposed (rows<->cols);
+  non-numeric cells pass through as their ArrayNode. Spill mechanism: model.rs
+  set_cell_value's `CalcResult::Array` arm now spills instead of #N/IMPL — anchor
+  (formula cell) becomes `Cell::CellFormulaArray { f, v: numeric top-left, s, range
+  "A1:C3" }`, rectangular block spills into neighbour `sheet_data` cells
+  (NumberCell/BooleanCell/ErrorCell/SharedString), `#SPILL!` (CellFormulaError,
+  Error::SPILL) if any non-anchor target is non-empty. Spilled neighbours are
+  readable by other formulas; `Model::spill_owners` maps spilled cell->anchor,
+  rebuilt each `evaluate()` to clear stale spills (idempotent, no false #SPILL!)
+  and to force anchor eval when a spilled cell is read out of order. Scope: numeric
+  arrays are the supported path (cached `v` is f64 — anchor caches numeric top-left
+  only); non-numeric neighbours spill but anchor display is numeric; calc-engine
+  only, no xlsx round-trip (S2b). _xlfn.
 - arraytotext — ARRAYTOTEXT(array,[format]): always one string; walks range/array
   row-major; format 0 (default) concise joins all values with `, `; format 1
   strict wraps in `{...}`, cols `,` rows `;`, strings double-quoted, numbers as

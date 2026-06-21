@@ -32,6 +32,7 @@ mod test_fn_forecast;
 mod test_fn_mdeterm;
 mod test_fn_aggregate;
 mod test_fn_arraytotext;
+mod test_fn_transpose;
 mod test_fn_bahttext;
 mod test_fn_percentile;
 mod test_fn_prob;

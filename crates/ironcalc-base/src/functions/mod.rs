@@ -531,6 +531,7 @@ pub enum Function {
     Aggregate,
     Bahttext,
     Arraytotext,
+    Transpose,
 }
 
 macro_rules! impl_function_lookup {
@@ -1036,6 +1037,7 @@ impl_function_lookup! {
     aggregate       => Aggregate,
     bahttext        => Bahttext,
     arraytotext     => Arraytotext,
+    transpose       => Transpose,
 }
 
 pub fn english_function_names() -> Vec<String> {
@@ -1506,9 +1508,10 @@ impl Function {
             Function::Aggregate => functions.aggregate.clone(),
             Function::Bahttext => functions.bahttext.clone(),
             Function::Arraytotext => functions.arraytotext.clone(),
+            Function::Transpose => functions.transpose.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 454> {
+    pub fn into_iter() -> IntoIter<Function, 455> {
         [
             Function::And,
             Function::False,
@@ -1964,6 +1967,7 @@ impl Function {
             Function::MinA,
             Function::Bahttext,
             Function::Arraytotext,
+            Function::Transpose,
         ]
         .into_iter()
     }
@@ -2009,6 +2013,7 @@ impl Function {
             Function::ErfPrecise => "_xlfn.ERF.PRECISE".to_string(),
             Function::Valuetotext => "_xlfn.VALUETOTEXT".to_string(),
             Function::Arraytotext => "_xlfn.ARRAYTOTEXT".to_string(),
+            Function::Transpose => "_xlfn.TRANSPOSE".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2607,6 +2612,7 @@ impl<'a> Model<'a> {
             Function::Aggregate => self.fn_aggregate(args, cell),
             Function::Bahttext => self.fn_bahttext(args, cell),
             Function::Arraytotext => self.fn_arraytotext(args, cell),
+            Function::Transpose => self.fn_transpose(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

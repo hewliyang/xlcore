@@ -479,6 +479,7 @@ pub struct Functions {
     pub hyperlink: String,
     pub bahttext: String,
     pub arraytotext: String,
+    pub transpose: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

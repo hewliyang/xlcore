@@ -473,7 +473,8 @@
       "trimmean": "TRIMMEAN",
       "hyperlink": "HYPERLINK",
       "bahttext": "BAHTTEXT",
-      "arraytotext": "ARRAYTOTEXT"
+      "arraytotext": "ARRAYTOTEXT",
+      "transpose": "TRANSPOSE"
     }
   },
   "de": {
@@ -950,7 +951,8 @@
       "trimmean": "GESTUTZTMITTEL",
       "hyperlink": "HYPERLINK",
       "bahttext": "BAHTTEXT",
-      "arraytotext": "MATRICEENTEXTE"
+      "arraytotext": "MATRICEENTEXTE",
+      "transpose": "MTRANS"
     }
   },
   "fr": {
@@ -1427,7 +1429,8 @@
         "trimmean": "MOYENNE.REDUITE",
         "hyperlink": "LIEN_HYPERTEXTE",
         "bahttext": "BAHTTEXT",
-        "arraytotext": "MATRICEENTEXTE"
+        "arraytotext": "MATRICEENTEXTE",
+        "transpose": "TRANSPOSE"
     }
   },
   "es": {
@@ -1904,7 +1907,8 @@
       "trimmean": "MEDIA.ACOTADA",
       "hyperlink": "HIPERVINCULO",
       "bahttext": "TEXTOBAHT",
-      "arraytotext": "MATRIZATEXTO"
+      "arraytotext": "MATRIZATEXTO",
+      "transpose": "TRANSPONER"
     }
   }
 }

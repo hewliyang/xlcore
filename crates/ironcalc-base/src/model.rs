@@ -12,7 +12,7 @@ use crate::{
         parser::{
             move_formula::{move_formula, MoveContext},
             stringify::{rename_defined_name_in_node, to_localized_string, to_rc_format},
-            Node, Parser,
+            ArrayNode, Node, Parser,
         },
         token::{get_error_by_name, Error, OpCompare, OpProduct, OpSum, OpUnary},
         types::*,
@@ -136,6 +136,10 @@ pub struct Model<'a> {
     pub(crate) tz: Tz,
     /// The view id. A view consists of a selected sheet and ranges.
     pub(crate) view_id: u32,
+    /// Maps each spilled (non-anchor) cell to its dynamic-array anchor cell.
+    /// Rebuilt every `evaluate()`; used to clear stale spills and force anchor
+    /// evaluation when a spilled cell is read.
+    pub(crate) spill_owners: HashMap<(u32, i32, i32), (u32, i32, i32)>,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -681,19 +685,161 @@ impl<'a> Model<'a> {
                         .get_mut(&column)
                         .expect("expected a column") = Cell::CellFormulaNumber { f, s, v: 0.0 };
                 }
-                CalcResult::Array(_) => {
+                CalcResult::Array(array) => {
+                    self.spill_array(cell_reference, f, s, array);
+                }
+            }
+        }
+    }
+
+    fn spill_array(
+        &mut self,
+        anchor: CellReferenceIndex,
+        f: i32,
+        s: i32,
+        array: &[Vec<ArrayNode>],
+    ) {
+        let sheet = anchor.sheet;
+        let top = anchor.row;
+        let left = anchor.column;
+        let n_rows = array.len() as i32;
+        let n_cols = array.iter().map(|r| r.len()).max().unwrap_or(0) as i32;
+        if n_rows == 0 || n_cols == 0 {
+            *self.workbook.worksheets[sheet as usize]
+                .sheet_data
+                .get_mut(&top)
+                .expect("expected a row")
+                .get_mut(&left)
+                .expect("expected a column") = Cell::CellFormulaError {
+                f,
+                s,
+                o: "".to_string(),
+                m: "Empty array".to_string(),
+                ei: Error::CALC,
+            };
+            return;
+        }
+        let bottom = top + n_rows - 1;
+        let right = left + n_cols - 1;
+
+        for r in top..=bottom {
+            for c in left..=right {
+                if r == top && c == left {
+                    continue;
+                }
+                let occupied = match self.workbook.worksheets[sheet as usize].cell(r, c) {
+                    Some(cell) => !matches!(cell, Cell::EmptyCell { .. }),
+                    None => false,
+                };
+                if occupied {
+                    let o = self
+                        .cell_reference_to_string(&anchor)
+                        .unwrap_or_default();
                     *self.workbook.worksheets[sheet as usize]
                         .sheet_data
-                        .get_mut(&row)
+                        .get_mut(&top)
                         .expect("expected a row")
-                        .get_mut(&column)
+                        .get_mut(&left)
                         .expect("expected a column") = Cell::CellFormulaError {
                         f,
                         s,
-                        o: "".to_string(),
-                        m: "Arrays not supported yet".to_string(),
-                        ei: Error::NIMPL,
+                        o,
+                        m: "Spill range is not empty".to_string(),
+                        ei: Error::SPILL,
                     };
+                    return;
+                }
+            }
+        }
+
+        let range = match (
+            utils::number_to_column(left),
+            utils::number_to_column(right),
+        ) {
+            (Some(lc), Some(rc)) => format!("{lc}{top}:{rc}{bottom}"),
+            _ => String::new(),
+        };
+        let top_left_v = match array[0].first() {
+            Some(ArrayNode::Number(v)) => *v,
+            _ => 0.0,
+        };
+        *self.workbook.worksheets[sheet as usize]
+            .sheet_data
+            .get_mut(&top)
+            .expect("expected a row")
+            .get_mut(&left)
+            .expect("expected a column") = Cell::CellFormulaArray {
+            f,
+            v: top_left_v,
+            s,
+            range,
+        };
+
+        for (dr, row_vals) in array.iter().enumerate() {
+            for (dc, node) in row_vals.iter().enumerate() {
+                let r = top + dr as i32;
+                let c = left + dc as i32;
+                if r == top && c == left {
+                    continue;
+                }
+                self.spill_owners.insert((sheet, r, c), (sheet, top, left));
+                match node {
+                    ArrayNode::Number(v) => {
+                        let _ = self.workbook.worksheets[sheet as usize]
+                            .set_cell_with_number(r, c, *v, 0);
+                    }
+                    ArrayNode::Boolean(b) => {
+                        let _ = self.workbook.worksheets[sheet as usize]
+                            .set_cell_with_boolean(r, c, *b, 0);
+                    }
+                    ArrayNode::Error(e) => {
+                        let _ = self.workbook.worksheets[sheet as usize]
+                            .set_cell_with_error(r, c, e.clone(), 0);
+                    }
+                    ArrayNode::String(st) => {
+                        let _ = self.set_cell_with_string(sheet, r, c, st, 0);
+                    }
+                }
+            }
+        }
+    }
+
+    fn reset_spilled_cells(&mut self) {
+        self.spill_owners.clear();
+        let mut anchors: Vec<(u32, i32, i32, String)> = Vec::new();
+        for (idx, sheet) in self.workbook.worksheets.iter().enumerate() {
+            for (row, row_data) in &sheet.sheet_data {
+                for (col, cell) in row_data {
+                    if let Cell::CellFormulaArray { range, .. } = cell {
+                        anchors.push((idx as u32, *row, *col, range.clone()));
+                    }
+                }
+            }
+        }
+        for (sheet, arow, acol, range) in anchors {
+            let (start, end) = match range.split_once(':') {
+                Some((a, b)) => (a, b),
+                None => continue,
+            };
+            let tl = match utils::parse_reference_a1(start) {
+                Some(r) => r,
+                None => continue,
+            };
+            let br = match utils::parse_reference_a1(end) {
+                Some(r) => r,
+                None => continue,
+            };
+            for r in tl.row..=br.row {
+                for c in tl.column..=br.column {
+                    if r == arow && c == acol {
+                        continue;
+                    }
+                    self.spill_owners.insert((sheet, r, c), (sheet, arow, acol));
+                    if let Some(row_data) =
+                        self.workbook.worksheets[sheet as usize].sheet_data.get_mut(&r)
+                    {
+                        row_data.remove(&c);
+                    }
                 }
             }
         }
@@ -800,6 +946,20 @@ impl<'a> Model<'a> {
     }
 
     pub(crate) fn evaluate_cell(&mut self, cell_reference: CellReferenceIndex) -> CalcResult {
+        let target = (
+            cell_reference.sheet,
+            cell_reference.row,
+            cell_reference.column,
+        );
+        if let Some(&anchor) = self.spill_owners.get(&target) {
+            if anchor != target && self.cells.get(&anchor).is_none() {
+                self.evaluate_cell(CellReferenceIndex {
+                    sheet: anchor.0,
+                    row: anchor.1,
+                    column: anchor.2,
+                });
+            }
+        }
         let row_data = match self.workbook.worksheets[cell_reference.sheet as usize]
             .sheet_data
             .get(&cell_reference.row)
@@ -956,6 +1116,7 @@ impl<'a> Model<'a> {
             locale,
             tz,
             view_id: 0,
+            spill_owners: HashMap::new(),
         };
 
         model.parse_formulas();
@@ -1887,6 +2048,9 @@ impl<'a> Model<'a> {
     pub fn evaluate(&mut self) {
         // clear all computation artifacts
         self.cells.clear();
+
+        // clear stale dynamic-array spills so re-evaluation is idempotent
+        self.reset_spilled_cells();
 
         let cells = self.get_all_cells();
 

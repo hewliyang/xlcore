@@ -463,6 +463,7 @@ impl<'a> Model<'a> {
             language,
             tz,
             view_id: 0,
+            spill_owners: HashMap::new(),
         };
         model.parse_formulas();
         Ok(model)
