@@ -90,9 +90,17 @@ backlog — work top to bottom, one item per agent:
   Reads `<f t="array" ref=...>`, excludes spilled targets from harvest, writes
   cached `<v>` per spilled cell. metadata.xml / `cm` / dynamicArrayProperties
   fidelity + `CellInfo` spill-range surfacing deferred to a follow-up.
+- [ ] **S2c — generalize anchor cached value.** `CellFormulaArray.v` is `f64`
+  today (types.rs:222), so a non-numeric top-left renders/persists as `0`. Make
+  the anchor cached value hold Number/String/Boolean/Error (mirror the other
+  CellFormula* variants); fix `get_cell_value` + keep bitcode + tests green.
+  Prerequisite for text-producing array fns.
 - [ ] **S3 — reference/intersection polish.** `A1#` spill operator;
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
-- [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2 lands.
+- [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
+  High value first: SEQUENCE, SORT, UNIQUE, FILTER, then HSTACK/VSTACK, TAKE/DROP,
+  CHOOSECOLS/ROWS, TOCOL/TOROW, EXPAND, SORTBY, MMULT, MINVERSE, MUNIT, RANDARRAY,
+  FREQUENCY, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
 
 Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
 live on the anchor cell as `<f t="array" ref=...>` + `cm` → `xl/metadata.xml`
