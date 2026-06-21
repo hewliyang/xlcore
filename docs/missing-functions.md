@@ -83,12 +83,17 @@ backlog — work top to bottom, one item per agent:
   `match cell` site (behaves like a cached formula cell), keep bitcode
   serialization + all tests green. No behavior. (xlcore-types/CellInfo surfacing
   folded into S2 where it's exercised.)
-- [ ] **S2 — TRANSPOSE vertical slice (the pilot).** Pure/deterministic array fn
-  driven end to end: eval produces array → spill write-back into `sheet_data`
-  (anchor + `#SPILL!` on collision, model.rs:684 path) → other formulas read
-  spilled cells → xlsx write (`<f t="array" ref=...>` + `xl/metadata.xml`
-  dynamicArrayProperties + `cm` + cached `<v>` per spilled cell) → reopen →
-  reimport, values + `ref` survive. e2e: build .xlsx → xlsx-preview render.
+- [ ] **S2a — in-memory spill (calc engine only).** At the `CalcResult::Array`
+  write path (model.rs:684): anchor cell becomes `CellFormulaArray` with its spill
+  `ref`; spill the rectangular block of values into neighbouring `sheet_data`
+  cells; `#SPILL!` if any target is non-empty; other formulas can read the
+  spilled cells. Scope to NUMERIC arrays first (cached `v` is f64 today — S1
+  gotcha). Pilot fn: TRANSPOSE. Verify with a Rust test in ironcalc-base.
+- [ ] **S2b — xlsx round-trip persistence.** Read `<f t="array" ref=...>` (+ `cm`
+  → `xl/metadata.xml`); write anchor + metadata part + cached `<v>` per spilled
+  cell; surface spill range on `xlcore-types::CellInfo`. Verify: build .xlsx →
+  xlsx-preview render → reimport, values + `ref` survive. (General cached value
+  typing — string/bool/error array elements — lands here if not before.)
 - [ ] **S3 — reference/intersection polish.** `A1#` spill operator;
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2 lands.
