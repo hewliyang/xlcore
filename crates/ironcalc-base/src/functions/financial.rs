@@ -279,7 +279,7 @@ impl<'a> Model<'a> {
         Ok(values)
     }
 
-    fn get_array_of_numbers(
+    pub(crate) fn get_array_of_numbers(
         &mut self,
         arg: &Node,
         cell: &CellReferenceIndex,
@@ -639,6 +639,26 @@ impl<'a> Model<'a> {
                 message: error.1,
             },
         }
+    }
+
+    // FVSCHEDULE(principal, schedule)
+    pub(crate) fn fn_fvschedule(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let principal = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let schedule = match self.get_array_of_numbers(&args[1], &cell) {
+            Ok(values) => values,
+            Err(s) => return s,
+        };
+        let mut result = principal;
+        for rate in schedule {
+            result *= 1.0 + rate;
+        }
+        CalcResult::Number(result)
     }
 
     // IPMT(rate, per, nper, pv, [fv], [type])

@@ -1,5 +1,6 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
+use crate::expressions::utils::number_to_column;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
@@ -879,6 +880,138 @@ impl<'a> Model<'a> {
                 origin: cell,
                 message: "Argument must be a reference".to_string(),
             }
+        }
+    }
+
+    // ADDRESS(row_num, column_num, [abs_num], [a1], [sheet_text])
+    pub(crate) fn fn_address(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(2..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let row = match self.get_number(&args[0], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        let column = match self.get_number(&args[1], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(s) => return s,
+        };
+        if row < 1 || column < 1 {
+            return CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Row and column must be >= 1".to_string(),
+            };
+        }
+        let abs_num = if arg_count > 2 {
+            match self.get_number(&args[2], cell) {
+                Ok(f) => f.trunc() as i64,
+                Err(s) => return s,
+            }
+        } else {
+            1
+        };
+        if !(1..=4).contains(&abs_num) {
+            return CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "abs_num must be between 1 and 4".to_string(),
+            };
+        }
+        let a1 = if arg_count > 3 {
+            match self.get_boolean(&args[3], cell) {
+                Ok(b) => b,
+                Err(s) => return s,
+            }
+        } else {
+            true
+        };
+        let sheet_text = if arg_count > 4 {
+            match self.get_string(&args[4], cell) {
+                Ok(s) => Some(s),
+                Err(s) => return s,
+            }
+        } else {
+            None
+        };
+        let absolute_row = abs_num == 1 || abs_num == 2;
+        let absolute_column = abs_num == 1 || abs_num == 3;
+        let reference = if a1 {
+            let column_letters = match number_to_column(column as i32) {
+                Some(c) => c,
+                None => {
+                    return CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Invalid column".to_string(),
+                    };
+                }
+            };
+            format!(
+                "{}{}{}{}",
+                if absolute_column { "$" } else { "" },
+                column_letters,
+                if absolute_row { "$" } else { "" },
+                row
+            )
+        } else {
+            let row_part = if absolute_row {
+                format!("R{row}")
+            } else {
+                format!("R[{row}]")
+            };
+            let column_part = if absolute_column {
+                format!("C{column}")
+            } else {
+                format!("C[{column}]")
+            };
+            format!("{row_part}{column_part}")
+        };
+        let result = match sheet_text {
+            Some(name) => {
+                let needs_quotes = name.is_empty()
+                    || name
+                        .chars()
+                        .next()
+                        .map(|c| c.is_ascii_digit())
+                        .unwrap_or(false)
+                    || !name
+                        .chars()
+                        .all(|c| c.is_alphanumeric() || c == '_' || c == '.');
+                if needs_quotes {
+                    let escaped = name.replace('\'', "''");
+                    format!("'{escaped}'!{reference}")
+                } else {
+                    format!("{name}!{reference}")
+                }
+            }
+            None => reference,
+        };
+        CalcResult::String(result)
+    }
+
+    // AREAS(reference)
+    pub(crate) fn fn_areas(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        match self.get_reference(&args[0], cell) {
+            Ok(_) => CalcResult::Number(1.0),
+            Err(s) => s,
+        }
+    }
+
+    // HYPERLINK(link_location, [friendly_name])
+    pub(crate) fn fn_hyperlink(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(1..=2).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let display = if arg_count == 2 { &args[1] } else { &args[0] };
+        match self.get_string(display, cell) {
+            Ok(s) => CalcResult::String(s),
+            Err(s) => s,
         }
     }
 }

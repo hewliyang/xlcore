@@ -37,10 +37,7 @@ Verify: `cargo test -p ironcalc_base`. Cross-check a few values against Excel.
 
 ## Tier 1 — trivial (aliases / simple scalars)
 
-Each item below = one agent batch.
-
-- [ ] **ref/math simple** — ADDRESS (build A1/R1C1 ref string), AREAS (count areas),
-  MULTINOMIAL, SERIESSUM, FVSCHEDULE, PERMUTATIONA, HYPERLINK (return friendly text).
+Tier 1 complete.
 
 ## Tier 2 — medium scalar (not started)
 Quantiles (PERCENTILE/QUARTILE/PERCENTRANK families, PROB, TRIMMEAN, FORECAST),
@@ -57,6 +54,9 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- ref/math simple — ADDRESS (A1/R1C1 ref string, abs_num 1-4, sheet prefix),
+  AREAS (1 for any single reference), MULTINOMIAL, SERIESSUM, FVSCHEDULE,
+  PERMUTATIONA (number^chosen), HYPERLINK (returns friendly/link text).
 - ceiling/dollar aliases — ECMA.CEILING (→ ISO.CEILING), USDOLLAR (→ DOLLAR).
 - width conversion — ASC (full-width -> half-width: U+FF01..U+FF5E -> -0xFEE0,
   U+3000 -> space; ASCII is identity), JIS (inverse half-width -> full-width).

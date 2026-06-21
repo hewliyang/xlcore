@@ -1671,4 +1671,95 @@ impl<'a> Model<'a> {
         }
         CalcResult::Number(result)
     }
+
+    pub(crate) fn fn_multinomial(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut values = Vec::new();
+        for arg in args {
+            match self.get_array_of_numbers(arg, &cell) {
+                Ok(numbers) => values.extend(numbers),
+                Err(s) => return s,
+            }
+        }
+        let mut sum = 0.0;
+        let mut denominator = 1.0;
+        for value in &values {
+            let value = value.trunc();
+            if value < 0.0 {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Arguments must be non-negative".to_string(),
+                };
+            }
+            sum += value;
+            denominator *= factorial(value);
+        }
+        CalcResult::Number(factorial(sum) / denominator)
+    }
+
+    pub(crate) fn fn_seriessum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 4 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let x = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let n = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let m = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let coefficients = match self.get_array_of_numbers(&args[3], &cell) {
+            Ok(values) => values,
+            Err(s) => return s,
+        };
+        let mut result = 0.0;
+        for (i, coefficient) in coefficients.iter().enumerate() {
+            result += coefficient * x.powf(n + (i as f64) * m);
+        }
+        CalcResult::Number(result)
+    }
+
+    pub(crate) fn fn_permutationa(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let number = match self.get_number(&args[0], cell) {
+            Ok(f) => f.trunc(),
+            Err(s) => return s,
+        };
+        let number_chosen = match self.get_number(&args[1], cell) {
+            Ok(f) => f.trunc(),
+            Err(s) => return s,
+        };
+        if number < 0.0 || number_chosen < 0.0 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Arguments must be non-negative".to_string(),
+            };
+        }
+        CalcResult::Number(number.powf(number_chosen))
+    }
+}
+
+fn factorial(n: f64) -> f64 {
+    let mut result = 1.0;
+    let mut i = 2.0;
+    while i <= n {
+        result *= i;
+        i += 1.0;
+    }
+    result
 }

@@ -28,6 +28,7 @@ mod test_fn_day;
 mod test_fn_asc_jis;
 mod test_fn_ceiling_dollar_alias;
 mod test_fn_exact;
+mod test_fn_ref_math_simple;
 mod test_fn_newer_text;
 mod test_fn_financial;
 mod test_fn_formulatext;

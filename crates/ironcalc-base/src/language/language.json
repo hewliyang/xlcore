@@ -421,7 +421,14 @@
       "mode": "MODE",
       "skew": "SKEW",
       "skewp": "SKEW.P",
-      "small": "SMALL"
+      "small": "SMALL",
+      "address": "ADDRESS",
+      "areas": "AREAS",
+      "multinomial": "MULTINOMIAL",
+      "seriessum": "SERIESSUM",
+      "fvschedule": "FVSCHEDULE",
+      "permutationa": "PERMUTATIONA",
+      "hyperlink": "HYPERLINK"
     }
   },
   "de": {
@@ -846,7 +853,14 @@
       "mode": "MODALWERT",
       "skew": "SCHIEFE",
       "skewp": "SCHIEFE.P",
-      "small": "KKLEINSTE"
+      "small": "KKLEINSTE",
+      "address": "ADRESSE",
+      "areas": "BEREICHE",
+      "multinomial": "POLYNOMIAL",
+      "seriessum": "POTENZREIHE",
+      "fvschedule": "ZW2",
+      "permutationa": "VARIATIONEN2",
+      "hyperlink": "HYPERLINK"
     }
   },
   "fr": {
@@ -1271,7 +1285,14 @@
         "mode": "MODE",
         "skew": "COEFFICIENT.ASYMETRIE",
         "skewp": "COEFFICIENT.ASYMETRIE.P",
-        "small": "PETITE.VALEUR"
+        "small": "PETITE.VALEUR",
+        "address": "ADRESSE",
+        "areas": "ZONES",
+        "multinomial": "MULTINOMIALE",
+        "seriessum": "SOMME.SERIES",
+        "fvschedule": "VC.PAIEMENTS",
+        "permutationa": "PERMUTATIONA",
+        "hyperlink": "LIEN_HYPERTEXTE"
     }
   },
   "es": {
@@ -1696,7 +1717,14 @@
       "mode": "MODA",
       "skew": "COEFICIENTE.ASIMETRIA",
       "skewp": "COEFICIENTE.ASIMETRIA.P",
-      "small": "K.ESIMO.MENOR"
+      "small": "K.ESIMO.MENOR",
+      "address": "DIRECCION",
+      "areas": "AREAS",
+      "multinomial": "MULTINOMIAL",
+      "seriessum": "SUMA.SERIES",
+      "fvschedule": "VF.PLAN",
+      "permutationa": "PERMUTACIONESA",
+      "hyperlink": "HIPERVINCULO"
     }
   }
 }

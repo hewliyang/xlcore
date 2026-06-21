@@ -427,6 +427,13 @@ pub struct Functions {
     pub skew: String,
     pub skewp: String,
     pub small: String,
+    pub address: String,
+    pub areas: String,
+    pub multinomial: String,
+    pub seriessum: String,
+    pub fvschedule: String,
+    pub permutationa: String,
+    pub hyperlink: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

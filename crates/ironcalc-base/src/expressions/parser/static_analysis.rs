@@ -690,6 +690,9 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Rows => args_signature_one_vector(arg_count),
         Function::Vlookup => args_signature_hlookup(arg_count),
         Function::Xlookup => args_signature_xlookup(arg_count),
+        Function::Address => args_signature_scalars(arg_count, 2, 3),
+        Function::Areas => args_signature_one_vector(arg_count),
+        Function::Hyperlink => args_signature_scalars(arg_count, 1, 1),
         Function::Concat => vec![Signature::Vector; arg_count],
         Function::Concatenate => vec![Signature::Scalar; arg_count],
         Function::Exact => args_signature_scalars(arg_count, 2, 0),
@@ -771,6 +774,13 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Dollarfr => args_signature_scalars(arg_count, 2, 0),
         Function::Effect => args_signature_scalars(arg_count, 2, 0),
         Function::Fv => args_signature_scalars(arg_count, 3, 2),
+        Function::Fvschedule => {
+            if arg_count == 2 {
+                vec![Signature::Scalar, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
         Function::Ipmt => args_signature_scalars(arg_count, 4, 2),
         Function::Irr => args_signature_irr(arg_count),
         Function::Ispmt => args_signature_scalars(arg_count, 4, 0),
@@ -893,6 +903,20 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Combin => args_signature_scalars(arg_count, 2, 0),
         Function::Combina => args_signature_scalars(arg_count, 2, 0),
         Function::Sumsq => vec![Signature::Vector; arg_count],
+        Function::Multinomial => vec![Signature::Vector; arg_count],
+        Function::Seriessum => {
+            if arg_count == 4 {
+                vec![
+                    Signature::Scalar,
+                    Signature::Scalar,
+                    Signature::Scalar,
+                    Signature::Vector,
+                ]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::Permutationa => args_signature_scalars(arg_count, 2, 0),
         Function::N => args_signature_scalars(arg_count, 1, 0),
         Function::Sheets => args_signature_scalars(arg_count, 0, 1),
         Function::Cell => args_signature_scalars(arg_count, 1, 1),
@@ -1172,6 +1196,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Rows => not_implemented(args),
         Function::Vlookup => not_implemented(args),
         Function::Xlookup => not_implemented(args),
+        Function::Address => scalar_arguments(args),
+        Function::Areas => not_implemented(args),
+        Function::Hyperlink => not_implemented(args),
         Function::Concat => not_implemented(args),
         Function::Concatenate => not_implemented(args),
         Function::Exact => not_implemented(args),
@@ -1255,6 +1282,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Dollarfr => not_implemented(args),
         Function::Effect => not_implemented(args),
         Function::Fv => not_implemented(args),
+        Function::Fvschedule => not_implemented(args),
         Function::Ipmt => not_implemented(args),
         Function::Irr => not_implemented(args),
         Function::Ispmt => not_implemented(args),
@@ -1375,6 +1403,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Combin => scalar_arguments(args),
         Function::Combina => scalar_arguments(args),
         Function::Sumsq => StaticResult::Scalar,
+        Function::Multinomial => StaticResult::Scalar,
+        Function::Seriessum => StaticResult::Scalar,
+        Function::Permutationa => scalar_arguments(args),
         Function::N => scalar_arguments(args),
         Function::Sheets => scalar_arguments(args),
         Function::Cell => scalar_arguments(args),
