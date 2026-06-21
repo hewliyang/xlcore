@@ -614,6 +614,106 @@ impl<'a> Model<'a> {
         CalcResult::Array(out)
     }
 
+    fn read_array_arg(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        let result = self.evaluate_node_in_context(arg, cell);
+        match result {
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    ));
+                }
+                let mut rows = Vec::new();
+                for row in left.row..=right.row {
+                    let mut current = Vec::new();
+                    for column in left.column..=right.column {
+                        let cell_ref = CellReferenceIndex {
+                            sheet: left.sheet,
+                            row,
+                            column,
+                        };
+                        current.push(calc_result_to_array_node(self.evaluate_cell(cell_ref)));
+                    }
+                    rows.push(current);
+                }
+                Ok(rows)
+            }
+            CalcResult::Array(array) => Ok(array),
+            error @ CalcResult::Error { .. } => Err(error),
+            other => Ok(vec![vec![calc_result_to_array_node(other)]]),
+        }
+    }
+
+    pub(crate) fn fn_hstack(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut grids = Vec::with_capacity(args.len());
+        for arg in args {
+            match self.read_array_arg(arg, cell) {
+                Ok(grid) => grids.push(grid),
+                Err(e) => return e,
+            }
+        }
+        let n_rows = grids.iter().map(|g| g.len()).max().unwrap_or(0);
+        if n_rows == 0 {
+            return CalcResult::new_error(Error::VALUE, cell, "HSTACK: empty array".to_string());
+        }
+        let mut out: Vec<Vec<ArrayNode>> = vec![Vec::new(); n_rows];
+        for grid in &grids {
+            let cols = grid.iter().map(|r| r.len()).max().unwrap_or(0);
+            for r in 0..n_rows {
+                for c in 0..cols {
+                    let node = grid
+                        .get(r)
+                        .and_then(|row| row.get(c))
+                        .cloned()
+                        .unwrap_or(ArrayNode::Error(Error::NA));
+                    out[r].push(node);
+                }
+            }
+        }
+        CalcResult::Array(out)
+    }
+
+    pub(crate) fn fn_vstack(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut grids = Vec::with_capacity(args.len());
+        for arg in args {
+            match self.read_array_arg(arg, cell) {
+                Ok(grid) => grids.push(grid),
+                Err(e) => return e,
+            }
+        }
+        let n_cols = grids
+            .iter()
+            .flat_map(|g| g.iter().map(|r| r.len()))
+            .max()
+            .unwrap_or(0);
+        if n_cols == 0 {
+            return CalcResult::new_error(Error::VALUE, cell, "VSTACK: empty array".to_string());
+        }
+        let mut out: Vec<Vec<ArrayNode>> = Vec::new();
+        for grid in &grids {
+            for row in grid {
+                let mut new_row = Vec::with_capacity(n_cols);
+                for c in 0..n_cols {
+                    new_row.push(row.get(c).cloned().unwrap_or(ArrayNode::Error(Error::NA)));
+                }
+                out.push(new_row);
+            }
+        }
+        CalcResult::Array(out)
+    }
+
     pub(crate) fn fn_mdeterm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);

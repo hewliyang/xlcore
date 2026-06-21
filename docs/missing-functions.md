@@ -98,7 +98,7 @@ backlog — work top to bottom, one item per agent:
 - [ ] **S3 — reference/intersection polish.** `A1#` spill operator;
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
-  High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, then HSTACK/VSTACK, TAKE/DROP,
+  High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, then TAKE/DROP,
   CHOOSECOLS/ROWS, TOCOL/TOROW, EXPAND, SORTBY, MMULT, MINVERSE, MUNIT, RANDARRAY,
   FREQUENCY, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
 
@@ -114,6 +114,13 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- hstack/vstack (S4) — HSTACK(a,b,...)/VSTACK(a,b,...): each reads 1+ array/range
+  args into Vec<Vec<ArrayNode>> via shared read_array_arg (transpose pattern;
+  Range walks evaluate_cell, Array passthrough, Error propagates, scalar=>1x1).
+  HSTACK concats columns left-to-right, result rows = max input rows, missing cells
+  padded ArrayNode::Error(NA) (#N/A). VSTACK concats rows top-to-bottom, result cols
+  = max input cols, missing padded #N/A. Returns CalcResult::Array (spills +
+  round-trips); 0 args => #ERROR!; _xlfn.
 - filter (S4) — FILTER(array,include,[if_empty]): reads array range/array row-major
   into Vec<Vec<ArrayNode>> (TRANSPOSE/SORT pattern); include is a 1-D mask flattened
   to a vector — column vector of height==rows keeps matching ROWS, row vector of
