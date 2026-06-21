@@ -54,6 +54,9 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- mdeterm — MDETERM (determinant of a square range/array via Gaussian elimination
+  with partial pivoting; non-square/empty or non-numeric cell => #VALUE!; singular
+  => 0).
 - forecast — FORECAST/FORECAST.LINEAR (alias) linear regression a+b*x; b =
   sum((xi-xbar)(yi-ybar))/sum((xi-xbar)^2), a = ybar-b*xbar; known_ys/known_xs
   must be equal length & nonempty (#N/A else); xs variance 0 => #DIV/0!.

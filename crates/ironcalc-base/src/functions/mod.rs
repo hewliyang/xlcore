@@ -20,6 +20,7 @@ mod macros;
 mod math_util;
 mod mathematical;
 mod mathematical_sum;
+mod matrix;
 mod statistical;
 mod subtotal;
 mod text;
@@ -498,6 +499,7 @@ pub enum Function {
     Steyx,
     Forecast,
     ForecastLinear,
+    Mdeterm,
 }
 
 macro_rules! impl_function_lookup {
@@ -972,6 +974,7 @@ impl_function_lookup! {
     steyx     => Steyx,
     forecast        => Forecast,
     forecast_linear => ForecastLinear,
+    mdeterm         => Mdeterm,
 }
 
 pub fn english_function_names() -> Vec<String> {
@@ -1411,9 +1414,10 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
             Function::Forecast => functions.forecast.clone(),
             Function::ForecastLinear => functions.forecast_linear.clone(),
+            Function::Mdeterm => functions.mdeterm.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 423> {
+    pub fn into_iter() -> IntoIter<Function, 424> {
         [
             Function::And,
             Function::False,
@@ -1826,6 +1830,7 @@ impl Function {
             Function::Steyx,
             Function::Forecast,
             Function::ForecastLinear,
+            Function::Mdeterm,
             Function::Large,
             Function::Median,
             Function::Small,
@@ -2445,6 +2450,7 @@ impl<'a> Model<'a> {
             Function::Steyx => self.fn_steyx(args, cell),
             Function::Forecast => self.fn_forecast(args, cell),
             Function::ForecastLinear => self.fn_forecast(args, cell),
+            Function::Mdeterm => self.fn_mdeterm(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),
