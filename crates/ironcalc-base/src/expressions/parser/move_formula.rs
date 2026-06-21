@@ -514,5 +514,20 @@ fn to_string_moved(
                 to_string_moved(reference, move_context, locale, language)
             )
         }
+        LambdaCall { function, args } => {
+            let name = to_string_moved(function, move_context, locale, language);
+            let mut arguments = String::new();
+            let mut first = true;
+            for arg in args {
+                let s = to_string_moved(arg, move_context, locale, language);
+                if first {
+                    arguments = s;
+                    first = false;
+                } else {
+                    arguments = format!("{arguments},{s}");
+                }
+            }
+            format!("{name}({arguments})")
+        }
     }
 }

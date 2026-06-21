@@ -190,6 +190,10 @@ pub enum Node {
     SpillReferenceKind {
         reference: Box<Node>,
     },
+    LambdaCall {
+        function: Box<Node>,
+        args: Vec<Node>,
+    },
     CompareKind {
         kind: OpCompare,
         left: Box<Node>,
@@ -506,7 +510,7 @@ impl<'a> Parser<'a> {
                 child: Box::new(t),
             };
         }
-        let t = self.parse_primary();
+        let mut t = self.parse_primary();
         if self.lexer.peek_token() == TokenType::Spill {
             self.lexer.advance_token();
             if let Node::ParseErrorKind { .. } = t {
@@ -514,6 +518,27 @@ impl<'a> Parser<'a> {
             }
             return Node::SpillReferenceKind {
                 reference: Box::new(t),
+            };
+        }
+        while self.lexer.peek_token() == TokenType::LeftParenthesis {
+            if let Node::ParseErrorKind { .. } = t {
+                return t;
+            }
+            self.lexer.advance_token();
+            let args = match self.parse_function_args() {
+                Ok(s) => s,
+                Err(e) => return e,
+            };
+            if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
+                return Node::ParseErrorKind {
+                    formula: self.lexer.get_formula(),
+                    position: err.position,
+                    message: err.message,
+                };
+            }
+            t = Node::LambdaCall {
+                function: Box::new(t),
+                args,
             };
         }
         t
@@ -811,6 +836,14 @@ impl<'a> Parser<'a> {
                             kind: function_kind,
                             args,
                         };
+                    }
+                    if let Some(ctx_sheet) = self.get_sheet_index_by_name(&self.context.sheet) {
+                        if let Some((scope, formula)) = self.get_defined_name(&name, ctx_sheet) {
+                            return Node::LambdaCall {
+                                function: Box::new(Node::DefinedNameKind((name, scope, formula))),
+                                args,
+                            };
+                        }
                     }
                     return Node::InvalidFunctionKind { name, args };
                 }

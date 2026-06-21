@@ -559,6 +559,8 @@ pub enum Function {
     Logest,
     Growth,
     Let,
+    Lambda,
+    Isomitted,
 }
 
 macro_rules! impl_function_lookup {
@@ -1088,6 +1090,8 @@ impl_function_lookup! {
     logest          => Logest,
     growth          => Growth,
     let_fn          => Let,
+    lambda          => Lambda,
+    isomitted       => Isomitted,
     mmult           => Mmult,
     minverse        => Minverse,
     munit           => Munit,
@@ -1588,9 +1592,11 @@ impl Function {
             Function::Logest => functions.logest.clone(),
             Function::Growth => functions.growth.clone(),
             Function::Let => functions.let_fn.clone(),
+            Function::Lambda => functions.lambda.clone(),
+            Function::Isomitted => functions.isomitted.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 481> {
+    pub fn into_iter() -> IntoIter<Function, 483> {
         [
             Function::And,
             Function::False,
@@ -2073,6 +2079,8 @@ impl Function {
             Function::Logest,
             Function::Growth,
             Function::Let,
+            Function::Lambda,
+            Function::Isomitted,
         ]
         .into_iter()
     }
@@ -2143,6 +2151,8 @@ impl Function {
             Function::Logest => "LOGEST".to_string(),
             Function::Growth => "GROWTH".to_string(),
             Function::Let => "_xlfn.LET".to_string(),
+            Function::Lambda => "_xlfn.LAMBDA".to_string(),
+            Function::Isomitted => "_xlfn.ISOMITTED".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2768,6 +2778,8 @@ impl<'a> Model<'a> {
             Function::Logest => self.fn_logest(args, cell),
             Function::Growth => self.fn_growth(args, cell),
             Function::Let => self.fn_let(args, cell),
+            Function::Lambda => self.fn_lambda(args, cell),
+            Function::Isomitted => self.fn_isomitted(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

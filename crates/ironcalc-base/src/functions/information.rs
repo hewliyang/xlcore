@@ -235,7 +235,7 @@ impl<'a> Model<'a> {
                 // This cannot happen
                 CalcResult::Number(1.0)
             }
-            CalcResult::Array(_) => CalcResult::Error {
+            CalcResult::Array(_) | CalcResult::Lambda { .. } => CalcResult::Error {
                 error: Error::NIMPL,
                 origin: cell,
                 message: "Arrays not supported yet".to_string(),
@@ -345,7 +345,7 @@ impl<'a> Model<'a> {
                     message: "Arrays not supported yet".to_string(),
                 }
             }
-            CalcResult::Array(_) => {
+            CalcResult::Array(_) | CalcResult::Lambda { .. } => {
                 return CalcResult::Error {
                     error: Error::NIMPL,
                     origin: cell,
@@ -446,7 +446,7 @@ impl<'a> Model<'a> {
                     CalcResult::Error { .. } => "v",
                     CalcResult::Range { .. } => "v",
                     CalcResult::EmptyArg => "v",
-                    CalcResult::Array(_) => "v",
+                    CalcResult::Array(_) | CalcResult::Lambda { .. } => "v",
                 };
                 CalcResult::String(cell_type.to_string())
             }

@@ -22,7 +22,7 @@ use crate::{
         format::{format_number, parse_formatted_number},
         lexer::is_likely_date_number_format,
     },
-    functions::util::compare_values,
+    functions::{util::compare_values, Function},
     implicit_intersection::implicit_intersection,
     language::{get_default_language, get_language, Language},
     locale::{get_locale, Locale},
@@ -410,7 +410,27 @@ impl<'a> Model<'a> {
                 CalcResult::new_error(Error::NAME, cell, format!("Invalid function: {name}"))
             }
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
-            DefinedNameKind((name, scope, _)) => {
+            DefinedNameKind((name, scope, formula)) => {
+                let f = formula.strip_prefix('=').unwrap_or(formula);
+                if let Ok(sheet_name) = self
+                    .workbook
+                    .worksheet(cell.sheet)
+                    .map(|ws| ws.get_name())
+                {
+                    let cell_ref_rc = CellReferenceRC {
+                        sheet: sheet_name,
+                        row: cell.row,
+                        column: cell.column,
+                    };
+                    let parsed = self.parser.parse(f, &cell_ref_rc);
+                    if let Node::FunctionKind {
+                        kind: Function::Lambda,
+                        ..
+                    } = &parsed
+                    {
+                        return self.evaluate_node_in_context(&parsed, cell);
+                    }
+                }
                 if let Ok(Some(parsed_defined_name)) = self.get_parsed_defined_name(name, *scope) {
                     match parsed_defined_name {
                         ParsedDefinedName::CellReference(reference) => {
@@ -617,6 +637,45 @@ impl<'a> Model<'a> {
                     other => other,
                 }
             }
+            LambdaCall { function, args } => {
+                let lambda = self.evaluate_node_in_context(function, cell);
+                let (params, body, captured) = match lambda {
+                    CalcResult::Lambda {
+                        params,
+                        body,
+                        captured,
+                    } => (params, body, captured),
+                    CalcResult::Error { .. } => return lambda,
+                    _ => {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Expression is not a lambda".to_string(),
+                        );
+                    }
+                };
+                if args.len() > params.len() {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Wrong number of arguments".to_string(),
+                    );
+                }
+                let mut frame = HashMap::new();
+                for (i, p) in params.iter().enumerate() {
+                    let v = match args.get(i) {
+                        Some(a) => self.evaluate_node_in_context(a, cell),
+                        None => CalcResult::EmptyArg,
+                    };
+                    frame.insert(p.clone(), v);
+                }
+                let mut new_scopes = captured;
+                new_scopes.push(frame);
+                let saved = std::mem::replace(&mut self.let_scopes, new_scopes);
+                let result = self.evaluate_node_in_context(&body, cell);
+                self.let_scopes = saved;
+                result
+            }
         }
     }
 
@@ -744,6 +803,20 @@ impl<'a> Model<'a> {
                 }
                 CalcResult::Array(array) => {
                     self.spill_array(cell_reference, f, s, array);
+                }
+                CalcResult::Lambda { .. } => {
+                    *self.workbook.worksheets[sheet as usize]
+                        .sheet_data
+                        .get_mut(&row)
+                        .expect("expected a row")
+                        .get_mut(&column)
+                        .expect("expected a column") = Cell::CellFormulaError {
+                        f,
+                        s,
+                        o: String::new(),
+                        m: "Lambda not invoked".to_string(),
+                        ei: Error::CALC,
+                    };
                 }
             }
         }
@@ -2419,14 +2492,23 @@ impl<'a> Model<'a> {
         }
 
         // Make sure the formula is valid
-        match common::ParsedReference::parse_reference_formula(None, formula, self.locale, |name| {
-            self.get_sheet_index_by_name(name)
-        }) {
-            Ok(_) => {}
-            Err(_) => {
-                return Err("Formula: Invalid defined name formula".to_string());
-            }
-        };
+        let body = formula.strip_prefix('=').unwrap_or(formula);
+        let body_upper = body.trim_start().to_uppercase();
+        let is_lambda = body_upper.starts_with("LAMBDA(")
+            || body_upper.starts_with("_XLFN.LAMBDA(");
+        if !is_lambda {
+            match common::ParsedReference::parse_reference_formula(
+                None,
+                formula,
+                self.locale,
+                |name| self.get_sheet_index_by_name(name),
+            ) {
+                Ok(_) => {}
+                Err(_) => {
+                    return Err("Formula: Invalid defined name formula".to_string());
+                }
+            };
+        }
 
         Ok(sheet_id)
     }

@@ -500,7 +500,9 @@
       "trend": "TREND",
       "logest": "LOGEST",
       "growth": "GROWTH",
-      "let_fn": "LET"
+      "let_fn": "LET",
+      "lambda": "LAMBDA",
+      "isomitted": "ISOMITTED"
     }
   },
   "de": {
@@ -1004,7 +1006,9 @@
       "trend": "TREND",
       "logest": "LOGEST",
       "growth": "GROWTH",
-      "let_fn": "LET"
+      "let_fn": "LET",
+      "lambda": "LAMBDA",
+      "isomitted": "ISOMITTED"
     }
   },
   "fr": {
@@ -1508,7 +1512,9 @@
       "trend": "TREND",
       "logest": "LOGEST",
       "growth": "GROWTH",
-      "let_fn": "LET"
+      "let_fn": "LET",
+      "lambda": "LAMBDA",
+      "isomitted": "ISOMITTED"
     }
   },
   "es": {
@@ -2012,7 +2018,9 @@
       "trend": "TREND",
       "logest": "LOGEST",
       "growth": "GROWTH",
-      "let_fn": "LET"
+      "let_fn": "LET",
+      "lambda": "LAMBDA",
+      "isomitted": "ISOMITTED"
     }
   }
 }

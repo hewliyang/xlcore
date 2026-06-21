@@ -88,6 +88,7 @@ impl<'a> Model<'a> {
                                     // the evaluation of a cell should never return an array
                                     ArrayNode::Number(0.0)
                                 }
+                                CalcResult::Lambda { .. } => ArrayNode::Number(0.0),
                             };
                         row_data.push(value);
                     }
@@ -96,6 +97,11 @@ impl<'a> Model<'a> {
                 Ok(NumberOrArray::Array(array))
             }
             CalcResult::Array(s) => Ok(NumberOrArray::Array(s)),
+            CalcResult::Lambda { .. } => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expecting number".to_string(),
+            )),
             error @ CalcResult::Error { .. } => Err(error),
         }
     }
@@ -142,6 +148,11 @@ impl<'a> Model<'a> {
                 origin: cell,
                 message: "Arrays not supported yet".to_string(),
             }),
+            CalcResult::Lambda { .. } => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expecting scalar".to_string(),
+            )),
         }
     }
 
@@ -199,6 +210,11 @@ impl<'a> Model<'a> {
                 origin: cell,
                 message: "Arrays not supported yet".to_string(),
             }),
+            CalcResult::Lambda { .. } => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expecting scalar".to_string(),
+            )),
         }
     }
 
@@ -248,6 +264,11 @@ impl<'a> Model<'a> {
                 origin: cell,
                 message: "Arrays not supported yet".to_string(),
             }),
+            CalcResult::Lambda { .. } => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expecting scalar".to_string(),
+            )),
         }
     }
 

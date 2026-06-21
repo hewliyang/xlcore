@@ -274,7 +274,7 @@ impl<'a> Model<'a> {
                                     );
                                 }
                                 CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                                CalcResult::Array(_) => {
+                                CalcResult::Array(_) | CalcResult::Lambda { .. } => {
                                     return CalcResult::Error {
                                         error: Error::NIMPL,
                                         origin: cell,
@@ -312,7 +312,7 @@ impl<'a> Model<'a> {
                 }
                 error @ CalcResult::Error { .. } => return error,
                 CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                CalcResult::Array(_) => {
+                CalcResult::Array(_) | CalcResult::Lambda { .. } => {
                     return CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,

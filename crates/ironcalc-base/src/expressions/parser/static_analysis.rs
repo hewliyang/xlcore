@@ -72,6 +72,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         | Node::InvalidFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::SpillReferenceKind { .. }
+        | Node::LambdaCall { .. }
         | Node::ReferenceKind { .. } => {}
         Node::ImplicitIntersection { child, .. } => {
             // We need to check wether the II can be automatic or not
@@ -279,6 +280,7 @@ fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::ImplicitIntersection { .. } => StaticResult::Scalar,
         Node::SpillReferenceKind { .. } => StaticResult::Unknown,
+        Node::LambdaCall { .. } => StaticResult::Unknown,
     }
 }
 
@@ -908,6 +910,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Logest => vec![Signature::Vector; arg_count],
         Function::Growth => vec![Signature::Vector; arg_count],
         Function::Let => vec![Signature::Vector; arg_count],
+        Function::Lambda => vec![Signature::Vector; arg_count],
+        Function::Isomitted => vec![Signature::Vector; arg_count],
         Function::Sort => {
             let mut result = vec![Signature::Vector; arg_count];
             for item in result.iter_mut().skip(1) {
@@ -1567,6 +1571,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Logest => not_implemented(args),
         Function::Growth => not_implemented(args),
         Function::Let => not_implemented(args),
+        Function::Lambda => not_implemented(args),
+        Function::Isomitted => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),
         Function::Eomonth => scalar_arguments(args),
         Function::Formulatext => not_implemented(args),

@@ -281,7 +281,7 @@ fn calc_result_to_array_node(value: CalcResult) -> ArrayNode {
         CalcResult::Boolean(b) => ArrayNode::Boolean(b),
         CalcResult::Error { error, .. } => ArrayNode::Error(error),
         CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Number(0.0),
-        CalcResult::Range { .. } | CalcResult::Array(_) => ArrayNode::Error(Error::VALUE),
+        CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda { .. } => ArrayNode::Error(Error::VALUE),
     }
 }
 

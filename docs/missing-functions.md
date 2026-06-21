@@ -128,14 +128,7 @@ item per agent, top to bottom:
   from the scope stack (top-down) before falling back to `#NAME?`. Scalar + range
   values both bind. Round-trips as `_xlfn.LET`. Tests: `=LET(x,5,x*2)`=>10,
   `=LET(x,1,y,x+1,x+y)`=>3, nested LET, range binding `=LET(d,A1:A3,SUM(d))`.
-- [ ] **L2 — LAMBDA closures + invocation + ISOMITTED.** Add a `CalcResult::Lambda`
-  value capturing param names + body `Node` + a snapshot of the enclosing scope.
-  `Function::Lambda` builds the closure (last arg = body, preceding args = param
-  names). Parser: postfix call `expr(args)` so `=LAMBDA(x,x+1)(5)`=>6 evaluates.
-  Named lambdas: a defined name whose formula is `=LAMBDA(...)` is callable as
-  `MYFN(5)` (resolve the defined-name FunctionKind/call path to the closure). Add
-  ISOMITTED (TRUE when a lambda param was omitted at the call site). Round-trips as
-  `_xlfn.LAMBDA` / `_xlfn.ISOMITTED`.
+- [x] **L2 — LAMBDA closures + invocation + ISOMITTED.** See Shipped.
 - [ ] **L3 — MAP / REDUCE / SCAN.** Higher-order fns taking array(s) + a lambda
   value; invoke the closure per element. MAP(arr...,lambda) elementwise =>
   CalcResult::Array; REDUCE(init,arr,lambda(acc,x)) => scalar; SCAN(init,arr,
@@ -148,6 +141,26 @@ item per agent, top to bottom:
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- lambda/isomitted (L2) — LAMBDA(param1,...,body) builds a `CalcResult::Lambda`
+  (runtime-only variant: params uppercased, body `Node`, `captured` =
+  `let_scopes.clone()` snapshot); each preceding arg must be a
+  `Node::WrongVariableKind` param name else #VALUE!. A bare uninvoked lambda in a
+  cell => #CALC! (set_cell_value Lambda arm). Invocation: new
+  `Node::LambdaCall { function, args }` parsed as a postfix `expr(args)` in
+  parse_implicit (after the spill `#` check, reusing parse_function_args) so
+  `=LAMBDA(x,x+1)(5)`=>6. Eval clones the lambda's captured scopes, pushes one
+  frame binding each param to its caller-scope-evaluated arg (omitted/trailing
+  params => CalcResult::EmptyArg; too many args => #VALUE!, too few allowed),
+  swaps `let_scopes` via mem::replace for the body eval then restores. Closures
+  capture LET bindings (=LET(n,10,LAMBDA(x,x+n))(5)=>15). Named lambdas: a defined
+  name whose formula is `=LAMBDA(...)` is callable as `MYFN(5)` — parser emits
+  LambdaCall{function: DefinedNameKind} when an unknown function name resolves to a
+  defined name; DefinedNameKind eval parses its stored formula and returns the
+  Lambda when it's a LAMBDA call; is_valid_defined_name accepts LAMBDA/\_xlfn.LAMBDA
+  bodies (not just references). ISOMITTED(param): TRUE if the param resolves to
+  CalcResult::EmptyArg in let_scopes. CalcResult::Lambda is treated as #VALUE! in
+  every scalar cast site. Round-trips as _xlfn.LAMBDA / _xlfn.ISOMITTED (formula
+  string; xl/metadata.xml lambda fidelity deferred). _xlfn.
 - let (L1) — LET(name1,value1,[name2,value2,...],calc): odd arg count >=3 else
   #ERROR!. Each name node must be a `Node::WrongVariableKind` (a bare name that
   lexed as a cell ref => #VALUE!); evaluate each value in the current scope, bind

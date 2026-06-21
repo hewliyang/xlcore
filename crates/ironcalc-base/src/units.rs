@@ -301,6 +301,7 @@ impl<'a> Model<'a> {
             Node::OpPowerKind { .. } => None,
             Node::ImplicitIntersection { .. } => None,
             Node::SpillReferenceKind { .. } => None,
+            Node::LambdaCall { .. } => None,
         }
     }
 

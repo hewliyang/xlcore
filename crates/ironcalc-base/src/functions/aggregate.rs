@@ -87,7 +87,7 @@ impl<'a> Model<'a> {
                         }
                     }
                 }
-                CalcResult::Array(_) => {
+                CalcResult::Array(_) | CalcResult::Lambda { .. } => {
                     return Err(CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,

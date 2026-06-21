@@ -1,6 +1,11 @@
 use std::cmp::Ordering;
+use std::collections::HashMap;
 
-use crate::expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex};
+use crate::expressions::{
+    parser::{ArrayNode, Node},
+    token::Error,
+    types::CellReferenceIndex,
+};
 
 #[derive(Clone)]
 pub struct Range {
@@ -25,6 +30,11 @@ pub(crate) enum CalcResult {
     EmptyCell,
     EmptyArg,
     Array(Vec<Vec<ArrayNode>>),
+    Lambda {
+        params: Vec<String>,
+        body: Box<Node>,
+        captured: Vec<HashMap<String, CalcResult>>,
+    },
 }
 
 impl CalcResult {

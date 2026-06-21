@@ -705,6 +705,7 @@ fn stringify(
                 | OpProductKind { .. }
                 | OpPowerKind { .. }
                 | FunctionKind { .. }
+                | LambdaCall { .. }
                 | InvalidFunctionKind { .. }
                 | ArrayKind(_)
                 | ErrorKind(_)
@@ -748,6 +749,7 @@ fn stringify(
                 | OpProductKind { .. }
                 | OpPowerKind { .. }
                 | FunctionKind { .. }
+                | LambdaCall { .. }
                 | InvalidFunctionKind { .. }
                 | ArrayKind(_)
                 | UnaryKind { .. }
@@ -842,6 +844,7 @@ fn stringify(
                     | OpConcatenateKind { .. }
                     | OpProductKind { .. }
                     | FunctionKind { .. }
+                    | LambdaCall { .. }
                     | InvalidFunctionKind { .. }
                     | ArrayKind(_)
                     | DefinedNameKind(_)
@@ -962,6 +965,25 @@ fn stringify(
                 format!("{inner}#")
             }
         }
+        LambdaCall { function, args } => {
+            let name = stringify(
+                function,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language,
+            );
+            format_function(
+                &name,
+                args,
+                context,
+                displace_data,
+                export_to_excel,
+                locale,
+                language,
+            )
+        }
     }
 }
 
@@ -1058,6 +1080,12 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::SpillReferenceKind { reference } => {
             rename_sheet_in_node(reference, sheet_index, new_name);
         }
+        Node::LambdaCall { function, args } => {
+            rename_sheet_in_node(function, sheet_index, new_name);
+            for arg in args {
+                rename_sheet_in_node(arg, sheet_index, new_name);
+            }
+        }
 
         // Do nothing
         Node::BooleanKind(_) => {}
@@ -1144,6 +1172,12 @@ pub(crate) fn rename_defined_name_in_node(
         }
         Node::SpillReferenceKind { reference } => {
             rename_defined_name_in_node(reference, name, scope, new_name);
+        }
+        Node::LambdaCall { function, args } => {
+            rename_defined_name_in_node(function, name, scope, new_name);
+            for arg in args {
+                rename_defined_name_in_node(arg, name, scope, new_name);
+            }
         }
 
         // Do nothing

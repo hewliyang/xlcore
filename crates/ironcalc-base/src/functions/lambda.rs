@@ -34,4 +34,47 @@ impl<'a> Model<'a> {
         self.let_scopes.pop();
         result
     }
+
+    pub(crate) fn fn_lambda(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut params = Vec::new();
+        for param in &args[..args.len() - 1] {
+            match param {
+                Node::WrongVariableKind(s) => params.push(s.to_uppercase()),
+                _ => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "LAMBDA expects parameter names".to_string(),
+                    );
+                }
+            }
+        }
+        CalcResult::Lambda {
+            params,
+            body: Box::new(args[args.len() - 1].clone()),
+            captured: self.let_scopes.clone(),
+        }
+    }
+
+    pub(crate) fn fn_isomitted(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let key = match &args[0] {
+            Node::WrongVariableKind(s) => s.to_uppercase(),
+            _ => {
+                let value = self.evaluate_node_in_context(&args[0], cell);
+                return CalcResult::Boolean(matches!(value, CalcResult::EmptyArg));
+            }
+        };
+        for scope in self.let_scopes.iter().rev() {
+            if let Some(value) = scope.get(&key) {
+                return CalcResult::Boolean(matches!(value, CalcResult::EmptyArg));
+            }
+        }
+        CalcResult::Boolean(false)
+    }
 }

@@ -89,6 +89,11 @@ impl<'a> Model<'a> {
                 };
                 Ok((rows, cols, values))
             }
+            CalcResult::Lambda { .. } => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expecting scalar".to_string(),
+            )),
             error @ CalcResult::Error { .. } => Err(error),
         }
     }
