@@ -134,6 +134,99 @@ impl<'a> Model<'a> {
         }
     }
 
+    fn percentrank_position(sorted: &[f64], x: f64) -> Option<f64> {
+        let n = sorted.len();
+        if n == 0 || x < sorted[0] || x > sorted[n - 1] {
+            return None;
+        }
+        for (i, value) in sorted.iter().enumerate() {
+            if *value == x {
+                return Some(i as f64);
+            }
+        }
+        for i in 0..n - 1 {
+            if sorted[i] < x && x < sorted[i + 1] {
+                return Some(i as f64 + (x - sorted[i]) / (sorted[i + 1] - sorted[i]));
+            }
+        }
+        None
+    }
+
+    fn percentrank_truncate(value: f64, significance: i32) -> f64 {
+        if value == 0.0 {
+            return 0.0;
+        }
+        let digits = value.abs().log10().floor() as i32 + 1;
+        let factor = 10f64.powi(significance - digits);
+        (value * factor).trunc() / factor
+    }
+
+    fn percentrank(values: &[f64], x: f64, significance: i32, exclusive: bool) -> Option<f64> {
+        let mut sorted = values.to_vec();
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let pos = Model::percentrank_position(&sorted, x)?;
+        let n = sorted.len() as f64;
+        let result = if exclusive {
+            (pos + 1.0) / (n + 1.0)
+        } else {
+            pos / (n - 1.0)
+        };
+        Some(Model::percentrank_truncate(result, significance))
+    }
+
+    fn fn_percentrank_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        exclusive: bool,
+    ) -> CalcResult {
+        if args.len() != 2 && args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let values = match self.collect_numbers(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if values.is_empty() {
+            return CalcResult::new_error(Error::NA, cell, "Empty array".to_string());
+        }
+        let x = match self.get_number(&args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let significance = if args.len() == 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(v) => v.trunc() as i32,
+                Err(e) => return e,
+            }
+        } else {
+            3
+        };
+        if significance < 1 {
+            return CalcResult::new_error(Error::NUM, cell, "Invalid significance".to_string());
+        }
+        match Model::percentrank(&values, x, significance, exclusive) {
+            Some(value) => CalcResult::Number(value),
+            None => CalcResult::new_error(Error::NA, cell, "x is out of range".to_string()),
+        }
+    }
+
+    pub(crate) fn fn_percentrank_inc(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.fn_percentrank_impl(args, cell, false)
+    }
+
+    pub(crate) fn fn_percentrank_exc(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.fn_percentrank_impl(args, cell, true)
+    }
+
     pub(crate) fn fn_percentile_inc(
         &mut self,
         args: &[Node],

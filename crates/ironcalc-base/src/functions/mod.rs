@@ -340,6 +340,9 @@ pub enum Function {
     QuartileLegacy,
     QuartileInc,
     QuartileExc,
+    PercentRankLegacy,
+    PercentRankInc,
+    PercentRankExc,
     // Trend,
     // Trimmean,
     VarP,
@@ -807,6 +810,9 @@ impl_function_lookup! {
     quartilelegacy => QuartileLegacy,
     quartileinc    => QuartileInc,
     quartileexc    => QuartileExc,
+    percentranklegacy => PercentRankLegacy,
+    percentrankinc => PercentRankInc,
+    percentrankexc => PercentRankExc,
     varp           => VarP,
     vars           => VarS,
     varpa          => VarpA,
@@ -1256,6 +1262,9 @@ impl Function {
             Function::QuartileLegacy => functions.quartilelegacy.clone(),
             Function::QuartileInc => functions.quartileinc.clone(),
             Function::QuartileExc => functions.quartileexc.clone(),
+            Function::PercentRankLegacy => functions.percentranklegacy.clone(),
+            Function::PercentRankInc => functions.percentrankinc.clone(),
+            Function::PercentRankExc => functions.percentrankexc.clone(),
             Function::VarP => functions.varp.clone(),
             Function::VarS => functions.vars.clone(),
             Function::VarpA => functions.varpa.clone(),
@@ -1390,7 +1399,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 415> {
+    pub fn into_iter() -> IntoIter<Function, 418> {
         [
             Function::And,
             Function::False,
@@ -1784,6 +1793,9 @@ impl Function {
             Function::QuartileLegacy,
             Function::QuartileInc,
             Function::QuartileExc,
+            Function::PercentRankLegacy,
+            Function::PercentRankInc,
+            Function::PercentRankExc,
             Function::VarP,
             Function::VarS,
             Function::VarpA,
@@ -1969,6 +1981,9 @@ impl Function {
             Function::QuartileLegacy => "QUARTILE".to_string(),
             Function::QuartileInc => "_xlfn.QUARTILE.INC".to_string(),
             Function::QuartileExc => "_xlfn.QUARTILE.EXC".to_string(),
+            Function::PercentRankLegacy => "PERCENTRANK".to_string(),
+            Function::PercentRankInc => "_xlfn.PERCENTRANK.INC".to_string(),
+            Function::PercentRankExc => "_xlfn.PERCENTRANK.EXC".to_string(),
 
             Function::VarP => "_xlfn.VAR.P".to_string(),
             Function::VarS => "_xlfn.VAR.S".to_string(),
@@ -2388,6 +2403,9 @@ impl<'a> Model<'a> {
             Function::QuartileLegacy => self.fn_quartile_inc(args, cell),
             Function::QuartileInc => self.fn_quartile_inc(args, cell),
             Function::QuartileExc => self.fn_quartile_exc(args, cell),
+            Function::PercentRankLegacy => self.fn_percentrank_inc(args, cell),
+            Function::PercentRankInc => self.fn_percentrank_inc(args, cell),
+            Function::PercentRankExc => self.fn_percentrank_exc(args, cell),
             Function::VarP => self.fn_var_p(args, cell),
             Function::VarS => self.fn_var_s(args, cell),
             Function::VarpA => self.fn_varpa(args, cell),

@@ -40,7 +40,7 @@ Verify: `cargo test -p ironcalc_base`. Cross-check a few values against Excel.
 Tier 1 complete.
 
 ## Tier 2 — medium scalar (not started)
-Quantiles (PERCENTRANK family, PROB, TRIMMEAN, FORECAST),
+Quantiles (PROB, TRIMMEAN, FORECAST),
 bond financials (PRICE/YIELD/DURATION/COUP*/ODD*/ACCRINT…), MDETERM, XMATCH,
 AGGREGATE, BAHTTEXT, VALUETOTEXT. See triage report.
 
@@ -54,6 +54,10 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- percentrank — PERCENTRANK/PERCENTRANK.INC, PERCENTRANK.EXC (rank of x as a
+  fraction; .INC = i/(n-1), .EXC = (i+1)/(n+1), interpolating between bracketing
+  values; x outside [min,max] => #N/A; result truncated to `significance` sig
+  digits, default 3, significance<1 => #NUM!; PERCENTRANK == PERCENTRANK.INC).
 - quantiles — PERCENTILE/PERCENTILE.INC/PERCENTILE.EXC, QUARTILE/QUARTILE.INC/
   QUARTILE.EXC (.INC interpolates rank k*(n-1); .EXC rank k*(n+1)-1, #NUM! outside
   1/(n+1)..n/(n+1); QUARTILE maps q=0..4 to k=q/4; legacy == .INC).
