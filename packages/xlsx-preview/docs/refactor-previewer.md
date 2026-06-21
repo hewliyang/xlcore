@@ -11,9 +11,6 @@ New pure modules should get a `.test.ts`.
 
 ## Backlog
 
-4. Extract `previewerChrome.ts`: `makeButton`, `makeTab`, `contrastingTextColor`,
-   `virtualSize`, `normalizeSelection` (DOM/geometry builders).
-
 5. Extract `autocompletePopover.ts` (+ test): own the `autocompleteMenu` element
    and state; methods update/render/close/scheduleClose/isOpen/accept/handleKey.
    Host keeps a field and delegates. Model after pivotFilterPopover.ts.
@@ -36,3 +33,4 @@ New pure modules should get a `.test.ts`.
 1. Extracted pure ref/location helpers into `previewerRefs.ts` (+ test); dropped local `colLabel`.
 2. Added shared `mathUtils.ts` (`clamp`, + test); replaced duplicated local `clamp` in previewer/interact/highlights/selection.
 3. Extracted `formulaText.ts` (+ test): `balanceFormula`, `formatFormulaBar`.
+4. Extracted `previewerChrome.ts` (+ test): `makeButton`/`makeTab`/`contrastingTextColor`/`virtualSize`/`normalizeSelection` + virtual extra const.
