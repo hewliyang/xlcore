@@ -11,9 +11,6 @@ New pure modules should get a `.test.ts`.
 
 ## Backlog
 
-2. Add shared `mathUtils.ts` with `clamp`; replace the duplicated local `clamp`
-   in previewer.ts, interact.ts, highlights.ts, selection.ts with the import.
-
 3. Extract `formulaText.ts` (+ test): `balanceFormula`, `formatFormulaBar`.
 
 4. Extract `previewerChrome.ts`: `makeButton`, `makeTab`, `contrastingTextColor`,
@@ -39,3 +36,4 @@ New pure modules should get a `.test.ts`.
 ## Shipped
 
 1. Extracted pure ref/location helpers into `previewerRefs.ts` (+ test); dropped local `colLabel`.
+2. Added shared `mathUtils.ts` (`clamp`, + test); replaced duplicated local `clamp` in previewer/interact/highlights/selection.

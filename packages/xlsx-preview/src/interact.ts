@@ -1,4 +1,5 @@
 import type { Sheet, WorkbookLayout } from "./types.js";
+import { clamp } from "./mathUtils.js";
 import { drawingHyperlinkAt, drawingIndexAtPoint } from "./drawingHits.js";
 import { cellRect, mergedRect } from "./geometry.js";
 import {
@@ -1364,6 +1365,3 @@ export function attachInteractivity(
   };
 }
 
-function clamp(v: number, lo: number, hi: number): number {
-  return v < lo ? lo : v > hi ? hi : v;
-}

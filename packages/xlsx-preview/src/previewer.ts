@@ -1,4 +1,5 @@
 import { decodeWorkbookLayout, findCell, iterRows } from "./columnar.js";
+import { clamp } from "./mathUtils.js";
 import { patchWorkbookSheet } from "./layoutPatch.js";
 import { colorToCssWithTheme } from "./color.js";
 import type { LoadReport } from "./errors.js";
@@ -1621,6 +1622,3 @@ function contrastingTextColor(css: string): string {
   return luma > 140 ? "#111827" : "#ffffff";
 }
 
-function clamp(v: number, lo: number, hi: number): number {
-  return v < lo ? lo : v > hi ? hi : v;
-}

@@ -1,4 +1,5 @@
 import type { DependencyReference } from "./api-schema/DependencyReference.js";
+import { clamp } from "./mathUtils.js";
 import type { Grid } from "./grid.js";
 import type { HighlightRange } from "./renderTypes.js";
 
@@ -30,9 +31,6 @@ export interface HighlightRect {
   color: string;
 }
 
-function clamp(v: number, lo: number, hi: number): number {
-  return v < lo ? lo : v > hi ? hi : v;
-}
 
 export function buildHighlightRects(g: Grid, highlights: HighlightRange[]): HighlightRect[] {
   const rects: HighlightRect[] = [];

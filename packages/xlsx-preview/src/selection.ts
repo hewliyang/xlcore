@@ -1,4 +1,5 @@
 import type { Sheet } from "./types.js";
+import { clamp } from "./mathUtils.js";
 import type { Grid } from "./grid.js";
 import { buildMergeMaps, cellRect, mergedRect } from "./geometry.js";
 import { SELECTION_FILL, SELECTION_STROKE } from "./renderConstants.js";
@@ -25,9 +26,6 @@ export function resolveSelection(
   return null;
 }
 
-function clamp(v: number, lo: number, hi: number): number {
-  return v < lo ? lo : v > hi ? hi : v;
-}
 
 export function drawSelection(
   ctx: CanvasRenderingContext2D,
