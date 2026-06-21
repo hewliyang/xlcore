@@ -96,7 +96,7 @@ impl<'a> Model<'a> {
         Ok(values)
     }
 
-    fn percentile_inc(values: &[f64], k: f64) -> Option<f64> {
+    pub(crate) fn percentile_inc(values: &[f64], k: f64) -> Option<f64> {
         if values.is_empty() || !(0.0..=1.0).contains(&k) {
             return None;
         }
@@ -113,7 +113,7 @@ impl<'a> Model<'a> {
         }
     }
 
-    fn percentile_exc(values: &[f64], k: f64) -> Option<f64> {
+    pub(crate) fn percentile_exc(values: &[f64], k: f64) -> Option<f64> {
         if values.is_empty() {
             return None;
         }

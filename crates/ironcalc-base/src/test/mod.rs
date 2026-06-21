@@ -30,6 +30,7 @@ mod test_fn_dispersion_legacy;
 mod test_fn_tdist_mode;
 mod test_fn_forecast;
 mod test_fn_mdeterm;
+mod test_fn_aggregate;
 mod test_fn_percentile;
 mod test_fn_prob;
 mod test_fn_percentrank;

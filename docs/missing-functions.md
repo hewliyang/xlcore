@@ -40,7 +40,7 @@ Verify: `cargo test -p ironcalc_base`. Cross-check a few values against Excel.
 Tier 1 complete.
 
 ## Tier 2 — medium scalar (not started)
-AGGREGATE, BAHTTEXT, VALUETOTEXT. See triage report.
+BAHTTEXT, VALUETOTEXT. See triage report.
 
 ## Tier 3 — blocked on spill engine
 FILTER, SORT, UNIQUE, SEQUENCE, TRANSPOSE, MMULT, FREQUENCY, … (full list in triage).
@@ -52,6 +52,14 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- aggregate — AGGREGATE (reference form only; function_num 1-19 dispatches to
+  AVERAGE/COUNT/COUNTA/MAX/MIN/PRODUCT/STDEV.S/STDEV.P/SUM/VAR.S/VAR.P/MEDIAN/
+  MODE.SNGL/LARGE/SMALL/PERCENTILE.INC/QUARTILE.INC/PERCENTILE.EXC/QUARTILE.EXC;
+  options 0-7 control ignore behavior, error-ignoring for 2/3/6/7 (skip error
+  cells, else propagate), hidden-row skipping for 1/3/5/7 via cell_hidden_status;
+  nested SUBTOTAL/AGGREGATE always skipped; reuses Model::percentile_inc/exc;
+  function_num 14-19 take trailing k arg; validates function_num 1-19 & options
+  0-7 else #VALUE!; array form unsupported (no spill engine); _xlfn).
 - depreciation — VDB, AMORLINC, AMORDEGRC (VDB variable declining balance:
   cumulative dep 0->period via per-period DDB (=ScGetGDA) switching to straight-line
   remaining_book/remaining_life when SL>DDB unless no_switch=TRUE, fractional last

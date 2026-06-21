@@ -53,7 +53,7 @@ impl<'a> Model<'a> {
         false
     }
 
-    fn cell_hidden_status(
+    pub(crate) fn cell_hidden_status(
         &self,
         sheet_index: u32,
         row: i32,

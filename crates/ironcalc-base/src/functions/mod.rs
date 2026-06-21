@@ -20,6 +20,7 @@ mod macros;
 mod math_util;
 mod mathematical;
 mod mathematical_sum;
+mod aggregate;
 mod matrix;
 mod statistical;
 mod subtotal;
@@ -527,6 +528,7 @@ pub enum Function {
     Forecast,
     ForecastLinear,
     Mdeterm,
+    Aggregate,
 }
 
 macro_rules! impl_function_lookup {
@@ -1029,6 +1031,7 @@ impl_function_lookup! {
     forecast        => Forecast,
     forecast_linear => ForecastLinear,
     mdeterm         => Mdeterm,
+    aggregate       => Aggregate,
 }
 
 pub fn english_function_names() -> Vec<String> {
@@ -1496,9 +1499,10 @@ impl Function {
             Function::Forecast => functions.forecast.clone(),
             Function::ForecastLinear => functions.forecast_linear.clone(),
             Function::Mdeterm => functions.mdeterm.clone(),
+            Function::Aggregate => functions.aggregate.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 451> {
+    pub fn into_iter() -> IntoIter<Function, 452> {
         [
             Function::And,
             Function::False,
@@ -1939,6 +1943,7 @@ impl Function {
             Function::Forecast,
             Function::ForecastLinear,
             Function::Mdeterm,
+            Function::Aggregate,
             Function::Large,
             Function::Median,
             Function::Small,
@@ -1975,6 +1980,7 @@ impl Function {
             Function::Unicode => "_xlfn.UNICODE".to_string(),
             Function::Unichar => "_xlfn.UNICHAR".to_string(),
             Function::Numbervalue => "_xlfn.NUMBERVALUE".to_string(),
+            Function::Aggregate => "_xlfn.AGGREGATE".to_string(),
             Function::Amorlinc => "_xlfn.AMORLINC".to_string(),
             Function::Amordegrc => "_xlfn.AMORDEGRC".to_string(),
             Function::Rri => "_xlfn.RRI".to_string(),
@@ -2589,6 +2595,7 @@ impl<'a> Model<'a> {
             Function::Forecast => self.fn_forecast(args, cell),
             Function::ForecastLinear => self.fn_forecast(args, cell),
             Function::Mdeterm => self.fn_mdeterm(args, cell),
+            Function::Aggregate => self.fn_aggregate(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

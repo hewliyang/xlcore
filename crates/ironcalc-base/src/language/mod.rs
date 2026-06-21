@@ -454,6 +454,7 @@ pub struct Functions {
     pub forecast: String,
     pub forecast_linear: String,
     pub mdeterm: String,
+    pub aggregate: String,
     pub gauss: String,
     pub harmean: String,
     pub kurt: String,
