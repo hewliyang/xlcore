@@ -19,6 +19,7 @@ mod test_fn_choose;
 mod test_fn_concatenate;
 mod test_fn_chi_f_t_legacy;
 mod test_fn_byte_variants;
+mod test_fn_accrint;
 mod test_fn_coup;
 mod test_fn_price;
 mod test_fn_disc;

@@ -2321,6 +2321,204 @@ impl<'a> Model<'a> {
         }
         CalcResult::Number((lo + hi) / 2.0)
     }
+
+    // ACCRINTM(issue, settlement, rate, par, [basis])
+    pub(crate) fn fn_accrintm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if !(4..=5).contains(&args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let issue = match self.get_number(&args[0], cell) {
+            Ok(v) => v.floor() as i64,
+            Err(s) => return s,
+        };
+        let settlement = match self.get_number(&args[1], cell) {
+            Ok(v) => v.floor() as i64,
+            Err(s) => return s,
+        };
+        let rate = match self.get_number(&args[2], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        let par = match self.get_number(&args[3], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        let basis = if args.len() == 5 {
+            match self.get_number(&args[4], cell) {
+                Ok(v) => v.floor() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
+        };
+        if rate <= 0.0 || par <= 0.0 || !(0..=4).contains(&basis) || issue >= settlement {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "rate>0, par>0, basis 0-4, issue<settlement required".to_string(),
+            );
+        }
+        let yf = match self.yearfrac_basis(issue, settlement, basis, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        CalcResult::Number(par * rate * yf)
+    }
+
+    // ACCRINT(issue, first_interest, settlement, rate, par, frequency, [basis], [calc_method])
+    pub(crate) fn fn_accrint(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if !(6..=8).contains(&args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let issue = match self.get_number(&args[0], cell) {
+            Ok(v) => v.floor() as i64,
+            Err(s) => return s,
+        };
+        let _first_interest = match self.get_number(&args[1], cell) {
+            Ok(v) => v.floor() as i64,
+            Err(s) => return s,
+        };
+        let settlement = match self.get_number(&args[2], cell) {
+            Ok(v) => v.floor() as i64,
+            Err(s) => return s,
+        };
+        let rate = match self.get_number(&args[3], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        let par = match self.get_number(&args[4], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        let frequency = match self.get_number(&args[5], cell) {
+            Ok(v) => v.floor() as i32,
+            Err(s) => return s,
+        };
+        let basis = if args.len() >= 7 {
+            match self.get_number(&args[6], cell) {
+                Ok(v) => v.floor() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
+        };
+        if args.len() == 8 {
+            if let Err(s) = self.get_boolean(&args[7], cell) {
+                return s;
+            }
+        }
+        if rate <= 0.0
+            || par <= 0.0
+            || !matches!(frequency, 1 | 2 | 4)
+            || !(0..=4).contains(&basis)
+            || issue >= settlement
+        {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "rate>0, par>0, freq 1/2/4, basis 0-4, issue<settlement required".to_string(),
+            );
+        }
+        let yf = match self.yearfrac_basis(issue, settlement, basis, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        CalcResult::Number(par * rate * yf)
+    }
+
+    fn maturity_security_args(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(f64, f64, f64), CalcResult> {
+        let settlement = match self.get_number(&args[0], cell) {
+            Ok(v) => v.floor() as i64,
+            Err(s) => return Err(s),
+        };
+        let maturity = match self.get_number(&args[1], cell) {
+            Ok(v) => v.floor() as i64,
+            Err(s) => return Err(s),
+        };
+        let issue = match self.get_number(&args[2], cell) {
+            Ok(v) => v.floor() as i64,
+            Err(s) => return Err(s),
+        };
+        let basis = if args.len() == 6 {
+            match self.get_number(&args[5], cell) {
+                Ok(v) => v.floor() as i32,
+                Err(s) => return Err(s),
+            }
+        } else {
+            0
+        };
+        if !(0..=4).contains(&basis) || !(issue < settlement && settlement < maturity) {
+            return Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "basis 0-4, issue<settlement<maturity required".to_string(),
+            ));
+        }
+        let dsm = self.yearfrac_basis(settlement, maturity, basis, cell)?;
+        let dim = self.yearfrac_basis(issue, maturity, basis, cell)?;
+        let a = self.yearfrac_basis(issue, settlement, basis, cell)?;
+        Ok((dsm, dim, a))
+    }
+
+    // PRICEMAT(settlement, maturity, issue, rate, yld, [basis])
+    pub(crate) fn fn_pricemat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if !(5..=6).contains(&args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let rate = match self.get_number(&args[3], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        let yld = match self.get_number(&args[4], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        if rate < 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "rate>=0 required".to_string());
+        }
+        let (dsm, dim, a) = match self.maturity_security_args(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let price = (100.0 + dim * rate * 100.0) / (1.0 + dsm * yld) - a * rate * 100.0;
+        CalcResult::Number(price)
+    }
+
+    // YIELDMAT(settlement, maturity, issue, rate, pr, [basis])
+    pub(crate) fn fn_yieldmat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if !(5..=6).contains(&args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let rate = match self.get_number(&args[3], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        let pr = match self.get_number(&args[4], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        if rate < 0.0 || pr <= 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "rate>=0, pr>0 required".to_string(),
+            );
+        }
+        let (dsm, dim, a) = match self.maturity_security_args(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let base = pr / 100.0 + a * rate;
+        if base == 0.0 || dsm == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+        }
+        let yld = ((1.0 + dim * rate) - base) / base / dsm;
+        CalcResult::Number(yld)
+    }
 }
 
 fn coupon_days_in_month(year: i32, month: i32) -> i32 {

@@ -424,6 +424,10 @@ pub enum Function {
     Coupdaysnc,
     Price,
     Yield,
+    Accrint,
+    Accrintm,
+    Pricemat,
+    Yieldmat,
     Xirr,
     Xnpv,
 
@@ -912,6 +916,10 @@ impl_function_lookup! {
     coupdaysnc => Coupdaysnc,
     price      => Price,
     r#yield    => Yield,
+    accrint    => Accrint,
+    accrintm   => Accrintm,
+    pricemat   => Pricemat,
+    yieldmat   => Yieldmat,
     xirr       => Xirr,
     xnpv       => Xnpv,
 
@@ -1380,6 +1388,10 @@ impl Function {
             Function::Coupdaysnc => functions.coupdaysnc.clone(),
             Function::Price => functions.price.clone(),
             Function::Yield => functions.r#yield.clone(),
+            Function::Accrint => functions.accrint.clone(),
+            Function::Accrintm => functions.accrintm.clone(),
+            Function::Pricemat => functions.pricemat.clone(),
+            Function::Yieldmat => functions.yieldmat.clone(),
             Function::Xirr => functions.xirr.clone(),
             Function::Xnpv => functions.xnpv.clone(),
             Function::Besseli => functions.besseli.clone(),
@@ -1459,7 +1471,7 @@ impl Function {
             Function::Mdeterm => functions.mdeterm.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 438> {
+    pub fn into_iter() -> IntoIter<Function, 442> {
         [
             Function::And,
             Function::False,
@@ -1690,6 +1702,10 @@ impl Function {
             Function::Coupdaysnc,
             Function::Price,
             Function::Yield,
+            Function::Accrint,
+            Function::Accrintm,
+            Function::Pricemat,
+            Function::Yieldmat,
             Function::Dollarde,
             Function::Dollarfr,
             Function::Ddb,
@@ -2289,6 +2305,10 @@ impl<'a> Model<'a> {
             Function::Coupdaysnc => self.fn_coupdaysnc(args, cell),
             Function::Price => self.fn_price(args, cell),
             Function::Yield => self.fn_yield(args, cell),
+            Function::Accrint => self.fn_accrint(args, cell),
+            Function::Accrintm => self.fn_accrintm(args, cell),
+            Function::Pricemat => self.fn_pricemat(args, cell),
+            Function::Yieldmat => self.fn_yieldmat(args, cell),
             Function::Dollarde => self.fn_dollarde(args, cell),
             Function::Dollarfr => self.fn_dollarfr(args, cell),
             Function::Ddb => self.fn_ddb(args, cell),

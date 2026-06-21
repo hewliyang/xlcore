@@ -54,6 +54,13 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- accrued/maturity — ACCRINT, ACCRINTM, PRICEMAT, YIELDMAT (ACCRINTM =
+  par*rate*yearfrac(issue,settlement,basis); ACCRINT simplified single-period
+  par*rate*yearfrac(issue,settlement,basis), calc_method ignored beyond bool
+  validation; PRICEMAT = (100+DIM*rate*100)/(1+DSM*yld)-A*rate*100 with
+  DSM=yf(settlement,maturity), DIM=yf(issue,maturity), A=yf(issue,settlement);
+  YIELDMAT inverts closed-form; validates rate/par/pr/freq{1,2,4}/basis 0-4 and
+  date order else #NUM!; reuses yearfrac_basis; legacy, no _xlfn).
 - coupon dates — COUPPCD, COUPNCD, COUPNUM, COUPDAYBS, COUPDAYS, COUPDAYSNC
   (shared coupon-schedule helper: dates stepped back from maturity in 12/freq-month
   increments with end-of-month handling; PCD = last coupon <= settlement, NCD =
