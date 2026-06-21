@@ -494,7 +494,8 @@
       "munit": "MUNIT",
       "randarray": "RANDARRAY",
       "frequency": "FREQUENCY",
-      "textsplit": "TEXTSPLIT"
+      "textsplit": "TEXTSPLIT",
+      "modemult": "MODE.MULT"
     }
   },
   "de": {
@@ -992,7 +993,8 @@
       "munit": "MUNIT",
       "randarray": "RANDARRAY",
       "frequency": "FREQUENCY",
-      "textsplit": "TEXTSPLIT"
+      "textsplit": "TEXTSPLIT",
+      "modemult": "MODE.MULT"
     }
   },
   "fr": {
@@ -1490,7 +1492,8 @@
       "munit": "MUNIT",
       "randarray": "RANDARRAY",
       "frequency": "FREQUENCY",
-      "textsplit": "TEXTSPLIT"
+      "textsplit": "TEXTSPLIT",
+      "modemult": "MODE.MULT"
     }
   },
   "es": {
@@ -1988,7 +1991,8 @@
       "munit": "MUNIT",
       "randarray": "RANDARRAY",
       "frequency": "FREQUENCY",
-      "textsplit": "TEXTSPLIT"
+      "textsplit": "TEXTSPLIT",
+      "modemult": "MODE.MULT"
     }
   }
 }

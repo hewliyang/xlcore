@@ -500,6 +500,7 @@ pub struct Functions {
     pub randarray: String,
     pub frequency: String,
     pub textsplit: String,
+    pub modemult: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

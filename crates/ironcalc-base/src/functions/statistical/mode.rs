@@ -6,11 +6,11 @@ use crate::{
 };
 
 impl<'a> Model<'a> {
-    pub(crate) fn fn_mode_sngl(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() {
-            return CalcResult::new_args_number_error(cell);
-        }
-
+    fn collect_mode_values(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<f64>, CalcResult> {
         let mut values: Vec<f64> = Vec::new();
 
         for arg in args {
@@ -20,11 +20,11 @@ impl<'a> Model<'a> {
                 }
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
-                        return CalcResult::new_error(
+                        return Err(CalcResult::new_error(
                             Error::VALUE,
                             cell,
                             "Ranges are in different sheets".to_string(),
-                        );
+                        ));
                     }
 
                     let row1 = left.row;
@@ -36,11 +36,11 @@ impl<'a> Model<'a> {
                         row2 = match self.workbook.worksheet(left.sheet) {
                             Ok(s) => s.dimension().max_row,
                             Err(_) => {
-                                return CalcResult::new_error(
+                                return Err(CalcResult::new_error(
                                     Error::ERROR,
                                     cell,
                                     format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
+                                ));
                             }
                         };
                     }
@@ -48,11 +48,11 @@ impl<'a> Model<'a> {
                         column2 = match self.workbook.worksheet(left.sheet) {
                             Ok(s) => s.dimension().max_column,
                             Err(_) => {
-                                return CalcResult::new_error(
+                                return Err(CalcResult::new_error(
                                     Error::ERROR,
                                     cell,
                                     format!("Invalid worksheet index: '{}'", left.sheet),
-                                );
+                                ));
                             }
                         };
                     }
@@ -67,10 +67,8 @@ impl<'a> Model<'a> {
                                 CalcResult::Number(value) => {
                                     values.push(value);
                                 }
-                                error @ CalcResult::Error { .. } => return error,
-                                _ => {
-                                    // ignore non-numeric
-                                }
+                                error @ CalcResult::Error { .. } => return Err(error),
+                                _ => {}
                             }
                         }
                     }
@@ -83,25 +81,34 @@ impl<'a> Model<'a> {
                                     values.push(value);
                                 }
                                 ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
+                                    return Err(CalcResult::Error {
                                         error,
                                         origin: cell,
                                         message: "Error in array".to_string(),
-                                    }
+                                    });
                                 }
-                                _ => {
-                                    // ignore non-numeric
-                                }
+                                _ => {}
                             }
                         }
                     }
                 }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // ignore non-numeric
-                }
+                error @ CalcResult::Error { .. } => return Err(error),
+                _ => {}
             }
         }
+
+        Ok(values)
+    }
+
+    pub(crate) fn fn_mode_sngl(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let values = match self.collect_mode_values(args, cell) {
+            Ok(values) => values,
+            Err(error) => return error,
+        };
 
         let mut best_value: Option<f64> = None;
         let mut best_count: usize = 0;
@@ -119,11 +126,51 @@ impl<'a> Model<'a> {
 
         match best_value {
             Some(value) => CalcResult::Number(value),
-            None => CalcResult::new_error(
+            None => {
+                CalcResult::new_error(Error::NA, cell, "MODE found no repeated value".to_string())
+            }
+        }
+    }
+
+    pub(crate) fn fn_mode_mult(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let values = match self.collect_mode_values(args, cell) {
+            Ok(values) => values,
+            Err(error) => return error,
+        };
+
+        let mut max_count: usize = 0;
+        for &candidate in &values {
+            let count = values.iter().filter(|&&v| v == candidate).count();
+            if count >= 2 && count > max_count {
+                max_count = count;
+            }
+        }
+
+        if max_count < 2 {
+            return CalcResult::new_error(
                 Error::NA,
                 cell,
                 "MODE found no repeated value".to_string(),
-            ),
+            );
         }
+
+        let mut modes: Vec<f64> = Vec::new();
+        for &candidate in &values {
+            let count = values.iter().filter(|&&v| v == candidate).count();
+            if count == max_count && !modes.iter().any(|&v| v == candidate) {
+                modes.push(candidate);
+            }
+        }
+
+        let result: Vec<Vec<ArrayNode>> = modes
+            .into_iter()
+            .map(|value| vec![ArrayNode::Number(value)])
+            .collect();
+
+        CalcResult::Array(result)
     }
 }
