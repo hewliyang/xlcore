@@ -22,6 +22,7 @@ mod test_fn_dispersion_legacy;
 mod test_fn_tdist_mode;
 mod test_fn_stat_legacy;
 mod test_fn_count;
+mod test_fn_simple_text;
 mod test_fn_day;
 mod test_fn_exact;
 mod test_fn_financial;

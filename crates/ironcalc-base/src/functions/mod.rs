@@ -180,6 +180,13 @@ pub enum Function {
     Upper,
     Value,
     Valuetotext,
+    Char,
+    Code,
+    Clean,
+    Proper,
+    Replace,
+    Fixed,
+    Dollar,
 
     // Statistical
     Average,
@@ -629,6 +636,13 @@ impl_function_lookup! {
     upper       => Upper,
     value       => Value,
     valuetotext => Valuetotext,
+    char        => Char,
+    code        => Code,
+    clean       => Clean,
+    proper      => Proper,
+    replace     => Replace,
+    fixed       => Fixed,
+    dollar      => Dollar,
 
     // Statistical
     average        => Average,
@@ -1047,6 +1061,13 @@ impl Function {
             Function::Upper => functions.upper.clone(),
             Function::Value => functions.value.clone(),
             Function::Valuetotext => functions.valuetotext.clone(),
+            Function::Char => functions.char.clone(),
+            Function::Code => functions.code.clone(),
+            Function::Clean => functions.clean.clone(),
+            Function::Proper => functions.proper.clone(),
+            Function::Replace => functions.replace.clone(),
+            Function::Fixed => functions.fixed.clone(),
+            Function::Dollar => functions.dollar.clone(),
             Function::Average => functions.average.clone(),
             Function::Averagea => functions.averagea.clone(),
             Function::Averageif => functions.averageif.clone(),
@@ -1291,7 +1312,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 382> {
+    pub fn into_iter() -> IntoIter<Function, 389> {
         [
             Function::And,
             Function::False,
@@ -1402,6 +1423,13 @@ impl Function {
             Function::Trim,
             Function::Unicode,
             Function::Upper,
+            Function::Char,
+            Function::Code,
+            Function::Clean,
+            Function::Proper,
+            Function::Replace,
+            Function::Fixed,
+            Function::Dollar,
             Function::Isnumber,
             Function::Isnontext,
             Function::Istext,
@@ -1931,6 +1959,13 @@ impl<'a> Model<'a> {
             Function::Trim => self.fn_trim(args, cell),
             Function::Unicode => self.fn_unicode(args, cell),
             Function::Upper => self.fn_upper(args, cell),
+            Function::Char => self.fn_char(args, cell),
+            Function::Code => self.fn_code(args, cell),
+            Function::Clean => self.fn_clean(args, cell),
+            Function::Proper => self.fn_proper(args, cell),
+            Function::Replace => self.fn_replace(args, cell),
+            Function::Fixed => self.fn_fixed(args, cell),
+            Function::Dollar => self.fn_dollar(args, cell),
             Function::Isnumber => self.fn_isnumber(args, cell),
             Function::Isnontext => self.fn_isnontext(args, cell),
             Function::Istext => self.fn_istext(args, cell),

@@ -50,6 +50,106 @@ fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
     None
 }
 
+const CP1252_HIGH: [Option<char>; 32] = [
+    Some('\u{20AC}'),
+    None,
+    Some('\u{201A}'),
+    Some('\u{0192}'),
+    Some('\u{201E}'),
+    Some('\u{2026}'),
+    Some('\u{2020}'),
+    Some('\u{2021}'),
+    Some('\u{02C6}'),
+    Some('\u{2030}'),
+    Some('\u{0160}'),
+    Some('\u{2039}'),
+    Some('\u{0152}'),
+    None,
+    Some('\u{017D}'),
+    None,
+    None,
+    Some('\u{2018}'),
+    Some('\u{2019}'),
+    Some('\u{201C}'),
+    Some('\u{201D}'),
+    Some('\u{2022}'),
+    Some('\u{2013}'),
+    Some('\u{2014}'),
+    Some('\u{02DC}'),
+    Some('\u{2122}'),
+    Some('\u{0161}'),
+    Some('\u{203A}'),
+    Some('\u{0153}'),
+    None,
+    Some('\u{017E}'),
+    Some('\u{0178}'),
+];
+
+fn cp1252_to_char(code: u32) -> Option<char> {
+    if (128..=159).contains(&code) {
+        CP1252_HIGH[(code - 128) as usize]
+    } else if code <= 255 {
+        char::from_u32(code)
+    } else {
+        None
+    }
+}
+
+fn char_to_cp1252(c: char) -> u32 {
+    let code = c as u32;
+    if code <= 255 {
+        return code;
+    }
+    for (index, mapped) in CP1252_HIGH.iter().enumerate() {
+        if *mapped == Some(c) {
+            return 128 + index as u32;
+        }
+    }
+    63
+}
+
+fn group_integer(int_part: &str, group: &str) -> String {
+    let bytes: Vec<char> = int_part.chars().collect();
+    let mut result = String::new();
+    let len = bytes.len();
+    for (index, ch) in bytes.iter().enumerate() {
+        if index != 0 && (len - index) % 3 == 0 {
+            result.push_str(group);
+        }
+        result.push(*ch);
+    }
+    result
+}
+
+fn format_fixed_magnitude(
+    abs_value: f64,
+    decimals: i32,
+    commas: bool,
+    group: &str,
+    decimal: &str,
+) -> String {
+    let display_decimals = decimals.max(0) as usize;
+    let s = format!("{abs_value:.display_decimals$}");
+    let (int_part, frac_part) = match s.split_once('.') {
+        Some((i, f)) => (i.to_string(), Some(f.to_string())),
+        None => (s, None),
+    };
+    let int_part = if commas {
+        group_integer(&int_part, group)
+    } else {
+        int_part
+    };
+    match frac_part {
+        Some(f) => format!("{int_part}{decimal}{f}"),
+        None => int_part,
+    }
+}
+
+fn round_to_decimals(value: f64, decimals: i32) -> f64 {
+    let factor = 10f64.powi(decimals);
+    (value * factor).round() / factor
+}
+
 impl<'a> Model<'a> {
     pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = "".to_string();
@@ -1269,5 +1369,182 @@ impl<'a> Model<'a> {
             },
         };
         CalcResult::String(text)
+    }
+
+    pub(crate) fn fn_char(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(error) => return error,
+        };
+        let code = value.trunc();
+        if !(1.0..=255.0).contains(&code) {
+            return CalcResult::new_error(Error::VALUE, cell, "Number out of range".to_string());
+        }
+        match cp1252_to_char(code as u32) {
+            Some(c) => CalcResult::String(c.to_string()),
+            None => CalcResult::new_error(Error::VALUE, cell, "Invalid character".to_string()),
+        }
+    }
+
+    pub(crate) fn fn_code(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let text = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(error) => return error,
+        };
+        match text.chars().next() {
+            Some(c) => CalcResult::Number(char_to_cp1252(c) as f64),
+            None => CalcResult::new_error(Error::VALUE, cell, "Empty string".to_string()),
+        }
+    }
+
+    pub(crate) fn fn_clean(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let text = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(error) => return error,
+        };
+        let result: String = text.chars().filter(|c| (*c as u32) >= 32).collect();
+        CalcResult::String(result)
+    }
+
+    pub(crate) fn fn_proper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let text = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(error) => return error,
+        };
+        let mut result = String::new();
+        let mut prev_is_letter = false;
+        for c in text.chars() {
+            if c.is_alphabetic() {
+                if prev_is_letter {
+                    result.extend(c.to_lowercase());
+                } else {
+                    result.extend(c.to_uppercase());
+                }
+                prev_is_letter = true;
+            } else {
+                result.push(c);
+                prev_is_letter = false;
+            }
+        }
+        CalcResult::String(result)
+    }
+
+    pub(crate) fn fn_replace(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 4 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let old_text = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(error) => return error,
+        };
+        let start_num = match self.get_number(&args[1], cell) {
+            Ok(f) => f.trunc(),
+            Err(error) => return error,
+        };
+        let num_chars = match self.get_number(&args[2], cell) {
+            Ok(f) => f.trunc(),
+            Err(error) => return error,
+        };
+        let new_text = match self.get_string(&args[3], cell) {
+            Ok(s) => s,
+            Err(error) => return error,
+        };
+        if start_num < 1.0 || num_chars < 0.0 {
+            return CalcResult::new_error(Error::VALUE, cell, "Invalid arguments".to_string());
+        }
+        let chars: Vec<char> = old_text.chars().collect();
+        let start = (start_num as usize) - 1;
+        let count = num_chars as usize;
+        let mut result = String::new();
+        for c in chars.iter().take(start.min(chars.len())) {
+            result.push(*c);
+        }
+        result.push_str(&new_text);
+        let tail_start = start.saturating_add(count);
+        if tail_start < chars.len() {
+            for c in &chars[tail_start..] {
+                result.push(*c);
+            }
+        }
+        CalcResult::String(result)
+    }
+
+    pub(crate) fn fn_fixed(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let number = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(error) => return error,
+        };
+        let decimals = if args.len() >= 2 {
+            match self.get_number(&args[1], cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(error) => return error,
+            }
+        } else {
+            2
+        };
+        let no_commas = if args.len() == 3 {
+            match self.get_boolean(&args[2], cell) {
+                Ok(b) => b,
+                Err(error) => return error,
+            }
+        } else {
+            false
+        };
+        let rounded = round_to_decimals(number, decimals);
+        let group = &self.locale.numbers.symbols.group;
+        let decimal = &self.locale.numbers.symbols.decimal;
+        let minus = &self.locale.numbers.symbols.minus_sign;
+        let magnitude =
+            format_fixed_magnitude(rounded.abs(), decimals, !no_commas, group, decimal);
+        let result = if rounded < 0.0 {
+            format!("{minus}{magnitude}")
+        } else {
+            magnitude
+        };
+        CalcResult::String(result)
+    }
+
+    pub(crate) fn fn_dollar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let number = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(error) => return error,
+        };
+        let decimals = if args.len() == 2 {
+            match self.get_number(&args[1], cell) {
+                Ok(f) => f.trunc() as i32,
+                Err(error) => return error,
+            }
+        } else {
+            2
+        };
+        let rounded = round_to_decimals(number, decimals);
+        let group = &self.locale.numbers.symbols.group;
+        let decimal = &self.locale.numbers.symbols.decimal;
+        let symbol = &self.locale.currency.symbol;
+        let magnitude = format_fixed_magnitude(rounded.abs(), decimals, true, group, decimal);
+        let result = if rounded < 0.0 {
+            format!("({symbol}{magnitude})")
+        } else {
+            format!("{symbol}{magnitude}")
+        };
+        CalcResult::String(result)
     }
 }
