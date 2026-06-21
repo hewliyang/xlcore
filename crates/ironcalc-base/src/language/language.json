@@ -472,7 +472,8 @@
       "prob": "PROB",
       "trimmean": "TRIMMEAN",
       "hyperlink": "HYPERLINK",
-      "bahttext": "BAHTTEXT"
+      "bahttext": "BAHTTEXT",
+      "arraytotext": "ARRAYTOTEXT"
     }
   },
   "de": {
@@ -948,7 +949,8 @@
       "prob": "WAHRSCHBEREICH",
       "trimmean": "GESTUTZTMITTEL",
       "hyperlink": "HYPERLINK",
-      "bahttext": "BAHTTEXT"
+      "bahttext": "BAHTTEXT",
+      "arraytotext": "MATRICEENTEXTE"
     }
   },
   "fr": {
@@ -1424,7 +1426,8 @@
         "prob": "PROBABILITE",
         "trimmean": "MOYENNE.REDUITE",
         "hyperlink": "LIEN_HYPERTEXTE",
-        "bahttext": "BAHTTEXT"
+        "bahttext": "BAHTTEXT",
+        "arraytotext": "MATRICEENTEXTE"
     }
   },
   "es": {
@@ -1900,7 +1903,8 @@
       "prob": "PROBABILIDAD",
       "trimmean": "MEDIA.ACOTADA",
       "hyperlink": "HIPERVINCULO",
-      "bahttext": "TEXTOBAHT"
+      "bahttext": "TEXTOBAHT",
+      "arraytotext": "MATRIZATEXTO"
     }
   }
 }

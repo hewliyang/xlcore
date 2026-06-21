@@ -47,7 +47,54 @@ Note: DISC basis-1 multi-year matches real Excel (0.000686384) and SpreadJS's DI
 differs there — SpreadJS is the outlier, xlcore is correct.
 
 ## Tier 3 — blocked on spill engine
-FILTER, SORT, UNIQUE, SEQUENCE, TRANSPOSE, MMULT, FREQUENCY, … (full list in triage).
+27 fns. All return `CalcResult::Array`, which model.rs (~L684) rewrites to `#N/IMPL
+"Arrays not supported yet"`. A function can only be written to the grid today if its
+result is a scalar (String/Number/Boolean). Triaged by that test:
+
+### 3a — ship now (genuine scalar result, no spill)
+- **ARRAYTOTEXT** — ARRAYTOTEXT(array,[format]) always returns one string. Format 0
+  concise = values joined `", "`; format 1 strict = brace-wrapped, rows joined `;`,
+  cols joined `,`, strings quoted, errors as text. Sibling of the shipped
+  VALUETOTEXT (text.rs:1524); same range-walk, no spill. Do this independently of
+  the spill work.
+
+### 3b — degenerate scalar only (skip — false coverage)
+Technically have a 1×1 case but are pointless/misleading without spill; do NOT ship
+partials: MMULT (row·col dot product → scalar), MINVERSE/MUNIT (1×1), TRANSPOSE
+(1×1), SEQUENCE/RANDARRAY/TAKE/DROP (1×1), MODE.MULT (collapses to existing
+MODE.SNGL), TEXTSPLIT (no-delimiter → whole text). Wait for the engine.
+
+### 3c — strictly array, hard-blocked
+FILTER, SORT, SORTBY, UNIQUE, EXPAND, HSTACK, VSTACK, TOCOL, TOROW, CHOOSECOLS,
+CHOOSEROWS, FREQUENCY, LINEST, LOGEST, TREND, GROWTH. No useful scalar form.
+
+### Spill-engine unlock (round-trip required)
+Needed for 3b+3c and array Tier 4. Round-trip (xlsx read+write) is in scope, so
+spill metadata must thread through every layer, not just the calc engine. Staged
+backlog — work top to bottom, one item per agent:
+
+- [x] **S0 — ARRAYTOTEXT** (decoupled, no spill). Always returns one string;
+  sibling of shipped VALUETOTEXT (text.rs:1524). Format 0 concise = values joined
+  `", "`; format 1 strict = brace-wrapped, rows `;`, cols `,`, strings quoted,
+  errors as text. Ship like the Tier 2 fns.
+- [ ] **S1 — spill metadata in the type system.** ironcalc `Cell` gains an
+  array-formula variant carrying anchor + spill `ref` + cached spilled values;
+  surface the spill range on `xlcore-types::CellInfo`. No behavior yet; just the
+  data model + serialization plumbing compiling green.
+- [ ] **S2 — TRANSPOSE vertical slice (the pilot).** Pure/deterministic array fn
+  driven end to end: eval produces array → spill write-back into `sheet_data`
+  (anchor + `#SPILL!` on collision, model.rs:684 path) → other formulas read
+  spilled cells → xlsx write (`<f t="array" ref=...>` + `xl/metadata.xml`
+  dynamicArrayProperties + `cm` + cached `<v>` per spilled cell) → reopen →
+  reimport, values + `ref` survive. e2e: build .xlsx → xlsx-preview render.
+- [ ] **S3 — reference/intersection polish.** `A1#` spill operator;
+  `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
+- [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2 lands.
+
+Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
+live on the anchor cell as `<f t="array" ref=...>` + `cm` → `xl/metadata.xml`
+`<dynamicArrayProperties fDynamic="1"/>`; spilled cells are plain cached `<v>`;
+`#`/`@` serialize as `_xlfn.ANCHORARRAY`/`_xlfn.SINGLE`.
 
 ## Tier 4 — blocked on lambda support
 LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
@@ -56,6 +103,11 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- arraytotext — ARRAYTOTEXT(array,[format]): always one string; walks range/array
+  row-major; format 0 (default) concise joins all values with `, `; format 1
+  strict wraps in `{...}`, cols `,` rows `;`, strings double-quoted, numbers as
+  number string, TRUE/FALSE and error text literal; scalar/range arg supported;
+  format not 0/1 => #VALUE!; sibling of VALUETOTEXT; _xlfn.
 - valuetotext/bahttext — VALUETOTEXT, BAHTTEXT (VALUETOTEXT(value,[format]):
   format 0 concise = displayed text (numbers as number string, text as-is,
   TRUE/FALSE, error text), format 1 strict wraps strings in double quotes; range

@@ -894,6 +894,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Gestep => args_signature_scalars(arg_count, 1, 1),
         Function::Subtotal => args_signature_npv(arg_count),
         Function::Bahttext => args_signature_scalars(arg_count, 1, 0),
+        Function::Arraytotext => args_signature_scalars(arg_count, 1, 1),
         Function::Aggregate => {
             let mut result = vec![Signature::Vector; arg_count];
             if arg_count >= 1 {
@@ -1481,6 +1482,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Gestep => not_implemented(args),
         Function::Subtotal => not_implemented(args),
         Function::Bahttext => not_implemented(args),
+        Function::Arraytotext => not_implemented(args),
         Function::Aggregate => not_implemented(args),
         Function::Rand => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),

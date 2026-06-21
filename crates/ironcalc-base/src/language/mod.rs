@@ -478,6 +478,7 @@ pub struct Functions {
     pub trimmean: String,
     pub hyperlink: String,
     pub bahttext: String,
+    pub arraytotext: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

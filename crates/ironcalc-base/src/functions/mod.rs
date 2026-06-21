@@ -530,6 +530,7 @@ pub enum Function {
     Mdeterm,
     Aggregate,
     Bahttext,
+    Arraytotext,
 }
 
 macro_rules! impl_function_lookup {
@@ -1034,6 +1035,7 @@ impl_function_lookup! {
     mdeterm         => Mdeterm,
     aggregate       => Aggregate,
     bahttext        => Bahttext,
+    arraytotext     => Arraytotext,
 }
 
 pub fn english_function_names() -> Vec<String> {
@@ -1503,9 +1505,10 @@ impl Function {
             Function::Mdeterm => functions.mdeterm.clone(),
             Function::Aggregate => functions.aggregate.clone(),
             Function::Bahttext => functions.bahttext.clone(),
+            Function::Arraytotext => functions.arraytotext.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 453> {
+    pub fn into_iter() -> IntoIter<Function, 454> {
         [
             Function::And,
             Function::False,
@@ -1960,6 +1963,7 @@ impl Function {
             Function::MaxA,
             Function::MinA,
             Function::Bahttext,
+            Function::Arraytotext,
         ]
         .into_iter()
     }
@@ -2004,6 +2008,7 @@ impl Function {
             Function::ErfcPrecise => "_xlfn.ERFC.PRECISE".to_string(),
             Function::ErfPrecise => "_xlfn.ERF.PRECISE".to_string(),
             Function::Valuetotext => "_xlfn.VALUETOTEXT".to_string(),
+            Function::Arraytotext => "_xlfn.ARRAYTOTEXT".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2601,6 +2606,7 @@ impl<'a> Model<'a> {
             Function::Mdeterm => self.fn_mdeterm(args, cell),
             Function::Aggregate => self.fn_aggregate(args, cell),
             Function::Bahttext => self.fn_bahttext(args, cell),
+            Function::Arraytotext => self.fn_arraytotext(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

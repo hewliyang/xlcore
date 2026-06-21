@@ -1,7 +1,11 @@
 use crate::{
     calc_result::CalcResult,
     constants::{LAST_COLUMN, LAST_ROW},
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{
+        parser::{ArrayNode, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
     formatter::format::{format_number, parse_formatted_number},
     model::Model,
     number_format::to_precision,
@@ -11,6 +15,35 @@ use super::{
     text_util::{substitute, text_after, text_before, Case},
     util::from_wildcard_to_regex,
 };
+
+fn array_to_text_value(value: &CalcResult, strict: bool) -> String {
+    match value {
+        CalcResult::Number(f) => format!("{f}"),
+        CalcResult::String(s) => {
+            if strict {
+                format!("\"{s}\"")
+            } else {
+                s.clone()
+            }
+        }
+        CalcResult::Boolean(b) => {
+            if *b {
+                "TRUE".to_string()
+            } else {
+                "FALSE".to_string()
+            }
+        }
+        CalcResult::EmptyCell | CalcResult::EmptyArg => {
+            if strict {
+                "\"\"".to_string()
+            } else {
+                String::new()
+            }
+        }
+        CalcResult::Error { error, .. } => error.to_string(),
+        CalcResult::Range { .. } | CalcResult::Array(_) => String::new(),
+    }
+}
 
 /// Finds the first instance of 'search_for' in text starting at char index start
 fn find(search_for: &str, text: &str, start: usize) -> Option<i32> {
@@ -1586,6 +1619,93 @@ impl<'a> Model<'a> {
                     message: "Arrays not supported yet".to_string(),
                 }
             }
+        };
+        CalcResult::String(text)
+    }
+
+    pub(crate) fn fn_arraytotext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let strict = if args.len() == 2 {
+            let format = match self.get_number(&args[1], cell) {
+                Ok(f) => f.trunc(),
+                Err(error) => return error,
+            };
+            if format == 0.0 {
+                false
+            } else if format == 1.0 {
+                true
+            } else {
+                return CalcResult::new_error(Error::VALUE, cell, "Invalid format".to_string());
+            }
+        } else {
+            false
+        };
+        let value = self.evaluate_node_in_context(&args[0], cell);
+        let mut rows: Vec<Vec<String>> = Vec::new();
+        match value {
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    );
+                }
+                for row in left.row..=right.row {
+                    let mut row_values = Vec::new();
+                    for column in left.column..=right.column {
+                        let v = self.evaluate_cell(CellReferenceIndex {
+                            sheet: left.sheet,
+                            row,
+                            column,
+                        });
+                        row_values.push(array_to_text_value(&v, strict));
+                    }
+                    rows.push(row_values);
+                }
+            }
+            CalcResult::Array(array) => {
+                for row in array {
+                    let mut row_values = Vec::new();
+                    for v in row {
+                        let text = match v {
+                            ArrayNode::Number(f) => format!("{f}"),
+                            ArrayNode::String(s) => {
+                                if strict {
+                                    format!("\"{s}\"")
+                                } else {
+                                    s
+                                }
+                            }
+                            ArrayNode::Boolean(b) => {
+                                if b {
+                                    "TRUE".to_string()
+                                } else {
+                                    "FALSE".to_string()
+                                }
+                            }
+                            ArrayNode::Error(error) => error.to_string(),
+                        };
+                        row_values.push(text);
+                    }
+                    rows.push(row_values);
+                }
+            }
+            other => {
+                rows.push(vec![array_to_text_value(&other, strict)]);
+            }
+        }
+        let text = if strict {
+            let rows_text: Vec<String> = rows
+                .into_iter()
+                .map(|row| row.join(","))
+                .collect();
+            format!("{{{}}}", rows_text.join(";"))
+        } else {
+            let flat: Vec<String> = rows.into_iter().flatten().collect();
+            flat.join(", ")
         };
         CalcResult::String(text)
     }
