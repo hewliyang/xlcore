@@ -44,6 +44,7 @@ mod test_fn_choosecols;
 mod test_fn_chooserows;
 mod test_fn_tocol;
 mod test_fn_torow;
+mod test_fn_expand;
 mod test_fn_transpose;
 mod test_fn_bahttext;
 mod test_fn_percentile;

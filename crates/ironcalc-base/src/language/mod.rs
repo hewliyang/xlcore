@@ -492,6 +492,7 @@ pub struct Functions {
     pub chooserows: String,
     pub tocol: String,
     pub torow: String,
+    pub expand: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

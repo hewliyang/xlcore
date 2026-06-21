@@ -1038,6 +1038,76 @@ impl<'a> Model<'a> {
         CalcResult::Array(vec![flat])
     }
 
+    pub(crate) fn fn_expand(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() < 2 || args.len() > 4 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let grid = match self.read_array_arg(&args[0], cell) {
+            Ok(g) => g,
+            Err(e) => return e,
+        };
+        let cur_rows = grid.len();
+        let cur_cols = grid.iter().map(|r| r.len()).max().unwrap_or(0);
+        let target_rows = match self.evaluate_node_in_context(&args[1], cell) {
+            CalcResult::EmptyCell | CalcResult::EmptyArg => cur_rows as i64,
+            other => match self.cast_to_number(other, cell) {
+                Ok(n) => n.trunc() as i64,
+                Err(e) => return e,
+            },
+        };
+        let target_cols = if args.len() >= 3 {
+            match self.evaluate_node_in_context(&args[2], cell) {
+                CalcResult::EmptyCell | CalcResult::EmptyArg => cur_cols as i64,
+                other => match self.cast_to_number(other, cell) {
+                    Ok(n) => n.trunc() as i64,
+                    Err(e) => return e,
+                },
+            }
+        } else {
+            cur_cols as i64
+        };
+        if target_rows < 1 || target_cols < 1 {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "EXPAND: rows and columns must be >= 1".to_string(),
+            );
+        }
+        if target_rows < cur_rows as i64 || target_cols < cur_cols as i64 {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "EXPAND cannot shrink an array".to_string(),
+            );
+        }
+        let pad_with = if args.len() >= 4 {
+            let value = self.evaluate_node_in_context(&args[3], cell);
+            if let CalcResult::EmptyCell | CalcResult::EmptyArg = value {
+                ArrayNode::Error(Error::NA)
+            } else {
+                calc_result_to_array_node(value)
+            }
+        } else {
+            ArrayNode::Error(Error::NA)
+        };
+        let target_rows = target_rows as usize;
+        let target_cols = target_cols as usize;
+        let mut out: Vec<Vec<ArrayNode>> = Vec::with_capacity(target_rows);
+        for r in 0..target_rows {
+            let mut new_row: Vec<ArrayNode> = Vec::with_capacity(target_cols);
+            for c in 0..target_cols {
+                let node = grid
+                    .get(r)
+                    .and_then(|row| row.get(c))
+                    .cloned()
+                    .unwrap_or_else(|| pad_with.clone());
+                new_row.push(node);
+            }
+            out.push(new_row);
+        }
+        CalcResult::Array(out)
+    }
+
     pub(crate) fn fn_mdeterm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
