@@ -553,6 +553,8 @@ pub enum Function {
     Frequency,
     Textsplit,
     ModeMult,
+    Linest,
+    Trend,
 }
 
 macro_rules! impl_function_lookup {
@@ -1077,6 +1079,8 @@ impl_function_lookup! {
     frequency       => Frequency,
     textsplit       => Textsplit,
     modemult        => ModeMult,
+    linest          => Linest,
+    trend           => Trend,
     mmult           => Mmult,
     minverse        => Minverse,
     munit           => Munit,
@@ -1572,9 +1576,11 @@ impl Function {
             Function::Frequency => functions.frequency.clone(),
             Function::Textsplit => functions.textsplit.clone(),
             Function::ModeMult => functions.modemult.clone(),
+            Function::Linest => functions.linest.clone(),
+            Function::Trend => functions.trend.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 476> {
+    pub fn into_iter() -> IntoIter<Function, 478> {
         [
             Function::And,
             Function::False,
@@ -2052,6 +2058,8 @@ impl Function {
             Function::Frequency,
             Function::Textsplit,
             Function::ModeMult,
+            Function::Linest,
+            Function::Trend,
         ]
         .into_iter()
     }
@@ -2117,6 +2125,8 @@ impl Function {
             Function::Frequency => "FREQUENCY".to_string(),
             Function::Textsplit => "_xlfn.TEXTSPLIT".to_string(),
             Function::ModeMult => "_xlfn.MODE.MULT".to_string(),
+            Function::Linest => "LINEST".to_string(),
+            Function::Trend => "TREND".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2737,6 +2747,8 @@ impl<'a> Model<'a> {
             Function::Frequency => self.fn_frequency(args, cell),
             Function::Textsplit => self.fn_textsplit(args, cell),
             Function::ModeMult => self.fn_mode_mult(args, cell),
+            Function::Linest => self.fn_linest(args, cell),
+            Function::Trend => self.fn_trend(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

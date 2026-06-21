@@ -901,6 +901,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Frequency => vec![Signature::Vector; arg_count],
         Function::Textsplit => vec![Signature::Scalar; arg_count],
         Function::ModeMult => vec![Signature::Vector; arg_count],
+        Function::Linest => vec![Signature::Vector; arg_count],
+        Function::Trend => vec![Signature::Vector; arg_count],
         Function::Sort => {
             let mut result = vec![Signature::Vector; arg_count];
             for item in result.iter_mut().skip(1) {
@@ -1555,6 +1557,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Frequency => not_implemented(args),
         Function::Textsplit => not_implemented(args),
         Function::ModeMult => not_implemented(args),
+        Function::Linest => not_implemented(args),
+        Function::Trend => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),
         Function::Eomonth => scalar_arguments(args),
         Function::Formulatext => not_implemented(args),

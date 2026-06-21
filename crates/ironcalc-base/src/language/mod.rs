@@ -501,6 +501,8 @@ pub struct Functions {
     pub frequency: String,
     pub textsplit: String,
     pub modemult: String,
+    pub linest: String,
+    pub trend: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

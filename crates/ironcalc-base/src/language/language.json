@@ -495,7 +495,9 @@
       "randarray": "RANDARRAY",
       "frequency": "FREQUENCY",
       "textsplit": "TEXTSPLIT",
-      "modemult": "MODE.MULT"
+      "modemult": "MODE.MULT",
+      "linest": "LINEST",
+      "trend": "TREND"
     }
   },
   "de": {
@@ -994,7 +996,9 @@
       "randarray": "RANDARRAY",
       "frequency": "FREQUENCY",
       "textsplit": "TEXTSPLIT",
-      "modemult": "MODE.MULT"
+      "modemult": "MODE.MULT",
+      "linest": "LINEST",
+      "trend": "TREND"
     }
   },
   "fr": {
@@ -1493,7 +1497,9 @@
       "randarray": "RANDARRAY",
       "frequency": "FREQUENCY",
       "textsplit": "TEXTSPLIT",
-      "modemult": "MODE.MULT"
+      "modemult": "MODE.MULT",
+      "linest": "LINEST",
+      "trend": "TREND"
     }
   },
   "es": {
@@ -1992,7 +1998,9 @@
       "randarray": "RANDARRAY",
       "frequency": "FREQUENCY",
       "textsplit": "TEXTSPLIT",
-      "modemult": "MODE.MULT"
+      "modemult": "MODE.MULT",
+      "linest": "LINEST",
+      "trend": "TREND"
     }
   }
 }

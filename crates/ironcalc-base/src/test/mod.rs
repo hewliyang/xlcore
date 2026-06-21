@@ -52,6 +52,8 @@ mod test_fn_munit;
 mod test_fn_randarray;
 mod test_fn_frequency;
 mod test_fn_mode_mult;
+mod test_fn_linest;
+mod test_fn_trend;
 mod test_fn_textsplit;
 mod test_fn_transpose;
 mod test_fn_bahttext;

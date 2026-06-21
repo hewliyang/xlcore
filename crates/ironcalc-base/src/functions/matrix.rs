@@ -50,6 +50,209 @@ fn resolve_choose_indices(indices: &[i64], len: usize) -> Option<Vec<usize>> {
     Some(out)
 }
 
+fn invert_matrix(matrix: &[Vec<f64>]) -> Option<Vec<Vec<f64>>> {
+    let n = matrix.len();
+    let mut aug: Vec<Vec<f64>> = Vec::with_capacity(n);
+    for (i, row) in matrix.iter().enumerate() {
+        let mut new_row = row.clone();
+        for j in 0..n {
+            new_row.push(if i == j { 1.0 } else { 0.0 });
+        }
+        aug.push(new_row);
+    }
+    for column in 0..n {
+        let mut pivot = column;
+        let mut pivot_value = aug[column][column].abs();
+        for row in (column + 1)..n {
+            let value = aug[row][column].abs();
+            if value > pivot_value {
+                pivot_value = value;
+                pivot = row;
+            }
+        }
+        if aug[pivot][column] == 0.0 {
+            return None;
+        }
+        if pivot != column {
+            aug.swap(pivot, column);
+        }
+        let pivot_diag = aug[column][column];
+        for col in 0..(2 * n) {
+            aug[column][col] /= pivot_diag;
+        }
+        for row in 0..n {
+            if row != column {
+                let factor = aug[row][column];
+                if factor != 0.0 {
+                    for col in 0..(2 * n) {
+                        aug[row][col] -= factor * aug[column][col];
+                    }
+                }
+            }
+        }
+    }
+    let mut out: Vec<Vec<f64>> = Vec::with_capacity(n);
+    for row in &aug {
+        out.push(row[n..(2 * n)].to_vec());
+    }
+    Some(out)
+}
+
+struct OlsFit {
+    coeffs: Vec<f64>,
+    intercept: f64,
+    se_coeffs: Vec<f64>,
+    se_intercept: f64,
+    r2: f64,
+    sey: f64,
+    f: f64,
+    df: f64,
+    ss_reg: f64,
+    ss_resid: f64,
+}
+
+fn ols_fit(ys: &[f64], xs: &[Vec<f64>], with_const: bool) -> Option<OlsFit> {
+    let n = ys.len();
+    if n == 0 || xs.len() != n {
+        return None;
+    }
+    let k = xs[0].len();
+    if k == 0 || xs.iter().any(|r| r.len() != k) {
+        return None;
+    }
+    let p = k + usize::from(with_const);
+    let mut design: Vec<Vec<f64>> = Vec::with_capacity(n);
+    for row in xs.iter() {
+        let mut d = row.clone();
+        if with_const {
+            d.push(1.0);
+        }
+        design.push(d);
+    }
+    let mut xtx = vec![vec![0.0_f64; p]; p];
+    let mut xty = vec![0.0_f64; p];
+    for i in 0..n {
+        for a in 0..p {
+            xty[a] += design[i][a] * ys[i];
+            for b in 0..p {
+                xtx[a][b] += design[i][a] * design[i][b];
+            }
+        }
+    }
+    let inv = invert_matrix(&xtx)?;
+    let mut beta = vec![0.0_f64; p];
+    for a in 0..p {
+        let mut s = 0.0;
+        for b in 0..p {
+            s += inv[a][b] * xty[b];
+        }
+        beta[a] = s;
+    }
+    let mut ss_resid = 0.0;
+    for i in 0..n {
+        let mut yhat = 0.0;
+        for a in 0..p {
+            yhat += design[i][a] * beta[a];
+        }
+        ss_resid += (ys[i] - yhat).powi(2);
+    }
+    let ss_total = if with_const {
+        let ybar = ys.iter().sum::<f64>() / n as f64;
+        ys.iter().map(|y| (y - ybar).powi(2)).sum::<f64>()
+    } else {
+        ys.iter().map(|y| y * y).sum::<f64>()
+    };
+    let ss_reg = ss_total - ss_resid;
+    let df = n as f64 - p as f64;
+    let sey = if df > 0.0 {
+        (ss_resid / df).sqrt()
+    } else {
+        0.0
+    };
+    let r2 = if ss_total != 0.0 { ss_reg / ss_total } else { 0.0 };
+    let f = if df > 0.0 && k > 0 && ss_resid > 0.0 {
+        (ss_reg / k as f64) / (ss_resid / df)
+    } else {
+        0.0
+    };
+    let mut se = vec![0.0_f64; p];
+    for a in 0..p {
+        se[a] = (inv[a][a].max(0.0) * sey * sey).sqrt();
+    }
+    let intercept = if with_const { beta[k] } else { 0.0 };
+    let se_intercept = if with_const { se[k] } else { 0.0 };
+    Some(OlsFit {
+        coeffs: beta[0..k].to_vec(),
+        intercept,
+        se_coeffs: se[0..k].to_vec(),
+        se_intercept,
+        r2,
+        sey,
+        f,
+        df,
+        ss_reg,
+        ss_resid,
+    })
+}
+
+fn grid_to_numbers(grid: &[Vec<ArrayNode>]) -> Option<Vec<Vec<f64>>> {
+    let mut out = Vec::with_capacity(grid.len());
+    for row in grid {
+        let mut current = Vec::with_capacity(row.len());
+        for node in row {
+            match node {
+                ArrayNode::Number(f) => current.push(*f),
+                ArrayNode::Boolean(b) => current.push(if *b { 1.0 } else { 0.0 }),
+                _ => return None,
+            }
+        }
+        out.push(current);
+    }
+    Some(out)
+}
+
+fn normalize_by_obs(grid: &[Vec<f64>], n: usize) -> Option<Vec<Vec<f64>>> {
+    let r = grid.len();
+    let c = grid.first().map(|row| row.len()).unwrap_or(0);
+    if r == 0 || c == 0 {
+        return None;
+    }
+    if r == n {
+        Some(grid.to_vec())
+    } else if c == n {
+        let mut out = vec![Vec::with_capacity(r); c];
+        for (_, row) in grid.iter().enumerate() {
+            for (j, v) in row.iter().enumerate() {
+                out[j].push(*v);
+            }
+        }
+        Some(out)
+    } else {
+        None
+    }
+}
+
+fn normalize_by_predictors(grid: &[Vec<f64>], k: usize) -> Option<(Vec<Vec<f64>>, bool)> {
+    let r = grid.len();
+    let c = grid.first().map(|row| row.len()).unwrap_or(0);
+    if r == 0 || c == 0 {
+        return None;
+    }
+    if c == k {
+        Some((grid.to_vec(), false))
+    } else if r == k {
+        let mut out = vec![Vec::with_capacity(r); c];
+        for row in grid.iter() {
+            for (j, v) in row.iter().enumerate() {
+                out[j].push(*v);
+            }
+        }
+        Some((out, true))
+    } else {
+        None
+    }
+}
+
 fn array_node_to_calc_result(node: &ArrayNode) -> CalcResult {
     match node {
         ArrayNode::Number(f) => CalcResult::Number(*f),
@@ -1507,5 +1710,202 @@ impl<'a> Model<'a> {
             out.push(new_row);
         }
         CalcResult::Array(out)
+    }
+
+    fn read_regression_inputs(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(Vec<f64>, Vec<Vec<f64>>), CalcResult> {
+        let ys_grid = self.read_array_arg(&args[0], cell)?;
+        let ys_nums = grid_to_numbers(&ys_grid).ok_or_else(|| {
+            CalcResult::new_error(Error::VALUE, cell, "known_ys must be numeric".to_string())
+        })?;
+        let ys: Vec<f64> = ys_nums.into_iter().flatten().collect();
+        let n = ys.len();
+        if n == 0 {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "known_ys is empty".to_string(),
+            ));
+        }
+        let xs_present = args.len() >= 2
+            && !matches!(
+                self.evaluate_node_in_context(&args[1], cell),
+                CalcResult::EmptyCell | CalcResult::EmptyArg
+            );
+        let xs = if xs_present {
+            let grid = self.read_array_arg(&args[1], cell)?;
+            let nums = grid_to_numbers(&grid).ok_or_else(|| {
+                CalcResult::new_error(Error::VALUE, cell, "known_xs must be numeric".to_string())
+            })?;
+            normalize_by_obs(&nums, n).ok_or_else(|| {
+                CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "known_xs length mismatch".to_string(),
+                )
+            })?
+        } else {
+            (1..=n).map(|i| vec![i as f64]).collect()
+        };
+        Ok((ys, xs))
+    }
+
+    pub(crate) fn fn_linest(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 4 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let (ys, xs) = match self.read_regression_inputs(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let with_const = if args.len() >= 3
+            && !matches!(
+                self.evaluate_node_in_context(&args[2], cell),
+                CalcResult::EmptyCell | CalcResult::EmptyArg
+            ) {
+            match self.get_boolean(&args[2], cell) {
+                Ok(b) => b,
+                Err(e) => return e,
+            }
+        } else {
+            true
+        };
+        let stats = if args.len() >= 4
+            && !matches!(
+                self.evaluate_node_in_context(&args[3], cell),
+                CalcResult::EmptyCell | CalcResult::EmptyArg
+            ) {
+            match self.get_boolean(&args[3], cell) {
+                Ok(b) => b,
+                Err(e) => return e,
+            }
+        } else {
+            false
+        };
+        let fit = match ols_fit(&ys, &xs, with_const) {
+            Some(f) => f,
+            None => {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "LINEST: cannot fit model".to_string(),
+                )
+            }
+        };
+        let k = fit.coeffs.len();
+        let width = k + 1;
+        let mut row0: Vec<ArrayNode> = Vec::with_capacity(width);
+        for j in (0..k).rev() {
+            row0.push(ArrayNode::Number(fit.coeffs[j]));
+        }
+        row0.push(ArrayNode::Number(fit.intercept));
+        if !stats {
+            return CalcResult::Array(vec![row0]);
+        }
+        let mut row1: Vec<ArrayNode> = Vec::with_capacity(width);
+        for j in (0..k).rev() {
+            row1.push(ArrayNode::Number(fit.se_coeffs[j]));
+        }
+        row1.push(ArrayNode::Number(fit.se_intercept));
+        let pad = |first: f64, second: f64| -> Vec<ArrayNode> {
+            let mut row = vec![ArrayNode::Number(first), ArrayNode::Number(second)];
+            while row.len() < width {
+                row.push(ArrayNode::Error(Error::NA));
+            }
+            row
+        };
+        let row2 = pad(fit.r2, fit.sey);
+        let row3 = pad(fit.f, fit.df);
+        let row4 = pad(fit.ss_reg, fit.ss_resid);
+        CalcResult::Array(vec![row0, row1, row2, row3, row4])
+    }
+
+    pub(crate) fn fn_trend(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 4 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let (ys, xs) = match self.read_regression_inputs(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let with_const = if args.len() >= 4
+            && !matches!(
+                self.evaluate_node_in_context(&args[3], cell),
+                CalcResult::EmptyCell | CalcResult::EmptyArg
+            ) {
+            match self.get_boolean(&args[3], cell) {
+                Ok(b) => b,
+                Err(e) => return e,
+            }
+        } else {
+            true
+        };
+        let fit = match ols_fit(&ys, &xs, with_const) {
+            Some(f) => f,
+            None => {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "TREND: cannot fit model".to_string(),
+                )
+            }
+        };
+        let k = fit.coeffs.len();
+        let new_present = args.len() >= 3
+            && !matches!(
+                self.evaluate_node_in_context(&args[2], cell),
+                CalcResult::EmptyCell | CalcResult::EmptyArg
+            );
+        let (new_xs, as_row) = if new_present {
+            let grid = match self.read_array_arg(&args[2], cell) {
+                Ok(g) => g,
+                Err(e) => return e,
+            };
+            let nums = match grid_to_numbers(&grid) {
+                Some(v) => v,
+                None => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "new_xs must be numeric".to_string(),
+                    )
+                }
+            };
+            match normalize_by_predictors(&nums, k) {
+                Some(v) => v,
+                None => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "new_xs predictor mismatch".to_string(),
+                    )
+                }
+            }
+        } else {
+            (xs.clone(), false)
+        };
+        let mut preds: Vec<f64> = Vec::with_capacity(new_xs.len());
+        for row in &new_xs {
+            if row.len() != k {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "new_xs predictor mismatch".to_string(),
+                );
+            }
+            let mut yhat = fit.intercept;
+            for (j, v) in row.iter().enumerate() {
+                yhat += fit.coeffs[j] * v;
+            }
+            preds.push(yhat);
+        }
+        if as_row {
+            CalcResult::Array(vec![preds.into_iter().map(ArrayNode::Number).collect()])
+        } else {
+            CalcResult::Array(preds.into_iter().map(|p| vec![ArrayNode::Number(p)]).collect())
+        }
     }
 }

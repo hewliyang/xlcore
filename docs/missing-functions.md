@@ -100,7 +100,7 @@ backlog — work top to bottom, one item per agent:
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
   High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, ~~TAKE~~/~~DROP~~,
   ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, ~~SORTBY~~, ~~MMULT~~, ~~MINVERSE~~, ~~MUNIT~~, ~~RANDARRAY~~,
-  ~~FREQUENCY~~, ~~MODE.MULT~~, SEQUENCE, ~~TEXTSPLIT~~, LINEST/LOGEST/TREND/GROWTH.
+  ~~FREQUENCY~~, ~~MODE.MULT~~, SEQUENCE, ~~TEXTSPLIT~~, ~~LINEST~~/LOGEST/~~TREND~~/GROWTH.
 
 Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
 live on the anchor cell as `<f t="array" ref=...>` + `cm` → `xl/metadata.xml`
@@ -114,6 +114,17 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- linest/trend (S4) — LINEST(known_ys,[known_xs],[const],[stats]) /
+  TREND(known_ys,[known_xs],[new_xs],[const]) via shared ordinary-least-squares
+  ols_fit (normal equations (X^T X)beta = X^T y, X^T X inverted with the matrix.rs
+  Gauss-Jordan helper). known_ys flattened to n via read_array_arg; known_xs read as
+  matrix, oriented to n rows x k predictors (omitted => single column 1..=n); const
+  default TRUE fits intercept, FALSE forces 0 (uncorrected sums). LINEST returns the
+  coefficient row {m_k..m_1, b}; stats=TRUE returns the 5-row array (coeffs, standard
+  errors, {r^2,sey}, {F,df}, {ss_reg,ss_resid}) padded with #N/A. TREND fits then
+  predicts each new_xs row (omitted => known_xs), output shaped column/row to match
+  new_xs orientation. Both CalcResult::Array (spill + round-trip); 1-4 args else
+  #ERROR!; non-numeric/length mismatch => #VALUE!; legacy (plain name, no _xlfn).
 - mode.mult (S4) — MODE.MULT(number1,[number2],...): collects numeric values like
   MODE.SNGL (shared collect_mode_values; Number/Range/Array, non-numeric ignored,
   Error propagates), finds the max frequency among values appearing >=2 times, and
