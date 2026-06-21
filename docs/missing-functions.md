@@ -39,8 +39,6 @@ Verify: `cargo test -p ironcalc_base`. Cross-check a few values against Excel.
 
 Each item below = one agent batch.
 
-- [ ] **normal-dist legacy** — NORMDIST, NORMINV, NORMSDIST, NORMSINV (→ NORM.DIST,
-  NORM.INV, NORM.S.DIST, NORM.S.INV; NORMSDIST/NORMSINV are 1-arg, inject cumulative).
 - [ ] **chi/F/t legacy** — CHIDIST, CHIINV, CHITEST, FDIST, FINV, FTEST, TINV, TTEST
   (→ CHISQ.*.RT, CHISQ.TEST, F.*.RT, F.TEST, T.INV.2T, T.TEST).
 - [ ] **other stat legacy** — BETADIST, BETAINV, BINOMDIST, CRITBINOM, CONFIDENCE,
@@ -74,4 +72,4 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
-_(none yet)_
+- normal-dist legacy — NORMDIST, NORMINV, NORMSDIST, NORMSINV.

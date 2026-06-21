@@ -943,6 +943,10 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::NormInv => args_signature_scalars(arg_count, 3, 0),
         Function::NormSdist => args_signature_scalars(arg_count, 2, 0),
         Function::NormSInv => args_signature_scalars(arg_count, 1, 0),
+        Function::NormDistLegacy => args_signature_scalars(arg_count, 4, 0),
+        Function::NormInvLegacy => args_signature_scalars(arg_count, 3, 0),
+        Function::NormSDistLegacy => args_signature_scalars(arg_count, 1, 0),
+        Function::NormSInvLegacy => args_signature_scalars(arg_count, 1, 0),
         Function::Pearson => {
             if arg_count == 2 {
                 vec![Signature::Vector, Signature::Vector]
@@ -1320,6 +1324,10 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::NormInv => StaticResult::Scalar,
         Function::NormSdist => StaticResult::Scalar,
         Function::NormSInv => StaticResult::Scalar,
+        Function::NormDistLegacy => StaticResult::Scalar,
+        Function::NormInvLegacy => StaticResult::Scalar,
+        Function::NormSDistLegacy => StaticResult::Scalar,
+        Function::NormSInvLegacy => StaticResult::Scalar,
         Function::Pearson => StaticResult::Scalar,
         Function::Phi => StaticResult::Scalar,
         Function::PoissonDist => StaticResult::Scalar,

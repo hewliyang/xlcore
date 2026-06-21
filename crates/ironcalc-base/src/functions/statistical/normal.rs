@@ -195,6 +195,45 @@ impl<'a> Model<'a> {
         CalcResult::Number(z)
     }
 
+    // NORMSDIST(z) == NORM.S.DIST(z, TRUE)
+    pub(crate) fn fn_normsdist_legacy(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let z = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+
+        let dist = match Normal::new(0.0, 1.0) {
+            Ok(d) => d,
+            Err(_) => {
+                return CalcResult::Error {
+                    error: Error::ERROR,
+                    origin: cell,
+                    message: "Failed to construct standard normal distribution".to_string(),
+                }
+            }
+        };
+
+        let result = dist.cdf(z);
+
+        if !result.is_finite() {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Invalid result for NORMSDIST".to_string(),
+            };
+        }
+
+        CalcResult::Number(result)
+    }
+
     pub(crate) fn fn_confidence_norm(
         &mut self,
         args: &[Node],
