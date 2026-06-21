@@ -991,6 +991,36 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
                 vec![Signature::Error; arg_count]
             }
         }
+        Function::BetaDistLegacy => args_signature_scalars(arg_count, 3, 2),
+        Function::BetaInvLegacy => args_signature_scalars(arg_count, 3, 2),
+        Function::BinomDistLegacy => args_signature_scalars(arg_count, 4, 0),
+        Function::CritBinomLegacy => args_signature_scalars(arg_count, 3, 0),
+        Function::ConfidenceLegacy => args_signature_scalars(arg_count, 3, 0),
+        Function::CovarLegacy => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Vector]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
+        Function::ExponDistLegacy => args_signature_scalars(arg_count, 3, 0),
+        Function::GammaDistLegacy => args_signature_scalars(arg_count, 4, 0),
+        Function::GammaInvLegacy => args_signature_scalars(arg_count, 3, 0),
+        Function::HypGeomDistLegacy => args_signature_scalars(arg_count, 4, 0),
+        Function::LogInvLegacy => args_signature_scalars(arg_count, 3, 0),
+        Function::LogNormDistLegacy => args_signature_scalars(arg_count, 3, 0),
+        Function::NegBinomDistLegacy => args_signature_scalars(arg_count, 3, 0),
+        Function::PoissonLegacy => args_signature_scalars(arg_count, 3, 0),
+        Function::WeibullLegacy => args_signature_scalars(arg_count, 4, 0),
+        Function::ZTestLegacy => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else if arg_count == 3 {
+                vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
         Function::TTest => {
             if arg_count == 4 {
                 vec![
@@ -1375,6 +1405,22 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::FTestLegacy => StaticResult::Scalar,
         Function::TInvLegacy => StaticResult::Scalar,
         Function::TTestLegacy => StaticResult::Scalar,
+        Function::BetaDistLegacy => StaticResult::Scalar,
+        Function::BetaInvLegacy => StaticResult::Scalar,
+        Function::BinomDistLegacy => StaticResult::Scalar,
+        Function::CritBinomLegacy => StaticResult::Scalar,
+        Function::ConfidenceLegacy => StaticResult::Scalar,
+        Function::CovarLegacy => StaticResult::Scalar,
+        Function::ExponDistLegacy => StaticResult::Scalar,
+        Function::GammaDistLegacy => StaticResult::Scalar,
+        Function::GammaInvLegacy => StaticResult::Scalar,
+        Function::HypGeomDistLegacy => StaticResult::Scalar,
+        Function::LogInvLegacy => StaticResult::Scalar,
+        Function::LogNormDistLegacy => StaticResult::Scalar,
+        Function::NegBinomDistLegacy => StaticResult::Scalar,
+        Function::PoissonLegacy => StaticResult::Scalar,
+        Function::WeibullLegacy => StaticResult::Scalar,
+        Function::ZTestLegacy => StaticResult::Scalar,
         Function::VarP => StaticResult::Scalar,
         Function::VarS => StaticResult::Scalar,
         Function::VarpA => StaticResult::Scalar,

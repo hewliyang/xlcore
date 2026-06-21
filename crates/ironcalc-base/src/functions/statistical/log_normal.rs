@@ -6,6 +6,24 @@ use crate::{
 };
 
 impl<'a> Model<'a> {
+    // LOGNORMDIST(x, mean, standard_dev) == LOGNORM.DIST(x, mean, standard_dev, TRUE)
+    pub(crate) fn fn_lognormdist_legacy(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let new_args = vec![
+            args[0].clone(),
+            args[1].clone(),
+            args[2].clone(),
+            Node::BooleanKind(true),
+        ];
+        self.fn_log_norm_dist(&new_args, cell)
+    }
+
     pub(crate) fn fn_log_norm_dist(
         &mut self,
         args: &[Node],

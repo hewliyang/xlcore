@@ -6,6 +6,22 @@ use crate::{
 };
 
 impl<'a> Model<'a> {
+    // BETADIST(x, alpha, beta, [A], [B]) == BETA.DIST(x, alpha, beta, TRUE, [A], [B])
+    pub(crate) fn fn_betadist_legacy(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let arg_count = args.len();
+        if !(3..=5).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut new_args = vec![args[0].clone(), args[1].clone(), args[2].clone()];
+        new_args.push(Node::BooleanKind(true));
+        new_args.extend_from_slice(&args[3..]);
+        self.fn_beta_dist(&new_args, cell)
+    }
+
     // BETA.DIST(x, alpha, beta, cumulative, [A], [B])
     pub(crate) fn fn_beta_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
