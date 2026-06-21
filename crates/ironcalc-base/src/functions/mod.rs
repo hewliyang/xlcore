@@ -542,6 +542,8 @@ pub enum Function {
     Drop,
     Choosecols,
     Chooserows,
+    Tocol,
+    Torow,
 }
 
 macro_rules! impl_function_lookup {
@@ -1058,6 +1060,8 @@ impl_function_lookup! {
     drop            => Drop,
     choosecols      => Choosecols,
     chooserows      => Chooserows,
+    tocol           => Tocol,
+    torow           => Torow,
 }
 
 pub fn english_function_names() -> Vec<String> {
@@ -1539,9 +1543,11 @@ impl Function {
             Function::Drop => functions.drop.clone(),
             Function::Choosecols => functions.choosecols.clone(),
             Function::Chooserows => functions.chooserows.clone(),
+            Function::Tocol => functions.tocol.clone(),
+            Function::Torow => functions.torow.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 465> {
+    pub fn into_iter() -> IntoIter<Function, 467> {
         [
             Function::And,
             Function::False,
@@ -2008,6 +2014,8 @@ impl Function {
             Function::Drop,
             Function::Choosecols,
             Function::Chooserows,
+            Function::Tocol,
+            Function::Torow,
         ]
         .into_iter()
     }
@@ -2064,6 +2072,8 @@ impl Function {
             Function::Drop => "_xlfn.DROP".to_string(),
             Function::Choosecols => "_xlfn.CHOOSECOLS".to_string(),
             Function::Chooserows => "_xlfn.CHOOSEROWS".to_string(),
+            Function::Tocol => "_xlfn.TOCOL".to_string(),
+            Function::Torow => "_xlfn.TOROW".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2673,6 +2683,8 @@ impl<'a> Model<'a> {
             Function::Drop => self.fn_drop(args, cell),
             Function::Choosecols => self.fn_choosecols(args, cell),
             Function::Chooserows => self.fn_chooserows(args, cell),
+            Function::Tocol => self.fn_tocol(args, cell),
+            Function::Torow => self.fn_torow(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

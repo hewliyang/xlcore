@@ -961,6 +961,83 @@ impl<'a> Model<'a> {
         CalcResult::Array(out)
     }
 
+    fn flatten_for_tocolrow(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<ArrayNode>, CalcResult> {
+        let grid = self.read_array_arg(&args[0], cell)?;
+        let ignore = if args.len() >= 2 {
+            self.get_number(&args[1], cell)?.trunc() as i64
+        } else {
+            0
+        };
+        if !(0..=3).contains(&ignore) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "ignore must be 0-3".to_string(),
+            ));
+        }
+        let scan_by_column = if args.len() >= 3 {
+            self.get_boolean(&args[2], cell)?
+        } else {
+            false
+        };
+        let n_rows = grid.len();
+        let n_cols = grid.iter().map(|r| r.len()).max().unwrap_or(0);
+        let mut flat: Vec<ArrayNode> = Vec::new();
+        if scan_by_column {
+            for c in 0..n_cols {
+                for r in 0..n_rows {
+                    if let Some(node) = grid.get(r).and_then(|row| row.get(c)) {
+                        flat.push(node.clone());
+                    }
+                }
+            }
+        } else {
+            for row in &grid {
+                for node in row {
+                    flat.push(node.clone());
+                }
+            }
+        }
+        let drop_errors = ignore == 2 || ignore == 3;
+        if drop_errors {
+            flat.retain(|node| !matches!(node, ArrayNode::Error(_)));
+        }
+        Ok(flat)
+    }
+
+    pub(crate) fn fn_tocol(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let flat = match self.flatten_for_tocolrow(args, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        if flat.is_empty() {
+            return CalcResult::new_error(Error::CALC, cell, "TOCOL: empty result".to_string());
+        }
+        let out: Vec<Vec<ArrayNode>> = flat.into_iter().map(|node| vec![node]).collect();
+        CalcResult::Array(out)
+    }
+
+    pub(crate) fn fn_torow(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let flat = match self.flatten_for_tocolrow(args, cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+        if flat.is_empty() {
+            return CalcResult::new_error(Error::CALC, cell, "TOROW: empty result".to_string());
+        }
+        CalcResult::Array(vec![flat])
+    }
+
     pub(crate) fn fn_mdeterm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);

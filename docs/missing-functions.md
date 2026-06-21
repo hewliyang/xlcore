@@ -99,7 +99,7 @@ backlog — work top to bottom, one item per agent:
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
   High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, ~~TAKE~~/~~DROP~~,
-  ~~CHOOSECOLS~~/~~CHOOSEROWS~~, TOCOL/TOROW, EXPAND, SORTBY, MMULT, MINVERSE, MUNIT, RANDARRAY,
+  ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, EXPAND, SORTBY, MMULT, MINVERSE, MUNIT, RANDARRAY,
   FREQUENCY, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
 
 Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
@@ -114,6 +114,14 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- tocol/torow (S4) — TOCOL(array,[ignore],[scan_by_column])/TOROW(...): read
+  array via shared read_array_arg, flatten in row-major (default) or column-major
+  order (scan_by_column TRUE), apply ignore filter, then shape into a single
+  column (TOCOL) or row (TOROW). ignore validated 0-3 else #VALUE!; ignore 2/3
+  drops error cells; ignore-blanks (1/3) is a no-op because read_array_arg
+  materializes empty cells as Number(0.0) so blanks can't be distinguished. Empty
+  result => #CALC!. Returns CalcResult::Array (spills + round-trips); 1-3 args else
+  #ERROR!; _xlfn.
 - choosecols/chooserows (S4) — CHOOSECOLS(array,col_num1,...)/CHOOSEROWS(
   array,row_num1,...): read array via shared read_array_arg into
   Vec<Vec<ArrayNode>>; index args flattened in order (each may be a scalar or a

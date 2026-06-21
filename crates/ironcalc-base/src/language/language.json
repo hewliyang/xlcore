@@ -484,7 +484,9 @@
       "take": "TAKE",
       "drop": "DROP",
       "choosecols": "CHOOSECOLS",
-      "chooserows": "CHOOSEROWS"
+      "chooserows": "CHOOSEROWS",
+      "tocol": "TOCOL",
+      "torow": "TOROW"
     }
   },
   "de": {
@@ -972,7 +974,9 @@
       "take": "TAKE",
       "drop": "DROP",
       "choosecols": "CHOOSECOLS",
-      "chooserows": "CHOOSEROWS"
+      "chooserows": "CHOOSEROWS",
+      "tocol": "TOCOL",
+      "torow": "TOROW"
     }
   },
   "fr": {
@@ -1460,7 +1464,9 @@
       "take": "TAKE",
       "drop": "DROP",
       "choosecols": "CHOOSECOLS",
-      "chooserows": "CHOOSEROWS"
+      "chooserows": "CHOOSEROWS",
+      "tocol": "TOCOL",
+      "torow": "TOROW"
     }
   },
   "es": {
@@ -1948,7 +1954,9 @@
       "take": "TAKE",
       "drop": "DROP",
       "choosecols": "CHOOSECOLS",
-      "chooserows": "CHOOSEROWS"
+      "chooserows": "CHOOSEROWS",
+      "tocol": "TOCOL",
+      "torow": "TOROW"
     }
   }
 }
