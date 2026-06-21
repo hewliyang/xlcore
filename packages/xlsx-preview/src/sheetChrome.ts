@@ -286,10 +286,13 @@ export function drawValidationArrows(
   const dropdowns = sheet.validationDropdowns ?? [];
   if (dropdowns.length === 0) return;
   const list = active ? dropdowns.filter((d) => d.r === active.r && d.c === active.c) : dropdowns;
+  const { topLeftOf } = buildMergeMaps(sheet);
   for (const d of list) {
     if (d.r < vis.firstRow || d.r > vis.lastRow) continue;
     if (d.c < vis.firstCol || d.c > vis.lastCol) continue;
-    drawArrowButton(ctx, validationArrowRect(cellRect(g, d.r, d.c)));
+    const m = topLeftOf.get(`${d.r}:${d.c}`);
+    const rect = m ? mergedRect(g, m) : cellRect(g, d.r, d.c);
+    drawArrowButton(ctx, validationArrowRect(rect));
   }
 }
 

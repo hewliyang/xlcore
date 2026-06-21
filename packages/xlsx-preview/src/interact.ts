@@ -1,6 +1,6 @@
 import type { Sheet, WorkbookLayout } from "./types.js";
 import { drawingHyperlinkAt, drawingIndexAtPoint } from "./drawingHits.js";
-import { cellRect } from "./geometry.js";
+import { cellRect, mergedRect } from "./geometry.js";
 import {
   filterArrowRect,
   pivotFilterArrows,
@@ -358,7 +358,7 @@ export function attachInteractivity(
     if (!d) return null;
     const lists = sheet.validationLists ?? [];
     const grid = getGrid();
-    const box = validationArrowRect(cellRect(grid, d.r, d.c));
+    const box = validationArrowRect(mergedRect(grid, expandThroughMerge(d.r, d.c)));
     if (lp.x >= box.x && lp.x <= box.x + box.w && lp.y >= box.y && lp.y <= box.y + box.h) {
       return { r: d.r, c: d.c, options: lists[d.list] ?? [] };
     }
@@ -369,7 +369,7 @@ export function attachInteractivity(
     if (!opts.onValidationPick) return;
     const grid = getGrid();
     const sheet = opts.getSheet();
-    const cell = cellRect(grid, a.r, a.c);
+    const cell = mergedRect(grid, expandThroughMerge(a.r, a.c));
     const z = opts.zoom.get();
     const r = canvas.getBoundingClientRect();
     const vp = opts.getViewport?.() ?? null;

@@ -23,7 +23,7 @@ import { lookupSignature, signatureAt } from "./formulaSignature.js";
 import { applyReferenceAtCaret, caretAcceptsReference, type RefSpan } from "./formulaPointMode.js";
 import type { HighlightRange } from "./renderTypes.js";
 import type { DependencyReference } from "./api-schema/DependencyReference.js";
-import { cellRect } from "./geometry.js";
+import { buildMergeMaps, rectFor } from "./geometry.js";
 import {
   createPivotFilterPopover,
   type PivotFilterController,
@@ -34,10 +34,6 @@ import {
   type TableFilterController,
   type TableFilterPopoverHandle,
 } from "./tableFilterPopover.js";
-import {
-  createValidationDropdownPopover,
-  type ValidationDropdownPopoverHandle,
-} from "./validationDropdownPopover.js";
 import type { Sheet as WireSheet } from "./schema/Sheet.js";
 import type { Sheet, WorkbookLayout } from "./types.js";
 
@@ -169,7 +165,6 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private pivotPopover: PivotFilterPopoverHandle | null = null;
   private readonly tableController?: TableFilterController;
   private tablePopover: TableFilterPopoverHandle | null = null;
-  private validationPopover: ValidationDropdownPopoverHandle | null = null;
 
   private readonly tabs: HTMLDivElement;
   private readonly sheetTabs: HTMLDivElement;
@@ -207,6 +202,11 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private autocompleteData: AutocompleteState | null = null;
   private autocompleteActive = 0;
   private autocompleteBlurTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly validationMenu: HTMLDivElement;
+  private validationOptions: string[] | null = null;
+  private validationFiltered: string[] = [];
+  private validationActive = 0;
+  private validationTyped = false;
   private readonly signatureTip: HTMLDivElement;
   private signatureFor: HTMLInputElement | null = null;
   private signatureBlurTimer: ReturnType<typeof setTimeout> | null = null;
@@ -321,6 +321,12 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       "box-shadow:0 8px 24px rgba(15,23,42,0.18);padding:4px;min-width:140px;max-height:240px;overflow:auto;" +
       "font:12px ui-monospace,SFMono-Regular,Menlo,monospace;";
     document.body.append(this.autocompleteMenu);
+    this.validationMenu = document.createElement("div");
+    this.validationMenu.style.cssText =
+      "position:fixed;z-index:1100;display:none;background:#fff;border:1px solid #d4d4d8;border-radius:6px;" +
+      "box-shadow:0 8px 24px rgba(15,23,42,0.18);padding:4px;min-width:120px;max-height:240px;overflow:auto;" +
+      "font:13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
+    document.body.append(this.validationMenu);
     this.signatureTip = document.createElement("div");
     this.signatureTip.style.cssText =
       "position:fixed;z-index:1099;display:none;background:#fff;border:1px solid #d4d4d8;border-radius:4px;" +
@@ -332,6 +338,11 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       this.armPointMode(this.editInput);
       this.updateAutocomplete(this.editInput);
       this.updateSignatureTip(this.editInput);
+      if (this.validationOptions) {
+        this.validationTyped = true;
+        this.validationActive = 0;
+        this.updateValidationMenu();
+      }
       this.growEditInput();
       this.scheduleDraw();
     });
@@ -429,13 +440,13 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.pivotPopover = null;
     this.tablePopover?.destroy();
     this.tablePopover = null;
-    this.validationPopover?.destroy();
-    this.validationPopover = null;
     this.interactHandle?.destroy();
     this.interactHandle = null;
     this.closeAutocomplete();
+    this.closeValidationMenu();
     this.hideSignatureTip();
     this.autocompleteMenu.remove();
+    this.validationMenu.remove();
     this.signatureTip.remove();
     this.resizeObserver.disconnect();
     this.stage.removeEventListener("scroll", this.scheduleDraw);
@@ -795,7 +806,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
         }
       },
       onValidationPick: this.editable
-        ? (info: ValidationPickEvent) => this.openValidationPopover(info)
+        ? (info: ValidationPickEvent) => this.openValidationEdit(info)
         : undefined,
       onDrawingMoved: ({ index, prevAnchor, anchor }) => {
         const sheet = this.getActiveSheet();
@@ -1261,26 +1272,107 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.scrollToCell(cursor.r, cursor.c);
   }
 
-  private openValidationPopover(info: ValidationPickEvent): void {
+  private openValidationEdit(info: ValidationPickEvent): void {
     if (!this.editable) return;
-    const sheet = this.getActiveSheet();
-    const current = formatFormulaBar(sheet, { r: info.r, c: info.c });
-    this.validationPopover?.destroy();
-    this.validationPopover = createValidationDropdownPopover((value) => {
-      this.dispatchEvent(
-        new CustomEvent("celledit", {
-          detail: {
-            sheetIndex: this.activeSheetIndex,
-            r: info.r,
-            c: info.c,
-            input: value,
-            commitMove: null,
-          },
-        }),
-      );
-    });
     this.selectCell(info.r, info.c);
-    this.validationPopover.open(info.options, current, info.rect);
+    setTimeout(() => {
+      this.openEditOverlay({ r: info.r, c: info.c }, null);
+      this.validationTyped = false;
+      this.updateValidationMenu();
+    }, 0);
+  }
+
+  private validationListFor(cell: { r: number; c: number }): string[] | null {
+    const sheet = this.getActiveSheet();
+    const dropdowns = sheet.validationDropdowns ?? [];
+    const d = dropdowns.find((dd) => dd.r === cell.r && dd.c === cell.c);
+    if (!d) return null;
+    const lists = sheet.validationLists ?? [];
+    return lists[d.list] ?? null;
+  }
+
+  private updateValidationMenu(): void {
+    if (!this.validationOptions || !this.editCell) return this.closeValidationMenu();
+    const q = this.validationTyped ? this.editInput.value.trim().toLowerCase() : "";
+    const all = this.validationOptions;
+    this.validationFiltered = q ? all.filter((o) => o.toLowerCase().includes(q)) : all.slice();
+    if (this.validationFiltered.length === 0) return this.closeValidationMenu();
+    if (this.validationActive >= this.validationFiltered.length) this.validationActive = 0;
+    this.renderValidationMenu();
+  }
+
+  private renderValidationMenu(): void {
+    const menu = this.validationMenu;
+    menu.replaceChildren();
+    this.validationFiltered.forEach((value, i) => {
+      const item = document.createElement("div");
+      item.textContent = value;
+      const active = i === this.validationActive;
+      item.style.cssText = `padding:4px 8px;cursor:pointer;border-radius:4px;white-space:nowrap;${
+        active ? "background:#2563eb;color:#fff;" : "color:#111827;"
+      }`;
+      item.onmousedown = (ev) => {
+        ev.preventDefault();
+        this.acceptValidation(i);
+      };
+      item.onmouseenter = () => {
+        this.validationActive = i;
+        this.renderValidationMenu();
+      };
+      menu.append(item);
+    });
+    const rect = this.editInput.getBoundingClientRect();
+    menu.style.left = `${rect.left}px`;
+    menu.style.top = `${rect.bottom + 2}px`;
+    menu.style.minWidth = `${Math.max(120, rect.width)}px`;
+    menu.style.display = "block";
+  }
+
+  private closeValidationMenu(): void {
+    this.validationActive = 0;
+    this.validationFiltered = [];
+    this.validationMenu.style.display = "none";
+  }
+
+  private isValidationMenuOpen(): boolean {
+    return this.validationMenu.style.display !== "none";
+  }
+
+  private acceptValidation(index: number): void {
+    const value = this.validationFiltered[index];
+    if (value === undefined) return;
+    this.editInput.value = value;
+    this.commitEdit("down");
+    this.canvas.focus({ preventScroll: true });
+  }
+
+  private handleValidationMenuKey(ev: KeyboardEvent): boolean {
+    if (!this.isValidationMenuOpen()) return false;
+    const n = this.validationFiltered.length;
+    if (n === 0) return false;
+    if (ev.key === "ArrowDown") {
+      ev.preventDefault();
+      this.validationActive = (this.validationActive + 1) % n;
+      this.renderValidationMenu();
+      return true;
+    }
+    if (ev.key === "ArrowUp") {
+      ev.preventDefault();
+      this.validationActive = (this.validationActive - 1 + n) % n;
+      this.renderValidationMenu();
+      return true;
+    }
+    if (ev.key === "Enter" || ev.key === "Tab") {
+      ev.preventDefault();
+      this.acceptValidation(this.validationActive);
+      return true;
+    }
+    if (ev.key === "Escape") {
+      ev.preventDefault();
+      this.closeValidationMenu();
+      return true;
+    }
+    return false;
   }
 
   private openEditOverlay(cell: { r: number; c: number }, initialText: string | null): void {
@@ -1289,7 +1381,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     const state = this.currentState();
     this.scrollToCell(cell.r, cell.c);
     const grid = buildGrid(sheet, state.colOverrides, state.rowOverrides);
-    const rect = cellRect(grid, cell.r, cell.c);
+    const { topLeftOf } = buildMergeMaps(sheet);
+    const rect = rectFor(sheet, grid, cell.r, cell.c, topLeftOf);
     const z = this.zoom;
     this.editCell = { r: cell.r, c: cell.c };
     this.editEnterMode = initialText !== null;
@@ -1310,6 +1403,11 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.editInput.setSelectionRange(end, end);
     this.pointModeArmed = this.editEnterMode && caretAcceptsReference(this.editInput.value, end);
     this.growEditInput();
+    this.validationOptions = this.validationListFor(cell);
+    this.validationTyped = this.editEnterMode;
+    this.validationActive = 0;
+    if (this.validationOptions) this.updateValidationMenu();
+    else this.closeValidationMenu();
   }
 
   private growEditInput(): void {
@@ -1323,6 +1421,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
 
   private hideEditOverlay(): void {
     this.closeAutocomplete();
+    this.closeValidationMenu();
+    this.validationOptions = null;
     this.hideSignatureTip();
     this.activeRefSpan = null;
     this.pointHighlight = null;
@@ -1376,6 +1476,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
 
   private onEditInputKeyDown(ev: KeyboardEvent): void {
     if (this.handleAutocompleteKey(ev)) return;
+    if (this.handleValidationMenuKey(ev)) return;
     if (this.handlePointKeyboardKey(ev)) return;
     this.resetPointSpanOnType(ev);
     if (ev.key === "Enter") {
