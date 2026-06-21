@@ -54,6 +54,9 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- xmatch — XMATCH (position within a single-row/col vector; reuses XLOOKUP
+  matching: match_mode 0 exact / -1 next-smaller / 1 next-larger / 2 wildcard,
+  search_mode 1 first / -1 last / ±2 binary; 1-based, #N/A if not found; _xlfn).
 - mdeterm — MDETERM (determinant of a square range/array via Gaussian elimination
   with partial pivoting; non-square/empty or non-numeric cell => #VALUE!; singular
   => 0).

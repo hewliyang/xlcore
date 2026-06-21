@@ -162,6 +162,7 @@ pub enum Function {
     Rows,
     Vlookup,
     Xlookup,
+    Xmatch,
     Address,
     Areas,
     Hyperlink,
@@ -652,6 +653,7 @@ impl_function_lookup! {
     rows    => Rows,
     vlookup => Vlookup,
     xlookup => Xlookup,
+    xmatch => Xmatch,
     address => Address,
     areas   => Areas,
     hyperlink => Hyperlink,
@@ -1114,6 +1116,7 @@ impl Function {
             Function::Rows => functions.rows.clone(),
             Function::Vlookup => functions.vlookup.clone(),
             Function::Xlookup => functions.xlookup.clone(),
+            Function::Xmatch => functions.xmatch.clone(),
             Function::Address => functions.address.clone(),
             Function::Areas => functions.areas.clone(),
             Function::Hyperlink => functions.hyperlink.clone(),
@@ -1417,7 +1420,7 @@ impl Function {
             Function::Mdeterm => functions.mdeterm.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 424> {
+    pub fn into_iter() -> IntoIter<Function, 425> {
         [
             Function::And,
             Function::False,
@@ -1512,6 +1515,7 @@ impl Function {
             Function::Rows,
             Function::Vlookup,
             Function::Xlookup,
+            Function::Xmatch,
             Function::Address,
             Function::Areas,
             Function::Hyperlink,
@@ -1859,6 +1863,7 @@ impl Function {
             Function::Minifs => "_xlfn.MINIFS".to_string(),
             Function::Switch => "_xlfn.SWITCH".to_string(),
             Function::Xlookup => "_xlfn.XLOOKUP".to_string(),
+            Function::Xmatch => "_xlfn.XMATCH".to_string(),
             Function::Xor => "_xlfn.XOR".to_string(),
             Function::Textbefore => "_xlfn.TEXTBEFORE".to_string(),
             Function::Textafter => "_xlfn.TEXTAFTER".to_string(),
@@ -2096,6 +2101,7 @@ impl<'a> Model<'a> {
             Function::Rows => self.fn_rows(args, cell),
             Function::Vlookup => self.fn_vlookup(args, cell),
             Function::Xlookup => self.fn_xlookup(args, cell),
+            Function::Xmatch => self.fn_xmatch(args, cell),
             Function::Address => self.fn_address(args, cell),
             Function::Areas => self.fn_areas(args, cell),
             Function::Hyperlink => self.fn_hyperlink(args, cell),

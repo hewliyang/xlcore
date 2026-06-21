@@ -90,6 +90,7 @@ pub struct Functions {
     pub rows: String,
     pub vlookup: String,
     pub xlookup: String,
+    pub xmatch: String,
     pub concatenate: String,
     pub exact: String,
     pub value: String,

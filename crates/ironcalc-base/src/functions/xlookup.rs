@@ -387,4 +387,161 @@ impl<'a> Model<'a> {
             },
         }
     }
+
+    pub(crate) fn fn_xmatch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() < 2 || args.len() > 4 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let lookup_value = self.evaluate_node_in_context(&args[0], cell);
+        if lookup_value.is_error() {
+            return lookup_value;
+        }
+        let match_mode = if args.len() >= 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(c) => match c.floor() as i32 {
+                    -1 => MatchMode::ExactMatchSmaller,
+                    1 => MatchMode::ExactMatchLarger,
+                    0 => MatchMode::ExactMatch,
+                    2 => MatchMode::WildcardMatch,
+                    _ => {
+                        return CalcResult::Error {
+                            error: Error::VALUE,
+                            origin: cell,
+                            message: "Unexpected number".to_string(),
+                        };
+                    }
+                },
+                Err(s) => return s,
+            }
+        } else {
+            MatchMode::ExactMatch
+        };
+        let search_mode = if args.len() == 4 {
+            match self.get_number(&args[3], cell) {
+                Ok(c) => match c.floor() as i32 {
+                    1 => SearchMode::StartAtFirstItem,
+                    -1 => SearchMode::StartAtLastItem,
+                    -2 => SearchMode::BinarySearchDescending,
+                    2 => SearchMode::BinarySearchAscending,
+                    _ => {
+                        return CalcResult::Error {
+                            error: Error::VALUE,
+                            origin: cell,
+                            message: "Unexpected number".to_string(),
+                        };
+                    }
+                },
+                Err(s) => return s,
+            }
+        } else {
+            SearchMode::StartAtFirstItem
+        };
+        match self.evaluate_node_in_context(&args[1], cell) {
+            CalcResult::Range { left, right } => {
+                let is_row_vector;
+                if left.row == right.row {
+                    is_row_vector = false;
+                } else if left.column == right.column {
+                    is_row_vector = true;
+                } else {
+                    return CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: "Argument must be a vector".to_string(),
+                    };
+                }
+                let mut row2 = right.row;
+                let row1 = left.row;
+                let mut column2 = right.column;
+                let column1 = left.column;
+                if row1 == 1 && row2 == LAST_ROW {
+                    row2 = match self.workbook.worksheet(left.sheet) {
+                        Ok(s) => s.dimension().max_row,
+                        Err(_) => {
+                            return CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            );
+                        }
+                    };
+                }
+                if column1 == 1 && column2 == LAST_COLUMN {
+                    column2 = match self.workbook.worksheet(left.sheet) {
+                        Ok(s) => s.dimension().max_column,
+                        Err(_) => {
+                            return CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                format!("Invalid worksheet index: '{}'", left.sheet),
+                            );
+                        }
+                    };
+                }
+                let left = CellReferenceIndex {
+                    sheet: left.sheet,
+                    column: column1,
+                    row: row1,
+                };
+                let right = CellReferenceIndex {
+                    sheet: left.sheet,
+                    column: column2,
+                    row: row2,
+                };
+                let not_found = CalcResult::Error {
+                    error: Error::NA,
+                    origin: cell,
+                    message: "Not found".to_string(),
+                };
+                match search_mode {
+                    SearchMode::StartAtFirstItem | SearchMode::StartAtLastItem => {
+                        let array = &self.prepare_array(&left, &right, is_row_vector);
+                        match linear_search(&lookup_value, array, search_mode, match_mode) {
+                            Some(index) => CalcResult::Number(index as f64 + 1.0),
+                            None => not_found,
+                        }
+                    }
+                    SearchMode::BinarySearchAscending | SearchMode::BinarySearchDescending => {
+                        if match_mode == MatchMode::WildcardMatch {
+                            return CalcResult::Error {
+                                error: Error::VALUE,
+                                origin: cell,
+                                message: "Cannot use wildcard in binary search".to_string(),
+                            };
+                        }
+                        let array = self.prepare_array(&left, &right, is_row_vector);
+                        let index = if match_mode == MatchMode::ExactMatchLarger {
+                            if search_mode == SearchMode::BinarySearchAscending {
+                                binary_search_or_greater(&lookup_value, &array)
+                            } else {
+                                binary_search_descending_or_greater(&lookup_value, &array)
+                            }
+                        } else if search_mode == SearchMode::BinarySearchAscending {
+                            binary_search_or_smaller(&lookup_value, &array)
+                        } else {
+                            binary_search_descending_or_smaller(&lookup_value, &array)
+                        };
+                        match index {
+                            None => not_found,
+                            Some(l) => {
+                                if match_mode == MatchMode::ExactMatch
+                                    && compare_values(&array[l as usize], &lookup_value) != 0
+                                {
+                                    not_found
+                                } else {
+                                    CalcResult::Number(l as f64 + 1.0)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            error @ CalcResult::Error { .. } => error,
+            _ => CalcResult::Error {
+                error: Error::NA,
+                origin: cell,
+                message: "Range expected".to_string(),
+            },
+        }
+    }
 }
