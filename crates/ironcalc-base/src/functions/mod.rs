@@ -428,6 +428,8 @@ pub enum Function {
     Accrintm,
     Pricemat,
     Yieldmat,
+    Duration,
+    Mduration,
     Xirr,
     Xnpv,
 
@@ -920,6 +922,8 @@ impl_function_lookup! {
     accrintm   => Accrintm,
     pricemat   => Pricemat,
     yieldmat   => Yieldmat,
+    duration   => Duration,
+    mduration  => Mduration,
     xirr       => Xirr,
     xnpv       => Xnpv,
 
@@ -1392,6 +1396,8 @@ impl Function {
             Function::Accrintm => functions.accrintm.clone(),
             Function::Pricemat => functions.pricemat.clone(),
             Function::Yieldmat => functions.yieldmat.clone(),
+            Function::Duration => functions.duration.clone(),
+            Function::Mduration => functions.mduration.clone(),
             Function::Xirr => functions.xirr.clone(),
             Function::Xnpv => functions.xnpv.clone(),
             Function::Besseli => functions.besseli.clone(),
@@ -1471,7 +1477,7 @@ impl Function {
             Function::Mdeterm => functions.mdeterm.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 442> {
+    pub fn into_iter() -> IntoIter<Function, 444> {
         [
             Function::And,
             Function::False,
@@ -1706,6 +1712,8 @@ impl Function {
             Function::Accrintm,
             Function::Pricemat,
             Function::Yieldmat,
+            Function::Duration,
+            Function::Mduration,
             Function::Dollarde,
             Function::Dollarfr,
             Function::Ddb,
@@ -2309,6 +2317,8 @@ impl<'a> Model<'a> {
             Function::Accrintm => self.fn_accrintm(args, cell),
             Function::Pricemat => self.fn_pricemat(args, cell),
             Function::Yieldmat => self.fn_yieldmat(args, cell),
+            Function::Duration => self.fn_duration(args, cell),
+            Function::Mduration => self.fn_mduration(args, cell),
             Function::Dollarde => self.fn_dollarde(args, cell),
             Function::Dollarfr => self.fn_dollarfr(args, cell),
             Function::Ddb => self.fn_ddb(args, cell),

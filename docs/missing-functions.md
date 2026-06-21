@@ -41,7 +41,7 @@ Tier 1 complete.
 
 ## Tier 2 — medium scalar (not started)
 Quantiles (PROB, TRIMMEAN, FORECAST),
-bond financials (PRICE/YIELD/DURATION/COUP*/ODD*/ACCRINT…), MDETERM, XMATCH,
+bond financials (ODD*…), MDETERM, XMATCH,
 AGGREGATE, BAHTTEXT, VALUETOTEXT. See triage report.
 
 ## Tier 3 — blocked on spill engine
@@ -54,6 +54,12 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- duration — DURATION, MDURATION (Macaulay & modified bond duration;
+  N=COUPNUM, DSC=COUPDAYSNC, E=COUPDAYS, t1=DSC/E; per period cf=100*coupon/freq
+  plus 100 redemption at k=N, time_k=(k-1)+t1, df=1/(1+yld/freq)^time_k;
+  Macaulay = sum((time_k/freq)*cf*df)/sum(cf*df), MDURATION = that/(1+yld/freq);
+  validates coupon>=0, yld>=0, freq 1/2/4, basis 0-4, settlement<maturity else
+  #NUM!; reuses coupon-schedule helpers; legacy, no _xlfn).
 - accrued/maturity — ACCRINT, ACCRINTM, PRICEMAT, YIELDMAT (ACCRINTM =
   par*rate*yearfrac(issue,settlement,basis); ACCRINT simplified single-period
   par*rate*yearfrac(issue,settlement,basis), calc_method ignored beyond bool

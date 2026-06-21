@@ -2519,6 +2519,97 @@ impl<'a> Model<'a> {
         let yld = ((1.0 + dim * rate) - base) / base / dsm;
         CalcResult::Number(yld)
     }
+
+    fn duration_value(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        if !(5..=6).contains(&args.len()) {
+            return Err(CalcResult::new_args_number_error(cell));
+        }
+        let coupon = self.get_number(&args[2], cell).map_err(|s| s)?;
+        let yld = self.get_number(&args[3], cell).map_err(|s| s)?;
+        let coupon_args = if args.len() == 6 {
+            vec![
+                args[0].clone(),
+                args[1].clone(),
+                args[4].clone(),
+                args[5].clone(),
+            ]
+        } else {
+            vec![args[0].clone(), args[1].clone(), args[4].clone()]
+        };
+        let (settlement, maturity, frequency, basis) =
+            self.coupon_args(&coupon_args, cell)?;
+        if coupon < 0.0 || yld < 0.0 {
+            return Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "coupon>=0, yld>=0 required".to_string(),
+            ));
+        }
+        let (pcd, ncd, n) =
+            self.coupon_pcd_ncd_num(settlement, maturity, frequency, cell)?;
+        let dsc = self.coupon_day_count(settlement, ncd, basis, cell);
+        let e = match basis {
+            1 => (ncd - pcd) as f64,
+            3 => 365.0 / frequency as f64,
+            _ => 360.0 / frequency as f64,
+        };
+        let freq = frequency as f64;
+        let t1 = dsc / e;
+        let cash = 100.0 * coupon / freq;
+        let factor = 1.0 + yld / freq;
+        let mut weighted = 0.0;
+        let mut present = 0.0;
+        for k in 1..=n {
+            let time = (k as f64 - 1.0) + t1;
+            let mut cf = cash;
+            if k == n {
+                cf += 100.0;
+            }
+            let df = 1.0 / factor.powf(time);
+            let pv = cf * df;
+            weighted += (time / freq) * pv;
+            present += pv;
+        }
+        if present == 0.0 {
+            return Err(CalcResult::new_error(
+                Error::DIV,
+                cell,
+                "Division by 0".to_string(),
+            ));
+        }
+        Ok(weighted / present)
+    }
+
+    // DURATION(settlement, maturity, coupon, yld, frequency, [basis])
+    pub(crate) fn fn_duration(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        match self.duration_value(args, cell) {
+            Ok(d) => CalcResult::Number(d),
+            Err(e) => e,
+        }
+    }
+
+    // MDURATION(settlement, maturity, coupon, yld, frequency, [basis])
+    pub(crate) fn fn_mduration(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if !(5..=6).contains(&args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let yld = match self.get_number(&args[3], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        let frequency = match self.get_number(&args[4], cell) {
+            Ok(f) => f.floor(),
+            Err(s) => return s,
+        };
+        match self.duration_value(args, cell) {
+            Ok(d) => CalcResult::Number(d / (1.0 + yld / frequency)),
+            Err(e) => e,
+        }
+    }
 }
 
 fn coupon_days_in_month(year: i32, month: i32) -> i32 {

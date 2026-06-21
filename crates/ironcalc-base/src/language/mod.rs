@@ -226,6 +226,8 @@ pub struct Functions {
     pub accrintm: String,
     pub pricemat: String,
     pub yieldmat: String,
+    pub duration: String,
+    pub mduration: String,
     pub dollarde: String,
     pub dollarfr: String,
     pub ddb: String,

@@ -21,6 +21,7 @@ mod test_fn_chi_f_t_legacy;
 mod test_fn_byte_variants;
 mod test_fn_accrint;
 mod test_fn_coup;
+mod test_fn_duration;
 mod test_fn_price;
 mod test_fn_disc;
 mod test_fn_dispersion_legacy;
