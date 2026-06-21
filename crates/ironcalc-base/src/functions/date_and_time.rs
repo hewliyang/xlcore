@@ -834,7 +834,7 @@ impl<'a> Model<'a> {
         CalcResult::Number(count as f64 * sign)
     }
 
-    fn excel_date(
+    pub(crate) fn excel_date(
         &self,
         serial: i64,
         cell: CellReferenceIndex,

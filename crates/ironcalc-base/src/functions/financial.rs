@@ -4,7 +4,7 @@ use crate::{
     calc_result::CalcResult,
     constants::{LAST_COLUMN, LAST_ROW, MAXIMUM_DATE_SERIAL_NUMBER, MINIMUM_DATE_SERIAL_NUMBER},
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::from_excel_date,
+    formatter::dates::{date_to_serial_number, from_excel_date},
     model::Model,
 };
 
@@ -1969,4 +1969,231 @@ impl<'a> Model<'a> {
         }
         CalcResult::Number((redemption - pr) / pr / yf)
     }
+
+    fn coupon_args(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(i64, i64, i32, i32), CalcResult> {
+        if !(3..=4).contains(&args.len()) {
+            return Err(CalcResult::new_args_number_error(cell));
+        }
+        let settlement = match self.get_number(&args[0], cell) {
+            Ok(c) => c.floor() as i64,
+            Err(s) => return Err(s),
+        };
+        let maturity = match self.get_number(&args[1], cell) {
+            Ok(c) => c.floor() as i64,
+            Err(s) => return Err(s),
+        };
+        let frequency = match self.get_number(&args[2], cell) {
+            Ok(f) => f.floor() as i32,
+            Err(s) => return Err(s),
+        };
+        let basis = if args.len() == 4 {
+            match self.get_number(&args[3], cell) {
+                Ok(f) => f.floor() as i32,
+                Err(s) => return Err(s),
+            }
+        } else {
+            0
+        };
+        if !matches!(frequency, 1 | 2 | 4) {
+            return Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "frequency must be 1, 2 or 4".to_string(),
+            ));
+        }
+        if !(0..=4).contains(&basis) {
+            return Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Invalid basis".to_string(),
+            ));
+        }
+        if settlement >= maturity {
+            return Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be < maturity".to_string(),
+            ));
+        }
+        Ok((settlement, maturity, frequency, basis))
+    }
+
+    fn coupon_pcd_ncd_num(
+        &self,
+        settlement: i64,
+        maturity: i64,
+        frequency: i32,
+        cell: CellReferenceIndex,
+    ) -> Result<(i64, i64, i32), CalcResult> {
+        let mat = self.excel_date(maturity, cell)?;
+        let mat_year = mat.year();
+        let mat_month = mat.month() as i32;
+        let mat_day = mat.day();
+        let mat_eom = mat_day as i32 == coupon_days_in_month(mat_year, mat_month);
+        let step = 12 / frequency;
+        let mut ncd_serial = maturity;
+        let mut k = 0;
+        loop {
+            let (y, m, d) = coupon_date_back(mat_year, mat_month, mat_day, mat_eom, k, step);
+            let serial = match date_to_serial_number(d, m as u32, y) {
+                Ok(s) => s as i64,
+                Err(_) => {
+                    return Err(CalcResult::new_error(
+                        Error::NUM,
+                        cell,
+                        "date out of range".to_string(),
+                    ))
+                }
+            };
+            if serial <= settlement {
+                return Ok((serial, ncd_serial, k));
+            }
+            ncd_serial = serial;
+            k += 1;
+        }
+    }
+
+    fn coupon_day_count(
+        &mut self,
+        start: i64,
+        end: i64,
+        basis: i32,
+        cell: CellReferenceIndex,
+    ) -> f64 {
+        match basis {
+            0 | 4 => {
+                let method = if basis == 4 { 1.0 } else { 0.0 };
+                let nodes = [
+                    Node::NumberKind(start as f64),
+                    Node::NumberKind(end as f64),
+                    Node::NumberKind(method),
+                ];
+                if let CalcResult::Number(n) = self.fn_days360(&nodes, cell) {
+                    n
+                } else {
+                    0.0
+                }
+            }
+            _ => (end - start) as f64,
+        }
+    }
+
+    // COUPPCD(settlement, maturity, frequency, [basis])
+    pub(crate) fn fn_couppcd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (settlement, maturity, frequency, _) = match self.coupon_args(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        match self.coupon_pcd_ncd_num(settlement, maturity, frequency, cell) {
+            Ok((pcd, _, _)) => CalcResult::Number(pcd as f64),
+            Err(e) => e,
+        }
+    }
+
+    // COUPNCD(settlement, maturity, frequency, [basis])
+    pub(crate) fn fn_coupncd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (settlement, maturity, frequency, _) = match self.coupon_args(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        match self.coupon_pcd_ncd_num(settlement, maturity, frequency, cell) {
+            Ok((_, ncd, _)) => CalcResult::Number(ncd as f64),
+            Err(e) => e,
+        }
+    }
+
+    // COUPNUM(settlement, maturity, frequency, [basis])
+    pub(crate) fn fn_coupnum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (settlement, maturity, frequency, _) = match self.coupon_args(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        match self.coupon_pcd_ncd_num(settlement, maturity, frequency, cell) {
+            Ok((_, _, num)) => CalcResult::Number(num as f64),
+            Err(e) => e,
+        }
+    }
+
+    // COUPDAYBS(settlement, maturity, frequency, [basis])
+    pub(crate) fn fn_coupdaybs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (settlement, maturity, frequency, basis) = match self.coupon_args(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let pcd = match self.coupon_pcd_ncd_num(settlement, maturity, frequency, cell) {
+            Ok((pcd, _, _)) => pcd,
+            Err(e) => return e,
+        };
+        CalcResult::Number(self.coupon_day_count(pcd, settlement, basis, cell))
+    }
+
+    // COUPDAYS(settlement, maturity, frequency, [basis])
+    pub(crate) fn fn_coupdays(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (settlement, maturity, frequency, basis) = match self.coupon_args(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let (pcd, ncd, _) = match self.coupon_pcd_ncd_num(settlement, maturity, frequency, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let result = match basis {
+            1 => (ncd - pcd) as f64,
+            3 => 365.0 / frequency as f64,
+            _ => 360.0 / frequency as f64,
+        };
+        CalcResult::Number(result)
+    }
+
+    // COUPDAYSNC(settlement, maturity, frequency, [basis])
+    pub(crate) fn fn_coupdaysnc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (settlement, maturity, frequency, basis) = match self.coupon_args(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let ncd = match self.coupon_pcd_ncd_num(settlement, maturity, frequency, cell) {
+            Ok((_, ncd, _)) => ncd,
+            Err(e) => return e,
+        };
+        CalcResult::Number(self.coupon_day_count(settlement, ncd, basis, cell))
+    }
+}
+
+fn coupon_days_in_month(year: i32, month: i32) -> i32 {
+    match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+        4 | 6 | 9 | 11 => 30,
+        2 => {
+            if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 {
+                29
+            } else {
+                28
+            }
+        }
+        _ => 30,
+    }
+}
+
+fn coupon_date_back(
+    mat_year: i32,
+    mat_month: i32,
+    mat_day: u32,
+    mat_eom: bool,
+    k: i32,
+    step: i32,
+) -> (i32, i32, u32) {
+    let total = mat_year * 12 + (mat_month - 1) - k * step;
+    let year = total.div_euclid(12);
+    let month = total.rem_euclid(12) + 1;
+    let dim = coupon_days_in_month(year, month);
+    let day = if mat_eom {
+        dim
+    } else {
+        (mat_day as i32).min(dim)
+    };
+    (year, month, day as u32)
 }

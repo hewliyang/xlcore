@@ -54,6 +54,13 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- coupon dates — COUPPCD, COUPNCD, COUPNUM, COUPDAYBS, COUPDAYS, COUPDAYSNC
+  (shared coupon-schedule helper: dates stepped back from maturity in 12/freq-month
+  increments with end-of-month handling; PCD = last coupon <= settlement, NCD =
+  first after, NUM = periods settlement->maturity; DAYBS/DAYSNC via basis day-count
+  30/360 for basis 0/4, actual for 1/2/3; DAYS = actual PCD->NCD for basis 1, 365/freq
+  for basis 3, else 360/freq; freq must be 1/2/4, basis 0-4, settlement<maturity else
+  #NUM!; PCD/NCD return serials; legacy, no _xlfn).
 - disc family — DISC, INTRATE, RECEIVED, PRICEDISC, YIELDDISC (discount-security
   financials; year-fraction via shared `yearfrac_basis` helper refactored out of
   YEARFRAC, bases 0-4; settlement>=maturity or bad basis => #NUM!, bad dates =>
