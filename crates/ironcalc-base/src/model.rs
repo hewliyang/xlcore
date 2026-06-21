@@ -534,6 +534,19 @@ impl<'a> Model<'a> {
                         ),
                     }
                 }
+                CalcResult::Array(array) => match array.first().and_then(|r| r.first()) {
+                    Some(ArrayNode::Number(v)) => CalcResult::Number(*v),
+                    Some(ArrayNode::String(s)) => CalcResult::String(s.clone()),
+                    Some(ArrayNode::Boolean(b)) => CalcResult::Boolean(*b),
+                    Some(ArrayNode::Error(e)) => {
+                        CalcResult::new_error(e.clone(), cell, String::new())
+                    }
+                    None => CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        format!("Error with Implicit Intersection in cell {cell:?}"),
+                    ),
+                },
                 _ => self.evaluate_node_in_context(child, cell),
             },
         }
@@ -625,15 +638,13 @@ impl<'a> Model<'a> {
                     };
                 }
                 CalcResult::Range { left, right } => {
-                    if left.sheet == right.sheet
-                        && left.row == right.row
-                        && left.column == right.column
+                    let range = Range {
+                        left: *left,
+                        right: *right,
+                    };
+                    if let Some(intersection_cell) =
+                        implicit_intersection(&cell_reference, &range)
                     {
-                        let intersection_cell = CellReferenceIndex {
-                            sheet: left.sheet,
-                            column: left.column,
-                            row: left.row,
-                        };
                         let v = self.evaluate_cell(intersection_cell);
                         self.set_cell_value(cell_reference, &v);
                     } else {
@@ -650,32 +661,10 @@ impl<'a> Model<'a> {
                             f,
                             s,
                             o,
-                            m: "Implicit Intersection not implemented".to_string(),
-                            ei: Error::NIMPL,
+                            m: "Invalid reference".to_string(),
+                            ei: Error::VALUE,
                         };
                     }
-                    // if let Some(intersection_cell) = implicit_intersection(&cell_reference, &range)
-                    // {
-                    //     let v = self.evaluate_cell(intersection_cell);
-                    //     self.set_cell_value(cell_reference, &v);
-                    // } else {
-                    //     let o = match self.cell_reference_to_string(&cell_reference) {
-                    //         Ok(s) => s,
-                    //         Err(_) => "".to_string(),
-                    //     };
-                    //     *self.workbook.worksheets[sheet as usize]
-                    //         .sheet_data
-                    //         .get_mut(&row)
-                    //         .expect("expected a row")
-                    //         .get_mut(&column)
-                    //         .expect("expected a column") = Cell::CellFormulaError {
-                    //         f,
-                    //         s,
-                    //         o,
-                    //         m: "Invalid reference".to_string(),
-                    //         ei: Error::VALUE,
-                    //     };
-                    // }
                 }
                 CalcResult::EmptyCell | CalcResult::EmptyArg => {
                     *self.workbook.worksheets[sheet as usize]

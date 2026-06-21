@@ -95,8 +95,8 @@ backlog — work top to bottom, one item per agent:
   non-numeric top-left no longer flattens to `0`. `get_cell_value`,
   `Cell::value`/`get_type`, and `spill_array` cache/render the real top-left
   ArrayNode. Prerequisite for text-producing array fns; numeric path unchanged.
-- [ ] **S3 — reference/intersection polish.** `A1#` spill operator;
-  `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
+- [ ] **S3 — reference/intersection polish.** `A1#` spill operator (remaining).
+  `@` implicit intersection: done (see Shipped).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
   High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, ~~TAKE~~/~~DROP~~,
   ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, ~~SORTBY~~, ~~MMULT~~, ~~MINVERSE~~, ~~MUNIT~~, ~~RANDARRAY~~,
@@ -115,6 +115,13 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- implicit intersection (S3, @) — set_cell_value's `CalcResult::Range` arm now
+  applies real implicit intersection via the `implicit_intersection` helper
+  (intersecting row/col => that cell's value, non-intersecting => #VALUE!,
+  single-cell range => that cell) instead of the old #N/IMPL stub; matches the
+  eval-time `ImplicitIntersection` arm. `@` coercion of a dynamic-array result
+  (e.g. `=@SEQUENCE(3)`) now collapses to the top-left element rather than
+  spilling; bare arrays still spill. A1# spill operator remains the open S3 item.
 - logest/growth (S4) — exponential analogues of LINEST/TREND for y=b*m1^x1*...
   via shared ols_fit on ln(known_ys) (all known_ys must be >0 else #NUM!). LOGEST
   returns LINEST shape with coefficients exponentiated (row0 m_i=exp(coef),
