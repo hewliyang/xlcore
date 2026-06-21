@@ -77,7 +77,7 @@ backlog — work top to bottom, one item per agent:
   sibling of shipped VALUETOTEXT (text.rs:1524). Format 0 concise = values joined
   `", "`; format 1 strict = brace-wrapped, rows `;`, cols `,`, strings quoted,
   errors as text. Ship like the Tier 2 fns.
-- [ ] **S1 — spill metadata in ironcalc `Cell`.** Add a `CellFormulaArray`
+- [x] **S1 — spill metadata in ironcalc `Cell`.** Add a `CellFormulaArray`
   variant (anchor flag + spill `ref` + cached value) at the `// TODO: Array
   formulas` seam (types.rs:163). Wire it inert through every exhaustive
   `match cell` site (behaves like a cached formula cell), keep bitcode

@@ -70,6 +70,7 @@ impl Cell {
             Cell::CellFormulaNumber { f, .. } => Some(*f),
             Cell::CellFormulaString { f, .. } => Some(*f),
             Cell::CellFormulaError { f, .. } => Some(*f),
+            Cell::CellFormulaArray { f, .. } => Some(*f),
             _ => None,
         }
     }
@@ -90,6 +91,7 @@ impl Cell {
             Cell::CellFormulaNumber { s, .. } => *s = style,
             Cell::CellFormulaString { s, .. } => *s = style,
             Cell::CellFormulaError { s, .. } => *s = style,
+            Cell::CellFormulaArray { s, .. } => *s = style,
         };
     }
 
@@ -105,6 +107,7 @@ impl Cell {
             Cell::CellFormulaNumber { s, .. } => *s,
             Cell::CellFormulaString { s, .. } => *s,
             Cell::CellFormulaError { s, .. } => *s,
+            Cell::CellFormulaArray { s, .. } => *s,
         }
     }
 
@@ -120,6 +123,7 @@ impl Cell {
             Cell::CellFormulaNumber { .. } => CellType::Number,
             Cell::CellFormulaString { .. } => CellType::Text,
             Cell::CellFormulaError { .. } => CellType::ErrorValue,
+            Cell::CellFormulaArray { .. } => CellType::Number,
         }
     }
 
@@ -176,6 +180,7 @@ impl Cell {
                 let v = ei.to_localized_error_string(language);
                 CellValue::String(v)
             }
+            Cell::CellFormulaArray { v, .. } => CellValue::Number(*v),
         }
     }
 

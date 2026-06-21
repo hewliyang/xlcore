@@ -766,6 +766,7 @@ impl<'a> Model<'a> {
             CellFormulaBoolean { v, .. } => CalcResult::Boolean(*v),
             CellFormulaNumber { v, .. } => CalcResult::Number(*v),
             CellFormulaString { v, .. } => CalcResult::String(v.clone()),
+            CellFormulaArray { v, .. } => CalcResult::Number(*v),
             CellFormulaError { ei, o, m, .. } => {
                 if let Some(cell_reference) = self.parse_reference(o) {
                     CalcResult::new_error(ei.clone(), cell_reference, m.clone())

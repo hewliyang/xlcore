@@ -217,7 +217,15 @@ pub enum Cell {
         // Error Message: "Not implemented function"
         m: String,
     },
-    // TODO: Array formulas
+    // Dynamic array formula anchor. Inert plumbing (S1): not yet constructed or
+    // spilled; behaves like a cached formula cell holding the top-left value.
+    CellFormulaArray {
+        f: i32,
+        v: f64,
+        s: i32,
+        // Spill range anchored at this cell, e.g. "A1:C3"
+        range: String,
+    },
 }
 
 impl Default for Cell {
