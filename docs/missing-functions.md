@@ -86,11 +86,10 @@ backlog — work top to bottom, one item per agent:
 - [x] **S2a — in-memory spill (calc engine only).** Pilot fn: TRANSPOSE. See
   Shipped. Numeric arrays fully cached; non-numeric neighbours spill but the
   anchor caches numeric top-left only. No xlsx yet (S2b).
-- [ ] **S2b — xlsx round-trip persistence.** Read `<f t="array" ref=...>` (+ `cm`
-  → `xl/metadata.xml`); write anchor + metadata part + cached `<v>` per spilled
-  cell; surface spill range on `xlcore-types::CellInfo`. Verify: build .xlsx →
-  xlsx-preview render → reimport, values + `ref` survive. (General cached value
-  typing — string/bool/error array elements — lands here if not before.)
+- [x] **S2b — xlsx round-trip persistence (CSE-array layer).** See Shipped.
+  Reads `<f t="array" ref=...>`, excludes spilled targets from harvest, writes
+  cached `<v>` per spilled cell. metadata.xml / `cm` / dynamicArrayProperties
+  fidelity + `CellInfo` spill-range surfacing deferred to a follow-up.
 - [ ] **S3 — reference/intersection polish.** `A1#` spill operator;
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2 lands.
@@ -107,6 +106,18 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- spill round-trip (S2b, CSE-array) — xlcore-bridge recalc now persists
+  dynamic-array spills as legacy `<f t="array" ref=...>` + cached `<v>` on the
+  anchor AND every spilled cell. Write (write_cached_formula_values): after
+  recalc, for each array anchor parse the `ref` range and write a cached `<v>`
+  (creating sorted `<row>`/`<c>` if absent) for every non-anchor cell via
+  engine.cell_value. Read (harvest_sheet_cells): collect array ref ranges and
+  skip emitting literal HarvestedCells for non-anchor cells inside a range so
+  pre-cached spill outputs from real Excel saves don't occupy targets (fixes a
+  false #SPILL! on reload). Fixtures tests/fixtures/spill/transpose.xlsx +
+  transpose_precached.xlsx round-trip to A4=1,B4=4,A5=2,B5=5,A6=3,B6=6,A8=50.
+  Deferred: xl/metadata.xml / `cm` / dynamicArrayProperties dynamic-array
+  fidelity and CellInfo spill-range surfacing.
 - transpose + in-memory spill (S2a) — TRANSPOSE(array): reads the single
   range/array arg row-major and returns CalcResult::Array transposed (rows<->cols);
   non-numeric cells pass through as their ArrayNode. Spill mechanism: model.rs

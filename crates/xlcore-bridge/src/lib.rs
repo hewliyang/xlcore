@@ -223,7 +223,8 @@ pub fn recalculate_doc_with_writeback_resident(
     resident: &mut Option<ResidentEngine>,
 ) -> Result<RecalcWorkbook> {
     let recalculated = recalculate_doc_with_resident(doc, resident)?;
-    write_cached_formula_values(doc, &recalculated)?;
+    let resident_ref = resident.as_ref().expect("resident engine present");
+    write_cached_formula_values(doc, &recalculated, &resident_ref.engine)?;
     mark_cached_formula_values_current(doc)?;
     Ok(recalculated)
 }
@@ -375,6 +376,7 @@ struct SharedFormula {
 fn write_cached_formula_values(
     doc: &mut xlcore_io::SpreadsheetDocument,
     recalculated: &RecalcWorkbook,
+    engine: &WorkbookEngine<'_>,
 ) -> Result<()> {
     let workbook_sheets = {
         let wb_part = doc.workbook_part()?;
@@ -416,6 +418,7 @@ fn write_cached_formula_values(
             .collect::<HashMap<_, _>>();
 
         let ws = ws_part.root_element_mut(doc)?;
+        let array_ranges = collect_array_ranges(ws);
         for row in &mut ws.sheet_data.row {
             for cell in &mut row.cell {
                 if cell.cell_formula.is_none() {
@@ -436,9 +439,85 @@ fn write_cached_formula_values(
                 set_cached_formula_value(cell, &update.value);
             }
         }
+        write_spilled_cells(ws, sheet_index, &array_ranges, engine);
     }
 
     Ok(())
+}
+
+fn write_spilled_cells(
+    ws: &mut x::Worksheet,
+    sheet_index: u32,
+    array_ranges: &[ArrayRange],
+    engine: &WorkbookEngine<'_>,
+) {
+    for range in array_ranges {
+        for r in range.start.0..=range.end.0 {
+            for c in range.start.1..=range.end.1 {
+                if (r, c) == range.anchor {
+                    continue;
+                }
+                let Ok(value) = engine.cell_value(sheet_index, r as i32, c as i32) else {
+                    continue;
+                };
+                let cell = ensure_cell(ws, r, c);
+                set_cached_formula_value(cell, &value);
+            }
+        }
+    }
+}
+
+fn ensure_cell(ws: &mut x::Worksheet, r: u32, c: u32) -> &mut x::Cell {
+    let row_pos = match ws
+        .sheet_data
+        .row
+        .iter()
+        .position(|row| row.row_index == Some(r))
+    {
+        Some(pos) => pos,
+        None => {
+            let insert_at = ws
+                .sheet_data
+                .row
+                .iter()
+                .position(|row| row.row_index.unwrap_or(0) > r)
+                .unwrap_or(ws.sheet_data.row.len());
+            let mut row = x::Row::default();
+            row.row_index = Some(r);
+            ws.sheet_data.row.insert(insert_at, row);
+            insert_at
+        }
+    };
+    let row = &mut ws.sheet_data.row[row_pos];
+    let reference = format!("{}{}", xlcore_io::col_label(c), r);
+    let cell_pos = match row.cell.iter().position(|cell| {
+        cell.cell_reference
+            .as_deref()
+            .and_then(xlcore_io::parse_a1)
+            .map(|(_, col)| col)
+            == Some(c)
+    }) {
+        Some(pos) => pos,
+        None => {
+            let insert_at = row
+                .cell
+                .iter()
+                .position(|cell| {
+                    cell.cell_reference
+                        .as_deref()
+                        .and_then(xlcore_io::parse_a1)
+                        .map(|(_, col)| col)
+                        .unwrap_or(0)
+                        > c
+                })
+                .unwrap_or(row.cell.len());
+            let mut cell = x::Cell::default();
+            cell.cell_reference = Some(reference);
+            row.cell.insert(insert_at, cell);
+            insert_at
+        }
+    };
+    &mut row.cell[cell_pos]
 }
 
 fn set_cached_formula_value(cell: &mut x::Cell, value: &CellValue) {
@@ -501,6 +580,7 @@ fn mark_cached_formula_values_current(doc: &mut xlcore_io::SpreadsheetDocument) 
 
 fn harvest_sheet_cells(ws: &x::Worksheet, shared_strings: &[String]) -> Vec<HarvestedCell> {
     let shared_formulas = collect_shared_formulas(ws);
+    let array_ranges = collect_array_ranges(ws);
     let mut cells = Vec::new();
     for row in &ws.sheet_data.row {
         for cell in &row.cell {
@@ -521,6 +601,9 @@ fn harvest_sheet_cells(ws: &x::Worksheet, shared_strings: &[String]) -> Vec<Harv
             } else {
                 (value, None)
             };
+            if formula.is_none() && is_spilled_target(&array_ranges, r, c) {
+                continue;
+            }
             if formula.is_none() && literal.is_none() {
                 continue;
             }
@@ -534,6 +617,51 @@ fn harvest_sheet_cells(ws: &x::Worksheet, shared_strings: &[String]) -> Vec<Harv
         }
     }
     cells
+}
+
+#[derive(Clone, Copy, Debug)]
+struct ArrayRange {
+    anchor: (u32, u32),
+    start: (u32, u32),
+    end: (u32, u32),
+}
+
+fn collect_array_ranges(ws: &x::Worksheet) -> Vec<ArrayRange> {
+    let mut ranges = Vec::new();
+    for row in &ws.sheet_data.row {
+        for cell in &row.cell {
+            let Some(formula) = cell.cell_formula.as_ref() else {
+                continue;
+            };
+            if formula.formula_type != Some(x::CellFormulaValues::Array) {
+                continue;
+            }
+            let Some(reference) = formula.reference.as_ref() else {
+                continue;
+            };
+            let Some(r_attr) = cell.cell_reference.as_ref() else {
+                continue;
+            };
+            let Some(anchor) = xlcore_io::parse_a1(r_attr.as_str()) else {
+                continue;
+            };
+            let Some((start, end)) = xlcore_io::parse_range(reference.as_str()) else {
+                continue;
+            };
+            ranges.push(ArrayRange { anchor, start, end });
+        }
+    }
+    ranges
+}
+
+fn is_spilled_target(ranges: &[ArrayRange], r: u32, c: u32) -> bool {
+    ranges.iter().any(|range| {
+        (r, c) != range.anchor
+            && r >= range.start.0
+            && r <= range.end.0
+            && c >= range.start.1
+            && c <= range.end.1
+    })
 }
 
 fn collect_shared_formulas(ws: &x::Worksheet) -> HashMap<u32, SharedFormula> {
@@ -1053,6 +1181,77 @@ mod tests {
             translate_shared_formula(r#""A1"&'Q1'!A1&Sheet1!A1&Table1[Col]"#, 2, 1),
             r#""A1"&'Q1'!B3&Sheet1!B3&Table1[Col]"#
         );
+    }
+
+    #[test]
+    fn round_trips_dynamic_array_spill() {
+        for fixture_name in ["transpose.xlsx", "transpose_precached.xlsx"] {
+            let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../tests/fixtures/spill")
+                .join(fixture_name);
+            let out = temp_xlsx_path("xlcore-bridge-spill");
+            let _ = std::fs::remove_file(&out);
+
+            let wb = recalculate_and_save(&fixture, &out)
+                .with_context(|| format!("recalculate {fixture_name}"))
+                .unwrap();
+            assert_number(&wb, "A4", 1.0);
+            assert_number(&wb, "A8", 50.0);
+            assert!(
+                wb.cell("Sheet1", "A4").unwrap().fallback.is_none(),
+                "{fixture_name}: anchor must not be #SPILL!"
+            );
+
+            let saved = recalculate(&out)
+                .with_context(|| format!("reopen {fixture_name}"))
+                .unwrap();
+            assert_eq!(
+                saved
+                    .cell("Sheet1", "A4")
+                    .and_then(|cell| cell.cached_value.as_ref()),
+                Some(&CellValue::Number(1.0)),
+                "{fixture_name}: anchor cached value"
+            );
+            assert!(
+                saved.cell("Sheet1", "A4").unwrap().fallback.is_none(),
+                "{fixture_name}: reopened anchor must not be #SPILL!"
+            );
+
+            let doc = xlcore_io::open(&out).unwrap();
+            let xml = unzip_sheet(&out);
+            for (cell_ref, expected) in [
+                ("B4", "4"),
+                ("A5", "2"),
+                ("B5", "5"),
+                ("A6", "3"),
+                ("B6", "6"),
+            ] {
+                assert!(
+                    xml.contains(&format!("<c r=\"{cell_ref}\"><v>{expected}</v></c>")),
+                    "{fixture_name}: expected spilled {cell_ref}={expected} in {xml}"
+                );
+            }
+            assert!(
+                xml.contains("<f t=\"array\" ref=\"A4:B6\">"),
+                "{fixture_name}: anchor array formula must survive"
+            );
+            assert!(
+                !xml.contains("t=\"e\""),
+                "{fixture_name}: no error cells expected, got {xml}"
+            );
+            drop(doc);
+            let _ = std::fs::remove_file(out);
+        }
+    }
+
+    fn unzip_sheet(path: &Path) -> String {
+        let output = std::process::Command::new("unzip")
+            .arg("-p")
+            .arg(path)
+            .arg("xl/worksheets/sheet1.xml")
+            .output()
+            .expect("unzip sheet");
+        String::from_utf8(output.stdout).expect("utf-8 sheet xml")
     }
 
     fn assert_number(wb: &RecalcWorkbook, cell_ref: &str, expected: f64) {
