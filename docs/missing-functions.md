@@ -66,7 +66,7 @@ CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
   NUMBERVALUE (parse with decimal/group separators, trailing %, empty -> 0).
 - simple text — CHAR, CODE (Windows-1252), CLEAN, PROPER, REPLACE, FIXED, DOLLAR.
 - TDIST + MODE family — TDIST (→ T.DIST.RT/T.DIST.2T by `tails`), MODE, MODE.SNGL
-  (smallest most-frequent value, #N/A if none repeats; MODE = MODE.SNGL).
+  (first-encountered most-frequent value, #N/A if none repeats; MODE = MODE.SNGL).
 - dispersion legacy — STDEV, STDEVP, VAR, VARP, RANK (→ STDEV.S, STDEV.P, VAR.S,
   VAR.P, RANK.EQ).
 - normal-dist legacy — NORMDIST, NORMINV, NORMSDIST, NORMSINV.
