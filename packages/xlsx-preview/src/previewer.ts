@@ -1,5 +1,6 @@
-import { decodeWorkbookLayout, findCell, iterRows } from "./columnar.js";
+import { decodeWorkbookLayout, iterRows } from "./columnar.js";
 import { clamp } from "./mathUtils.js";
+import { balanceFormula, formatFormulaBar } from "./formulaText.js";
 import { patchWorkbookSheet } from "./layoutPatch.js";
 import { colorToCssWithTheme } from "./color.js";
 import type { LoadReport } from "./errors.js";
@@ -1550,44 +1551,6 @@ function normalizeSelection(selection: Selection, maxRow: number, maxCol: number
   const c1 = clamp(Math.floor(Math.min(selection.c1, selection.c2)), 1, maxCol);
   const c2 = clamp(Math.floor(Math.max(selection.c1, selection.c2)), 1, maxCol);
   return { r1, c1, r2, c2 };
-}
-
-function formatFormulaBar(sheet: Sheet, active: { r: number; c: number }): string {
-  const cell = findCell(sheet, active.r, active.c);
-  if (!cell) return "";
-  if (cell.formula) return cell.formula.startsWith("=") ? cell.formula : `=${cell.formula}`;
-  if (cell.value !== undefined) return String(cell.value);
-  if (cell.runs && cell.runs.length > 0) return cell.runs.map((run) => run.text).join("");
-  return "";
-}
-
-function balanceFormula(text: string): string {
-  if (!text.startsWith("=")) return text;
-  let depth = 0;
-  let inString = false;
-  let inQuote = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (inString) {
-      if (ch === '"') {
-        if (text[i + 1] === '"') i++;
-        else inString = false;
-      }
-      continue;
-    }
-    if (inQuote) {
-      if (ch === "'") {
-        if (text[i + 1] === "'") i++;
-        else inQuote = false;
-      }
-      continue;
-    }
-    if (ch === '"') inString = true;
-    else if (ch === "'") inQuote = true;
-    else if (ch === "(") depth++;
-    else if (ch === ")" && depth > 0) depth--;
-  }
-  return depth > 0 ? text + ")".repeat(depth) : text;
 }
 
 function makeButton(label: string): HTMLButtonElement {

@@ -11,8 +11,6 @@ New pure modules should get a `.test.ts`.
 
 ## Backlog
 
-3. Extract `formulaText.ts` (+ test): `balanceFormula`, `formatFormulaBar`.
-
 4. Extract `previewerChrome.ts`: `makeButton`, `makeTab`, `contrastingTextColor`,
    `virtualSize`, `normalizeSelection` (DOM/geometry builders).
 
@@ -37,3 +35,4 @@ New pure modules should get a `.test.ts`.
 
 1. Extracted pure ref/location helpers into `previewerRefs.ts` (+ test); dropped local `colLabel`.
 2. Added shared `mathUtils.ts` (`clamp`, + test); replaced duplicated local `clamp` in previewer/interact/highlights/selection.
+3. Extracted `formulaText.ts` (+ test): `balanceFormula`, `formatFormulaBar`.
