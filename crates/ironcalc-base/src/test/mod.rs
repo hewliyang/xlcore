@@ -58,6 +58,7 @@ mod test_fn_logest;
 mod test_fn_growth;
 mod test_fn_let;
 mod test_fn_lambda;
+mod test_fn_map;
 mod test_fn_textsplit;
 mod test_fn_transpose;
 mod test_fn_bahttext;

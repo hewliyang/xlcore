@@ -661,22 +661,38 @@ impl<'a> Model<'a> {
                         "Wrong number of arguments".to_string(),
                     );
                 }
-                let mut frame = HashMap::new();
-                for (i, p) in params.iter().enumerate() {
-                    let v = match args.get(i) {
+                let arg_values: Vec<CalcResult> = params
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| match args.get(i) {
                         Some(a) => self.evaluate_node_in_context(a, cell),
                         None => CalcResult::EmptyArg,
-                    };
-                    frame.insert(p.clone(), v);
-                }
-                let mut new_scopes = captured;
-                new_scopes.push(frame);
-                let saved = std::mem::replace(&mut self.let_scopes, new_scopes);
-                let result = self.evaluate_node_in_context(&body, cell);
-                self.let_scopes = saved;
-                result
+                    })
+                    .collect();
+                self.apply_lambda(&params, &body, &captured, arg_values, cell)
             }
         }
+    }
+
+    pub(crate) fn apply_lambda(
+        &mut self,
+        params: &[String],
+        body: &Node,
+        captured: &[HashMap<String, CalcResult>],
+        arg_values: Vec<CalcResult>,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let mut frame = HashMap::new();
+        for (i, p) in params.iter().enumerate() {
+            let v = arg_values.get(i).cloned().unwrap_or(CalcResult::EmptyArg);
+            frame.insert(p.clone(), v);
+        }
+        let mut new_scopes = captured.to_vec();
+        new_scopes.push(frame);
+        let saved = std::mem::replace(&mut self.let_scopes, new_scopes);
+        let result = self.evaluate_node_in_context(body, cell);
+        self.let_scopes = saved;
+        result
     }
 
     #[allow(clippy::expect_used)]

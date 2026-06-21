@@ -253,7 +253,7 @@ fn normalize_by_predictors(grid: &[Vec<f64>], k: usize) -> Option<(Vec<Vec<f64>>
     }
 }
 
-fn array_node_to_calc_result(node: &ArrayNode) -> CalcResult {
+pub(crate) fn array_node_to_calc_result(node: &ArrayNode) -> CalcResult {
     match node {
         ArrayNode::Number(f) => CalcResult::Number(*f),
         ArrayNode::String(s) => CalcResult::String(s.clone()),
@@ -274,7 +274,7 @@ fn array_node_cmp(a: &ArrayNode, b: &ArrayNode) -> std::cmp::Ordering {
     array_node_to_calc_result(a).cmp(&array_node_to_calc_result(b))
 }
 
-fn calc_result_to_array_node(value: CalcResult) -> ArrayNode {
+pub(crate) fn calc_result_to_array_node(value: CalcResult) -> ArrayNode {
     match value {
         CalcResult::Number(f) => ArrayNode::Number(f),
         CalcResult::String(s) => ArrayNode::String(s),
@@ -1029,7 +1029,7 @@ impl<'a> Model<'a> {
         CalcResult::Array(out)
     }
 
-    fn read_array_arg(
+    pub(crate) fn read_array_arg(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,

@@ -561,6 +561,9 @@ pub enum Function {
     Let,
     Lambda,
     Isomitted,
+    Map,
+    Reduce,
+    Scan,
 }
 
 macro_rules! impl_function_lookup {
@@ -1092,6 +1095,9 @@ impl_function_lookup! {
     let_fn          => Let,
     lambda          => Lambda,
     isomitted       => Isomitted,
+    map_fn          => Map,
+    reduce          => Reduce,
+    scan            => Scan,
     mmult           => Mmult,
     minverse        => Minverse,
     munit           => Munit,
@@ -1594,9 +1600,12 @@ impl Function {
             Function::Let => functions.let_fn.clone(),
             Function::Lambda => functions.lambda.clone(),
             Function::Isomitted => functions.isomitted.clone(),
+            Function::Map => functions.map_fn.clone(),
+            Function::Reduce => functions.reduce.clone(),
+            Function::Scan => functions.scan.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 483> {
+    pub fn into_iter() -> IntoIter<Function, 486> {
         [
             Function::And,
             Function::False,
@@ -2081,6 +2090,9 @@ impl Function {
             Function::Let,
             Function::Lambda,
             Function::Isomitted,
+            Function::Map,
+            Function::Reduce,
+            Function::Scan,
         ]
         .into_iter()
     }
@@ -2153,6 +2165,9 @@ impl Function {
             Function::Let => "_xlfn.LET".to_string(),
             Function::Lambda => "_xlfn.LAMBDA".to_string(),
             Function::Isomitted => "_xlfn.ISOMITTED".to_string(),
+            Function::Map => "_xlfn.MAP".to_string(),
+            Function::Reduce => "_xlfn.REDUCE".to_string(),
+            Function::Scan => "_xlfn.SCAN".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2780,6 +2795,9 @@ impl<'a> Model<'a> {
             Function::Let => self.fn_let(args, cell),
             Function::Lambda => self.fn_lambda(args, cell),
             Function::Isomitted => self.fn_isomitted(args, cell),
+            Function::Map => self.fn_map(args, cell),
+            Function::Reduce => self.fn_reduce(args, cell),
+            Function::Scan => self.fn_scan(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

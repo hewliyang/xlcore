@@ -129,10 +129,7 @@ item per agent, top to bottom:
   values both bind. Round-trips as `_xlfn.LET`. Tests: `=LET(x,5,x*2)`=>10,
   `=LET(x,1,y,x+1,x+y)`=>3, nested LET, range binding `=LET(d,A1:A3,SUM(d))`.
 - [x] **L2 — LAMBDA closures + invocation + ISOMITTED.** See Shipped.
-- [ ] **L3 — MAP / REDUCE / SCAN.** Higher-order fns taking array(s) + a lambda
-  value; invoke the closure per element. MAP(arr...,lambda) elementwise =>
-  CalcResult::Array; REDUCE(init,arr,lambda(acc,x)) => scalar; SCAN(init,arr,
-  lambda(acc,x)) => running-accumulation Array. Spill + round-trip.
+- [x] **L3 — MAP / REDUCE / SCAN.** See Shipped.
 - [ ] **L4 — BYROW / BYCOL / MAKEARRAY.** BYROW(arr,lambda(row))/BYCOL(arr,
   lambda(col)) => column/row Array; MAKEARRAY(rows,cols,lambda(r,c)) => Array.
   Spill + round-trip.
@@ -141,6 +138,18 @@ item per agent, top to bottom:
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- map/reduce/scan (L3) — higher-order fns over the L2 `CalcResult::Lambda`. Shared
+  `Model::apply_lambda(params,body,captured,arg_values,cell)` extracted from the
+  LambdaCall eval (binds already-evaluated CalcResult args to params, pads missing
+  with EmptyArg, mem::replace's let_scopes to captured+frame, evals body, restores).
+  MAP(array1,[array2,...],lambda): last arg must be a Lambda else #VALUE!, arity ==
+  number of arrays, all arrays same dims else #VALUE!; applies elementwise (each
+  ArrayNode -> scalar via array_node_to_calc_result), result same shape =>
+  CalcResult::Array (spills + round-trips), non-scalar element result coerces to
+  #VALUE!. REDUCE(initial,array,lambda(acc,x)): fold-left row-major, acc=initial
+  scalar, returns final scalar; error in init/step propagates. SCAN(initial,array,
+  lambda(acc,x)): like REDUCE but returns running-accumulator Array same shape
+  (spills + round-trips). MAP >=2 args, REDUCE/SCAN exactly 3 else #ERROR!; _xlfn.
 - lambda/isomitted (L2) — LAMBDA(param1,...,body) builds a `CalcResult::Lambda`
   (runtime-only variant: params uppercased, body `Node`, `captured` =
   `let_scopes.clone()` snapshot); each preceding arg must be a

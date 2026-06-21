@@ -508,6 +508,9 @@ pub struct Functions {
     pub let_fn: String,
     pub lambda: String,
     pub isomitted: String,
+    pub map_fn: String,
+    pub reduce: String,
+    pub scan: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

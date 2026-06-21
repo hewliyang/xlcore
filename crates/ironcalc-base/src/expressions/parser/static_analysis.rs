@@ -912,6 +912,9 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Let => vec![Signature::Vector; arg_count],
         Function::Lambda => vec![Signature::Vector; arg_count],
         Function::Isomitted => vec![Signature::Vector; arg_count],
+        Function::Map => vec![Signature::Vector; arg_count],
+        Function::Reduce => vec![Signature::Vector; arg_count],
+        Function::Scan => vec![Signature::Vector; arg_count],
         Function::Sort => {
             let mut result = vec![Signature::Vector; arg_count];
             for item in result.iter_mut().skip(1) {
@@ -1573,6 +1576,9 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Let => not_implemented(args),
         Function::Lambda => not_implemented(args),
         Function::Isomitted => not_implemented(args),
+        Function::Map => not_implemented(args),
+        Function::Reduce => not_implemented(args),
+        Function::Scan => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),
         Function::Eomonth => scalar_arguments(args),
         Function::Formulatext => not_implemented(args),

@@ -502,7 +502,10 @@
       "growth": "GROWTH",
       "let_fn": "LET",
       "lambda": "LAMBDA",
-      "isomitted": "ISOMITTED"
+      "isomitted": "ISOMITTED",
+      "map_fn": "MAP",
+      "reduce": "REDUCE",
+      "scan": "SCAN"
     }
   },
   "de": {
@@ -1008,7 +1011,10 @@
       "growth": "GROWTH",
       "let_fn": "LET",
       "lambda": "LAMBDA",
-      "isomitted": "ISOMITTED"
+      "isomitted": "ISOMITTED",
+      "map_fn": "MAP",
+      "reduce": "REDUCE",
+      "scan": "SCAN"
     }
   },
   "fr": {
@@ -1514,7 +1520,10 @@
       "growth": "GROWTH",
       "let_fn": "LET",
       "lambda": "LAMBDA",
-      "isomitted": "ISOMITTED"
+      "isomitted": "ISOMITTED",
+      "map_fn": "MAP",
+      "reduce": "REDUCE",
+      "scan": "SCAN"
     }
   },
   "es": {
@@ -2020,7 +2029,10 @@
       "growth": "GROWTH",
       "let_fn": "LET",
       "lambda": "LAMBDA",
-      "isomitted": "ISOMITTED"
+      "isomitted": "ISOMITTED",
+      "map_fn": "MAP",
+      "reduce": "REDUCE",
+      "scan": "SCAN"
     }
   }
 }
