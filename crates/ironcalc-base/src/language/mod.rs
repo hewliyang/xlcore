@@ -112,6 +112,8 @@ pub struct Functions {
     pub char: String,
     pub code: String,
     pub clean: String,
+    pub asc: String,
+    pub jis: String,
     pub proper: String,
     pub replace: String,
     pub fixed: String,

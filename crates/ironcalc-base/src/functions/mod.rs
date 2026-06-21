@@ -185,6 +185,8 @@ pub enum Function {
     Char,
     Code,
     Clean,
+    Asc,
+    Jis,
     Proper,
     Replace,
     Fixed,
@@ -650,6 +652,8 @@ impl_function_lookup! {
     char        => Char,
     code        => Code,
     clean       => Clean,
+    asc         => Asc,
+    jis         => Jis,
     proper      => Proper,
     replace     => Replace,
     fixed       => Fixed,
@@ -1084,6 +1088,8 @@ impl Function {
             Function::Char => functions.char.clone(),
             Function::Code => functions.code.clone(),
             Function::Clean => functions.clean.clone(),
+            Function::Asc => functions.asc.clone(),
+            Function::Jis => functions.jis.clone(),
             Function::Proper => functions.proper.clone(),
             Function::Replace => functions.replace.clone(),
             Function::Fixed => functions.fixed.clone(),
@@ -1339,7 +1345,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 398> {
+    pub fn into_iter() -> IntoIter<Function, 400> {
         [
             Function::And,
             Function::False,
@@ -1455,6 +1461,8 @@ impl Function {
             Function::Char,
             Function::Code,
             Function::Clean,
+            Function::Asc,
+            Function::Jis,
             Function::Proper,
             Function::Replace,
             Function::Fixed,
@@ -2002,6 +2010,8 @@ impl<'a> Model<'a> {
             Function::Char => self.fn_char(args, cell),
             Function::Code => self.fn_code(args, cell),
             Function::Clean => self.fn_clean(args, cell),
+            Function::Asc => self.fn_asc(args, cell),
+            Function::Jis => self.fn_jis(args, cell),
             Function::Proper => self.fn_proper(args, cell),
             Function::Replace => self.fn_replace(args, cell),
             Function::Fixed => self.fn_fixed(args, cell),

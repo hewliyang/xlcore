@@ -1497,6 +1497,44 @@ impl<'a> Model<'a> {
         CalcResult::String(result)
     }
 
+    pub(crate) fn fn_asc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let text = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(error) => return error,
+        };
+        let result: String = text
+            .chars()
+            .map(|c| match c as u32 {
+                0x3000 => ' ',
+                code @ 0xFF01..=0xFF5E => char::from_u32(code - 0xFEE0).unwrap_or(c),
+                _ => c,
+            })
+            .collect();
+        CalcResult::String(result)
+    }
+
+    pub(crate) fn fn_jis(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let text = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(error) => return error,
+        };
+        let result: String = text
+            .chars()
+            .map(|c| match c as u32 {
+                0x0020 => '\u{3000}',
+                code @ 0x0021..=0x007E => char::from_u32(code + 0xFEE0).unwrap_or(c),
+                _ => c,
+            })
+            .collect();
+        CalcResult::String(result)
+    }
+
     pub(crate) fn fn_proper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
