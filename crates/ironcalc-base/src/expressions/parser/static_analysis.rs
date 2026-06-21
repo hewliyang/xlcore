@@ -1073,6 +1073,18 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
                 vec![Signature::Error; arg_count]
             }
         }
+        Function::PercentileLegacy
+        | Function::PercentileInc
+        | Function::PercentileExc
+        | Function::QuartileLegacy
+        | Function::QuartileInc
+        | Function::QuartileExc => {
+            if arg_count == 2 {
+                vec![Signature::Vector, Signature::Scalar]
+            } else {
+                vec![Signature::Error; arg_count]
+            }
+        }
         Function::TTest => {
             if arg_count == 4 {
                 vec![
@@ -1508,6 +1520,12 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::PoissonLegacy => StaticResult::Scalar,
         Function::WeibullLegacy => StaticResult::Scalar,
         Function::ZTestLegacy => StaticResult::Scalar,
+        Function::PercentileLegacy => StaticResult::Scalar,
+        Function::PercentileInc => StaticResult::Scalar,
+        Function::PercentileExc => StaticResult::Scalar,
+        Function::QuartileLegacy => StaticResult::Scalar,
+        Function::QuartileInc => StaticResult::Scalar,
+        Function::QuartileExc => StaticResult::Scalar,
         Function::VarP => StaticResult::Scalar,
         Function::VarS => StaticResult::Scalar,
         Function::VarpA => StaticResult::Scalar,

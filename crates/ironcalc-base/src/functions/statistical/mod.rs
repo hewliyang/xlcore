@@ -16,6 +16,7 @@ mod log_normal;
 mod mode;
 mod normal;
 mod pearson;
+mod percentile;
 mod phi;
 mod poisson;
 mod rank_eq_avg;
