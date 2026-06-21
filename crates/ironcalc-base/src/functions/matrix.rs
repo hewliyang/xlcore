@@ -1108,6 +1108,80 @@ impl<'a> Model<'a> {
         CalcResult::Array(out)
     }
 
+    pub(crate) fn fn_sortby(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() < 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let grid = match self.read_array_arg(&args[0], cell) {
+            Ok(g) => g,
+            Err(e) => return e,
+        };
+        let n_rows = grid.len();
+        if n_rows == 0 {
+            return CalcResult::new_error(Error::VALUE, cell, "SORTBY: empty array".to_string());
+        }
+        let mut keys: Vec<(Vec<ArrayNode>, i32)> = Vec::new();
+        let mut i = 1;
+        while i < args.len() {
+            let by_grid = match self.read_array_arg(&args[i], cell) {
+                Ok(g) => g,
+                Err(e) => return e,
+            };
+            let mut flat: Vec<ArrayNode> = Vec::new();
+            for row in &by_grid {
+                for node in row {
+                    flat.push(node.clone());
+                }
+            }
+            if flat.len() != n_rows {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "SORTBY: by_array must match array row count".to_string(),
+                );
+            }
+            i += 1;
+            let order = if i < args.len() {
+                match self.evaluate_node_in_context(&args[i], cell) {
+                    CalcResult::Number(f) => {
+                        i += 1;
+                        f.trunc() as i32
+                    }
+                    CalcResult::Error { error, origin, message } => {
+                        return CalcResult::Error { error, origin, message };
+                    }
+                    _ => 1,
+                }
+            } else {
+                1
+            };
+            if order != 1 && order != -1 {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "SORTBY: sort_order must be 1 or -1".to_string(),
+                );
+            }
+            keys.push((flat, order));
+        }
+        if keys.is_empty() {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut order: Vec<usize> = (0..n_rows).collect();
+        order.sort_by(|&a, &b| {
+            for (values, dir) in &keys {
+                let ordering = array_node_cmp(&values[a], &values[b]);
+                let ordering = if *dir == -1 { ordering.reverse() } else { ordering };
+                if ordering != std::cmp::Ordering::Equal {
+                    return ordering;
+                }
+            }
+            std::cmp::Ordering::Equal
+        });
+        let out: Vec<Vec<ArrayNode>> = order.into_iter().map(|r| grid[r].clone()).collect();
+        CalcResult::Array(out)
+    }
+
     pub(crate) fn fn_mdeterm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);

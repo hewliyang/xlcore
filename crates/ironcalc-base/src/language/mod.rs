@@ -493,6 +493,7 @@ pub struct Functions {
     pub tocol: String,
     pub torow: String,
     pub expand: String,
+    pub sortby: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

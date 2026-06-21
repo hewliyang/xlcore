@@ -545,6 +545,7 @@ pub enum Function {
     Tocol,
     Torow,
     Expand,
+    Sortby,
 }
 
 macro_rules! impl_function_lookup {
@@ -1064,6 +1065,7 @@ impl_function_lookup! {
     tocol           => Tocol,
     torow           => Torow,
     expand          => Expand,
+    sortby          => Sortby,
 }
 
 pub fn english_function_names() -> Vec<String> {
@@ -1548,9 +1550,10 @@ impl Function {
             Function::Tocol => functions.tocol.clone(),
             Function::Torow => functions.torow.clone(),
             Function::Expand => functions.expand.clone(),
+            Function::Sortby => functions.sortby.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 468> {
+    pub fn into_iter() -> IntoIter<Function, 469> {
         [
             Function::And,
             Function::False,
@@ -2020,6 +2023,7 @@ impl Function {
             Function::Tocol,
             Function::Torow,
             Function::Expand,
+            Function::Sortby,
         ]
         .into_iter()
     }
@@ -2079,6 +2083,7 @@ impl Function {
             Function::Tocol => "_xlfn.TOCOL".to_string(),
             Function::Torow => "_xlfn.TOROW".to_string(),
             Function::Expand => "_xlfn.EXPAND".to_string(),
+            Function::Sortby => "_xlfn.SORTBY".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2691,6 +2696,7 @@ impl<'a> Model<'a> {
             Function::Tocol => self.fn_tocol(args, cell),
             Function::Torow => self.fn_torow(args, cell),
             Function::Expand => self.fn_expand(args, cell),
+            Function::Sortby => self.fn_sortby(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

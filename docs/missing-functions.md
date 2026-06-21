@@ -99,7 +99,7 @@ backlog — work top to bottom, one item per agent:
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
   High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, ~~TAKE~~/~~DROP~~,
-  ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, SORTBY, MMULT, MINVERSE, MUNIT, RANDARRAY,
+  ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, ~~SORTBY~~, MMULT, MINVERSE, MUNIT, RANDARRAY,
   FREQUENCY, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
 
 Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
@@ -114,6 +114,13 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- sortby (S4) — SORTBY(array,by_array1,[sort_order1],[by_array2,sort_order2],...):
+  read array via shared read_array_arg into Vec<Vec<ArrayNode>>; args[1..] parsed as
+  (by_array, [sort_order]) groups — each by_array flattened to a vector that must
+  equal array's row count else #VALUE!, optional following scalar number is
+  sort_order (1 asc default, -1 desc, else #VALUE!). Stable multi-key sort of row
+  indices via array_node_cmp (key1, tie-break key2, ...), reorders array rows.
+  Returns CalcResult::Array (spills + round-trips); >=2 args else #ERROR!; _xlfn.
 - expand (S4) — EXPAND(array,rows,[columns],[pad_with]): read array via shared
   read_array_arg into Vec<Vec<ArrayNode>>, pad out to rows tall x columns wide
   copying existing cells top-left and filling the rest with pad_with (default

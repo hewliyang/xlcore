@@ -926,7 +926,9 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
             }
             result
         }
-        Function::Choosecols | Function::Chooserows => vec![Signature::Vector; arg_count],
+        Function::Choosecols | Function::Chooserows | Function::Sortby => {
+            vec![Signature::Vector; arg_count]
+        }
         Function::Tocol | Function::Torow | Function::Expand => {
             let mut result = vec![Signature::Vector; arg_count];
             for item in result.iter_mut().skip(1) {
@@ -1536,6 +1538,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Tocol => not_implemented(args),
         Function::Torow => not_implemented(args),
         Function::Expand => not_implemented(args),
+        Function::Sortby => not_implemented(args),
         Function::Aggregate => not_implemented(args),
         Function::Rand => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),
