@@ -11,9 +11,6 @@ New pure modules should get a `.test.ts`.
 
 ## Backlog
 
-6. Extract `signatureTip.ts`: own `signatureTip` element; update/render/hide/
-   scheduleClose.
-
 7. Extract `validationDropdown.ts` (+ test): own `validationMenu` element + filter
    state; update/render/close/isOpen/accept/handleKey + validationListFor.
 
@@ -25,6 +22,8 @@ New pure modules should get a `.test.ts`.
    getActiveSheet, emit celledit, scheduleDraw).
 
 ## Shipped
+
+6. Extracted `signatureTip.ts` (+ test): `createSignatureTip` owns the tooltip element + blur timer; previewer delegates via `this.signature` with `isBlocked` = autocomplete open.
 
 1. Extracted pure ref/location helpers into `previewerRefs.ts` (+ test); dropped local `colLabel`.
 2. Added shared `mathUtils.ts` (`clamp`, + test); replaced duplicated local `clamp` in previewer/interact/highlights/selection.
