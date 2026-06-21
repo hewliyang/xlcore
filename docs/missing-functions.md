@@ -61,6 +61,11 @@ CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
   30/360 for basis 0/4, actual for 1/2/3; DAYS = actual PCD->NCD for basis 1, 365/freq
   for basis 3, else 360/freq; freq must be 1/2/4, basis 0-4, settlement<maturity else
   #NUM!; PCD/NCD return serials; legacy, no _xlfn).
+- price/yield — PRICE (settlement,maturity,rate,yld,redemption,freq,[basis]) via
+  standard coupon formula redemption/(1+yld/f)^(N-1+DSC/E) + sum coupons -
+  accrued; reuses coupon-schedule helpers for N/DSC/E/A; YIELD inverts PRICE for
+  pr via bracket+bisection; validates rate>=0, yld>=0/pr>0, redemption>0,
+  freq 1/2/4, basis 0-4, settlement<maturity else #NUM!; legacy, no _xlfn.
 - disc family — DISC, INTRATE, RECEIVED, PRICEDISC, YIELDDISC (discount-security
   financials; year-fraction via shared `yearfrac_basis` helper refactored out of
   YEARFRAC, bases 0-4; settlement>=maturity or bad basis => #NUM!, bad dates =>

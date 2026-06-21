@@ -422,6 +422,8 @@ pub enum Function {
     Coupdaybs,
     Coupdays,
     Coupdaysnc,
+    Price,
+    Yield,
     Xirr,
     Xnpv,
 
@@ -908,6 +910,8 @@ impl_function_lookup! {
     coupdaybs  => Coupdaybs,
     coupdays   => Coupdays,
     coupdaysnc => Coupdaysnc,
+    price      => Price,
+    r#yield    => Yield,
     xirr       => Xirr,
     xnpv       => Xnpv,
 
@@ -1374,6 +1378,8 @@ impl Function {
             Function::Coupdaybs => functions.coupdaybs.clone(),
             Function::Coupdays => functions.coupdays.clone(),
             Function::Coupdaysnc => functions.coupdaysnc.clone(),
+            Function::Price => functions.price.clone(),
+            Function::Yield => functions.r#yield.clone(),
             Function::Xirr => functions.xirr.clone(),
             Function::Xnpv => functions.xnpv.clone(),
             Function::Besseli => functions.besseli.clone(),
@@ -1453,7 +1459,7 @@ impl Function {
             Function::Mdeterm => functions.mdeterm.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 436> {
+    pub fn into_iter() -> IntoIter<Function, 438> {
         [
             Function::And,
             Function::False,
@@ -1682,6 +1688,8 @@ impl Function {
             Function::Coupdaybs,
             Function::Coupdays,
             Function::Coupdaysnc,
+            Function::Price,
+            Function::Yield,
             Function::Dollarde,
             Function::Dollarfr,
             Function::Ddb,
@@ -2279,6 +2287,8 @@ impl<'a> Model<'a> {
             Function::Coupdaybs => self.fn_coupdaybs(args, cell),
             Function::Coupdays => self.fn_coupdays(args, cell),
             Function::Coupdaysnc => self.fn_coupdaysnc(args, cell),
+            Function::Price => self.fn_price(args, cell),
+            Function::Yield => self.fn_yield(args, cell),
             Function::Dollarde => self.fn_dollarde(args, cell),
             Function::Dollarfr => self.fn_dollarfr(args, cell),
             Function::Ddb => self.fn_ddb(args, cell),

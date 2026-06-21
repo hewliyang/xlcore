@@ -220,6 +220,8 @@ pub struct Functions {
     pub coupdaybs: String,
     pub coupdays: String,
     pub coupdaysnc: String,
+    pub price: String,
+    pub r#yield: String,
     pub dollarde: String,
     pub dollarfr: String,
     pub ddb: String,

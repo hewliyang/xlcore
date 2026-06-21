@@ -2161,6 +2161,166 @@ impl<'a> Model<'a> {
         };
         CalcResult::Number(self.coupon_day_count(settlement, ncd, basis, cell))
     }
+
+    fn coupon_price_factors(
+        &mut self,
+        settlement: i64,
+        maturity: i64,
+        frequency: i32,
+        basis: i32,
+        cell: CellReferenceIndex,
+    ) -> Result<(f64, f64, f64, f64), CalcResult> {
+        let (pcd, ncd, num) = self.coupon_pcd_ncd_num(settlement, maturity, frequency, cell)?;
+        let a = self.coupon_day_count(pcd, settlement, basis, cell);
+        let dsc = self.coupon_day_count(settlement, ncd, basis, cell);
+        let e = match basis {
+            1 => (ncd - pcd) as f64,
+            3 => 365.0 / frequency as f64,
+            _ => 360.0 / frequency as f64,
+        };
+        Ok((num as f64, dsc, e, a))
+    }
+
+    fn coupon_price(
+        rate: f64,
+        yld: f64,
+        redemption: f64,
+        frequency: f64,
+        n: f64,
+        dsc: f64,
+        e: f64,
+        a: f64,
+    ) -> f64 {
+        let coupon = 100.0 * rate / frequency;
+        let de = dsc / e;
+        let factor = 1.0 + yld / frequency;
+        let mut price = redemption / factor.powf(n - 1.0 + de);
+        let count = n as i64;
+        for k in 1..=count {
+            price += coupon / factor.powf(k as f64 - 1.0 + de);
+        }
+        price - coupon * a / e
+    }
+
+    // PRICE(settlement, maturity, rate, yld, redemption, frequency, [basis])
+    pub(crate) fn fn_price(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if !(6..=7).contains(&args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let rate = match self.get_number(&args[2], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        let yld = match self.get_number(&args[3], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        let redemption = match self.get_number(&args[4], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        let coupon_args = if args.len() == 7 {
+            vec![args[0].clone(), args[1].clone(), args[5].clone(), args[6].clone()]
+        } else {
+            vec![args[0].clone(), args[1].clone(), args[5].clone()]
+        };
+        let (settlement, maturity, frequency, basis) = match self.coupon_args(&coupon_args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if rate < 0.0 || yld < 0.0 || redemption <= 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "rate>=0, yld>=0, redemption>0 required".to_string(),
+            );
+        }
+        let (n, dsc, e, a) =
+            match self.coupon_price_factors(settlement, maturity, frequency, basis, cell) {
+                Ok(v) => v,
+                Err(err) => return err,
+            };
+        CalcResult::Number(Model::coupon_price(
+            rate,
+            yld,
+            redemption,
+            frequency as f64,
+            n,
+            dsc,
+            e,
+            a,
+        ))
+    }
+
+    // YIELD(settlement, maturity, rate, pr, redemption, frequency, [basis])
+    pub(crate) fn fn_yield(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if !(6..=7).contains(&args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let rate = match self.get_number(&args[2], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        let pr = match self.get_number(&args[3], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        let redemption = match self.get_number(&args[4], cell) {
+            Ok(v) => v,
+            Err(s) => return s,
+        };
+        let coupon_args = if args.len() == 7 {
+            vec![args[0].clone(), args[1].clone(), args[5].clone(), args[6].clone()]
+        } else {
+            vec![args[0].clone(), args[1].clone(), args[5].clone()]
+        };
+        let (settlement, maturity, frequency, basis) = match self.coupon_args(&coupon_args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if rate < 0.0 || pr <= 0.0 || redemption <= 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "rate>=0, pr>0, redemption>0 required".to_string(),
+            );
+        }
+        let (n, dsc, e, a) =
+            match self.coupon_price_factors(settlement, maturity, frequency, basis, cell) {
+                Ok(v) => v,
+                Err(err) => return err,
+            };
+        let freq = frequency as f64;
+        let f = |yld: f64| {
+            Model::coupon_price(rate, yld, redemption, freq, n, dsc, e, a) - pr
+        };
+        let mut lo = 0.0_f64;
+        let mut hi = 1.0_f64;
+        let mut f_hi = f(hi);
+        let mut iterations = 0;
+        while f_hi > 0.0 && iterations < 100 {
+            hi *= 2.0;
+            f_hi = f(hi);
+            iterations += 1;
+        }
+        let f_lo = f(lo);
+        if f_lo * f_hi > 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "YIELD did not converge".to_string());
+        }
+        for _ in 0..200 {
+            let mid = (lo + hi) / 2.0;
+            let f_mid = f(mid);
+            if f_mid.abs() < 1e-10 || (hi - lo) / 2.0 < 1e-12 {
+                return CalcResult::Number(mid);
+            }
+            if f(lo) * f_mid <= 0.0 {
+                hi = mid;
+            } else {
+                lo = mid;
+            }
+        }
+        CalcResult::Number((lo + hi) / 2.0)
+    }
 }
 
 fn coupon_days_in_month(year: i32, month: i32) -> i32 {
