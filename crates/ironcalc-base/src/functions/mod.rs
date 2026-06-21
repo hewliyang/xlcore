@@ -189,6 +189,13 @@ pub enum Function {
     Replace,
     Fixed,
     Dollar,
+    Lenb,
+    Leftb,
+    Rightb,
+    Midb,
+    Findb,
+    Searchb,
+    Replaceb,
 
     // Statistical
     Average,
@@ -647,6 +654,13 @@ impl_function_lookup! {
     replace     => Replace,
     fixed       => Fixed,
     dollar      => Dollar,
+    lenb        => Lenb,
+    leftb       => Leftb,
+    rightb      => Rightb,
+    midb        => Midb,
+    findb       => Findb,
+    searchb     => Searchb,
+    replaceb    => Replaceb,
 
     // Statistical
     average        => Average,
@@ -1074,6 +1088,13 @@ impl Function {
             Function::Replace => functions.replace.clone(),
             Function::Fixed => functions.fixed.clone(),
             Function::Dollar => functions.dollar.clone(),
+            Function::Lenb => functions.lenb.clone(),
+            Function::Leftb => functions.leftb.clone(),
+            Function::Rightb => functions.rightb.clone(),
+            Function::Midb => functions.midb.clone(),
+            Function::Findb => functions.findb.clone(),
+            Function::Searchb => functions.searchb.clone(),
+            Function::Replaceb => functions.replaceb.clone(),
             Function::Average => functions.average.clone(),
             Function::Averagea => functions.averagea.clone(),
             Function::Averageif => functions.averageif.clone(),
@@ -1318,7 +1339,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 391> {
+    pub fn into_iter() -> IntoIter<Function, 398> {
         [
             Function::And,
             Function::False,
@@ -1438,6 +1459,13 @@ impl Function {
             Function::Replace,
             Function::Fixed,
             Function::Dollar,
+            Function::Lenb,
+            Function::Leftb,
+            Function::Rightb,
+            Function::Midb,
+            Function::Findb,
+            Function::Searchb,
+            Function::Replaceb,
             Function::Isnumber,
             Function::Isnontext,
             Function::Istext,
@@ -1978,6 +2006,13 @@ impl<'a> Model<'a> {
             Function::Replace => self.fn_replace(args, cell),
             Function::Fixed => self.fn_fixed(args, cell),
             Function::Dollar => self.fn_dollar(args, cell),
+            Function::Lenb => self.fn_len(args, cell),
+            Function::Leftb => self.fn_left(args, cell),
+            Function::Rightb => self.fn_right(args, cell),
+            Function::Midb => self.fn_mid(args, cell),
+            Function::Findb => self.fn_find(args, cell),
+            Function::Searchb => self.fn_search(args, cell),
+            Function::Replaceb => self.fn_replace(args, cell),
             Function::Isnumber => self.fn_isnumber(args, cell),
             Function::Isnontext => self.fn_isnontext(args, cell),
             Function::Istext => self.fn_istext(args, cell),

@@ -39,8 +39,6 @@ Verify: `cargo test -p ironcalc_base`. Cross-check a few values against Excel.
 
 Each item below = one agent batch.
 
-- [ ] **byte variants** — LENB, LEFTB, RIGHTB, MIDB, FINDB, SEARCHB, REPLACEB
-  (= non-B versions outside DBCS).
 - [ ] **ASC / JIS** — identity transforms outside CJK locales.
 - [ ] **ceiling/dollar aliases** — ECMA.CEILING (→ ISO.CEILING), USDOLLAR (→ DOLLAR).
 - [ ] **ref/math simple** — ADDRESS (build A1/R1C1 ref string), AREAS (count areas),
@@ -61,6 +59,8 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- byte variants — LENB, LEFTB, RIGHTB, MIDB, FINDB, SEARCHB, REPLACEB (aliases of
+  the non-B versions; identical outside DBCS).
 - newer text — UNICHAR (code point -> char; <1 or invalid/surrogate -> #VALUE!),
   NUMBERVALUE (parse with decimal/group separators, trailing %, empty -> 0).
 - simple text — CHAR, CODE (Windows-1252), CLEAN, PROPER, REPLACE, FIXED, DOLLAR.
