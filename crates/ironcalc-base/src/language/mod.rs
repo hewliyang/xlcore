@@ -511,6 +511,9 @@ pub struct Functions {
     pub map_fn: String,
     pub reduce: String,
     pub scan: String,
+    pub byrow: String,
+    pub bycol: String,
+    pub makearray: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

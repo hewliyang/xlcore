@@ -564,6 +564,9 @@ pub enum Function {
     Map,
     Reduce,
     Scan,
+    Byrow,
+    Bycol,
+    Makearray,
 }
 
 macro_rules! impl_function_lookup {
@@ -1098,6 +1101,9 @@ impl_function_lookup! {
     map_fn          => Map,
     reduce          => Reduce,
     scan            => Scan,
+    byrow           => Byrow,
+    bycol           => Bycol,
+    makearray       => Makearray,
     mmult           => Mmult,
     minverse        => Minverse,
     munit           => Munit,
@@ -1603,9 +1609,12 @@ impl Function {
             Function::Map => functions.map_fn.clone(),
             Function::Reduce => functions.reduce.clone(),
             Function::Scan => functions.scan.clone(),
+            Function::Byrow => functions.byrow.clone(),
+            Function::Bycol => functions.bycol.clone(),
+            Function::Makearray => functions.makearray.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 486> {
+    pub fn into_iter() -> IntoIter<Function, 489> {
         [
             Function::And,
             Function::False,
@@ -2093,6 +2102,9 @@ impl Function {
             Function::Map,
             Function::Reduce,
             Function::Scan,
+            Function::Byrow,
+            Function::Bycol,
+            Function::Makearray,
         ]
         .into_iter()
     }
@@ -2168,6 +2180,9 @@ impl Function {
             Function::Map => "_xlfn.MAP".to_string(),
             Function::Reduce => "_xlfn.REDUCE".to_string(),
             Function::Scan => "_xlfn.SCAN".to_string(),
+            Function::Byrow => "_xlfn.BYROW".to_string(),
+            Function::Bycol => "_xlfn.BYCOL".to_string(),
+            Function::Makearray => "_xlfn.MAKEARRAY".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2798,6 +2813,9 @@ impl<'a> Model<'a> {
             Function::Map => self.fn_map(args, cell),
             Function::Reduce => self.fn_reduce(args, cell),
             Function::Scan => self.fn_scan(args, cell),
+            Function::Byrow => self.fn_byrow(args, cell),
+            Function::Bycol => self.fn_bycol(args, cell),
+            Function::Makearray => self.fn_makearray(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

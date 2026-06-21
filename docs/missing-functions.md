@@ -108,8 +108,9 @@ live on the anchor cell as `<f t="array" ref=...>` + `cm` → `xl/metadata.xml`
 `<dynamicArrayProperties fDynamic="1"/>`; spilled cells are plain cached `<v>`;
 `#`/`@` serialize as `_xlfn.ANCHORARRAY`/`_xlfn.SINGLE`.
 
-## Tier 4 — lambda / name-binding support
-9 fns: LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED. Needs a
+## Tier 4 — lambda / name-binding support — COMPLETE
+9 fns: LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED — all
+shipped (xl/metadata.xml lambda fidelity deferred). Needs a
 scoped name-binding environment + a lambda/closure value in the calc engine.
 Key seams: `evaluate_function` gets **un-evaluated** `args: &[Node]` (model.rs
 ~L2289) so a handler controls evaluation order; `WrongVariableKind` eval
@@ -130,14 +131,28 @@ item per agent, top to bottom:
   `=LET(x,1,y,x+1,x+y)`=>3, nested LET, range binding `=LET(d,A1:A3,SUM(d))`.
 - [x] **L2 — LAMBDA closures + invocation + ISOMITTED.** See Shipped.
 - [x] **L3 — MAP / REDUCE / SCAN.** See Shipped.
-- [ ] **L4 — BYROW / BYCOL / MAKEARRAY.** BYROW(arr,lambda(row))/BYCOL(arr,
-  lambda(col)) => column/row Array; MAKEARRAY(rows,cols,lambda(r,c)) => Array.
-  Spill + round-trip.
+- [x] **L4 — BYROW / BYCOL / MAKEARRAY.** See Shipped. Tier 4 COMPLETE
+  (LAMBDA/LET/MAP/REDUCE/SCAN/BYROW/BYCOL/MAKEARRAY/ISOMITTED all shipped;
+  xl/metadata.xml lambda fidelity still deferred).
 
 ## Tier 5 — out of scope
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- byrow/bycol/makearray (L4, Tier 4 COMPLETE) — higher-order array builders over
+  the L2 `CalcResult::Lambda` via the shared apply_lambda + read_array_arg +
+  calc_result_to_array_node machinery (fn_map template). BYROW(array,lambda(row)):
+  2 args, lambda arity 1; each ROW is passed whole as a 1xcols CalcResult::Array
+  (so the lambda can aggregate, e.g. SUM(r)), results collected into a rows x 1
+  COLUMN Array. BYCOL(array,lambda(col)): each COLUMN passed as a rows x 1 Array,
+  results into a 1 x cols ROW Array. MAKEARRAY(rows,cols,lambda(r,c)): 3 args,
+  lambda arity 2, rows/cols truncated to int (<1 => #VALUE!), element[i][j] =
+  lambda(i+1,j+1) with 1-based Number indices => rows x cols Array. Each lambda
+  result reduced to scalar via calc_result_to_array_node; lambda errors propagate;
+  non-lambda last arg => #VALUE!, wrong arity => #ERROR!. All CalcResult::Array
+  (spill + round-trip); _xlfn. Lexer fix: single-letter `r`/`c` now lex as Ident
+  in A1 mode (were rejected as invalid defined names) so they work as lambda
+  params, matching Excel.
 - map/reduce/scan (L3) — higher-order fns over the L2 `CalcResult::Lambda`. Shared
   `Model::apply_lambda(params,body,captured,arg_values,cell)` extracted from the
   LambdaCall eval (binds already-evaluated CalcResult args to params, pads missing

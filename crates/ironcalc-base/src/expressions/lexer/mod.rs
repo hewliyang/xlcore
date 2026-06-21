@@ -387,6 +387,8 @@ impl<'a> Lexer<'a> {
                                         ));
                                     }
                                     return TokenType::Ident(name);
+                                } else if name_upper == "R" || name_upper == "C" {
+                                    return TokenType::Ident(name);
                                 } else {
                                     return TokenType::Illegal(
                                         self.set_error("Invalid identifier (A1)", self.position),

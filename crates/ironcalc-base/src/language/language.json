@@ -505,7 +505,10 @@
       "isomitted": "ISOMITTED",
       "map_fn": "MAP",
       "reduce": "REDUCE",
-      "scan": "SCAN"
+      "scan": "SCAN",
+      "byrow": "BYROW",
+      "bycol": "BYCOL",
+      "makearray": "MAKEARRAY"
     }
   },
   "de": {
@@ -1014,7 +1017,10 @@
       "isomitted": "ISOMITTED",
       "map_fn": "MAP",
       "reduce": "REDUCE",
-      "scan": "SCAN"
+      "scan": "SCAN",
+      "byrow": "BYROW",
+      "bycol": "BYCOL",
+      "makearray": "MAKEARRAY"
     }
   },
   "fr": {
@@ -1523,7 +1529,10 @@
       "isomitted": "ISOMITTED",
       "map_fn": "MAP",
       "reduce": "REDUCE",
-      "scan": "SCAN"
+      "scan": "SCAN",
+      "byrow": "BYROW",
+      "bycol": "BYCOL",
+      "makearray": "MAKEARRAY"
     }
   },
   "es": {
@@ -2032,7 +2041,10 @@
       "isomitted": "ISOMITTED",
       "map_fn": "MAP",
       "reduce": "REDUCE",
-      "scan": "SCAN"
+      "scan": "SCAN",
+      "byrow": "BYROW",
+      "bycol": "BYCOL",
+      "makearray": "MAKEARRAY"
     }
   }
 }

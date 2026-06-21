@@ -222,4 +222,110 @@ impl<'a> Model<'a> {
         }
         CalcResult::Array(out)
     }
+
+    pub(crate) fn fn_byrow(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let (params, body, captured) = match self.eval_lambda_arg(&args[1], cell) {
+            Ok(l) => l,
+            Err(e) => return e,
+        };
+        if params.len() != 1 {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "BYROW: lambda arity mismatch".to_string(),
+            );
+        }
+        let grid = match self.read_array_arg(&args[0], cell) {
+            Ok(g) => g,
+            Err(e) => return e,
+        };
+        let mut out: Vec<Vec<ArrayNode>> = Vec::with_capacity(grid.len());
+        for row in &grid {
+            let row_array = CalcResult::Array(vec![row.clone()]);
+            let result = self.apply_lambda(&params, &body, &captured, vec![row_array], cell);
+            out.push(vec![calc_result_to_array_node(result)]);
+        }
+        CalcResult::Array(out)
+    }
+
+    pub(crate) fn fn_bycol(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let (params, body, captured) = match self.eval_lambda_arg(&args[1], cell) {
+            Ok(l) => l,
+            Err(e) => return e,
+        };
+        if params.len() != 1 {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "BYCOL: lambda arity mismatch".to_string(),
+            );
+        }
+        let grid = match self.read_array_arg(&args[0], cell) {
+            Ok(g) => g,
+            Err(e) => return e,
+        };
+        let rows = grid.len();
+        let cols = grid.first().map(|r| r.len()).unwrap_or(0);
+        let mut row_out: Vec<ArrayNode> = Vec::with_capacity(cols);
+        for c in 0..cols {
+            let col: Vec<Vec<ArrayNode>> =
+                (0..rows).map(|r| vec![grid[r][c].clone()]).collect();
+            let col_array = CalcResult::Array(col);
+            let result = self.apply_lambda(&params, &body, &captured, vec![col_array], cell);
+            row_out.push(calc_result_to_array_node(result));
+        }
+        CalcResult::Array(vec![row_out])
+    }
+
+    pub(crate) fn fn_makearray(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let rows = match self.get_number(&args[0], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(e) => return e,
+        };
+        let cols = match self.get_number(&args[1], cell) {
+            Ok(f) => f.trunc() as i64,
+            Err(e) => return e,
+        };
+        if rows < 1 || cols < 1 {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "MAKEARRAY: rows and columns must be >= 1".to_string(),
+            );
+        }
+        let (params, body, captured) = match self.eval_lambda_arg(&args[2], cell) {
+            Ok(l) => l,
+            Err(e) => return e,
+        };
+        if params.len() != 2 {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "MAKEARRAY: lambda arity mismatch".to_string(),
+            );
+        }
+        let mut out: Vec<Vec<ArrayNode>> = Vec::with_capacity(rows as usize);
+        for i in 1..=rows {
+            let mut new_row = Vec::with_capacity(cols as usize);
+            for j in 1..=cols {
+                let arg_values = vec![
+                    CalcResult::Number(i as f64),
+                    CalcResult::Number(j as f64),
+                ];
+                let result = self.apply_lambda(&params, &body, &captured, arg_values, cell);
+                new_row.push(calc_result_to_array_node(result));
+            }
+            out.push(new_row);
+        }
+        CalcResult::Array(out)
+    }
 }
