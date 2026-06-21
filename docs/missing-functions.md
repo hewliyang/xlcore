@@ -100,7 +100,7 @@ backlog — work top to bottom, one item per agent:
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
   High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, ~~TAKE~~/~~DROP~~,
   ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, ~~SORTBY~~, ~~MMULT~~, ~~MINVERSE~~, ~~MUNIT~~, ~~RANDARRAY~~,
-  ~~FREQUENCY~~, ~~MODE.MULT~~, SEQUENCE, ~~TEXTSPLIT~~, ~~LINEST~~/~~LOGEST~~/~~TREND~~/~~GROWTH~~.
+  ~~FREQUENCY~~, ~~MODE.MULT~~, ~~TEXTSPLIT~~, ~~LINEST~~/~~LOGEST~~/~~TREND~~/~~GROWTH~~.
   All S4 high-value rollout items now struck (shipped).
 
 Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
