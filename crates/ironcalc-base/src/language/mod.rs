@@ -2,13 +2,13 @@ use std::{collections::HashMap, sync::OnceLock};
 
 use bitcode::{Decode, Encode};
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]
 pub struct Booleans {
     pub r#true: String,
     pub r#false: String,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]
 pub struct Errors {
     pub r#ref: String,
     pub name: String,
@@ -24,7 +24,7 @@ pub struct Errors {
     pub null: String,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]
 pub struct Functions {
     pub and: String,
     pub r#false: String,
@@ -373,7 +373,7 @@ pub struct Functions {
     pub small: String,
 }
 
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]
 pub struct Language {
     pub name: String,
     pub code: String,
