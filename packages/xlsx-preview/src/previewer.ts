@@ -11,7 +11,12 @@ import {
   type Selection,
 } from "./interact.js";
 import { HEADER_H, HEADER_W, buildGrid, render } from "./render.js";
-import { anchorToRect } from "./grid.js";
+import { anchorToRect, colLabel } from "./grid.js";
+import {
+  formatNameBox,
+  parsePointHighlight,
+  resolveWorkbookLocation,
+} from "./previewerRefs.js";
 import { rangeA1 } from "./api-refs.js";
 import { buildDrawingMovedDetail } from "./anchorConvert.js";
 import { parseClipboard, readRangeValues, serializeRange } from "./clipboardModel.js";
@@ -1231,7 +1236,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     input.value = res.text;
     this.activeRefSpan = res.span;
     this.pointModeArmed = true;
-    this.pointHighlight = parsePointHighlight(ref);
+    this.pointHighlight = parsePointHighlight(ref, HIGHLIGHT_PALETTE[0]!);
     input.focus({ preventScroll: true });
     input.setSelectionRange(res.caret, res.caret);
     this.closeAutocomplete();
@@ -1546,84 +1551,6 @@ function normalizeSelection(selection: Selection, maxRow: number, maxCol: number
   return { r1, c1, r2, c2 };
 }
 
-function formatNameBox(
-  active: { r: number; c: number },
-  selection: Selection,
-  layout: WorkbookLayout,
-  activeSheetIndex: number,
-): string {
-  const named = matchNamedRange(selection, layout, activeSheetIndex);
-  if (named) return named;
-  if (selection.r1 !== selection.r2 || selection.c1 !== selection.c2) {
-    return `${colLabel(active.c)}${active.r}  (${selection.r2 - selection.r1 + 1}R×${selection.c2 - selection.c1 + 1}C)`;
-  }
-  return colLabel(active.c) + active.r;
-}
-
-function matchNamedRange(
-  selection: Selection,
-  layout: WorkbookLayout,
-  activeSheetIndex: number,
-): string | null {
-  const names = layout.definedNames ?? [];
-  for (const n of names) {
-    if (n.localSheetId !== undefined && n.localSheetId !== activeSheetIndex) continue;
-    const range = parseSheetRangeLocation(n.formula, layout, n.localSheetId ?? activeSheetIndex);
-    if (!range) continue;
-    if (range.sheetIndex !== activeSheetIndex) continue;
-    if (
-      range.r1 === selection.r1 &&
-      range.c1 === selection.c1 &&
-      range.r2 === selection.r2 &&
-      range.c2 === selection.c2
-    ) {
-      return n.name;
-    }
-  }
-  return null;
-}
-
-function parseSheetRangeLocation(
-  raw: string,
-  layout: WorkbookLayout,
-  fallbackSheetIndex: number,
-): { sheetIndex: number; r1: number; c1: number; r2: number; c2: number } | null {
-  const ref = raw.trim().replace(/^=/, "");
-  const bang = findUnquotedBang(ref);
-  let sheetIndex = fallbackSheetIndex;
-  let addr = ref;
-  if (bang >= 0) {
-    const sheetName = unquoteSheetName(ref.slice(0, bang));
-    const idx = layout.sheets.findIndex((s) => s.name === sheetName);
-    if (idx < 0) return null;
-    sheetIndex = idx;
-    addr = ref.slice(bang + 1);
-  }
-  const parts = addr.split(":");
-  const cellRe = /^\$?([A-Za-z]{1,3})\$?(\d+)$/;
-  const a = cellRe.exec(parts[0]!.trim());
-  if (!a) return null;
-  const ra = Number(a[2]);
-  const ca = colNameToIndex(a[1]!);
-  let rb = ra;
-  let cb = ca;
-  if (parts.length === 2) {
-    const b = cellRe.exec(parts[1]!.trim());
-    if (!b) return null;
-    rb = Number(b[2]);
-    cb = colNameToIndex(b[1]!);
-  } else if (parts.length !== 1) {
-    return null;
-  }
-  return {
-    sheetIndex,
-    r1: Math.min(ra, rb),
-    c1: Math.min(ca, cb),
-    r2: Math.max(ra, rb),
-    c2: Math.max(ca, cb),
-  };
-}
-
 function formatFormulaBar(sheet: Sheet, active: { r: number; c: number }): string {
   const cell = findCell(sheet, active.r, active.c);
   if (!cell) return "";
@@ -1662,17 +1589,6 @@ function balanceFormula(text: string): string {
   return depth > 0 ? text + ")".repeat(depth) : text;
 }
 
-function colLabel(n: number): string {
-  let s = "";
-  let cur = Math.max(1, Math.floor(n));
-  while (cur > 0) {
-    const r = (cur - 1) % 26;
-    s = String.fromCharCode(65 + r) + s;
-    cur = Math.floor((cur - 1) / 26);
-  }
-  return s;
-}
-
 function makeButton(label: string): HTMLButtonElement {
   const button = document.createElement("button");
   button.textContent = label;
@@ -1703,104 +1619,6 @@ function contrastingTextColor(css: string): string {
   const b = parseInt(css.slice(5, 7), 16);
   const luma = (r * 299 + g * 587 + b * 114) / 1000;
   return luma > 140 ? "#111827" : "#ffffff";
-}
-
-function resolveWorkbookLocation(
-  layout: WorkbookLayout,
-  rawLocation: string,
-  activeSheetIndex: number,
-): { sheetIndex: number; r: number; c: number } | null {
-  const location = rawLocation.trim().replace(/^#/, "");
-  const direct = parseSheetCellLocation(location, layout, activeSheetIndex);
-  if (direct) return direct;
-
-  const wanted = location.toLocaleLowerCase();
-  const names = layout.definedNames ?? [];
-  const local = names.find(
-    (n) => n.name.toLocaleLowerCase() === wanted && n.localSheetId === activeSheetIndex,
-  );
-  const global = names.find(
-    (n) => n.name.toLocaleLowerCase() === wanted && n.localSheetId === undefined,
-  );
-  const named = local ?? global;
-  if (!named) return null;
-  return parseSheetCellLocation(named.formula, layout, named.localSheetId ?? activeSheetIndex);
-}
-
-function parseSheetCellLocation(
-  raw: string,
-  layout: WorkbookLayout,
-  fallbackSheetIndex: number,
-): { sheetIndex: number; r: number; c: number } | null {
-  const ref = raw.trim().replace(/^=/, "");
-  const bang = findUnquotedBang(ref);
-  let sheetIndex = fallbackSheetIndex;
-  let addr = ref;
-  if (bang >= 0) {
-    const sheetName = unquoteSheetName(ref.slice(0, bang));
-    const idx = layout.sheets.findIndex((s) => s.name === sheetName);
-    if (idx < 0) return null;
-    sheetIndex = idx;
-    addr = ref.slice(bang + 1);
-  }
-  const m = addr.match(/\$?([A-Za-z]{1,3})\$?(\d+)/);
-  if (!m) return null;
-  return { sheetIndex, r: Number(m[2]), c: colNameToIndex(m[1]!) };
-}
-
-function findUnquotedBang(s: string): number {
-  let quoted = false;
-  for (let i = 0; i < s.length; i++) {
-    const ch = s[i];
-    if (ch === "'") {
-      if (quoted && s[i + 1] === "'") i++;
-      else quoted = !quoted;
-    } else if (ch === "!" && !quoted) return i;
-  }
-  return -1;
-}
-
-function unquoteSheetName(s: string): string {
-  const trimmed = s.trim();
-  if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
-    return trimmed.slice(1, -1).replace(/''/g, "'");
-  }
-  return trimmed;
-}
-
-function colNameToIndex(s: string): number {
-  let n = 0;
-  for (const ch of s.toUpperCase()) n = n * 26 + (ch.charCodeAt(0) - 64);
-  return n;
-}
-
-function parsePointHighlight(ref: string): HighlightRange | null {
-  const cellRe = /^\$?([A-Za-z]+)\$?(\d+)$/;
-  const parts = ref.split(":");
-  if (parts.length === 1) {
-    const m = cellRe.exec(parts[0]!.trim());
-    if (!m) return null;
-    const c = colNameToIndex(m[1]!);
-    const r = Number(m[2]);
-    return { r1: r, c1: c, r2: r, c2: c, color: HIGHLIGHT_PALETTE[0]! };
-  }
-  if (parts.length === 2) {
-    const a = cellRe.exec(parts[0]!.trim());
-    const b = cellRe.exec(parts[1]!.trim());
-    if (!a || !b) return null;
-    const ca = colNameToIndex(a[1]!);
-    const ra = Number(a[2]);
-    const cb = colNameToIndex(b[1]!);
-    const rb = Number(b[2]);
-    return {
-      r1: Math.min(ra, rb),
-      c1: Math.min(ca, cb),
-      r2: Math.max(ra, rb),
-      c2: Math.max(ca, cb),
-      color: HIGHLIGHT_PALETTE[0]!,
-    };
-  }
-  return null;
 }
 
 function clamp(v: number, lo: number, hi: number): number {
