@@ -42,6 +42,12 @@ Tier 1 complete.
 ## Tier 2 — medium scalar
 Tier 2 complete.
 
+Follow-up: discount-security fns (DISC/INTRATE/RECEIVED/PRICEDISC/YIELDDISC) call
+worksheet YEARFRAC for basis 1 (actual/actual). Real Excel's bond day-count differs
+from worksheet YEARFRAC on basis 1, so multi-year basis-1 results drift ~7e-4 vs
+SpreadJS/Excel. Single-year + basis 0/2/3/4 match exactly. Coupon/bond fns unaffected
+(own day-count, exact on basis 1).
+
 ## Tier 3 — blocked on spill engine
 FILTER, SORT, UNIQUE, SEQUENCE, TRANSPOSE, MMULT, FREQUENCY, … (full list in triage).
 
