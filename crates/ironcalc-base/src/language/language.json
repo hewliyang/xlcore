@@ -491,7 +491,8 @@
       "sortby": "SORTBY",
       "mmult": "MMULT",
       "minverse": "MINVERSE",
-      "munit": "MUNIT"
+      "munit": "MUNIT",
+      "randarray": "RANDARRAY"
     }
   },
   "de": {
@@ -986,7 +987,8 @@
       "sortby": "SORTBY",
       "mmult": "MMULT",
       "minverse": "MINVERSE",
-      "munit": "MUNIT"
+      "munit": "MUNIT",
+      "randarray": "RANDARRAY"
     }
   },
   "fr": {
@@ -1481,7 +1483,8 @@
       "sortby": "SORTBY",
       "mmult": "MMULT",
       "minverse": "MINVERSE",
-      "munit": "MUNIT"
+      "munit": "MUNIT",
+      "randarray": "RANDARRAY"
     }
   },
   "es": {
@@ -1976,7 +1979,8 @@
       "sortby": "SORTBY",
       "mmult": "MMULT",
       "minverse": "MINVERSE",
-      "munit": "MUNIT"
+      "munit": "MUNIT",
+      "randarray": "RANDARRAY"
     }
   }
 }

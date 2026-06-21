@@ -549,6 +549,7 @@ pub enum Function {
     Mmult,
     Minverse,
     Munit,
+    Randarray,
 }
 
 macro_rules! impl_function_lookup {
@@ -1069,6 +1070,7 @@ impl_function_lookup! {
     torow           => Torow,
     expand          => Expand,
     sortby          => Sortby,
+    randarray       => Randarray,
     mmult           => Mmult,
     minverse        => Minverse,
     munit           => Munit,
@@ -1560,9 +1562,10 @@ impl Function {
             Function::Mmult => functions.mmult.clone(),
             Function::Minverse => functions.minverse.clone(),
             Function::Munit => functions.munit.clone(),
+            Function::Randarray => functions.randarray.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 472> {
+    pub fn into_iter() -> IntoIter<Function, 473> {
         [
             Function::And,
             Function::False,
@@ -2036,6 +2039,7 @@ impl Function {
             Function::Mmult,
             Function::Minverse,
             Function::Munit,
+            Function::Randarray,
         ]
         .into_iter()
     }
@@ -2097,6 +2101,7 @@ impl Function {
             Function::Expand => "_xlfn.EXPAND".to_string(),
             Function::Sortby => "_xlfn.SORTBY".to_string(),
             Function::Munit => "_xlfn.MUNIT".to_string(),
+            Function::Randarray => "_xlfn.RANDARRAY".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2713,6 +2718,7 @@ impl<'a> Model<'a> {
             Function::Mmult => self.fn_mmult(args, cell),
             Function::Minverse => self.fn_minverse(args, cell),
             Function::Munit => self.fn_munit(args, cell),
+            Function::Randarray => self.fn_randarray(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

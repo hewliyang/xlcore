@@ -304,6 +304,88 @@ impl<'a> Model<'a> {
         CalcResult::Array(grid)
     }
 
+    pub(crate) fn fn_randarray(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() > 5 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let rows = if !args.is_empty() {
+            match self.get_number(&args[0], cell) {
+                Ok(f) => f.trunc() as i64,
+                Err(e) => return e,
+            }
+        } else {
+            1
+        };
+        let columns = if args.len() >= 2 {
+            match self.get_number(&args[1], cell) {
+                Ok(f) => f.trunc() as i64,
+                Err(e) => return e,
+            }
+        } else {
+            1
+        };
+        let min = if args.len() >= 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(f) => f,
+                Err(e) => return e,
+            }
+        } else {
+            0.0
+        };
+        let max = if args.len() >= 4 {
+            match self.get_number(&args[3], cell) {
+                Ok(f) => f,
+                Err(e) => return e,
+            }
+        } else {
+            1.0
+        };
+        let whole_number = if args.len() >= 5 {
+            match self.get_boolean(&args[4], cell) {
+                Ok(b) => b,
+                Err(e) => return e,
+            }
+        } else {
+            false
+        };
+        if rows < 1 || columns < 1 {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "RANDARRAY requires positive dimensions".to_string(),
+            );
+        }
+        if min > max {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "RANDARRAY requires min <= max".to_string(),
+            );
+        }
+        if whole_number && (min.fract() != 0.0 || max.fract() != 0.0) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "RANDARRAY requires integer min and max".to_string(),
+            );
+        }
+        let mut grid: Vec<Vec<ArrayNode>> = Vec::with_capacity(rows as usize);
+        for _ in 0..rows {
+            let mut new_row = Vec::with_capacity(columns as usize);
+            for _ in 0..columns {
+                let value = if whole_number {
+                    (min + (crate::functions::mathematical::random() * (max - min + 1.0)).floor())
+                        .min(max)
+                } else {
+                    min + crate::functions::mathematical::random() * (max - min)
+                };
+                new_row.push(ArrayNode::Number(value));
+            }
+            grid.push(new_row);
+        }
+        CalcResult::Array(grid)
+    }
+
     pub(crate) fn fn_sort(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() || args.len() > 4 {
             return CalcResult::new_args_number_error(cell);

@@ -49,6 +49,7 @@ mod test_fn_sortby;
 mod test_fn_mmult;
 mod test_fn_minverse;
 mod test_fn_munit;
+mod test_fn_randarray;
 mod test_fn_transpose;
 mod test_fn_bahttext;
 mod test_fn_percentile;

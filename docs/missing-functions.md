@@ -99,7 +99,7 @@ backlog — work top to bottom, one item per agent:
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
   High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, ~~TAKE~~/~~DROP~~,
-  ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, ~~SORTBY~~, ~~MMULT~~, ~~MINVERSE~~, ~~MUNIT~~, RANDARRAY,
+  ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, ~~SORTBY~~, ~~MMULT~~, ~~MINVERSE~~, ~~MUNIT~~, ~~RANDARRAY~~,
   FREQUENCY, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
 
 Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
@@ -114,6 +114,13 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- randarray (S4) — RANDARRAY([rows],[columns],[min],[max],[whole_number]):
+  builds a rows x columns numeric grid (SEQUENCE pattern) of random values from the
+  engine RAND source (functions::random). rows/columns default 1, truncated to int,
+  <1 => #VALUE!; min default 0, max default 1, min>max => #VALUE!; whole_number FALSE
+  (default) reals in [min,max), TRUE integers in [min,max] inclusive (min/max must be
+  integers else #VALUE!). Returns CalcResult::Array (spills + round-trips); 0-5 args
+  else #ERROR!; static_analysis not_implemented (volatile, recalcs each eval); _xlfn.
 - mmult/minverse/munit (S4) — MMULT(a,b) matrix product via shared
   read_numeric_matrix (rectangular numeric reader factored out of read_square_matrix;
   any non-numeric/empty cell => #VALUE!); a is m x n, b must be n x p else #VALUE!,
