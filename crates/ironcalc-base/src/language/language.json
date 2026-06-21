@@ -396,6 +396,9 @@
       "varlegacy": "VAR",
       "varplegacy": "VARP",
       "ranklegacy": "RANK",
+      "tdistlegacy": "TDIST",
+      "modesngl": "MODE.SNGL",
+      "mode": "MODE",
       "skew": "SKEW",
       "skewp": "SKEW.P",
       "small": "SMALL"
@@ -798,6 +801,9 @@
       "varlegacy": "VARIANZ",
       "varplegacy": "VARIANZEN",
       "ranklegacy": "RANG",
+      "tdistlegacy": "TVERT",
+      "modesngl": "MODUS.EINF",
+      "mode": "MODALWERT",
       "skew": "SCHIEFE",
       "skewp": "SCHIEFE.P",
       "small": "KKLEINSTE"
@@ -1200,6 +1206,9 @@
         "varlegacy": "VAR",
         "varplegacy": "VARP",
         "ranklegacy": "RANG",
+        "tdistlegacy": "LOI.STUDENT",
+        "modesngl": "MODE.SIMPLE",
+        "mode": "MODE",
         "skew": "COEFFICIENT.ASYMETRIE",
         "skewp": "COEFFICIENT.ASYMETRIE.P",
         "small": "PETITE.VALEUR"
@@ -1602,6 +1611,9 @@
       "varlegacy": "VAR",
       "varplegacy": "VARP",
       "ranklegacy": "JERARQUIA",
+      "tdistlegacy": "DISTR.T",
+      "modesngl": "MODA.UNO",
+      "mode": "MODA",
       "skew": "COEFICIENTE.ASIMETRIA",
       "skewp": "COEFICIENTE.ASIMETRIA.P",
       "small": "K.ESIMO.MENOR"

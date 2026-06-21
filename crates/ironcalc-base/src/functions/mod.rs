@@ -273,6 +273,9 @@ pub enum Function {
     VarLegacy,
     VarPLegacy,
     RankLegacy,
+    TDistLegacy,
+    ModeSngl,
+    Mode,
     Stdeva,
     Stdevpa,
     TDist,
@@ -704,6 +707,9 @@ impl_function_lookup! {
     varlegacy      => VarLegacy,
     varplegacy     => VarPLegacy,
     ranklegacy     => RankLegacy,
+    tdistlegacy    => TDistLegacy,
+    modesngl       => ModeSngl,
+    mode           => Mode,
     stdeva         => Stdeva,
     stdevpa        => Stdevpa,
     tdist          => TDist,
@@ -1117,6 +1123,9 @@ impl Function {
             Function::VarLegacy => functions.varlegacy.clone(),
             Function::VarPLegacy => functions.varplegacy.clone(),
             Function::RankLegacy => functions.ranklegacy.clone(),
+            Function::TDistLegacy => functions.tdistlegacy.clone(),
+            Function::ModeSngl => functions.modesngl.clone(),
+            Function::Mode => functions.mode.clone(),
             Function::Stdeva => functions.stdeva.clone(),
             Function::Stdevpa => functions.stdevpa.clone(),
             Function::TDist => functions.tdist.clone(),
@@ -1282,7 +1291,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 379> {
+    pub fn into_iter() -> IntoIter<Function, 382> {
         [
             Function::And,
             Function::False,
@@ -1608,6 +1617,9 @@ impl Function {
             Function::VarLegacy,
             Function::VarPLegacy,
             Function::RankLegacy,
+            Function::TDistLegacy,
+            Function::ModeSngl,
+            Function::Mode,
             Function::Stdeva,
             Function::Stdevpa,
             Function::TDist,
@@ -1781,6 +1793,9 @@ impl Function {
             Function::VarLegacy => "VAR".to_string(),
             Function::VarPLegacy => "VARP".to_string(),
             Function::RankLegacy => "RANK".to_string(),
+            Function::TDistLegacy => "TDIST".to_string(),
+            Function::ModeSngl => "_xlfn.MODE.SNGL".to_string(),
+            Function::Mode => "MODE".to_string(),
 
             Function::TDist => "_xlfn.T.DIST".to_string(),
             Function::TDist2T => "_xlfn.T.DIST.2T".to_string(),
@@ -2163,6 +2178,9 @@ impl<'a> Model<'a> {
             Function::VarLegacy => self.fn_var_s(args, cell),
             Function::VarPLegacy => self.fn_var_p(args, cell),
             Function::RankLegacy => self.fn_rank_eq(args, cell),
+            Function::TDistLegacy => self.fn_tdist(args, cell),
+            Function::ModeSngl => self.fn_mode_sngl(args, cell),
+            Function::Mode => self.fn_mode_sngl(args, cell),
             Function::Stdeva => self.fn_stdeva(args, cell),
             Function::Stdevpa => self.fn_stdevpa(args, cell),
             Function::TDist => self.fn_t_dist(args, cell),

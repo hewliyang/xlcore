@@ -13,6 +13,7 @@ mod geomean;
 mod hypegeom;
 mod if_ifs;
 mod log_normal;
+mod mode;
 mod normal;
 mod pearson;
 mod phi;

@@ -31,6 +31,25 @@ pub(crate) fn sample_var(xs: &[f64]) -> f64 {
     s / ((n - 1) as f64)
 }
 
+fn t_dist_rt_value(x: f64, df: f64) -> Option<f64> {
+    let dist = StudentsT::new(0.0, 1.0, df).ok()?;
+    let result = 1.0 - dist.cdf(x);
+    if !result.is_finite() || result < 0.0 {
+        return None;
+    }
+    Some(result)
+}
+
+fn t_dist_2t_value(x: f64, df: f64) -> Option<f64> {
+    let dist = StudentsT::new(0.0, 1.0, df).ok()?;
+    let upper_tail = 1.0 - dist.cdf(x);
+    let result = (2.0 * upper_tail).clamp(0.0, 1.0);
+    if !result.is_finite() {
+        return None;
+    }
+    Some(result)
+}
+
 enum TTestType {
     Paired,
     TwoSampleEqualVar,
@@ -128,31 +147,73 @@ impl<'a> Model<'a> {
             };
         }
 
-        let dist = match StudentsT::new(0.0, 1.0, df) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid parameters for T.DIST.2T".to_string(),
-                }
-            }
-        };
-
-        let upper_tail = 1.0 - dist.cdf(x);
-        let mut result = 2.0 * upper_tail;
-
-        result = result.clamp(0.0, 1.0);
-
-        if !result.is_finite() {
-            return CalcResult::Error {
+        match t_dist_2t_value(x, df) {
+            Some(result) => CalcResult::Number(result),
+            None => CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
                 message: "Invalid result for T.DIST.2T".to_string(),
+            },
+        }
+    }
+
+    // TDIST(x, deg_freedom, tails)
+    pub(crate) fn fn_tdist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+
+        let x = match self.get_number_no_bools(&args[0], cell) {
+            Ok(f) => f,
+            Err(e) => return e,
+        };
+
+        let df = match self.get_number_no_bools(&args[1], cell) {
+            Ok(f) => f.trunc(),
+            Err(e) => return e,
+        };
+
+        let tails = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f.trunc(),
+            Err(e) => return e,
+        };
+
+        if x < 0.0 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "x must be >= 0 in TDIST".to_string(),
             };
         }
 
-        CalcResult::Number(result)
+        if df < 1.0 {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "deg_freedom must be >= 1 in TDIST".to_string(),
+            };
+        }
+
+        let result = if tails == 1.0 {
+            t_dist_rt_value(x, df)
+        } else if tails == 2.0 {
+            t_dist_2t_value(x, df)
+        } else {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "tails must be 1 or 2 in TDIST".to_string(),
+            };
+        };
+
+        match result {
+            Some(result) => CalcResult::Number(result),
+            None => CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Invalid result for TDIST".to_string(),
+            },
+        }
     }
 
     // T.DIST.RT(x, deg_freedom)
@@ -179,28 +240,14 @@ impl<'a> Model<'a> {
             };
         }
 
-        let dist = match StudentsT::new(0.0, 1.0, df) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid parameters for T.DIST.RT".to_string(),
-                }
-            }
-        };
-
-        let result = 1.0 - dist.cdf(x);
-
-        if !result.is_finite() || result < 0.0 {
-            return CalcResult::Error {
+        match t_dist_rt_value(x, df) {
+            Some(result) => CalcResult::Number(result),
+            None => CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
                 message: "Invalid result for T.DIST.RT".to_string(),
-            };
+            },
         }
-
-        CalcResult::Number(result)
     }
 
     // T.INV(probability, deg_freedom)

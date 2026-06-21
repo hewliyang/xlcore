@@ -39,8 +39,6 @@ Verify: `cargo test -p ironcalc_base`. Cross-check a few values against Excel.
 
 Each item below = one agent batch.
 
-- [ ] **TDIST + MODE family** — TDIST (route to T.DIST.2T/T.DIST.RT by `tails`),
-  MODE, MODE.SNGL (single most-frequent; new impl, MODE = MODE.SNGL).
 - [ ] **simple text** — CHAR, CODE, CLEAN, PROPER, REPLACE, FIXED, DOLLAR.
 - [ ] **newer text** — UNICHAR, NUMBERVALUE.
 - [ ] **byte variants** — LENB, LEFTB, RIGHTB, MIDB, FINDB, SEARCHB, REPLACEB
@@ -65,6 +63,8 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- TDIST + MODE family — TDIST (→ T.DIST.RT/T.DIST.2T by `tails`), MODE, MODE.SNGL
+  (smallest most-frequent value, #N/A if none repeats; MODE = MODE.SNGL).
 - dispersion legacy — STDEV, STDEVP, VAR, VARP, RANK (→ STDEV.S, STDEV.P, VAR.S,
   VAR.P, RANK.EQ).
 - normal-dist legacy — NORMDIST, NORMINV, NORMSDIST, NORMSINV.
