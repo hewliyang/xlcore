@@ -100,7 +100,7 @@ backlog — work top to bottom, one item per agent:
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
   High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, ~~HSTACK~~/~~VSTACK~~, ~~TAKE~~/~~DROP~~,
   ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, ~~SORTBY~~, ~~MMULT~~, ~~MINVERSE~~, ~~MUNIT~~, ~~RANDARRAY~~,
-  FREQUENCY, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
+  ~~FREQUENCY~~, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
 
 Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
 live on the anchor cell as `<f t="array" ref=...>` + `cm` → `xl/metadata.xml`
@@ -114,6 +114,13 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- frequency (S4) — FREQUENCY(data_array,bins_array): counts data values per bin,
+  returns a COLUMN array of length bins+1. data/bins read via read_array_arg,
+  flattened ignoring non-numeric cells; bins sorted ascending + deduped for
+  counting, result[0]=count(x<=bin0), result[i]=count(bin[i-1]<x<=bin[i]),
+  result[last]=count(x>last bin); duplicate bin slots get 0 (mapped back to
+  original bin order). Returns CalcResult::Array (spills + round-trips); exactly 2
+  args else #ERROR!; legacy (no _xlfn).
 - randarray (S4) — RANDARRAY([rows],[columns],[min],[max],[whole_number]):
   builds a rows x columns numeric grid (SEQUENCE pattern) of random values from the
   engine RAND source (functions::random). rows/columns default 1, truncated to int,

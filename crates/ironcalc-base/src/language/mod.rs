@@ -498,6 +498,7 @@ pub struct Functions {
     pub minverse: String,
     pub munit: String,
     pub randarray: String,
+    pub frequency: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

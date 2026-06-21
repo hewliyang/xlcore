@@ -492,7 +492,8 @@
       "mmult": "MMULT",
       "minverse": "MINVERSE",
       "munit": "MUNIT",
-      "randarray": "RANDARRAY"
+      "randarray": "RANDARRAY",
+      "frequency": "FREQUENCY"
     }
   },
   "de": {
@@ -988,7 +989,8 @@
       "mmult": "MMULT",
       "minverse": "MINVERSE",
       "munit": "MUNIT",
-      "randarray": "RANDARRAY"
+      "randarray": "RANDARRAY",
+      "frequency": "FREQUENCY"
     }
   },
   "fr": {
@@ -1484,7 +1486,8 @@
       "mmult": "MMULT",
       "minverse": "MINVERSE",
       "munit": "MUNIT",
-      "randarray": "RANDARRAY"
+      "randarray": "RANDARRAY",
+      "frequency": "FREQUENCY"
     }
   },
   "es": {
@@ -1980,7 +1983,8 @@
       "mmult": "MMULT",
       "minverse": "MINVERSE",
       "munit": "MUNIT",
-      "randarray": "RANDARRAY"
+      "randarray": "RANDARRAY",
+      "frequency": "FREQUENCY"
     }
   }
 }

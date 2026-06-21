@@ -17,6 +17,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- FREQUENCY(data_array, bins_array) dynamic-array function: counts data values into bins, returns a column of bins+1 counts; spills and round-trips.
 - RANDARRAY([rows],[columns],[min],[max],[whole_number]) dynamic-array function: grid of random reals or whole numbers; spills and round-trips.
 - MMULT/MINVERSE/MUNIT matrix functions return arrays: matrix product, inverse (Gauss-Jordan, `#NUM!` if singular), and the n×n identity; spill and round-trip.
 - SORTBY dynamic-array function sorts an array's rows by one or more separate key vectors (per-key asc/desc, stable tie-break); spills and round-trips.

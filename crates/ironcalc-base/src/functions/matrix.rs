@@ -386,6 +386,73 @@ impl<'a> Model<'a> {
         CalcResult::Array(grid)
     }
 
+    pub(crate) fn fn_frequency(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let data = match self.read_array_arg(&args[0], cell) {
+            Ok(grid) => grid,
+            Err(e) => return e,
+        };
+        let bins = match self.read_array_arg(&args[1], cell) {
+            Ok(grid) => grid,
+            Err(e) => return e,
+        };
+        let mut values: Vec<f64> = Vec::new();
+        for row in &data {
+            for node in row {
+                if let ArrayNode::Number(f) = node {
+                    values.push(*f);
+                }
+            }
+        }
+        let mut bin_values: Vec<f64> = Vec::new();
+        for row in &bins {
+            for node in row {
+                if let ArrayNode::Number(f) = node {
+                    bin_values.push(*f);
+                }
+            }
+        }
+        let bins_count = bin_values.len();
+        let mut sorted = bin_values.clone();
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        sorted.dedup();
+        let mut counts = vec![0.0_f64; sorted.len() + 1];
+        for v in &values {
+            let mut placed = false;
+            for (i, b) in sorted.iter().enumerate() {
+                if *v <= *b {
+                    counts[i] += 1.0;
+                    placed = true;
+                    break;
+                }
+            }
+            if !placed {
+                let last = counts.len() - 1;
+                counts[last] += 1.0;
+            }
+        }
+        let mut grid: Vec<Vec<ArrayNode>> = Vec::with_capacity(bins_count + 1);
+        let mut seen: Vec<f64> = Vec::with_capacity(bins_count);
+        for b in &bin_values {
+            if seen.contains(b) {
+                grid.push(vec![ArrayNode::Number(0.0)]);
+            } else {
+                seen.push(*b);
+                let count = sorted
+                    .iter()
+                    .position(|s| s == b)
+                    .map(|i| counts[i])
+                    .unwrap_or(0.0);
+                grid.push(vec![ArrayNode::Number(count)]);
+            }
+        }
+        let last = counts.len() - 1;
+        grid.push(vec![ArrayNode::Number(counts[last])]);
+        CalcResult::Array(grid)
+    }
+
     pub(crate) fn fn_sort(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() || args.len() > 4 {
             return CalcResult::new_args_number_error(cell);
