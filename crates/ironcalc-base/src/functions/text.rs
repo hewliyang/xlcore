@@ -536,6 +536,88 @@ impl<'a> Model<'a> {
         CalcResult::new_args_number_error(cell)
     }
 
+    pub(crate) fn fn_unichar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let value = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(error) => return error,
+        };
+        let code = value.trunc();
+        if code < 1.0 || code > 1_114_111.0 {
+            return CalcResult::new_error(Error::VALUE, cell, "Number out of range".to_string());
+        }
+        match char::from_u32(code as u32) {
+            Some(c) => CalcResult::String(c.to_string()),
+            None => CalcResult::new_error(Error::VALUE, cell, "Invalid code point".to_string()),
+        }
+    }
+
+    pub(crate) fn fn_numbervalue(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let text = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(error) => return error,
+        };
+        let decimal_sep = if args.len() >= 2 {
+            match self.get_string(&args[1], cell) {
+                Ok(s) => s.chars().next().unwrap_or('.'),
+                Err(error) => return error,
+            }
+        } else {
+            '.'
+        };
+        let group_sep = if args.len() >= 3 {
+            match self.get_string(&args[2], cell) {
+                Ok(s) => s.chars().next().unwrap_or(','),
+                Err(error) => return error,
+            }
+        } else {
+            ','
+        };
+        let cleaned: String = text.chars().filter(|c| !c.is_whitespace()).collect();
+        if cleaned.is_empty() {
+            return CalcResult::Number(0.0);
+        }
+        let mut percent_count = 0usize;
+        let trimmed = {
+            let mut s = cleaned.as_str();
+            while let Some(rest) = s.strip_suffix('%') {
+                percent_count += 1;
+                s = rest;
+            }
+            s.to_string()
+        };
+        let mut normalized = String::new();
+        let mut decimal_count = 0usize;
+        for c in trimmed.chars() {
+            if c == group_sep {
+                continue;
+            } else if c == decimal_sep {
+                decimal_count += 1;
+                normalized.push('.');
+            } else {
+                normalized.push(c);
+            }
+        }
+        if decimal_count > 1 {
+            return CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string());
+        }
+        match normalized.parse::<f64>() {
+            Ok(v) => {
+                let mut result = v;
+                for _ in 0..percent_count {
+                    result /= 100.0;
+                }
+                CalcResult::Number(result)
+            }
+            Err(_) => CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string()),
+        }
+    }
+
     pub(crate) fn fn_upper(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {

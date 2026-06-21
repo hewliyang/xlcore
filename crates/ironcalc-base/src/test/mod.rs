@@ -25,6 +25,7 @@ mod test_fn_count;
 mod test_fn_simple_text;
 mod test_fn_day;
 mod test_fn_exact;
+mod test_fn_newer_text;
 mod test_fn_financial;
 mod test_fn_formulatext;
 mod test_fn_if;

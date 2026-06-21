@@ -106,6 +106,8 @@ pub struct Functions {
     pub text: String,
     pub trim: String,
     pub unicode: String,
+    pub unichar: String,
+    pub numbervalue: String,
     pub upper: String,
     pub char: String,
     pub code: String,

@@ -177,6 +177,8 @@ pub enum Function {
     Textjoin,
     Trim,
     Unicode,
+    Unichar,
+    Numbervalue,
     Upper,
     Value,
     Valuetotext,
@@ -633,6 +635,8 @@ impl_function_lookup! {
     textjoin    => Textjoin,
     trim        => Trim,
     unicode     => Unicode,
+    unichar     => Unichar,
+    numbervalue => Numbervalue,
     upper       => Upper,
     value       => Value,
     valuetotext => Valuetotext,
@@ -1058,6 +1062,8 @@ impl Function {
             Function::Textjoin => functions.textjoin.clone(),
             Function::Trim => functions.trim.clone(),
             Function::Unicode => functions.unicode.clone(),
+            Function::Unichar => functions.unichar.clone(),
+            Function::Numbervalue => functions.numbervalue.clone(),
             Function::Upper => functions.upper.clone(),
             Function::Value => functions.value.clone(),
             Function::Valuetotext => functions.valuetotext.clone(),
@@ -1312,7 +1318,7 @@ impl Function {
             Function::Steyx => functions.steyx.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 389> {
+    pub fn into_iter() -> IntoIter<Function, 391> {
         [
             Function::And,
             Function::False,
@@ -1422,6 +1428,8 @@ impl Function {
             Function::Text,
             Function::Trim,
             Function::Unicode,
+            Function::Unichar,
+            Function::Numbervalue,
             Function::Upper,
             Function::Char,
             Function::Code,
@@ -1724,6 +1732,8 @@ impl Function {
             Function::Textafter => "_xlfn.TEXTAFTER".to_string(),
             Function::Textjoin => "_xlfn.TEXTJOIN".to_string(),
             Function::Unicode => "_xlfn.UNICODE".to_string(),
+            Function::Unichar => "_xlfn.UNICHAR".to_string(),
+            Function::Numbervalue => "_xlfn.NUMBERVALUE".to_string(),
             Function::Rri => "_xlfn.RRI".to_string(),
             Function::Pduration => "_xlfn.PDURATION".to_string(),
             Function::Bitand => "_xlfn.BITAND".to_string(),
@@ -1958,6 +1968,8 @@ impl<'a> Model<'a> {
             Function::Text => self.fn_text(args, cell),
             Function::Trim => self.fn_trim(args, cell),
             Function::Unicode => self.fn_unicode(args, cell),
+            Function::Unichar => self.fn_unichar(args, cell),
+            Function::Numbervalue => self.fn_numbervalue(args, cell),
             Function::Upper => self.fn_upper(args, cell),
             Function::Char => self.fn_char(args, cell),
             Function::Code => self.fn_code(args, cell),

@@ -39,7 +39,6 @@ Verify: `cargo test -p ironcalc_base`. Cross-check a few values against Excel.
 
 Each item below = one agent batch.
 
-- [ ] **newer text** — UNICHAR, NUMBERVALUE.
 - [ ] **byte variants** — LENB, LEFTB, RIGHTB, MIDB, FINDB, SEARCHB, REPLACEB
   (= non-B versions outside DBCS).
 - [ ] **ASC / JIS** — identity transforms outside CJK locales.
@@ -62,6 +61,8 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- newer text — UNICHAR (code point -> char; <1 or invalid/surrogate -> #VALUE!),
+  NUMBERVALUE (parse with decimal/group separators, trailing %, empty -> 0).
 - simple text — CHAR, CODE (Windows-1252), CLEAN, PROPER, REPLACE, FIXED, DOLLAR.
 - TDIST + MODE family — TDIST (→ T.DIST.RT/T.DIST.2T by `tails`), MODE, MODE.SNGL
   (smallest most-frequent value, #N/A if none repeats; MODE = MODE.SNGL).
