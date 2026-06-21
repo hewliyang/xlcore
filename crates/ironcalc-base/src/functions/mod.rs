@@ -529,6 +529,7 @@ pub enum Function {
     ForecastLinear,
     Mdeterm,
     Aggregate,
+    Bahttext,
 }
 
 macro_rules! impl_function_lookup {
@@ -1032,6 +1033,7 @@ impl_function_lookup! {
     forecast_linear => ForecastLinear,
     mdeterm         => Mdeterm,
     aggregate       => Aggregate,
+    bahttext        => Bahttext,
 }
 
 pub fn english_function_names() -> Vec<String> {
@@ -1500,9 +1502,10 @@ impl Function {
             Function::ForecastLinear => functions.forecast_linear.clone(),
             Function::Mdeterm => functions.mdeterm.clone(),
             Function::Aggregate => functions.aggregate.clone(),
+            Function::Bahttext => functions.bahttext.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 452> {
+    pub fn into_iter() -> IntoIter<Function, 453> {
         [
             Function::And,
             Function::False,
@@ -1956,6 +1959,7 @@ impl Function {
             Function::Kurt,
             Function::MaxA,
             Function::MinA,
+            Function::Bahttext,
         ]
         .into_iter()
     }
@@ -2596,6 +2600,7 @@ impl<'a> Model<'a> {
             Function::ForecastLinear => self.fn_forecast(args, cell),
             Function::Mdeterm => self.fn_mdeterm(args, cell),
             Function::Aggregate => self.fn_aggregate(args, cell),
+            Function::Bahttext => self.fn_bahttext(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

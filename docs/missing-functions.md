@@ -39,8 +39,8 @@ Verify: `cargo test -p ironcalc_base`. Cross-check a few values against Excel.
 
 Tier 1 complete.
 
-## Tier 2 — medium scalar (not started)
-BAHTTEXT, VALUETOTEXT. See triage report.
+## Tier 2 — medium scalar
+Tier 2 complete.
 
 ## Tier 3 — blocked on spill engine
 FILTER, SORT, UNIQUE, SEQUENCE, TRANSPOSE, MMULT, FREQUENCY, … (full list in triage).
@@ -52,6 +52,14 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- valuetotext/bahttext — VALUETOTEXT, BAHTTEXT (VALUETOTEXT(value,[format]):
+  format 0 concise = displayed text (numbers as number string, text as-is,
+  TRUE/FALSE, error text), format 1 strict wraps strings in double quotes; range
+  arg returns top-left scalar (no spill); format not 0/1 => #VALUE!; _xlfn.
+  BAHTTEXT(number): Thai numeral-to-words, digit groups of 6 joined by ล้าน with
+  positions สิบ/ร้อย/พัน/หมื่น/แสน, units 1 after higher digit => เอ็ด, tens 2 =>
+  ยี่สิบ, tens 1 => สิบ; rounds to 2 dp, integer + บาท, satang two-digit + สตางค์
+  else ถ้วน, negative prefix ลบ; legacy, no _xlfn).
 - aggregate — AGGREGATE (reference form only; function_num 1-19 dispatches to
   AVERAGE/COUNT/COUNTA/MAX/MIN/PRODUCT/STDEV.S/STDEV.P/SUM/VAR.S/VAR.P/MEDIAN/
   MODE.SNGL/LARGE/SMALL/PERCENTILE.INC/QUARTILE.INC/PERCENTILE.EXC/QUARTILE.EXC;

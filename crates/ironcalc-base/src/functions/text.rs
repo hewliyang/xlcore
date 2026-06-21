@@ -108,6 +108,89 @@ fn char_to_cp1252(c: char) -> u32 {
     63
 }
 
+fn thai_digit(d: u8) -> &'static str {
+    match d {
+        0 => "ศูนย์",
+        1 => "หนึ่ง",
+        2 => "สอง",
+        3 => "สาม",
+        4 => "สี่",
+        5 => "ห้า",
+        6 => "หก",
+        7 => "เจ็ด",
+        8 => "แปด",
+        _ => "เก้า",
+    }
+}
+
+fn thai_read_group(s: &str) -> String {
+    let positions = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน"];
+    let digits: Vec<u8> = s.bytes().map(|b| b - b'0').collect();
+    let mut start = 0;
+    while start < digits.len() && digits[start] == 0 {
+        start += 1;
+    }
+    let digits = &digits[start..];
+    let len = digits.len();
+    let mut result = String::new();
+    for (i, &d) in digits.iter().enumerate() {
+        if d == 0 {
+            continue;
+        }
+        let pos = len - 1 - i;
+        if pos == 0 && d == 1 && len > 1 {
+            result.push_str("เอ็ด");
+        } else if pos == 1 && d == 2 {
+            result.push_str("ยี่สิบ");
+        } else if pos == 1 && d == 1 {
+            result.push_str("สิบ");
+        } else {
+            result.push_str(thai_digit(d));
+            result.push_str(positions[pos]);
+        }
+    }
+    result
+}
+
+fn thai_read_integer(s: &str) -> String {
+    let trimmed = s.trim_start_matches('0');
+    if trimmed.is_empty() {
+        return "ศูนย์".to_string();
+    }
+    if trimmed.len() <= 6 {
+        return thai_read_group(trimmed);
+    }
+    let split = trimmed.len() - 6;
+    format!(
+        "{}ล้าน{}",
+        thai_read_integer(&trimmed[..split]),
+        thai_read_group(&trimmed[split..])
+    )
+}
+
+fn baht_text(number: f64) -> String {
+    let total = (number.abs() * 100.0).round();
+    if !total.is_finite() {
+        return String::new();
+    }
+    let total = total as u128;
+    let integer = total / 100;
+    let satang = (total % 100) as u8;
+    let mut result = String::new();
+    if number < 0.0 && total != 0 {
+        result.push_str("ลบ");
+    }
+    result.push_str(&thai_read_integer(&integer.to_string()));
+    result.push_str("บาท");
+    if satang == 0 {
+        result.push_str("ถ้วน");
+    } else {
+        result.push_str(&thai_read_group(&format!("{satang:02}")));
+        result.push_str("สตางค์");
+    }
+    result
+}
+
 fn group_integer(int_part: &str, group: &str) -> String {
     let bytes: Vec<char> = int_part.chars().collect();
     let mut result = String::new();
@@ -1438,19 +1521,84 @@ impl<'a> Model<'a> {
         }
     }
 
-    // VALUETOTEXT(value)
     pub(crate) fn fn_valuetotext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 2 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let strict = if args.len() == 2 {
+            let format = match self.get_number(&args[1], cell) {
+                Ok(f) => f.trunc(),
+                Err(error) => return error,
+            };
+            if format == 0.0 {
+                false
+            } else if format == 1.0 {
+                true
+            } else {
+                return CalcResult::new_error(Error::VALUE, cell, "Invalid format".to_string());
+            }
+        } else {
+            false
+        };
+        let mut value = self.evaluate_node_in_context(&args[0], cell);
+        if let CalcResult::Range { left, right } = value {
+            if left.sheet != right.sheet {
+                return CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Ranges are in different sheets".to_string(),
+                );
+            }
+            value = self.evaluate_cell(CellReferenceIndex {
+                sheet: left.sheet,
+                row: left.row,
+                column: left.column,
+            });
+        }
+        let text = match value {
+            CalcResult::Number(f) => format!("{f}"),
+            CalcResult::String(s) => {
+                if strict {
+                    format!("\"{s}\"")
+                } else {
+                    s
+                }
+            }
+            CalcResult::Boolean(b) => {
+                if b {
+                    "TRUE".to_string()
+                } else {
+                    "FALSE".to_string()
+                }
+            }
+            CalcResult::EmptyCell | CalcResult::EmptyArg => {
+                if strict {
+                    "\"\"".to_string()
+                } else {
+                    "".to_string()
+                }
+            }
+            CalcResult::Error { error, .. } => error.to_string(),
+            CalcResult::Range { .. } | CalcResult::Array(_) => {
+                return CalcResult::Error {
+                    error: Error::NIMPL,
+                    origin: cell,
+                    message: "Arrays not supported yet".to_string(),
+                }
+            }
+        };
+        CalcResult::String(text)
+    }
+
+    pub(crate) fn fn_bahttext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => match error {
-                CalcResult::Error { error, .. } => error.to_string(),
-                _ => "".to_string(),
-            },
+        let number = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(error) => return error,
         };
-        CalcResult::String(text)
+        CalcResult::String(baht_text(number))
     }
 
     pub(crate) fn fn_char(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

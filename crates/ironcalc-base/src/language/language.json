@@ -471,7 +471,8 @@
       "permut": "PERMUT",
       "prob": "PROB",
       "trimmean": "TRIMMEAN",
-      "hyperlink": "HYPERLINK"
+      "hyperlink": "HYPERLINK",
+      "bahttext": "BAHTTEXT"
     }
   },
   "de": {
@@ -946,7 +947,8 @@
       "permut": "VARIATIONEN",
       "prob": "WAHRSCHBEREICH",
       "trimmean": "GESTUTZTMITTEL",
-      "hyperlink": "HYPERLINK"
+      "hyperlink": "HYPERLINK",
+      "bahttext": "BAHTTEXT"
     }
   },
   "fr": {
@@ -1421,7 +1423,8 @@
         "permut": "PERMUTATION",
         "prob": "PROBABILITE",
         "trimmean": "MOYENNE.REDUITE",
-        "hyperlink": "LIEN_HYPERTEXTE"
+        "hyperlink": "LIEN_HYPERTEXTE",
+        "bahttext": "BAHTTEXT"
     }
   },
   "es": {
@@ -1896,7 +1899,8 @@
       "permut": "PERMUTACIONES",
       "prob": "PROBABILIDAD",
       "trimmean": "MEDIA.ACOTADA",
-      "hyperlink": "HIPERVINCULO"
+      "hyperlink": "HIPERVINCULO",
+      "bahttext": "TEXTOBAHT"
     }
   }
 }
