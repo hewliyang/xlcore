@@ -897,6 +897,13 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Arraytotext => args_signature_scalars(arg_count, 1, 1),
         Function::Transpose => vec![Signature::Vector],
         Function::Sequence => args_signature_scalars(arg_count, 1, 3),
+        Function::Sort => {
+            let mut result = vec![Signature::Vector; arg_count];
+            for item in result.iter_mut().skip(1) {
+                *item = Signature::Scalar;
+            }
+            result
+        }
         Function::Aggregate => {
             let mut result = vec![Signature::Vector; arg_count];
             if arg_count >= 1 {
@@ -1487,6 +1494,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Arraytotext => not_implemented(args),
         Function::Transpose => not_implemented(args),
         Function::Sequence => not_implemented(args),
+        Function::Sort => not_implemented(args),
         Function::Aggregate => not_implemented(args),
         Function::Rand => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),

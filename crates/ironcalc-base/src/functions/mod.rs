@@ -533,6 +533,7 @@ pub enum Function {
     Arraytotext,
     Transpose,
     Sequence,
+    Sort,
 }
 
 macro_rules! impl_function_lookup {
@@ -1040,6 +1041,7 @@ impl_function_lookup! {
     arraytotext     => Arraytotext,
     transpose       => Transpose,
     sequence        => Sequence,
+    sort            => Sort,
 }
 
 pub fn english_function_names() -> Vec<String> {
@@ -1512,9 +1514,10 @@ impl Function {
             Function::Arraytotext => functions.arraytotext.clone(),
             Function::Transpose => functions.transpose.clone(),
             Function::Sequence => functions.sequence.clone(),
+            Function::Sort => functions.sort.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 456> {
+    pub fn into_iter() -> IntoIter<Function, 457> {
         [
             Function::And,
             Function::False,
@@ -1972,6 +1975,7 @@ impl Function {
             Function::Arraytotext,
             Function::Transpose,
             Function::Sequence,
+            Function::Sort,
         ]
         .into_iter()
     }
@@ -2019,6 +2023,7 @@ impl Function {
             Function::Arraytotext => "_xlfn.ARRAYTOTEXT".to_string(),
             Function::Transpose => "_xlfn.TRANSPOSE".to_string(),
             Function::Sequence => "_xlfn.SEQUENCE".to_string(),
+            Function::Sort => "_xlfn.SORT".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2619,6 +2624,7 @@ impl<'a> Model<'a> {
             Function::Arraytotext => self.fn_arraytotext(args, cell),
             Function::Transpose => self.fn_transpose(args, cell),
             Function::Sequence => self.fn_sequence(args, cell),
+            Function::Sort => self.fn_sort(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

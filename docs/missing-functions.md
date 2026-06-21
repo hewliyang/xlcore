@@ -98,7 +98,7 @@ backlog — work top to bottom, one item per agent:
 - [ ] **S3 — reference/intersection polish.** `A1#` spill operator;
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
-  High value first: ~~SEQUENCE~~, SORT, UNIQUE, FILTER, then HSTACK/VSTACK, TAKE/DROP,
+  High value first: ~~SEQUENCE~~, ~~SORT~~, UNIQUE, FILTER, then HSTACK/VSTACK, TAKE/DROP,
   CHOOSECOLS/ROWS, TOCOL/TOROW, EXPAND, SORTBY, MMULT, MINVERSE, MUNIT, RANDARRAY,
   FREQUENCY, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
 
@@ -114,6 +114,14 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- sort (S4) — SORT(array,[sort_index],[sort_order],[by_col]): reads range/array
+  row-major into Vec<Vec<ArrayNode>> (like TRANSPOSE), stable-sorts and returns
+  CalcResult::Array (spills + round-trips). sort_index 1-based (default 1), out of
+  range => #VALUE!; sort_order 1 asc (default) / -1 desc, else => #VALUE!; by_col
+  FALSE sorts rows by sort_index column, TRUE sorts columns by sort_index row.
+  Comparison mirrors CalcResult Ord (numbers < text < FALSE < TRUE, text
+  case-insensitive) via array_node_cmp; types preserved (text anchor caches text,
+  S2c); 1-4 args else #ERROR!; _xlfn.
 - sequence (S4) — SEQUENCE(rows,[columns],[start],[step]): row-major rows x columns
   array of numbers starting at start (default 1) stepping by step (default 1),
   columns default 1; dims truncated to int, rows<1 or columns<1 => #VALUE!;

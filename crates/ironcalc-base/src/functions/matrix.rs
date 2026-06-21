@@ -3,6 +3,27 @@ use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{calc_result::CalcResult, model::Model};
 
+fn array_node_to_calc_result(node: &ArrayNode) -> CalcResult {
+    match node {
+        ArrayNode::Number(f) => CalcResult::Number(*f),
+        ArrayNode::String(s) => CalcResult::String(s.clone()),
+        ArrayNode::Boolean(b) => CalcResult::Boolean(*b),
+        ArrayNode::Error(error) => CalcResult::new_error(
+            error.clone(),
+            CellReferenceIndex {
+                sheet: 0,
+                row: 0,
+                column: 0,
+            },
+            String::new(),
+        ),
+    }
+}
+
+fn array_node_cmp(a: &ArrayNode, b: &ArrayNode) -> std::cmp::Ordering {
+    array_node_to_calc_result(a).cmp(&array_node_to_calc_result(b))
+}
+
 fn calc_result_to_array_node(value: CalcResult) -> ArrayNode {
     match value {
         CalcResult::Number(f) => ArrayNode::Number(f),
@@ -218,6 +239,127 @@ impl<'a> Model<'a> {
             grid.push(new_row);
         }
         CalcResult::Array(grid)
+    }
+
+    pub(crate) fn fn_sort(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.is_empty() || args.len() > 4 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let result = self.evaluate_node_in_context(&args[0], cell);
+        let grid: Vec<Vec<ArrayNode>> = match result {
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    );
+                }
+                let mut rows = Vec::new();
+                for row in left.row..=right.row {
+                    let mut current = Vec::new();
+                    for column in left.column..=right.column {
+                        let cell_ref = CellReferenceIndex {
+                            sheet: left.sheet,
+                            row,
+                            column,
+                        };
+                        current.push(calc_result_to_array_node(self.evaluate_cell(cell_ref)));
+                    }
+                    rows.push(current);
+                }
+                rows
+            }
+            CalcResult::Array(array) => array,
+            error @ CalcResult::Error { .. } => return error,
+            other => vec![vec![calc_result_to_array_node(other)]],
+        };
+        let n_rows = grid.len();
+        if n_rows == 0 {
+            return CalcResult::new_error(Error::VALUE, cell, "SORT: empty array".to_string());
+        }
+        let n_cols = grid.iter().map(|r| r.len()).max().unwrap_or(0);
+        if n_cols == 0 {
+            return CalcResult::new_error(Error::VALUE, cell, "SORT: empty array".to_string());
+        }
+        let sort_index = if args.len() >= 2 {
+            match self.get_number(&args[1], cell) {
+                Ok(f) => f.trunc() as i64,
+                Err(e) => return e,
+            }
+        } else {
+            1
+        };
+        let sort_order = if args.len() >= 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(f) => f.trunc() as i64,
+                Err(e) => return e,
+            }
+        } else {
+            1
+        };
+        if sort_order != 1 && sort_order != -1 {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "SORT: sort_order must be 1 or -1".to_string(),
+            );
+        }
+        let by_col = if args.len() >= 4 {
+            match self.get_boolean(&args[3], cell) {
+                Ok(b) => b,
+                Err(e) => return e,
+            }
+        } else {
+            false
+        };
+        let lines = if by_col {
+            let mut cols: Vec<Vec<ArrayNode>> = Vec::with_capacity(n_cols);
+            for c in 0..n_cols {
+                let mut col = Vec::with_capacity(n_rows);
+                for row in grid.iter() {
+                    col.push(row.get(c).cloned().unwrap_or(ArrayNode::Number(0.0)));
+                }
+                cols.push(col);
+            }
+            cols
+        } else {
+            grid.clone()
+        };
+        let line_len = if by_col { n_rows } else { n_cols };
+        if sort_index < 1 || sort_index as usize > line_len {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "SORT: sort_index out of range".to_string(),
+            );
+        }
+        let key = (sort_index - 1) as usize;
+        let mut lines = lines;
+        lines.sort_by(|a, b| {
+            let av = a.get(key).cloned().unwrap_or(ArrayNode::Number(0.0));
+            let bv = b.get(key).cloned().unwrap_or(ArrayNode::Number(0.0));
+            let ordering = array_node_cmp(&av, &bv);
+            if sort_order == -1 {
+                ordering.reverse()
+            } else {
+                ordering
+            }
+        });
+        let out = if by_col {
+            let mut rows: Vec<Vec<ArrayNode>> = Vec::with_capacity(n_rows);
+            for r in 0..n_rows {
+                let mut new_row = Vec::with_capacity(lines.len());
+                for col in lines.iter() {
+                    new_row.push(col.get(r).cloned().unwrap_or(ArrayNode::Number(0.0)));
+                }
+                rows.push(new_row);
+            }
+            rows
+        } else {
+            lines
+        };
+        CalcResult::Array(out)
     }
 
     pub(crate) fn fn_mdeterm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

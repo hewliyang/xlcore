@@ -481,6 +481,7 @@ pub struct Functions {
     pub arraytotext: String,
     pub transpose: String,
     pub sequence: String,
+    pub sort: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]
