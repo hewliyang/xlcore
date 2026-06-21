@@ -41,6 +41,76 @@ fn is_less_than_one_year(start_date: i64, end_date: i64) -> Result<bool, String>
     Ok(end_day <= start_day)
 }
 
+fn vdb_ddb(cost: f64, salvage: f64, life: f64, period: f64, factor: f64) -> f64 {
+    let mut rate = factor / life;
+    if rate > 1.0 {
+        rate = 1.0;
+    }
+    let value = if rate == 1.0 {
+        if period == 1.0 {
+            cost
+        } else {
+            0.0
+        }
+    } else {
+        cost * (1.0 - rate).powf(period - 1.0)
+    };
+    let new_value = cost * (1.0 - rate).powf(period);
+    f64::max(value - f64::max(salvage, new_value), 0.0)
+}
+
+fn vdb_total(
+    cost: f64,
+    salvage: f64,
+    life: f64,
+    period: f64,
+    factor: f64,
+    no_switch: bool,
+) -> f64 {
+    let int_end = period.ceil();
+    let n = int_end as i64;
+    if n <= 0 {
+        return 0.0;
+    }
+    let mut vdb = 0.0;
+    if no_switch {
+        for i in 1..=n {
+            let gda = vdb_ddb(cost, salvage, life, i as f64, factor);
+            let term = if i == n {
+                gda * (period + 1.0 - int_end)
+            } else {
+                gda
+            };
+            vdb += term;
+        }
+    } else {
+        let mut restwert = cost - salvage;
+        let mut now_lia = false;
+        let mut lia = 0.0;
+        for i in 1..=n {
+            let mut term;
+            if !now_lia {
+                let gda = vdb_ddb(cost, salvage, life, i as f64, factor);
+                lia = restwert / (life - (i as f64 - 1.0));
+                if lia > gda {
+                    term = lia;
+                    now_lia = true;
+                } else {
+                    term = gda;
+                    restwert -= gda;
+                }
+            } else {
+                term = lia;
+            }
+            if i == n {
+                term *= period + 1.0 - int_end;
+            }
+            vdb += term;
+        }
+    }
+    vdb
+}
+
 fn compute_payment(
     rate: f64,
     nper: f64,
@@ -1849,6 +1919,198 @@ impl<'a> Model<'a> {
         }
 
         CalcResult::Number(rate * (cost - result))
+    }
+
+    // VDB(cost, salvage, life, start_period, end_period, [factor], [no_switch])
+    pub(crate) fn fn_vdb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(5..=7).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let cost = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let salvage = match self.get_number(&args[1], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let life = match self.get_number(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let start_period = match self.get_number(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let end_period = match self.get_number(&args[4], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let factor = if arg_count > 5 {
+            match self.get_number_no_bools(&args[5], cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            }
+        } else {
+            2.0
+        };
+        let no_switch = if arg_count > 6 {
+            match self.get_boolean(&args[6], cell) {
+                Ok(b) => b,
+                Err(s) => return s,
+            }
+        } else {
+            false
+        };
+        if cost < 0.0
+            || salvage < 0.0
+            || life <= 0.0
+            || start_period < 0.0
+            || end_period < start_period
+            || end_period > life
+            || factor <= 0.0
+        {
+            return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
+        }
+        let result = vdb_total(cost, salvage, life, end_period, factor, no_switch)
+            - vdb_total(cost, salvage, life, start_period, factor, no_switch);
+        CalcResult::Number(result)
+    }
+
+    // AMORLINC(cost, date_purchased, first_period, salvage, period, rate, [basis])
+    pub(crate) fn fn_amorlinc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(6..=7).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let cost = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let date_purchased = match self.get_number(&args[1], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let first_period = match self.get_number(&args[2], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let salvage = match self.get_number(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let period = match self.get_number(&args[4], cell) {
+            Ok(f) => f.trunc(),
+            Err(s) => return s,
+        };
+        let rate = match self.get_number(&args[5], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let basis = if arg_count > 6 {
+            match self.get_number(&args[6], cell) {
+                Ok(f) => f.floor() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
+        };
+        if cost < 0.0 || salvage < 0.0 || rate <= 0.0 || period < 0.0 || !(0..=4).contains(&basis) {
+            return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
+        }
+        let yf = match self.yearfrac_basis(date_purchased, first_period, basis, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let one_rate = cost * rate;
+        let cost_delta = cost - salvage;
+        let first_rate = cost * rate * yf;
+        let full_periods = ((cost - salvage - first_rate) / one_rate).floor();
+        let result = if period == 0.0 {
+            first_rate
+        } else if period <= full_periods {
+            one_rate
+        } else if period == full_periods + 1.0 {
+            cost_delta - one_rate * full_periods - first_rate
+        } else {
+            0.0
+        };
+        CalcResult::Number(result)
+    }
+
+    // AMORDEGRC(cost, date_purchased, first_period, salvage, period, rate, [basis])
+    pub(crate) fn fn_amordegrc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if !(6..=7).contains(&arg_count) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let mut cost = match self.get_number(&args[0], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let date_purchased = match self.get_number(&args[1], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let first_period = match self.get_number(&args[2], cell) {
+            Ok(f) => f.floor() as i64,
+            Err(s) => return s,
+        };
+        let salvage = match self.get_number(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let period = match self.get_number(&args[4], cell) {
+            Ok(f) => f.trunc(),
+            Err(s) => return s,
+        };
+        let rate = match self.get_number(&args[5], cell) {
+            Ok(f) => f,
+            Err(s) => return s,
+        };
+        let basis = if arg_count > 6 {
+            match self.get_number(&args[6], cell) {
+                Ok(f) => f.floor() as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
+        };
+        if cost < 0.0 || salvage < 0.0 || rate <= 0.0 || period < 0.0 || !(0..=4).contains(&basis) {
+            return CalcResult::new_error(Error::NUM, cell, "invalid parameters".to_string());
+        }
+        let use_period = 1.0 / rate;
+        let amor_coeff = if use_period < 3.0 {
+            1.0
+        } else if use_period < 5.0 {
+            1.5
+        } else if use_period <= 6.0 {
+            2.0
+        } else {
+            2.5
+        };
+        let rate = rate * amor_coeff;
+        let yf = match self.yearfrac_basis(date_purchased, first_period, basis, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let mut n_rate = (yf * rate * cost).round();
+        cost -= n_rate;
+        let mut rest = cost - salvage;
+        let n_per = period as i64;
+        for n in 0..n_per {
+            n_rate = (rate * cost).round();
+            rest -= n_rate;
+            if rest < 0.0 {
+                match n_per - n {
+                    0 | 1 => n_rate = (cost * 0.5).round(),
+                    _ => n_rate = 0.0,
+                }
+            }
+            cost -= n_rate;
+        }
+        CalcResult::Number(n_rate)
     }
 
     fn discount_security_args(

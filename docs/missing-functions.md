@@ -52,6 +52,15 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- depreciation — VDB, AMORLINC, AMORDEGRC (VDB variable declining balance:
+  cumulative dep 0->period via per-period DDB (=ScGetGDA) switching to straight-line
+  remaining_book/remaining_life when SL>DDB unless no_switch=TRUE, fractional last
+  period prorated, VDB=total(end)-total(start); AMORLINC French linear: first period
+  cost*rate*yearfrac(purchase,first_period,basis), full periods cost*rate, remainder
+  on last, 0 beyond life; AMORDEGRC adds French degressive coeff by 1/rate life band
+  (<3=>1, 3-4=>1.5, 5-6=>2, >6=>2.5), last two periods 50%/100%, rounds each year,
+  caps at salvage; validate cost/salvage>=0, life>0, 0<=start<=end<=life, factor>0,
+  rate>0, basis 0-4 else #NUM!; VDB legacy, AMORLINC/AMORDEGRC _xlfn).
 - odd-period bonds — ODDLPRICE, ODDLYIELD, ODDFPRICE, ODDFYIELD (ODDL closed
   form per ECMA/OpenOffice: DCi/DSCi/Ai = yearfrac_basis(last_interest|settlement
   ->maturity, last_interest->settlement)*freq; price = (redemption+DCi*100*rate/f)

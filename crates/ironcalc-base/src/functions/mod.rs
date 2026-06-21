@@ -434,6 +434,9 @@ pub enum Function {
     Oddlyield,
     Oddfprice,
     Oddfyield,
+    Vdb,
+    Amorlinc,
+    Amordegrc,
     Xirr,
     Xnpv,
 
@@ -932,6 +935,9 @@ impl_function_lookup! {
     oddlyield  => Oddlyield,
     oddfprice  => Oddfprice,
     oddfyield  => Oddfyield,
+    vdb        => Vdb,
+    amorlinc   => Amorlinc,
+    amordegrc  => Amordegrc,
     xirr       => Xirr,
     xnpv       => Xnpv,
 
@@ -1410,6 +1416,9 @@ impl Function {
             Function::Oddlyield => functions.oddlyield.clone(),
             Function::Oddfprice => functions.oddfprice.clone(),
             Function::Oddfyield => functions.oddfyield.clone(),
+            Function::Vdb => functions.vdb.clone(),
+            Function::Amorlinc => functions.amorlinc.clone(),
+            Function::Amordegrc => functions.amordegrc.clone(),
             Function::Xirr => functions.xirr.clone(),
             Function::Xnpv => functions.xnpv.clone(),
             Function::Besseli => functions.besseli.clone(),
@@ -1489,7 +1498,7 @@ impl Function {
             Function::Mdeterm => functions.mdeterm.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 448> {
+    pub fn into_iter() -> IntoIter<Function, 451> {
         [
             Function::And,
             Function::False,
@@ -1730,6 +1739,9 @@ impl Function {
             Function::Oddlyield,
             Function::Oddfprice,
             Function::Oddfyield,
+            Function::Vdb,
+            Function::Amorlinc,
+            Function::Amordegrc,
             Function::Dollarde,
             Function::Dollarfr,
             Function::Ddb,
@@ -1963,6 +1975,8 @@ impl Function {
             Function::Unicode => "_xlfn.UNICODE".to_string(),
             Function::Unichar => "_xlfn.UNICHAR".to_string(),
             Function::Numbervalue => "_xlfn.NUMBERVALUE".to_string(),
+            Function::Amorlinc => "_xlfn.AMORLINC".to_string(),
+            Function::Amordegrc => "_xlfn.AMORDEGRC".to_string(),
             Function::Rri => "_xlfn.RRI".to_string(),
             Function::Pduration => "_xlfn.PDURATION".to_string(),
             Function::Bitand => "_xlfn.BITAND".to_string(),
@@ -2339,6 +2353,9 @@ impl<'a> Model<'a> {
             Function::Oddlyield => self.fn_oddlyield(args, cell),
             Function::Oddfprice => self.fn_oddfprice(args, cell),
             Function::Oddfyield => self.fn_oddfyield(args, cell),
+            Function::Vdb => self.fn_vdb(args, cell),
+            Function::Amorlinc => self.fn_amorlinc(args, cell),
+            Function::Amordegrc => self.fn_amordegrc(args, cell),
             Function::Dollarde => self.fn_dollarde(args, cell),
             Function::Dollarfr => self.fn_dollarfr(args, cell),
             Function::Ddb => self.fn_ddb(args, cell),
