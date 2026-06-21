@@ -111,7 +111,7 @@ impl<'a> Model<'a> {
             if count < 2 {
                 continue;
             }
-            if count > best_count || (count == best_count && Some(candidate) < best_value) {
+            if count > best_count {
                 best_count = count;
                 best_value = Some(candidate);
             }

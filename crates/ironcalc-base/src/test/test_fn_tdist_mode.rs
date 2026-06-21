@@ -82,3 +82,16 @@ fn fn_mode_no_repeat_is_na() {
     assert_eq!(model._get_text("B1"), "#N/A");
     assert_eq!(model._get_text("B2"), "#N/A");
 }
+
+#[test]
+fn fn_mode_tie_returns_first_encountered() {
+    let mut model = new_empty_model();
+
+    model._set("A1", "=MODE(3, 3, 2, 2)");
+    model._set("A2", "=MODE.SNGL(7, 7, 1, 1)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"3");
+    assert_eq!(model._get_text("A2"), *"7");
+}
