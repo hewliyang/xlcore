@@ -14,6 +14,7 @@ mod engineering;
 mod financial;
 mod financial_util;
 mod information;
+mod lambda;
 mod logical;
 mod lookup_and_reference;
 mod macros;
@@ -557,6 +558,7 @@ pub enum Function {
     Trend,
     Logest,
     Growth,
+    Let,
 }
 
 macro_rules! impl_function_lookup {
@@ -1085,6 +1087,7 @@ impl_function_lookup! {
     trend           => Trend,
     logest          => Logest,
     growth          => Growth,
+    let_fn          => Let,
     mmult           => Mmult,
     minverse        => Minverse,
     munit           => Munit,
@@ -1584,9 +1587,10 @@ impl Function {
             Function::Trend => functions.trend.clone(),
             Function::Logest => functions.logest.clone(),
             Function::Growth => functions.growth.clone(),
+            Function::Let => functions.let_fn.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 480> {
+    pub fn into_iter() -> IntoIter<Function, 481> {
         [
             Function::And,
             Function::False,
@@ -2068,6 +2072,7 @@ impl Function {
             Function::Trend,
             Function::Logest,
             Function::Growth,
+            Function::Let,
         ]
         .into_iter()
     }
@@ -2137,6 +2142,7 @@ impl Function {
             Function::Trend => "TREND".to_string(),
             Function::Logest => "LOGEST".to_string(),
             Function::Growth => "GROWTH".to_string(),
+            Function::Let => "_xlfn.LET".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2761,6 +2767,7 @@ impl<'a> Model<'a> {
             Function::Trend => self.fn_trend(args, cell),
             Function::Logest => self.fn_logest(args, cell),
             Function::Growth => self.fn_growth(args, cell),
+            Function::Let => self.fn_let(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

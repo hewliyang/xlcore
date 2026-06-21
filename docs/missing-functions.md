@@ -119,7 +119,7 @@ nodes (no parser change needed for LET); names that happen to lex as a cell ref
 (`a1`) are an accepted limitation (Excel rejects them too). Staged backlog — one
 item per agent, top to bottom:
 
-- [ ] **L1 — eval scope + LET.** Add `Function::Let` (full mod.rs ritual,
+- [x] **L1 — eval scope + LET.** See Shipped. Add `Function::Let` (full mod.rs ritual,
   `_xlfn.LET`). Add a scope stack to `Model` (`Vec<HashMap<String, CalcResult>>`
   or similar). `fn_let(args, cell)`: args are name1,value1,[name2,value2,...],calc
   (odd count >=3); read each binding name from the `WrongVariableKind` node string,
@@ -148,6 +148,15 @@ item per agent, top to bottom:
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- let (L1) — LET(name1,value1,[name2,value2,...],calc): odd arg count >=3 else
+  #ERROR!. Each name node must be a `Node::WrongVariableKind` (a bare name that
+  lexed as a cell ref => #VALUE!); evaluate each value in the current scope, bind
+  name->CalcResult into a single pushed frame so later bindings see earlier ones,
+  evaluate the final calc in the extended scope, pop once (every return path).
+  `Model.let_scopes: Vec<HashMap<String, CalcResult>>` is transient runtime state
+  (mirrors spill_owners, not serialized); `WrongVariableKind` eval walks it
+  top-down before the #NAME? fallback. Scalars and ranges both bind
+  (=LET(d,A1:A3,SUM(d))=>6, nested LET=>6); round-trips as _xlfn.LET.
 - spill operator (S3, A1#) — a reference followed by `#` parses to
   Node::SpillReferenceKind (new lexer TokenType::Spill: bare `#` not forming a
   known error literal and not followed by a letter falls through from

@@ -464,6 +464,7 @@ impl<'a> Model<'a> {
             tz,
             view_id: 0,
             spill_owners: HashMap::new(),
+            let_scopes: Vec::new(),
         };
         model.parse_formulas();
         Ok(model)

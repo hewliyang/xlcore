@@ -140,6 +140,8 @@ pub struct Model<'a> {
     /// Rebuilt every `evaluate()`; used to clear stale spills and force anchor
     /// evaluation when a spilled cell is read.
     pub(crate) spill_owners: HashMap<(u32, i32, i32), (u32, i32, i32)>,
+    /// Transient scope stack for LET bindings (top-of-stack = innermost).
+    pub(crate) let_scopes: Vec<HashMap<String, CalcResult>>,
 }
 
 // FIXME: Maybe this should be the same as CellReference
@@ -437,11 +439,19 @@ impl<'a> Model<'a> {
                 cell,
                 format!("table name \"{s}\" not supported."),
             ),
-            WrongVariableKind(s) => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("Variable name \"{s}\" not found."),
-            ),
+            WrongVariableKind(s) => {
+                let key = s.to_uppercase();
+                for scope in self.let_scopes.iter().rev() {
+                    if let Some(value) = scope.get(&key) {
+                        return value.clone();
+                    }
+                }
+                CalcResult::new_error(
+                    Error::NAME,
+                    cell,
+                    format!("Variable name \"{s}\" not found."),
+                )
+            }
             CompareKind { kind, left, right } => {
                 let l = self.evaluate_node_in_context(left, cell);
                 if l.is_error() {
@@ -1176,6 +1186,7 @@ impl<'a> Model<'a> {
             tz,
             view_id: 0,
             spill_owners: HashMap::new(),
+            let_scopes: Vec::new(),
         };
 
         model.parse_formulas();
