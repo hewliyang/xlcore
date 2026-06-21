@@ -1588,42 +1588,33 @@ impl<'a> Model<'a> {
         CalcResult::Number(serial as f64)
     }
 
-    pub(crate) fn fn_yearfrac(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(2..=3).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let start_serial = match self.get_number(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let end_serial = match self.get_number(&args[1], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let basis = if args.len() == 3 {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => f as i32,
-                Err(s) => return s,
-            }
-        } else {
-            0
-        };
+    pub(crate) fn yearfrac_basis(
+        &mut self,
+        start_serial: i64,
+        end_serial: i64,
+        basis: i32,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
         let start_date = match self.excel_date(start_serial, cell) {
             Ok(d) => d,
-            Err(e) => return e,
+            Err(e) => return Err(e),
         };
         let end_date = match self.excel_date(end_serial, cell) {
             Ok(d) => d,
-            Err(e) => return e,
+            Err(e) => return Err(e),
         };
         let days = (end_date - start_date).num_days() as f64;
+        let args = [
+            Node::NumberKind(start_serial as f64),
+            Node::NumberKind(end_serial as f64),
+        ];
         let result = match basis {
             0 => {
-                let d360 = self.fn_days360(args, cell);
+                let d360 = self.fn_days360(&args, cell);
                 if let CalcResult::Number(n) = d360 {
                     n / 360.0
                 } else {
-                    return d360;
+                    return Err(d360);
                 }
             }
             1 => {
@@ -1670,18 +1661,54 @@ impl<'a> Model<'a> {
             3 => days / 365.0,
             4 => {
                 let d360 = self.fn_days360(
-                    &[args[0].clone(), args[1].clone(), Node::NumberKind(1.0)],
+                    &[
+                        args[0].clone(),
+                        args[1].clone(),
+                        Node::NumberKind(1.0),
+                    ],
                     cell,
                 );
                 if let CalcResult::Number(n) = d360 {
                     n / 360.0
                 } else {
-                    return d360;
+                    return Err(d360);
                 }
             }
-            _ => return CalcResult::new_error(Error::NUM, cell, "Invalid basis".to_string()),
+            _ => {
+                return Err(CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "Invalid basis".to_string(),
+                ))
+            }
         };
-        CalcResult::Number(result.abs())
+        Ok(result.abs())
+    }
+
+    pub(crate) fn fn_yearfrac(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if !(2..=3).contains(&args.len()) {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let start_serial = match self.get_number(&args[0], cell) {
+            Ok(c) => c.floor() as i64,
+            Err(s) => return s,
+        };
+        let end_serial = match self.get_number(&args[1], cell) {
+            Ok(c) => c.floor() as i64,
+            Err(s) => return s,
+        };
+        let basis = if args.len() == 3 {
+            match self.get_number(&args[2], cell) {
+                Ok(f) => f as i32,
+                Err(s) => return s,
+            }
+        } else {
+            0
+        };
+        match self.yearfrac_basis(start_serial, end_serial, basis, cell) {
+            Ok(n) => CalcResult::Number(n),
+            Err(e) => e,
+        }
     }
 }
 

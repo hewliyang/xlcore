@@ -411,6 +411,11 @@ pub enum Function {
     Tbilleq,
     Tbillprice,
     Tbillyield,
+    Disc,
+    Intrate,
+    Received,
+    Pricedisc,
+    Yielddisc,
     Xirr,
     Xnpv,
 
@@ -886,6 +891,11 @@ impl_function_lookup! {
     tbilleq    => Tbilleq,
     tbillprice => Tbillprice,
     tbillyield => Tbillyield,
+    disc       => Disc,
+    intrate    => Intrate,
+    received   => Received,
+    pricedisc  => Pricedisc,
+    yielddisc  => Yielddisc,
     xirr       => Xirr,
     xnpv       => Xnpv,
 
@@ -1341,6 +1351,11 @@ impl Function {
             Function::Tbilleq => functions.tbilleq.clone(),
             Function::Tbillprice => functions.tbillprice.clone(),
             Function::Tbillyield => functions.tbillyield.clone(),
+            Function::Disc => functions.disc.clone(),
+            Function::Intrate => functions.intrate.clone(),
+            Function::Received => functions.received.clone(),
+            Function::Pricedisc => functions.pricedisc.clone(),
+            Function::Yielddisc => functions.yielddisc.clone(),
             Function::Xirr => functions.xirr.clone(),
             Function::Xnpv => functions.xnpv.clone(),
             Function::Besseli => functions.besseli.clone(),
@@ -1420,7 +1435,7 @@ impl Function {
             Function::Mdeterm => functions.mdeterm.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 425> {
+    pub fn into_iter() -> IntoIter<Function, 430> {
         [
             Function::And,
             Function::False,
@@ -1638,6 +1653,11 @@ impl Function {
             Function::Tbillyield,
             Function::Tbillprice,
             Function::Tbilleq,
+            Function::Disc,
+            Function::Intrate,
+            Function::Received,
+            Function::Pricedisc,
+            Function::Yielddisc,
             Function::Dollarde,
             Function::Dollarfr,
             Function::Ddb,
@@ -2224,6 +2244,11 @@ impl<'a> Model<'a> {
             Function::Tbillyield => self.fn_tbillyield(args, cell),
             Function::Tbillprice => self.fn_tbillprice(args, cell),
             Function::Tbilleq => self.fn_tbilleq(args, cell),
+            Function::Disc => self.fn_disc(args, cell),
+            Function::Intrate => self.fn_intrate(args, cell),
+            Function::Received => self.fn_received(args, cell),
+            Function::Pricedisc => self.fn_pricedisc(args, cell),
+            Function::Yielddisc => self.fn_yielddisc(args, cell),
             Function::Dollarde => self.fn_dollarde(args, cell),
             Function::Dollarfr => self.fn_dollarfr(args, cell),
             Function::Ddb => self.fn_ddb(args, cell),

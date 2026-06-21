@@ -1850,4 +1850,123 @@ impl<'a> Model<'a> {
 
         CalcResult::Number(rate * (cost - result))
     }
+
+    fn discount_security_args(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(i64, i64, f64, f64, f64), CalcResult> {
+        if !(4..=5).contains(&args.len()) {
+            return Err(CalcResult::new_args_number_error(cell));
+        }
+        let settlement = match self.get_number(&args[0], cell) {
+            Ok(c) => c.floor() as i64,
+            Err(s) => return Err(s),
+        };
+        let maturity = match self.get_number(&args[1], cell) {
+            Ok(c) => c.floor() as i64,
+            Err(s) => return Err(s),
+        };
+        let value_a = match self.get_number_no_bools(&args[2], cell) {
+            Ok(f) => f,
+            Err(s) => return Err(s),
+        };
+        let value_b = match self.get_number_no_bools(&args[3], cell) {
+            Ok(f) => f,
+            Err(s) => return Err(s),
+        };
+        let basis = if args.len() == 5 {
+            match self.get_number(&args[4], cell) {
+                Ok(f) => f as i32,
+                Err(s) => return Err(s),
+            }
+        } else {
+            0
+        };
+        if settlement >= maturity {
+            return Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement should be < maturity".to_string(),
+            ));
+        }
+        let yf = self.yearfrac_basis(settlement, maturity, basis, cell)?;
+        Ok((settlement, maturity, value_a, value_b, yf))
+    }
+
+    // DISC(settlement, maturity, pr, redemption, [basis])
+    pub(crate) fn fn_disc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (_, _, pr, redemption, yf) = match self.discount_security_args(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if pr <= 0.0 || redemption <= 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "pr and redemption must be >0".to_string());
+        }
+        CalcResult::Number((redemption - pr) / redemption / yf)
+    }
+
+    // INTRATE(settlement, maturity, investment, redemption, [basis])
+    pub(crate) fn fn_intrate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (_, _, investment, redemption, yf) = match self.discount_security_args(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if investment <= 0.0 || redemption <= 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "investment and redemption must be >0".to_string(),
+            );
+        }
+        CalcResult::Number((redemption - investment) / investment / yf)
+    }
+
+    // RECEIVED(settlement, maturity, investment, discount, [basis])
+    pub(crate) fn fn_received(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (_, _, investment, discount, yf) = match self.discount_security_args(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if investment <= 0.0 || discount <= 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "investment and discount must be >0".to_string(),
+            );
+        }
+        let denom = 1.0 - discount * yf;
+        if denom == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+        }
+        CalcResult::Number(investment / denom)
+    }
+
+    // PRICEDISC(settlement, maturity, discount, redemption, [basis])
+    pub(crate) fn fn_pricedisc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (_, _, discount, redemption, yf) = match self.discount_security_args(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if discount <= 0.0 || redemption <= 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "discount and redemption must be >0".to_string(),
+            );
+        }
+        CalcResult::Number(redemption - discount * redemption * yf)
+    }
+
+    // YIELDDISC(settlement, maturity, pr, redemption, [basis])
+    pub(crate) fn fn_yielddisc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (_, _, pr, redemption, yf) = match self.discount_security_args(args, cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if pr <= 0.0 || redemption <= 0.0 {
+            return CalcResult::new_error(Error::NUM, cell, "pr and redemption must be >0".to_string());
+        }
+        CalcResult::Number((redemption - pr) / pr / yf)
+    }
 }

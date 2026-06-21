@@ -54,6 +54,10 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- disc family — DISC, INTRATE, RECEIVED, PRICEDISC, YIELDDISC (discount-security
+  financials; year-fraction via shared `yearfrac_basis` helper refactored out of
+  YEARFRAC, bases 0-4; settlement>=maturity or bad basis => #NUM!, bad dates =>
+  #VALUE!; legacy, no _xlfn).
 - xmatch — XMATCH (position within a single-row/col vector; reuses XLOOKUP
   matching: match_mode 0 exact / -1 next-smaller / 1 next-larger / 2 wildcard,
   search_mode 1 first / -1 last / ±2 binary; 1-based, #N/A if not found; _xlfn).
