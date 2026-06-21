@@ -2610,6 +2610,372 @@ impl<'a> Model<'a> {
             Err(e) => e,
         }
     }
+
+    fn coupon_step_date(
+        &self,
+        anchor: i64,
+        k: i32,
+        step: i32,
+        cell: CellReferenceIndex,
+    ) -> Result<i64, CalcResult> {
+        let d = self.excel_date(anchor, cell)?;
+        let year = d.year();
+        let month = d.month() as i32;
+        let day = d.day();
+        let eom = day as i32 == coupon_days_in_month(year, month);
+        let (y, m, dd) = coupon_date_back(year, month, day, eom, k, step);
+        match date_to_serial_number(dd, m as u32, y) {
+            Ok(s) => Ok(s as i64),
+            Err(_) => Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "date out of range".to_string(),
+            )),
+        }
+    }
+
+    fn odd_first_accrual(
+        &mut self,
+        first_coupon: i64,
+        from: i64,
+        to: i64,
+        frequency: i32,
+        basis: i32,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let step = 12 / frequency;
+        let mut acc = 0.0;
+        let mut k = 0;
+        loop {
+            let q_end = self.coupon_step_date(first_coupon, k, step, cell)?;
+            let q_start = self.coupon_step_date(first_coupon, k + 1, step, cell)?;
+            if q_end <= from {
+                break;
+            }
+            if q_start < to {
+                let seg_start = q_start.max(from);
+                let seg_end = q_end.min(to);
+                if seg_end > seg_start {
+                    let covered = self.coupon_day_count(seg_start, seg_end, basis, cell);
+                    let length = match basis {
+                        1 => (q_end - q_start) as f64,
+                        3 => 365.0 / frequency as f64,
+                        _ => 360.0 / frequency as f64,
+                    };
+                    if length != 0.0 {
+                        acc += covered / length;
+                    }
+                }
+            }
+            k += 1;
+            if k > 100_000 {
+                break;
+            }
+        }
+        Ok(acc)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn oddf_price_value(
+        &mut self,
+        settlement: i64,
+        maturity: i64,
+        issue: i64,
+        first_coupon: i64,
+        rate: f64,
+        yld: f64,
+        redemption: f64,
+        frequency: i32,
+        basis: i32,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        let (n, dsc, e, a) =
+            self.coupon_price_factors(settlement, maturity, frequency, basis, cell)?;
+        let (_, ncd, _) = self.coupon_pcd_ncd_num(settlement, maturity, frequency, cell)?;
+        let freq = frequency as f64;
+        let coupon = 100.0 * rate / freq;
+        let t1 = dsc / e;
+        let factor = 1.0 + yld / freq;
+        let odd_in_future = ncd == first_coupon;
+        let accrual_first = if odd_in_future {
+            self.odd_first_accrual(first_coupon, issue, first_coupon, frequency, basis, cell)?
+        } else {
+            0.0
+        };
+        let mut price = redemption / factor.powf(n - 1.0 + t1);
+        let count = n as i64;
+        for k in 1..=count {
+            let cf = if k == 1 && odd_in_future {
+                coupon * accrual_first
+            } else {
+                coupon
+            };
+            price += cf / factor.powf(k as f64 - 1.0 + t1);
+        }
+        let accrued = if odd_in_future {
+            coupon
+                * self.odd_first_accrual(first_coupon, issue, settlement, frequency, basis, cell)?
+        } else {
+            coupon * a / e
+        };
+        Ok(price - accrued)
+    }
+
+    fn oddf_args(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(i64, i64, i64, i64, f64, f64, f64, i32, i32), CalcResult> {
+        if !(8..=9).contains(&args.len()) {
+            return Err(CalcResult::new_args_number_error(cell));
+        }
+        let settlement = self.get_number(&args[0], cell)?.floor() as i64;
+        let maturity = self.get_number(&args[1], cell)?.floor() as i64;
+        let issue = self.get_number(&args[2], cell)?.floor() as i64;
+        let first_coupon = self.get_number(&args[3], cell)?.floor() as i64;
+        let rate = self.get_number(&args[4], cell)?;
+        let value = self.get_number(&args[5], cell)?;
+        let redemption = self.get_number(&args[6], cell)?;
+        let frequency = self.get_number(&args[7], cell)?.floor() as i32;
+        let basis = if args.len() == 9 {
+            self.get_number(&args[8], cell)?.floor() as i32
+        } else {
+            0
+        };
+        if !matches!(frequency, 1 | 2 | 4)
+            || !(0..=4).contains(&basis)
+            || redemption <= 0.0
+            || !(issue < settlement && settlement < maturity)
+            || !(issue < first_coupon && first_coupon < maturity)
+        {
+            return Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "invalid arguments".to_string(),
+            ));
+        }
+        Ok((
+            settlement,
+            maturity,
+            issue,
+            first_coupon,
+            rate,
+            value,
+            redemption,
+            frequency,
+            basis,
+        ))
+    }
+
+    // ODDFPRICE(settlement, maturity, issue, first_coupon, rate, yld, redemption, frequency, [basis])
+    pub(crate) fn fn_oddfprice(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (settlement, maturity, issue, first_coupon, rate, yld, redemption, frequency, basis) =
+            match self.oddf_args(args, cell) {
+                Ok(v) => v,
+                Err(e) => return e,
+            };
+        if rate < 0.0 || yld < 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "rate>=0, yld>=0 required".to_string(),
+            );
+        }
+        match self.oddf_price_value(
+            settlement,
+            maturity,
+            issue,
+            first_coupon,
+            rate,
+            yld,
+            redemption,
+            frequency,
+            basis,
+            cell,
+        ) {
+            Ok(p) => CalcResult::Number(p),
+            Err(e) => e,
+        }
+    }
+
+    // ODDFYIELD(settlement, maturity, issue, first_coupon, rate, pr, redemption, frequency, [basis])
+    pub(crate) fn fn_oddfyield(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (settlement, maturity, issue, first_coupon, rate, pr, redemption, frequency, basis) =
+            match self.oddf_args(args, cell) {
+                Ok(v) => v,
+                Err(e) => return e,
+            };
+        if rate < 0.0 || pr <= 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "rate>=0, pr>0 required".to_string(),
+            );
+        }
+        macro_rules! eval {
+            ($yld:expr) => {
+                match self.oddf_price_value(
+                    settlement,
+                    maturity,
+                    issue,
+                    first_coupon,
+                    rate,
+                    $yld,
+                    redemption,
+                    frequency,
+                    basis,
+                    cell,
+                ) {
+                    Ok(p) => p - pr,
+                    Err(e) => return e,
+                }
+            };
+        }
+        let mut lo = 0.0_f64;
+        let mut hi = 1.0_f64;
+        let mut f_hi = eval!(hi);
+        let mut iterations = 0;
+        while f_hi > 0.0 && iterations < 100 {
+            hi *= 2.0;
+            f_hi = eval!(hi);
+            iterations += 1;
+        }
+        let f_lo = eval!(lo);
+        if f_lo * f_hi > 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "ODDFYIELD did not converge".to_string(),
+            );
+        }
+        for _ in 0..200 {
+            let mid = (lo + hi) / 2.0;
+            let f_mid = eval!(mid);
+            if f_mid.abs() < 1e-10 || (hi - lo) / 2.0 < 1e-12 {
+                return CalcResult::Number(mid);
+            }
+            let f_lo_cur = eval!(lo);
+            if f_lo_cur * f_mid <= 0.0 {
+                hi = mid;
+            } else {
+                lo = mid;
+            }
+        }
+        CalcResult::Number((lo + hi) / 2.0)
+    }
+
+    fn oddl_args(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<(i64, i64, i64, f64, f64, f64, i32, i32), CalcResult> {
+        if !(7..=8).contains(&args.len()) {
+            return Err(CalcResult::new_args_number_error(cell));
+        }
+        let settlement = self.get_number(&args[0], cell)?.floor() as i64;
+        let maturity = self.get_number(&args[1], cell)?.floor() as i64;
+        let last_interest = self.get_number(&args[2], cell)?.floor() as i64;
+        let rate = self.get_number(&args[3], cell)?;
+        let value = self.get_number(&args[4], cell)?;
+        let redemption = self.get_number(&args[5], cell)?;
+        let frequency = self.get_number(&args[6], cell)?.floor() as i32;
+        let basis = if args.len() == 8 {
+            self.get_number(&args[7], cell)?.floor() as i32
+        } else {
+            0
+        };
+        if !matches!(frequency, 1 | 2 | 4)
+            || !(0..=4).contains(&basis)
+            || redemption <= 0.0
+            || !(last_interest < settlement && settlement < maturity)
+        {
+            return Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "invalid arguments".to_string(),
+            ));
+        }
+        Ok((
+            settlement,
+            maturity,
+            last_interest,
+            rate,
+            value,
+            redemption,
+            frequency,
+            basis,
+        ))
+    }
+
+    // ODDLPRICE(settlement, maturity, last_interest, rate, yld, redemption, frequency, [basis])
+    pub(crate) fn fn_oddlprice(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (settlement, maturity, last_interest, rate, yld, redemption, frequency, basis) =
+            match self.oddl_args(args, cell) {
+                Ok(v) => v,
+                Err(e) => return e,
+            };
+        if rate < 0.0 || yld < 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "rate>=0, yld>=0 required".to_string(),
+            );
+        }
+        let f = frequency as f64;
+        let dci = match self.yearfrac_basis(last_interest, maturity, basis, cell) {
+            Ok(v) => v * f,
+            Err(e) => return e,
+        };
+        let dsci = match self.yearfrac_basis(settlement, maturity, basis, cell) {
+            Ok(v) => v * f,
+            Err(e) => return e,
+        };
+        let ai = match self.yearfrac_basis(last_interest, settlement, basis, cell) {
+            Ok(v) => v * f,
+            Err(e) => return e,
+        };
+        let mut p = redemption + dci * 100.0 * rate / f;
+        p /= dsci * yld / f + 1.0;
+        p -= ai * 100.0 * rate / f;
+        CalcResult::Number(p)
+    }
+
+    // ODDLYIELD(settlement, maturity, last_interest, rate, pr, redemption, frequency, [basis])
+    pub(crate) fn fn_oddlyield(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let (settlement, maturity, last_interest, rate, pr, redemption, frequency, basis) =
+            match self.oddl_args(args, cell) {
+                Ok(v) => v,
+                Err(e) => return e,
+            };
+        if rate < 0.0 || pr <= 0.0 {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "rate>=0, pr>0 required".to_string(),
+            );
+        }
+        let f = frequency as f64;
+        let dci = match self.yearfrac_basis(last_interest, maturity, basis, cell) {
+            Ok(v) => v * f,
+            Err(e) => return e,
+        };
+        let dsci = match self.yearfrac_basis(settlement, maturity, basis, cell) {
+            Ok(v) => v * f,
+            Err(e) => return e,
+        };
+        let ai = match self.yearfrac_basis(last_interest, settlement, basis, cell) {
+            Ok(v) => v * f,
+            Err(e) => return e,
+        };
+        if dsci == 0.0 {
+            return CalcResult::new_error(Error::DIV, cell, "Division by 0".to_string());
+        }
+        let mut y = redemption + dci * 100.0 * rate / f;
+        y /= pr + ai * 100.0 * rate / f;
+        y -= 1.0;
+        y *= f / dsci;
+        CalcResult::Number(y)
+    }
 }
 
 fn coupon_days_in_month(year: i32, month: i32) -> i32 {

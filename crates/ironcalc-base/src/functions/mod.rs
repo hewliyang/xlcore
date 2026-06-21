@@ -430,6 +430,10 @@ pub enum Function {
     Yieldmat,
     Duration,
     Mduration,
+    Oddlprice,
+    Oddlyield,
+    Oddfprice,
+    Oddfyield,
     Xirr,
     Xnpv,
 
@@ -924,6 +928,10 @@ impl_function_lookup! {
     yieldmat   => Yieldmat,
     duration   => Duration,
     mduration  => Mduration,
+    oddlprice  => Oddlprice,
+    oddlyield  => Oddlyield,
+    oddfprice  => Oddfprice,
+    oddfyield  => Oddfyield,
     xirr       => Xirr,
     xnpv       => Xnpv,
 
@@ -1398,6 +1406,10 @@ impl Function {
             Function::Yieldmat => functions.yieldmat.clone(),
             Function::Duration => functions.duration.clone(),
             Function::Mduration => functions.mduration.clone(),
+            Function::Oddlprice => functions.oddlprice.clone(),
+            Function::Oddlyield => functions.oddlyield.clone(),
+            Function::Oddfprice => functions.oddfprice.clone(),
+            Function::Oddfyield => functions.oddfyield.clone(),
             Function::Xirr => functions.xirr.clone(),
             Function::Xnpv => functions.xnpv.clone(),
             Function::Besseli => functions.besseli.clone(),
@@ -1477,7 +1489,7 @@ impl Function {
             Function::Mdeterm => functions.mdeterm.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 444> {
+    pub fn into_iter() -> IntoIter<Function, 448> {
         [
             Function::And,
             Function::False,
@@ -1714,6 +1726,10 @@ impl Function {
             Function::Yieldmat,
             Function::Duration,
             Function::Mduration,
+            Function::Oddlprice,
+            Function::Oddlyield,
+            Function::Oddfprice,
+            Function::Oddfyield,
             Function::Dollarde,
             Function::Dollarfr,
             Function::Ddb,
@@ -2319,6 +2335,10 @@ impl<'a> Model<'a> {
             Function::Yieldmat => self.fn_yieldmat(args, cell),
             Function::Duration => self.fn_duration(args, cell),
             Function::Mduration => self.fn_mduration(args, cell),
+            Function::Oddlprice => self.fn_oddlprice(args, cell),
+            Function::Oddlyield => self.fn_oddlyield(args, cell),
+            Function::Oddfprice => self.fn_oddfprice(args, cell),
+            Function::Oddfyield => self.fn_oddfyield(args, cell),
             Function::Dollarde => self.fn_dollarde(args, cell),
             Function::Dollarfr => self.fn_dollarfr(args, cell),
             Function::Ddb => self.fn_ddb(args, cell),

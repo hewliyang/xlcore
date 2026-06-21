@@ -40,8 +40,6 @@ Verify: `cargo test -p ironcalc_base`. Cross-check a few values against Excel.
 Tier 1 complete.
 
 ## Tier 2 — medium scalar (not started)
-Quantiles (PROB, TRIMMEAN, FORECAST),
-bond financials (ODD*…), MDETERM, XMATCH,
 AGGREGATE, BAHTTEXT, VALUETOTEXT. See triage report.
 
 ## Tier 3 — blocked on spill engine
@@ -54,6 +52,18 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- odd-period bonds — ODDLPRICE, ODDLYIELD, ODDFPRICE, ODDFYIELD (ODDL closed
+  form per ECMA/OpenOffice: DCi/DSCi/Ai = yearfrac_basis(last_interest|settlement
+  ->maturity, last_interest->settlement)*freq; price = (redemption+DCi*100*rate/f)
+  /(DSCi*yld/f+1)-Ai*100*rate/f, yield rearranges same. ODDF discounts quasi-coupon
+  cash flows: N/DSC/E via coupon_price_factors, t1=DSC/E, odd first coupon at
+  first_coupon = 100*rate/f*odd_first_accrual(issue->first_coupon) when NCD==
+  first_coupon, sum regular coupons/redemption over factor^(k-1+t1), minus accrued
+  = 100*rate/f*odd_first_accrual(issue->settlement); odd_first_accrual walks
+  quasi-coupon periods stepped back from first_coupon summing covered/length per
+  basis, handles short & long first periods; ODDFYIELD bisects price-pr. Validates
+  rate>=0, yld>=0/pr>0, redemption>0, freq{1,2,4}, basis 0-4, date ordering else
+  #NUM!; legacy, no _xlfn).
 - duration — DURATION, MDURATION (Macaulay & modified bond duration;
   N=COUPNUM, DSC=COUPDAYSNC, E=COUPDAYS, t1=DSC/E; per period cf=100*coupon/freq
   plus 100 redemption at k=N, time_k=(k-1)+t1, df=1/(1+yld/freq)^time_k;
