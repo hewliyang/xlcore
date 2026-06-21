@@ -108,8 +108,41 @@ live on the anchor cell as `<f t="array" ref=...>` + `cm` → `xl/metadata.xml`
 `<dynamicArrayProperties fDynamic="1"/>`; spilled cells are plain cached `<v>`;
 `#`/`@` serialize as `_xlfn.ANCHORARRAY`/`_xlfn.SINGLE`.
 
-## Tier 4 — blocked on lambda support
-LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
+## Tier 4 — lambda / name-binding support
+9 fns: LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED. Needs a
+scoped name-binding environment + a lambda/closure value in the calc engine.
+Key seams: `evaluate_function` gets **un-evaluated** `args: &[Node]` (model.rs
+~L2289) so a handler controls evaluation order; `WrongVariableKind` eval
+(model.rs:440) is where a bare name currently errors `#NAME?` — that's the
+scope-resolution hook. LET binding names already parse as `WrongVariableKind`
+nodes (no parser change needed for LET); names that happen to lex as a cell ref
+(`a1`) are an accepted limitation (Excel rejects them too). Staged backlog — one
+item per agent, top to bottom:
+
+- [ ] **L1 — eval scope + LET.** Add `Function::Let` (full mod.rs ritual,
+  `_xlfn.LET`). Add a scope stack to `Model` (`Vec<HashMap<String, CalcResult>>`
+  or similar). `fn_let(args, cell)`: args are name1,value1,[name2,value2,...],calc
+  (odd count >=3); read each binding name from the `WrongVariableKind` node string,
+  evaluate its value node in the current scope, push the binding; evaluate the
+  final calc node in the extended scope; pop. `WrongVariableKind` eval resolves
+  from the scope stack (top-down) before falling back to `#NAME?`. Scalar + range
+  values both bind. Round-trips as `_xlfn.LET`. Tests: `=LET(x,5,x*2)`=>10,
+  `=LET(x,1,y,x+1,x+y)`=>3, nested LET, range binding `=LET(d,A1:A3,SUM(d))`.
+- [ ] **L2 — LAMBDA closures + invocation + ISOMITTED.** Add a `CalcResult::Lambda`
+  value capturing param names + body `Node` + a snapshot of the enclosing scope.
+  `Function::Lambda` builds the closure (last arg = body, preceding args = param
+  names). Parser: postfix call `expr(args)` so `=LAMBDA(x,x+1)(5)`=>6 evaluates.
+  Named lambdas: a defined name whose formula is `=LAMBDA(...)` is callable as
+  `MYFN(5)` (resolve the defined-name FunctionKind/call path to the closure). Add
+  ISOMITTED (TRUE when a lambda param was omitted at the call site). Round-trips as
+  `_xlfn.LAMBDA` / `_xlfn.ISOMITTED`.
+- [ ] **L3 — MAP / REDUCE / SCAN.** Higher-order fns taking array(s) + a lambda
+  value; invoke the closure per element. MAP(arr...,lambda) elementwise =>
+  CalcResult::Array; REDUCE(init,arr,lambda(acc,x)) => scalar; SCAN(init,arr,
+  lambda(acc,x)) => running-accumulation Array. Spill + round-trip.
+- [ ] **L4 — BYROW / BYCOL / MAKEARRAY.** BYROW(arr,lambda(row))/BYCOL(arr,
+  lambda(col)) => column/row Array; MAKEARRAY(rows,cols,lambda(r,c)) => Array.
+  Spill + round-trip.
 
 ## Tier 5 — out of scope
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
