@@ -17,6 +17,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- FILTER(array,include,[if_empty]) dynamic-array function; spills and round-trips.
 - UNIQUE(array,[by_col],[exactly_once]) dynamic-array function; spills and round-trips.
 - SORT(array,[sort_index],[sort_order],[by_col]) dynamic-array function; spills and round-trips.
 - SEQUENCE(rows,[columns],[start],[step]) dynamic-array function; spills and round-trips.

@@ -483,6 +483,7 @@ pub struct Functions {
     pub sequence: String,
     pub sort: String,
     pub unique: String,
+    pub filter: String,
 }
 
 #[derive(Encode, Decode, serde::Serialize, serde::Deserialize)]

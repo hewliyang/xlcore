@@ -535,6 +535,7 @@ pub enum Function {
     Sequence,
     Sort,
     Unique,
+    Filter,
 }
 
 macro_rules! impl_function_lookup {
@@ -1044,6 +1045,7 @@ impl_function_lookup! {
     sequence        => Sequence,
     sort            => Sort,
     unique          => Unique,
+    filter          => Filter,
 }
 
 pub fn english_function_names() -> Vec<String> {
@@ -1518,9 +1520,10 @@ impl Function {
             Function::Sequence => functions.sequence.clone(),
             Function::Sort => functions.sort.clone(),
             Function::Unique => functions.unique.clone(),
+            Function::Filter => functions.filter.clone(),
         }
     }
-    pub fn into_iter() -> IntoIter<Function, 458> {
+    pub fn into_iter() -> IntoIter<Function, 459> {
         [
             Function::And,
             Function::False,
@@ -1980,6 +1983,7 @@ impl Function {
             Function::Sequence,
             Function::Sort,
             Function::Unique,
+            Function::Filter,
         ]
         .into_iter()
     }
@@ -2029,6 +2033,7 @@ impl Function {
             Function::Sequence => "_xlfn.SEQUENCE".to_string(),
             Function::Sort => "_xlfn.SORT".to_string(),
             Function::Unique => "_xlfn.UNIQUE".to_string(),
+            Function::Filter => "_xlfn.FILTER".to_string(),
             Function::Isformula => "_xlfn.ISFORMULA".to_string(),
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
@@ -2631,6 +2636,7 @@ impl<'a> Model<'a> {
             Function::Sequence => self.fn_sequence(args, cell),
             Function::Sort => self.fn_sort(args, cell),
             Function::Unique => self.fn_unique(args, cell),
+            Function::Filter => self.fn_filter(args, cell),
             Function::Gauss => self.fn_gauss(args, cell),
             Function::Harmean => self.fn_harmean(args, cell),
             Function::Kurt => self.fn_kurt(args, cell),

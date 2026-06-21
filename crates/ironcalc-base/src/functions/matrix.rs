@@ -474,6 +474,146 @@ impl<'a> Model<'a> {
         CalcResult::Array(out)
     }
 
+    pub(crate) fn fn_filter(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() < 2 || args.len() > 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let result = self.evaluate_node_in_context(&args[0], cell);
+        let grid: Vec<Vec<ArrayNode>> = match result {
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    );
+                }
+                let mut rows = Vec::new();
+                for row in left.row..=right.row {
+                    let mut current = Vec::new();
+                    for column in left.column..=right.column {
+                        let cell_ref = CellReferenceIndex {
+                            sheet: left.sheet,
+                            row,
+                            column,
+                        };
+                        current.push(calc_result_to_array_node(self.evaluate_cell(cell_ref)));
+                    }
+                    rows.push(current);
+                }
+                rows
+            }
+            CalcResult::Array(array) => array,
+            error @ CalcResult::Error { .. } => return error,
+            other => vec![vec![calc_result_to_array_node(other)]],
+        };
+        let n_rows = grid.len();
+        if n_rows == 0 {
+            return CalcResult::new_error(Error::VALUE, cell, "FILTER: empty array".to_string());
+        }
+        let n_cols = grid.iter().map(|r| r.len()).max().unwrap_or(0);
+        if n_cols == 0 {
+            return CalcResult::new_error(Error::VALUE, cell, "FILTER: empty array".to_string());
+        }
+        let include_result = self.evaluate_node_in_context(&args[1], cell);
+        let mask_grid: Vec<Vec<ArrayNode>> = match include_result {
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Ranges are in different sheets".to_string(),
+                    );
+                }
+                let mut rows = Vec::new();
+                for row in left.row..=right.row {
+                    let mut current = Vec::new();
+                    for column in left.column..=right.column {
+                        let cell_ref = CellReferenceIndex {
+                            sheet: left.sheet,
+                            row,
+                            column,
+                        };
+                        current.push(calc_result_to_array_node(self.evaluate_cell(cell_ref)));
+                    }
+                    rows.push(current);
+                }
+                rows
+            }
+            CalcResult::Array(array) => array,
+            error @ CalcResult::Error { .. } => return error,
+            other => vec![vec![calc_result_to_array_node(other)]],
+        };
+        let mask_rows = mask_grid.len();
+        let mask_cols = mask_grid.iter().map(|r| r.len()).max().unwrap_or(0);
+        let mask: Vec<ArrayNode> = mask_grid.into_iter().flatten().collect();
+        let mask_truthiness = |node: &ArrayNode| -> Result<bool, CalcResult> {
+            match node {
+                ArrayNode::Number(f) => Ok(*f != 0.0),
+                ArrayNode::Boolean(b) => Ok(*b),
+                ArrayNode::Error(error) => Err(CalcResult::new_error(
+                    error.clone(),
+                    cell,
+                    "FILTER: error in include".to_string(),
+                )),
+                ArrayNode::String(_) => Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "FILTER: text in include".to_string(),
+                )),
+            }
+        };
+        let is_vector = mask_rows == 1 || mask_cols == 1;
+        let by_rows = is_vector && mask.len() == n_rows;
+        let by_cols = is_vector && mask.len() == n_cols;
+        let out: Vec<Vec<ArrayNode>> = if by_rows && (!by_cols || mask_cols == 1) {
+            let mut kept = Vec::new();
+            for (i, row) in grid.iter().enumerate() {
+                match mask_truthiness(&mask[i]) {
+                    Ok(true) => kept.push(row.clone()),
+                    Ok(false) => {}
+                    Err(e) => return e,
+                }
+            }
+            kept
+        } else if by_cols {
+            let mut keep_cols = Vec::new();
+            for c in 0..n_cols {
+                match mask_truthiness(&mask[c]) {
+                    Ok(true) => keep_cols.push(c),
+                    Ok(false) => {}
+                    Err(e) => return e,
+                }
+            }
+            grid.iter()
+                .map(|row| {
+                    keep_cols
+                        .iter()
+                        .map(|&c| row.get(c).cloned().unwrap_or(ArrayNode::Number(0.0)))
+                        .collect()
+                })
+                .collect()
+        } else {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "FILTER: include size mismatch".to_string(),
+            );
+        };
+        let is_empty = out.is_empty() || out.iter().all(|r| r.is_empty());
+        if is_empty {
+            if args.len() == 3 {
+                let if_empty = self.evaluate_node_in_context(&args[2], cell);
+                if let CalcResult::Error { .. } = if_empty {
+                    return if_empty;
+                }
+                return CalcResult::Array(vec![vec![calc_result_to_array_node(if_empty)]]);
+            }
+            return CalcResult::new_error(Error::CALC, cell, "FILTER: no match".to_string());
+        }
+        CalcResult::Array(out)
+    }
+
     pub(crate) fn fn_mdeterm(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);

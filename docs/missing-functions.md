@@ -98,7 +98,7 @@ backlog — work top to bottom, one item per agent:
 - [ ] **S3 — reference/intersection polish.** `A1#` spill operator;
   `@` implicit intersection (currently `#N/IMPL`, model.rs:~648).
 - [ ] **S4 — roll out Tier 3b/3c + array Tier 4** one fn per agent once S2c lands.
-  High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, FILTER, then HSTACK/VSTACK, TAKE/DROP,
+  High value first: ~~SEQUENCE~~, ~~SORT~~, ~~UNIQUE~~, ~~FILTER~~, then HSTACK/VSTACK, TAKE/DROP,
   CHOOSECOLS/ROWS, TOCOL/TOROW, EXPAND, SORTBY, MMULT, MINVERSE, MUNIT, RANDARRAY,
   FREQUENCY, MODE.MULT, SEQUENCE, TEXTSPLIT, LINEST/LOGEST/TREND/GROWTH.
 
@@ -114,6 +114,14 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- filter (S4) — FILTER(array,include,[if_empty]): reads array range/array row-major
+  into Vec<Vec<ArrayNode>> (TRANSPOSE/SORT pattern); include is a 1-D mask flattened
+  to a vector — column vector of height==rows keeps matching ROWS, row vector of
+  width==cols keeps matching COLUMNS; truthiness: nonzero Number/TRUE keep, 0/FALSE
+  drop, Error propagates, text => #VALUE!; mask length != rows and != cols =>
+  #VALUE!; no rows/cols kept => if_empty as 1x1 array if given else #CALC!; returns
+  CalcResult::Array preserving cell types (spills + round-trips); 2-3 args else
+  #ERROR!; _xlfn.
 - unique (S4) — UNIQUE(array,[by_col],[exactly_once]): reads range/array row-major
   into Vec<Vec<ArrayNode>> (TRANSPOSE/SORT pattern); by_col FALSE (default) dedups
   ROWS, TRUE dedups COLUMNS; exactly_once FALSE (default) keeps each distinct

@@ -477,7 +477,8 @@
       "transpose": "TRANSPOSE",
       "sequence": "SEQUENCE",
       "sort": "SORT",
-      "unique": "UNIQUE"
+      "unique": "UNIQUE",
+      "filter": "FILTER"
     }
   },
   "de": {
@@ -958,7 +959,8 @@
       "transpose": "MTRANS",
       "sequence": "SEQUENZ",
       "sort": "SORTIEREN",
-      "unique": "EINDEUTIG"
+      "unique": "EINDEUTIG",
+      "filter": "FILTER"
     }
   },
   "fr": {
@@ -1439,7 +1441,8 @@
         "transpose": "TRANSPOSE",
         "sequence": "SEQUENCE",
         "sort": "TRIER",
-        "unique": "UNIQUE"
+        "unique": "UNIQUE",
+        "filter": "FILTRE"
     }
   },
   "es": {
@@ -1920,7 +1923,8 @@
       "transpose": "TRANSPONER",
       "sequence": "SECUENCIA",
       "sort": "ORDENAR",
-      "unique": "UNICOS"
+      "unique": "UNICOS",
+      "filter": "FILTRAR"
     }
   }
 }

@@ -35,6 +35,7 @@ mod test_fn_arraytotext;
 mod test_fn_sequence;
 mod test_fn_sort;
 mod test_fn_unique;
+mod test_fn_filter;
 mod test_fn_transpose;
 mod test_fn_bahttext;
 mod test_fn_percentile;
