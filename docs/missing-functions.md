@@ -39,8 +39,6 @@ Verify: `cargo test -p ironcalc_base`. Cross-check a few values against Excel.
 
 Each item below = one agent batch.
 
-- [ ] **dispersion legacy** — STDEV, STDEVP, VAR, VARP, RANK (→ STDEV.S, STDEV.P,
-  VAR.S, VAR.P, RANK.EQ).
 - [ ] **TDIST + MODE family** — TDIST (route to T.DIST.2T/T.DIST.RT by `tails`),
   MODE, MODE.SNGL (single most-frequent; new impl, MODE = MODE.SNGL).
 - [ ] **simple text** — CHAR, CODE, CLEAN, PROPER, REPLACE, FIXED, DOLLAR.
@@ -67,6 +65,8 @@ LAMBDA, LET, MAP, REDUCE, SCAN, BYROW, BYCOL, MAKEARRAY, ISOMITTED.
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- dispersion legacy — STDEV, STDEVP, VAR, VARP, RANK (→ STDEV.S, STDEV.P, VAR.S,
+  VAR.P, RANK.EQ).
 - normal-dist legacy — NORMDIST, NORMINV, NORMSDIST, NORMSINV.
 - chi/F/t legacy — CHIDIST, CHIINV, CHITEST, FDIST, FINV, FTEST, TINV, TTEST.
 - other stat legacy — BETADIST, BETAINV, BINOMDIST, CRITBINOM, CONFIDENCE, COVAR,
