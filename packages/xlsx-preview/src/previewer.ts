@@ -24,7 +24,10 @@ import { parseClipboard, readRangeValues, serializeRange } from "./clipboardMode
 import { projectFill } from "./fillModel.js";
 import { writeClipboard, readClipboard } from "./clipboardIo.js";
 import { referencesToHighlights } from "./highlights.js";
-import { autocompleteState, type AutocompleteState } from "./formulaAutocomplete.js";
+import {
+  createAutocompletePopover,
+  type AutocompletePopoverHandle,
+} from "./autocompletePopover.js";
 import { lookupSignature, signatureAt } from "./formulaSignature.js";
 import { applyReferenceAtCaret, caretAcceptsReference, type RefSpan } from "./formulaPointMode.js";
 import type { HighlightRange } from "./renderTypes.js";
@@ -207,11 +210,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private highlights: HighlightRange[] = [];
   private pointHighlight: HighlightRange | null = null;
   private functionNamesCache: string[] | null = null;
-  private readonly autocompleteMenu: HTMLDivElement;
-  private autocompleteFor: HTMLInputElement | null = null;
-  private autocompleteData: AutocompleteState | null = null;
-  private autocompleteActive = 0;
-  private autocompleteBlurTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly autocomplete: AutocompletePopoverHandle;
   private readonly validationMenu: HTMLDivElement;
   private validationOptions: string[] | null = null;
   private validationFiltered: string[] = [];
@@ -276,7 +275,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
         this.scheduleDraw();
       });
       this.formulaBox.addEventListener("blur", () => {
-        this.scheduleAutocompleteClose();
+        this.autocomplete.scheduleClose();
         this.scheduleSignatureTipClose();
         this.scheduleDraw();
       });
@@ -325,12 +324,12 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       "position:absolute;top:0;left:0;display:none;z-index:5;box-sizing:border-box;margin:0;padding:0 3px;border:2px solid #2563eb;outline:none;background:#fff;color:#111827;font:13px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
     this.spacer.append(this.canvas, this.editInput);
     this.stage.append(this.spacer);
-    this.autocompleteMenu = document.createElement("div");
-    this.autocompleteMenu.style.cssText =
-      "position:fixed;z-index:1100;display:none;background:#fff;border:1px solid #d4d4d8;border-radius:6px;" +
-      "box-shadow:0 8px 24px rgba(15,23,42,0.18);padding:4px;min-width:140px;max-height:240px;overflow:auto;" +
-      "font:12px ui-monospace,SFMono-Regular,Menlo,monospace;";
-    document.body.append(this.autocompleteMenu);
+    this.autocomplete = createAutocompletePopover({
+      getFunctionNames: () => this.getFunctionNames(),
+      onAccept: (input) => {
+        input.dispatchEvent(new Event("input"));
+      },
+    });
     this.validationMenu = document.createElement("div");
     this.validationMenu.style.cssText =
       "position:fixed;z-index:1100;display:none;background:#fff;border:1px solid #d4d4d8;border-radius:6px;" +
@@ -346,7 +345,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.editInput.addEventListener("keydown", (ev) => this.onEditInputKeyDown(ev));
     this.editInput.addEventListener("input", () => {
       this.armPointMode(this.editInput);
-      this.updateAutocomplete(this.editInput);
+      this.autocomplete.update(this.editInput);
       this.updateSignatureTip(this.editInput);
       if (this.validationOptions) {
         this.validationTyped = true;
@@ -362,14 +361,14 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     });
     this.editInput.addEventListener("click", () => this.updateSignatureTip(this.editInput));
     this.editInput.addEventListener("blur", () => {
-      this.scheduleAutocompleteClose();
+      this.autocomplete.scheduleClose();
       this.scheduleSignatureTipClose();
       this.commitEdit(null);
     });
     if (this.editable) {
       this.formulaBox.addEventListener("input", () => {
         this.armPointMode(this.formulaBox);
-        this.updateAutocomplete(this.formulaBox);
+        this.autocomplete.update(this.formulaBox);
         this.updateSignatureTip(this.formulaBox);
         this.scheduleDraw();
       });
@@ -452,10 +451,9 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.tablePopover = null;
     this.interactHandle?.destroy();
     this.interactHandle = null;
-    this.closeAutocomplete();
+    this.autocomplete.destroy();
     this.closeValidationMenu();
     this.hideSignatureTip();
-    this.autocompleteMenu.remove();
     this.validationMenu.remove();
     this.signatureTip.remove();
     this.resizeObserver.disconnect();
@@ -988,83 +986,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     return this.functionNamesCache;
   }
 
-  private updateAutocomplete(input: HTMLInputElement): void {
-    if (!this.engine) return this.closeAutocomplete();
-    const caret = input.selectionStart;
-    if (caret === null) return this.closeAutocomplete();
-    const state = autocompleteState(input.value, caret, this.getFunctionNames());
-    if (!state) {
-      this.closeAutocomplete();
-      this.updateSignatureTip(input);
-      return;
-    }
-    this.autocompleteFor = input;
-    this.autocompleteData = state;
-    if (this.autocompleteActive >= state.matches.length) this.autocompleteActive = 0;
-    this.renderAutocomplete(input);
-  }
-
-  private renderAutocomplete(input: HTMLInputElement): void {
-    const state = this.autocompleteData;
-    if (!state) return;
-    const menu = this.autocompleteMenu;
-    menu.replaceChildren();
-    state.matches.forEach((name, i) => {
-      const item = document.createElement("div");
-      item.textContent = name;
-      const active = i === this.autocompleteActive;
-      item.style.cssText = `padding:3px 8px;cursor:pointer;border-radius:4px;${
-        active ? "background:#2563eb;color:#fff;" : "color:#111827;"
-      }`;
-      item.onmousedown = (ev) => {
-        ev.preventDefault();
-        this.acceptAutocomplete(i);
-      };
-      item.onmouseenter = () => {
-        this.autocompleteActive = i;
-        this.renderAutocomplete(input);
-      };
-      menu.append(item);
-    });
-    const rect = input.getBoundingClientRect();
-    menu.style.left = `${rect.left}px`;
-    menu.style.top = `${rect.bottom + 2}px`;
-    menu.style.display = "block";
-  }
-
-  private closeAutocomplete(): void {
-    this.autocompleteFor = null;
-    this.autocompleteData = null;
-    this.autocompleteActive = 0;
-    this.autocompleteMenu.style.display = "none";
-  }
-
-  private scheduleAutocompleteClose(): void {
-    if (this.autocompleteBlurTimer !== null) clearTimeout(this.autocompleteBlurTimer);
-    this.autocompleteBlurTimer = setTimeout(() => this.closeAutocomplete(), 120);
-  }
-
-  private isAutocompleteOpen(): boolean {
-    return this.autocompleteData !== null && this.autocompleteMenu.style.display !== "none";
-  }
-
-  private acceptAutocomplete(index: number): void {
-    const state = this.autocompleteData;
-    const input = this.autocompleteFor;
-    if (!state || !input) return;
-    const name = state.matches[index];
-    if (!name) return;
-    const insert = `${name}(`;
-    const value = input.value.slice(0, state.start) + insert + input.value.slice(state.end);
-    input.value = value;
-    const caret = state.start + insert.length;
-    input.setSelectionRange(caret, caret);
-    this.closeAutocomplete();
-    input.dispatchEvent(new Event("input"));
-  }
-
   private updateSignatureTip(input: HTMLInputElement): void {
-    if (this.isAutocompleteOpen()) return this.hideSignatureTip();
+    if (this.autocomplete.isOpen()) return this.hideSignatureTip();
     const caret = input.selectionStart;
     if (caret === null) return this.hideSignatureTip();
     const ctx = signatureAt(input.value, caret);
@@ -1151,38 +1074,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.signatureBlurTimer = setTimeout(() => this.hideSignatureTip(), 120);
   }
 
-  private handleAutocompleteKey(ev: KeyboardEvent): boolean {
-    if (!this.isAutocompleteOpen()) return false;
-    const state = this.autocompleteData!;
-    const input = this.autocompleteFor;
-    if (ev.key === "ArrowDown") {
-      ev.preventDefault();
-      this.autocompleteActive = (this.autocompleteActive + 1) % state.matches.length;
-      if (input) this.renderAutocomplete(input);
-      return true;
-    }
-    if (ev.key === "ArrowUp") {
-      ev.preventDefault();
-      this.autocompleteActive =
-        (this.autocompleteActive - 1 + state.matches.length) % state.matches.length;
-      if (input) this.renderAutocomplete(input);
-      return true;
-    }
-    if (ev.key === "Enter" || ev.key === "Tab") {
-      ev.preventDefault();
-      this.acceptAutocomplete(this.autocompleteActive);
-      return true;
-    }
-    if (ev.key === "Escape") {
-      ev.preventDefault();
-      this.closeAutocomplete();
-      return true;
-    }
-    return false;
-  }
-
   private onFormulaBoxKeyDown(ev: KeyboardEvent): void {
-    if (this.handleAutocompleteKey(ev)) return;
+    if (this.autocomplete.handleKey(ev)) return;
     if (this.handlePointKeyboardKey(ev)) return;
     this.resetPointSpanOnType(ev);
     if (ev.key === "Enter") {
@@ -1244,7 +1137,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     this.pointHighlight = parsePointHighlight(ref, HIGHLIGHT_PALETTE[0]!);
     input.focus({ preventScroll: true });
     input.setSelectionRange(res.caret, res.caret);
-    this.closeAutocomplete();
+    this.autocomplete.close();
     this.updateSignatureTip(input);
     this.growEditInput();
     this.scheduleDraw();
@@ -1430,7 +1323,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   }
 
   private hideEditOverlay(): void {
-    this.closeAutocomplete();
+    this.autocomplete.close();
     this.closeValidationMenu();
     this.validationOptions = null;
     this.hideSignatureTip();
@@ -1485,7 +1378,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   }
 
   private onEditInputKeyDown(ev: KeyboardEvent): void {
-    if (this.handleAutocompleteKey(ev)) return;
+    if (this.autocomplete.handleKey(ev)) return;
     if (this.handleValidationMenuKey(ev)) return;
     if (this.handlePointKeyboardKey(ev)) return;
     this.resetPointSpanOnType(ev);

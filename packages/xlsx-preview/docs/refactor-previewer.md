@@ -11,10 +11,6 @@ New pure modules should get a `.test.ts`.
 
 ## Backlog
 
-5. Extract `autocompletePopover.ts` (+ test): own the `autocompleteMenu` element
-   and state; methods update/render/close/scheduleClose/isOpen/accept/handleKey.
-   Host keeps a field and delegates. Model after pivotFilterPopover.ts.
-
 6. Extract `signatureTip.ts`: own `signatureTip` element; update/render/hide/
    scheduleClose.
 
@@ -33,4 +29,5 @@ New pure modules should get a `.test.ts`.
 1. Extracted pure ref/location helpers into `previewerRefs.ts` (+ test); dropped local `colLabel`.
 2. Added shared `mathUtils.ts` (`clamp`, + test); replaced duplicated local `clamp` in previewer/interact/highlights/selection.
 3. Extracted `formulaText.ts` (+ test): `balanceFormula`, `formatFormulaBar`.
+5. Extracted `autocompletePopover.ts` (+ test): `createAutocompletePopover` owns the menu element + state; previewer delegates via `this.autocomplete`.
 4. Extracted `previewerChrome.ts` (+ test): `makeButton`/`makeTab`/`contrastingTextColor`/`virtualSize`/`normalizeSelection` + virtual extra const.
