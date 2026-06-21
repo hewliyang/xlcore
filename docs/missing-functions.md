@@ -77,10 +77,12 @@ backlog — work top to bottom, one item per agent:
   sibling of shipped VALUETOTEXT (text.rs:1524). Format 0 concise = values joined
   `", "`; format 1 strict = brace-wrapped, rows `;`, cols `,`, strings quoted,
   errors as text. Ship like the Tier 2 fns.
-- [ ] **S1 — spill metadata in the type system.** ironcalc `Cell` gains an
-  array-formula variant carrying anchor + spill `ref` + cached spilled values;
-  surface the spill range on `xlcore-types::CellInfo`. No behavior yet; just the
-  data model + serialization plumbing compiling green.
+- [ ] **S1 — spill metadata in ironcalc `Cell`.** Add a `CellFormulaArray`
+  variant (anchor flag + spill `ref` + cached value) at the `// TODO: Array
+  formulas` seam (types.rs:163). Wire it inert through every exhaustive
+  `match cell` site (behaves like a cached formula cell), keep bitcode
+  serialization + all tests green. No behavior. (xlcore-types/CellInfo surfacing
+  folded into S2 where it's exercised.)
 - [ ] **S2 — TRANSPOSE vertical slice (the pilot).** Pure/deterministic array fn
   driven end to end: eval produces array → spill write-back into `sheet_data`
   (anchor + `#SPILL!` on collision, model.rs:684 path) → other formulas read
