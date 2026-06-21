@@ -19,6 +19,13 @@ import { XlsxLoadError } from "./errors.js";
 import type { PreviewerEngine } from "./previewer.js";
 import type { WorkbookLayout } from "./types.js";
 
+export {
+  bindRecalcWorkbook,
+  type BindRecalcWorkbookOptions,
+  type RecalcWorkbookBinding,
+  type RecalcWorkbookLike,
+} from "./bindRecalcWorkbook.js";
+
 const DEFAULT_WASM_BINARY_URL = new URL("./xlcore_wasm_bg.wasm", import.meta.url).href;
 
 export interface WorkerWorkbookOpenOptions {

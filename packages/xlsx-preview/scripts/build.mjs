@@ -46,6 +46,7 @@ await build({
     "src/xlsxWorker.ts",
     "src/editWorker.ts",
     "src/worker.ts",
+    "src/bindRecalcWorkbook.ts",
     "src/drawingResolve.ts",
     "src/api.ts",
     "src/api-refs.ts",

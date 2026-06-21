@@ -8,6 +8,8 @@
     "src/index.ts",
     "src/node.ts",
     "src/react.tsx",
+    "src/worker.ts",
+    "src/editWorker.ts",
     "src/xlsxWorker.ts"
   ],
   "project": ["src/**/*.ts", "src/**/*.tsx"],

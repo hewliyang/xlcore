@@ -16,6 +16,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `bindRecalcWorkbook(previewer, workbook, opts)` (exported from `@hewliyang/xlsx-preview/worker`): opt-in helper that wires the full previewer edit-event set (incl. easy-to-miss `drawingmoved`/`drawingdeleted`) to a `WorkerWorkbook`, removing the per-host reimplementation footgun. Hosts needing custom policy can still wire events by hand.
 - Axis tick-label fonts: `ChartAxisPatch.labelFont` (`c:catAx`/`c:valAx` `c:txPr`), size/bold/italic/color/typeface, merged with `labelRotation`. Round-trips and renders.
 - Chart title and axis-title fonts: `ChartUpdate.titleFont`/`ChartPatch.titleFont` (`c:title/c:txPr`) and `ChartAxisPatch.titleFont` (axis-title `c:txPr`), supporting size/bold/italic/color/typeface. Round-trips and renders in the preview.
 - Chart & axis title box fill/border: `titleFill`/`titleBorder` on `ChartPatch`/`ChartUpdate`/`ChartInfo` and `ChartAxisPatch` (`c:title/c:spPr` solidFill/noFill + `a:ln`). Round-trips and draws a filled/stroked box behind each title in the preview.
