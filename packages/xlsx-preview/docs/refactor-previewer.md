@@ -11,9 +11,6 @@ New pure modules should get a `.test.ts`.
 
 ## Backlog
 
-7. Extract `validationDropdown.ts` (+ test): own `validationMenu` element + filter
-   state; update/render/close/isOpen/accept/handleKey + validationListFor.
-
 8. Extract `cellEditor.ts` (+ test): the edit overlay + point mode. Owns
    `editInput` and all edit/point state; methods openEditOverlay, growEditInput,
    hideEditOverlay, commitEdit, onEditInputKeyDown, armPointMode, isPointModeActive,
@@ -22,6 +19,8 @@ New pure modules should get a `.test.ts`.
    getActiveSheet, emit celledit, scheduleDraw).
 
 ## Shipped
+
+7. Extracted `validationDropdown.ts` (+ test): `createValidationDropdown` owns the menu element + options/filter state; previewer delegates via `this.validation` (open/refresh/handleKey/reset).
 
 6. Extracted `signatureTip.ts` (+ test): `createSignatureTip` owns the tooltip element + blur timer; previewer delegates via `this.signature` with `isBlocked` = autocomplete open.
 
