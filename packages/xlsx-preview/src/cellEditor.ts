@@ -3,6 +3,7 @@ import { balanceFormula, formatFormulaBar } from "./formulaText.js";
 import { buildGrid } from "./render.js";
 import { colLabel } from "./grid.js";
 import { buildMergeMaps, rectFor } from "./geometry.js";
+import { frozenDims } from "./panes.js";
 import { parsePointHighlight } from "./previewerRefs.js";
 import {
   applyReferenceAtCaret,
@@ -35,6 +36,7 @@ export interface CellEditorHost {
   getActiveSheetIndex(): number;
   getFormulaBox(): HTMLInputElement;
   getStageScrollLeft(): number;
+  getStageScrollTop(): number;
   getStageClientWidth(): number;
   scrollToCell(r: number, c: number): void;
   scheduleDraw(): void;
@@ -215,10 +217,13 @@ export class CellEditor {
     this.activeRefSpan = null;
     this.pointKeyAnchor = null;
     this.pointKeyCursor = null;
-    this.editBaseLeft = rect.x * z;
+    const { splitX, splitY } = frozenDims(sheet, grid);
+    const offX = cell.c < splitX ? this.host.getStageScrollLeft() : 0;
+    const offY = cell.r < splitY ? this.host.getStageScrollTop() : 0;
+    this.editBaseLeft = rect.x * z + offX;
     this.editBaseWidth = Math.max(rect.w * z, 24);
     this.editInput.style.left = `${this.editBaseLeft}px`;
-    this.editInput.style.top = `${rect.y * z}px`;
+    this.editInput.style.top = `${rect.y * z + offY}px`;
     this.editInput.style.width = `${this.editBaseWidth}px`;
     this.editInput.style.height = `${Math.max(rect.h * z, 16)}px`;
     this.editInput.style.whiteSpace = "nowrap";

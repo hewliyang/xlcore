@@ -16,6 +16,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Scatter/bubble charts: `#N/A`/non-numeric cells in X or Y refs no longer plot a phantom point at 0; the point is skipped like Excel.
 - Recalc no longer pins formula cells to stale cached values on legitimate engine errors; the cached-value fallback now applies only to unsupported formulas (`#NAME?`), so editing inputs correctly recomputes cells that turn into `#N/A`/`#DIV/0!`/etc.
 - Data-validation dropdown: clicking an option now commits it again; the hover handler restyles items in place instead of rebuilding the menu, which had detached the item node mid-click so only keyboard worked.
+- Editing/picking a value in a frozen-pane cell no longer scrolls the body to the top: `scrollToCell` skips axes the cell is frozen on, the edit overlay is positioned within the frozen pane, and validation picks commit in place instead of moving the selection down.
 
 ### Changed
 

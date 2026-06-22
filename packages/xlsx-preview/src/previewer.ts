@@ -13,6 +13,7 @@ import {
 } from "./interact.js";
 import { buildGrid, render } from "./render.js";
 import { anchorToRect, colLabel } from "./grid.js";
+import { frozenDims } from "./panes.js";
 import { formatNameBox, resolveWorkbookLocation } from "./previewerRefs.js";
 import { CellEditor, type CellEditorHost } from "./cellEditor.js";
 import { rangeA1 } from "./api-refs.js";
@@ -316,7 +317,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       getSheet: () => this.getActiveSheet(),
       onAccept: (value) => {
         this.editor.setEditText(value);
-        this.editor.commitEdit("down");
+        this.editor.commitEdit(null);
         this.canvas.focus({ preventScroll: true });
       },
     });
@@ -333,6 +334,7 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       getActiveSheetIndex: () => this.activeSheetIndex,
       getFormulaBox: () => this.formulaBox,
       getStageScrollLeft: () => this.stage.scrollLeft,
+      getStageScrollTop: () => this.stage.scrollTop,
       getStageClientWidth: () => this.stage.clientWidth,
       scrollToCell: (r, c) => this.scrollToCell(r, c),
       scheduleDraw: () => this.scheduleDraw(),
@@ -598,13 +600,22 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
     const h = (grid.rowH[rr] ?? 0) * z;
     const padX = grid.originX * z;
     const padY = grid.originY * z;
-    if (x < this.stage.scrollLeft + padX) this.stage.scrollLeft = Math.max(0, x - padX);
-    else if (x + w > this.stage.scrollLeft + this.stage.clientWidth) {
-      this.stage.scrollLeft = x + w - this.stage.clientWidth;
+    const { splitX, splitY, pcw, prh } = frozenDims(sheet, grid);
+    if (cc >= splitX) {
+      const frozenX = pcw * z;
+      if (x < this.stage.scrollLeft + padX + frozenX) {
+        this.stage.scrollLeft = Math.max(0, x - padX - frozenX);
+      } else if (x + w > this.stage.scrollLeft + this.stage.clientWidth) {
+        this.stage.scrollLeft = x + w - this.stage.clientWidth;
+      }
     }
-    if (y < this.stage.scrollTop + padY) this.stage.scrollTop = Math.max(0, y - padY);
-    else if (y + h > this.stage.scrollTop + this.stage.clientHeight) {
-      this.stage.scrollTop = y + h - this.stage.clientHeight;
+    if (rr >= splitY) {
+      const frozenY = prh * z;
+      if (y < this.stage.scrollTop + padY + frozenY) {
+        this.stage.scrollTop = Math.max(0, y - padY - frozenY);
+      } else if (y + h > this.stage.scrollTop + this.stage.clientHeight) {
+        this.stage.scrollTop = y + h - this.stage.clientHeight;
+      }
     }
   }
 

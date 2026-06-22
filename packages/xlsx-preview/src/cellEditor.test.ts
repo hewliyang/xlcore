@@ -57,6 +57,7 @@ function makeEditor(overrides: Partial<CellEditorHost> = {}) {
     getActiveSheetIndex: () => 0,
     getFormulaBox: () => formulaBox,
     getStageScrollLeft: () => 0,
+    getStageScrollTop: () => 0,
     getStageClientWidth: () => 800,
     scrollToCell: vi.fn(),
     scheduleDraw: vi.fn(),
