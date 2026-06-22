@@ -16,7 +16,9 @@ import type {
   WorkbookStructure,
 } from "./editWorker.js";
 import { XlsxLoadError } from "./errors.js";
+import type { PivotFilterController } from "./pivotFilterPopover.js";
 import type { PreviewerEngine } from "./previewer.js";
+import type { TableFilterController } from "./tableFilterPopover.js";
 import type { WorkbookLayout } from "./types.js";
 
 export {
@@ -76,6 +78,10 @@ export class WorkerWorkbook {
   private shadow: Workbook | null = null;
   private shadowSnapshot = "";
   private cachedFunctionNames: string[] | null = null;
+  private cachedTableController: TableFilterController | null = null;
+  private cachedPivotController: PivotFilterController | null = null;
+  private cachedPivotMetas: Map<string, { sheet: string; id: string; sourceRef: string }> | null =
+    null;
 
   private constructor(
     private readonly worker: Worker,
@@ -303,6 +309,62 @@ export class WorkerWorkbook {
     };
   }
 
+  get tableController(): TableFilterController {
+    if (this.cachedTableController) return this.cachedTableController;
+    const kept = new Map<number, string[]>();
+    this.cachedTableController = {
+      items: ({ rangeRef, field }) => this.distinctValues(rangeRef, field),
+      activeValues: async ({ columnOffset, rangeRef, field }) =>
+        kept.get(columnOffset) ?? (await this.distinctValues(rangeRef, field)),
+      setFilter: async ({ columnOffset, rangeRef, field, values }) => {
+        const all = await this.distinctValues(rangeRef, field);
+        if (values.length === 0 || values.length >= all.length) {
+          kept.delete(columnOffset);
+        } else {
+          kept.set(columnOffset, values);
+        }
+        return this.tableSetFilter({ rangeRef, columnOffset, field, values });
+      },
+      setSort: ({ columnOffset, rangeRef, descending }) =>
+        this.tableSetSort({ rangeRef, columnOffset, descending }),
+    };
+    return this.cachedTableController;
+  }
+
+  get pivotController(): PivotFilterController {
+    if (this.cachedPivotController) return this.cachedPivotController;
+    const hidden = new Map<string, string[]>();
+    const key = (pivot: string, field: string) => `${pivot}\u0000${field}`;
+    const metas = async () => {
+      if (this.cachedPivotMetas) return this.cachedPivotMetas;
+      const byName = new Map<string, { sheet: string; id: string; sourceRef: string }>();
+      for (const meta of await this.pivotMetas()) {
+        byName.set(meta.name, { sheet: meta.sheet, id: meta.id, sourceRef: meta.sourceRef });
+      }
+      this.cachedPivotMetas = byName;
+      return byName;
+    };
+    this.cachedPivotController = {
+      items: async ({ pivot, field }) => {
+        const meta = (await metas()).get(pivot);
+        return meta ? this.distinctValues(meta.sourceRef, field) : [];
+      },
+      hiddenValues: ({ pivot, field }) => hidden.get(key(pivot, field)) ?? [],
+      setHidden: async ({ pivot, field, hidden: hide }) => {
+        hidden.set(key(pivot, field), hide);
+        const meta = (await metas()).get(pivot);
+        if (!meta) return;
+        const hiddenItems: Array<{ field: string; hide: string[] }> = [];
+        for (const [k, hide2] of hidden) {
+          const [p, f] = k.split("\u0000");
+          if (p === pivot && hide2.length > 0) hiddenItems.push({ field: f ?? "", hide: hide2 });
+        }
+        return this.updatePivot(meta.sheet, meta.id, { hiddenItems });
+      },
+    };
+    return this.cachedPivotController;
+  }
+
   dispose(): void {
     this.worker.terminate();
     this.shadow?.dispose();
@@ -331,6 +393,7 @@ export class WorkerWorkbook {
     if (this.shadow && snapshot === this.shadowSnapshot) return;
     this.shadow?.dispose();
     this.cachedFunctionNames = null;
+    this.cachedPivotMetas = null;
     const shadow = await Workbook.create({ wasmBinaryUrl: this.wasmBinaryUrl });
     const wanted = new Set(structure.sheets);
     for (const name of structure.sheets) {
