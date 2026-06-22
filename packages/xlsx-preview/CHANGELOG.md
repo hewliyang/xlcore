@@ -10,6 +10,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `WorkerWorkbook.tableController` / `.pivotController`: memoized lazy filter controllers, no need to hand-roll them.
 - Warn-once when a table/pivot filter is clicked while editable but no matching controller is wired.
 
+### Fixed
+
+- Data-validation dropdown: clicking an option now commits it again; the hover handler restyles items in place instead of rebuilding the menu, which had detached the item node mid-click so only keyboard worked.
+
 ### Changed
 
 - Example app uses `WorkerWorkbook.tableController`/`.pivotController` getters instead of hand-rolled builders.

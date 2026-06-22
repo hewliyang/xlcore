@@ -53,23 +53,32 @@ export function createValidationDropdown(
     render();
   }
 
+  function itemCss(active: boolean): string {
+    return `padding:4px 8px;cursor:pointer;border-radius:4px;white-space:nowrap;${
+      active ? "background:#2563eb;color:#fff;" : "color:#111827;"
+    }`;
+  }
+
+  function restyle(): void {
+    Array.from(menu.children).forEach((child, i) => {
+      (child as HTMLElement).style.cssText = itemCss(i === validationActive);
+    });
+  }
+
   function render(): void {
     const input = options.getEditInput();
     menu.replaceChildren();
     validationFiltered.forEach((value, i) => {
       const item = document.createElement("div");
       item.textContent = value;
-      const active = i === validationActive;
-      item.style.cssText = `padding:4px 8px;cursor:pointer;border-radius:4px;white-space:nowrap;${
-        active ? "background:#2563eb;color:#fff;" : "color:#111827;"
-      }`;
+      item.style.cssText = itemCss(i === validationActive);
       item.onmousedown = (ev) => {
         ev.preventDefault();
         accept(i);
       };
       item.onmouseenter = () => {
         validationActive = i;
-        render();
+        restyle();
       };
       menu.append(item);
     });

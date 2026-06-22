@@ -70,6 +70,26 @@ describe("createValidationDropdown", () => {
     handle.destroy();
   });
 
+  it("accepts a clicked option without the hover rebuild dropping it", () => {
+    const input = document.createElement("input");
+    document.body.append(input);
+    let accepted: string | null = null;
+    const handle = createValidationDropdown({
+      getEditInput: () => input,
+      getSheet: makeSheet,
+      onAccept: (value) => {
+        accepted = value;
+      },
+    });
+    handle.open({ r: 1, c: 1 }, { typed: false });
+    const banana = Array.from(menuEl().children).find((c) => c.textContent === "Banana")!;
+    banana.dispatchEvent(new MouseEvent("mouseenter"));
+    expect(banana.isConnected).toBe(true);
+    banana.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+    expect(accepted).toBe("Banana");
+    handle.destroy();
+  });
+
   it("returns null options for a cell without a dropdown", () => {
     const input = document.createElement("input");
     document.body.append(input);
