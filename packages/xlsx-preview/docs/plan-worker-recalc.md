@@ -95,13 +95,11 @@ Routing pivot/table filtering through the worker needs the controllers to allow
 - Verify: `pnpm -C packages/xlsx-preview build:ts` + `node scripts/check-dist-imports.mjs`.
 
 ### Item 4 — feat(example): re-enable pivot/table filtering through WorkerWorkbook
-- `examples/xlsx-app.html`: rewrite `buildPivotController`/`buildTableController` as
-  **async** builders (`await buildPivotController(wb)` at the call site) that keep
-  their local state maps (`hidden` / `kept`) on the main thread but route all data
-  reads + mutations through the new `WorkerWorkbook` async methods. Drop the
-  `typeof wb.worksheets !== "function"` guards. `items` -> `await wb.distinctValues`;
-  pivot `setHidden` -> `await wb.updatePivot`; table `setFilter` -> `await wb.tableSetFilter`;
-  `setSort` -> `await wb.tableSetSort`.
+- `examples/xlsx-app.html`: use the memoized `wb.pivotController` / `wb.tableController`
+  getters on `WorkerWorkbook` directly at the call site. The getters keep their local
+  state maps (`hidden` / `kept`) and route all data reads + mutations through the
+  `WorkerWorkbook` async methods (`distinctValues`, `updatePivot`, `tableSetFilter`,
+  `tableSetSort`).
 - Verify e2e in browser (server: `node scripts/preview.mjs`): open
   `tests/fixtures/pivot/pivot-simple.xlsx`, click a pivot field filter, uncheck a
   value -> grid updates; open a workbook with a table/autofilter, filter + sort a

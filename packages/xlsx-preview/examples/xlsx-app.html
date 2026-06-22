@@ -1100,59 +1100,6 @@ async function openWorkbookForFile(file) {
   }
 }
 
-async function buildPivotController(wb) {
-  if (wb == null) return null;
-  const byName = new Map();
-  for (const meta of await wb.pivotMetas()) {
-    byName.set(meta.name, { sheet: meta.sheet, id: meta.id, sourceRef: meta.sourceRef });
-  }
-  if (byName.size === 0) return null;
-  const hidden = new Map();
-  const key = (pivot, field) => `${pivot}\u0000${field}`;
-  const recompute = (pivot) => {
-    const meta = byName.get(pivot);
-    if (!meta) return;
-    const hiddenItems = [];
-    for (const [k, hide] of hidden) {
-      const [p, field] = k.split("\u0000");
-      if (p === pivot && hide.length > 0) hiddenItems.push({ field, hide });
-    }
-    return wb.updatePivot(meta.sheet, meta.id, { hiddenItems });
-  };
-  return {
-    items: ({ pivot, field }) => {
-      const meta = byName.get(pivot);
-      return meta ? wb.distinctValues(meta.sourceRef, field) : [];
-    },
-    hiddenValues: ({ pivot, field }) => hidden.get(key(pivot, field)) ?? [],
-    setHidden: ({ pivot, field, hidden: hide }) => {
-      hidden.set(key(pivot, field), hide);
-      return recompute(pivot);
-    },
-  };
-}
-
-async function buildTableController(wb) {
-  if (wb == null) return null;
-  const kept = new Map();
-  return {
-    items: ({ rangeRef, field }) => wb.distinctValues(rangeRef, field),
-    activeValues: ({ columnOffset, rangeRef, field }) =>
-      kept.get(columnOffset) ?? wb.distinctValues(rangeRef, field),
-    setFilter: async ({ columnOffset, rangeRef, field, values }) => {
-      const all = await wb.distinctValues(rangeRef, field);
-      if (values.length === 0 || values.length >= all.length) {
-        kept.delete(columnOffset);
-      } else {
-        kept.set(columnOffset, values);
-      }
-      return wb.tableSetFilter({ rangeRef, columnOffset, field, values });
-    },
-    setSort: ({ columnOffset, rangeRef, descending }) =>
-      wb.tableSetSort({ rangeRef, columnOffset, descending }),
-  };
-}
-
 async function loadWorkbookFile(file) {
   if (!file) return;
   hideErrorOverlay();
@@ -1169,15 +1116,13 @@ async function loadWorkbookFile(file) {
     recalcButton.disabled = recalcWorkbook == null;
     downloadButton.disabled = recalcWorkbook == null;
     loadedFileName = file.name;
-    const pivotController = await buildPivotController(recalcWorkbook);
-    const tableController = await buildTableController(recalcWorkbook);
     previewer = await createWorkbookPreviewerFromFile(previewRoot, file, {
       wasmBinaryUrl: `${ASSET_BASE}xlcore_wasm_bg.wasm`,
       workerUrl: `${ASSET_BASE}xlsxWorker.js`,
       showHidden: showHiddenSheets,
       editable: true,
-      pivotController,
-      tableController,
+      pivotController: recalcWorkbook != null ? recalcWorkbook.pivotController : undefined,
+      tableController: recalcWorkbook != null ? recalcWorkbook.tableController : undefined,
       engine: recalcWorkbook != null ? recalcWorkbook.engine : undefined,
       onProgress: ({ label }) => setLoadingStage(label),
     });

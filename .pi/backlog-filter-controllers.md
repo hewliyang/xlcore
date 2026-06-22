@@ -49,14 +49,9 @@ In `previewer.ts`, when a `tablefilter`/`pivotfilter` interaction fires while
 `recalcWorkbook.tableController` / `.pivotController`. No backend coupling — it's
 purely "I have no controller". Don't warn when not editable.
 
-### T3 — Delete copy-paste from example page
-Remove `buildPivotController`/`buildTableController` from `xlsx-app.html` and use
-`recalcWorkbook.tableController` / `recalcWorkbook.pivotController` directly at
-the `createWorkbookPreviewerFromFile` call (guard for `recalcWorkbook` null like
-`engine` already is). Confirm any docs/README snippet showing the old builders is
-updated.
-
 ## Shipped
+
+- T3: deleted `buildPivotController`/`buildTableController` from `xlsx-app.html`; example now passes `recalcWorkbook?.pivotController`/`.tableController` getters directly; plan doc snippet updated.
 
 - T2: warn-once-per-kind `console.warn` in previewer table/pivot filter handlers when editable and controller absent.
 - T1: memoized lazy `get tableController` / `get pivotController` on `WorkerWorkbook`; pivot meta cache reset in `syncShadow` (kept/hidden state preserved across resync).
