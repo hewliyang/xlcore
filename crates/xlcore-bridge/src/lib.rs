@@ -320,7 +320,10 @@ fn evaluated_formula_value(
 ) -> CellValue {
     match engine.formula_error(key.sheet, key.r as i32, key.c as i32) {
         Ok(Some(error)) => match cached_value {
-            Some(cv) if !matches!(cv, CellValue::Blank | CellValue::Error(_)) => {
+            Some(cv)
+                if error.kind == "#NAME?"
+                    && !matches!(cv, CellValue::Blank | CellValue::Error(_)) =>
+            {
                 *fallback = Some(FormulaFallback {
                     kind: error.kind,
                     message: error.message,
