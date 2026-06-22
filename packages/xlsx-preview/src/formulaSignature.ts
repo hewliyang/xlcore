@@ -1740,6 +1740,816 @@ const SIGNATURES: FunctionSignature[] = [
     args: ["array", "x", "sigma"],
     summary: "Returns the one-tailed P-value of a z-test.",
   },
+  {
+    name: "ACCRINT",
+    args: [
+      "issue",
+      "first_interest",
+      "settlement",
+      "rate",
+      "par",
+      "frequency",
+      "basis",
+      "calc_method",
+    ],
+    summary: "Returns the accrued interest for a security that pays periodic interest.",
+  },
+  {
+    name: "ACCRINTM",
+    args: ["issue", "settlement", "rate", "par", "basis"],
+    summary: "Returns the accrued interest for a security that pays interest at maturity.",
+  },
+  {
+    name: "ADDRESS",
+    args: ["row_num", "column_num", "abs_num", "a1", "sheet_text"],
+    summary: "Returns a reference as text to a single cell in a worksheet.",
+  },
+  {
+    name: "AGGREGATE",
+    args: ["function_num", "options", "array", "k", "ref1", "ref2", "..."],
+    summary: "Returns an aggregate in a list or database.",
+  },
+  {
+    name: "AMORDEGRC",
+    args: ["cost", "date_purchased", "first_period", "salvage", "period", "rate", "basis"],
+    summary:
+      "Returns the prorated linear depreciation for each accounting period by using a depreciation coefficient.",
+  },
+  {
+    name: "AMORLINC",
+    args: ["cost", "date_purchased", "first_period", "salvage", "period", "rate", "basis"],
+    summary: "Returns the prorated linear depreciation for each accounting period.",
+  },
+  {
+    name: "AREAS",
+    args: ["reference"],
+    summary: "Returns the number of areas in a reference.",
+  },
+  {
+    name: "ARRAYTOTEXT",
+    args: ["array", "format"],
+    summary: "Returns an array of text values from any specified range.",
+  },
+  {
+    name: "ASC",
+    args: ["text"],
+    summary: "Changes full-width (double-byte) characters to half-width (single-byte) characters.",
+  },
+  {
+    name: "BAHTTEXT",
+    args: ["number"],
+    summary: "Converts a number to Thai text and adds a suffix of Baht.",
+  },
+  {
+    name: "BETADIST",
+    args: ["x", "alpha", "beta", "a", "b"],
+    summary: "Returns the beta cumulative distribution function.",
+  },
+  {
+    name: "BETAINV",
+    args: ["probability", "alpha", "beta", "a", "b"],
+    summary:
+      "Returns the inverse of the cumulative distribution function for a specified beta distribution.",
+  },
+  {
+    name: "BINOMDIST",
+    args: ["number_s", "trials", "probability_s", "cumulative"],
+    summary: "Returns the individual term binomial distribution probability.",
+  },
+  {
+    name: "BYCOL",
+    args: ["array", "lambda"],
+    summary: "Applies a LAMBDA to each column and returns an array of the results.",
+  },
+  {
+    name: "BYROW",
+    args: ["array", "lambda"],
+    summary: "Applies a LAMBDA to each row and returns an array of the results.",
+  },
+  {
+    name: "CHAR",
+    args: ["number"],
+    summary:
+      "Returns the character specified by the code number from the character set for your computer.",
+  },
+  {
+    name: "CHIDIST",
+    args: ["x", "deg_freedom"],
+    summary: "Returns the one-tailed probability of the chi-squared distribution.",
+  },
+  {
+    name: "CHIINV",
+    args: ["probability", "deg_freedom"],
+    summary: "Returns the inverse of the one-tailed probability of the chi-squared distribution.",
+  },
+  {
+    name: "CHITEST",
+    args: ["actual_range", "expected_range"],
+    summary: "Returns the test for independence.",
+  },
+  {
+    name: "CHOOSECOLS",
+    args: ["array", "col_num1", "col_num2", "..."],
+    summary: "Returns a specified array subset by selecting columns.",
+  },
+  {
+    name: "CHOOSEROWS",
+    args: ["array", "row_num1", "row_num2", "..."],
+    summary: "Returns a specified array subset by selecting rows.",
+  },
+  {
+    name: "CLEAN",
+    args: ["text"],
+    summary: "Removes all nonprintable characters from text.",
+  },
+  {
+    name: "CODE",
+    args: ["text"],
+    summary:
+      "Returns a numeric code for the first character in a text string in the default character set of your computer.",
+  },
+  {
+    name: "CONFIDENCE",
+    args: ["alpha", "standard_dev", "size"],
+    summary: "Returns the confidence interval for a population mean, using a normal distribution.",
+  },
+  {
+    name: "COUPDAYBS",
+    args: ["settlement", "maturity", "frequency", "basis"],
+    summary:
+      "Returns the number of days from the beginning of the coupon period to the settlement date.",
+  },
+  {
+    name: "COUPDAYS",
+    args: ["settlement", "maturity", "frequency", "basis"],
+    summary: "Returns the number of days in the coupon period that contains the settlement date.",
+  },
+  {
+    name: "COUPDAYSNC",
+    args: ["settlement", "maturity", "frequency", "basis"],
+    summary: "Returns the number of days from the settlement date to the next coupon date.",
+  },
+  {
+    name: "COUPNCD",
+    args: ["settlement", "maturity", "frequency", "basis"],
+    summary: "Returns the next coupon date after the settlement date.",
+  },
+  {
+    name: "COUPNUM",
+    args: ["settlement", "maturity", "frequency", "basis"],
+    summary: "Returns the number of coupons payable between the settlement date and maturity date.",
+  },
+  {
+    name: "COUPPCD",
+    args: ["settlement", "maturity", "frequency", "basis"],
+    summary: "Returns the previous coupon date before the settlement date.",
+  },
+  {
+    name: "COVAR",
+    args: ["array1", "array2"],
+    summary:
+      "Returns covariance, the average of the products of deviations for each data point pair in two data sets.",
+  },
+  {
+    name: "CRITBINOM",
+    args: ["trials", "probability_s", "alpha"],
+    summary:
+      "Returns the smallest value for which the cumulative binomial distribution is greater than or equal to a criterion value.",
+  },
+  {
+    name: "DISC",
+    args: ["settlement", "maturity", "pr", "redemption", "basis"],
+    summary: "Returns the discount rate for a security.",
+  },
+  {
+    name: "DOLLAR",
+    args: ["number", "decimals"],
+    summary:
+      "Converts a number to text using currency format, with the decimals rounded to the specified places.",
+  },
+  {
+    name: "DROP",
+    args: ["array", "rows", "columns"],
+    summary: "Excludes a specified number of rows or columns from the start or end of an array.",
+  },
+  {
+    name: "DURATION",
+    args: ["settlement", "maturity", "coupon", "yld", "frequency", "basis"],
+    summary: "Returns the annual duration of a security with periodic interest payments.",
+  },
+  {
+    name: "ECMA.CEILING",
+    args: ["number", "significance"],
+    summary:
+      "Returns a number that is rounded up to the nearest integer or to the nearest multiple of significance.",
+  },
+  {
+    name: "EXPAND",
+    args: ["array", "rows", "columns", "pad_with"],
+    summary: "Expands or pads an array to specified row and column dimensions.",
+  },
+  {
+    name: "EXPONDIST",
+    args: ["x", "lambda", "cumulative"],
+    summary: "Returns the exponential distribution.",
+  },
+  {
+    name: "FDIST",
+    args: ["x", "deg_freedom1", "deg_freedom2"],
+    summary: "Returns the F probability distribution.",
+  },
+  {
+    name: "FILTER",
+    args: ["array", "include", "if_empty"],
+    summary: "Filters a range of data based on criteria you define.",
+  },
+  {
+    name: "FINDB",
+    args: ["find_text", "within_text", "start_num"],
+    summary:
+      "Finds one text value within another (case-sensitive) and returns the position of the starting character, for double-byte (DBCS) languages.",
+  },
+  {
+    name: "FINV",
+    args: ["probability", "deg_freedom1", "deg_freedom2"],
+    summary: "Returns the inverse of the F probability distribution.",
+  },
+  {
+    name: "FIXED",
+    args: ["number", "decimals", "no_commas"],
+    summary:
+      "Rounds a number to the specified number of decimals, formats the number in decimal format using a period and commas, and returns the result as text.",
+  },
+  {
+    name: "FORECAST",
+    args: ["x", "known_ys", "known_xs"],
+    summary: "Calculates, or predicts, a future value by using existing values.",
+  },
+  {
+    name: "FORECAST.LINEAR",
+    args: ["x", "known_ys", "known_xs"],
+    summary: "Returns the future y-value along a linear trend based on existing values.",
+  },
+  {
+    name: "FREQUENCY",
+    args: ["data_array", "bins_array"],
+    summary: "Returns a frequency distribution as a vertical array.",
+  },
+  {
+    name: "FTEST",
+    args: ["array1", "array2"],
+    summary:
+      "Returns the result of an F-test, the two-tailed probability that the variances in two data sets are not significantly different.",
+  },
+  {
+    name: "FVSCHEDULE",
+    args: ["principal", "schedule"],
+    summary:
+      "Returns the future value of an initial principal after applying a series of compound interest rates.",
+  },
+  {
+    name: "GAMMADIST",
+    args: ["x", "alpha", "beta", "cumulative"],
+    summary: "Returns the gamma distribution.",
+  },
+  {
+    name: "GAMMAINV",
+    args: ["probability", "alpha", "beta"],
+    summary: "Returns the inverse of the gamma cumulative distribution.",
+  },
+  {
+    name: "GROWTH",
+    args: ["known_ys", "known_xs", "new_xs", "const"],
+    summary: "Returns the y-values along an exponential growth trend that best fits your data.",
+  },
+  {
+    name: "HSTACK",
+    args: ["array1", "array2", "..."],
+    summary: "Appends arrays horizontally and in sequence to return a larger array.",
+  },
+  {
+    name: "HYPERLINK",
+    args: ["link_location", "friendly_name"],
+    summary:
+      "Creates a shortcut or jump that opens a document stored on a network server, an intranet, or the Internet.",
+  },
+  {
+    name: "HYPGEOMDIST",
+    args: ["sample_s", "number_sample", "population_s", "number_pop"],
+    summary: "Returns the hypergeometric distribution.",
+  },
+  {
+    name: "INTRATE",
+    args: ["settlement", "maturity", "investment", "redemption", "basis"],
+    summary: "Returns the interest rate for a fully invested security.",
+  },
+  {
+    name: "ISOMITTED",
+    args: ["argument"],
+    summary: "Checks whether the value in a LAMBDA is missing and replaced with an empty cell.",
+  },
+  {
+    name: "JIS",
+    args: ["text"],
+    summary:
+      "Changes half-width (single-byte) English letters or katakana within a character string to full-width (double-byte) characters.",
+  },
+  {
+    name: "LAMBDA",
+    args: ["parameter1", "parameter2", "...", "calculation"],
+    summary: "Creates custom, reusable functions and call them by a friendly name.",
+  },
+  {
+    name: "LEFTB",
+    args: ["text", "num_bytes"],
+    summary:
+      "Returns the leftmost characters from a text string, based on the number of bytes you specify.",
+  },
+  {
+    name: "LENB",
+    args: ["text"],
+    summary: "Returns the number of bytes used to represent the characters in a text string.",
+  },
+  {
+    name: "LET",
+    args: ["name1", "name_value1", "...", "calculation"],
+    summary:
+      "Assigns names to calculation results to allow storing intermediate calculations, values, or defining names inside a formula.",
+  },
+  {
+    name: "LINEST",
+    args: ["known_ys", "known_xs", "const", "stats"],
+    summary:
+      "Returns the statistics that describe a linear trend matching known data points, by using the least squares method.",
+  },
+  {
+    name: "LOGEST",
+    args: ["known_ys", "known_xs", "const", "stats"],
+    summary:
+      "Returns the statistics that describe an exponential curve matching known data points.",
+  },
+  {
+    name: "LOGINV",
+    args: ["probability", "mean", "standard_dev"],
+    summary: "Returns the inverse of the lognormal cumulative distribution function.",
+  },
+  {
+    name: "LOGNORMDIST",
+    args: ["x", "mean", "standard_dev"],
+    summary: "Returns the cumulative lognormal distribution.",
+  },
+  {
+    name: "MAKEARRAY",
+    args: ["rows", "cols", "lambda"],
+    summary: "Returns a calculated array of a specified row and column size, by applying a LAMBDA.",
+  },
+  {
+    name: "MAP",
+    args: ["array1", "array2", "...", "lambda"],
+    summary:
+      "Returns an array formed by mapping each value in an array to a new value by applying a LAMBDA to create a new value.",
+  },
+  {
+    name: "MDETERM",
+    args: ["array"],
+    summary: "Returns the matrix determinant of an array.",
+  },
+  {
+    name: "MDURATION",
+    args: ["settlement", "maturity", "coupon", "yld", "frequency", "basis"],
+    summary:
+      "Returns the modified Macauley duration for a security with an assumed par value of $100.",
+  },
+  {
+    name: "MIDB",
+    args: ["text", "start_num", "num_bytes"],
+    summary:
+      "Returns a specific number of bytes from a text string starting at the position you specify.",
+  },
+  {
+    name: "MINVERSE",
+    args: ["array"],
+    summary: "Returns the inverse matrix for the matrix stored in an array.",
+  },
+  {
+    name: "MMULT",
+    args: ["array1", "array2"],
+    summary: "Returns the matrix product of two arrays.",
+  },
+  {
+    name: "MODE",
+    args: ["number1", "number2", "..."],
+    summary:
+      "Returns the most frequently occurring, or repetitive, value in an array or range of data.",
+  },
+  {
+    name: "MODE.MULT",
+    args: ["number1", "number2", "..."],
+    summary:
+      "Returns a vertical array of the most frequently occurring, or repetitive, values in an array or range of data.",
+  },
+  {
+    name: "MODE.SNGL",
+    args: ["number1", "number2", "..."],
+    summary:
+      "Returns the most frequently occurring, or repetitive, value in an array or range of data.",
+  },
+  {
+    name: "MULTINOMIAL",
+    args: ["number1", "number2", "..."],
+    summary: "Returns the ratio of the factorial of a sum of values to the product of factorials.",
+  },
+  {
+    name: "MUNIT",
+    args: ["dimension"],
+    summary: "Returns the unit matrix for the specified dimension.",
+  },
+  {
+    name: "NEGBINOMDIST",
+    args: ["number_f", "number_s", "probability_s"],
+    summary: "Returns the negative binomial distribution.",
+  },
+  {
+    name: "NORMDIST",
+    args: ["x", "mean", "standard_dev", "cumulative"],
+    summary: "Returns the normal distribution for the specified mean and standard deviation.",
+  },
+  {
+    name: "NORMINV",
+    args: ["probability", "mean", "standard_dev"],
+    summary:
+      "Returns the inverse of the normal cumulative distribution for the specified mean and standard deviation.",
+  },
+  {
+    name: "NORMSDIST",
+    args: ["z"],
+    summary: "Returns the standard normal cumulative distribution.",
+  },
+  {
+    name: "NORMSINV",
+    args: ["probability"],
+    summary: "Returns the inverse of the standard normal cumulative distribution.",
+  },
+  {
+    name: "NUMBERVALUE",
+    args: ["text", "decimal_separator", "group_separator"],
+    summary: "Converts text to number in a locale-independent manner.",
+  },
+  {
+    name: "ODDFPRICE",
+    args: [
+      "settlement",
+      "maturity",
+      "issue",
+      "first_coupon",
+      "rate",
+      "yld",
+      "redemption",
+      "frequency",
+      "basis",
+    ],
+    summary:
+      "Returns the price per $100 face value of a security having an odd (short or long) first period.",
+  },
+  {
+    name: "ODDFYIELD",
+    args: [
+      "settlement",
+      "maturity",
+      "issue",
+      "first_coupon",
+      "rate",
+      "pr",
+      "redemption",
+      "frequency",
+      "basis",
+    ],
+    summary: "Returns the yield of a security that has an odd (short or long) first period.",
+  },
+  {
+    name: "ODDLPRICE",
+    args: [
+      "settlement",
+      "maturity",
+      "last_interest",
+      "rate",
+      "yld",
+      "redemption",
+      "frequency",
+      "basis",
+    ],
+    summary:
+      "Returns the price per $100 face value of a security having an odd (short or long) last period.",
+  },
+  {
+    name: "ODDLYIELD",
+    args: [
+      "settlement",
+      "maturity",
+      "last_interest",
+      "rate",
+      "pr",
+      "redemption",
+      "frequency",
+      "basis",
+    ],
+    summary: "Returns the yield of a security that has an odd (short or long) last period.",
+  },
+  {
+    name: "PERCENTILE",
+    args: ["array", "k"],
+    summary: "Returns the k-th percentile of values in a range.",
+  },
+  {
+    name: "PERCENTILE.EXC",
+    args: ["array", "k"],
+    summary:
+      "Returns the k-th percentile of values in a range, where k is in the range 0..1, exclusive.",
+  },
+  {
+    name: "PERCENTILE.INC",
+    args: ["array", "k"],
+    summary:
+      "Returns the k-th percentile of values in a range, where k is in the range 0..1, inclusive.",
+  },
+  {
+    name: "PERCENTRANK",
+    args: ["array", "x", "significance"],
+    summary: "Returns the rank of a value in a data set as a percentage of the data set.",
+  },
+  {
+    name: "PERCENTRANK.EXC",
+    args: ["array", "x", "significance"],
+    summary:
+      "Returns the rank of a value in a data set as a percentage (0..1, exclusive) of the data set.",
+  },
+  {
+    name: "PERCENTRANK.INC",
+    args: ["array", "x", "significance"],
+    summary:
+      "Returns the rank of a value in a data set as a percentage (0..1, inclusive) of the data set.",
+  },
+  {
+    name: "PERMUT",
+    args: ["number", "number_chosen"],
+    summary: "Returns the number of permutations for a given number of objects.",
+  },
+  {
+    name: "PERMUTATIONA",
+    args: ["number", "number_chosen"],
+    summary:
+      "Returns the number of permutations for a given number of objects (with repetitions) that can be selected from the total objects.",
+  },
+  {
+    name: "POISSON",
+    args: ["x", "mean", "cumulative"],
+    summary: "Returns the Poisson distribution.",
+  },
+  {
+    name: "PRICE",
+    args: ["settlement", "maturity", "rate", "yld", "redemption", "frequency", "basis"],
+    summary: "Returns the price per $100 face value of a security that pays periodic interest.",
+  },
+  {
+    name: "PRICEDISC",
+    args: ["settlement", "maturity", "discount", "redemption", "basis"],
+    summary: "Returns the price per $100 face value of a discounted security.",
+  },
+  {
+    name: "PRICEMAT",
+    args: ["settlement", "maturity", "issue", "rate", "yld", "basis"],
+    summary: "Returns the price per $100 face value of a security that pays interest at maturity.",
+  },
+  {
+    name: "PROB",
+    args: ["x_range", "prob_range", "lower_limit", "upper_limit"],
+    summary: "Returns the probability that values in a range are between two limits.",
+  },
+  {
+    name: "PROPER",
+    args: ["text"],
+    summary: "Capitalizes the first letter in each word of a text value.",
+  },
+  {
+    name: "QUARTILE",
+    args: ["array", "quart"],
+    summary: "Returns the quartile of a data set.",
+  },
+  {
+    name: "QUARTILE.EXC",
+    args: ["array", "quart"],
+    summary: "Returns the quartile of a data set, based on percentile values from 0..1 exclusive.",
+  },
+  {
+    name: "QUARTILE.INC",
+    args: ["array", "quart"],
+    summary: "Returns the quartile of a data set, based on percentile values from 0..1 inclusive.",
+  },
+  {
+    name: "RANDARRAY",
+    args: ["rows", "columns", "min", "max", "whole_number"],
+    summary: "Returns an array of random numbers.",
+  },
+  {
+    name: "RANK",
+    args: ["number", "ref", "order"],
+    summary: "Returns the rank of a number in a list of numbers.",
+  },
+  {
+    name: "RECEIVED",
+    args: ["settlement", "maturity", "investment", "discount", "basis"],
+    summary: "Returns the amount received at maturity for a fully invested security.",
+  },
+  {
+    name: "REDUCE",
+    args: ["initial_value", "array", "function"],
+    summary:
+      "Reduces an array to an accumulated value by applying a LAMBDA to each value and returning the total value in the accumulator.",
+  },
+  {
+    name: "REPLACE",
+    args: ["old_text", "start_num", "num_chars", "new_text"],
+    summary:
+      "Replaces part of a text string, based on the number of characters you specify, with a different text string.",
+  },
+  {
+    name: "REPLACEB",
+    args: ["old_text", "start_num", "num_bytes", "new_text"],
+    summary:
+      "Replaces part of a text string, based on the number of bytes you specify, with a different text string.",
+  },
+  {
+    name: "RIGHTB",
+    args: ["text", "num_bytes"],
+    summary:
+      "Returns the rightmost characters from a text value, based on the number of bytes you specify.",
+  },
+  {
+    name: "SCAN",
+    args: ["initial_value", "array", "function"],
+    summary:
+      "Scans an array by applying a LAMBDA to each value and returns an array that has each intermediate value.",
+  },
+  {
+    name: "SEARCHB",
+    args: ["find_text", "within_text", "start_num"],
+    summary:
+      "Finds one text string within another (not case-sensitive), based on the number of bytes.",
+  },
+  {
+    name: "SEQUENCE",
+    args: ["rows", "columns", "start", "step"],
+    summary: "Generates a list of sequential numbers in an array.",
+  },
+  {
+    name: "SERIESSUM",
+    args: ["x", "n", "m", "coefficients"],
+    summary: "Returns the sum of a power series based on the formula.",
+  },
+  {
+    name: "SORT",
+    args: ["array", "sort_index", "sort_order", "by_col"],
+    summary: "Sorts the contents of a range or array.",
+  },
+  {
+    name: "SORTBY",
+    args: ["array", "by_array1", "sort_order1", "..."],
+    summary:
+      "Sorts the contents of a range or array based on the values in a corresponding range or array.",
+  },
+  {
+    name: "STDEV",
+    args: ["number1", "number2", "..."],
+    summary: "Estimates standard deviation based on a sample.",
+  },
+  {
+    name: "STDEVP",
+    args: ["number1", "number2", "..."],
+    summary: "Calculates standard deviation based on the entire population.",
+  },
+  {
+    name: "SUMPRODUCT",
+    args: ["array1", "array2", "..."],
+    summary: "Returns the sum of the products of corresponding array components.",
+  },
+  {
+    name: "TAKE",
+    args: ["array", "rows", "columns"],
+    summary:
+      "Returns a specified number of contiguous rows or columns from the start or end of an array.",
+  },
+  {
+    name: "TDIST",
+    args: ["x", "degrees_freedom", "tails"],
+    summary: "Returns the percentage points (probability) for the Student t-distribution.",
+  },
+  {
+    name: "TEXTSPLIT",
+    args: ["text", "col_delimiter", "row_delimiter", "ignore_empty", "match_mode", "pad_with"],
+    summary: "Splits text strings by using column and row delimiters.",
+  },
+  {
+    name: "TINV",
+    args: ["probability", "degrees_freedom"],
+    summary:
+      "Returns the t-value of the Student's t-distribution as a function of the probability and the degrees of freedom.",
+  },
+  {
+    name: "TOCOL",
+    args: ["array", "ignore", "scan_by_column"],
+    summary: "Returns the array in a single column.",
+  },
+  {
+    name: "TOROW",
+    args: ["array", "ignore", "scan_by_column"],
+    summary: "Returns the array in a single row.",
+  },
+  {
+    name: "TRANSPOSE",
+    args: ["array"],
+    summary: "Returns a vertical range of cells as a horizontal range, or vice versa.",
+  },
+  {
+    name: "TREND",
+    args: ["known_ys", "known_xs", "new_xs", "const"],
+    summary: "Returns values along a linear trend.",
+  },
+  {
+    name: "TRIMMEAN",
+    args: ["array", "percent"],
+    summary: "Returns the mean of the interior of a data set.",
+  },
+  {
+    name: "TTEST",
+    args: ["array1", "array2", "tails", "type"],
+    summary: "Returns the probability associated with a Student's t-test.",
+  },
+  {
+    name: "UNICHAR",
+    args: ["number"],
+    summary: "Returns the Unicode character that is referenced by the given numeric value.",
+  },
+  {
+    name: "UNIQUE",
+    args: ["array", "by_col", "exactly_once"],
+    summary: "Returns a list of unique values in a list or range.",
+  },
+  {
+    name: "USDOLLAR",
+    args: ["number", "decimals"],
+    summary:
+      "Converts a number to text using currency format, with the decimals rounded to the specified places.",
+  },
+  {
+    name: "VAR",
+    args: ["number1", "number2", "..."],
+    summary: "Estimates variance based on a sample.",
+  },
+  {
+    name: "VARP",
+    args: ["number1", "number2", "..."],
+    summary: "Calculates variance based on the entire population.",
+  },
+  {
+    name: "VDB",
+    args: ["cost", "salvage", "life", "start_period", "end_period", "factor", "no_switch"],
+    summary: "Returns the depreciation of an asset for a specified or partial period.",
+  },
+  {
+    name: "VSTACK",
+    args: ["array1", "array2", "..."],
+    summary: "Appends arrays vertically and in sequence to return a larger array.",
+  },
+  {
+    name: "WEIBULL",
+    args: ["x", "alpha", "beta", "cumulative"],
+    summary: "Returns the Weibull distribution.",
+  },
+  {
+    name: "XMATCH",
+    args: ["lookup_value", "lookup_array", "match_mode", "search_mode"],
+    summary: "Returns the relative position of an item in an array or range of cells.",
+  },
+  {
+    name: "YIELD",
+    args: ["settlement", "maturity", "rate", "pr", "redemption", "frequency", "basis"],
+    summary: "Returns the yield on a security that pays periodic interest.",
+  },
+  {
+    name: "YIELDDISC",
+    args: ["settlement", "maturity", "pr", "redemption", "basis"],
+    summary: "Returns the annual yield for a discounted security; for example, a Treasury bill.",
+  },
+  {
+    name: "YIELDMAT",
+    args: ["settlement", "maturity", "issue", "rate", "pr", "basis"],
+    summary: "Returns the annual yield of a security that pays interest at maturity.",
+  },
+  {
+    name: "ZTEST",
+    args: ["array", "x", "sigma"],
+    summary: "Returns the one-tailed probability-value of a z-test.",
+  },
 ];
 
 const SIGNATURE_BY_NAME = new Map<string, FunctionSignature>(SIGNATURES.map((s) => [s.name, s]));

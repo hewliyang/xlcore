@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Formula signature tips + autocomplete summaries for 144 previously-uncovered engine functions (dynamic-array FILTER/SORT/SEQUENCE/MAP/LAMBDA/LET, financial COUP*/ODD*/PRICE*/YIELD*, statistical *DIST/*INV, etc.), so all 489 engine functions now show parameter hints.
 - Spilled-range operator `A1#` (ANCHORARRAY): a reference followed by `#` returns the whole dynamic-array spill anchored at that cell (`=SUM(A1#)`), spilling again when used bare; non-array cell returns that cell, empty cell returns `#REF!`. Serializes as `_xlfn.ANCHORARRAY(...)` for xlsx and `A1#` for display.
 
 ### Fixed
