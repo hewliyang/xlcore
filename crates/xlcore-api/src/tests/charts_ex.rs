@@ -130,7 +130,9 @@ fn chart_ex_update_anchor_persists() {
 
     let bytes = wb.save_bytes().unwrap();
     let mut reopened = Workbook::open_bytes(bytes).unwrap();
-    let roundtrip = reopened.chart_exs(Some("Sheet1")).unwrap()[0].anchor.clone();
+    let roundtrip = reopened.chart_exs(Some("Sheet1")).unwrap()[0]
+        .anchor
+        .clone();
     assert_eq!(roundtrip.from_column, moved.from_column);
     assert_eq!(roundtrip.from_row, moved.from_row);
     assert_eq!(roundtrip.to_column, moved.to_column);

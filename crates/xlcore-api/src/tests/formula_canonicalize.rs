@@ -30,6 +30,33 @@ fn set_formula_canonicalizes_modern_functions_with_xlfn() {
 }
 
 #[test]
+fn set_formula_decorates_let_binding_names_with_xlpm() {
+    let mut wb = Workbook::new().unwrap();
+    let sheet = wb.sheets().unwrap()[0].name.clone();
+
+    wb.set_formula_in(&sheet, "A1", "=LET(pay,B1,cohort,B2,pay*cohort)")
+        .unwrap();
+    wb.set_formula_in(&sheet, "A2", "=LAMBDA(x,y,x+y)(1,2)")
+        .unwrap();
+
+    assert_eq!(
+        formula_xml(&mut wb, &sheet, "A1").as_deref(),
+        Some("_xlfn.LET(_xlpm.pay,B1,_xlpm.cohort,B2,_xlpm.pay*_xlpm.cohort)")
+    );
+    assert_eq!(
+        formula_xml(&mut wb, &sheet, "A2").as_deref(),
+        Some("_xlfn.LAMBDA(_xlpm.x,_xlpm.y,_xlpm.x+_xlpm.y)(1,2)")
+    );
+
+    let bytes = wb.save_bytes().unwrap();
+    let mut reopened = Workbook::open_bytes(bytes).unwrap();
+    assert_eq!(
+        formula_xml(&mut reopened, &sheet, "A1").as_deref(),
+        Some("_xlfn.LET(_xlpm.pay,B1,_xlpm.cohort,B2,_xlpm.pay*_xlpm.cohort)")
+    );
+}
+
+#[test]
 fn set_formula_canonicalization_is_idempotent() {
     let mut wb = Workbook::new().unwrap();
     let sheet = wb.sheets().unwrap()[0].name.clone();
@@ -94,5 +121,26 @@ fn set_range_formulas_canonicalizes_modern_functions() {
     assert_eq!(
         formula_xml(&mut wb, &sheet, "A2").as_deref(),
         Some("SUM(B1:B5)")
+    );
+}
+
+#[test]
+fn let_canonicalization_is_idempotent() {
+    let mut wb = Workbook::new().unwrap();
+    let sheet = wb.sheets().unwrap()[0].name.clone();
+
+    let first = wb
+        .set_formula_in(&sheet, "A1", "=LET(pay,B1,cohort,B2,pay*cohort)")
+        .unwrap()
+        .formula
+        .unwrap();
+    let second = wb
+        .set_formula_in(&sheet, "A1", &format!("={first}"))
+        .unwrap()
+        .formula
+        .unwrap();
+    assert_eq!(
+        first, second,
+        "re-canonicalizing a decorated LET must be stable"
     );
 }

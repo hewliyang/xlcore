@@ -145,8 +145,7 @@ impl<'a> Model<'a> {
                     .iter()
                     .map(|g| array_node_to_calc_result(&g[r][c]))
                     .collect();
-                let result =
-                    self.apply_lambda(&params, &body, &captured, arg_values, cell);
+                let result = self.apply_lambda(&params, &body, &captured, arg_values, cell);
                 new_row.push(calc_result_to_array_node(result));
             }
             out.push(new_row);
@@ -173,13 +172,7 @@ impl<'a> Model<'a> {
         for row in &grid {
             for node in row {
                 let value = array_node_to_calc_result(node);
-                acc = self.apply_lambda(
-                    &params,
-                    &body,
-                    &captured,
-                    vec![acc, value],
-                    cell,
-                );
+                acc = self.apply_lambda(&params, &body, &captured, vec![acc, value], cell);
                 if let CalcResult::Error { .. } = acc {
                     return acc;
                 }
@@ -209,13 +202,7 @@ impl<'a> Model<'a> {
             let mut new_row = Vec::with_capacity(row.len());
             for node in row {
                 let value = array_node_to_calc_result(node);
-                acc = self.apply_lambda(
-                    &params,
-                    &body,
-                    &captured,
-                    vec![acc, value],
-                    cell,
-                );
+                acc = self.apply_lambda(&params, &body, &captured, vec![acc, value], cell);
                 new_row.push(calc_result_to_array_node(acc.clone()));
             }
             out.push(new_row);
@@ -274,8 +261,7 @@ impl<'a> Model<'a> {
         let cols = grid.first().map(|r| r.len()).unwrap_or(0);
         let mut row_out: Vec<ArrayNode> = Vec::with_capacity(cols);
         for c in 0..cols {
-            let col: Vec<Vec<ArrayNode>> =
-                (0..rows).map(|r| vec![grid[r][c].clone()]).collect();
+            let col: Vec<Vec<ArrayNode>> = (0..rows).map(|r| vec![grid[r][c].clone()]).collect();
             let col_array = CalcResult::Array(col);
             let result = self.apply_lambda(&params, &body, &captured, vec![col_array], cell);
             row_out.push(calc_result_to_array_node(result));
@@ -317,10 +303,7 @@ impl<'a> Model<'a> {
         for i in 1..=rows {
             let mut new_row = Vec::with_capacity(cols as usize);
             for j in 1..=cols {
-                let arg_values = vec![
-                    CalcResult::Number(i as f64),
-                    CalcResult::Number(j as f64),
-                ];
+                let arg_values = vec![CalcResult::Number(i as f64), CalcResult::Number(j as f64)];
                 let result = self.apply_lambda(&params, &body, &captured, arg_values, cell);
                 new_row.push(calc_result_to_array_node(result));
             }

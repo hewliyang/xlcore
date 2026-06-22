@@ -82,7 +82,9 @@ fn array_to_text_value(value: &CalcResult, strict: bool) -> String {
             }
         }
         CalcResult::Error { error, .. } => error.to_string(),
-        CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda { .. } => String::new(),
+        CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda { .. } => {
+            String::new()
+        }
     }
 }
 
@@ -1495,9 +1497,11 @@ impl<'a> Model<'a> {
                         match node {
                             ArrayNode::String(s) => out.push(s),
                             ArrayNode::Number(f) => out.push(format!("{f}")),
-                            ArrayNode::Boolean(b) => {
-                                out.push(if b { "TRUE".to_string() } else { "FALSE".to_string() })
-                            }
+                            ArrayNode::Boolean(b) => out.push(if b {
+                                "TRUE".to_string()
+                            } else {
+                                "FALSE".to_string()
+                            }),
                             ArrayNode::Error(error) => {
                                 return Err(CalcResult::new_error(error, cell, "".to_string()))
                             }
@@ -1528,8 +1532,10 @@ impl<'a> Model<'a> {
             Ok(d) => d,
             Err(error) => return error,
         };
-        let col_delimiters: Vec<String> =
-            col_delimiters.into_iter().filter(|d| !d.is_empty()).collect();
+        let col_delimiters: Vec<String> = col_delimiters
+            .into_iter()
+            .filter(|d| !d.is_empty())
+            .collect();
         if col_delimiters.is_empty() {
             return CalcResult::new_error(Error::VALUE, cell, "Missing delimiter".to_string());
         }
@@ -1884,10 +1890,7 @@ impl<'a> Model<'a> {
             }
         }
         let text = if strict {
-            let rows_text: Vec<String> = rows
-                .into_iter()
-                .map(|row| row.join(","))
-                .collect();
+            let rows_text: Vec<String> = rows.into_iter().map(|row| row.join(",")).collect();
             format!("{{{}}}", rows_text.join(";"))
         } else {
             let flat: Vec<String> = rows.into_iter().flatten().collect();
@@ -2083,8 +2086,7 @@ impl<'a> Model<'a> {
         let group = &self.locale.numbers.symbols.group;
         let decimal = &self.locale.numbers.symbols.decimal;
         let minus = &self.locale.numbers.symbols.minus_sign;
-        let magnitude =
-            format_fixed_magnitude(rounded.abs(), decimals, !no_commas, group, decimal);
+        let magnitude = format_fixed_magnitude(rounded.abs(), decimals, !no_commas, group, decimal);
         let result = if rounded < 0.0 {
             format!("{minus}{magnitude}")
         } else {

@@ -59,14 +59,7 @@ fn vdb_ddb(cost: f64, salvage: f64, life: f64, period: f64, factor: f64) -> f64 
     f64::max(value - f64::max(salvage, new_value), 0.0)
 }
 
-fn vdb_total(
-    cost: f64,
-    salvage: f64,
-    life: f64,
-    period: f64,
-    factor: f64,
-    no_switch: bool,
-) -> f64 {
+fn vdb_total(cost: f64, salvage: f64, life: f64, period: f64, factor: f64, no_switch: bool) -> f64 {
     let int_end = period.ceil();
     let n = int_end as i64;
     if n <= 0 {
@@ -2163,7 +2156,11 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
         if pr <= 0.0 || redemption <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "pr and redemption must be >0".to_string());
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "pr and redemption must be >0".to_string(),
+            );
         }
         CalcResult::Number((redemption - pr) / redemption / yf)
     }
@@ -2227,7 +2224,11 @@ impl<'a> Model<'a> {
             Err(e) => return e,
         };
         if pr <= 0.0 || redemption <= 0.0 {
-            return CalcResult::new_error(Error::NUM, cell, "pr and redemption must be >0".to_string());
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "pr and redemption must be >0".to_string(),
+            );
         }
         CalcResult::Number((redemption - pr) / pr / yf)
     }
@@ -2482,7 +2483,12 @@ impl<'a> Model<'a> {
             Err(s) => return s,
         };
         let coupon_args = if args.len() == 7 {
-            vec![args[0].clone(), args[1].clone(), args[5].clone(), args[6].clone()]
+            vec![
+                args[0].clone(),
+                args[1].clone(),
+                args[5].clone(),
+                args[6].clone(),
+            ]
         } else {
             vec![args[0].clone(), args[1].clone(), args[5].clone()]
         };
@@ -2532,7 +2538,12 @@ impl<'a> Model<'a> {
             Err(s) => return s,
         };
         let coupon_args = if args.len() == 7 {
-            vec![args[0].clone(), args[1].clone(), args[5].clone(), args[6].clone()]
+            vec![
+                args[0].clone(),
+                args[1].clone(),
+                args[5].clone(),
+                args[6].clone(),
+            ]
         } else {
             vec![args[0].clone(), args[1].clone(), args[5].clone()]
         };
@@ -2553,9 +2564,7 @@ impl<'a> Model<'a> {
                 Err(err) => return err,
             };
         let freq = frequency as f64;
-        let f = |yld: f64| {
-            Model::coupon_price(rate, yld, redemption, freq, n, dsc, e, a) - pr
-        };
+        let f = |yld: f64| Model::coupon_price(rate, yld, redemption, freq, n, dsc, e, a) - pr;
         let mut lo = 0.0_f64;
         let mut hi = 1.0_f64;
         let mut f_hi = f(hi);
@@ -2764,11 +2773,7 @@ impl<'a> Model<'a> {
             Err(s) => return s,
         };
         if rate < 0.0 || pr <= 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "rate>=0, pr>0 required".to_string(),
-            );
+            return CalcResult::new_error(Error::NUM, cell, "rate>=0, pr>0 required".to_string());
         }
         let (dsm, dim, a) = match self.maturity_security_args(args, cell) {
             Ok(v) => v,
@@ -2802,8 +2807,7 @@ impl<'a> Model<'a> {
         } else {
             vec![args[0].clone(), args[1].clone(), args[4].clone()]
         };
-        let (settlement, maturity, frequency, basis) =
-            self.coupon_args(&coupon_args, cell)?;
+        let (settlement, maturity, frequency, basis) = self.coupon_args(&coupon_args, cell)?;
         if coupon < 0.0 || yld < 0.0 {
             return Err(CalcResult::new_error(
                 Error::NUM,
@@ -2811,8 +2815,7 @@ impl<'a> Model<'a> {
                 "coupon>=0, yld>=0 required".to_string(),
             ));
         }
-        let (pcd, ncd, n) =
-            self.coupon_pcd_ncd_num(settlement, maturity, frequency, cell)?;
+        let (pcd, ncd, n) = self.coupon_pcd_ncd_num(settlement, maturity, frequency, cell)?;
         let dsc = self.coupon_day_count(settlement, ncd, basis, cell);
         let e = match basis {
             1 => (ncd - pcd) as f64,
@@ -3037,11 +3040,7 @@ impl<'a> Model<'a> {
                 Err(e) => return e,
             };
         if rate < 0.0 || yld < 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "rate>=0, yld>=0 required".to_string(),
-            );
+            return CalcResult::new_error(Error::NUM, cell, "rate>=0, yld>=0 required".to_string());
         }
         match self.oddf_price_value(
             settlement,
@@ -3068,11 +3067,7 @@ impl<'a> Model<'a> {
                 Err(e) => return e,
             };
         if rate < 0.0 || pr <= 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "rate>=0, pr>0 required".to_string(),
-            );
+            return CalcResult::new_error(Error::NUM, cell, "rate>=0, pr>0 required".to_string());
         }
         macro_rules! eval {
             ($yld:expr) => {
@@ -3177,11 +3172,7 @@ impl<'a> Model<'a> {
                 Err(e) => return e,
             };
         if rate < 0.0 || yld < 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "rate>=0, yld>=0 required".to_string(),
-            );
+            return CalcResult::new_error(Error::NUM, cell, "rate>=0, yld>=0 required".to_string());
         }
         let f = frequency as f64;
         let dci = match self.yearfrac_basis(last_interest, maturity, basis, cell) {
@@ -3210,11 +3201,7 @@ impl<'a> Model<'a> {
                 Err(e) => return e,
             };
         if rate < 0.0 || pr <= 0.0 {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "rate>=0, pr>0 required".to_string(),
-            );
+            return CalcResult::new_error(Error::NUM, cell, "rate>=0, pr>0 required".to_string());
         }
         let f = frequency as f64;
         let dci = match self.yearfrac_basis(last_interest, maturity, basis, cell) {

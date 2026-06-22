@@ -10,8 +10,7 @@ fn main() {
         serde_json::from_str(&json).expect("parse language.json");
 
     let encoded = bitcode::encode(&languages);
-    let decoded: BTreeMap<String, Language> =
-        bitcode::decode(&encoded).expect("decode round-trip");
+    let decoded: BTreeMap<String, Language> = bitcode::decode(&encoded).expect("decode round-trip");
     let en = decoded.get("en").expect("en locale");
     let names: std::collections::BTreeSet<_> = serde_json::to_value(&en.functions)
         .unwrap()

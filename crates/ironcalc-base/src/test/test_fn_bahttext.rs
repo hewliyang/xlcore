@@ -53,10 +53,7 @@ fn bahttext_basic() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"หนึ่งบาทถ้วน");
     assert_eq!(model._get_text("A2"), *"ยี่สิบเอ็ดบาทถ้วน");
-    assert_eq!(
-        model._get_text("A3"),
-        *"หนึ่งพันสองร้อยสามสิบสี่บาทห้าสิบสตางค์"
-    );
+    assert_eq!(model._get_text("A3"), *"หนึ่งพันสองร้อยสามสิบสี่บาทห้าสิบสตางค์");
 }
 
 #[test]

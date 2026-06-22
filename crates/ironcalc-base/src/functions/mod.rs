@@ -7,6 +7,7 @@ use crate::{
     model::Model,
 };
 
+mod aggregate;
 pub(crate) mod binary_search;
 mod database;
 mod date_and_time;
@@ -21,7 +22,6 @@ mod macros;
 mod math_util;
 mod mathematical;
 mod mathematical_sum;
-mod aggregate;
 pub(crate) mod matrix;
 mod statistical;
 mod subtotal;

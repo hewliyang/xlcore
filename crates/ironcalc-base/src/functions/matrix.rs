@@ -169,7 +169,11 @@ fn ols_fit(ys: &[f64], xs: &[Vec<f64>], with_const: bool) -> Option<OlsFit> {
     } else {
         0.0
     };
-    let r2 = if ss_total != 0.0 { ss_reg / ss_total } else { 0.0 };
+    let r2 = if ss_total != 0.0 {
+        ss_reg / ss_total
+    } else {
+        0.0
+    };
     let f = if df > 0.0 && k > 0 && ss_resid > 0.0 {
         (ss_reg / k as f64) / (ss_resid / df)
     } else {
@@ -281,7 +285,9 @@ pub(crate) fn calc_result_to_array_node(value: CalcResult) -> ArrayNode {
         CalcResult::Boolean(b) => ArrayNode::Boolean(b),
         CalcResult::Error { error, .. } => ArrayNode::Error(error),
         CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Number(0.0),
-        CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda { .. } => ArrayNode::Error(Error::VALUE),
+        CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda { .. } => {
+            ArrayNode::Error(Error::VALUE)
+        }
     }
 }
 
@@ -423,9 +429,7 @@ impl<'a> Model<'a> {
                             row,
                             column,
                         };
-                        current.push(calc_result_to_array_node(
-                            self.evaluate_cell(cell_ref),
-                        ));
+                        current.push(calc_result_to_array_node(self.evaluate_cell(cell_ref)));
                     }
                     rows.push(current);
                 }
@@ -1515,8 +1519,16 @@ impl<'a> Model<'a> {
                         i += 1;
                         f.trunc() as i32
                     }
-                    CalcResult::Error { error, origin, message } => {
-                        return CalcResult::Error { error, origin, message };
+                    CalcResult::Error {
+                        error,
+                        origin,
+                        message,
+                    } => {
+                        return CalcResult::Error {
+                            error,
+                            origin,
+                            message,
+                        };
                     }
                     _ => 1,
                 }
@@ -1539,7 +1551,11 @@ impl<'a> Model<'a> {
         order.sort_by(|&a, &b| {
             for (values, dir) in &keys {
                 let ordering = array_node_cmp(&values[a], &values[b]);
-                let ordering = if *dir == -1 { ordering.reverse() } else { ordering };
+                let ordering = if *dir == -1 {
+                    ordering.reverse()
+                } else {
+                    ordering
+                };
                 if ordering != std::cmp::Ordering::Equal {
                     return ordering;
                 }
@@ -1680,7 +1696,12 @@ impl<'a> Model<'a> {
         }
         let mut out: Vec<Vec<ArrayNode>> = Vec::with_capacity(n);
         for row in &aug {
-            out.push(row[n..(2 * n)].iter().map(|v| ArrayNode::Number(*v)).collect());
+            out.push(
+                row[n..(2 * n)]
+                    .iter()
+                    .map(|v| ArrayNode::Number(*v))
+                    .collect(),
+            );
         }
         CalcResult::Array(out)
     }
@@ -1741,11 +1762,7 @@ impl<'a> Model<'a> {
                 CalcResult::new_error(Error::VALUE, cell, "known_xs must be numeric".to_string())
             })?;
             normalize_by_obs(&nums, n).ok_or_else(|| {
-                CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "known_xs length mismatch".to_string(),
-                )
+                CalcResult::new_error(Error::VALUE, cell, "known_xs length mismatch".to_string())
             })?
         } else {
             (1..=n).map(|i| vec![i as f64]).collect()
@@ -1905,7 +1922,12 @@ impl<'a> Model<'a> {
         if as_row {
             CalcResult::Array(vec![preds.into_iter().map(ArrayNode::Number).collect()])
         } else {
-            CalcResult::Array(preds.into_iter().map(|p| vec![ArrayNode::Number(p)]).collect())
+            CalcResult::Array(
+                preds
+                    .into_iter()
+                    .map(|p| vec![ArrayNode::Number(p)])
+                    .collect(),
+            )
         }
     }
 
@@ -2083,7 +2105,12 @@ impl<'a> Model<'a> {
         if as_row {
             CalcResult::Array(vec![preds.into_iter().map(ArrayNode::Number).collect()])
         } else {
-            CalcResult::Array(preds.into_iter().map(|p| vec![ArrayNode::Number(p)]).collect())
+            CalcResult::Array(
+                preds
+                    .into_iter()
+                    .map(|p| vec![ArrayNode::Number(p)])
+                    .collect(),
+            )
         }
     }
 }

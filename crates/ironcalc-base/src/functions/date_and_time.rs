@@ -1118,11 +1118,13 @@ impl<'a> Model<'a> {
                 }
             }
             err @ CalcResult::Error { .. } => err,
-            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda { .. } => CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Arrays not supported yet".to_string(),
-            },
+            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda { .. } => {
+                CalcResult::Error {
+                    error: Error::NIMPL,
+                    origin: cell,
+                    message: "Arrays not supported yet".to_string(),
+                }
+            }
             CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Number(0.0),
         }
     }
@@ -1661,11 +1663,7 @@ impl<'a> Model<'a> {
             3 => days / 365.0,
             4 => {
                 let d360 = self.fn_days360(
-                    &[
-                        args[0].clone(),
-                        args[1].clone(),
-                        Node::NumberKind(1.0),
-                    ],
+                    &[args[0].clone(), args[1].clone(), Node::NumberKind(1.0)],
                     cell,
                 );
                 if let CalcResult::Number(n) = d360 {

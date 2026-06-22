@@ -344,15 +344,17 @@ impl<'a> Model<'a> {
                 for row in left.row..=right.row {
                     let mut row_data = Vec::new();
                     for column in left.column..=right.column {
-                        let node = match self.evaluate_cell(CellReferenceIndex { sheet, row, column })
-                        {
-                            CalcResult::Number(f) => ArrayNode::Number(f),
-                            CalcResult::String(s) => ArrayNode::String(s),
-                            CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-                            CalcResult::Error { error, .. } => ArrayNode::Error(error),
-                            CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Number(0.0),
-                            _ => ArrayNode::Number(0.0),
-                        };
+                        let node =
+                            match self.evaluate_cell(CellReferenceIndex { sheet, row, column }) {
+                                CalcResult::Number(f) => ArrayNode::Number(f),
+                                CalcResult::String(s) => ArrayNode::String(s),
+                                CalcResult::Boolean(b) => ArrayNode::Boolean(b),
+                                CalcResult::Error { error, .. } => ArrayNode::Error(error),
+                                CalcResult::EmptyCell | CalcResult::EmptyArg => {
+                                    ArrayNode::Number(0.0)
+                                }
+                                _ => ArrayNode::Number(0.0),
+                            };
                         row_data.push(node);
                     }
                     grid.push(row_data);
@@ -490,10 +492,7 @@ impl<'a> Model<'a> {
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
             DefinedNameKind((name, scope, formula)) => {
                 let f = formula.strip_prefix('=').unwrap_or(formula);
-                if let Ok(sheet_name) = self
-                    .workbook
-                    .worksheet(cell.sheet)
-                    .map(|ws| ws.get_name())
+                if let Ok(sheet_name) = self.workbook.worksheet(cell.sheet).map(|ws| ws.get_name())
                 {
                     let cell_ref_rc = CellReferenceRC {
                         sheet: sheet_name,
@@ -859,8 +858,7 @@ impl<'a> Model<'a> {
                         left: *left,
                         right: *right,
                     };
-                    if let Some(intersection_cell) =
-                        implicit_intersection(&cell_reference, &range)
+                    if let Some(intersection_cell) = implicit_intersection(&cell_reference, &range)
                     {
                         let v = self.evaluate_cell(intersection_cell);
                         self.set_cell_value(cell_reference, &v);
@@ -952,9 +950,7 @@ impl<'a> Model<'a> {
                     None => false,
                 };
                 if occupied {
-                    let o = self
-                        .cell_reference_to_string(&anchor)
-                        .unwrap_or_default();
+                    let o = self.cell_reference_to_string(&anchor).unwrap_or_default();
                     *self.workbook.worksheets[sheet as usize]
                         .sheet_data
                         .get_mut(&top)
@@ -1016,8 +1012,12 @@ impl<'a> Model<'a> {
                             .set_cell_with_boolean(r, c, *b, 0);
                     }
                     ArrayNode::Error(e) => {
-                        let _ = self.workbook.worksheets[sheet as usize]
-                            .set_cell_with_error(r, c, e.clone(), 0);
+                        let _ = self.workbook.worksheets[sheet as usize].set_cell_with_error(
+                            r,
+                            c,
+                            e.clone(),
+                            0,
+                        );
                     }
                     ArrayNode::String(st) => {
                         let _ = self.set_cell_with_string(sheet, r, c, st, 0);
@@ -1058,8 +1058,9 @@ impl<'a> Model<'a> {
                         continue;
                     }
                     self.spill_owners.insert((sheet, r, c), (sheet, arow, acol));
-                    if let Some(row_data) =
-                        self.workbook.worksheets[sheet as usize].sheet_data.get_mut(&r)
+                    if let Some(row_data) = self.workbook.worksheets[sheet as usize]
+                        .sheet_data
+                        .get_mut(&r)
                     {
                         row_data.remove(&c);
                     }
@@ -2584,8 +2585,8 @@ impl<'a> Model<'a> {
         // Make sure the formula is valid
         let body = formula.strip_prefix('=').unwrap_or(formula);
         let body_upper = body.trim_start().to_uppercase();
-        let is_lambda = body_upper.starts_with("LAMBDA(")
-            || body_upper.starts_with("_XLFN.LAMBDA(");
+        let is_lambda =
+            body_upper.starts_with("LAMBDA(") || body_upper.starts_with("_XLFN.LAMBDA(");
         if !is_lambda {
             match common::ParsedReference::parse_reference_formula(
                 None,

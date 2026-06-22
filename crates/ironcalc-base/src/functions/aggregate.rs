@@ -55,11 +55,10 @@ impl<'a> Model<'a> {
                     let column2 = right.column;
                     for row in row1..=row2 {
                         if ignore_hidden {
-                            let status = self
-                                .cell_hidden_status(left.sheet, row, column1)
-                                .map_err(|message| {
-                                    CalcResult::new_error(Error::ERROR, cell, message)
-                                })?;
+                            let status =
+                                self.cell_hidden_status(left.sheet, row, column1).map_err(
+                                    |message| CalcResult::new_error(Error::ERROR, cell, message),
+                                )?;
                             if status != CellTableStatus::Normal {
                                 continue;
                             }
@@ -135,11 +134,10 @@ impl<'a> Model<'a> {
             None => 0.0,
         };
 
-        let data =
-            match self.aggregate_collect(ref_args, cell, ignore_errors, ignore_hidden) {
-                Ok(d) => d,
-                Err(e) => return e,
-            };
+        let data = match self.aggregate_collect(ref_args, cell, ignore_errors, ignore_hidden) {
+            Ok(d) => d,
+            Err(e) => return e,
+        };
         let values = data.numbers;
 
         match function_num {

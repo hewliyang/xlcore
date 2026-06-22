@@ -1,11 +1,42 @@
+use std::cell::RefCell;
+use std::collections::HashSet;
+
 use super::{super::utils::quote_name, Node, Reference};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::move_formula::to_string_array_node;
 use crate::expressions::parser::static_analysis::add_implicit_intersection;
 use crate::expressions::token::{OpSum, OpUnary};
+use crate::functions::Function;
 use crate::language::{get_language, Language};
 use crate::locale::{get_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
+
+thread_local! {
+    static XLPM_SCOPES: RefCell<Vec<HashSet<String>>> = const { RefCell::new(Vec::new()) };
+}
+
+fn xlpm_binding_names(kind: &Function, args: &[Node]) -> Option<HashSet<String>> {
+    let name_indices: Vec<usize> = match kind {
+        Function::Let => (0..args.len().saturating_sub(1)).step_by(2).collect(),
+        Function::Lambda => (0..args.len().saturating_sub(1)).collect(),
+        _ => return None,
+    };
+    let mut names = HashSet::new();
+    for index in name_indices {
+        if let Some(Node::WrongVariableKind(name)) = args.get(index) {
+            names.insert(name.clone());
+        }
+    }
+    if names.is_empty() {
+        None
+    } else {
+        Some(names)
+    }
+}
+
+fn xlpm_is_active(name: &str) -> bool {
+    XLPM_SCOPES.with(|scopes| scopes.borrow().iter().any(|scope| scope.contains(name)))
+}
 
 pub enum DisplaceData {
     Column {
@@ -787,7 +818,17 @@ fn stringify(
             } else {
                 kind.to_localized_name(language)
             };
-            format_function(
+            let pushed_scope = if export_to_excel {
+                if let Some(names) = xlpm_binding_names(kind, args) {
+                    XLPM_SCOPES.with(|scopes| scopes.borrow_mut().push(names));
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+            let result = format_function(
                 &name,
                 args,
                 context,
@@ -795,7 +836,13 @@ fn stringify(
                 export_to_excel,
                 locale,
                 language,
-            )
+            );
+            if pushed_scope {
+                XLPM_SCOPES.with(|scopes| {
+                    scopes.borrow_mut().pop();
+                });
+            }
+            result
         }
         ArrayKind(args) => {
             let mut first_row = true;
@@ -829,7 +876,13 @@ fn stringify(
         }
         TableNameKind(value) => value.to_string(),
         DefinedNameKind((name, ..)) => name.to_string(),
-        WrongVariableKind(name) => name.to_string(),
+        WrongVariableKind(name) => {
+            if export_to_excel && xlpm_is_active(name) && !name.starts_with("_xlpm.") {
+                format!("_xlpm.{name}")
+            } else {
+                name.to_string()
+            }
+        }
         UnaryKind { kind, right } => match kind {
             OpUnary::Minus => {
                 let needs_parentheses = match **right {

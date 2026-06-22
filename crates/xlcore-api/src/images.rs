@@ -250,11 +250,7 @@ impl Workbook {
             )
             .with_sheet(sheet));
         }
-        let resolved_anchor = update
-            .anchor
-            .as_ref()
-            .map(resolve_anchor)
-            .transpose()?;
+        let resolved_anchor = update.anchor.as_ref().map(resolve_anchor).transpose()?;
         let rotation_emu = match update.rotation_degrees {
             Some(d) => Some(degrees_to_rot60000(d, sheet)?),
             None => None,
@@ -262,11 +258,10 @@ impl Workbook {
 
         let ws_part = self.worksheet_part_for_sheet(sheet)?;
         let Some(drawings_part) = ws_part.drawings_part(&self.doc).map(|p| p.clone()) else {
-            return Err(ApiError::new(
-                ApiErrorCode::Other,
-                format!("image not found: {id}"),
-            )
-            .with_sheet(sheet));
+            return Err(
+                ApiError::new(ApiErrorCode::Other, format!("image not found: {id}"))
+                    .with_sheet(sheet),
+            );
         };
 
         let drawing_mut = drawings_part
@@ -341,11 +336,10 @@ impl Workbook {
         }
 
         if !found {
-            return Err(ApiError::new(
-                ApiErrorCode::Other,
-                format!("image not found: {id}"),
-            )
-            .with_sheet(sheet));
+            return Err(
+                ApiError::new(ApiErrorCode::Other, format!("image not found: {id}"))
+                    .with_sheet(sheet),
+            );
         }
 
         self.images(Some(sheet))?
@@ -418,7 +412,8 @@ fn apply_picture_update(
             .non_visual_drawing_properties
             .name = name.to_string();
     }
-    if rotation_emu.is_none() && update.flip_horizontal.is_none() && update.flip_vertical.is_none() {
+    if rotation_emu.is_none() && update.flip_horizontal.is_none() && update.flip_vertical.is_none()
+    {
         return;
     }
     let Some(xfrm) = pic.shape_properties.transform2_d.as_mut() else {

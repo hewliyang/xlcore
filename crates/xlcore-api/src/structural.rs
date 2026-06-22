@@ -598,8 +598,10 @@ pub(crate) fn move_formula_refs(
             }
             let inside = |e: &Endpoint| {
                 matches!(e.kind(), EndpointKind::Cell)
-                    && e.col.is_some_and(|c| c >= rect.start_column && c <= rect.end_column)
-                    && e.row.is_some_and(|r| r >= rect.start_row && r <= rect.end_row)
+                    && e.col
+                        .is_some_and(|c| c >= rect.start_column && c <= rect.end_column)
+                    && e.row
+                        .is_some_and(|r| r >= rect.start_row && r <= rect.end_row)
             };
             let all_in = inside(&start) && end.as_ref().map(inside).unwrap_or(true);
             if !all_in {

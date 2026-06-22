@@ -58,8 +58,5 @@ fn spill_reference_stringify() {
 
     model.evaluate();
 
-    assert_eq!(
-        model._get_formula("C1"),
-        "=SUM(A1#)".to_string()
-    );
+    assert_eq!(model._get_formula("C1"), "=SUM(A1#)".to_string());
 }

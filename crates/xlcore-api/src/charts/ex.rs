@@ -674,15 +674,13 @@ impl Workbook {
         }
 
         let all = self.chart_exs(Some(&sheet))?;
-        all.into_iter()
-            .find(|c| c.id == id)
-            .ok_or_else(|| {
-                ApiError::new(
-                    ApiErrorCode::InvalidChart,
-                    format!("chartEx not found on sheet '{sheet}': {id}"),
-                )
-                .with_sheet(&sheet)
-            })
+        all.into_iter().find(|c| c.id == id).ok_or_else(|| {
+            ApiError::new(
+                ApiErrorCode::InvalidChart,
+                format!("chartEx not found on sheet '{sheet}': {id}"),
+            )
+            .with_sheet(&sheet)
+        })
     }
 
     pub fn remove_chart_ex(

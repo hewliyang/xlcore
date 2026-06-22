@@ -63,10 +63,7 @@ fn fn_yieldmat() {
 fn fn_accrint_errors() {
     let mut model = new_empty_model();
 
-    model._set(
-        "A1",
-        "=ACCRINTM(DATE(2008,6,15),DATE(2008,4,1),0.1,1000,3)",
-    );
+    model._set("A1", "=ACCRINTM(DATE(2008,6,15),DATE(2008,4,1),0.1,1000,3)");
     model._set(
         "A2",
         "=ACCRINT(DATE(2008,3,1),DATE(2008,8,31),DATE(2008,5,1),0.1,1000,3,0)",

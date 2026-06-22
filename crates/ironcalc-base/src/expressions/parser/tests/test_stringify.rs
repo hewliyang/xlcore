@@ -2,8 +2,70 @@
 
 use std::collections::HashMap;
 
+use crate::expressions::parser::stringify::to_excel_string;
 use crate::expressions::parser::tests::utils::{new_parser, to_english_localized_string};
 use crate::expressions::types::CellReferenceRC;
+
+#[test]
+fn let_export_decorates_binding_names_with_xlpm() {
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+
+    let t = parser.parse("LET(a,SUM(B2:B5),a-1)", &cell_reference);
+    assert_eq!(
+        to_excel_string(&t, &cell_reference),
+        "_xlfn.LET(_xlpm.a,SUM(B2:B5),_xlpm.a-1)"
+    );
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "LET(a,SUM(B2:B5),a-1)"
+    );
+
+    let t = parser.parse("LET(pay,B2,cohort,B3,pay*cohort)", &cell_reference);
+    assert_eq!(
+        to_excel_string(&t, &cell_reference),
+        "_xlfn.LET(_xlpm.pay,B2,_xlpm.cohort,B3,_xlpm.pay*_xlpm.cohort)"
+    );
+}
+
+#[test]
+fn lambda_export_decorates_params_with_xlpm() {
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+
+    let t = parser.parse("LAMBDA(x,y,x+y)", &cell_reference);
+    assert_eq!(
+        to_excel_string(&t, &cell_reference),
+        "_xlfn.LAMBDA(_xlpm.x,_xlpm.y,_xlpm.x+_xlpm.y)"
+    );
+}
+
+#[test]
+fn nested_let_export_decorates_all_scopes() {
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+
+    let t = parser.parse("LET(a,1,LET(b,2,a+b))", &cell_reference);
+    assert_eq!(
+        to_excel_string(&t, &cell_reference),
+        "_xlfn.LET(_xlpm.a,1,_xlfn.LET(_xlpm.b,2,_xlpm.a+_xlpm.b))"
+    );
+}
 
 #[test]
 fn exp_order() {
