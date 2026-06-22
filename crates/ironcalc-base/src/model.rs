@@ -22,7 +22,7 @@ use crate::{
         format::{format_number, parse_formatted_number},
         lexer::is_likely_date_number_format,
     },
-    functions::{util::compare_values, Function},
+    functions::{matrix::array_node_to_calc_result, util::compare_values, Function},
     implicit_intersection::implicit_intersection,
     language::{get_default_language, get_language, Language},
     locale::{get_locale, Locale},
@@ -34,6 +34,56 @@ use chrono_tz::Tz;
 
 #[cfg(test)]
 pub use crate::mock_time::get_milliseconds_since_epoch;
+
+enum CompareOperand {
+    Scalar(CalcResult),
+    Grid(Vec<Vec<ArrayNode>>),
+}
+
+impl CompareOperand {
+    fn into_grid(self) -> (Vec<Vec<ArrayNode>>, usize, usize) {
+        match self {
+            CompareOperand::Scalar(value) => {
+                let node = match value {
+                    CalcResult::Number(f) => ArrayNode::Number(f),
+                    CalcResult::String(s) => ArrayNode::String(s),
+                    CalcResult::Boolean(b) => ArrayNode::Boolean(b),
+                    CalcResult::Error { error, .. } => ArrayNode::Error(error),
+                    _ => ArrayNode::Number(0.0),
+                };
+                (vec![vec![node]], 1, 1)
+            }
+            CompareOperand::Grid(grid) => {
+                let n = grid.len();
+                let m = grid.iter().map(|r| r.len()).max().unwrap_or(0);
+                (grid, n, m)
+            }
+        }
+    }
+}
+
+fn broadcast_get(
+    grid: &[Vec<ArrayNode>],
+    n: usize,
+    m: usize,
+    i: usize,
+    j: usize,
+) -> Option<&ArrayNode> {
+    let i = if n == 1 { 0 } else { i };
+    let j = if m == 1 { 0 } else { j };
+    grid.get(i).and_then(|r| r.get(j))
+}
+
+fn compare_result(kind: &OpCompare, compare: i32) -> bool {
+    match kind {
+        OpCompare::Equal => compare == 0,
+        OpCompare::LessThan => compare == -1,
+        OpCompare::GreaterThan => compare == 1,
+        OpCompare::LessOrEqualThan => compare < 1,
+        OpCompare::GreaterOrEqualThan => compare > -1,
+        OpCompare::NonEqual => compare != 0,
+    }
+}
 
 /// Number of milliseconds since January 1, 1970
 /// Used by time and date functions. It takes the value from the environment:
@@ -286,6 +336,34 @@ impl<'a> Model<'a> {
         }
     }
 
+    fn compare_operand(&mut self, value: CalcResult) -> CompareOperand {
+        match value {
+            CalcResult::Range { left, right } => {
+                let sheet = left.sheet;
+                let mut grid = Vec::new();
+                for row in left.row..=right.row {
+                    let mut row_data = Vec::new();
+                    for column in left.column..=right.column {
+                        let node = match self.evaluate_cell(CellReferenceIndex { sheet, row, column })
+                        {
+                            CalcResult::Number(f) => ArrayNode::Number(f),
+                            CalcResult::String(s) => ArrayNode::String(s),
+                            CalcResult::Boolean(b) => ArrayNode::Boolean(b),
+                            CalcResult::Error { error, .. } => ArrayNode::Error(error),
+                            CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Number(0.0),
+                            _ => ArrayNode::Number(0.0),
+                        };
+                        row_data.push(node);
+                    }
+                    grid.push(row_data);
+                }
+                CompareOperand::Grid(grid)
+            }
+            CalcResult::Array(array) => CompareOperand::Grid(array),
+            other => CompareOperand::Scalar(other),
+        }
+    }
+
     pub(crate) fn evaluate_node_in_context(
         &mut self,
         node: &Node,
@@ -481,49 +559,45 @@ impl<'a> Model<'a> {
                 if r.is_error() {
                     return r;
                 }
-                let compare = compare_values(&l, &r);
-                match kind {
-                    OpCompare::Equal => {
-                        if compare == 0 {
-                            CalcResult::Boolean(true)
-                        } else {
-                            CalcResult::Boolean(false)
-                        }
+                let l = self.compare_operand(l);
+                let r = self.compare_operand(r);
+                match (l, r) {
+                    (CompareOperand::Scalar(l), CompareOperand::Scalar(r)) => {
+                        CalcResult::Boolean(compare_result(kind, compare_values(&l, &r)))
                     }
-                    OpCompare::LessThan => {
-                        if compare == -1 {
-                            CalcResult::Boolean(true)
-                        } else {
-                            CalcResult::Boolean(false)
+                    (l, r) => {
+                        let (a1, n1, m1) = l.into_grid();
+                        let (a2, n2, m2) = r.into_grid();
+                        let n = n1.max(n2);
+                        let m = m1.max(m2);
+                        let mut array = Vec::new();
+                        for i in 0..n {
+                            let mut data_row = Vec::new();
+                            for j in 0..m {
+                                let v1 = broadcast_get(&a1, n1, m1, i, j);
+                                let v2 = broadcast_get(&a2, n2, m2, i, j);
+                                match (v1, v2) {
+                                    (Some(v1), Some(v2)) => {
+                                        if let ArrayNode::Error(e) = v1 {
+                                            data_row.push(ArrayNode::Error(e.clone()));
+                                        } else if let ArrayNode::Error(e) = v2 {
+                                            data_row.push(ArrayNode::Error(e.clone()));
+                                        } else {
+                                            let compare = compare_values(
+                                                &array_node_to_calc_result(v1),
+                                                &array_node_to_calc_result(v2),
+                                            );
+                                            data_row.push(ArrayNode::Boolean(compare_result(
+                                                kind, compare,
+                                            )));
+                                        }
+                                    }
+                                    _ => data_row.push(ArrayNode::Error(Error::VALUE)),
+                                }
+                            }
+                            array.push(data_row);
                         }
-                    }
-                    OpCompare::GreaterThan => {
-                        if compare == 1 {
-                            CalcResult::Boolean(true)
-                        } else {
-                            CalcResult::Boolean(false)
-                        }
-                    }
-                    OpCompare::LessOrEqualThan => {
-                        if compare < 1 {
-                            CalcResult::Boolean(true)
-                        } else {
-                            CalcResult::Boolean(false)
-                        }
-                    }
-                    OpCompare::GreaterOrEqualThan => {
-                        if compare > -1 {
-                            CalcResult::Boolean(true)
-                        } else {
-                            CalcResult::Boolean(false)
-                        }
-                    }
-                    OpCompare::NonEqual => {
-                        if compare != 0 {
-                            CalcResult::Boolean(true)
-                        } else {
-                            CalcResult::Boolean(false)
-                        }
+                        CalcResult::Array(array)
                     }
                 }
             }

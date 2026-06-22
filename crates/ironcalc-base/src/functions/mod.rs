@@ -22,7 +22,7 @@ mod math_util;
 mod mathematical;
 mod mathematical_sum;
 mod aggregate;
-mod matrix;
+pub(crate) mod matrix;
 mod statistical;
 mod subtotal;
 mod text;
