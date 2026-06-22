@@ -177,6 +177,8 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
   private pivotPopover: PivotFilterPopoverHandle | null = null;
   private readonly tableController?: TableFilterController;
   private tablePopover: TableFilterPopoverHandle | null = null;
+  private warnedNoPivotController = false;
+  private warnedNoTableController = false;
 
   private readonly tabs: HTMLDivElement;
   private readonly sheetTabs: HTMLDivElement;
@@ -751,6 +753,12 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       getViewport: () => this.viewport,
       onPivotFilter: (info: PivotFilterEvent) => {
         this.dispatchEvent(new CustomEvent("pivotfilter", { detail: info }));
+        if (this.editable && !this.pivotController && !this.warnedNoPivotController) {
+          this.warnedNoPivotController = true;
+          console.warn(
+            "xlsx-preview: pivot filter clicked but no pivotController is wired; pass recalcWorkbook.pivotController to enable it.",
+          );
+        }
         if (this.pivotController) {
           if (!this.pivotPopover) {
             this.pivotPopover = createPivotFilterPopover(this.pivotController, (layout) => {
@@ -776,6 +784,12 @@ class WorkbookPreviewerImpl extends EventTarget implements WorkbookPreviewer {
       onPointModeRef: this.editable ? (ref, o) => this.editor.applyPointModeRef(ref, o) : undefined,
       onTableFilter: (info: TableFilterEvent) => {
         this.dispatchEvent(new CustomEvent("tablefilter", { detail: info }));
+        if (this.editable && !this.tableController && !this.warnedNoTableController) {
+          this.warnedNoTableController = true;
+          console.warn(
+            "xlsx-preview: table filter clicked but no tableController is wired; pass recalcWorkbook.tableController to enable it.",
+          );
+        }
         if (this.tableController) {
           if (!this.tablePopover) {
             this.tablePopover = createTableFilterPopover(this.tableController, (layout) => {

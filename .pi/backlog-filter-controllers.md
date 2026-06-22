@@ -58,4 +58,5 @@ updated.
 
 ## Shipped
 
+- T2: warn-once-per-kind `console.warn` in previewer table/pivot filter handlers when editable and controller absent.
 - T1: memoized lazy `get tableController` / `get pivotController` on `WorkerWorkbook`; pivot meta cache reset in `syncShadow` (kept/hidden state preserved across resync).
