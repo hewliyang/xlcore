@@ -572,6 +572,7 @@ function paintLegendSwatch(
   color: string,
   kind: LegendSwatchKind,
 ): void {
+  const markerR = 3 * CHART_FONT_SCALE;
   ctx.fillStyle = color;
   if (kind === "swatch") {
     ctx.fillRect(x, y - w / 2, w, w);
@@ -579,7 +580,7 @@ function paintLegendSwatch(
   }
   if (kind === "marker") {
     ctx.beginPath();
-    ctx.arc(x + w / 2, y, 3, 0, Math.PI * 2);
+    ctx.arc(x + w / 2, y, markerR, 0, Math.PI * 2);
     ctx.fill();
     return;
   }
@@ -587,7 +588,7 @@ function paintLegendSwatch(
     const prevStroke = ctx.strokeStyle;
     const prevWidth = ctx.lineWidth;
     ctx.strokeStyle = "#262626";
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.5 * CHART_FONT_SCALE;
     ctx.beginPath();
     ctx.moveTo(x + w / 2, y - w / 2 + 1);
     ctx.lineTo(x + w / 2, y + w / 2 - 1);
@@ -600,7 +601,7 @@ function paintLegendSwatch(
   const prevStroke = ctx.strokeStyle;
   const prevWidth = ctx.lineWidth;
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2 * CHART_FONT_SCALE;
   ctx.beginPath();
   ctx.moveTo(x, y);
   ctx.lineTo(x + w, y);
@@ -609,7 +610,7 @@ function paintLegendSwatch(
   ctx.lineWidth = prevWidth;
   if (kind === "lineMarker") {
     ctx.beginPath();
-    ctx.arc(x + w / 2, y, 3, 0, Math.PI * 2);
+    ctx.arc(x + w / 2, y, markerR, 0, Math.PI * 2);
     ctx.fill();
   }
 }
@@ -626,9 +627,10 @@ export function drawLegend(
   const labelColor = font?.color ?? AXIS_LABEL_COLOR;
   ctx.font = chartFontCss(font, LEGEND_FONT_SIZE);
   ctx.textBaseline = "middle";
-  const swatchW = 10;
+  const swatchW = 10 * CHART_FONT_SCALE;
+  const swatchGap = 4 * CHART_FONT_SCALE;
   if (orientation === "vertical") {
-    const lineH = (font?.sizePt ?? LEGEND_FONT_SIZE) + 6;
+    const lineH = (font?.sizePt ?? LEGEND_FONT_SIZE) + 6 * CHART_FONT_SCALE;
     const totalH = series.length * lineH;
     let y = rect.y + Math.max(0, (rect.h - totalH) / 2) + lineH / 2;
     const x = rect.x;
@@ -637,14 +639,14 @@ export function drawLegend(
       paintLegendSwatch(ctx, x, y, swatchW, s.color ?? "#4472C4", legendKindFor(chart, s));
       ctx.fillStyle = labelColor;
       ctx.textAlign = "left";
-      ctx.fillText(s.name || `Series ${i + 1}`, x + swatchW + 4, y);
+      ctx.fillText(s.name || `Series ${i + 1}`, x + swatchW + swatchGap, y);
       y += lineH;
     }
     return;
   }
-  const itemPad = 16;
+  const itemPad = 16 * CHART_FONT_SCALE;
 
-  const widths = series.map((s) => swatchW + 6 + ctx.measureText(s.name || "").width);
+  const widths = series.map((s) => swatchW + swatchGap + 2 + ctx.measureText(s.name || "").width);
   const totalW = widths.reduce((a, b) => a + b, 0) + itemPad * (series.length - 1);
   let x = rect.x + (rect.w - totalW) / 2;
   const y = rect.y + rect.h / 2;
@@ -653,7 +655,7 @@ export function drawLegend(
     paintLegendSwatch(ctx, x, y, swatchW, s.color ?? "#4472C4", legendKindFor(chart, s));
     ctx.fillStyle = labelColor;
     ctx.textAlign = "left";
-    ctx.fillText(s.name || `Series ${i + 1}`, x + swatchW + 4, y);
+    ctx.fillText(s.name || `Series ${i + 1}`, x + swatchW + swatchGap, y);
     x += widths[i]! + itemPad;
   }
 }
@@ -664,13 +666,13 @@ export function measureVerticalLegendWidth(
 ): number {
   if (series.length === 0) return 0;
   ctx.font = `${LEGEND_FONT_SIZE}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
-  const swatchW = 10;
+  const swatchW = 10 * CHART_FONT_SCALE;
   let maxLabel = 0;
   for (const s of series) {
     const w = ctx.measureText(s.name || "").width;
     if (w > maxLabel) maxLabel = w;
   }
-  return Math.ceil(swatchW + 4 + maxLabel + 4);
+  return Math.ceil(swatchW + 4 * CHART_FONT_SCALE + maxLabel + 4 * CHART_FONT_SCALE);
 }
 
 export function drawPlaceholderPlot(ctx: CanvasRenderingContext2D, chart: Chart, rect: Rect): void {
