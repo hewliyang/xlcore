@@ -11,6 +11,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `check-wasm-fresh` now watches `crates/ironcalc-base/src`, so a function added to the calc engine without rebuilding the wasm is flagged by `pnpm test`.
 - Implicit intersection now works: a bare range formula (`=A1:A3`) or `@`-coerced range (`=@A1:A3`) on an intersecting row/column returns that single cell's value (non-intersecting => `#VALUE!`), and `@` on a dynamic-array result (`=@SEQUENCE(3)`) collapses to the top-left element instead of returning `#N/IMPL`.
 - Dynamic-array anchor cells now cache a typed top-left value (number/text/boolean/error) instead of `f64`, so a TRANSPOSE/SORT/UNIQUE whose top-left is text or boolean no longer renders or round-trips as `0`.
 - Data-validation dropdown button now anchors to the right edge of the full merged cell instead of the merge anchor's single-cell width.

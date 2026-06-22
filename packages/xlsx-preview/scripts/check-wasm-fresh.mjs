@@ -9,6 +9,8 @@ const wasmPath = resolve(repoRoot, "crates/xlcore-wasm/pkg/xlcore_wasm_bg.wasm")
 const watchedPaths = [
   "Cargo.lock",
   "Cargo.toml",
+  "crates/ironcalc-base/Cargo.toml",
+  "crates/ironcalc-base/src",
   "crates/xlcore-export/Cargo.toml",
   "crates/xlcore-export/src",
   "crates/xlcore-api/Cargo.toml",
