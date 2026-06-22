@@ -24,6 +24,7 @@ mod rowcols;
 mod search;
 mod shapes;
 mod sparklines;
+mod spill;
 mod structural;
 mod style_roundtrip;
 mod tables;

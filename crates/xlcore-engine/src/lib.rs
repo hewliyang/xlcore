@@ -118,6 +118,21 @@ impl<'a> WorkbookEngine<'a> {
         ))
     }
 
+    pub fn spill_ranges(&self, sheet: u32) -> Vec<((i32, i32), String)> {
+        let Ok(worksheet) = self.model.workbook.worksheet(sheet) else {
+            return Vec::new();
+        };
+        let mut anchors = Vec::new();
+        for (row, columns) in &worksheet.sheet_data {
+            for (column, cell) in columns {
+                if let Cell::CellFormulaArray { range, .. } = cell {
+                    anchors.push(((*row, *column), range.clone()));
+                }
+            }
+        }
+        anchors
+    }
+
     pub fn formula_error(&self, sheet: u32, row: i32, column: i32) -> Result<Option<FormulaError>> {
         let cell = self
             .model

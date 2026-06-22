@@ -418,7 +418,8 @@ fn write_cached_formula_values(
             .collect::<HashMap<_, _>>();
 
         let ws = ws_part.root_element_mut(doc)?;
-        let array_ranges = collect_array_ranges(ws);
+        let mut array_ranges = collect_array_ranges(ws);
+        mark_engine_spill_anchors(ws, sheet_index, engine, &mut array_ranges);
         for row in &mut ws.sheet_data.row {
             for cell in &mut row.cell {
                 if cell.cell_formula.is_none() {
@@ -652,6 +653,30 @@ fn collect_array_ranges(ws: &x::Worksheet) -> Vec<ArrayRange> {
         }
     }
     ranges
+}
+
+fn mark_engine_spill_anchors(
+    ws: &mut x::Worksheet,
+    sheet_index: u32,
+    engine: &WorkbookEngine<'_>,
+    array_ranges: &mut Vec<ArrayRange>,
+) {
+    for ((row, column), range) in engine.spill_ranges(sheet_index) {
+        let anchor = (row as u32, column as u32);
+        if array_ranges.iter().any(|existing| existing.anchor == anchor) {
+            continue;
+        }
+        let Some((start, end)) = xlcore_io::parse_range(range.as_str()) else {
+            continue;
+        };
+        let cell = ensure_cell(ws, anchor.0, anchor.1);
+        let Some(formula) = cell.cell_formula.as_mut() else {
+            continue;
+        };
+        formula.formula_type = Some(x::CellFormulaValues::Array);
+        formula.reference = Some(range.clone());
+        array_ranges.push(ArrayRange { anchor, start, end });
+    }
 }
 
 fn is_spilled_target(ranges: &[ArrayRange], r: u32, c: u32) -> bool {
