@@ -399,6 +399,8 @@ fn write_cached_formula_values(
         .map(|sheet| (sheet.index, sheet))
         .collect::<HashMap<_, _>>();
 
+    let mut has_dynamic_array = false;
+
     for (idx, wb_sheet) in workbook_sheets.iter().enumerate() {
         let sheet_index = idx as u32;
         let Some(recalc_sheet) = recalc_by_sheet_index.get(&sheet_index) else {
@@ -441,9 +443,106 @@ fn write_cached_formula_values(
             }
         }
         write_spilled_cells(ws, sheet_index, &array_ranges, engine);
+        for range in &array_ranges {
+            let cell = ensure_cell(ws, range.anchor.0, range.anchor.1);
+            cell.cell_meta_index = Some(DYNAMIC_ARRAY_CM_INDEX);
+            has_dynamic_array = true;
+        }
+    }
+
+    if has_dynamic_array {
+        emit_dynamic_array_metadata(doc)?;
     }
 
     Ok(())
+}
+
+const DYNAMIC_ARRAY_CM_INDEX: u32 = 1;
+
+const SPREADSHEETML_NS: &str = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+const XDA_NS: &str = "http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray";
+const XLRD_NS: &str = "http://schemas.microsoft.com/office/spreadsheetml/2017/richdata";
+const XLDAPR_EXT_URI: &str = "{bdbb8cdc-fa1e-496e-a857-3c3f30c029c3}";
+
+fn metadata_namespace(prefix: &str, uri: &str) -> ooxmlsdk::common::XmlNamespace {
+    let mut raw = Vec::with_capacity(prefix.len() + 1 + uri.len());
+    raw.extend_from_slice(prefix.as_bytes());
+    raw.push(0);
+    raw.extend_from_slice(uri.as_bytes());
+    ooxmlsdk::common::XmlNamespace::Raw(raw.into_boxed_slice())
+}
+
+fn emit_dynamic_array_metadata(doc: &mut xlcore_io::SpreadsheetDocument) -> Result<()> {
+    let wb_part = doc.workbook_part()?;
+    if wb_part.cell_metadata_part(doc).is_some() {
+        return Ok(());
+    }
+    let metadata = build_xldapr_metadata();
+    let part: ooxmlsdk::parts::cell_metadata_part::CellMetadataPart =
+        wb_part.add_new_part_auto_id(doc)?;
+    part.set_root_element(doc, metadata)?;
+    Ok(())
+}
+
+fn build_xldapr_metadata() -> x::Metadata {
+    let yes = || Some(BooleanValue::from_bool(true));
+    let metadata_type = x::MetadataType {
+        name: "XLDAPR".to_string(),
+        min_supported_version: 120000,
+        copy: yes(),
+        paste_all: yes(),
+        paste_values: yes(),
+        merge: yes(),
+        split_first: yes(),
+        row_column_shift: yes(),
+        clear_formats: yes(),
+        clear_comments: yes(),
+        assign: yes(),
+        coerce: yes(),
+        cell_meta: yes(),
+        ..Default::default()
+    };
+    let dynamic_array_props =
+        b"<xda:dynamicArrayProperties fDynamic=\"1\" fCollapsed=\"0\"/>".to_vec();
+    let ext = x::Extension {
+        xmlns: Vec::new(),
+        uri: XLDAPR_EXT_URI.to_string(),
+        xml_children: vec![dynamic_array_props.into_boxed_slice()],
+    };
+    let future_block = x::FutureMetadataBlock {
+        extension_list: Some(x::ExtensionList {
+            xmlns: Vec::new(),
+            extension: vec![ext],
+        }),
+    };
+    x::Metadata {
+        xmlns: vec![
+            metadata_namespace("", SPREADSHEETML_NS),
+            metadata_namespace("xda", XDA_NS),
+            metadata_namespace("xlrd", XLRD_NS),
+        ],
+        xml_header: ooxmlsdk::common::XmlHeaderType::Standalone,
+        metadata_types: Some(x::MetadataTypes {
+            count: Some(1),
+            metadata_type: vec![metadata_type],
+        }),
+        future_metadata: vec![x::FutureMetadata {
+            name: "XLDAPR".to_string(),
+            count: Some(1),
+            future_metadata_block: vec![future_block],
+            extension_list: None,
+        }],
+        cell_metadata: Some(x::CellMetadata {
+            count: Some(1),
+            metadata_block: vec![x::MetadataBlock {
+                metadata_record: vec![x::MetadataRecord {
+                    type_index: 1,
+                    val: 0,
+                }],
+            }],
+        }),
+        ..Default::default()
+    }
 }
 
 fn write_spilled_cells(

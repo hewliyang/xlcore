@@ -104,17 +104,8 @@ backlog — work top to bottom, one item per agent:
   All S4 high-value rollout items now struck (shipped).
 - [x] **S5 — persist authored spills (engine-driven array marker).** See
   Shipped.
-- [ ] **S6 — modern dynamic-array metadata (cm + metadata.xml).** Make spills
-  true modern dynamic arrays (auto-resize in Excel) not legacy CSE arrays. For
-  each dynamic-array anchor (from S5) set `cell_meta_index = Some(1)` (the `cm`
-  attr; Cell already models it). Emit `xl/metadata.xml` with the XLDAPR
-  futureMetadata block (`<xda:dynamicArrayProperties fDynamic="1"
-  fCollapsed="0"/>` under `metadataType name="XLDAPR"` + a `cellMetadata` `bk`
-  with `<rc t="1" v="0"/>`), add the `[Content_Types].xml` override for it, and a
-  workbook relationship (type `.../sheetMetadata`). metadata.xml is not modeled —
-  write it as a raw part via the doc part API (same mechanism as
-  getPart/setPart). Verify the saved zip has xl/metadata.xml + anchor `cm="1"` +
-  content-type + rel, and that it reopens.
+- [x] **S6 — modern dynamic-array metadata (cm + metadata.xml).** See Shipped.
+  Dynamic arrays now save as full modern spills (auto-resize in Excel).
 
 Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
 live on the anchor cell as `<f t="array" ref=...>` + `cm` → `xl/metadata.xml`
@@ -152,6 +143,21 @@ item per agent, top to bottom:
 CUBE*, GETPIVOTDATA, GROUPBY, PERCENTOF, RTD, IMAGE, PHONETIC.
 
 ## Shipped
+- modern dynamic-array metadata (S6) — engine spills now save as true modern
+  dynamic arrays (Excel auto-resizes), not legacy CSE arrays. After S5 marks the
+  array anchors, `write_cached_formula_values` sets `cell_meta_index = Some(1)`
+  (the `cm` attr) on every dynamic-array anchor and, when >=1 exists in the
+  workbook, creates the modeled `CellMetadataPart` (one shared XLDAPR record reused
+  by all anchors) via `add_new_part_auto_id` + `set_root_element` on the workbook
+  part — the SDK auto-wires the `[Content_Types].xml` sheetMetadata override + the
+  workbook `.../sheetMetadata` relationship. The `spreadsheetml::Metadata` root
+  carries `metadataTypes`(XLDAPR), a `futureMetadata` `bk` whose `ext`
+  ({bdbb8cdc-...}) holds raw `<xda:dynamicArrayProperties fDynamic="1"
+  fCollapsed="0"/>`, and a `cellMetadata` `bk`/`rc t="1" v="0"`. Part is named
+  `xl/metadata1.xml` (SDK child-part indexing; valid, Excel-readable). A
+  scalar-only workbook gains no metadata part. S5+S6 together => API-authored
+  `=MAP(...)` round-trips as a full modern spill (anchor `cm="1"` + `<f t="array"
+  ref>` + cached neighbours).
 - persist authored spills (S5) — writeback now marks engine-driven dynamic-array
   spills, not just doc-pre-marked ones. `WorkbookEngine::spill_ranges(sheet)`
   iterates `model.workbook.worksheet(s).sheet_data` returning
