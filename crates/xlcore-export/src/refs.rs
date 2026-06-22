@@ -225,7 +225,12 @@ pub(crate) fn resolve_chart_refs(
                                 .map(|cell| cell.as_ref().and_then(read_number))
                                 .collect();
                             let trimmed = trim_trailing_empties(opt);
-                            ser.values = trimmed.into_iter().map(|v| v.unwrap_or(0.0)).collect();
+                            let fill = if ser.x_values_ref.is_some() {
+                                f64::NAN
+                            } else {
+                                0.0
+                            };
+                            ser.values = trimmed.into_iter().map(|v| v.unwrap_or(fill)).collect();
                         }
                     }
                 }
@@ -240,7 +245,8 @@ pub(crate) fn resolve_chart_refs(
                                 .map(|cell| cell.as_ref().and_then(read_number))
                                 .collect();
                             let trimmed = trim_trailing_empties(opt);
-                            ser.x_values = trimmed.into_iter().map(|v| v.unwrap_or(0.0)).collect();
+                            ser.x_values =
+                                trimmed.into_iter().map(|v| v.unwrap_or(f64::NAN)).collect();
                         }
                     }
                 }
@@ -256,7 +262,7 @@ pub(crate) fn resolve_chart_refs(
                                 .collect();
                             let trimmed = trim_trailing_empties(opt);
                             ser.bubble_sizes =
-                                trimmed.into_iter().map(|v| v.unwrap_or(0.0)).collect();
+                                trimmed.into_iter().map(|v| v.unwrap_or(f64::NAN)).collect();
                         }
                     }
                 }

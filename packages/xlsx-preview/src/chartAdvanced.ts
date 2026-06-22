@@ -327,6 +327,7 @@ export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, re
     for (let i = 0; i < n; i++) {
       const x = xs[i]!,
         y = ys[i]!;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
       if (x < xMin) xMin = x;
       if (x > xMax) xMax = x;
       if (y < yMin) yMin = y;
@@ -381,6 +382,7 @@ export function drawScatterChart(ctx: CanvasRenderingContext2D, chart: Chart, re
 
     const pts: { x: number; y: number; v: number; i: number }[] = [];
     for (let i = 0; i < n; i++) {
+      if (!Number.isFinite(xs[i]!) || !Number.isFinite(ys[i]!)) continue;
       const px = inner.x + ((xs[i]! - xMin) / (xMax - xMin)) * inner.w;
       const py = inner.y + (1 - (ys[i]! - yMin) / (yMax - yMin)) * inner.h;
       pts.push({ x: px, y: py, v: ys[i]!, i });
@@ -497,6 +499,7 @@ export function drawBubbleChart(ctx: CanvasRenderingContext2D, chart: Chart, rec
     for (let i = 0; i < n; i++) {
       const x = xs[i]!,
         y = ys[i]!;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
       if (x < xMin) xMin = x;
       if (x > xMax) xMax = x;
       if (y < yMin) yMin = y;
@@ -553,6 +556,7 @@ export function drawBubbleChart(ctx: CanvasRenderingContext2D, chart: Chart, rec
         yv = ys[i]!;
       const bs = sz[i] ?? 0;
 
+      if (!Number.isFinite(xv) || !Number.isFinite(yv)) continue;
       if (!Number.isFinite(bs) || bs <= 0) continue;
       const frac = bs / maxSize;
       const r = Math.max(minR, baseR * (byArea ? Math.sqrt(frac) : frac));
