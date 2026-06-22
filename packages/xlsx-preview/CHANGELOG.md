@@ -7,6 +7,7 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Table filter dropdown: select all / unselect all checkbox.
 - `WorkerWorkbook.tableController` / `.pivotController`: memoized lazy filter controllers, no need to hand-roll them.
 - Warn-once when a table/pivot filter is clicked while editable but no matching controller is wired.
 

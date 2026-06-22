@@ -105,6 +105,28 @@ export function createTableFilterPopover(
       return;
     }
 
+    const allChecked = items.every((value) => kept.has(value));
+    const selectAllLabel = document.createElement("label");
+    selectAllLabel.style.cssText =
+      "display:flex;align-items:center;gap:6px;padding:3px 6px;cursor:pointer;font-weight:600;";
+    const selectAllCb = document.createElement("input");
+    selectAllCb.type = "checkbox";
+    selectAllCb.checked = allChecked;
+    selectAllCb.onchange = async () => {
+      const values = selectAllCb.checked ? [] : ["\0"];
+      const layout = await Promise.resolve(controller.setFilter({ ...ctx, values }));
+      onChange(layout);
+      void render(ctx);
+    };
+    const selectAllSpan = document.createElement("span");
+    selectAllSpan.textContent = allChecked ? "Unselect all" : "Select all";
+    selectAllLabel.append(selectAllCb, selectAllSpan);
+    menu.append(selectAllLabel);
+
+    const selSep = document.createElement("div");
+    selSep.style.cssText = "border-top:1px solid #eee;margin:4px 0;";
+    menu.append(selSep);
+
     for (const value of items) {
       const label = document.createElement("label");
       label.style.cssText =
