@@ -102,6 +102,31 @@ backlog — work top to bottom, one item per agent:
   ~~CHOOSECOLS~~/~~CHOOSEROWS~~, ~~TOCOL~~/~~TOROW~~, ~~EXPAND~~, ~~SORTBY~~, ~~MMULT~~, ~~MINVERSE~~, ~~MUNIT~~, ~~RANDARRAY~~,
   ~~FREQUENCY~~, ~~MODE.MULT~~, ~~TEXTSPLIT~~, ~~LINEST~~/~~LOGEST~~/~~TREND~~/~~GROWTH~~.
   All S4 high-value rollout items now struck (shipped).
+- [ ] **S5 — persist authored spills (engine-driven array marker).** Today the
+  writeback (`write_cached_formula_values` in xlcore-bridge/src/lib.rs) only
+  spills cells for formulas that ALREADY carry `<f t="array" ref>` in the doc
+  (via `collect_array_ranges`). A formula authored from scratch via the API
+  (`setFormula`) has a plain `<f>`, so its spill is never persisted: only the
+  anchor cached `<v>` is written, neighbours stay blank, no `ref`. Fix: discover
+  spill anchors from the ENGINE (model cells are `Cell::CellFormulaArray { range,
+  .. }`; expose `WorkbookEngine::spill_ranges(sheet) -> Vec<(anchor (r,c), range
+  String)>` iterating `inner().workbook.worksheet(s).sheet_data`). In writeback,
+  for each engine spill anchor set `formula_type=Array` + `reference=<a1 range>`
+  on the anchor `<f>`, then write cached `<v>` for every spilled neighbour (reuse
+  `write_spilled_cells`). Merge with the doc-collected ranges so pre-marked files
+  still work. Verify: author `=MAP(A1:C1,LAMBDA(x,x*x))`, save, reopen → B/C
+  spilled cells present + anchor has `t="array" ref`.
+- [ ] **S6 — modern dynamic-array metadata (cm + metadata.xml).** Make spills
+  true modern dynamic arrays (auto-resize in Excel) not legacy CSE arrays. For
+  each dynamic-array anchor (from S5) set `cell_meta_index = Some(1)` (the `cm`
+  attr; Cell already models it). Emit `xl/metadata.xml` with the XLDAPR
+  futureMetadata block (`<xda:dynamicArrayProperties fDynamic="1"
+  fCollapsed="0"/>` under `metadataType name="XLDAPR"` + a `cellMetadata` `bk`
+  with `<rc t="1" v="0"/>`), add the `[Content_Types].xml` override for it, and a
+  workbook relationship (type `.../sheetMetadata`). metadata.xml is not modeled —
+  write it as a raw part via the doc part API (same mechanism as
+  getPart/setPart). Verify the saved zip has xl/metadata.xml + anchor `cm="1"` +
+  content-type + rel, and that it reopens.
 
 Write path: `CalcResult::Array` at model.rs:684. xlsx persistence: dynamic arrays
 live on the anchor cell as `<f t="array" ref=...>` + `cm` → `xl/metadata.xml`
