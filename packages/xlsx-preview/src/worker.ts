@@ -391,9 +391,12 @@ export class WorkerWorkbook {
   private async syncShadow(structure: WorkbookStructure): Promise<void> {
     const snapshot = JSON.stringify(structure);
     if (this.shadow && snapshot === this.shadowSnapshot) return;
-    this.shadow?.dispose();
+    const previous = this.shadow;
+    this.shadow = null;
+    this.shadowSnapshot = "";
     this.cachedFunctionNames = null;
     this.cachedPivotMetas = null;
+    previous?.dispose();
     const shadow = await Workbook.create({ wasmBinaryUrl: this.wasmBinaryUrl });
     const wanted = new Set(structure.sheets);
     for (const name of structure.sheets) {

@@ -13,6 +13,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Shadow workbook resync no longer leaves a disposed/half-built wasm object reachable, fixing intermittent "recursive use of an object detected" panics on edit; `syncShadow` clears `shadow` before disposing/recreating so `engine.parseReferences` short-circuits during the swap.
+- `check-wasm-fresh` now rejects oversized (>60MB) `--dev` wasm builds, which silently enable wasm-bindgen's aliasing guard and tank load time.
 - Scatter/bubble charts: `#N/A`/non-numeric cells in X or Y refs no longer plot a phantom point at 0; the point is skipped like Excel.
 - Recalc no longer pins formula cells to stale cached values on legitimate engine errors; the cached-value fallback now applies only to unsupported formulas (`#NAME?`), so editing inputs correctly recomputes cells that turn into `#N/A`/`#DIV/0!`/etc.
 - Data-validation dropdown: clicking an option now commits it again; the hover handler restyles items in place instead of rebuilding the menu, which had detached the item node mid-click so only keyboard worked.
