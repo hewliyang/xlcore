@@ -5,29 +5,14 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-06-26
+
 ### Added
 
 - Table filter dropdown: select all / unselect all checkbox.
 - `WorkerWorkbook.tableController` / `.pivotController`: memoized lazy filter controllers, no need to hand-roll them.
 - Warn-once when a table/pivot filter is clicked while editable but no matching controller is wired.
-
-### Fixed
-
-- Shadow workbook resync no longer leaves a disposed/half-built wasm object reachable, fixing intermittent "recursive use of an object detected" panics on edit; `syncShadow` clears `shadow` before disposing/recreating so `engine.parseReferences` short-circuits during the swap.
-- `check-wasm-fresh` now rejects oversized (>60MB) `--dev` wasm builds, which silently enable wasm-bindgen's aliasing guard and tank load time.
-- Scatter/bubble charts: `#N/A`/non-numeric cells in X or Y refs no longer plot a phantom point at 0; the point is skipped like Excel.
-- Recalc no longer pins formula cells to stale cached values on legitimate engine errors; the cached-value fallback now applies only to unsupported formulas (`#NAME?`), so editing inputs correctly recomputes cells that turn into `#N/A`/`#DIV/0!`/etc.
-- Data-validation dropdown: clicking an option now commits it again; the hover handler restyles items in place instead of rebuilding the menu, which had detached the item node mid-click so only keyboard worked.
-- Editing/picking a value in a frozen-pane cell no longer scrolls the body to the top: `scrollToCell` skips axes the cell is frozen on, the edit overlay is positioned within the frozen pane, and validation picks commit in place instead of moving the selection down.
-
-### Changed
-
-- Example app uses `WorkerWorkbook.tableController`/`.pivotController` getters instead of hand-rolled builders.
-
-- Formula signature tips + autocomplete summaries for 144 previously-uncovered engine functions (dynamic-array FILTER/SORT/SEQUENCE/MAP/LAMBDA/LET, financial COUP*/ODD*/PRICE*/YIELD*, statistical *DIST/*INV, etc.), so all 489 engine functions now show parameter hints.
 - Spilled-range operator `A1#` (ANCHORARRAY): a reference followed by `#` returns the whole dynamic-array spill anchored at that cell (`=SUM(A1#)`), spilling again when used bare; non-array cell returns that cell, empty cell returns `#REF!`. Serializes as `_xlfn.ANCHORARRAY(...)` for xlsx and `A1#` for display.
-
-
 - MODE.MULT(number1,[number2],...) dynamic-array function: returns a vertical array of all the most-frequently-occurring values (`#N/A` if none repeat); spills and round-trips.
 - LINEST/TREND linear-regression dynamic-array functions: ordinary least squares (single or multiple predictors, optional intercept); LINEST returns coefficients or the 5-row stats array, TREND predicts new x values; both spill and round-trip.
 - LOGEST/GROWTH exponential-regression dynamic-array functions: fit y=b·m1^x1·… via OLS on ln(y) (known_ys must be positive); LOGEST returns exponentiated coefficients or the 5-row stats array, GROWTH predicts new x values; both spill and round-trip.
@@ -73,9 +58,6 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Name box shows the defined-name when the selection matches a named range.
 - "+" tab button (editable mode) creates a new sheet via `WorkerWorkbook.addSheet`; wired into the example app.
 - Example app starts with a blank workbook and gains a "New" button to create one from scratch.
-- Category axis labels auto-rotate (-45°, then -90°) when horizontal labels overflow instead of being dropped; band height reserves the rotated space. Explicit XML `rot` stays authoritative.
-
-
 - `worksheet.images.update(id, ImageUpdate)` (WASM `updateImage`) updates an existing image's anchor/name/rotation/flips in place, so image moves/resizes persist on `save()`.
 - Chart anchor round-trip test: `charts.update` move persists through `save`/`open`.
 - Example app persists chart moves: wires `drawingmoved` → `recalcWorkbook.moveDrawing` → `patchSheetLayout`.
@@ -94,14 +76,11 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Interactive list data-validation dropdowns: clicking a dropdown arrow (editable previewer) opens a popover of the validation's options and writes the chosen value via `celledit`.
 - Render schema exposes `Sheet.validationDropdowns` + `Sheet.validationLists` (list-type data-validation cells and their resolved options).
 - Render list data-validation dropdown arrows on the canvas previewer.
-
-
 - Example app: pivot/table filtering routed through `WorkerWorkbook` async ops.
 - `WorkerWorkbook` pivot/table ops (`pivotMetas`/`distinctValues`/`updatePivot`/`tableSetFilter`/`tableSetSort`); pivot/table filter controllers now accept async returns.
 - `./worker` entry: `WorkerWorkbook` proxy runs recalc/layout/save off the main thread via a persistent edit worker, with a sync shadow-backed `engine` for highlights/autocomplete.
 - Example app: editing/recalc/save routed through `WorkerWorkbook`, keeping the main thread responsive on commit.
 - Previewer: optional `onDownload` callback renders a Download button in the toolbar.
-
 - Point mode: click/drag/shift-click the grid while editing a formula inserts or extends A1 references (pure `formulaPointMode`; `InteractOptions.isPointModeActive`/`onPointModeRef`).
 - Function autocomplete dropdown in the editor/formula bar (pure `autocompleteState`; keyboard nav, Enter/Tab insert `NAME(`, Esc closes dropdown only).
 - Function signature ScreenTip in the editor/formula bar (pure `formulaSignature`; shows args + summary with the active argument highlighted, covers all 345 engine functions).
@@ -121,7 +100,6 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - xlcore-api color resolver (`resolve_color_hex`): rgb/indexed/theme+tint → `RRGGBB`.
 - `CellInfo.style` read-back: `get_cell` resolves a cell's xf to a flat `StylePatch`.
 - Style read-back round-trip corpus test enforcing `resolve(get(cell)) ⊇ set(cell, patch)`.
-
 - Renderer draws pseudo-3D surface charts (`c:surfaceChart`/`c:surface3DChart`): a mesh over the (category × series) z-grid via the bar3D oblique projection + floor/back/side walls, painter-sorted quads filled by a height-band color ramp, or `c:wireframe` grid lines. Decoded into wire `Chart.type` `"surface"` + `Chart.wireframe`.
 - Renderer draws pseudo-3D bar3D/column3D geometry: oblique-projection boxes (front + lighter top + darker side faces) over a floor + back wall + side wall, sizing depth from `c:view3D` (rotX/rotY/depthPercent) + `c:gapDepth` and filling walls from `c:floor`/`c:sideWall`/`c:backWall` spPr. Decoded into the wire `Chart.is3d`/`view3d`/`gapDepth`/`floorFill`/`sideWallFill`/`backWallFill` (`ChartView3D`); line3D/area3D/pie3D/surface still flat.
 - Renderer consumes manual layout (`c:layout/c:manualLayout`) for the plot area (inner/outer `layoutTarget`), legend, and title, positioning them at the explicit fractional rectangle (edge/factor `*Mode`) of the chart area. Decoded into the wire `Chart.plotAreaLayout`/`legendLayout`/`titleLayout` (`ChartManualLayout`).
@@ -172,16 +150,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `marker` (`ChartMarker { style, size }` + `MarkerStyle` enum) on chart series; authored on line/scatter series, read back, and rendered by the previewer.
 - `gapWidth` (0..=500) + `overlap` (-100..=100) on `ChartPatch`/`ChartUpdate`/`ChartInfo` for bar/column charts; authored, read back, and rendered by the previewer.
 - `ChartAxisPatch` on `ChartPatch`/`ChartUpdate`/`ChartInfo` as `categoryAxis`/`valueAxis`: author axis `title`, `hidden`, `min`/`max`, `logBase`, `reversed`, `majorUnit`/`minorUnit`, `major`/`minorGridlines`, `major`/`minorTickMark` (`TickMark`), `tickLabelPosition` (`TickLabelPosition`), `numberFormat`, `crossBetween` (`CrossBetween`), `crossesAt`. `min`/`max`/`majorUnit`/`majorGridlines`/`numberFormat` render in the previewer; the rest round-trips for Excel. The legacy `categoryAxisTitle`/`valueAxisTitle` remain as sugar (axis `title` wins).
-
 - Interactive pivot filter dropdowns: clicking a canvas-painted filter arrow opens a built-in (framework-agnostic, vanilla-DOM) item popover wired via the new `pivotController` option (`items`/`hiddenValues`/`setHidden`); `setHidden` returns a fresh `WorkbookLayout` (e.g. `pivots.update(...)` + `workbook.layout()`) that the previewer swaps in place via the new `replaceLayout()` — no Blob reload or wasm reparse. A lower-level `onPivotFilter` event (`{ pivot, field, axis, rect }`) is also emitted for custom UIs. Engine pivot metadata now carries `filterArrowCells: PivotFilterArrow[]` (`{ r, c, field, axis }`); `distinctValuesFor` is exported from both `./react` and `./api` for populating the dropdown. The vanilla `examples/xlsx-app.html` demo (served by `pnpm preview`) wires a `pivotController` backed by a main-thread `Workbook`, so the dropdown works there with no React.
-
 - Pivot per-item filtering: `PivotPatch`/`PivotInfo` gain optional `hiddenItems` (`PivotFieldFilter[]` — `{ field, hide }`). Authoring marks the matching `pivotField` items `h="1"`; both `pivots.set` (in-sheet render) and `pivots.preview` honor it, and the getter reverse-maps hidden items so `update()` round-trips.
-
-- Pivot table rendering: axis members now follow the stored `pivotField` item order (honors manual sorts), falling back to value sort for items absent from that list.
-
 - Pivot table editing: `worksheet.pivots.update(id, partial)` merges a partial patch over the existing pivot and re-authors it (remove + re-set with rollback), mirroring `charts.update`. `PivotInfo` now exposes `anchorCell` (top-left of the location, page-field offset removed) so updates round-trip in place.
 - Pivot live preview: `worksheet.pivots.preview(patch)` (WASM `pivotPreview`) aggregates a `PivotGrid` in-memory without authoring any parts, enabling drag/recompute UIs with no save/reopen round-trip.
-- Pivot table rendering: empty `pivotCacheRecords` now fall back to aggregating the `worksheetSource` range, so caches stripped before save (common with `refreshOnLoad`) still render.
 - Pivot table rendering: nested column headers (two column fields, single data field) now materialize with per-outer-group leaf columns, `{outer} Total` subtotal columns, a grand-total column, and a 3-row header; verified vs SpreadJS.
 - Pivot table rendering: multiple data fields combined with a single column field now materialize (3-row header, each column group expands into one sub-column per data field, grand-total group emits `Total <dataname>` per field); verified vs SpreadJS.
 - Pivot table filtering: the render engine now honors hidden `pivotField` items (`items[@h="1"]`), dropping filtered records before aggregation so hidden items disappear from row/column keys and all totals.
@@ -190,29 +162,17 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Pivot table styling: the materialized grid now carries `style_index` so the header band (bold white on accent fill) and grand-total row/column (bold) render, matching the SpreadJS look.
 - Pivot table rendering: the layout extractor now runs a self-contained aggregation engine over `pivotCacheRecords` (group-by + sum/count/avg/max/min/product/countNums/stdDev/var, with row/column/grand totals and Excel-style item sort) and materializes the value grid into the sheet, so the preview component renders pivot values/labels/totals instead of an empty grid. Supports one+ row fields, 0-1 column fields, one data field; no formula engine required.
 - Pivot table authoring: `worksheet.pivots.set/list/remove` + `workbook.allPivots` (and Rust `set_pivot`/`pivots`/`remove_pivot`, WASM `setPivot`/`pivots`/`removePivot`) create a worksheet-source pivot with row/column/filter fields and sum/count/avg/etc. data fields; values compute in Excel/SpreadJS from the authored cache + materialized row/col item layout.
-- `charts.set`/`charts.update`/`images.set` now accept a 1-based A1 range string (e.g. `"B20:H36"`) for `anchor`, normalized via `anchorA1`, alongside the 0-based `ChartAnchor`.
-- `recalculate()` now returns only cells with an engine `fallback` (dropping error-free sheets) for cheap agent verification; pass `{ errorsOnly: false }` for the full cell-by-cell report.
 - Export `colLetter`, `cellA1`, `rangeA1` ref helpers from the public API/entrypoints.
-- `ChartAnchor` rustdoc + generated TS JSDoc now state the 0-based row/column convention.
-- `Worksheet` row/column width/height/visible/insert/delete methods now document their 1-based row/column indexing in JSDoc.
-- `ChartLegendPosition` rustdoc + generated TS JSDoc now document `"none"` and the `TopRight` ("Overlay Legend at Right") variant.
-- `Range.setStyle` / `Cell.setStyle` / `Worksheet.setStyles` JSDoc now call out that merged ranges only persist style on the top-left anchor.
-- `Workbook.search` accepts `includeHidden` (defaults to `true` for backward compatibility) to opt out of searching hidden / very-hidden sheets; documented in JSDoc + rustdoc.
 - `Worksheet.setStyles(map)` applies a `{ reference: StylePatch }` map in one call for bulk styling.
 - `NumberFormat` const exposes ECMA-376 §18.8.30 built-in format codes (`General`, `Percent2`, `Scientific2`, `DateTime`, `Accounting`, …) so agents can write `setStyle({ numberFormat: NumberFormat.Percent2 })` instead of handwriting `"0.00%"`.
-
-- Workbook API redesigned as a hierarchical SpreadJS-style facade. `workbook.sheet(name)` / `workbook.worksheets()` / `workbook.activeSheet()` / `workbook.addSheet(name)` / `workbook.removeSheet(name)` return `Worksheet` objects. `Worksheet` owns per-sheet sub-collections (`merges`, `hyperlinks`, `comments`, `threadedNotes`, `dataValidations`, `conditionalFormats`, `autoFilter`, `tables`, `charts`, `images`, `sparklineGroups`) and leaf APIs (`freeze` / `pageSetup` / `protection`), plus structural verbs (`setRowHeight`, `insertRows`, …) and lifecycle (`rename`, `moveTo`, `remove`, `activate`, `setVisibility`). `sheet.range(addr)` / `sheet.cell(addr)` return `Range` / `Cell` with `.setValue` / `.setValues` / `.setFormula` / `.setStyle` / `.clear` / `.copyTo` / `.fillTo` / `.merge`. Workbook-scoped leafs: `workbook.definedNames` / `allTables` / `allCharts` / `allImages` / `allSparklineGroups` / `properties` / `calcProperties` / `protection`. `workbook.worksheets()` is the only sheet enumerator — all uniform `list/set/remove` or `get/set/remove`. Addresses accept A1 strings or `{row, column, rowCount?, columnCount?}`; sheet names are auto-quoted. `Worksheet` and its children share an internal `SheetRef` so `worksheet.rename(newName)` keeps existing handles valid against the new name.
-
 - Chart authoring: `ChartSeriesPatch` / `ChartSeriesInfo` gain `dataLabels` for per-series data labels (overrides chart-level when set). Chart-level dl no longer duplicates onto every series in the OOXML.
 - Image authoring: `ImagePatch` / `ImageInfo` gain `rotationDegrees` (°, normalized mod 360, written as `rot` in 60000ths on `<a:xfrm>`), `cropLeftPct`/`cropTopPct`/`cropRightPct`/`cropBottomPct` (% on `<a:srcRect>` l/t/r/b, 1000ths-of-a-percent units), and `flipHorizontal`/`flipVertical` (`<a:xfrm flipH/flipV>`). Round-trips through save/reopen. New `invalid_image` cases for non-finite rotation/crop values.
 - Sparkline group authoring: `sparklineGroups(sheet?)` / `setSparklineGroup(patch)` / `removeSparklineGroup(sheet, id)` with `SparklineKind` (`line` | `column` | `stacked`), `SparklineEntry { location, dataRef }`, axis kinds + manual min/max, line weight, full color palette (series/negative/axis/markers/first/last/high/low). New `invalid_sparkline_group` error.
 - Chart authoring: `ChartKind` gains `scatter` | `bubble` | `doughnut`. Scatter/bubble series take `xValuesRef` (required) + `valuesRef` (yVal); bubble adds `bubbleSizesRef` (required). Per-series solid color via `ChartSeriesPatch.color` (`RRGGBB` hex, `#` accepted). Axis titles via `ChartPatch.categoryAxisTitle` / `valueAxisTitle`. New `invalid_chart` errors for missing xVal on scatter/bubble, missing bubble sizes, and non-hex color.
-
 - Workbook API: `charts(sheet?)` / `setChart(patch)` / `removeChart(sheet, id)` with `ChartInfo` + `ChartPatch` (+ `ChartKind` `column|bar|line|pie|area`, `ChartLegendPosition`, `ChartAnchor`, `ChartSeriesInfo`, `ChartSeriesPatch`) DTOs. Creates a chart part + drawings part if missing, anchors via two-cell (col/row + optional EMU offsets), authors title/legend/categories ref/series (literal name or `name_ref`, `values_ref`), and round-trips through save/reopen. New `invalid_chart` `ApiError` for empty series or empty `values_ref`.
 - `Workbook.batch` now returns a `BatchOutcome { value, warnings, error }` envelope; `Workbook.warnings()` / `Workbook.takeWarnings()` expose an ambient warnings buffer. New `ApiWarning` DTO and `unsupportedFormula` / `unsupportedObject` / `lossyOperation` error codes round out the diagnostics contract.
 - Conditional format authoring now covers color scales, data bars, and icon sets via new `colorScale` / `dataBar` / `iconSet` rule kinds and `ColorScalePatch` / `DataBarPatch` / `IconSetPatch` + `CfValueObject` / `CfValueObjectKind` (`num` | `percent` | `max` | `min` | `formula` | `percentile`) + `CfIconSetKind` (16 OOXML icon-set families) DTOs. 2- and 3-stop color scales, min/max data bars with min/max length + show-value, and 3/4/5-icon icon sets with show-value/percent/reverse round-trip through save/reopen. Validation enforces matching values/colors lengths, required cfvo values for num/percent/formula/percentile, and per-iconSet arity.
 - Workbook API: `conditionalFormats(sheet)` / `setConditionalFormat(ref, patch)` / `clearConditionalFormats(ref)` with `ConditionalFormatRuleInfo` + `ConditionalFormatRulePatch` DTOs and `CfRuleKind` (`expression` | `cellIs` | `top10` | `duplicateValues` | `uniqueValues` | `containsText` | `notContainsText` | `beginsWith` | `endsWith` | `containsBlanks` | `notContainsBlanks` | `containsErrors` | `notContainsErrors` | `timePeriod` | `aboveAverage` | `colorScale` | `dataBar` | `iconSet`) + `CfOperator` enums. Dxf font/fill/border/numFmt/alignment patches author and intern into `<x:dxfs>`; new rules auto-assign priority (max+1). New `invalid_conditional_format` `ApiError` for missing required formula/operator/text or non-positive priority.
-- Threaded notes now also write a legacy classic-comment shadow into `xl/comments<n>.xml` (author `tc=<guid-no-braces-lower>` per `<threadedComment id>`, text mirroring the note) so older Excel viewers see the thread. `comments()` filters `tc=`-authored entries out, `set_comment` / `remove_comment` preserve shadows, and `remove_threaded_thread` drops shadows at the affected refs. Comments/threaded-comments parts are now properly deleted (via `ws_part.delete_part_by_id`) when emptied, instead of being left as empty XML files.
 - Workbook API: `setAutoFilterColumn(sheet, patch)` / `removeAutoFilterColumn(sheet, columnOffset)` with `AutoFilterColumnInfo` + `AutoFilterColumnPatch` + `AutoFilterCriteria` (`values` | `top10` | `custom` | `unsupported`) + `AutoFilterCustomCriterion` + `AutoFilterOperator` DTOs. `AutoFilterInfo` now exposes a `columns` list. `Top10` and `Custom` (≤2 criteria, AND/OR) round-trip; `Values` authoring is currently limited to blank-only (`<filters blank="1"/>`) because the underlying ooxmlsdk maps `<filters><filter/></filters>` and `<customFilters>` choice arms ambiguously across the `x` and `x14` namespaces — multi-value list filters should be expressed as `Custom` for now. New `invalid_auto_filter` `ApiError` for out-of-range column offsets, missing filter range, empty/unsupported criteria, and non-positive Top10 values.
 - Workbook API: `pageSetup(sheet)` / `setPageSetup(sheet, patch)` / `removePageSetup(sheet)` with `SheetPageSetup` + `SheetPageSetupPatch` DTOs bundling `PageSetupSettings` (orientation, paper size, scale, fit-to-width/height, page order, copies, DPI, cell-comment + error printing), `PageMarginsInfo`, `PrintOptionsInfo` (centering, gridlines, headings), and `HeaderFooterInfo` (odd/even/first header+footer with `differentOddEven`/`differentFirst`/`scaleWithDoc`/`alignWithMargins`). New `invalid_page_setup` `ApiError` for out-of-range scale, zero copies, and negative/non-finite margins.
 - Workbook API: `sheetProtection(sheet)` / `setSheetProtection(sheet, patch)` / `removeSheetProtection(sheet)` and `workbookProtection()` / `setWorkbookProtection(patch)` / `removeWorkbookProtection()` with `SheetProtectionInfo` + `SheetProtectionPatch` + `WorkbookProtectionInfo` + `WorkbookProtectionPatch` DTOs. Reads/writes `<sheetProtection>` and `<workbookProtection>` (legacy hex password + modern `algorithmName`/`hashValue`/`saltValue`/`spinCount`, all lock flags). New `invalid_protection` `ApiError` for non-hex passwords and empty credential fields.
@@ -237,6 +197,20 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Example app uses `WorkerWorkbook.tableController`/`.pivotController` getters instead of hand-rolled builders.
+- Formula signature tips + autocomplete summaries for 144 previously-uncovered engine functions (dynamic-array FILTER/SORT/SEQUENCE/MAP/LAMBDA/LET, financial COUP*/ODD*/PRICE*/YIELD*, statistical *DIST/*INV, etc.), so all 489 engine functions now show parameter hints.
+- Category axis labels auto-rotate (-45°, then -90°) when horizontal labels overflow instead of being dropped; band height reserves the rotated space. Explicit XML `rot` stays authoritative.
+- Pivot table rendering: axis members now follow the stored `pivotField` item order (honors manual sorts), falling back to value sort for items absent from that list.
+- Pivot table rendering: empty `pivotCacheRecords` now fall back to aggregating the `worksheetSource` range, so caches stripped before save (common with `refreshOnLoad`) still render.
+- `charts.set`/`charts.update`/`images.set` now accept a 1-based A1 range string (e.g. `"B20:H36"`) for `anchor`, normalized via `anchorA1`, alongside the 0-based `ChartAnchor`.
+- `recalculate()` now returns only cells with an engine `fallback` (dropping error-free sheets) for cheap agent verification; pass `{ errorsOnly: false }` for the full cell-by-cell report.
+- `ChartAnchor` rustdoc + generated TS JSDoc now state the 0-based row/column convention.
+- `Worksheet` row/column width/height/visible/insert/delete methods now document their 1-based row/column indexing in JSDoc.
+- `ChartLegendPosition` rustdoc + generated TS JSDoc now document `"none"` and the `TopRight` ("Overlay Legend at Right") variant.
+- `Range.setStyle` / `Cell.setStyle` / `Worksheet.setStyles` JSDoc now call out that merged ranges only persist style on the top-left anchor.
+- `Workbook.search` accepts `includeHidden` (defaults to `true` for backward compatibility) to opt out of searching hidden / very-hidden sheets; documented in JSDoc + rustdoc.
+- Workbook API redesigned as a hierarchical SpreadJS-style facade. `workbook.sheet(name)` / `workbook.worksheets()` / `workbook.activeSheet()` / `workbook.addSheet(name)` / `workbook.removeSheet(name)` return `Worksheet` objects. `Worksheet` owns per-sheet sub-collections (`merges`, `hyperlinks`, `comments`, `threadedNotes`, `dataValidations`, `conditionalFormats`, `autoFilter`, `tables`, `charts`, `images`, `sparklineGroups`) and leaf APIs (`freeze` / `pageSetup` / `protection`), plus structural verbs (`setRowHeight`, `insertRows`, …) and lifecycle (`rename`, `moveTo`, `remove`, `activate`, `setVisibility`). `sheet.range(addr)` / `sheet.cell(addr)` return `Range` / `Cell` with `.setValue` / `.setValues` / `.setFormula` / `.setStyle` / `.clear` / `.copyTo` / `.fillTo` / `.merge`. Workbook-scoped leafs: `workbook.definedNames` / `allTables` / `allCharts` / `allImages` / `allSparklineGroups` / `properties` / `calcProperties` / `protection`. `workbook.worksheets()` is the only sheet enumerator — all uniform `list/set/remove` or `get/set/remove`. Addresses accept A1 strings or `{row, column, rowCount?, columnCount?}`; sheet names are auto-quoted. `Worksheet` and its children share an internal `SheetRef` so `worksheet.rename(newName)` keeps existing handles valid against the new name.
+- Threaded notes now also write a legacy classic-comment shadow into `xl/comments<n>.xml` (author `tc=<guid-no-braces-lower>` per `<threadedComment id>`, text mirroring the note) so older Excel viewers see the thread. `comments()` filters `tc=`-authored entries out, `set_comment` / `remove_comment` preserve shadows, and `remove_threaded_thread` drops shadows at the affected refs. Comments/threaded-comments parts are now properly deleted (via `ws_part.delete_part_by_id`) when emptied, instead of being left as empty XML files.
 - Chart fonts (axis/title/legend/axis-title/data labels) now auto-scale with plot-area size like Excel, centralized in `chartUtils`; explicit `sz` overrides stay authoritative.
 - Recalibrated chart font auto-scale (reference 360→200, cap 2→2.2) so typical embedded charts get a visible ~1.5× bump matching Excel weight.
 - Chart value-axis min/max now uses Excel's data-driven 5/6 zero-clamp rule (axis hits zero only when data is close enough), replacing the per-chart-type `zeroClamp` boolean.
@@ -245,8 +219,6 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Cell edits now re-extract + redraw only the active sheet (`applyEdit` returns a single-sheet layout) merged via `previewer.patchSheetLayout`, instead of reserializing/repainting the whole workbook.
 - Formula bar now shows clean display formulas (e.g. `CONCAT` instead of `_xlfn.CONCAT`) by stripping OOXML `_xlfn.`/`_xlws.` decorations at extract time.
 - Data-validation dropdown arrows now render in a gutter just outside the cell's right edge (no longer overlap cell text); interactively only the active cell's arrow shows, static previews still show all.
-
-
 - Internal: quote-aware sheet-reference qualification removed from the TS frontend; `Range`/`Cell`/`Worksheet` ops now pass `(sheet, ref)` to new Rust-owned `*_in` facade fns that qualify internally, so bindings are marshaling-only (pyo3/napi readiness). `api-refs.ts` no longer carries `qualify`/`hasSheetPrefix`/`quoteSheetName`; `refOnly`/`findUnquotedBang` deleted.
 - Internal: `scripts/schema_diff.py` gains recursive one-level flattening, declared exclusions/derived (DTO `schema-excluded:` doc annotations + per-pair `scripts/schema_coverage.toml`), and a `--check` mode (non-zero on any undeclared MISSING field) over the opened-up (SdkStruct, DtoStruct) pairs. Serialization plumbing (`xmlns`/`xmlHeader`/`xmlOtherAttrs`) is globally ignored; non-chart writer pairs added (Table, DataValidation, ConditionalFormattingRule, Hyperlink, DefinedName) for writer action-space parity (44 pairs).
 - Internal: CSV/Parquet option semantics (delimiter `tab`/single-byte coercion+validation, field defaulting) moved out of the wasm binding into `xlcore-tabular`; `CsvOptions`/`ParquetOptions` now `serde::Deserialize` directly (camelCase, string delimiter), so the bindings are marshaling-only and pyo3/napi get the same behavior for free.
@@ -254,7 +226,6 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Internal: wasm binding layer generated from a declarative `api_methods!` method table (~100 of 107 hand-written serde_wasm_bindgen fns); generated `.d.ts` is byte-identical, no behavior change. TS forwarding-layer codegen is a noted follow-up.
 - Internal: `scripts/api_manifest.py` emits a checked-in `scripts/api_methods.json` method manifest (from the `api_methods!` table + hand-written `WorkbookHandle` methods); `--check` (wired as `check:api`) diffs the manifest and cross-checks that every forwarded `jsName` is called as `handle.<jsName>(` in TS and flags phantom `handle.<name>(` calls. The JSON is the contract a future pyo3/napi emitter consumes.
 - API naming audit (see `docs/api-conventions.md`): drop the inconsistent `Api` class suffix and normalize wrapper class names to two cardinality-keyed suffixes — `<Concept>Collection`, `Workbook<Concept>`, `<Concept>Accessor`. Renames: `AutoFilterApi`→`AutoFilterAccessor`, `SheetFreeze`→`SheetFreezeAccessor`, `SheetPageSetupApi`→`SheetPageSetupAccessor`, `SheetPropertiesApi`→`SheetPropertiesAccessor`, `SheetProtection`→`SheetProtectionAccessor`, `WorkbookPropertiesApi`→`WorkbookPropertiesAccessor`, `CalcPropertiesApi`→`CalcPropertiesAccessor`, `WorkbookProtection`→`WorkbookProtectionAccessor`, `DefinedNamesCollection`→`WorkbookDefinedNames`. Method `ThreadedNotesCollection.removeThread`→`remove`. Instance accessors (`ws.freeze`, `wb.properties`, …) are unchanged.
-
 - Sheet-scoped patches no longer carry a `sheet` field: `ChartPatch`, `ImagePatch`, `ShapePatch`, `PivotPatch`, `SparklineGroupPatch` lose `sheet`; the wasm/Rust facade fns (`set_chart`/`set_image`/`set_shape`/`set_pivot`/`pivot_preview`/`set_sparkline_group`) take `sheet` as their first argument uniformly. The TS `Omit<…, "sheet">` + re-inject plumbing in the shape/pivot collections is gone; `Info` types still report `sheet`.
 - Sheet-qualification of unqualified refs moved into the Rust facade: collection/`Range` methods (`merges`, `hyperlinks`, `comments`, `threadedNotes`, `dataValidations`, `conditionalFormats`, `autoFilter`, `tables`) take `sheet` + a possibly-unqualified `ref` and qualify internally (`qualify_ref`); the TS `qref` helper is deleted so bindings stay marshaling-only.
 - `autoFilter` criteria booleans (`blank`, `top10.top`, `top10.percent`, `custom.logicalAnd`) are now optional in the DTO and default in the Rust facade (`top` → `true`, the rest → `false`); the TS `setColumnValues/Top10/Custom` helpers stop applying their own defaults and `setAutoFilterColumn` returns the resolved criteria. The redundant `setColumn` `criteria.kind` guard is removed (serde + Rust `validate_criteria` already reject bad/unsupported kinds).
@@ -265,22 +236,24 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Chart/image/shape `anchor` now accepts a two-cell A1 range string (`"D2:H15"`, optionally sheet-qualified) as well as an explicit `ChartAnchor`. The string→anchor resolution moved into the Rust facade (new `AnchorSpec` DTO), so the TS `normalizeAnchor`/`anchorA1` plumbing is gone from the collections and any future binding gets it for free.
 - `Worksheet.pivots.update(id, partial)` is now pure forwarding to a Rust `update_pivot` + `PivotUpdate` DTO; the merge/remove/rollback logic moved out of TS so bindings stay marshaling-only.
 - `Worksheet.charts.update(id, patch)` now mutates the existing `chart<n>.xml` in place (new Rust `update_chart` + `ChartUpdate` DTO) instead of remove+`setChart`. The chart's `rId`/id is now stable across updates, and chart XML not modeled by `ChartPatch` (rounded corners, manual layout, per-point styling, etc.) survives an update that only touches one field. Series/stacking/data-label/categories changes still rebuild the plot node; chart-level title/legend/axes and unmodeled siblings are preserved. Changing `kind` via `update` is no longer supported (use `remove` + `set`).
-
 - `absoluteAnchor(x, y, w, h, { colWidthPx?, rowHeightPx? })` helper (exported from `./api` next to `anchorA1`) converts an absolute pixel rect into a two-cell `ChartAnchor` with in-cell EMU offsets, replacing hand-rolled px → (col, row, offset) math on the default 64×20 grid. Offsets are always strictly inside their cell, so results never trip the engine's anchor-overflow warning.
 - CLI: `--no-headers` (cell content only — headerless renders no longer require a custom `node.ts` script), `--no-gridlines` (force gridlines off regardless of the sheet view flag, via the new `RenderOptions.renderGridLines` override), and `--width`/`--height` (explicit viewport in px; with `--no-headers` they are exact output dimensions).
 - `renderToCanvas`/`renderToPng` accept `width`/`height` and an `onWarning` callback; the default viewport now auto-grows beyond the old hard 1244×822 cap to fit drawing extents (up to 4096px) and warns instead of silently clipping large charts/shapes. Headerless renders are cropped to the grid origin, removing the stray white header band.
-
 - `Worksheet.shapes` collection (`list`/`set`/`remove`) to author DrawingML preset shapes (any of the 187 `prstGeom` presets) with solid fill, outline color/width, multiline text (color/size/bold/italic), rotation, and flip.
 - `ShapePatch` gains `align`/`verticalAlign` (text alignment + body anchor), `underline`, and `headEnd`/`tailEnd` (`{type,w,len}`) for line arrowheads; shape arrowheads now render in the previewer.
 - `Worksheet.setShowGridLines(visible)` / `getShowGridLines()` to toggle the per-sheet on-screen gridlines view flag.
-
 - Sparkline color fields now accept `#RRGGBB` (or 8-hex `AARRGGBB`) in addition to `RRGGBB`; canonical stored form remains 6-hex uppercase.
 - `DefinedNamePatch` / `DefinedNameInfo` rename `formula` → `reference` (defined names only support cell/range refs, so the old name was misleading). Legacy payloads using `formula` are still accepted at runtime via a serde alias on `DefinedNamePatch`; `DefinedNameInfo` now emits `reference`.
-
 - Chart authoring now builds typed `c::ChartSpace` / `xdr::TwoCellAnchor` structs instead of raw XML string templates; reader path also uses typed `PlotAreaChoice` traversal. No behavior change to the public API or output OOXML shape.
 
 ### Fixed
 
+- Shadow workbook resync no longer leaves a disposed/half-built wasm object reachable, fixing intermittent "recursive use of an object detected" panics on edit; `syncShadow` clears `shadow` before disposing/recreating so `engine.parseReferences` short-circuits during the swap.
+- `check-wasm-fresh` now rejects oversized (>60MB) `--dev` wasm builds, which silently enable wasm-bindgen's aliasing guard and tank load time.
+- Scatter/bubble charts: `#N/A`/non-numeric cells in X or Y refs no longer plot a phantom point at 0; the point is skipped like Excel.
+- Recalc no longer pins formula cells to stale cached values on legitimate engine errors; the cached-value fallback now applies only to unsupported formulas (`#NAME?`), so editing inputs correctly recomputes cells that turn into `#N/A`/`#DIV/0!`/etc.
+- Data-validation dropdown: clicking an option now commits it again; the hover handler restyles items in place instead of rebuilding the menu, which had detached the item node mid-click so only keyboard worked.
+- Editing/picking a value in a frozen-pane cell no longer scrolls the body to the top: `scrollToCell` skips axes the cell is frozen on, the edit overlay is positioned within the frozen pane, and validation picks commit in place instead of moving the selection down.
 - Chart legend swatch size, marker radius and item spacing now scale with the chart font, so legends stay proportionate (no overlap) on large auto-scaled charts.
 - `check-wasm-fresh` now watches `crates/ironcalc-base/src`, so a function added to the calc engine without rebuilding the wasm is flagged by `pnpm test`.
 - Implicit intersection now works: a bare range formula (`=A1:A3`) or `@`-coerced range (`=@A1:A3`) on an intersecting row/column returns that single cell's value (non-intersecting => `#VALUE!`), and `@` on a dynamic-array result (`=@SEQUENCE(3)`) collapses to the top-left element instead of returning `#N/IMPL`.
@@ -291,8 +264,6 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Data bars now scale from the series min/max instead of clamping the baseline to 0, matching Excel for all-positive ranges; absent `minLength`/`maxLength` now default to Excel's 10/90 so the smallest value still shows a stub bar.
 - Scatter/line/radar series with `a:ln/a:noFill` now render markers-only; previously every series got a connecting line from the chart-level `c:scatterStyle`.
 - Chart move/delete now works for modern chartEx charts (waterfall, funnel, histogram, etc.); previously they snapped back on recalc because `moveDrawing`/`removeDrawing` only handled legacy charts.
-
-
 - Edit overlay now auto-grows when a reference is inserted via point mode (mouse/arrow selection), not only while typing.
 - Arrow keys during formula editing only enter point mode when freshly typing an operator; navigating the caret (click/Home/End/arrow) moves within the text instead of inserting references.
 - Formula signature helper now updates on caret movement (arrows/click), so it shows while the cursor sits on an existing function argument, not only while typing.
@@ -301,37 +272,28 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - External clipboard paste now applies each cell like a manual edit (`pasteCells` worker op): numeric/boolean strings become typed values and `=`-prefixed strings become formulas, so pasted numbers compute (`SUM` works) and pasted formulas evaluate.
 - Internal cut→paste now uses true Excel move semantics (`moveRange`): moved formulas keep their relative references (no copy-style shift) and formulas elsewhere that referenced the moved cells are retargeted to follow them (absolute and cross-sheet refs included).
 - Axis number format with a quoted literal (e.g. `0.0"%"`) no longer triggers the percent ×100 operator; quoted `"..."` segments are emitted as literal text.
-
-
 - Worker bundle (`editWorker.js`) now ships its `drawingResolve.js` dependency, so `WorkerWorkbook.open` no longer throws — restores cell editing and data-validation dropdowns in the example app (both silently no-op when the worker fails to load). `check-dist-imports` now also imports the worker bundles to catch missing-sibling regressions.
 - Writing formulas with post-2007 functions (e.g. `MAXIFS`, `TEXTJOIN`, `XLOOKUP`) now stores the canonical `_xlfn.`-prefixed form, so saved files stay valid OOXML instead of triggering Excel repair. Covers `setFormula`, range formulas, and expression-valued defined names.
 - `WorkerWorkbook`: tolerate defined names that fail to replay into the shadow workbook so opening still succeeds (e.g. array-constant names); edits no longer silently no-op.
-
-
 - Recalc: genuine formula errors (#DIV/0!, #REF!, #NAME?, etc.) now surface as `{type:"error"}` cell values and are written as `t="e"` in the doc XML; engine-limitation kinds (#N/IMPL, #ERROR!) still fall back to cached values.
 - Recalc: key fallback on cached value (not error kind) — cells with a non-blank file-cached value always fall back to it, fixing clobber of unsupported-function caches.
-
 - Saving: inject missing `Default Extension="rels"`/`"xml"` content types (ooxmlsdk 0.7.0 omits them), fixing Excel repair-on-open for created workbooks.
 - Styles: emit `<font>` children in CT_Font schema order.
 - Editor: auto-close unbalanced `(` on commit (e.g. point-mode `=SUM(A1:A3`), avoiding corrupt formulas Excel rejects on open.
-
 - Point mode: arrow keys (Shift to extend) pick/move a reference while editing a formula at a ref-accepting caret.
 - Point mode: draw the in-progress candidate range box while dragging a reference (before the formula parses).
 - Inline edit overlay: arrow keys commit and move the selection when typing a plain value (enter mode); F2/double-click keep arrows as caret movement.
 - Inline edit overlay now positions in content coordinates inside the scroll spacer, fixing a scroll jump to the bottom-right of the sheet when focusing/typing.
 - Example app: use `cell(addr).setValue/setFormula` instead of the nonexistent `range(addr)` single-cell setters.
-
 - Table-header filter/sort dropdowns now act on the table's own sheet: `TableFilterArrow.rangeRef` is sheet-qualified (`TableSheet!A1:C5`), so controllers no longer fall back to `activeSheet()` and sort/filter the wrong sheet.
 - `pivots.update()` no longer fails (`pivot field not found in source header: Values`) for multi-data-field pivots with a column field; the synthetic `-2` "Values" marker is stripped from the `PivotInfo` field read-back so the remove+reset round-trip is clean.
 - `pageSetup.set` no longer corrupts a sheet-qualified `printArea`/`printTitleRows`/`printTitleColumns` (`"Sheet1!A1:C5"` was fused into `MAINA1:C5`); the existing qualifier is now stripped before re-prefixing.
 - Single-sheet render (`--sheet`/`--sheet-index`) now resolves cross-sheet chart/sparkline refs by extracting cells-only grids of referenced sheets; previously such charts rendered as placeholders.
 - Sparkline `dataRef`s are now sheet-qualified on write (`Sheet!B2:E2`); bare refs caused Excel to drop the whole sparkline group on open ("Removed Feature: Sparklines").
-
 - `pivots.remove`/`pivots.update` no longer leak orphaned pivot cache parts + workbook `pivotCaches` registrations; removing a pivot now GCs its now-unreferenced cache.
 - `Range.copyTo(otherSheet.range(...))` now returns a destination-scoped `Range` instead of a stale source-sheet handle.
 - A failed default wasm initialization no longer poisons later `Workbook.create/open` attempts.
 - Keep the browser entry (`dist/index.js`) free of `node:fs`: the default wasm resolver is now injectable via `registerDefaultWasmInputResolver`, registered by `@hewliyang/xlsx-preview/node` (which also re-exports `Workbook`/`NumberFormat`). Node consumers needing default-wasm bootstrap should import `Workbook` from `./node`.
-
 - `Worksheet.shapes.set` now warns (`take_warnings`) when an anchor offset exceeds its referenced cell, since Excel clamps such offsets to the cell while our renderer treats them as absolute.
 - Explicit column `width` → px now uses Excel's MDW rounding formula instead of a flat `width * pxPerChar`, so non-default column widths line up with Excel.
 - Rotated/flipped shapes now emit `<a:off>`/`<a:ext>` on the shape `<a:xfrm>` (derived from the anchor), so Excel honors `rotationDegrees` instead of ignoring it. Rotation keeps the anchor footprint and rotates geometry inside it (matching Excel; fixture: `shapes_rotation_keeps_anchor_footprint`).
@@ -342,11 +304,9 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Chart series `color` now accepts 8-hex `AARRGGBB` (alpha stripped) in addition to 6-hex `RRGGBB`, matching every other color field.
 - `Workbook.create()` / `Workbook.open()` from `@hewliyang/xlsx-preview/api` now load the bundled wasm via `readFileSync` on Node (auto-detected) instead of a `file://` URL that Node `fetch` rejects; no more manual `wasmBinaryUrl` plumbing required.
 - `setHyperlink({ display })` now auto-populates the top-left cell's value with `display` when that cell is blank (no value/formula), matching Excel's Insert-Hyperlink behavior; renderers no longer show hyperlinked blank cells.
-
 - ironcalc `DEFAULT_NUM_FMTS` rewritten against canonical ECMA-376 §18.8.30 (cleared OCR corruption like `"0.00E + 00"`, `"h:mm AM / PM"`, `"#,##0;()#,##0)"`) and switched from positional indexing to ID-keyed lookup so the spec's `numFmtId` gaps (5–8, 23–36, 41–44) are honored; new custom numFmtIds now start at 164 per Excel convention.
 - `ChartCollection.update(id, partial)` merges a partial patch onto an existing chart so callers don't have to round-trip `ChartInfo` → `ChartPatch` and re-send every series to tweak one field.
 - `AutoFilterApi.setColumnValues` / `setColumnTop10` / `setColumnCustom` typed helpers so agents don't have to hand-author the `criteria` discriminated union. `setColumn` now pre-validates `criteria.kind` and throws a clear error pointing at the helpers instead of the opaque wasm `missing field 'kind'`.
-
 - Defined names are now wired into the recalc engine — formulas referencing ranges/cells via defined names resolve correctly instead of returning `#NAME?`. Non-reference defined-name formulas (scalars, expressions) emit a `LossyOperation` warning at `setDefinedName` since the engine only supports reference shapes.
 - `Workbook.renameSheet()` now rewrites cross-sheet formula references in cells, conditional-formatting formulas, and defined names so renames no longer produce `#REF!`.
 - `Workbook.save()` now auto-recalculates so cached formula values are always written; previously a `save()` without a prior `recalculate()` produced an xlsx whose formula cells rendered blank.

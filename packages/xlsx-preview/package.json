@@ -1,6 +1,6 @@
 {
   "name": "@hewliyang/xlsx-preview",
-  "version": "0.0.10",
+  "version": "0.1.0",
   "description": "Workbook preview/rendering library for XLSX, CSV, and Parquet in browser, React, and Node.",
   "repository": {
     "type": "git",
