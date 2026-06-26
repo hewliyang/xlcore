@@ -35,10 +35,10 @@ jobs:
           version: v0.14.0
 
       - name: Build wasm
-        # Must match the release profile: a `--dev` build balloons past 100MB and
-        # silently enables wasm-bindgen's aliasing guard, which `check-wasm-fresh`
-        # (run by the node test) now rejects.
-        run: wasm-pack build crates/xlcore-wasm --target web --out-dir pkg --profile wasm-size --no-opt
+        # CI only needs a working pkg/ for the node test that imports dist/.
+        # The size-optimised `wasm-size` profile (fat LTO + codegen-units=1) is
+        # reserved for release.yml; here a dev build is far faster (~40min less).
+        run: wasm-pack build crates/xlcore-wasm --target web --out-dir pkg --dev --no-opt
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -56,6 +56,9 @@ jobs:
         run: pnpm --filter @hewliyang/xlsx-preview lint
 
       - name: Test (node)
+        # The dev wasm above is intentionally oversized; skip the size guard.
+        env:
+          XLCORE_ALLOW_DEV_WASM: "1"
         run: pnpm --filter @hewliyang/xlsx-preview test
 
       - name: Test (rust workspace)

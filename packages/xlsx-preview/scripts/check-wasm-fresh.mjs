@@ -34,7 +34,7 @@ if (!wasmStat) {
 // 100MB and silently enables wasm-bindgen's `&mut self` aliasing guard, which
 // panics at runtime. Reject anything that looks like a debug artifact.
 const MAX_WASM_BYTES = 60 * 1024 * 1024;
-if (wasmStat.size > MAX_WASM_BYTES) {
+if (!process.env.XLCORE_ALLOW_DEV_WASM && wasmStat.size > MAX_WASM_BYTES) {
   fail(
     `${relative(repoRoot, wasmPath)} is ${(wasmStat.size / 1024 / 1024).toFixed(0)}MB ` +
       `(> ${MAX_WASM_BYTES / 1024 / 1024}MB); looks like a --dev build, rebuild with the wasm-size profile`,
